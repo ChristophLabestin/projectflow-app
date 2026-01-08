@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
 import { generateProductDefinitionAI } from '../../../services/geminiService';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -16,50 +19,61 @@ interface Requirement {
     priority: 'must' | 'should' | 'could' | 'wont';
 }
 
+interface DefinitionData {
+    requirements: Requirement[];
+    successCriteria: string;
+    scope: string;
+    outOfScope: string;
+}
 
 export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ idea, onUpdate }) => {
     const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
-    // Store definition data in the idea's requirements field as JSON
-    const definitionData = (() => {
+    const definitionData: DefinitionData = (() => {
         try {
             if (idea.requirements && idea.requirements.startsWith('{')) {
-                return JSON.parse(idea.requirements);
+                const parsed = JSON.parse(idea.requirements);
+                return {
+                    requirements: Array.isArray(parsed.requirements) ? parsed.requirements : [],
+                    successCriteria: typeof parsed.successCriteria === 'string' ? parsed.successCriteria : '',
+                    scope: typeof parsed.scope === 'string' ? parsed.scope : '',
+                    outOfScope: typeof parsed.outOfScope === 'string' ? parsed.outOfScope : ''
+                };
             }
-        } catch { }
+        } catch {
+            // Ignore parse failures and fall back to defaults.
+        }
         return {
-            requirements: [] as Requirement[],
+            requirements: [],
             successCriteria: '',
             scope: '',
             outOfScope: ''
         };
     })();
 
-    const updateDefinition = (updates: Partial<typeof definitionData>) => {
+    const updateDefinition = (updates: Partial<DefinitionData>) => {
         const newData = { ...definitionData, ...updates };
         onUpdate({ requirements: JSON.stringify(newData) });
     };
 
-    // Helper to manage list-based strings
     const addListItem = (field: 'scope' | 'outOfScope' | 'successCriteria') => {
         const current = definitionData[field] ? definitionData[field].split('\n') : [];
-        updateDefinition({ [field]: [...current, ''].join('\n') });
+        updateDefinition({ [field]: [...current, ''].join('\n') } as Partial<DefinitionData>);
     };
 
     const updateListItem = (field: 'scope' | 'outOfScope' | 'successCriteria', index: number, value: string) => {
         const current = definitionData[field] ? definitionData[field].split('\n') : [];
         current[index] = value;
-        updateDefinition({ [field]: current.join('\n') });
+        updateDefinition({ [field]: current.join('\n') } as Partial<DefinitionData>);
     };
 
     const removeListItem = (field: 'scope' | 'outOfScope' | 'successCriteria', index: number) => {
         const current = definitionData[field] ? definitionData[field].split('\n') : [];
         current.splice(index, 1);
-        updateDefinition({ [field]: current.join('\n') });
+        updateDefinition({ [field]: current.join('\n') } as Partial<DefinitionData>);
     };
 
-    // Requirement Helpers
     const addRequirement = (priority: Requirement['priority']) => {
         const newReq: Requirement = {
             id: Date.now().toString(),
@@ -71,15 +85,15 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
     };
 
     const updateRequirement = (id: string, updates: Partial<Requirement>) => {
-        const newReqs = definitionData.requirements.map((r: Requirement) =>
-            r.id === id ? { ...r, ...updates } : r
+        const newReqs = definitionData.requirements.map((req) =>
+            req.id === id ? { ...req, ...updates } : req
         );
         updateDefinition({ requirements: newReqs });
     };
 
     const removeRequirement = (id: string) => {
         updateDefinition({
-            requirements: definitionData.requirements.filter((r: Requirement) => r.id !== id)
+            requirements: definitionData.requirements.filter((req) => req.id !== id)
         });
     };
 
@@ -88,13 +102,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
         try {
             const aiData = await generateProductDefinitionAI(idea);
 
-            // Merge strategy: 
-            // Append scope/criteria if existing is not empty (add new lines)
-            // Append requirements
-
-            const currentScope = definitionData.scope ? definitionData.scope + '\n' : '';
-            const currentOutOfScope = definitionData.outOfScope ? definitionData.outOfScope + '\n' : '';
-            const currentSuccessCriteria = definitionData.successCriteria ? definitionData.successCriteria + '\n' : '';
+            const currentScope = definitionData.scope ? `${definitionData.scope}\n` : '';
+            const currentOutOfScope = definitionData.outOfScope ? `${definitionData.outOfScope}\n` : '';
+            const currentSuccessCriteria = definitionData.successCriteria ? `${definitionData.successCriteria}\n` : '';
 
             updateDefinition({
                 scope: currentScope + aiData.scope,
@@ -103,244 +113,340 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                 requirements: [...definitionData.requirements, ...aiData.requirements]
             });
         } catch (error) {
-            console.error("Failed to generate definition:", error);
+            console.error('Failed to generate definition:', error);
         } finally {
             setGenerating(false);
         }
     };
 
-    const scopeList = definitionData.scope ? definitionData.scope.split('\n').filter(Boolean) : [];
-    const outOfScopeList = definitionData.outOfScope ? definitionData.outOfScope.split('\n').filter(Boolean) : [];
-    const successList = definitionData.successCriteria ? definitionData.successCriteria.split('\n').filter(Boolean) : [];
+    const scopeList = definitionData.scope ? definitionData.scope.split('\n') : [];
+    const outOfScopeList = definitionData.outOfScope ? definitionData.outOfScope.split('\n') : [];
+    const successList = definitionData.successCriteria ? definitionData.successCriteria.split('\n') : [];
 
     const groupedRequirements = {
-        must: definitionData.requirements.filter((r: Requirement) => r.priority === 'must'),
-        should: definitionData.requirements.filter((r: Requirement) => r.priority === 'should'),
-        could: definitionData.requirements.filter((r: Requirement) => r.priority === 'could'),
-        wont: definitionData.requirements.filter((r: Requirement) => r.priority === 'wont')
+        must: definitionData.requirements.filter((req) => req.priority === 'must'),
+        should: definitionData.requirements.filter((req) => req.priority === 'should'),
+        could: definitionData.requirements.filter((req) => req.priority === 'could'),
+        wont: definitionData.requirements.filter((req) => req.priority === 'wont')
     };
 
     return (
-        <div className="h-full flex flex-col gap-6 overflow-hidden animate-in fade-in duration-500">
-            {/* Header Area */}
-            <div className="flex items-center justify-between shrink-0">
-                <div>
-                    <h2 className="text-xl font-bold text-main">{t('flowStages.productDefinition.title')}</h2>
-                    <p className="text-sm text-muted">{t('flowStages.productDefinition.subtitle')}</p>
+        <div className="flow-product-definition">
+            <div className="flow-product-definition__container">
+                <div className="flow-product-definition__header">
+                    <div>
+                        <h2 className="flow-product-definition__title">{t('flowStages.productDefinition.title')}</h2>
+                        <p className="flow-product-definition__subtitle">{t('flowStages.productDefinition.subtitle')}</p>
+                    </div>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleGenerateDefinition}
+                        isLoading={generating}
+                        className="flow-product-definition__generate"
+                        icon={<span className="material-symbols-outlined">auto_awesome</span>}
+                    >
+                        {t('flowStages.productDefinition.actions.generate')}
+                    </Button>
                 </div>
-                <Button
-                    variant="primary"
-                    size="sm"
-                    onClick={handleGenerateDefinition}
-                    loading={generating}
-                    className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-none shadow-md !text-white"
-                    icon={<span className="material-symbols-outlined">auto_awesome</span>}
-                >
-                    {t('flowStages.productDefinition.actions.generate')}
-                </Button>
-            </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto pr-2 pb-4">
-
-                {/* Left Panel: Specs (4 cols) */}
-                <div className="lg:col-span-4 flex flex-col gap-4">
-
-                    {/* In Scope */}
-                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>
-                                {t('flowStages.productDefinition.scope.in')}
-                            </div>
-                            <button onClick={() => addListItem('scope')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="space-y-2">
-                            {scopeList.map((item: string, i: number) => (
-                                <div key={i} className="flex gap-2 group">
-                                    <span className="mt-2 size-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                    <input
-                                        value={item}
-                                        onChange={(e) => updateListItem('scope', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
-                                        placeholder={t('flowStages.productDefinition.scope.inPlaceholder')}
-                                    />
-                                    <button onClick={() => removeListItem('scope', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
-                                        <span className="material-symbols-outlined text-[14px]">close</span>
-                                    </button>
+                <div className="flow-product-definition__layout">
+                    <div className="flow-product-definition__sidebar">
+                        <Card className="flow-product-definition__panel">
+                            <div className="flow-product-definition__panel-header">
+                                <div className="flow-product-definition__panel-title">
+                                    <span className="material-symbols-outlined">check_circle</span>
+                                    <h3>{t('flowStages.productDefinition.scope.in')}</h3>
                                 </div>
-                            ))}
-                            {scopeList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.scope.empty')}</span>}
-                        </div>
-                    </div>
-
-                    {/* Out of Scope */}
-                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[20px] text-rose-500">cancel</span>
-                                {t('flowStages.productDefinition.scope.out')}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__panel-action"
+                                    onClick={() => addListItem('scope')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
                             </div>
-                            <button onClick={() => addListItem('outOfScope')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="space-y-2">
-                            {outOfScopeList.map((item: string, i: number) => (
-                                <div key={i} className="flex gap-2 group">
-                                    <span className="mt-2 size-1.5 rounded-full bg-rose-500 shrink-0" />
-                                    <input
-                                        value={item}
-                                        onChange={(e) => updateListItem('outOfScope', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
-                                        placeholder={t('flowStages.productDefinition.scope.outPlaceholder')}
-                                    />
-                                    <button onClick={() => removeListItem('outOfScope', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
-                                        <span className="material-symbols-outlined text-[14px]">close</span>
-                                    </button>
-                                </div>
-                            ))}
-                            {outOfScopeList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.scope.empty')}</span>}
-                        </div>
-                    </div>
-
-                    {/* Success Criteria */}
-                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3 flex-1">
-                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
-                                {t('flowStages.productDefinition.success.title')}
+                            <div className="flow-product-definition__list">
+                                {scopeList.map((item, index) => (
+                                    <div key={index} className="flow-product-definition__list-item">
+                                        <span className="flow-product-definition__list-dot" />
+                                        <TextInput
+                                            value={item}
+                                            onChange={(event) => updateListItem('scope', index, event.target.value)}
+                                            placeholder={t('flowStages.productDefinition.scope.inPlaceholder')}
+                                            className="flow-product-definition__list-input"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="flow-product-definition__list-remove"
+                                            onClick={() => removeListItem('scope', index)}
+                                            aria-label={t('common.delete')}
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                ))}
+                                {scopeList.length === 0 && (
+                                    <p className="flow-product-definition__list-empty">
+                                        {t('flowStages.productDefinition.scope.empty')}
+                                    </p>
+                                )}
                             </div>
-                            <button onClick={() => addListItem('successCriteria')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="space-y-2">
-                            {successList.map((item: string, i: number) => (
-                                <div key={i} className="flex gap-2 group items-start">
-                                    <span className="material-symbols-outlined text-[16px] text-amber-500 mt-0.5 shrink-0">flag</span>
-                                    <textarea
-                                        value={item}
-                                        onChange={(e) => updateListItem('successCriteria', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
-                                        placeholder={t('flowStages.productDefinition.success.placeholder')}
-                                        rows={2}
-                                    />
-                                    <button onClick={() => removeListItem('successCriteria', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
-                                        <span className="material-symbols-outlined text-[14px]">close</span>
-                                    </button>
-                                </div>
-                            ))}
-                            {successList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.success.empty')}</span>}
-                        </div>
-                    </div>
+                        </Card>
 
-                    {/* Advance Action */}
-                    <div className="mt-4">
+                        <Card className="flow-product-definition__panel">
+                            <div className="flow-product-definition__panel-header">
+                                <div className="flow-product-definition__panel-title">
+                                    <span className="material-symbols-outlined">cancel</span>
+                                    <h3>{t('flowStages.productDefinition.scope.out')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__panel-action"
+                                    onClick={() => addListItem('outOfScope')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
+                            </div>
+                            <div className="flow-product-definition__list">
+                                {outOfScopeList.map((item, index) => (
+                                    <div key={index} className="flow-product-definition__list-item">
+                                        <span className="flow-product-definition__list-dot" />
+                                        <TextInput
+                                            value={item}
+                                            onChange={(event) => updateListItem('outOfScope', index, event.target.value)}
+                                            placeholder={t('flowStages.productDefinition.scope.outPlaceholder')}
+                                            className="flow-product-definition__list-input"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="flow-product-definition__list-remove"
+                                            onClick={() => removeListItem('outOfScope', index)}
+                                            aria-label={t('common.delete')}
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                ))}
+                                {outOfScopeList.length === 0 && (
+                                    <p className="flow-product-definition__list-empty">
+                                        {t('flowStages.productDefinition.scope.empty')}
+                                    </p>
+                                )}
+                            </div>
+                        </Card>
+
+                        <Card className="flow-product-definition__panel">
+                            <div className="flow-product-definition__panel-header">
+                                <div className="flow-product-definition__panel-title">
+                                    <span className="material-symbols-outlined">ads_click</span>
+                                    <h3>{t('flowStages.productDefinition.success.title')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__panel-action"
+                                    onClick={() => addListItem('successCriteria')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
+                            </div>
+                            <div className="flow-product-definition__list">
+                                {successList.map((item, index) => (
+                                    <div key={index} className="flow-product-definition__list-item flow-product-definition__list-item--textarea">
+                                        <span className="flow-product-definition__list-dot" />
+                                        <TextArea
+                                            value={item}
+                                            onChange={(event) => updateListItem('successCriteria', index, event.target.value)}
+                                            placeholder={t('flowStages.productDefinition.success.placeholder')}
+                                            className="flow-product-definition__list-textarea"
+                                        />
+                                        <button
+                                            type="button"
+                                            className="flow-product-definition__list-remove"
+                                            onClick={() => removeListItem('successCriteria', index)}
+                                            aria-label={t('common.delete')}
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                ))}
+                                {successList.length === 0 && (
+                                    <p className="flow-product-definition__list-empty">
+                                        {t('flowStages.productDefinition.success.empty')}
+                                    </p>
+                                )}
+                            </div>
+                        </Card>
+
                         <Button
-                            className="w-full h-12 text-base justify-between group hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
+                            className="flow-product-definition__advance"
                             onClick={() => onUpdate({ stage: 'Development' })}
+                            icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                            iconPosition="right"
                         >
-                            <span className="font-bold pl-1">{t('flowStages.productDefinition.actions.advance')}</span>
-                            <div className="size-8 rounded-lg bg-white/20 dark:bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                            </div>
+                            {t('flowStages.productDefinition.actions.advance')}
                         </Button>
                     </div>
 
-                </div>
-
-                {/* Right Panel: Requirements Matrix (8 cols) */}
-                <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
-
-                    {/* Must Have */}
-                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
-                        <div className="p-4 bg-rose-50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/20 flex justify-between items-center">
-                            <div className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
-                                <span className="material-symbols-outlined">priority_high</span>
-                                {t('flowStages.productDefinition.requirements.must')}
+                    <div className="flow-product-definition__matrix">
+                        <Card className="flow-product-definition__column" data-priority="must">
+                            <div className="flow-product-definition__column-header">
+                                <div className="flow-product-definition__column-title">
+                                    <span className="material-symbols-outlined">priority_high</span>
+                                    <h3>{t('flowStages.productDefinition.requirements.must')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__column-action"
+                                    onClick={() => addRequirement('must')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
                             </div>
-                            <button onClick={() => addRequirement('must')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-rose-600 hover:bg-rose-50">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto space-y-3">
-                            {groupedRequirements.must.map(req => (
-                                <RequirementCard key={req.id} req={req} updateRequirement={updateRequirement} removeRequirement={removeRequirement} />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Should Have */}
-                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
-                        <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20 flex justify-between items-center">
-                            <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
-                                <span className="material-symbols-outlined">star</span>
-                                {t('flowStages.productDefinition.requirements.should')}
+                            <div className="flow-product-definition__column-body">
+                                {groupedRequirements.must.map((req) => (
+                                    <RequirementCard
+                                        key={req.id}
+                                        req={req}
+                                        updateRequirement={updateRequirement}
+                                        removeRequirement={removeRequirement}
+                                    />
+                                ))}
                             </div>
-                            <button onClick={() => addRequirement('should')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-amber-600 hover:bg-amber-50">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto space-y-3">
-                            {groupedRequirements.should.map(req => (
-                                <RequirementCard key={req.id} req={req} updateRequirement={updateRequirement} removeRequirement={removeRequirement} />
-                            ))}
-                        </div>
-                    </div>
+                        </Card>
 
-                    {/* Could Have */}
-                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
-                        <div className="p-4 bg-sky-50 dark:bg-sky-900/10 border-b border-sky-100 dark:border-sky-900/20 flex justify-between items-center">
-                            <div className="font-bold text-sky-700 dark:text-sky-400 flex items-center gap-2">
-                                <span className="material-symbols-outlined">add_circle</span>
-                                {t('flowStages.productDefinition.requirements.could')}
+                        <Card className="flow-product-definition__column" data-priority="should">
+                            <div className="flow-product-definition__column-header">
+                                <div className="flow-product-definition__column-title">
+                                    <span className="material-symbols-outlined">star</span>
+                                    <h3>{t('flowStages.productDefinition.requirements.should')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__column-action"
+                                    onClick={() => addRequirement('should')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
                             </div>
-                            <button onClick={() => addRequirement('could')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-sky-600 hover:bg-sky-50">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto space-y-3">
-                            {groupedRequirements.could.map(req => (
-                                <RequirementCard key={req.id} req={req} updateRequirement={updateRequirement} removeRequirement={removeRequirement} />
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Won't Have */}
-                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <div className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                                <span className="material-symbols-outlined">do_not_disturb_on</span>
-                                {t('flowStages.productDefinition.requirements.wont')}
+                            <div className="flow-product-definition__column-body">
+                                {groupedRequirements.should.map((req) => (
+                                    <RequirementCard
+                                        key={req.id}
+                                        req={req}
+                                        updateRequirement={updateRequirement}
+                                        removeRequirement={removeRequirement}
+                                    />
+                                ))}
                             </div>
-                            <button onClick={() => addRequirement('wont')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-slate-500 hover:bg-slate-50">{t('flowStages.productDefinition.actions.add')}</button>
-                        </div>
-                        <div className="p-4 flex-1 overflow-y-auto space-y-3">
-                            {groupedRequirements.wont.map(req => (
-                                <RequirementCard key={req.id} req={req} updateRequirement={updateRequirement} removeRequirement={removeRequirement} />
-                            ))}
-                        </div>
-                    </div>
+                        </Card>
 
+                        <Card className="flow-product-definition__column" data-priority="could">
+                            <div className="flow-product-definition__column-header">
+                                <div className="flow-product-definition__column-title">
+                                    <span className="material-symbols-outlined">add_circle</span>
+                                    <h3>{t('flowStages.productDefinition.requirements.could')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__column-action"
+                                    onClick={() => addRequirement('could')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
+                            </div>
+                            <div className="flow-product-definition__column-body">
+                                {groupedRequirements.could.map((req) => (
+                                    <RequirementCard
+                                        key={req.id}
+                                        req={req}
+                                        updateRequirement={updateRequirement}
+                                        removeRequirement={removeRequirement}
+                                    />
+                                ))}
+                            </div>
+                        </Card>
+
+                        <Card className="flow-product-definition__column" data-priority="wont">
+                            <div className="flow-product-definition__column-header">
+                                <div className="flow-product-definition__column-title">
+                                    <span className="material-symbols-outlined">do_not_disturb_on</span>
+                                    <h3>{t('flowStages.productDefinition.requirements.wont')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-product-definition__column-action"
+                                    onClick={() => addRequirement('wont')}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
+                                    {t('flowStages.productDefinition.actions.add')}
+                                </Button>
+                            </div>
+                            <div className="flow-product-definition__column-body">
+                                {groupedRequirements.wont.map((req) => (
+                                    <RequirementCard
+                                        key={req.id}
+                                        req={req}
+                                        updateRequirement={updateRequirement}
+                                        removeRequirement={removeRequirement}
+                                    />
+                                ))}
+                            </div>
+                        </Card>
+                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-// Subcomponent for cleaner rendering
-const RequirementCard = ({ req, updateRequirement, removeRequirement }: { req: Requirement, updateRequirement: any, removeRequirement: any }) => {
+const RequirementCard = ({
+    req,
+    updateRequirement,
+    removeRequirement
+}: {
+    req: Requirement;
+    updateRequirement: (id: string, updates: Partial<Requirement>) => void;
+    removeRequirement: (id: string) => void;
+}) => {
     const { t } = useLanguage();
 
     return (
-        <div className="p-3 rounded-xl border border-surface bg-surface hover:shadow-sm transition-all group">
-            <div className="flex items-start justify-between gap-2 mb-2">
-                <input
+        <div className="flow-product-definition__requirement">
+            <div className="flow-product-definition__requirement-header">
+                <TextInput
                     value={req.title}
-                    onChange={(e) => updateRequirement(req.id, { title: e.target.value })}
-                    className="font-semibold text-sm bg-transparent border-none p-0 focus:ring-0 text-main placeholder-[var(--color-text-subtle)] flex-1 min-w-0"
+                    onChange={(event) => updateRequirement(req.id, { title: event.target.value })}
                     placeholder={t('flowStages.productDefinition.requirements.titlePlaceholder')}
+                    className="flow-product-definition__requirement-title"
                 />
-                <button onClick={() => removeRequirement(req.id)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
-                    <span className="material-symbols-outlined text-[16px]">close</span>
+                <button
+                    type="button"
+                    className="flow-product-definition__requirement-remove"
+                    onClick={() => removeRequirement(req.id)}
+                    aria-label={t('common.delete')}
+                >
+                    <span className="material-symbols-outlined">close</span>
                 </button>
             </div>
-            <textarea
+            <TextArea
                 value={req.description}
-                onChange={(e) => updateRequirement(req.id, { description: e.target.value })}
-                className="w-full bg-transparent border-none p-0 text-xs text-muted placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
+                onChange={(event) => updateRequirement(req.id, { description: event.target.value })}
                 placeholder={t('flowStages.productDefinition.requirements.detailsPlaceholder')}
-                rows={2}
+                className="flow-product-definition__requirement-details"
             />
         </div>
     );
