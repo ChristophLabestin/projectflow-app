@@ -13,6 +13,8 @@ import { Button } from '../components/common/Button/Button';
 import { Card, CardBody, CardFooter, CardHeader } from '../components/common/Card/Card';
 import { TextArea } from '../components/common/Input/TextArea';
 import { Badge } from '../components/common/Badge/Badge';
+import './brainstorming.scss';
+
 
 const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; placeholderKey: string; icon: string }[] = [
     {
@@ -160,9 +162,10 @@ export const Brainstorming = () => {
     const isUsageCritical = usagePercent >= 90;
 
     return (
-        <div className="ai-studio animate-fade-up" data-tool={activeToolKey}>
+        <div className={`ai-studio ${isGenerating ? 'is-generating' : ''}`.trim()} data-tool={activeToolKey}>
             <div className="ai-studio__layout">
                 <AIStudioHero />
+
 
                 <div className="ai-studio__tool-grid">
                     {tools.map((tool) => (
@@ -180,20 +183,20 @@ export const Brainstorming = () => {
 
                 <div className="ai-studio__command">
                     <Card className="ai-studio-command">
-                        <CardHeader className="ai-studio-command__header">
+                        <div className="ai-studio-command__header">
                             <div className="ai-studio-command__meta">
                                 <div className="ai-studio-command__icon">
-                                    <span className="material-symbols-outlined">terminal</span>
+                                    <span className="material-symbols-outlined">{activeToolKey === 'brainstormer' ? 'lightbulb' : activeToolKey === 'riskscout' ? 'shield' : 'architecture'}</span>
                                 </div>
                                 <div>
-                                    <h3>{t('aiStudio.command.title')}</h3>
-                                    <p>{t('aiStudio.command.subtitle')}</p>
+                                    <h3>{activeToolLabel} Studio</h3>
+                                    <p>{currentToolPlaceholder}</p>
                                 </div>
                             </div>
 
                             {aiUsage && (
                                 <div className={`ai-studio-usage ${isUsageCritical ? 'is-critical' : ''}`.trim()}>
-                                    <span className="ai-studio-usage__label">{t('aiStudio.usage.label')}</span>
+                                    <span className="ai-studio-usage__label">Usage Efficiency</span>
                                     <div className="ai-studio-usage__bar">
                                         <div
                                             className="ai-studio-usage__fill"
@@ -203,20 +206,20 @@ export const Brainstorming = () => {
                                     <span className="ai-studio-usage__value">{Math.round(usagePercent)}%</span>
                                 </div>
                             )}
-                        </CardHeader>
+                        </div>
 
                         <CardBody className="ai-studio-command__body">
                             <TextArea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 className="ai-studio-command__input"
-                                placeholder={currentToolPlaceholder}
+                                placeholder="Describe your vision or project goal..."
                             />
                         </CardBody>
 
-                        <CardFooter className="ai-studio-command__footer">
+                        <div className="ai-studio-command__footer">
                             <p className="ai-studio-command__hint">
-                                <span className="material-symbols-outlined">info</span>
+                                <span className="material-symbols-outlined">auto_awesome</span>
                                 {t('aiStudio.hint.specific')}
                             </p>
 
@@ -224,12 +227,12 @@ export const Brainstorming = () => {
                                 onClick={handleGenerate}
                                 disabled={!prompt.trim()}
                                 isLoading={isGenerating}
-                                icon={<span className="material-symbols-outlined">play_arrow</span>}
+                                icon={<span className="material-symbols-outlined">bolt</span>}
                                 className="ai-studio-command__action"
                             >
-                                {isGenerating ? t('aiStudio.actions.generating') : t('aiStudio.actions.execute').replace('{tool}', activeToolLabel)}
+                                {isGenerating ? t('aiStudio.actions.generating') : 'Initialize Generation'}
                             </Button>
-                        </CardFooter>
+                        </div>
                     </Card>
                 </div>
 

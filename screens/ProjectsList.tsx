@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -467,16 +468,16 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
                 {/* 5. Footer (2-Column Buttons) */}
                 <div className="rich-card__footer">
                     {canSetFocus && onSetFocus ? (
-                        <button
-                            className={`btn-focus ${isFocus ? 'active' : ''}`}
+                        <Button
+                            variant="secondary"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onSetFocus();
                             }}
+                            icon={<span className="material-symbols-outlined">{isFocus ? 'push_pin' : 'keep'}</span>}
                         >
-                            <span className="material-symbols-outlined">{isFocus ? 'push_pin' : 'keep'}</span>
                             {isFocus ? 'Focused' : 'Focus'}
-                        </button>
+                        </Button>
                     ) : (
                         <div></div> // Spacer if cant focus
                     )}
@@ -494,62 +495,63 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
     );
 };
 
-// 3. Compact List Row
+// 3. Redesigned Compact List Row
 const CompactProjectRow: React.FC<{ project: Project; onClick: () => void }> = ({ project, onClick }) => {
+    const statusClass = `status-${project.status?.toLowerCase().replace(/\s+/g, '-') || 'backlog'}`;
+    const lastUpdated = project.updatedAt?.seconds
+        ? new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+        : 'Unknown';
+
     return (
-        <div className="compact-row" onClick={onClick}>
-            <div className="compact-status" title={project.status} />
-            <span className="compact-key">{(project as any).key || 'PRJ'}</span>
-            <span className="compact-title">{project.title}</span>
-            <span className="compact-meta">{new Date(project.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</span>
-            <div className="compact-team">
-                <TeamAvatars projectId={project.id} limit={2} />
+        <div
+            className="compact-row"
+            onClick={onClick}
+            data-status={project.status}
+        >
+            {/* Icon with Status Dot */}
+            <div className="compact-icon">
+                {project.squareIcon ? (
+                    <img src={project.squareIcon} alt="" />
+                ) : project.icon ? (
+                    <span>{project.icon}</span>
+                ) : (
+                    <span className="material-symbols-outlined">folder</span>
+                )}
             </div>
-            <span className="compact-badge">{project.status}</span>
+
+            {/* Title + Meta Info */}
+            <div className="compact-info">
+                <span className="compact-title">{project.title}</span>
+                <div className="compact-meta">
+                    <span className="meta-item">
+                        <span className="material-symbols-outlined">schedule</span>
+                        {lastUpdated}
+                    </span>
+                    {project.dueDate && (
+                        <span className="meta-item">
+                            <span className="material-symbols-outlined">event</span>
+                            {new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            {/* Right Section */}
+            <div className="compact-right">
+                <span className={`compact-badge ${statusClass}`}>
+                    {project.status || 'Backlog'}
+                </span>
+            </div>
+
+            {/* Arrow Indicator */}
+            <div className="compact-arrow">
+                <span className="material-symbols-outlined">chevron_right</span>
+            </div>
         </div>
     );
 };
 
-const ProjectStatsRow: React.FC<{ projects: Project[]; criticalCount: number; warningCount: number }> = ({ projects, criticalCount, warningCount }) => {
-    const total = projects.length;
-    const active = projects.filter(p => p.status === 'Active').length;
-    const avgProgress = total > 0
-        ? Math.round(projects.reduce((acc, p) => acc + (p.progress || 0), 0) / total)
-        : 0;
 
-    return (
-        <div className="stats-row-header">
-            <div className="stat-card">
-                <div className="stat-icon icon-blue"><span className="material-symbols-outlined">folder</span></div>
-                <div className="stat-info">
-                    <span className="stat-val">{total}</span>
-                    <span className="stat-lbl">Total Projects</span>
-                </div>
-            </div>
-            <div className="stat-card">
-                <div className="stat-icon icon-green"><span className="material-symbols-outlined">bolt</span></div>
-                <div className="stat-info">
-                    <span className="stat-val">{active}</span>
-                    <span className="stat-lbl">Active Work</span>
-                </div>
-            </div>
-            <div className="stat-card">
-                <div className="stat-icon icon-red"><span className="material-symbols-outlined">gpp_maybe</span></div>
-                <div className="stat-info">
-                    <span className="stat-val">{criticalCount}</span>
-                    <span className="stat-lbl">Critical Issues</span>
-                </div>
-            </div>
-            <div className="stat-card">
-                <div className="stat-icon icon-purple"><span className="material-symbols-outlined">pie_chart</span></div>
-                <div className="stat-info">
-                    <span className="stat-val">{avgProgress}%</span>
-                    <span className="stat-lbl">Avg. Completion</span>
-                </div>
-            </div>
-        </div>
-    );
-};
 
 // Helper to get consistent color from string
 export const getDeterministicColor = (str: string) => {
@@ -563,7 +565,7 @@ export const getDeterministicColor = (str: string) => {
 
 export const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
@@ -828,31 +830,62 @@ export const ProjectsList: React.FC = () => {
     ];
     const { onboardingActive, stepIndex, setStepIndex, skip, finish } = useOnboardingTour('projects_rich', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
+    // Calculate Avg Progress for Header
+    const avgProgress = useMemo(() => {
+        const total = filteredProjects.length;
+        if (total === 0) return 0;
+        return Math.round(filteredProjects.reduce((acc, p) => acc + (p.progress || 0), 0) / total);
+    }, [filteredProjects]);
+
+    const activeWorkCount = useMemo(() => filteredProjects.filter(p => p.status === 'Active').length, [filteredProjects]);
+
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
 
     return (
         <div className="rich-page">
-            <header className="rich-header-container">
-                <div className="rich-header-top">
-                    <h1>Projects</h1>
-                    <div className="header-actions">
-                        <div className="search-pill">
-                            <span className="material-symbols-outlined">search</span>
-                            <input
-                                type="text"
-                                placeholder="Search projects..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                            />
-                        </div>
-                        {can('canCreateProjects') && (
-                            <Link to="/create"><Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button></Link>
-                        )}
+            <div className="projects-header">
+                <div className="projects-header-info">
+                    <div className="projects-header-date">
+                        <span className="material-symbols-outlined text-sm">calendar_today</span>
+                        {format(new Date(), dateFormat, { locale: dateLocale })}
                     </div>
+                    <h1 className="projects-header-title">Projects</h1>
+                    <p className="projects-header-subtitle">Manage your team's work.</p>
                 </div>
 
-                <ProjectStatsRow projects={filteredProjects} criticalCount={criticalCount} warningCount={warningCount} />
-            </header>
+                <div className="projects-header-stats">
+                    <div className="header-stat-card">
+                        <div className="stat-value">{activeWorkCount}</div>
+                        <div className="stat-label">Active Projects</div>
+                    </div>
+                    <div className="header-stat-card">
+                        <div className={`stat-value ${criticalCount > 0 ? 'red' : ''}`}>{criticalCount}</div>
+                        <div className="stat-label">Critical Issues</div>
+                    </div>
+                    <div className="header-stat-card">
+                        <div className="stat-value emerald">{avgProgress}%</div>
+                        <div className="stat-label">Avg. Completion</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Toolbar: Search & Actions */}
+            <div className="projects-toolbar">
+                <div className="search-pill">
+                    <span className="material-symbols-outlined">search</span>
+                    <input
+                        type="text"
+                        placeholder="Search projects..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+                {can('canCreateProjects') && (
+                    <Link to="/create">
+                        <Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button>
+                    </Link>
+                )}
+            </div>
 
             <div className="rich-content">
                 {spotlightProject && spotlightData && !search && (

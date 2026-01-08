@@ -12,6 +12,7 @@ import { Select, type SelectOption } from '../common/Select/Select';
 import { Checkbox } from '../common/Checkbox/Checkbox';
 import { DatePicker } from '../common/DateTime/DatePicker';
 import { useLanguage } from '../../context/LanguageContext';
+import confetti from 'canvas-confetti';
 
 interface MilestoneModalProps {
     projectId: string;
@@ -94,6 +95,14 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 linkedTaskIds,
                 linkedInitiativeId
             };
+
+            if (status === 'Achieved' && (!milestone || milestone.status !== 'Achieved')) {
+                confetti({
+                    particleCount: 100,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
 
             if (milestone) {
                 await updateMilestone(projectId, milestone.id, payload);
