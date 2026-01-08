@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
+import { Badge } from '../../common/Badge/Badge';
+import { Checkbox } from '../../common/Checkbox/Checkbox';
 import { generateProductLaunchAI, generateRiskWinAnalysis } from '../../../services/geminiService';
 import { AnalysisDashboard } from '../AnalysisDashboard';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -13,7 +18,7 @@ interface ProductLaunchViewProps {
 interface ChecklistCategory {
     id: string;
     category: string;
-    items: { id: string, title: string, done: boolean }[];
+    items: { id: string; title: string; done: boolean }[];
     isCollapsed?: boolean;
 }
 
@@ -23,7 +28,6 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
     const [viewMode, setViewMode] = useState<'execution' | 'analysis'>('execution');
     const [analyzing, setAnalyzing] = useState(false);
 
-    // Store launch data in the idea's launchPlan field as JSON
     const launchData = (() => {
         try {
             if (idea.launchPlan && idea.launchPlan.startsWith('{')) {
@@ -42,11 +46,10 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
         onUpdate({ launchPlan: JSON.stringify(newData) });
     };
 
-    // Checklist Helpers
     const addChecklistCategory = () => {
         const newCat: ChecklistCategory = {
             id: Date.now().toString(),
-            category: 'New Checklist',
+            category: t('flowStages.productLaunch.checklist.defaultCategory'),
             items: [],
             isCollapsed: false
         };
@@ -65,10 +68,10 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
         updateLaunchData({ checklist: newList });
     };
 
-    const updateChecklistItem = (catId: string, itemId: string, updates: Partial<{ title: string, done: boolean }>) => {
+    const updateChecklistItem = (catId: string, itemId: string, updates: Partial<{ title: string; done: boolean }>) => {
         const newList = launchData.checklist.map((c: ChecklistCategory) => {
             if (c.id !== catId) return c;
-            const newItems = c.items.map(i => i.id === itemId ? { ...i, ...updates } : i);
+            const newItems = c.items.map((i) => i.id === itemId ? { ...i, ...updates } : i);
             return { ...c, items: newItems };
         });
         updateLaunchData({ checklist: newList });
@@ -77,7 +80,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
     const removeChecklistItem = (catId: string, itemId: string) => {
         const newList = launchData.checklist.map((c: ChecklistCategory) => {
             if (c.id !== catId) return c;
-            return { ...c, items: c.items.filter(i => i.id !== itemId) };
+            return { ...c, items: c.items.filter((i) => i.id !== itemId) };
         });
         updateLaunchData({ checklist: newList });
     };
@@ -86,7 +89,6 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
         updateLaunchData({ checklist: launchData.checklist.filter((c: ChecklistCategory) => c.id !== id) });
     };
 
-    // Channel Helpers
     const addChannel = () => {
         updateLaunchData({ channels: [...launchData.channels, ''] });
     };
@@ -119,9 +121,8 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                 channels: [...launchData.channels, ...result.channels],
                 announcement: launchData.announcement ? launchData.announcement : result.announcement
             });
-
         } catch (error) {
-            console.error("Failed to generate launch plan:", error);
+            console.error('Failed to generate launch plan:', error);
         } finally {
             setGenerating(false);
         }
@@ -139,42 +140,49 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
         }
     };
 
-    // Calculate Progress
     const totalChecks = launchData.checklist.reduce((acc, c) => acc + c.items.length, 0);
-    const completedChecks = launchData.checklist.reduce((acc, c) => acc + c.items.filter(i => i.done).length, 0);
+    const completedChecks = launchData.checklist.reduce((acc, c) => acc + c.items.filter((i) => i.done).length, 0);
     const progress = totalChecks > 0 ? Math.round((completedChecks / totalChecks) * 100) : 0;
+    const progressLabel = progress === 100
+        ? t('flowStages.productLaunch.progressReady')
+        : t('flowStages.productLaunch.progress').replace('{progress}', String(progress));
 
     return (
-        <div className="h-full flex flex-col gap-6 overflow-hidden animate-in fade-in duration-500">
-            {/* Header Area */}
-            <div className="flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-6">
-                    <div>
-                        <h2 className="text-xl font-bold text-main flex items-center gap-3">
-                            {t('flowStages.productLaunch.title')}
+        <div className="flow-product-launch">
+            <div className="flow-product-launch__header">
+                <div className="flow-product-launch__header-left">
+                    <div className="flow-product-launch__heading">
+                        <div className="flow-product-launch__title-row">
+                            <h2 className="flow-product-launch__title">{t('flowStages.productLaunch.title')}</h2>
                             {totalChecks > 0 && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-surface-hover border-surface text-muted'}`}>
-                                    {t('flowStages.productLaunch.progressReady').replace('{progress}', `${progress}`)}
-                                </span>
+                                <Badge
+                                    variant={progress === 100 ? 'success' : 'neutral'}
+                                    className="flow-product-launch__progress"
+                                >
+                                    {progressLabel}
+                                </Badge>
                             )}
-                        </h2>
-                        <p className="text-sm text-muted">{t('flowStages.productLaunch.subtitle')}</p>
+                        </div>
+                        <p className="flow-product-launch__subtitle">{t('flowStages.productLaunch.subtitle')}</p>
                     </div>
 
-                    {/* View Switcher */}
-                    <div className="flex items-center p-1.5 bg-surface-paper rounded-xl border border-surface shadow-sm">
+                    <div className="flow-product-launch__view-toggle">
                         <button
+                            type="button"
                             onClick={() => setViewMode('execution')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'execution' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
+                            className={`flow-product-launch__view-button ${viewMode === 'execution' ? 'is-active' : ''}`}
+                            aria-pressed={viewMode === 'execution'}
                         >
-                            <span className="material-symbols-outlined text-[18px]">checklist_rtl</span>
+                            <span className="material-symbols-outlined">checklist_rtl</span>
                             {t('flowStages.productLaunch.views.execution')}
                         </button>
                         <button
+                            type="button"
                             onClick={() => setViewMode('analysis')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
+                            className={`flow-product-launch__view-button ${viewMode === 'analysis' ? 'is-active' : ''}`}
+                            aria-pressed={viewMode === 'analysis'}
                         >
-                            <span className="material-symbols-outlined text-[18px]">analytics</span>
+                            <span className="material-symbols-outlined">analytics</span>
                             {t('flowStages.productLaunch.views.analysis')}
                         </button>
                     </div>
@@ -185,9 +193,9 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                         variant="primary"
                         size="sm"
                         onClick={handleGenerate}
-                        loading={generating}
-                        className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-none shadow-md !text-white"
+                        isLoading={generating}
                         icon={<span className="material-symbols-outlined">auto_awesome</span>}
+                        className="flow-product-launch__generate"
                     >
                         {t('flowStages.productLaunch.actions.draftPlan')}
                     </Button>
@@ -195,168 +203,205 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
             </div>
 
             {viewMode === 'execution' ? (
-                <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto pr-2 pb-4">
-
-                    {/* Left Panel: Checklist (5 cols) */}
-                    <div className="lg:col-span-5 flex flex-col gap-4">
-                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden h-full">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                <div className="font-bold text-main flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[20px] text-emerald-500">checklist</span>
-                                    {t('flowStages.productLaunch.checklist.title')}
-                                </div>
-                                <button onClick={addChecklistCategory} className="text-xs text-primary hover:underline">{t('flowStages.productLaunch.checklist.addCategory')}</button>
+                <div className="flow-product-launch__grid">
+                    <Card className="flow-product-launch__panel flow-product-launch__panel--checklist">
+                        <div className="flow-product-launch__panel-header">
+                            <div className="flow-product-launch__panel-title">
+                                <span className="material-symbols-outlined">checklist</span>
+                                {t('flowStages.productLaunch.checklist.title')}
                             </div>
+                            <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={addChecklistCategory}
+                                icon={<span className="material-symbols-outlined">add</span>}
+                                className="flow-product-launch__panel-action"
+                            >
+                                {t('flowStages.productLaunch.checklist.addCategory')}
+                            </Button>
+                        </div>
 
-                            <div className="p-4 flex-1 overflow-y-auto space-y-4">
-                                {launchData.checklist.length === 0 && (
-                                    <div className="text-center py-8 text-muted text-sm">
-                                        {t('flowStages.productLaunch.checklist.empty')}
-                                    </div>
-                                )}
-                                {launchData.checklist.map((cat, i: number) => {
+                        <div className="flow-product-launch__panel-body">
+                            {launchData.checklist.length === 0 && (
+                                <p className="flow-product-launch__empty">
+                                    {t('flowStages.productLaunch.checklist.empty')}
+                                </p>
+                            )}
+
+                            <div className="flow-product-launch__category-list">
+                                {launchData.checklist.map((cat) => {
                                     const catTotal = cat.items.length;
-                                    const catDone = cat.items.filter(i => i.done).length;
+                                    const catDone = cat.items.filter((i) => i.done).length;
 
                                     return (
-                                        <div key={cat.id} className="border border-surface rounded-xl overflow-hidden bg-surface shadow-sm group/cat transition-all">
+                                        <div key={cat.id} className={`flow-product-launch__category ${cat.isCollapsed ? 'is-collapsed' : ''}`}>
                                             <div
-                                                className="bg-white dark:bg-slate-900/40 p-3 border-b border-surface flex flex-col gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                                                onClick={(e) => {
-                                                    if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') return;
+                                                className="flow-product-launch__category-header"
+                                                onClick={(event) => {
+                                                    const target = event.target as HTMLElement;
+                                                    if (target.closest('button') || target.closest('input') || target.closest('textarea')) return;
                                                     updateChecklistCategory(cat.id, { isCollapsed: !cat.isCollapsed });
                                                 }}
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter') {
+                                                        updateChecklistCategory(cat.id, { isCollapsed: !cat.isCollapsed });
+                                                    }
+                                                }}
                                             >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 flex-1">
-                                                            <input
-                                                                value={cat.category}
-                                                                onChange={(e) => updateChecklistCategory(cat.id, { category: e.target.value })}
-                                                                className="font-bold bg-transparent border-none p-0 focus:ring-0 text-main text-sm w-full"
-                                                                placeholder={t('flowStages.productLaunch.checklist.categoryPlaceholder')}
-                                                            />
-                                                        </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-medium text-muted tabular-nums">{catDone}/{catTotal}</span>
-                                                        <button onClick={() => removeChecklistCategory(cat.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
-                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
-                                                        </button>
-                                                        <span className={`material-symbols-outlined text-[20px] text-muted transition-transform duration-300 ${cat.isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
-                                                    </div>
+                                                <div className="flow-product-launch__category-title">
+                                                    <input
+                                                        value={cat.category}
+                                                        onChange={(e) => updateChecklistCategory(cat.id, { category: e.target.value })}
+                                                        className="flow-product-launch__category-input"
+                                                        placeholder={t('flowStages.productLaunch.checklist.categoryPlaceholder')}
+                                                    />
+                                                </div>
+                                                <div className="flow-product-launch__category-actions">
+                                                    <span className="flow-product-launch__category-count">{catDone}/{catTotal}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeChecklistCategory(cat.id)}
+                                                        className="flow-product-launch__icon-button"
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <span className="material-symbols-outlined">delete</span>
+                                                    </button>
+                                                    <span className={`material-symbols-outlined flow-product-launch__collapse-icon ${cat.isCollapsed ? 'is-collapsed' : ''}`}>
+                                                        expand_more
+                                                    </span>
                                                 </div>
                                             </div>
 
-                                            <div className={`transition-all duration-300 overflow-hidden ${cat.isCollapsed ? 'max-h-0' : 'max-h-[500px]'}`}>
-                                                <div className="p-2 space-y-1">
-                                                    {cat.items.map(item => (
-                                                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-surface-paper group/item transition-colors">
-                                                            <input
-                                                                type="checkbox"
+                                            <div className="flow-product-launch__category-body">
+                                                <div className="flow-product-launch__items">
+                                                    {cat.items.map((item) => (
+                                                        <div key={item.id} className="flow-product-launch__item">
+                                                            <Checkbox
                                                                 checked={item.done}
                                                                 onChange={() => updateChecklistItem(cat.id, item.id, { done: !item.done })}
-                                                                className="rounded border-surface text-emerald-500 focus:ring-emerald-500/20"
+                                                                className="flow-product-launch__item-checkbox"
                                                             />
                                                             <input
                                                                 value={item.title}
                                                                 onChange={(e) => updateChecklistItem(cat.id, item.id, { title: e.target.value })}
-                                                                className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${item.done ? 'text-muted line-through' : 'text-main'}`}
+                                                                className={`flow-product-launch__item-input ${item.done ? 'is-done' : ''}`}
                                                                 placeholder={t('flowStages.productLaunch.checklist.itemPlaceholder')}
                                                             />
-                                                            <button onClick={() => removeChecklistItem(cat.id, item.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeChecklistItem(cat.id, item.id)}
+                                                                className="flow-product-launch__icon-button"
+                                                                aria-label={t('common.delete')}
+                                                            >
+                                                                <span className="material-symbols-outlined">close</span>
                                                             </button>
                                                         </div>
                                                     ))}
-                                                    <button
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
                                                         onClick={() => addChecklistItem(cat.id)}
-                                                        className="text-xs text-muted hover:text-primary flex items-center gap-1 pl-2 pt-1 transition-colors w-full text-left"
+                                                        icon={<span className="material-symbols-outlined">add</span>}
+                                                        className="flow-product-launch__add-item"
                                                     >
-                                                        <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productLaunch.checklist.addItem')}
-                                                    </button>
+                                                        {t('flowStages.productLaunch.checklist.addItem')}
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </div>
-                                    )
+                                    );
                                 })}
                             </div>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Right Panel: Marketing Prep (7 cols) */}
-                    <div className="lg:col-span-7 flex flex-col gap-6">
-
-                        {/* Announcement Copy */}
-                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col">
-                            <div className="p-4 border-b border-surface flex items-center gap-2 font-bold text-main">
-                                <span className="material-symbols-outlined text-[20px] text-pink-500">campaign</span>
-                                {t('flowStages.productLaunch.announcement.title')}
+                    <div className="flow-product-launch__aside">
+                        <Card className="flow-product-launch__panel">
+                            <div className="flow-product-launch__panel-header">
+                                <div className="flow-product-launch__panel-title">
+                                    <span className="material-symbols-outlined">campaign</span>
+                                    {t('flowStages.productLaunch.announcement.title')}
+                                </div>
                             </div>
-                            <div className="p-4">
-                                <textarea
+                            <div className="flow-product-launch__panel-body">
+                                <TextArea
                                     value={launchData.announcement}
                                     onChange={(e) => updateLaunchData({ announcement: e.target.value })}
-                                    className="w-full h-32 bg-surface border border-surface rounded-xl p-3 text-sm text-main focus:ring-2 focus:ring-primary resize-none"
+                                    className="flow-product-launch__announcement"
                                     placeholder={t('flowStages.productLaunch.announcement.placeholder')}
                                 />
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* Channels */}
-                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col flex-1">
-                            <div className="p-4 border-b border-surface flex justify-between items-center">
-                                <div className="flex items-center gap-2 font-bold text-main">
-                                    <span className="material-symbols-outlined text-[20px] text-cyan-500">hub</span>
+                        <Card className="flow-product-launch__panel">
+                            <div className="flow-product-launch__panel-header">
+                                <div className="flow-product-launch__panel-title">
+                                    <span className="material-symbols-outlined">hub</span>
                                     {t('flowStages.productLaunch.channels.title')}
                                 </div>
-                                <button onClick={addChannel} className="text-xs text-primary hover:underline">{t('flowStages.productLaunch.channels.addChannel')}</button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={addChannel}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                    className="flow-product-launch__panel-action"
+                                >
+                                    {t('flowStages.productLaunch.channels.addChannel')}
+                                </Button>
                             </div>
-                            <div className="p-4">
-                                <div className="flex flex-wrap gap-2">
+                            <div className="flow-product-launch__panel-body">
+                                <div className="flow-product-launch__channels">
                                     {launchData.channels.map((channel, i) => (
-                                        <div key={i} className="group relative flex items-center">
-                                            <input
-                                                value={channel}
-                                                onChange={(e) => updateChannel(i, e.target.value)}
-                                                className="bg-surface border border-surface rounded-full pl-3 pr-8 py-1.5 text-sm font-medium text-main placeholder-[var(--color-text-subtle)] min-w-[100px] max-w-[160px] focus:ring-2 focus:ring-primary focus:border-transparent"
-                                                placeholder={t('flowStages.productLaunch.channels.placeholder')}
-                                            />
-                                            <button
-                                                onClick={() => removeChannel(i)}
-                                                className="absolute right-2 text-muted hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <span className="material-symbols-outlined text-[14px]">close</span>
-                                            </button>
-                                        </div>
+                                        <TextInput
+                                            key={i}
+                                            value={channel}
+                                            onChange={(e) => updateChannel(i, e.target.value)}
+                                            placeholder={t('flowStages.productLaunch.channels.placeholder')}
+                                            className="flow-product-launch__channel-input"
+                                            rightElement={(
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeChannel(i)}
+                                                    className="flow-product-launch__icon-button"
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
+                                            )}
+                                        />
                                     ))}
-                                    <button
+
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
                                         onClick={addChannel}
-                                        className="bg-transparent border border-dashed border-muted rounded-full px-4 py-1.5 text-sm text-muted hover:text-primary hover:border-primary transition-colors"
+                                        className="flow-product-launch__channel-add"
                                     >
                                         {t('flowStages.productLaunch.channels.add')}
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* Complete Button */}
                         <Button
-                            className="w-full h-14 text-lg bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-lg rounded-xl border-none"
-                            onClick={() => { /* Trigger Celebration or Archive */ }}
+                            className="flow-product-launch__launch"
+                            onClick={() => { /* launch action */ }}
+                            icon={<span className="material-symbols-outlined">rocket_launch</span>}
                         >
-                            <span className="material-symbols-outlined mr-2">rocket_launch</span>
                             {t('flowStages.productLaunch.actions.initialize')}
                         </Button>
-
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 overflow-y-auto bg-surface-paper rounded-2xl border border-surface shadow-sm">
+                <Card className="flow-product-launch__analysis">
                     <AnalysisDashboard
                         analysis={idea.riskWinAnalysis}
                         loading={analyzing}
                         onRunAnalysis={handleRunAnalysis}
                     />
-                </div>
+                </Card>
             )}
         </div>
     );
