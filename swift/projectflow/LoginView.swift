@@ -78,39 +78,37 @@ struct LoginView: View {
                     .foregroundStyle(colors.textMain)
             }
 
-            PFCard {
-                VStack(spacing: PFSpacing.md) {
-                    PFInputField(
-                        title: "Email",
-                        placeholder: "name@company.com",
-                        text: $email,
-                        isSecure: false,
-                        keyboardType: .emailAddress,
-                        error: emailError
-                    )
-                    .disabled(isMfaActive || session.isBusy)
-
-                    PFInputField(
-                        title: "Password",
-                        placeholder: "••••••••",
-                        text: $password,
-                        isSecure: true,
-                        keyboardType: .default,
-                        error: passwordError
-                    )
-                    .disabled(isMfaActive || session.isBusy)
-
-                    if mode == .signIn {
-                        Button("Forgot password?") {
-                            showValidation = true
-                            guard isEmailValid else { return }
-                            session.sendPasswordReset(email: trimmedEmail)
-                        }
-                        .font(.footnote)
-                        .foregroundStyle(colors.textMuted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .disabled(isMfaActive || session.isBusy)
+            VStack(spacing: PFSpacing.md) {
+                PFInputField(
+                    title: "Email",
+                    placeholder: "name@company.com",
+                    text: $email,
+                    isSecure: false,
+                    keyboardType: .emailAddress,
+                    error: emailError
+                )
+                .disabled(isMfaActive || session.isBusy)
+                
+                PFInputField(
+                    title: "Password",
+                    placeholder: "••••••••",
+                    text: $password,
+                    isSecure: true,
+                    keyboardType: .default,
+                    error: passwordError
+                )
+                .disabled(isMfaActive || session.isBusy)
+                
+                if mode == .signIn {
+                    Button("Forgot password?") {
+                        showValidation = true
+                        guard isEmailValid else { return }
+                        session.sendPasswordReset(email: trimmedEmail)
                     }
+                    .font(.footnote)
+                    .foregroundStyle(colors.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .disabled(isMfaActive || session.isBusy)
                 }
             }
 
@@ -186,76 +184,74 @@ struct LoginView: View {
         let selected = state.selectedOption
         let canVerify = !mfaCode.isEmpty && !session.isMfaBusy
 
-        return PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Text("Two-factor verification")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                Text("Enter the code from your authenticator or SMS.")
-                    .font(.subheadline)
-                    .foregroundStyle(colors.textMuted)
+        return VStack(alignment: .leading, spacing: PFSpacing.md) {
+            Text("Two-factor verification")
+                .font(.headline)
+                .foregroundStyle(colors.textMain)
+            Text("Enter the code from your authenticator or SMS.")
+                .font(.subheadline)
+                .foregroundStyle(colors.textMuted)
 
-                if state.options.count > 1 {
-                    Picker("Verification method", selection: Binding(
-                        get: { state.selectedOptionId ?? state.options.first?.id ?? "" },
-                        set: { session.selectMfaOption(id: $0) }
-                    )) {
-                        ForEach(state.options) { option in
-                            Text(option.label).tag(option.id)
-                        }
+            if state.options.count > 1 {
+                Picker("Verification method", selection: Binding(
+                    get: { state.selectedOptionId ?? state.options.first?.id ?? "" },
+                    set: { session.selectMfaOption(id: $0) }
+                )) {
+                    ForEach(state.options) { option in
+                        Text(option.label).tag(option.id)
                     }
-                    .pickerStyle(.menu)
-                } else if let option = selected {
-                    Text(option.label)
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(colors.textMain)
                 }
-
-                PFInputField(
-                    title: "Verification code",
-                    placeholder: "123456",
-                    text: $mfaCode,
-                    isSecure: false,
-                    keyboardType: .numberPad
-                )
-
-                if let mfaError = session.mfaError {
-                    Text(mfaError)
-                        .font(.footnote)
-                        .foregroundStyle(colors.error)
-                }
-
-                if let mfaMessage = session.mfaMessage {
-                    Text(mfaMessage)
-                        .font(.footnote)
-                        .foregroundStyle(colors.textMuted)
-                }
-
-                PFPrimaryButton(
-                    title: session.isMfaBusy ? "Verifying..." : "Verify",
-                    isLoading: session.isMfaBusy
-                ) {
-                    session.verifyMfa(code: mfaCode)
-                }
-                .disabled(!canVerify)
-
-                HStack(spacing: PFSpacing.sm) {
-                    if selected?.isPhone == true {
-                        Button("Resend code") {
-                            session.requestMfaCodeIfNeeded()
-                        }
-                        .font(.footnote)
-                        .foregroundStyle(colors.textMuted)
-                        .disabled(session.isMfaBusy)
-                    }
-
-                    Button("Cancel") {
-                        mfaCode = ""
-                        session.cancelMfa()
-                    }
+                .pickerStyle(.menu)
+            } else if let option = selected {
+                Text(option.label)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(colors.textMain)
+            }
+
+            PFInputField(
+                title: "Verification code",
+                placeholder: "123456",
+                text: $mfaCode,
+                isSecure: false,
+                keyboardType: .numberPad
+            )
+
+            if let mfaError = session.mfaError {
+                Text(mfaError)
+                    .font(.footnote)
+                    .foregroundStyle(colors.error)
+            }
+
+            if let mfaMessage = session.mfaMessage {
+                Text(mfaMessage)
+                    .font(.footnote)
+                    .foregroundStyle(colors.textMuted)
+            }
+
+            PFPrimaryButton(
+                title: session.isMfaBusy ? "Verifying..." : "Verify",
+                isLoading: session.isMfaBusy
+            ) {
+                session.verifyMfa(code: mfaCode)
+            }
+            .disabled(!canVerify)
+
+            HStack(spacing: PFSpacing.sm) {
+                if selected?.isPhone == true {
+                    Button("Resend code") {
+                        session.requestMfaCodeIfNeeded()
+                    }
+                    .font(.footnote)
+                    .foregroundStyle(colors.textMuted)
+                    .disabled(session.isMfaBusy)
                 }
+
+                Button("Cancel") {
+                    mfaCode = ""
+                    session.cancelMfa()
+                }
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(colors.textMain)
             }
         }
     }
@@ -275,7 +271,7 @@ private struct BrandPanel: View {
         VStack(alignment: .leading, spacing: PFSpacing.lg) {
             HStack(spacing: PFSpacing.sm) {
                 AppIconView(size: 44)
-
+                
                 Text("ProjectFlow")
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(colors.textMain)
@@ -330,7 +326,7 @@ private enum AppIconProvider {
         else {
             return nil
         }
-
+        
         #if os(iOS)
         return UIImage(named: iconName)
         #elseif os(macOS)
@@ -348,43 +344,38 @@ private typealias PlatformImage = NSImage
 #endif
 
 private struct LoginBackground: View {
+    @Environment(\.colorScheme) private var colorScheme
     let colors: PFColors
 
     var body: some View {
         ZStack {
-            LinearGradient(
-                colors: [colors.surfaceBg, colors.surfaceHover],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
+            colors.surfaceBg
+                .ignoresSafeArea()
+
+            DottedBackground(
+                color: colorScheme == .dark 
+                    ? Color.white.opacity(0.1) 
+                    : Color(hex: "#e5e7eb")
             )
-
-            DottedBackground(color: colors.surfaceBorder.opacity(0.25))
-                .opacity(0.6)
-                .allowsHitTesting(false)
-
-            RoundedRectangle(cornerRadius: PFRadius.xl, style: .continuous)
-                .fill(colors.primaryFade)
-                .frame(width: 280, height: 280)
-                .offset(x: -180, y: -220)
+            .ignoresSafeArea()
         }
-        .ignoresSafeArea()
     }
 }
 
 private struct DottedBackground: View {
     let color: Color
-    var spacing: CGFloat = 18
-    var dotSize: CGFloat = 2
+    var spacing: CGFloat = 24
+    var dotSize: CGFloat = 1.5
 
     var body: some View {
         Canvas { context, size in
-            let columns = Int(size.width / spacing)
-            let rows = Int(size.height / spacing)
+            let columns = Int(size.width / spacing) + 1
+            let rows = Int(size.height / spacing) + 1
 
             for row in 0...rows {
                 for column in 0...columns {
-                    let x = CGFloat(column) * spacing + spacing * 0.5
-                    let y = CGFloat(row) * spacing + spacing * 0.5
+                    let x = CGFloat(column) * spacing
+                    let y = CGFloat(row) * spacing
                     let rect = CGRect(x: x, y: y, width: dotSize, height: dotSize)
                     context.fill(Path(ellipseIn: rect), with: .color(color))
                 }
