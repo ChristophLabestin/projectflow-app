@@ -79,7 +79,8 @@ final class ProjectRepository {
         }
     }
 
-    func createProject(tenantId: String, project: Project) async throws -> String {
+    func createProject(tenantId: String, project: Project, permissions: PermissionContext) async throws -> String {
+        try PermissionEvaluator(context: permissions).requireProjectCreate()
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -92,7 +93,8 @@ final class ProjectRepository {
         return ref.documentID
     }
 
-    func updateProject(tenantId: String, projectId: String, updates: [String: Any]) async throws {
+    func updateProject(tenantId: String, projectId: String, updates: [String: Any], permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.projectSettingsEdit)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -103,7 +105,8 @@ final class ProjectRepository {
         try await ref.updateDataAsync(payload)
     }
 
-    func deleteProject(tenantId: String, projectId: String) async throws {
+    func deleteProject(tenantId: String, projectId: String, permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.projectDelete)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -133,7 +136,8 @@ final class TaskRepository {
         }
     }
 
-    func createTask(tenantId: String, projectId: String, task: Task) async throws -> String {
+    func createTask(tenantId: String, projectId: String, task: Task, permissions: PermissionContext) async throws -> String {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.tasksCreate)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -149,7 +153,8 @@ final class TaskRepository {
         return ref.documentID
     }
 
-    func updateTask(tenantId: String, projectId: String, taskId: String, updates: [String: Any]) async throws {
+    func updateTask(tenantId: String, projectId: String, taskId: String, updates: [String: Any], permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.tasksEdit)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -162,7 +167,8 @@ final class TaskRepository {
         try await ref.updateDataAsync(payload)
     }
 
-    func deleteTask(tenantId: String, projectId: String, taskId: String) async throws {
+    func deleteTask(tenantId: String, projectId: String, taskId: String, permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.tasksDelete)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -194,7 +200,8 @@ final class FlowRepository {
         }
     }
 
-    func createFlow(tenantId: String, projectId: String, flow: Flow) async throws -> String {
+    func createFlow(tenantId: String, projectId: String, flow: Flow, permissions: PermissionContext) async throws -> String {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.flowsCreate)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -210,7 +217,8 @@ final class FlowRepository {
         return ref.documentID
     }
 
-    func updateFlow(tenantId: String, projectId: String, flowId: String, updates: [String: Any]) async throws {
+    func updateFlow(tenantId: String, projectId: String, flowId: String, updates: [String: Any], permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.flowsEdit)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -223,7 +231,8 @@ final class FlowRepository {
         try await ref.updateDataAsync(payload)
     }
 
-    func deleteFlow(tenantId: String, projectId: String, flowId: String) async throws {
+    func deleteFlow(tenantId: String, projectId: String, flowId: String, permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.flowsDelete)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -255,7 +264,8 @@ final class IssueRepository {
         }
     }
 
-    func createIssue(tenantId: String, projectId: String, issue: Issue) async throws -> String {
+    func createIssue(tenantId: String, projectId: String, issue: Issue, permissions: PermissionContext) async throws -> String {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.issuesCreate)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -271,7 +281,8 @@ final class IssueRepository {
         return ref.documentID
     }
 
-    func updateIssue(tenantId: String, projectId: String, issueId: String, updates: [String: Any]) async throws {
+    func updateIssue(tenantId: String, projectId: String, issueId: String, updates: [String: Any], permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.issuesEdit)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -284,7 +295,8 @@ final class IssueRepository {
         try await ref.updateDataAsync(payload)
     }
 
-    func deleteIssue(tenantId: String, projectId: String, issueId: String) async throws {
+    func deleteIssue(tenantId: String, projectId: String, issueId: String, permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.issuesDelete)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
@@ -316,7 +328,8 @@ final class NotificationRepository {
         }
     }
 
-    func markNotificationRead(tenantId: String, notificationId: String) async throws {
+    func markNotificationRead(tenantId: String, notificationId: String, permissions: PermissionContext) async throws {
+        try PermissionEvaluator(context: permissions).require(PermissionNode.tenantNotificationsView, projectScoped: false)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.notifications)

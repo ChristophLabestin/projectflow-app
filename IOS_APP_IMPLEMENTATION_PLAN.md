@@ -58,7 +58,7 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [ ] Implement navigation shell (tabs/stack) for Dashboard, Projects, Notifications, Settings.
 - [x] Wire Firebase Auth with configured providers and session persistence.
 - [x] Implement MFA and passkey sign-in for the iOS login flow.
-- [ ] Implement permission checks based on `PERMISSIONS.md` for all write actions.
+- [x] Implement permission checks based on `PERMISSIONS.md` for all write actions.
 - [x] Create Firestore models + repositories aligned with `FIRESTORE_STRUCTURE.md`.
 - [ ] Implement dashboard data aggregation and realtime updates.
 - [ ] Build Projects list + status display with project CRUD.
