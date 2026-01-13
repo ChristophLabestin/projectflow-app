@@ -8,12 +8,12 @@ The application supports Light and Dark modes using CSS variables.
 - Variables are overridden in `html.dark` (Dark Mode).
 
 ## Adding New Tokens
-1. Open `src/styles/_tokens.scss`.
+1. Open `web/src/styles/_tokens.scss`.
 2. Add the variable to `:root`.
    ```css
    --color-new-feature: #ffffff;
    ```
-3. Open `src/styles/_themes.scss`.
+3. Open `web/src/styles/_themes.scss`.
 4. Add the variable override to `html.dark`.
    ```css
    html.dark {

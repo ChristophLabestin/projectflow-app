@@ -58,7 +58,7 @@ Before making architectural decisions or implementing features, read the documen
 ## 5) Internationalization
 
 ### 5.1 Language dictionaries
-- **Files:** `src/i18n/en.ts`, `src/i18n/de.ts` (and future languages)
+- **Files:** `web/locales/en.ts`, `web/locales/de.ts` (and future languages)
 - **Purpose:** All user-facing text must come from translation dictionaries.
 - **Must-do:** Do not hardcode UI strings. Add new keys responsibly and keep naming consistent.
 
@@ -89,4 +89,3 @@ Recommended files at repository root:
 - `COMPONENTS.md`
 
 These must remain easy to find and up to date.
-

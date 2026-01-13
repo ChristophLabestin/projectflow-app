@@ -2,7 +2,7 @@
 
 This document defines the **design tokens** that must be used throughout the application to ensure a consistent, professional, monochrome UI.
 
-**Source of truth:** `styles/_tokens.scss`  
+**Source of truth:** `web/styles/_tokens.scss`  
 All UI components and pages must reference these tokens instead of hardcoding values.
 
 ---
@@ -183,7 +183,7 @@ These tokens define key layout constants used across the app shell.
 ## 7) Implementation Rules (Mandatory)
 
 - Do not hardcode colors, radii, shadows, transitions, or layout constants when a token exists.
-- New UI components must reference tokens from `styles/_tokens.scss`.
+- New UI components must reference tokens from `web/styles/_tokens.scss`.
 - If a new token is introduced, it must be documented here and added to `_tokens.scss`.
 - **Borderless Design:** Avoid using borders for component separation. Use **depth (shadows)** and **background differentiation** (`surface-card` vs `surface-hover`) to distinguish elements.
 
@@ -191,8 +191,7 @@ These tokens define key layout constants used across the app shell.
 
 ## 8) Quick Usage Notes (SCSS)
 
-- Tokens should be defined in `styles/_tokens.scss`.
+- Tokens should be defined in `web/styles/_tokens.scss`.
 - Components should consume tokens via CSS variables (recommended) or SCSS variables mapped to them.
 - Keep styles reusable and consistent across the UI.
-- Migration utilities live in `styles/_utilities.scss`; use them sparingly and prefer component SCSS + tokens for new work.
-
+- Migration utilities live in `web/styles/_utilities.scss`; use them sparingly and prefer component SCSS + tokens for new work.

@@ -5,7 +5,7 @@ The styling system is built on SCSS and CSS Modules principles (though currently
 
 ### Directory Structure
 ```
-src/styles/
+web/src/styles/
 ├── main.scss        # Global entry point
 ├── _tokens.scss     # CSS Variables (Colors, Fonts, Spacing)
 ├── _themes.scss     # Light/Dark mode overrides

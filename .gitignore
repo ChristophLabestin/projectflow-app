@@ -136,7 +136,7 @@ dist
 .pnp.*
 
 # Local-only screens
-components/ReleaseToDosModal.tsx
+web/components/ReleaseToDosModal.tsx
 
 # Vertex AI credentials (sensitive - do not commit!)
 vertex-ai-credentials.json

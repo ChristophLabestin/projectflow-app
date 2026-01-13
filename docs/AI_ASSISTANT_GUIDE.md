@@ -6,7 +6,7 @@ This guide outlines the ongoing migration from Tailwind CSS to a custom SCSS arc
 Remove Tailwind usage progressively and replace it with reusable SCSS classes while preserving the current visual appearance.
 
 ## Styling Architecture
-We use a modular SCSS architecture located in `src/styles/`:
+We use a modular SCSS architecture located in `web/src/styles/`:
 - `main.scss`: Entry point. Imports everything.
 - `_tokens.scss`: Design tokens (Colors, Spacing, Radius, Shadows). Sourced from CSS variables.
 - `_themes.scss`: Light/Dark mode variable definitions.
@@ -23,7 +23,7 @@ When working on a component (e.g., SettingsModal, Profile):
     - Can you use a utility from `_utilities.scss`? (e.g., `.flex`, `.text-muted`)
     - Is there a component partial? (e.g., `_settings.scss`)
 3. **Create/Update SCSS**:
-    - If specific to the component, add BEM-style classes to `src/styles/components/_<name>.scss`.
+    - If specific to the component, add BEM-style classes to `web/src/styles/components/_<name>.scss`.
     - If generic, check if `_tokens.scss` has the value, then use it in your new class.
     - **Avoid** adding new global utilities unless strictly necessary.
 4. **Refactor JSX**:
