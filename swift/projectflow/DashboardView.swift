@@ -1,156 +1,36 @@
 import SwiftUI
 import FirebaseAuth
+import FirebaseCore
 
 struct DashboardView: View {
+    @Binding var selectedTab: MainTab
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var session: SessionStore
     @StateObject private var store = DashboardStore()
     @StateObject private var pinnedProjectStore = PinnedProjectStore()
     @StateObject private var pinnedTasksStore = PinnedTasksStore()
+
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     private let columns = [GridItem(.flexible()), GridItem(.flexible())]
 
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.setLocalizedDateFormatFromTemplate("EEE, MMM d")
+        return formatter
+    }()
+
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                Text("Dashboard")
-                    .font(.largeTitle)
-                    .foregroundStyle(colors.textMain)
+        NavigationStack {
+            ZStack {
+                AppBackground()
 
-                if store.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
+                ScrollView(showsIndicators: false) {
+                    content
                 }
-
-                PFCard {
-                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                        PFSectionHeader(title: "Pinned Project")
-                        if let project = pinnedProjectStore.pinnedProject {
-                            HStack {
-                                VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                                    Text(project.title)
-                                        .font(.headline)
-                                        .foregroundStyle(colors.textMain)
-                                    Text(project.status)
-                                        .font(.caption)
-                                        .foregroundStyle(colors.textMuted)
-                                }
-
-                                Spacer()
-
-                                if let user = Auth.auth().currentUser,
-                                   let tenantId = TenantResolver.resolveTenantId(for: user) {
-                                    Button {
-                                        pinnedProjectStore.unpin(tenantId: tenantId)
-                                    } label: {
-                                        Image(systemName: "pin.slash")
-                                            .font(.caption)
-                                            .foregroundStyle(colors.textMuted)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        } else {
-                            Text("No project pinned yet.")
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMuted)
-                        }
-                    }
-                }
-
-                PFCard {
-                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                        PFSectionHeader(title: "Pinned Tasks")
-                        if pinnedTasksStore.pinnedItems.isEmpty {
-                            Text("No pinned tasks yet.")
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMuted)
-                        } else {
-                            VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                                ForEach(pinnedTasksStore.pinnedItems.prefix(4)) { item in
-                                    HStack {
-                                        Text(item.title)
-                                            .font(.subheadline.weight(.semibold))
-                                            .foregroundStyle(colors.textMain)
-                                            .lineLimit(1)
-
-                                        Spacer()
-
-                                        Text(item.type.capitalized)
-                                            .font(.caption)
-                                            .foregroundStyle(colors.textMuted)
-
-                                        Button {
-                                            pinnedTasksStore.unpin(itemId: item.id)
-                                        } label: {
-                                            Image(systemName: "pin.slash")
-                                                .font(.caption)
-                                                .foregroundStyle(colors.textMuted)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                LazyVGrid(columns: columns, spacing: PFSpacing.md) {
-                    MetricCard(
-                        title: "Projects",
-                        value: "\(store.projectCount)",
-                        detail: "Workspace projects",
-                        icon: "square.stack.3d.down.forward"
-                    )
-
-                    MetricCard(
-                        title: "Tasks",
-                        value: "\(store.taskCount)",
-                        detail: "\(store.openTaskCount) open",
-                        icon: "checklist"
-                    )
-
-                    MetricCard(
-                        title: "Issues",
-                        value: "\(store.issueCount)",
-                        detail: "\(store.openIssueCount) open",
-                        icon: "exclamationmark.bubble"
-                    )
-
-                    MetricCard(
-                        title: "Flows",
-                        value: "\(store.flowCount)",
-                        detail: "Active ideas",
-                        icon: "sparkles"
-                    )
-                }
-
-                recentCard(
-                    title: "Recent Tasks",
-                    emptyMessage: "No tasks yet.",
-                    rows: store.recentTasks.map { task in
-                        DashboardRow(title: task.title, detail: task.status.isEmpty ? "Open" : task.status)
-                    }
-                )
-
-                recentCard(
-                    title: "Recent Issues",
-                    emptyMessage: "No issues yet.",
-                    rows: store.recentIssues.map { issue in
-                        DashboardRow(title: issue.title, detail: issue.status)
-                    }
-                )
-
-                recentCard(
-                    title: "Recent Flows",
-                    emptyMessage: "No flows yet.",
-                    rows: store.recentFlows.map { flow in
-                        DashboardRow(title: flow.title, detail: flow.stage)
-                    }
-                )
             }
-            .padding(PFSpacing.lg)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { dashboardToolbar }
         }
-        .background(colors.surfaceBg.ignoresSafeArea())
         .onAppear {
             store.start()
             pinnedTasksStore.start()
@@ -165,37 +45,698 @@ struct DashboardView: View {
             pinnedTasksStore.stop()
         }
     }
+
+    @ToolbarContentBuilder
+    private var dashboardToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Dashboard")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+
+                Text(Self.dateFormatter.string(from: Date()))
+                    .font(.caption)
+                    .foregroundStyle(colors.textMuted)
+            }
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button("Go to Projects") { selectedTab = .projects }
+                Button("Go to Tasks") { selectedTab = .tasks }
+                Button("Go to Issues") { selectedTab = .issues }
+                Button("Go to Flows") { selectedTab = .flows }
+            } label: {
+                Image(systemName: "plus.circle")
+                    .foregroundStyle(colors.textMain)
+            }
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                selectedTab = .notifications
+            } label: {
+                Image(systemName: "bell")
+                    .foregroundStyle(colors.textMain)
+            }
+        }
+    }
+
+    private var content: some View {
+        VStack(alignment: .leading, spacing: PFSpacing.lg) {
+            heroCard
+            quickActions
+            quickStatsSection
+            pinnedSection
+            focusSection
+            highlightsSection
+            recentSection
+        }
+        .padding(PFSpacing.lg)
+    }
+
+    private var heroCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                        Text("\(greeting), \(greetingName)")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(colors.textMain)
+                        Text("Plan the day, track momentum, and stay on top of what matters.")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                    }
+
+                    Spacer()
+
+                    StatusPill(text: store.isLoading ? "Syncing" : "Live")
+                }
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: PFSpacing.sm) {
+                        DashboardHeroMetric(
+                            title: "Projects",
+                            value: "\(store.projectCount)",
+                            tint: colors.primary
+                        )
+                        DashboardHeroMetric(
+                            title: "Open Tasks",
+                            value: "\(store.openTaskCount)",
+                            tint: colors.warning
+                        )
+                        DashboardHeroMetric(
+                            title: "Open Issues",
+                            value: "\(store.openIssueCount)",
+                            tint: colors.error
+                        )
+                        DashboardHeroMetric(
+                            title: "Flows",
+                            value: "\(store.flowCount)",
+                            tint: colors.primaryLight
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            Text("Quick Actions")
+                .font(.headline)
+                .foregroundStyle(colors.textMain)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: PFSpacing.sm) {
+                    DashboardActionButton(
+                        title: "Projects",
+                        icon: "square.stack.3d.down.forward",
+                        tint: colors.primary
+                    ) {
+                        selectedTab = .projects
+                    }
+
+                    DashboardActionButton(
+                        title: "Tasks",
+                        icon: "checklist",
+                        tint: colors.warning
+                    ) {
+                        selectedTab = .tasks
+                    }
+
+                    DashboardActionButton(
+                        title: "Issues",
+                        icon: "exclamationmark.bubble",
+                        tint: colors.error
+                    ) {
+                        selectedTab = .issues
+                    }
+
+                    DashboardActionButton(
+                        title: "Flows",
+                        icon: "sparkles",
+                        tint: colors.primaryLight
+                    ) {
+                        selectedTab = .flows
+                    }
+
+                    DashboardActionButton(
+                        title: "Notifications",
+                        icon: "bell",
+                        tint: colors.primaryDark
+                    ) {
+                        selectedTab = .notifications
+                    }
+                }
+            }
+        }
+    }
+
+    private var quickStatsSection: some View {
+        LazyVGrid(columns: columns, spacing: PFSpacing.md) {
+            ForEach(quickStats) { stat in
+                DashboardStatCard(stat: stat)
+            }
+        }
+    }
+
+    private var pinnedSection: some View {
+        LazyVGrid(columns: columns, spacing: PFSpacing.md) {
+            pinnedProjectCard
+            pinnedItemsCard
+        }
+    }
+
+    private var focusSection: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                PFSectionHeader(title: "Focus Snapshot")
+
+                LazyVGrid(columns: columns, spacing: PFSpacing.sm) {
+                    DashboardFocusCard(
+                        title: "Open Tasks",
+                        value: "\(store.openTaskCount)",
+                        detail: "\(store.taskCount) total",
+                        icon: "checklist",
+                        tint: colors.warning
+                    )
+                    DashboardFocusCard(
+                        title: "Open Issues",
+                        value: "\(store.openIssueCount)",
+                        detail: "\(store.issueCount) total",
+                        icon: "exclamationmark.bubble",
+                        tint: colors.error
+                    )
+                    DashboardFocusCard(
+                        title: "Flows",
+                        value: "\(store.flowCount)",
+                        detail: "In pipeline",
+                        icon: "sparkles",
+                        tint: colors.primary
+                    )
+                    DashboardFocusCard(
+                        title: "Projects",
+                        value: "\(store.projectCount)",
+                        detail: "Tracked",
+                        icon: "square.stack.3d.down.forward",
+                        tint: colors.primaryDark
+                    )
+                }
+
+                VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                    Text("Task completion")
+                        .font(.caption)
+                        .foregroundStyle(colors.textMuted)
+
+                    ProgressView(value: taskCompletionRatio)
+                        .tint(colors.primary)
+
+                    Text("\(completedTaskCount) done • \(store.openTaskCount) open")
+                        .font(.caption)
+                        .foregroundStyle(colors.textSubtle)
+                }
+            }
+        }
+    }
+
+    private var highlightsSection: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionHeader(title: "Latest Highlights")
+
+                if highlightItems.isEmpty {
+                    Text("No recent activity yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                } else {
+                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                        ForEach(highlightItems) { item in
+                            DashboardHighlightRow(item: item)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var recentSection: some View {
+        VStack(spacing: PFSpacing.md) {
+            recentCard(
+                title: "Recent Tasks",
+                emptyMessage: "No tasks yet.",
+                rows: store.recentTasks.map { task in
+                    DashboardRow(
+                        title: task.title,
+                        detail: task.status.isEmpty ? "Open" : task.status
+                    )
+                }
+            )
+
+            recentCard(
+                title: "Recent Issues",
+                emptyMessage: "No issues yet.",
+                rows: store.recentIssues.map { issue in
+                    DashboardRow(title: issue.title, detail: issue.status)
+                }
+            )
+
+            recentCard(
+                title: "Recent Flows",
+                emptyMessage: "No flows yet.",
+                rows: store.recentFlows.map { flow in
+                    DashboardRow(title: flow.title, detail: flow.stage)
+                }
+            )
+        }
+    }
+
+    private var pinnedProjectCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                HStack {
+                    PFSectionHeader(title: "Pinned Project")
+                    Spacer()
+
+                    if pinnedProjectStore.pinnedProject != nil,
+                       let user = Auth.auth().currentUser,
+                       let tenantId = TenantResolver.resolveTenantId(for: user) {
+                        Button {
+                            pinnedProjectStore.unpin(tenantId: tenantId)
+                        } label: {
+                            Image(systemName: "pin.slash")
+                                .font(.caption)
+                                .foregroundStyle(colors.textMuted)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                if let project = pinnedProjectStore.pinnedProject {
+                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                        Text(project.title)
+                            .font(.headline)
+                            .foregroundStyle(colors.textMain)
+                        Text(project.description.isEmpty ? "No description" : project.description)
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                            .lineLimit(2)
+                        StatusPill(text: project.status)
+                    }
+                } else {
+                    Text("No project pinned yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                }
+            }
+        }
+    }
+
+    private var pinnedItemsCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionHeader(title: "Pinned Items")
+
+                if pinnedTasksStore.pinnedItems.isEmpty {
+                    Text("No pinned tasks yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                } else {
+                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                        ForEach(pinnedTasksStore.pinnedItems.prefix(4)) { item in
+                            PinnedItemRow(item: item)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var greeting: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        switch hour {
+        case 5..<12:
+            return "Good morning"
+        case 12..<17:
+            return "Good afternoon"
+        case 17..<22:
+            return "Good evening"
+        default:
+            return "Welcome"
+        }
+    }
+
+    private var greetingName: String {
+        if let name = session.user?.displayName, !name.isEmpty {
+            return name
+        }
+        if let email = session.user?.email,
+           let prefix = email.split(separator: "@").first {
+            return String(prefix)
+        }
+        return "there"
+    }
+
+    private var quickStats: [DashboardStat] {
+        [
+            DashboardStat(
+                title: "Projects",
+                value: "\(store.projectCount)",
+                detail: "Tracked",
+                icon: "square.stack.3d.down.forward",
+                tint: colors.primary
+            ),
+            DashboardStat(
+                title: "Open Tasks",
+                value: "\(store.openTaskCount)",
+                detail: "\(store.taskCount) total",
+                icon: "checklist",
+                tint: colors.warning
+            ),
+            DashboardStat(
+                title: "Open Issues",
+                value: "\(store.openIssueCount)",
+                detail: "\(store.issueCount) total",
+                icon: "exclamationmark.bubble",
+                tint: colors.error
+            ),
+            DashboardStat(
+                title: "Flows",
+                value: "\(store.flowCount)",
+                detail: "In pipeline",
+                icon: "sparkles",
+                tint: colors.primaryLight
+            )
+        ]
+    }
+
+    private var completedTaskCount: Int {
+        max(store.taskCount - store.openTaskCount, 0)
+    }
+
+    private var taskCompletionRatio: Double {
+        guard store.taskCount > 0 else { return 0 }
+        return Double(completedTaskCount) / Double(store.taskCount)
+    }
+
+    private var highlightItems: [DashboardHighlight] {
+        let taskItems = store.recentTasks.map { task in
+            DashboardHighlight(
+                id: "task-\(task.id)",
+                title: task.title,
+                detail: task.status.isEmpty ? "Open" : task.status,
+                typeLabel: "Task",
+                icon: "checklist",
+                timestamp: task.createdAt?.dateValue()
+            )
+        }
+
+        let issueItems = store.recentIssues.map { issue in
+            DashboardHighlight(
+                id: "issue-\(issue.id)",
+                title: issue.title,
+                detail: issue.status,
+                typeLabel: "Issue",
+                icon: "exclamationmark.bubble",
+                timestamp: issue.createdAt?.dateValue()
+            )
+        }
+
+        let flowItems = store.recentFlows.map { flow in
+            DashboardHighlight(
+                id: "flow-\(flow.id)",
+                title: flow.title,
+                detail: flow.stage,
+                typeLabel: "Flow",
+                icon: "sparkles",
+                timestamp: flow.createdAt?.dateValue()
+            )
+        }
+
+        let combined = taskItems + issueItems + flowItems
+        return combined.sorted { left, right in
+            let leftDate = left.timestamp ?? Date.distantPast
+            let rightDate = right.timestamp ?? Date.distantPast
+            return leftDate > rightDate
+        }.prefix(6).map { $0 }
+    }
 }
 
-private struct MetricCard: View {
+private struct DashboardHeroMetric: View {
     @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    let value: String
+    let tint: Color
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PFSpacing.xs) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(colors.textMuted)
+
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(colors.textMain)
+        }
+        .padding(.vertical, PFSpacing.sm)
+        .padding(.horizontal, PFSpacing.md)
+        .background(tint.opacity(colorScheme == .dark ? 0.15 : 0.1))
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
+    }
+}
+
+private struct DashboardActionButton: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: PFSpacing.sm) {
+                Circle()
+                    .fill(tint.opacity(colorScheme == .dark ? 0.2 : 0.15))
+                    .frame(width: 32, height: 32)
+                    .overlay(
+                        Image(systemName: icon)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(tint)
+                    )
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+            }
+            .padding(.horizontal, PFSpacing.md)
+            .padding(.vertical, PFSpacing.sm)
+            .background(colors.surfaceCard)
+            .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
+            .shadow(color: colors.shadowSm, radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct DashboardStat: Identifiable {
+    let id = UUID()
     let title: String
     let value: String
     let detail: String
     let icon: String
+    let tint: Color
+}
+
+private struct DashboardHighlight: Identifiable {
+    let id: String
+    let title: String
+    let detail: String
+    let typeLabel: String
+    let icon: String
+    let timestamp: Date?
+}
+
+private struct DashboardStatCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let stat: DashboardStat
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
         PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                HStack(spacing: PFSpacing.xs) {
-                    Image(systemName: icon)
-                        .foregroundStyle(colors.primary)
-                    Text(title.uppercased())
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(colors.textMuted)
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                HStack {
+                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                        Text(stat.title.uppercased())
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMuted)
+                        Text(stat.value)
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(colors.textMain)
+                    }
+
+                    Spacer()
+
+                    Circle()
+                        .fill(stat.tint.opacity(0.2))
+                        .frame(width: 36, height: 36)
+                        .overlay(
+                            Image(systemName: stat.icon)
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(stat.tint)
+                        )
                 }
 
-                Text(value)
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(colors.textMain)
-
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(colors.textMuted)
+                Text(stat.detail)
+                    .font(.caption)
+                    .foregroundStyle(colors.textSubtle)
             }
         }
+    }
+}
+
+private struct DashboardFocusCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let title: String
+    let value: String
+    let detail: String
+    let icon: String
+    let tint: Color
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: PFSpacing.xs) {
+            HStack {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(colors.textMuted)
+                Spacer()
+                Image(systemName: icon)
+                    .font(.caption)
+                    .foregroundStyle(tint)
+            }
+
+            Text(value)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(colors.textMain)
+
+            Text(detail)
+                .font(.caption)
+                .foregroundStyle(colors.textSubtle)
+        }
+        .padding(PFSpacing.sm)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(colors.surfaceHover)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+    }
+}
+
+private struct DashboardHighlightRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let item: DashboardHighlight
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        HStack(spacing: PFSpacing.sm) {
+            Circle()
+                .fill(colors.surfaceHover)
+                .frame(width: 32, height: 32)
+                .overlay(
+                    Image(systemName: item.icon)
+                        .font(.caption)
+                        .foregroundStyle(colors.textMuted)
+                )
+
+            VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+                Text(item.detail)
+                    .font(.caption)
+                    .foregroundStyle(colors.textMuted)
+            }
+
+            Spacer()
+
+            Text(item.typeLabel.uppercased())
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(colors.textSubtle)
+                .padding(.horizontal, PFSpacing.xs)
+                .padding(.vertical, 2)
+                .background(colors.surfaceHover)
+                .clipShape(Capsule())
+        }
+    }
+}
+
+private struct PinnedItemRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let item: PinnedItem
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        HStack(spacing: PFSpacing.sm) {
+            Circle()
+                .fill(colors.surfaceHover)
+                .frame(width: 30, height: 30)
+                .overlay(
+                    Image(systemName: item.isCompleted == true ? "checkmark" : "pin.fill")
+                        .font(.caption)
+                        .foregroundStyle(colors.textMuted)
+                )
+
+            VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                Text(item.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+
+                HStack(spacing: PFSpacing.xs) {
+                    Text(item.type.capitalized)
+                        .font(.caption)
+                        .foregroundStyle(colors.textMuted)
+
+                    if let priority = item.priority, !priority.isEmpty {
+                        Text("• \(priority) priority")
+                            .font(.caption)
+                            .foregroundStyle(colors.textSubtle)
+                    }
+                }
+            }
+
+            Spacer()
+
+            if item.isCompleted == true {
+                Text("Done")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(colors.success)
+            }
+        }
+    }
+}
+
+private struct StatusPill: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let text: String
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(colors.textMain)
+            .padding(.horizontal, PFSpacing.sm)
+            .padding(.vertical, 4)
+            .background(colors.surfaceHover)
+            .clipShape(Capsule())
     }
 }
 

@@ -23,29 +23,48 @@ struct AppShellView: View {
     }
 }
 
+enum MainTab: Hashable {
+    case dashboard
+    case projects
+    case tasks
+    case flows
+    case issues
+    case notifications
+    case settings
+}
+
 struct MainTabView: View {
+    @State private var selection: MainTab = .dashboard
+
     var body: some View {
-        TabView {
-            DashboardView()
+        TabView(selection: $selection) {
+            DashboardView(selectedTab: $selection)
                 .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
+                .tag(MainTab.dashboard)
 
             ProjectsView()
                 .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
+                .tag(MainTab.projects)
 
             TasksView()
                 .tabItem { Label("Tasks", systemImage: "checklist") }
+                .tag(MainTab.tasks)
 
             FlowsView()
                 .tabItem { Label("Flows", systemImage: "sparkles") }
+                .tag(MainTab.flows)
 
             IssuesView()
                 .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
+                .tag(MainTab.issues)
 
             NotificationsView()
                 .tabItem { Label("Notifications", systemImage: "bell") }
+                .tag(MainTab.notifications)
 
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(MainTab.settings)
         }
     }
 }
