@@ -107,7 +107,7 @@ final class PasskeyService {
     }
 
     #if os(iOS)
-    private var assertionContinuation: CheckedContinuation<ASAuthorizationPlatformPublicKeyCredentialAssertion, Error>?
+    private var assertionDelegate: PasskeyAuthorizationDelegate?
 
     private func requestAssertion(options: PasskeyAuthenticationOptions) async throws -> ASAuthorizationPlatformPublicKeyCredentialAssertion {
         guard let challenge = Data(base64URLEncoded: options.challenge) else {
@@ -127,7 +127,10 @@ final class PasskeyService {
 
         return try await withCheckedThrowingContinuation { continuation in
             let controller = ASAuthorizationController(authorizationRequests: [request])
-            let delegate = PasskeyAuthorizationDelegate(continuation: continuation)
+            let delegate = PasskeyAuthorizationDelegate(continuation: continuation) { [weak self] in
+                self?.assertionDelegate = nil
+            }
+            assertionDelegate = delegate
             controller.delegate = delegate
             controller.presentationContextProvider = delegate
             controller.performRequests()
@@ -159,9 +162,14 @@ final class PasskeyService {
 #if os(iOS)
 private final class PasskeyAuthorizationDelegate: NSObject, ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding {
     private let continuation: CheckedContinuation<ASAuthorizationPlatformPublicKeyCredentialAssertion, Error>
+    private let onFinish: () -> Void
 
-    init(continuation: CheckedContinuation<ASAuthorizationPlatformPublicKeyCredentialAssertion, Error>) {
+    init(
+        continuation: CheckedContinuation<ASAuthorizationPlatformPublicKeyCredentialAssertion, Error>,
+        onFinish: @escaping () -> Void
+    ) {
         self.continuation = continuation
+        self.onFinish = onFinish
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
@@ -170,6 +178,7 @@ private final class PasskeyAuthorizationDelegate: NSObject, ASAuthorizationContr
         } else {
             continuation.resume(throwing: PasskeyError.missingCredential)
         }
+        onFinish()
     }
 
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
@@ -178,6 +187,7 @@ private final class PasskeyAuthorizationDelegate: NSObject, ASAuthorizationContr
         } else {
             continuation.resume(throwing: error)
         }
+        onFinish()
     }
 
     func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
