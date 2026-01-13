@@ -18,57 +18,56 @@ struct ProjectsView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                HStack {
-                    Text("Projects")
-                        .font(.largeTitle)
-                        .foregroundStyle(colors.textMain)
+                    HStack {
+                        Text("Projects")
+                            .font(.largeTitle)
+                            .foregroundStyle(colors.textMain)
 
-                    Spacer()
+                        Spacer()
 
-                    Button {
-                        beginCreate()
-                    } label: {
-                        Label("New", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(colors.primaryText)
-                            .padding(.horizontal, PFSpacing.md)
-                            .padding(.vertical, PFSpacing.xs)
-                            .background(colors.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                        Button {
+                            beginCreate()
+                        } label: {
+                            Label("New", systemImage: "plus")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(colors.primaryText)
+                                .padding(.horizontal, PFSpacing.md)
+                                .padding(.vertical, PFSpacing.xs)
+                                .background(colors.primary)
+                                .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                        }
+                        .disabled(tenantStore.isLoading || tenantStore.activeTenantId == nil)
                     }
-                    .disabled(tenantStore.isLoading || tenantStore.activeTenantId == nil)
-                }
 
-                if tenantStore.isLoading || store.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                }
+                    if tenantStore.isLoading || store.isLoading {
+                        ProgressView()
+                            .frame(maxWidth: .infinity)
+                    }
 
-                if let error = store.errorMessage {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(colors.error)
-                }
+                    if let error = store.errorMessage {
+                        Text(error)
+                            .font(.footnote)
+                            .foregroundStyle(colors.error)
+                    }
 
-                if store.projects.isEmpty && !store.isLoading {
-                    PFCard {
-                        VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                            Text("No projects yet.")
-                                .font(.headline)
-                                .foregroundStyle(colors.textMain)
-                            Text("Create a project to start tracking tasks, flows, and issues.")
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMuted)
+                    if store.projects.isEmpty && !store.isLoading {
+                        PFCard {
+                            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                                Text("No projects yet.")
+                                    .font(.headline)
+                                    .foregroundStyle(colors.textMain)
+                                Text("Create a project to start tracking tasks, flows, and issues.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(colors.textMuted)
+                            }
+                        }
+                    } else {
+                        VStack(spacing: PFSpacing.md) {
+                            ForEach(store.projects) { project in
+                                projectRow(project)
+                            }
                         }
                     }
-                } else {
-                    VStack(spacing: PFSpacing.md) {
-                        ForEach(store.projects) { project in
-                            projectRow(project)
-                        }
-                    }
-                }
-            }
                 }
                 .padding(PFSpacing.lg)
             }
