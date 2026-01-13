@@ -44,6 +44,7 @@ struct LoginView: View {
 
             ZStack {
                 LoginBackground(colors: colors)
+                    .ignoresSafeArea()
 
                 ScrollView(showsIndicators: false) {
                     Group {
@@ -65,9 +66,13 @@ struct LoginView: View {
                     .padding(.vertical, PFSpacing.xl)
                     .frame(maxWidth: .infinity, minHeight: proxy.size.height)
                 }
+                .onTapGesture {
+                    #if os(iOS)
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    #endif
+                }
             }
         }
-        .ignoresSafeArea(edges: .bottom)
     }
 
     private var formPanel: some View {
