@@ -36,6 +36,8 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `aiUsage`: Object (Token limits and usage)
 - `geminiConfig`: Object (API key, token limit)
 - `privacySettings`: Object
+- `fcmTokens`: string[] (Push notification device tokens)
+- `fcmUpdatedAt`: Timestamp
 
 ### 📂 **`tenants`** (Workspaces)
 **Path:** `/tenants/{tenantId}`
@@ -52,6 +54,22 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `role`: "Owner" | "Admin" | "Member" | "Guest"
 - `joinedAt`: Timestamp
 - `groupIds`: string[] (Workspace groups)
+
+#### ↳ 📂 **`notifications`**
+**Path:** `/tenants/{tenantId}/notifications/{notificationId}`
+**Schema:** `Notification`
+- `userId`: string (Recipient)
+- `type`: string
+- `title`: string
+- `message`: string
+- `read`: boolean
+- `createdAt`: Timestamp
+- `projectId`: string (Optional)
+- `taskId`: string (Optional)
+- `issueId`: string (Optional)
+- `actorId`: string (Optional)
+- `actorName`: string (Optional)
+- `actorPhotoURL`: string (Optional)
 
 #### ↳ 📂 **`projects`**
 **Path:** `/tenants/{tenantId}/projects/{projectId}`

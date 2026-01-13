@@ -1,5 +1,6 @@
 import Foundation
 import FirebaseAuth
+import FirebaseCore
 
 @MainActor
 final class SessionStore: ObservableObject {
@@ -18,9 +19,16 @@ final class SessionStore: ObservableObject {
             return
         }
 
+        if FirebaseApp.app() == nil {
+            FirebaseApp.configure()
+        }
+
         handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             self?.user = user
             self?.isLoading = false
+            if user != nil {
+                PushTokenManager.shared.syncPendingToken()
+            }
         }
     }
 
