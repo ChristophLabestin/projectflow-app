@@ -119,10 +119,12 @@ final class PasskeyService {
         let request = provider.createCredentialAssertionRequest(challenge: challenge)
 
         if let allow = options.allowCredentials {
-            request.allowedCredentials = allow.compactMap { credential in
-                guard let data = Data(base64URLEncoded: credential.id) else { return nil }
-                return ASAuthorizationPublicKeyCredentialDescriptor(credentialID: data)
+            var descriptors: [ASAuthorizationPublicKeyCredentialDescriptor] = []
+            for credential in allow {
+                guard let data = Data(base64URLEncoded: credential.id) else { continue }
+                descriptors.append(ASAuthorizationPublicKeyCredentialDescriptor(credentialID: data))
             }
+            request.allowedCredentials = descriptors
         }
 
         return try await withCheckedThrowingContinuation { continuation in
