@@ -342,3 +342,37 @@ struct NotificationItem: FirestoreConvertible {
         return payload
     }
 }
+
+struct ActivityItem: FirestoreConvertible {
+    let id: String
+    var projectId: String
+    var user: String
+    var action: String
+    var target: String
+    var details: String
+    var createdAt: Timestamp?
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        projectId = data["projectId"] as? String ?? ""
+        user = data["user"] as? String ?? ""
+        action = data["action"] as? String ?? ""
+        target = data["target"] as? String ?? ""
+        details = data["details"] as? String ?? ""
+        createdAt = data["createdAt"] as? Timestamp
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "projectId": projectId,
+            "user": user,
+            "action": action,
+            "target": target,
+            "details": details
+        ]
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        return payload
+    }
+}

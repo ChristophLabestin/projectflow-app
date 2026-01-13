@@ -62,7 +62,7 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [x] Create Firestore models + repositories aligned with `FIRESTORE_STRUCTURE.md`.
 - [x] Implement dashboard data aggregation and realtime updates.
 - [x] Build Projects list + status display with project CRUD.
-- [ ] Build Project Overview with activity feed and linked entities.
+- [x] Build Project Overview with activity feed and linked entities.
 - [x] Implement Tasks CRUD (list, detail, edit, status updates).
 - [x] Implement Flows CRUD (list, detail, edit, status updates).
 - [x] Implement Issues CRUD (list, detail, edit, status/priority updates).

@@ -14,8 +14,9 @@ struct ProjectsView: View {
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PFSpacing.lg) {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: PFSpacing.lg) {
                 HStack {
                     Text("Projects")
                         .font(.largeTitle)
@@ -67,9 +68,11 @@ struct ProjectsView: View {
                     }
                 }
             }
-            .padding(PFSpacing.lg)
+                }
+                .padding(PFSpacing.lg)
+            }
+            .background(colors.surfaceBg.ignoresSafeArea())
         }
-        .background(colors.surfaceBg.ignoresSafeArea())
         .onAppear {
             tenantStore.update(for: session.user)
         }
@@ -142,6 +145,18 @@ struct ProjectsView: View {
                     Text(project.status)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(colors.textMain)
+
+                    NavigationLink {
+                        ProjectOverviewView(project: project, tenantId: tenantStore.activeTenantId)
+                    } label: {
+                        Image(systemName: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMuted)
+                            .padding(6)
+                            .background(colors.surfacePaper)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
 
                     Menu {
                         Button("Edit") {
