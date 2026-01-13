@@ -15,71 +15,21 @@ struct ProjectsView: View {
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                    HStack {
-                        Text("Projects")
-                            .font(.largeTitle)
-                            .foregroundStyle(colors.textMain)
-
-                        Spacer()
-
-                        Button {
-                            beginCreate()
-                        } label: {
-                            Label("New", systemImage: "plus")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(colors.primaryText)
-                                .padding(.horizontal, PFSpacing.md)
-                                .padding(.vertical, PFSpacing.xs)
-                                .background(colors.primary)
-                                .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                        }
-                        .disabled(tenantStore.isLoading || tenantStore.activeTenantId == nil)
-                    }
-
-                    if tenantStore.isLoading || store.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                    }
-
-                    if let error = store.errorMessage {
-                        Text(error)
-                            .font(.footnote)
-                            .foregroundStyle(colors.error)
-                    }
-
-                    if store.projects.isEmpty && !store.isLoading {
-                        PFCard {
-                            VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                                Text("No projects yet.")
-                                    .font(.headline)
-                                    .foregroundStyle(colors.textMain)
-                                Text("Create a project to start tracking tasks, flows, and issues.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(colors.textMuted)
-                            }
-                        }
-                    } else {
-                        VStack(spacing: PFSpacing.md) {
-                            ForEach(store.projects) { project in
-                                projectRow(project)
-                            }
-                        }
-                    }
+        let base = AnyView(
+            NavigationStack {
+                ScrollView {
+                    content
                 }
-                .padding(PFSpacing.lg)
+                .background(colors.surfaceBg.ignoresSafeArea())
             }
-            .background(colors.surfaceBg.ignoresSafeArea())
-        }
-        .onAppear {
+        )
+        let withAppear = AnyView(base.onAppear {
             tenantStore.update(for: session.user)
-        }
-        .onChange(of: session.user) { _, user in
+        })
+        let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
-        }
-        .onChange(of: tenantStore.activeTenantId) { _, tenantId in
+        })
+        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
             if let tenantId {
                 store.start(tenantId: tenantId)
                 pinnedProjectStore.start(tenantId: tenantId)
@@ -87,13 +37,13 @@ struct ProjectsView: View {
                 store.stop()
                 pinnedProjectStore.stop()
             }
-        }
-        .onDisappear {
+        })
+        let withDisappear = AnyView(withTenantChange.onDisappear {
             store.stop()
             tenantStore.stop()
             pinnedProjectStore.stop()
-        }
-        .sheet(isPresented: $showingEditor) {
+        })
+        let withSheet = AnyView(withDisappear.sheet(isPresented: $showingEditor) {
             ProjectEditorView(
                 isEditing: editingProject != nil,
                 title: $draftTitle,
@@ -104,14 +54,14 @@ struct ProjectsView: View {
             } onCancel: {
                 showingEditor = false
             }
-        }
-        .confirmationDialog(
+        })
+        let withDialog = AnyView(withSheet.confirmationDialog(
             "Delete Project?",
             isPresented: Binding(
                 get: { deletingProject != nil },
                 set: { if !$0 { deletingProject = nil } }
             ),
-            titleVisibility: .visible
+            titleVisibility: SwiftUI.Visibility.visible
         ) {
             Button("Delete", role: .destructive) {
                 guard let project = deletingProject else { return }
@@ -125,6 +75,82 @@ struct ProjectsView: View {
             }
         } message: {
             Text("This will permanently remove the project and its data.")
+        })
+
+        return withDialog
+    }
+
+    private var content: some View {
+        AnyView(
+            VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                headerSection
+                loadingSection
+                errorSection
+                listSection
+            }
+            .padding(PFSpacing.lg)
+        )
+    }
+
+    private var headerSection: some View {
+        HStack {
+            Text("Projects")
+                .font(.largeTitle)
+                .foregroundStyle(colors.textMain)
+
+            Spacer()
+
+            Button {
+                beginCreate()
+            } label: {
+                Label("New", systemImage: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.primaryText)
+                    .padding(.horizontal, PFSpacing.md)
+                    .padding(.vertical, PFSpacing.xs)
+                    .background(colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+            }
+            .disabled(tenantStore.isLoading || tenantStore.activeTenantId == nil)
+        }
+    }
+
+    @ViewBuilder
+    private var loadingSection: some View {
+        if tenantStore.isLoading || store.isLoading {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let error = store.errorMessage {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(colors.error)
+        }
+    }
+
+    @ViewBuilder
+    private var listSection: some View {
+        if store.projects.isEmpty && !store.isLoading {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                    Text("No projects yet.")
+                        .font(.headline)
+                        .foregroundStyle(colors.textMain)
+                    Text("Create a project to start tracking tasks, flows, and issues.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                }
+            }
+        } else {
+            VStack(spacing: PFSpacing.md) {
+                ForEach(store.projects) { project in
+                    projectRow(project)
+                }
+            }
         }
     }
 

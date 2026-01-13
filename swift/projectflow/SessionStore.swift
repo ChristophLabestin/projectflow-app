@@ -167,8 +167,19 @@ final class SessionStore: ObservableObject {
         }
 
         if option.isTotp {
-            isMfaBusy = false
-            mfaError = "Authenticator app codes are not supported in this build yet."
+            let enrollmentId = option.hint.uid
+            let assertion = TOTPMultiFactorGenerator.assertionForSignIn(
+                withEnrollmentID: enrollmentId,
+                oneTimePassword: code
+            )
+            resolver.resolveSignIn(with: assertion) { [weak self] _, error in
+                self?.isMfaBusy = false
+                if let error {
+                    self?.mfaError = Self.mapAuthError(error)
+                    return
+                }
+                self?.clearMfaState()
+            }
             return
         }
 

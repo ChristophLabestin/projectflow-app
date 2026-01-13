@@ -21,76 +21,74 @@ struct FlowsView: View {
     }
 
     var body: some View {
-        AnyView(
-            ScrollView {
-                content
-            }
-            .background(colors.surfaceBg.ignoresSafeArea())
-            .onAppear {
-                tenantStore.update(for: session.user)
-            }
-            .onChange(of: session.user) { _, user in
-                tenantStore.update(for: user)
-            }
-            .onChange(of: tenantStore.activeTenantId) { _, tenantId in
-                if let tenantId {
-                    projectsStore.start(tenantId: tenantId)
-                } else {
-                    projectsStore.stop()
-                }
-            }
-            .onChange(of: projectsStore.projects.map(\.id)) { _, _ in
-                if selectedProjectId == nil {
-                    selectedProjectId = projectsStore.projects.first?.id
-                }
-            }
-            .onChange(of: selectedProjectId) { _, projectId in
-                guard let tenantId = tenantStore.activeTenantId, let projectId else {
-                    flowsStore.stop()
-                    return
-                }
-                flowsStore.start(tenantId: tenantId, projectId: projectId)
-            }
-            .onDisappear {
-                flowsStore.stop()
+        let base = AnyView(ScrollView { content })
+        let withBackground = AnyView(base.background(colors.surfaceBg.ignoresSafeArea()))
+        let withAppear = AnyView(withBackground.onAppear {
+            tenantStore.update(for: session.user)
+        })
+        let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
+            tenantStore.update(for: user)
+        })
+        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
+            if let tenantId {
+                projectsStore.start(tenantId: tenantId)
+            } else {
                 projectsStore.stop()
-                tenantStore.stop()
             }
-            .sheet(isPresented: $showingEditor) {
-                FlowEditorView(
-                    isEditing: editingFlow != nil,
-                    title: $draftTitle,
-                    description: $draftDescription,
-                    type: $draftType,
-                    stage: $draftStage
-                ) {
-                    await saveFlow()
-                } onCancel: {
-                    showingEditor = false
-                }
+        })
+        let withProjectsChange = AnyView(withTenantChange.onChange(of: projectsStore.projects.map(\.id)) { _, _ in
+            if selectedProjectId == nil {
+                selectedProjectId = projectsStore.projects.first?.id
             }
-            .confirmationDialog(
-                "Delete Flow?",
-                isPresented: Binding(
-                    get: { deletingFlow != nil },
-                    set: { if !$0 { deletingFlow = nil } }
-                ),
-                titleVisibility: .visible
+        })
+        let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
+            guard let tenantId = tenantStore.activeTenantId, let projectId else {
+                flowsStore.stop()
+                return
+            }
+            flowsStore.start(tenantId: tenantId, projectId: projectId)
+        })
+        let withDisappear = AnyView(withProjectSelection.onDisappear {
+            flowsStore.stop()
+            projectsStore.stop()
+            tenantStore.stop()
+        })
+        let withSheet = AnyView(withDisappear.sheet(isPresented: $showingEditor) {
+            FlowEditorView(
+                isEditing: editingFlow != nil,
+                title: $draftTitle,
+                description: $draftDescription,
+                type: $draftType,
+                stage: $draftStage
             ) {
-                Button("Delete", role: .destructive) {
-                    guard let flow = deletingFlow else { return }
-                    _Concurrency.Task {
-                        await deleteFlow(flow)
-                        deletingFlow = nil
-                    }
-                }
-                Button("Cancel", role: .cancel) {
+                await saveFlow()
+            } onCancel: {
+                showingEditor = false
+            }
+        })
+        let withDialog = AnyView(withSheet.confirmationDialog(
+            "Delete Flow?",
+            isPresented: Binding(
+                get: { deletingFlow != nil },
+                set: { if !$0 { deletingFlow = nil } }
+            ),
+            titleVisibility: SwiftUI.Visibility.visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let flow = deletingFlow else { return }
+                _Concurrency.Task {
+                    await deleteFlow(flow)
                     deletingFlow = nil
                 }
-            } message: {
-                Text("This will permanently remove the flow.")
             }
-        )
+            Button("Cancel", role: .cancel) {
+                deletingFlow = nil
+            }
+        } message: {
+            Text("This will permanently remove the flow.")
+        })
+
+        return withDialog
     }
 
     private var content: some View {

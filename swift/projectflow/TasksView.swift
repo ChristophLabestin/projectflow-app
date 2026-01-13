@@ -22,78 +22,76 @@ struct TasksView: View {
     }
 
     var body: some View {
-        AnyView(
-            ScrollView {
-                content
-            }
-            .background(colors.surfaceBg.ignoresSafeArea())
-            .onAppear {
-                tenantStore.update(for: session.user)
-                pinnedTasksStore.start()
-            }
-            .onChange(of: session.user) { _, user in
-                tenantStore.update(for: user)
-            }
-            .onChange(of: tenantStore.activeTenantId) { _, tenantId in
-                if let tenantId {
-                    projectsStore.start(tenantId: tenantId)
-                } else {
-                    projectsStore.stop()
-                }
-            }
-            .onChange(of: projectsStore.projects.map(\.id)) { _, _ in
-                if selectedProjectId == nil {
-                    selectedProjectId = projectsStore.projects.first?.id
-                }
-            }
-            .onChange(of: selectedProjectId) { _, projectId in
-                guard let tenantId = tenantStore.activeTenantId, let projectId else {
-                    tasksStore.stop()
-                    return
-                }
-                tasksStore.start(tenantId: tenantId, projectId: projectId)
-            }
-            .onDisappear {
-                tasksStore.stop()
+        let base = AnyView(ScrollView { content })
+        let withBackground = AnyView(base.background(colors.surfaceBg.ignoresSafeArea()))
+        let withAppear = AnyView(withBackground.onAppear {
+            tenantStore.update(for: session.user)
+            pinnedTasksStore.start()
+        })
+        let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
+            tenantStore.update(for: user)
+        })
+        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
+            if let tenantId {
+                projectsStore.start(tenantId: tenantId)
+            } else {
                 projectsStore.stop()
-                tenantStore.stop()
-                pinnedTasksStore.stop()
             }
-            .sheet(isPresented: $showingEditor) {
-                TaskEditorView(
-                    isEditing: editingTask != nil,
-                    title: $draftTitle,
-                    description: $draftDescription,
-                    status: $draftStatus,
-                    priority: $draftPriority
-                ) {
-                    await saveTask()
-                } onCancel: {
-                    showingEditor = false
-                }
+        })
+        let withProjectsChange = AnyView(withTenantChange.onChange(of: projectsStore.projects.map(\.id)) { _, _ in
+            if selectedProjectId == nil {
+                selectedProjectId = projectsStore.projects.first?.id
             }
-            .confirmationDialog(
-                "Delete Task?",
-                isPresented: Binding(
-                    get: { deletingTask != nil },
-                    set: { if !$0 { deletingTask = nil } }
-                ),
-                titleVisibility: .visible
+        })
+        let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
+            guard let tenantId = tenantStore.activeTenantId, let projectId else {
+                tasksStore.stop()
+                return
+            }
+            tasksStore.start(tenantId: tenantId, projectId: projectId)
+        })
+        let withDisappear = AnyView(withProjectSelection.onDisappear {
+            tasksStore.stop()
+            projectsStore.stop()
+            tenantStore.stop()
+            pinnedTasksStore.stop()
+        })
+        let withSheet = AnyView(withDisappear.sheet(isPresented: $showingEditor) {
+            TaskEditorView(
+                isEditing: editingTask != nil,
+                title: $draftTitle,
+                description: $draftDescription,
+                status: $draftStatus,
+                priority: $draftPriority
             ) {
-                Button("Delete", role: .destructive) {
-                    guard let task = deletingTask else { return }
-                    _Concurrency.Task {
-                        await deleteTask(task)
-                        deletingTask = nil
-                    }
-                }
-                Button("Cancel", role: .cancel) {
+                await saveTask()
+            } onCancel: {
+                showingEditor = false
+            }
+        })
+        let withDialog = AnyView(withSheet.confirmationDialog(
+            "Delete Task?",
+            isPresented: Binding(
+                get: { deletingTask != nil },
+                set: { if !$0 { deletingTask = nil } }
+            ),
+            titleVisibility: SwiftUI.Visibility.visible
+        ) {
+            Button("Delete", role: .destructive) {
+                guard let task = deletingTask else { return }
+                _Concurrency.Task {
+                    await deleteTask(task)
                     deletingTask = nil
                 }
-            } message: {
-                Text("This will permanently remove the task.")
             }
-        )
+            Button("Cancel", role: .cancel) {
+                deletingTask = nil
+            }
+        } message: {
+            Text("This will permanently remove the task.")
+        })
+
+        return withDialog
     }
 
     private var content: some View {
