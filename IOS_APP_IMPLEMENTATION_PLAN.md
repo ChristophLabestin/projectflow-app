@@ -64,8 +64,8 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [x] Build Projects list + status display with project CRUD.
 - [ ] Build Project Overview with activity feed and linked entities.
 - [x] Implement Tasks CRUD (list, detail, edit, status updates).
-- [ ] Implement Flows CRUD (list, detail, edit, status updates).
-- [ ] Implement Issues CRUD (list, detail, edit, status/priority updates).
+- [x] Implement Flows CRUD (list, detail, edit, status updates).
+- [x] Implement Issues CRUD (list, detail, edit, status/priority updates).
 - [x] Add notifications screen and FCM push registration.
 - [ ] Implement pinned project and pinned tasks (read/write + UI).
 - [ ] Add offline/error handling and loading/empty states.

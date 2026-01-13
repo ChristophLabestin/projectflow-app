@@ -28,6 +28,12 @@ struct MainTabView: View {
             TasksView()
                 .tabItem { Label("Tasks", systemImage: "checklist") }
 
+            FlowsView()
+                .tabItem { Label("Flows", systemImage: "sparkles") }
+
+            IssuesView()
+                .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
+
             NotificationsView()
                 .tabItem { Label("Notifications", systemImage: "bell") }
 
