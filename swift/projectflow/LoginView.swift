@@ -76,24 +76,10 @@ struct LoginView: View {
                 Text(mode == .signUp ? "Create your account" : "Welcome back")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(colors.textMain)
-                Text("Use your workspace credentials to continue.")
-                    .font(.subheadline)
-                    .foregroundStyle(colors.textMuted)
             }
 
             PFCard {
                 VStack(spacing: PFSpacing.md) {
-                    Picker("Mode", selection: $mode) {
-                        Text("Sign In").tag(AuthMode.signIn)
-                        Text("Create").tag(AuthMode.signUp)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: mode) { _, _ in
-                        session.clearMessages()
-                        showValidation = false
-                    }
-                    .disabled(isMfaActive || session.isBusy)
-
                     PFInputField(
                         title: "Email",
                         placeholder: "name@company.com",
@@ -186,6 +172,7 @@ struct LoginView: View {
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(colors.textMain)
+                    .disabled(isMfaActive || session.isBusy)
                 }
             }
 
@@ -293,21 +280,6 @@ private struct BrandPanel: View {
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(colors.textMain)
             }
-
-            VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                Text("Ship the work that matters.")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(colors.textMain)
-                Text("Plan projects, coordinate tasks, and keep teams aligned with a focused workspace.")
-                    .font(.subheadline)
-                    .foregroundStyle(colors.textMuted)
-            }
-
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                FeatureRow(icon: "checkmark.circle", title: "Project visibility", detail: "Track status, milestones, and risks at a glance.")
-                FeatureRow(icon: "list.bullet.rectangle", title: "Task execution", detail: "Assign and update tasks without noise.")
-                FeatureRow(icon: "bell", title: "Smart notifications", detail: "Stay on top of changes across projects.")
-            }
         }
     }
 }
@@ -375,35 +347,6 @@ private typealias PlatformImage = UIImage
 private typealias PlatformImage = NSImage
 #endif
 
-private struct FeatureRow: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let icon: String
-    let title: String
-    let detail: String
-
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: PFSpacing.sm) {
-            Image(systemName: icon)
-                .foregroundStyle(colors.textMain)
-                .frame(width: 22, height: 22)
-                .padding(6)
-                .background(colors.surfaceCard)
-                .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
-
-            VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(colors.textMain)
-                Text(detail)
-                    .font(.footnote)
-                    .foregroundStyle(colors.textMuted)
-            }
-        }
-    }
-}
-
 private struct LoginBackground: View {
     let colors: PFColors
 
@@ -415,16 +358,37 @@ private struct LoginBackground: View {
                 endPoint: .bottomTrailing
             )
 
+            DottedBackground(color: colors.surfaceBorder.opacity(0.25))
+                .opacity(0.6)
+                .allowsHitTesting(false)
+
             RoundedRectangle(cornerRadius: PFRadius.xl, style: .continuous)
                 .fill(colors.primaryFade)
                 .frame(width: 280, height: 280)
                 .offset(x: -180, y: -220)
-
-            RoundedRectangle(cornerRadius: PFRadius.xl, style: .continuous)
-                .fill(colors.surfaceCard)
-                .frame(width: 320, height: 240)
-                .offset(x: 200, y: 260)
         }
         .ignoresSafeArea()
+    }
+}
+
+private struct DottedBackground: View {
+    let color: Color
+    var spacing: CGFloat = 18
+    var dotSize: CGFloat = 2
+
+    var body: some View {
+        Canvas { context, size in
+            let columns = Int(size.width / spacing)
+            let rows = Int(size.height / spacing)
+
+            for row in 0...rows {
+                for column in 0...columns {
+                    let x = CGFloat(column) * spacing + spacing * 0.5
+                    let y = CGFloat(row) * spacing + spacing * 0.5
+                    let rect = CGRect(x: x, y: y, width: dotSize, height: dotSize)
+                    context.fill(Path(ellipseIn: rect), with: .color(color))
+                }
+            }
+        }
     }
 }
