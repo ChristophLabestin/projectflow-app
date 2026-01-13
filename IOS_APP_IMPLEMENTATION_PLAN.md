@@ -52,10 +52,10 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 8. **Polish & QA**: Error states, offline handling, analytics, and performance checks.
 
 ## Implementation Task List (Checkable)
-- [ ] Confirm Firebase iOS app registration and add `GoogleService-Info.plist` to `swift/`.
-- [ ] Create a shared `Theme` module mirroring `STYLING.md` tokens (light + dark).
-- [ ] Build core SwiftUI components aligned with `COMPONENTS.md`.
-- [ ] Implement navigation shell (tabs/stack) for Dashboard, Projects, Notifications, Settings.
+- [x] Confirm Firebase iOS app registration and add `GoogleService-Info.plist` to `swift/`.
+- [x] Create a shared `Theme` module mirroring `STYLING.md` tokens (light + dark).
+- [x] Build core SwiftUI components aligned with `COMPONENTS.md`.
+- [x] Implement navigation shell (tabs/stack) for Dashboard, Projects, Notifications, Settings.
 - [x] Wire Firebase Auth with configured providers and session persistence.
 - [x] Implement MFA and passkey sign-in for the iOS login flow.
 - [x] Implement permission checks based on `PERMISSIONS.md` for all write actions.
