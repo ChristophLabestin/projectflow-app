@@ -7,6 +7,7 @@ struct LoginView: View {
     @State private var password = ""
     @State private var mode: AuthMode = .signIn
     @State private var showValidation = false
+    @State private var mfaCode = ""
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     private var trimmedEmail: String { email.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -30,6 +31,7 @@ struct LoginView: View {
         if mode == .signUp && password.count < 6 { return "Password must be at least 6 characters." }
         return nil
     }
+    private var isMfaActive: Bool { session.mfaState != nil }
 
     var body: some View {
         GeometryReader { proxy in
@@ -85,6 +87,7 @@ struct LoginView: View {
                         session.clearMessages()
                         showValidation = false
                     }
+                    .disabled(isMfaActive || session.isBusy)
 
                     PFInputField(
                         title: "Email",
@@ -94,6 +97,8 @@ struct LoginView: View {
                         keyboardType: .emailAddress,
                         error: emailError
                     )
+                    .disabled(isMfaActive || session.isBusy)
+
                     PFInputField(
                         title: "Password",
                         placeholder: "••••••••",
@@ -102,6 +107,7 @@ struct LoginView: View {
                         keyboardType: .default,
                         error: passwordError
                     )
+                    .disabled(isMfaActive || session.isBusy)
 
                     if mode == .signIn {
                         Button("Forgot password?") {
@@ -112,6 +118,7 @@ struct LoginView: View {
                         .font(.footnote)
                         .foregroundStyle(colors.textMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .disabled(isMfaActive || session.isBusy)
                     }
                 }
             }
@@ -143,7 +150,25 @@ struct LoginView: View {
                         session.signIn(email: trimmedEmail, password: password)
                     }
                 }
-                .disabled(!canSubmit)
+                .disabled(!canSubmit || isMfaActive)
+
+                if mode == .signIn {
+                    Button {
+                        session.signInWithPasskey(email: trimmedEmail.isEmpty ? nil : trimmedEmail)
+                    } label: {
+                        HStack(spacing: PFSpacing.sm) {
+                            Image(systemName: "key.fill")
+                            Text(session.isBusy ? "Waiting for Passkey..." : "Use Passkey")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, PFSpacing.sm)
+                        .foregroundStyle(colors.textMain)
+                        .background(colors.surfaceCard)
+                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                    }
+                    .disabled(session.isBusy || isMfaActive)
+                }
 
                 HStack(spacing: PFSpacing.xs) {
                     Text(mode == .signUp ? "Already have an account?" : "New to ProjectFlow?")
@@ -153,6 +178,88 @@ struct LoginView: View {
                         session.clearMessages()
                         showValidation = false
                         mode = mode == .signUp ? .signIn : .signUp
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+                }
+            }
+
+            if let mfaState = session.mfaState {
+                mfaPanel(for: mfaState)
+            }
+        }
+    }
+
+    private func mfaPanel(for state: MfaState) -> some View {
+        let selected = state.selectedOption
+        let canVerify = !mfaCode.isEmpty && !session.isMfaBusy
+
+        return PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                Text("Two-factor verification")
+                    .font(.headline)
+                    .foregroundStyle(colors.textMain)
+                Text("Enter the code from your authenticator or SMS.")
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+
+                if state.options.count > 1 {
+                    Picker("Verification method", selection: Binding(
+                        get: { state.selectedOptionId ?? state.options.first?.id ?? "" },
+                        set: { session.selectMfaOption(id: $0) }
+                    )) {
+                        ForEach(state.options) { option in
+                            Text(option.label).tag(option.id)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                } else if let option = selected {
+                    Text(option.label)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(colors.textMain)
+                }
+
+                PFInputField(
+                    title: "Verification code",
+                    placeholder: "123456",
+                    text: $mfaCode,
+                    isSecure: false,
+                    keyboardType: .numberPad
+                )
+
+                if let mfaError = session.mfaError {
+                    Text(mfaError)
+                        .font(.footnote)
+                        .foregroundStyle(colors.error)
+                }
+
+                if let mfaMessage = session.mfaMessage {
+                    Text(mfaMessage)
+                        .font(.footnote)
+                        .foregroundStyle(colors.textMuted)
+                }
+
+                PFPrimaryButton(
+                    title: session.isMfaBusy ? "Verifying..." : "Verify",
+                    isLoading: session.isMfaBusy
+                ) {
+                    session.verifyMfa(code: mfaCode)
+                }
+                .disabled(!canVerify)
+
+                HStack(spacing: PFSpacing.sm) {
+                    if selected?.isPhone == true {
+                        Button("Resend code") {
+                            session.requestMfaCodeIfNeeded()
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(colors.textMuted)
+                        .disabled(session.isMfaBusy)
+                    }
+
+                    Button("Cancel") {
+                        mfaCode = ""
+                        session.cancelMfa()
                     }
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(colors.textMain)

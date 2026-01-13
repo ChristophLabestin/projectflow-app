@@ -10,6 +10,10 @@ final class SessionStore: ObservableObject {
     @Published var authError: String?
     @Published var authMessage: String?
     @Published var isBusy = false
+    @Published var mfaState: MfaState?
+    @Published var mfaError: String?
+    @Published var mfaMessage: String?
+    @Published var isMfaBusy = false
 
     private var handle: AuthStateDidChangeListenerHandle?
     private let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
@@ -43,9 +47,15 @@ final class SessionStore: ObservableObject {
         isBusy = true
         authError = nil
         authMessage = nil
+        mfaError = nil
+        mfaMessage = nil
         Auth.auth().signIn(withEmail: email, password: password) { [weak self] _, error in
             self?.isBusy = false
             if let error {
+                if let resolver = Self.extractResolver(from: error) {
+                    self?.beginMfaFlow(resolver: resolver)
+                    return
+                }
                 self?.authError = Self.mapAuthError(error)
             }
         }
@@ -66,6 +76,9 @@ final class SessionStore: ObservableObject {
     func signOut() {
         authError = nil
         authMessage = nil
+        mfaState = nil
+        mfaError = nil
+        mfaMessage = nil
         do {
             try Auth.auth().signOut()
         } catch {
@@ -87,9 +100,173 @@ final class SessionStore: ObservableObject {
         }
     }
 
+    func signInWithPasskey(email: String?) {
+        isBusy = true
+        authError = nil
+        authMessage = nil
+        mfaError = nil
+        mfaMessage = nil
+
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let token = try await PasskeyService.shared.signIn(email: email)
+                try await self.signIn(withCustomToken: token)
+            } catch {
+                self.authError = Self.mapAuthError(error)
+            }
+            self.isBusy = false
+        }
+    }
+
+    func selectMfaOption(id: String) {
+        guard var state = mfaState else { return }
+        state.selectedOptionId = id
+        state.verificationId = nil
+        mfaState = state
+        requestMfaCodeIfNeeded()
+    }
+
+    func requestMfaCodeIfNeeded() {
+        guard let state = mfaState else { return }
+        guard let option = state.selectedOption else { return }
+        guard option.isPhone else { return }
+        sendSmsCode(for: option)
+    }
+
+    func verifyMfa(code: String) {
+        guard let state = mfaState else { return }
+        guard let option = state.selectedOption else { return }
+        guard let resolver = state.resolver else { return }
+
+        mfaError = nil
+        mfaMessage = nil
+        isMfaBusy = true
+
+        if option.isPhone {
+            guard let verificationId = state.verificationId else {
+                isMfaBusy = false
+                mfaError = "Request a verification code first."
+                return
+            }
+
+            let credential = PhoneAuthProvider.provider().credential(
+                withVerificationID: verificationId,
+                verificationCode: code
+            )
+            let assertion = PhoneMultiFactorGenerator.assertion(with: credential)
+            resolver.resolveSignIn(with: assertion) { [weak self] _, error in
+                self?.isMfaBusy = false
+                if let error {
+                    self?.mfaError = Self.mapAuthError(error)
+                    return
+                }
+                self?.clearMfaState()
+            }
+            return
+        }
+
+        if option.isTotp, let hint = option.hint as? TotpMultiFactorInfo {
+            let assertion = TotpMultiFactorGenerator.assertionForSignIn(
+                withEnrollmentID: hint.uid,
+                verificationCode: code
+            )
+            resolver.resolveSignIn(with: assertion) { [weak self] _, error in
+                self?.isMfaBusy = false
+                if let error {
+                    self?.mfaError = Self.mapAuthError(error)
+                    return
+                }
+                self?.clearMfaState()
+            }
+            return
+        }
+
+        isMfaBusy = false
+        mfaError = "Unsupported second factor."
+    }
+
+    func cancelMfa() {
+        clearMfaState()
+    }
+
     func clearMessages() {
         authError = nil
         authMessage = nil
+    }
+
+    private func beginMfaFlow(resolver: MultiFactorResolver) {
+        let options = resolver.hints.map { hint in
+            MfaOption(
+                id: hint.uid,
+                factorId: hint.factorID,
+                displayName: hint.displayName,
+                phoneNumber: (hint as? PhoneMultiFactorInfo)?.phoneNumber,
+                hint: hint
+            )
+        }
+
+        mfaState = MfaState(
+            resolver: resolver,
+            options: options,
+            selectedOptionId: options.first?.id,
+            verificationId: nil
+        )
+        requestMfaCodeIfNeeded()
+    }
+
+    private func sendSmsCode(for option: MfaOption) {
+        guard option.isPhone, let resolver = mfaState?.resolver else { return }
+        guard let phoneHint = option.hint as? PhoneMultiFactorInfo else { return }
+
+        mfaError = nil
+        mfaMessage = nil
+        isMfaBusy = true
+
+        PhoneAuthProvider.provider().verifyPhoneNumber(
+            with: phoneHint,
+            uiDelegate: nil,
+            multiFactorSession: resolver.session
+        ) { [weak self] verificationId, error in
+            self?.isMfaBusy = false
+            if let error {
+                self?.mfaError = Self.mapAuthError(error)
+                return
+            }
+            guard let verificationId else {
+                self?.mfaError = "Unable to send verification code."
+                return
+            }
+            self?.mfaState?.verificationId = verificationId
+            self?.mfaMessage = "Verification code sent."
+        }
+    }
+
+    private func signIn(withCustomToken token: String) async throws {
+        try await withCheckedThrowingContinuation { continuation in
+            Auth.auth().signIn(withCustomToken: token) { _, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else {
+                    continuation.resume()
+                }
+            }
+        }
+    }
+
+    private func clearMfaState() {
+        mfaState = nil
+        mfaError = nil
+        mfaMessage = nil
+        isMfaBusy = false
+    }
+
+    private static func extractResolver(from error: Error) -> MultiFactorResolver? {
+        let nsError = error as NSError
+        if AuthErrorCode(rawValue: nsError.code) == .secondFactorRequired {
+            return nsError.userInfo[AuthErrorUserInfoMultiFactorResolverKey] as? MultiFactorResolver
+        }
+        return nil
     }
 
     private static func mapAuthError(_ error: Error) -> String {
@@ -111,8 +288,48 @@ final class SessionStore: ObservableObject {
             return "Password must be at least 6 characters."
         case .networkError:
             return "Network error. Check your connection."
+        case .secondFactorRequired:
+            return "Two-factor verification required."
         default:
             return nsError.localizedDescription
         }
+    }
+}
+
+struct MfaState {
+    let resolver: MultiFactorResolver
+    let options: [MfaOption]
+    var selectedOptionId: String?
+    var verificationId: String?
+
+    var selectedOption: MfaOption? {
+        guard let selectedOptionId else { return options.first }
+        return options.first { $0.id == selectedOptionId } ?? options.first
+    }
+}
+
+struct MfaOption: Identifiable {
+    let id: String
+    let factorId: String
+    let displayName: String?
+    let phoneNumber: String?
+    let hint: MultiFactorInfo
+
+    var isPhone: Bool {
+        hint is PhoneMultiFactorInfo || factorId == "phone"
+    }
+
+    var isTotp: Bool {
+        factorId == "totp"
+    }
+
+    var label: String {
+        if let phoneNumber {
+            return phoneNumber
+        }
+        if let displayName, !displayName.isEmpty {
+            return displayName
+        }
+        return isTotp ? "Authenticator app" : "Second factor"
     }
 }

@@ -7,6 +7,7 @@ typealias PFKeyboardType = UIKeyboardType
 enum PFKeyboardType {
     case `default`
     case emailAddress
+    case numberPad
 }
 #endif
 
