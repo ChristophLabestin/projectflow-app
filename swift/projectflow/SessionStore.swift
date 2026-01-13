@@ -137,7 +137,7 @@ final class SessionStore: ObservableObject {
     func verifyMfa(code: String) {
         guard let state = mfaState else { return }
         guard let option = state.selectedOption else { return }
-        guard let resolver = state.resolver else { return }
+        let resolver = state.resolver
 
         mfaError = nil
         mfaMessage = nil
@@ -166,19 +166,9 @@ final class SessionStore: ObservableObject {
             return
         }
 
-        if option.isTotp, let hint = option.hint as? TotpMultiFactorInfo {
-            let assertion = TotpMultiFactorGenerator.assertionForSignIn(
-                withEnrollmentID: hint.uid,
-                verificationCode: code
-            )
-            resolver.resolveSignIn(with: assertion) { [weak self] _, error in
-                self?.isMfaBusy = false
-                if let error {
-                    self?.mfaError = Self.mapAuthError(error)
-                    return
-                }
-                self?.clearMfaState()
-            }
+        if option.isTotp {
+            isMfaBusy = false
+            mfaError = "Authenticator app codes are not supported in this build yet."
             return
         }
 
@@ -243,12 +233,12 @@ final class SessionStore: ObservableObject {
     }
 
     private func signIn(withCustomToken token: String) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             Auth.auth().signIn(withCustomToken: token) { _, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else {
-                    continuation.resume()
+                    continuation.resume(returning: ())
                 }
             }
         }
