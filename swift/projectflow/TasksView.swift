@@ -6,6 +6,7 @@ struct TasksView: View {
     @StateObject private var tenantStore = TenantStore()
     @StateObject private var projectsStore = ProjectsStore()
     @StateObject private var tasksStore = TasksStore()
+    @StateObject private var pinnedTasksStore = PinnedTasksStore()
     @State private var selectedProjectId: String?
     @State private var showingEditor = false
     @State private var editingTask: Task?
@@ -81,6 +82,7 @@ struct TasksView: View {
         .background(colors.surfaceBg.ignoresSafeArea())
         .onAppear {
             tenantStore.update(for: session.user)
+            pinnedTasksStore.start()
         }
         .onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
@@ -108,6 +110,7 @@ struct TasksView: View {
             tasksStore.stop()
             projectsStore.stop()
             tenantStore.stop()
+            pinnedTasksStore.stop()
         }
         .sheet(isPresented: $showingEditor) {
             TaskEditorView(
@@ -219,6 +222,17 @@ struct TasksView: View {
                         .background(colors.surfacePaper)
                         .clipShape(Circle())
                 }
+
+                Button {
+                    togglePin(task)
+                } label: {
+                    Image(systemName: pinnedTasksStore.isPinned(task.id) ? "pin.fill" : "pin")
+                        .foregroundStyle(colors.textMuted)
+                        .padding(6)
+                        .background(colors.surfacePaper)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -293,6 +307,24 @@ struct TasksView: View {
             task: task,
             permissions: permissions
         )
+    }
+
+    private func togglePin(_ task: Task) {
+        guard let tenantId = tenantStore.activeTenantId else { return }
+        if pinnedTasksStore.isPinned(task.id) {
+            pinnedTasksStore.unpin(itemId: task.id)
+        } else {
+            let pinned = PinnedItem(
+                id: task.id,
+                type: "task",
+                title: task.title,
+                projectId: task.projectId ?? "",
+                tenantId: tenantId,
+                priority: task.priority,
+                isCompleted: task.isCompleted
+            )
+            pinnedTasksStore.pin(item: pinned)
+        }
     }
 }
 

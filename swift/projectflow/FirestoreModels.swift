@@ -19,6 +19,8 @@ struct UserProfile: FirestoreConvertible {
     var photoURL: String?
     var fcmTokens: [String]
     var fcmUpdatedAt: Timestamp?
+    var pinnedItems: [PinnedItem]
+    var focusItemId: String?
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -27,6 +29,8 @@ struct UserProfile: FirestoreConvertible {
         photoURL = data["photoURL"] as? String
         fcmTokens = data["fcmTokens"] as? [String] ?? []
         fcmUpdatedAt = data["fcmUpdatedAt"] as? Timestamp
+        pinnedItems = (data["pinnedItems"] as? [[String: Any]] ?? []).map { PinnedItem(data: $0) }
+        focusItemId = data["focusItemId"] as? String
     }
 
     var data: [String: Any] {
@@ -43,6 +47,51 @@ struct UserProfile: FirestoreConvertible {
         }
         if let fcmUpdatedAt {
             payload["fcmUpdatedAt"] = fcmUpdatedAt
+        }
+        if !pinnedItems.isEmpty {
+            payload["pinnedItems"] = pinnedItems.map { $0.data }
+        }
+        if let focusItemId {
+            payload["focusItemId"] = focusItemId
+        }
+        return payload
+    }
+}
+
+struct PinnedItem: Identifiable {
+    let id: String
+    let type: String
+    let title: String
+    let projectId: String
+    let tenantId: String?
+    let priority: String?
+    let isCompleted: Bool?
+
+    init(data: [String: Any]) {
+        id = data["id"] as? String ?? ""
+        type = data["type"] as? String ?? "task"
+        title = data["title"] as? String ?? ""
+        projectId = data["projectId"] as? String ?? ""
+        tenantId = data["tenantId"] as? String
+        priority = data["priority"] as? String
+        isCompleted = data["isCompleted"] as? Bool
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "id": id,
+            "type": type,
+            "title": title,
+            "projectId": projectId
+        ]
+        if let tenantId {
+            payload["tenantId"] = tenantId
+        }
+        if let priority {
+            payload["priority"] = priority
+        }
+        if let isCompleted {
+            payload["isCompleted"] = isCompleted
         }
         return payload
     }

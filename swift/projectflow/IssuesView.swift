@@ -6,6 +6,7 @@ struct IssuesView: View {
     @StateObject private var tenantStore = TenantStore()
     @StateObject private var projectsStore = ProjectsStore()
     @StateObject private var issuesStore = IssuesStore()
+    @StateObject private var pinnedTasksStore = PinnedTasksStore()
     @State private var selectedProjectId: String?
     @State private var showingEditor = false
     @State private var editingIssue: Issue?
@@ -81,6 +82,7 @@ struct IssuesView: View {
         .background(colors.surfaceBg.ignoresSafeArea())
         .onAppear {
             tenantStore.update(for: session.user)
+            pinnedTasksStore.start()
         }
         .onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
@@ -108,6 +110,7 @@ struct IssuesView: View {
             issuesStore.stop()
             projectsStore.stop()
             tenantStore.stop()
+            pinnedTasksStore.stop()
         }
         .sheet(isPresented: $showingEditor) {
             IssueEditorView(
@@ -208,6 +211,17 @@ struct IssuesView: View {
                         .background(colors.surfacePaper)
                         .clipShape(Circle())
                 }
+
+                Button {
+                    togglePin(issue)
+                } label: {
+                    Image(systemName: pinnedTasksStore.isPinned(issue.id) ? "pin.fill" : "pin")
+                        .foregroundStyle(colors.textMuted)
+                        .padding(6)
+                        .background(colors.surfacePaper)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -271,6 +285,24 @@ struct IssuesView: View {
             issueId: issue.id,
             permissions: permissions
         )
+    }
+
+    private func togglePin(_ issue: Issue) {
+        guard let tenantId = tenantStore.activeTenantId else { return }
+        if pinnedTasksStore.isPinned(issue.id) {
+            pinnedTasksStore.unpin(itemId: issue.id)
+        } else {
+            let pinned = PinnedItem(
+                id: issue.id,
+                type: "issue",
+                title: issue.title,
+                projectId: issue.projectId ?? "",
+                tenantId: tenantId,
+                priority: issue.priority,
+                isCompleted: issue.status == "Resolved" || issue.status == "Closed"
+            )
+            pinnedTasksStore.pin(item: pinned)
+        }
     }
 }
 

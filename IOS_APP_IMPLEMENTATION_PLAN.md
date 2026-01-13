@@ -67,7 +67,7 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [x] Implement Flows CRUD (list, detail, edit, status updates).
 - [x] Implement Issues CRUD (list, detail, edit, status/priority updates).
 - [x] Add notifications screen and FCM push registration.
-- [ ] Implement pinned project and pinned tasks (read/write + UI).
+- [x] Implement pinned project and pinned tasks (read/write + UI).
 - [ ] Add offline/error handling and loading/empty states.
 - [ ] Validate UI parity with web app design language in light/dark mode.
 - [ ] Document iOS module coverage and MVP exclusions in `SITEMAP.md`.

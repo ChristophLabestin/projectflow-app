@@ -5,6 +5,7 @@ struct ProjectsView: View {
     @EnvironmentObject private var session: SessionStore
     @StateObject private var store = ProjectsStore()
     @StateObject private var tenantStore = TenantStore()
+    @StateObject private var pinnedProjectStore = PinnedProjectStore()
     @State private var showingEditor = false
     @State private var editingProject: Project?
     @State private var draftTitle = ""
@@ -82,13 +83,16 @@ struct ProjectsView: View {
         .onChange(of: tenantStore.activeTenantId) { _, tenantId in
             if let tenantId {
                 store.start(tenantId: tenantId)
+                pinnedProjectStore.start(tenantId: tenantId)
             } else {
                 store.stop()
+                pinnedProjectStore.stop()
             }
         }
         .onDisappear {
             store.stop()
             tenantStore.stop()
+            pinnedProjectStore.stop()
         }
         .sheet(isPresented: $showingEditor) {
             ProjectEditorView(
@@ -145,6 +149,23 @@ struct ProjectsView: View {
                     Text(project.status)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(colors.textMain)
+
+                    Button {
+                        guard let tenantId = tenantStore.activeTenantId else { return }
+                        if pinnedProjectStore.pinnedProjectId == project.id {
+                            pinnedProjectStore.unpin(tenantId: tenantId)
+                        } else {
+                            pinnedProjectStore.pin(projectId: project.id, tenantId: tenantId)
+                        }
+                    } label: {
+                        Image(systemName: pinnedProjectStore.pinnedProjectId == project.id ? "pin.fill" : "pin")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMuted)
+                            .padding(6)
+                            .background(colors.surfacePaper)
+                            .clipShape(Circle())
+                    }
+                    .buttonStyle(.plain)
 
                     NavigationLink {
                         ProjectOverviewView(project: project, tenantId: tenantStore.activeTenantId)
