@@ -2,15 +2,22 @@ import SwiftUI
 
 struct AppShellView: View {
     @EnvironmentObject private var session: SessionStore
+    @StateObject private var networkMonitor = NetworkMonitor()
 
     var body: some View {
-        Group {
-            if session.isLoading {
-                ProgressView()
-            } else if session.user != nil {
-                MainTabView()
-            } else {
-                LoginView()
+        VStack(spacing: 0) {
+            if networkMonitor.isOffline {
+                OfflineBanner()
+            }
+
+            Group {
+                if session.isLoading {
+                    ProgressView()
+                } else if session.user != nil {
+                    MainTabView()
+                } else {
+                    LoginView()
+                }
             }
         }
     }
@@ -40,5 +47,22 @@ struct MainTabView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
+    }
+}
+
+private struct OfflineBanner: View {
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        HStack(spacing: PFSpacing.sm) {
+            Image(systemName: "wifi.slash")
+            Text("You're offline. Some data may be stale.")
+                .font(.footnote.weight(.semibold))
+        }
+        .foregroundStyle(colors.textOnDark)
+        .padding(.vertical, PFSpacing.xs)
+        .frame(maxWidth: .infinity)
+        .background(colors.warning)
     }
 }

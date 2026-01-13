@@ -189,4 +189,19 @@ These are outside the Social module shell in the old routing.
 - [x] web/components/flows/CreateFlowModal.tsx - Flow create modal (SCSS)
 - [x] web/components/flows/stages/ReviewTimelineModal.tsx - Review timeline modal (SCSS)
 
+---
+
+## 7) iOS App (SwiftUI) MVP Coverage
+
+- [x] Login (email/password, MFA, passkey sign-in)
+- [x] Dashboard (summary metrics, pinned items)
+- [x] Projects list + Project Overview (status, linked tasks/flows/issues, activity feed)
+- [x] Tasks CRUD (project-scoped)
+- [x] Flows CRUD (project-scoped)
+- [x] Issues CRUD (project-scoped)
+- [x] Notifications list + push registration
+- [x] Pinned project + pinned tasks/issue support
+- [x] Settings (sign out, basic account state)
+
+MVP exclusions: Social and Marketing modules, media library, and macOS-specific UI. The macOS variant is planned after the iOS MVP.
 
