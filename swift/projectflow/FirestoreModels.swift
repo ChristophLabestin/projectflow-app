@@ -67,6 +67,24 @@ struct PinnedItem: Identifiable {
     let priority: String?
     let isCompleted: Bool?
 
+    init(
+        id: String,
+        type: String,
+        title: String,
+        projectId: String,
+        tenantId: String?,
+        priority: String?,
+        isCompleted: Bool?
+    ) {
+        self.id = id
+        self.type = type
+        self.title = title
+        self.projectId = projectId
+        self.tenantId = tenantId
+        self.priority = priority
+        self.isCompleted = isCompleted
+    }
+
     init(data: [String: Any]) {
         id = data["id"] as? String ?? ""
         type = data["type"] as? String ?? "task"

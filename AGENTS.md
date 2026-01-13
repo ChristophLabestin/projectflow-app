@@ -15,6 +15,9 @@
 - `cd web && npm run lint:theme` checks for invalid theme token usage.
 - `cd web && npm run deploy` builds and deploys hosting (requires Firebase CLI).
 - Cloud Functions: `cd functions && npm run build|serve|deploy|lint`.
+- After completing a task, always run `cd web && npm run build`.
+- After completing a task, always run `xcodebuild -project swift/projectflow.xcodeproj -target projectflow -sdk iphonesimulator build`.
+- Keep reasoning/output minimal while running builds; return to normal detail after builds succeed.
 
 ## Coding Style & Naming Conventions
 - TypeScript + React with 4-space indentation and single quotes; keep imports grouped.
@@ -35,3 +38,4 @@
 ## Documentation & Configuration Notes
 - Start with `APP_DOCS_INDEX.md` and `AI_AGENT_INSTRUCTIONS.md` for project rules and required docs.
 - Set secrets in `web/.env.local` (for example, `GEMINI_API_KEY`); avoid committing sensitive credentials.
+- Always log new pitfalls, edge cases, or workflow surprises in `GOTCHAS.md`.

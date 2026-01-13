@@ -115,7 +115,7 @@ struct ProjectsView: View {
         ) {
             Button("Delete", role: .destructive) {
                 guard let project = deletingProject else { return }
-                Task {
+                _Concurrency.Task {
                     await deleteProject(project)
                     deletingProject = nil
                 }
@@ -306,7 +306,7 @@ private struct ProjectEditorView: View {
                 }
 
                 PFPrimaryButton(title: isEditing ? "Save Changes" : "Create Project") {
-                    Task {
+                    _Concurrency.Task {
                         await onSave()
                     }
                 }

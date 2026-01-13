@@ -11,7 +11,7 @@ final class NetworkMonitor: ObservableObject {
 
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
+            _Concurrency.Task { @MainActor in
                 self?.isOffline = path.status != .satisfied
             }
         }

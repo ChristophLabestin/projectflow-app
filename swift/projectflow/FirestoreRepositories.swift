@@ -25,7 +25,7 @@ enum FirestoreError: LocalizedError {
 
 private extension DocumentReference {
     func setDataAsync(_ data: [String: Any], merge: Bool = false) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             setData(data, merge: merge) { error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -37,7 +37,7 @@ private extension DocumentReference {
     }
 
     func updateDataAsync(_ data: [String: Any]) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             updateData(data) { error in
                 if let error {
                     continuation.resume(throwing: error)
@@ -49,7 +49,7 @@ private extension DocumentReference {
     }
 
     func deleteAsync() async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             delete { error in
                 if let error {
                     continuation.resume(throwing: error)

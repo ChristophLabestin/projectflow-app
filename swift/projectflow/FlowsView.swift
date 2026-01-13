@@ -21,127 +21,150 @@ struct FlowsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                HStack {
-                    Text("Flows")
-                        .font(.largeTitle)
-                        .foregroundStyle(colors.textMain)
-
-                    Spacer()
-
-                    Button {
-                        beginCreate()
-                    } label: {
-                        Label("New", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(colors.primaryText)
-                            .padding(.horizontal, PFSpacing.md)
-                            .padding(.vertical, PFSpacing.xs)
-                            .background(colors.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                    }
-                    .disabled(selectedProjectId == nil || flowsStore.isLoading)
-                }
-
-                projectPicker
-
-                if flowsStore.isLoading || tenantStore.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                }
-
-                if let error = flowsStore.errorMessage {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(colors.error)
-                }
-
-                if let project = selectedProject, flowsStore.flows.isEmpty && !flowsStore.isLoading {
-                    PFCard {
-                        VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                            Text("No flows in \(project.title) yet.")
-                                .font(.headline)
-                                .foregroundStyle(colors.textMain)
-                            Text("Create a flow to capture strategy and next steps.")
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMuted)
-                        }
-                    }
+        AnyView(
+            ScrollView {
+                content
+            }
+            .background(colors.surfaceBg.ignoresSafeArea())
+            .onAppear {
+                tenantStore.update(for: session.user)
+            }
+            .onChange(of: session.user) { _, user in
+                tenantStore.update(for: user)
+            }
+            .onChange(of: tenantStore.activeTenantId) { _, tenantId in
+                if let tenantId {
+                    projectsStore.start(tenantId: tenantId)
                 } else {
-                    VStack(spacing: PFSpacing.md) {
-                        ForEach(flowsStore.flows) { flow in
-                            flowRow(flow)
-                        }
-                    }
+                    projectsStore.stop()
                 }
             }
-            .padding(PFSpacing.lg)
-        }
-        .background(colors.surfaceBg.ignoresSafeArea())
-        .onAppear {
-            tenantStore.update(for: session.user)
-        }
-        .onChange(of: session.user) { _, user in
-            tenantStore.update(for: user)
-        }
-        .onChange(of: tenantStore.activeTenantId) { _, tenantId in
-            if let tenantId {
-                projectsStore.start(tenantId: tenantId)
-            } else {
-                projectsStore.stop()
+            .onChange(of: projectsStore.projects.map(\.id)) { _, _ in
+                if selectedProjectId == nil {
+                    selectedProjectId = projectsStore.projects.first?.id
+                }
             }
-        }
-        .onChange(of: projectsStore.projects) { _, projects in
-            if selectedProjectId == nil {
-                selectedProjectId = projects.first?.id
+            .onChange(of: selectedProjectId) { _, projectId in
+                guard let tenantId = tenantStore.activeTenantId, let projectId else {
+                    flowsStore.stop()
+                    return
+                }
+                flowsStore.start(tenantId: tenantId, projectId: projectId)
             }
-        }
-        .onChange(of: selectedProjectId) { _, projectId in
-            guard let tenantId = tenantStore.activeTenantId, let projectId else {
+            .onDisappear {
                 flowsStore.stop()
-                return
+                projectsStore.stop()
+                tenantStore.stop()
             }
-            flowsStore.start(tenantId: tenantId, projectId: projectId)
-        }
-        .onDisappear {
-            flowsStore.stop()
-            projectsStore.stop()
-            tenantStore.stop()
-        }
-        .sheet(isPresented: $showingEditor) {
-            FlowEditorView(
-                isEditing: editingFlow != nil,
-                title: $draftTitle,
-                description: $draftDescription,
-                type: $draftType,
-                stage: $draftStage
+            .sheet(isPresented: $showingEditor) {
+                FlowEditorView(
+                    isEditing: editingFlow != nil,
+                    title: $draftTitle,
+                    description: $draftDescription,
+                    type: $draftType,
+                    stage: $draftStage
+                ) {
+                    await saveFlow()
+                } onCancel: {
+                    showingEditor = false
+                }
+            }
+            .confirmationDialog(
+                "Delete Flow?",
+                isPresented: Binding(
+                    get: { deletingFlow != nil },
+                    set: { if !$0 { deletingFlow = nil } }
+                ),
+                titleVisibility: .visible
             ) {
-                await saveFlow()
-            } onCancel: {
-                showingEditor = false
-            }
-        }
-        .confirmationDialog(
-            "Delete Flow?",
-            isPresented: Binding(
-                get: { deletingFlow != nil },
-                set: { if !$0 { deletingFlow = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            Button("Delete", role: .destructive) {
-                guard let flow = deletingFlow else { return }
-                Task {
-                    await deleteFlow(flow)
+                Button("Delete", role: .destructive) {
+                    guard let flow = deletingFlow else { return }
+                    _Concurrency.Task {
+                        await deleteFlow(flow)
+                        deletingFlow = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) {
                     deletingFlow = nil
                 }
+            } message: {
+                Text("This will permanently remove the flow.")
             }
-            Button("Cancel", role: .cancel) {
-                deletingFlow = nil
+        )
+    }
+
+    private var content: some View {
+        AnyView(
+            VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                headerSection
+                projectPicker
+                loadingSection
+                errorSection
+                listSection
             }
-        } message: {
-            Text("This will permanently remove the flow.")
+            .padding(PFSpacing.lg)
+        )
+    }
+
+    private var headerSection: some View {
+        HStack {
+            Text("Flows")
+                .font(.largeTitle)
+                .foregroundStyle(colors.textMain)
+
+            Spacer()
+
+            Button {
+                beginCreate()
+            } label: {
+                Label("New", systemImage: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.primaryText)
+                    .padding(.horizontal, PFSpacing.md)
+                    .padding(.vertical, PFSpacing.xs)
+                    .background(colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+            }
+            .disabled(selectedProjectId == nil || flowsStore.isLoading)
+        }
+    }
+
+    @ViewBuilder
+    private var loadingSection: some View {
+        if flowsStore.isLoading || tenantStore.isLoading {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let error = flowsStore.errorMessage {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(colors.error)
+        }
+    }
+
+    @ViewBuilder
+    private var listSection: some View {
+        if let project = selectedProject, flowsStore.flows.isEmpty && !flowsStore.isLoading {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                    Text("No flows in \(project.title) yet.")
+                        .font(.headline)
+                        .foregroundStyle(colors.textMain)
+                    Text("Create a flow to capture strategy and next steps.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                }
+            }
+        } else {
+            VStack(spacing: PFSpacing.md) {
+                ForEach(flowsStore.flows) { flow in
+                    flowRow(flow)
+                }
+            }
         }
     }
 
@@ -346,7 +369,7 @@ private struct FlowEditorView: View {
                 }
 
                 PFPrimaryButton(title: isEditing ? "Save Changes" : "Create Flow") {
-                    Task {
+                    _Concurrency.Task {
                         await onSave()
                     }
                 }

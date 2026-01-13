@@ -107,7 +107,7 @@ final class SessionStore: ObservableObject {
         mfaError = nil
         mfaMessage = nil
 
-        Task { @MainActor [weak self] in
+        _Concurrency.Task { @MainActor [weak self] in
             guard let self else { return }
             do {
                 let token = try await PasskeyService.shared.signIn(email: email)

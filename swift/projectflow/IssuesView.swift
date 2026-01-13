@@ -22,97 +22,41 @@ struct IssuesView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                HStack {
-                    Text("Issues")
-                        .font(.largeTitle)
-                        .foregroundStyle(colors.textMain)
-
-                    Spacer()
-
-                    Button {
-                        beginCreate()
-                    } label: {
-                        Label("New", systemImage: "plus")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(colors.primaryText)
-                            .padding(.horizontal, PFSpacing.md)
-                            .padding(.vertical, PFSpacing.xs)
-                            .background(colors.primary)
-                            .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                    }
-                    .disabled(selectedProjectId == nil || issuesStore.isLoading)
-                }
-
-                projectPicker
-
-                if issuesStore.isLoading || tenantStore.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                }
-
-                if let error = issuesStore.errorMessage {
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(colors.error)
-                }
-
-                if let project = selectedProject, issuesStore.issues.isEmpty && !issuesStore.isLoading {
-                    PFCard {
-                        VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                            Text("No issues in \(project.title) yet.")
-                                .font(.headline)
-                                .foregroundStyle(colors.textMain)
-                            Text("Capture issues so the team can resolve them quickly.")
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMuted)
-                        }
-                    }
-                } else {
-                    VStack(spacing: PFSpacing.md) {
-                        ForEach(issuesStore.issues) { issue in
-                            issueRow(issue)
-                        }
-                    }
-                }
-            }
-            .padding(PFSpacing.lg)
-        }
-        .background(colors.surfaceBg.ignoresSafeArea())
-        .onAppear {
+        let base = AnyView(ScrollView { content })
+        let withBackground = AnyView(base.background(colors.surfaceBg.ignoresSafeArea()))
+        let withAppear = AnyView(withBackground.onAppear {
             tenantStore.update(for: session.user)
             pinnedTasksStore.start()
-        }
-        .onChange(of: session.user) { _, user in
+        })
+        let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
-        }
-        .onChange(of: tenantStore.activeTenantId) { _, tenantId in
+        })
+        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
             if let tenantId {
                 projectsStore.start(tenantId: tenantId)
             } else {
                 projectsStore.stop()
             }
-        }
-        .onChange(of: projectsStore.projects) { _, projects in
+        })
+        let withProjectsChange = AnyView(withTenantChange.onChange(of: projectsStore.projects.map(\.id)) { _, _ in
             if selectedProjectId == nil {
-                selectedProjectId = projects.first?.id
+                selectedProjectId = projectsStore.projects.first?.id
             }
-        }
-        .onChange(of: selectedProjectId) { _, projectId in
+        })
+        let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
             guard let tenantId = tenantStore.activeTenantId, let projectId else {
                 issuesStore.stop()
                 return
             }
             issuesStore.start(tenantId: tenantId, projectId: projectId)
-        }
-        .onDisappear {
+        })
+        let withDisappear = AnyView(withProjectSelection.onDisappear {
             issuesStore.stop()
             projectsStore.stop()
             tenantStore.stop()
             pinnedTasksStore.stop()
-        }
-        .sheet(isPresented: $showingEditor) {
+        })
+        let withSheet = AnyView(withDisappear.sheet(isPresented: $showingEditor) {
             IssueEditorView(
                 isEditing: editingIssue != nil,
                 title: $draftTitle,
@@ -124,18 +68,18 @@ struct IssuesView: View {
             } onCancel: {
                 showingEditor = false
             }
-        }
-        .confirmationDialog(
+        })
+        let withDialog = AnyView(withSheet.confirmationDialog(
             "Delete Issue?",
             isPresented: Binding(
                 get: { deletingIssue != nil },
                 set: { if !$0 { deletingIssue = nil } }
             ),
-            titleVisibility: .visible
+            titleVisibility: SwiftUI.Visibility.visible
         ) {
             Button("Delete", role: .destructive) {
                 guard let issue = deletingIssue else { return }
-                Task {
+                _Concurrency.Task {
                     await deleteIssue(issue)
                     deletingIssue = nil
                 }
@@ -145,6 +89,83 @@ struct IssuesView: View {
             }
         } message: {
             Text("This will permanently remove the issue.")
+        })
+
+        return withDialog
+    }
+
+    private var content: some View {
+        AnyView(
+            VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                headerSection
+                projectPicker
+                loadingSection
+                errorSection
+                listSection
+            }
+            .padding(PFSpacing.lg)
+        )
+    }
+
+    private var headerSection: some View {
+        HStack {
+            Text("Issues")
+                .font(.largeTitle)
+                .foregroundStyle(colors.textMain)
+
+            Spacer()
+
+            Button {
+                beginCreate()
+            } label: {
+                Label("New", systemImage: "plus")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.primaryText)
+                    .padding(.horizontal, PFSpacing.md)
+                    .padding(.vertical, PFSpacing.xs)
+                    .background(colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+            }
+            .disabled(selectedProjectId == nil || issuesStore.isLoading)
+        }
+    }
+
+    @ViewBuilder
+    private var loadingSection: some View {
+        if issuesStore.isLoading || tenantStore.isLoading {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private var errorSection: some View {
+        if let error = issuesStore.errorMessage {
+            Text(error)
+                .font(.footnote)
+                .foregroundStyle(colors.error)
+        }
+    }
+
+    @ViewBuilder
+    private var listSection: some View {
+        if let project = selectedProject, issuesStore.issues.isEmpty && !issuesStore.isLoading {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                    Text("No issues in \(project.title) yet.")
+                        .font(.headline)
+                        .foregroundStyle(colors.textMain)
+                    Text("Capture issues so the team can resolve them quickly.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                }
+            }
+        } else {
+            VStack(spacing: PFSpacing.md) {
+                ForEach(issuesStore.issues) { issue in
+                    issueRow(issue)
+                }
+            }
         }
     }
 
@@ -378,7 +399,7 @@ private struct IssueEditorView: View {
                 }
 
                 PFPrimaryButton(title: isEditing ? "Save Changes" : "Create Issue") {
-                    Task {
+                    _Concurrency.Task {
                         await onSave()
                     }
                 }
