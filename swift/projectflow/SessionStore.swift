@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 import FirebaseAuth
 import FirebaseCore
 
@@ -93,7 +94,7 @@ final class SessionStore: ObservableObject {
 
     private static func mapAuthError(_ error: Error) -> String {
         let nsError = error as NSError
-        guard let code = AuthErrorCode.Code(rawValue: nsError.code) else {
+        guard let code = AuthErrorCode(rawValue: nsError.code) else {
             return nsError.localizedDescription
         }
 

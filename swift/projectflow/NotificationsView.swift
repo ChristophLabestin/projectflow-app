@@ -1,4 +1,5 @@
 import SwiftUI
+import FirebaseAuth
 
 struct NotificationsView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -55,7 +56,7 @@ struct NotificationsView: View {
         .onDisappear {
             store.stop()
         }
-        .onChange(of: session.user?.uid) { _ in
+        .onChange(of: session.user?.uid) { _, _ in
             store.start()
         }
     }
