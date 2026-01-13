@@ -87,6 +87,7 @@ final class ProjectRepository {
             .document()
 
         var payload = project.data
+        payload["tenantId"] = tenantId
         payload["createdAt"] = payload["createdAt"] ?? FieldValue.serverTimestamp()
         payload["updatedAt"] = FieldValue.serverTimestamp()
         try await ref.setDataAsync(payload)
@@ -147,6 +148,7 @@ final class TaskRepository {
 
         var payload = task.data
         payload["projectId"] = payload["projectId"] ?? projectId
+        payload["tenantId"] = tenantId
         payload["createdAt"] = payload["createdAt"] ?? FieldValue.serverTimestamp()
         payload["updatedAt"] = FieldValue.serverTimestamp()
         try await ref.setDataAsync(payload)
@@ -211,6 +213,7 @@ final class FlowRepository {
 
         var payload = flow.data
         payload["projectId"] = payload["projectId"] ?? projectId
+        payload["tenantId"] = tenantId
         payload["createdAt"] = payload["createdAt"] ?? FieldValue.serverTimestamp()
         payload["updatedAt"] = FieldValue.serverTimestamp()
         try await ref.setDataAsync(payload)
@@ -275,6 +278,7 @@ final class IssueRepository {
 
         var payload = issue.data
         payload["projectId"] = payload["projectId"] ?? projectId
+        payload["tenantId"] = tenantId
         payload["createdAt"] = payload["createdAt"] ?? FieldValue.serverTimestamp()
         payload["updatedAt"] = FieldValue.serverTimestamp()
         try await ref.setDataAsync(payload)

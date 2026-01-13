@@ -63,7 +63,7 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [x] Implement dashboard data aggregation and realtime updates.
 - [x] Build Projects list + status display with project CRUD.
 - [ ] Build Project Overview with activity feed and linked entities.
-- [ ] Implement Tasks CRUD (list, detail, edit, status updates).
+- [x] Implement Tasks CRUD (list, detail, edit, status updates).
 - [ ] Implement Flows CRUD (list, detail, edit, status updates).
 - [ ] Implement Issues CRUD (list, detail, edit, status/priority updates).
 - [x] Add notifications screen and FCM push registration.
