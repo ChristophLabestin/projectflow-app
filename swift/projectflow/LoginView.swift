@@ -1,4 +1,9 @@
 import SwiftUI
+#if os(iOS)
+import UIKit
+#elseif os(macOS)
+import AppKit
+#endif
 
 struct LoginView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -282,12 +287,7 @@ private struct BrandPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpacing.lg) {
             HStack(spacing: PFSpacing.sm) {
-                Text("PF")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(colors.primaryText)
-                    .frame(width: 40, height: 40)
-                    .background(colors.primary)
-                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                AppIconView(size: 44)
 
                 Text("ProjectFlow")
                     .font(.title3.weight(.semibold))
@@ -311,6 +311,69 @@ private struct BrandPanel: View {
         }
     }
 }
+
+private struct AppIconView: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let size: CGFloat
+
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        ZStack {
+            if let image = AppIconProvider.iconImage() {
+                #if os(iOS)
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                #elseif os(macOS)
+                Image(nsImage: image)
+                    .resizable()
+                    .scaledToFill()
+                #endif
+            } else {
+                Text("PF")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(colors.primaryText)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(colors.primary)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
+                .stroke(colors.surfaceBorder, lineWidth: 1)
+        )
+    }
+}
+
+private enum AppIconProvider {
+    static func iconImage() -> PlatformImage? {
+        guard
+            let info = Bundle.main.infoDictionary,
+            let icons = info["CFBundleIcons"] as? [String: Any],
+            let primary = icons["CFBundlePrimaryIcon"] as? [String: Any],
+            let iconFiles = primary["CFBundleIconFiles"] as? [String],
+            let iconName = iconFiles.last
+        else {
+            return nil
+        }
+
+        #if os(iOS)
+        return UIImage(named: iconName)
+        #elseif os(macOS)
+        return NSImage(named: iconName)
+        #else
+        return nil
+        #endif
+    }
+}
+
+#if os(iOS)
+private typealias PlatformImage = UIImage
+#elseif os(macOS)
+private typealias PlatformImage = NSImage
+#endif
 
 private struct FeatureRow: View {
     @Environment(\.colorScheme) private var colorScheme
