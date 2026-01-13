@@ -56,7 +56,7 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [ ] Create a shared `Theme` module mirroring `STYLING.md` tokens (light + dark).
 - [ ] Build core SwiftUI components aligned with `COMPONENTS.md`.
 - [ ] Implement navigation shell (tabs/stack) for Dashboard, Projects, Notifications, Settings.
-- [ ] Wire Firebase Auth with configured providers and session persistence.
+- [x] Wire Firebase Auth with configured providers and session persistence.
 - [ ] Implement permission checks based on `PERMISSIONS.md` for all write actions.
 - [ ] Create Firestore models + repositories aligned with `FIRESTORE_STRUCTURE.md`.
 - [ ] Implement dashboard data aggregation and realtime updates.
