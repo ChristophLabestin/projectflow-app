@@ -150,10 +150,15 @@ struct TenantMembership: FirestoreConvertible {
 
 struct Project: FirestoreConvertible {
     let id: String
+    var tenantId: String?
     var title: String
     var description: String
     var status: String
     var ownerId: String
+    var progress: Double
+    var dueDate: String
+    var startDate: String
+    var priority: String
     var modules: [String]
     var visibilityGroupIds: [String]
     var createdAt: Timestamp?
@@ -161,10 +166,15 @@ struct Project: FirestoreConvertible {
 
     init(id: String, data: [String: Any]) {
         self.id = id
+        tenantId = data["tenantId"] as? String
         title = data["title"] as? String ?? "Untitled Project"
         description = data["description"] as? String ?? ""
         status = data["status"] as? String ?? "Active"
         ownerId = data["ownerId"] as? String ?? ""
+        progress = Project.parseProgress(from: data["progress"])
+        dueDate = Project.parseDateString(from: data["dueDate"])
+        startDate = Project.parseDateString(from: data["startDate"])
+        priority = data["priority"] as? String ?? ""
         modules = data["modules"] as? [String] ?? []
         visibilityGroupIds = data["visibilityGroupIds"] as? [String] ?? []
         createdAt = data["createdAt"] as? Timestamp
@@ -177,9 +187,16 @@ struct Project: FirestoreConvertible {
             "description": description,
             "status": status,
             "ownerId": ownerId,
+            "progress": progress,
+            "dueDate": dueDate,
+            "startDate": startDate,
+            "priority": priority,
             "modules": modules,
             "visibilityGroupIds": visibilityGroupIds
         ]
+        if let tenantId {
+            payload["tenantId"] = tenantId
+        }
         if let createdAt {
             payload["createdAt"] = createdAt
         }
@@ -187,6 +204,31 @@ struct Project: FirestoreConvertible {
             payload["updatedAt"] = updatedAt
         }
         return payload
+    }
+
+    private static func parseProgress(from value: Any?) -> Double {
+        if let number = value as? NSNumber {
+            return number.doubleValue
+        }
+        if let value = value as? Double {
+            return value
+        }
+        if let value = value as? Int {
+            return Double(value)
+        }
+        return 0
+    }
+
+    private static func parseDateString(from value: Any?) -> String {
+        if let string = value as? String {
+            return string
+        }
+        if let timestamp = value as? Timestamp {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.string(from: timestamp.dateValue())
+        }
+        return ""
     }
 }
 
@@ -343,6 +385,122 @@ struct Issue: FirestoreConvertible {
             payload["updatedAt"] = updatedAt
         }
         return payload
+    }
+}
+
+struct Milestone: FirestoreConvertible {
+    let id: String
+    var projectId: String
+    var title: String
+    var description: String
+    var dueDate: String
+    var status: String
+    var createdAt: Timestamp?
+    var createdBy: String
+    var tenantId: String?
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        projectId = data["projectId"] as? String ?? ""
+        title = data["title"] as? String ?? "Untitled Milestone"
+        description = data["description"] as? String ?? ""
+        dueDate = Milestone.parseDateString(from: data["dueDate"])
+        status = data["status"] as? String ?? "Pending"
+        createdAt = data["createdAt"] as? Timestamp
+        createdBy = data["createdBy"] as? String ?? ""
+        tenantId = data["tenantId"] as? String
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "projectId": projectId,
+            "title": title,
+            "description": description,
+            "dueDate": dueDate,
+            "status": status,
+            "createdBy": createdBy
+        ]
+        if let tenantId {
+            payload["tenantId"] = tenantId
+        }
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        return payload
+    }
+
+    private static func parseDateString(from value: Any?) -> String {
+        if let string = value as? String {
+            return string
+        }
+        if let timestamp = value as? Timestamp {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.string(from: timestamp.dateValue())
+        }
+        return ""
+    }
+}
+
+struct Sprint: FirestoreConvertible {
+    let id: String
+    var projectId: String
+    var name: String
+    var goal: String
+    var startDate: String
+    var endDate: String
+    var status: String
+    var createdAt: Timestamp?
+    var createdBy: String
+    var updatedAt: Timestamp?
+    var tenantId: String?
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        projectId = data["projectId"] as? String ?? ""
+        name = data["name"] as? String ?? "Sprint"
+        goal = data["goal"] as? String ?? ""
+        startDate = Sprint.parseDateString(from: data["startDate"])
+        endDate = Sprint.parseDateString(from: data["endDate"])
+        status = data["status"] as? String ?? "Planning"
+        createdAt = data["createdAt"] as? Timestamp
+        createdBy = data["createdBy"] as? String ?? ""
+        updatedAt = data["updatedAt"] as? Timestamp
+        tenantId = data["tenantId"] as? String
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "projectId": projectId,
+            "name": name,
+            "goal": goal,
+            "startDate": startDate,
+            "endDate": endDate,
+            "status": status,
+            "createdBy": createdBy
+        ]
+        if let tenantId {
+            payload["tenantId"] = tenantId
+        }
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        if let updatedAt {
+            payload["updatedAt"] = updatedAt
+        }
+        return payload
+    }
+
+    private static func parseDateString(from value: Any?) -> String {
+        if let string = value as? String {
+            return string
+        }
+        if let timestamp = value as? Timestamp {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.string(from: timestamp.dateValue())
+        }
+        return ""
     }
 }
 

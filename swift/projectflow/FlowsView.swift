@@ -19,6 +19,9 @@ struct FlowsView: View {
     private var selectedProject: Project? {
         projectsStore.projects.first { $0.id == selectedProjectId }
     }
+    private var selectedTenantId: String? {
+        selectedProject?.tenantId ?? tenantStore.activeTenantId
+    }
 
     var body: some View {
         let base = AnyView(ScrollView { content })
@@ -42,7 +45,7 @@ struct FlowsView: View {
             }
         })
         let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
-            guard let tenantId = tenantStore.activeTenantId, let projectId else {
+            guard let tenantId = selectedTenantId, let projectId else {
                 flowsStore.stop()
                 return
             }
@@ -252,7 +255,7 @@ struct FlowsView: View {
     }
 
     private func saveFlow() async {
-        guard let tenantId = tenantStore.activeTenantId, let projectId = selectedProjectId else { return }
+        guard let tenantId = selectedTenantId, let projectId = selectedProjectId else { return }
         let permissions = tenantStore.permissionContext(projectOwnerId: selectedProject?.ownerId)
 
         if let flow = editingFlow {
@@ -284,7 +287,7 @@ struct FlowsView: View {
     }
 
     private func deleteFlow(_ flow: Flow) async {
-        guard let tenantId = tenantStore.activeTenantId, let projectId = selectedProjectId else { return }
+        guard let tenantId = selectedTenantId, let projectId = selectedProjectId else { return }
         let permissions = tenantStore.permissionContext(projectOwnerId: selectedProject?.ownerId)
         await flowsStore.deleteFlow(
             tenantId: tenantId,
@@ -334,10 +337,7 @@ private struct FlowEditorView: View {
                         .padding(PFSpacing.sm)
                         .background(colors.surfacePaper)
                         .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                                .stroke(colors.surfaceBorder, lineWidth: 1)
-                        )
+                        .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
                 }
 
                 VStack(alignment: .leading, spacing: PFSpacing.xs) {

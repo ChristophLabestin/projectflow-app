@@ -1,0 +1,4 @@
+module opensslWrapper {
+umbrella "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/grpc-binary/openssl-grpc-Wrapper/include"
+export *
+}

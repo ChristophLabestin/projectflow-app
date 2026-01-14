@@ -14,15 +14,24 @@ final class IssuesStore: ObservableObject {
 
     func start(tenantId: String, projectId: String) {
         isLoading = true
+        errorMessage = nil
         listener?.remove()
-        listener = repository.listenIssues(tenantId: tenantId, projectId: projectId) { [weak self] issues in
-            self?.issues = issues.sorted { left, right in
-                let leftDate = left.createdAt?.dateValue() ?? Date.distantPast
-                let rightDate = right.createdAt?.dateValue() ?? Date.distantPast
-                return leftDate > rightDate
+        listener = repository.listenIssues(
+            tenantId: tenantId,
+            projectId: projectId,
+            onUpdate: { [weak self] issues in
+                self?.issues = issues.sorted { left, right in
+                    let leftDate = left.createdAt?.dateValue() ?? Date.distantPast
+                    let rightDate = right.createdAt?.dateValue() ?? Date.distantPast
+                    return leftDate > rightDate
+                }
+                self?.isLoading = false
+            },
+            onError: { [weak self] error in
+                self?.errorMessage = error.localizedDescription
+                self?.isLoading = false
             }
-            self?.isLoading = false
-        }
+        )
     }
 
     func stop() {

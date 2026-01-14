@@ -84,7 +84,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
             finalPrompt += `\n\n${instruction}`;
         }
         const response = await ai.models.generateContent({
-            model: "gemini-3-pro-preview",
+            model: "gemini-3-flash-preview",
             contents: finalPrompt,
             config: {
                 responseMimeType: "application/json",
@@ -195,7 +195,7 @@ exports.callGemini = functions.region('europe-west3').https.onCall(async (data, 
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
-    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, model = "gemini-3-pro-preview", apiKey: clientApiKey, responseSchema } = data;
+    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, apiKey: clientApiKey, responseSchema, tools } = data;
     if (!prompt) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
     }
@@ -212,8 +212,11 @@ exports.callGemini = functions.region('europe-west3').https.onCall(async (data, 
             config.responseSchema = responseSchema;
             config.responseMimeType = "application/json"; // Schema implies JSON usually
         }
+        if (tools) {
+            config.tools = tools;
+        }
         const generateParams = {
-            model: model,
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: config
         };

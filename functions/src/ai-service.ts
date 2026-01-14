@@ -90,7 +90,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
         }
 
         const response = await ai.models.generateContent({
-            model: "gemini-1.5-pro",
+            model: "gemini-3-flash-preview",
             contents: finalPrompt,
             config: {
                 responseMimeType: "application/json",
@@ -135,7 +135,7 @@ export const generateImage = functions.region('europe-west3').https.onCall(async
         const ai = new GoogleGenAI({ apiKey });
 
         const response = await ai.models.generateContent({
-            model: "imagen-3",
+            model: "gemini-3-pro-image-preview",
             contents: prompt,
         });
 
@@ -190,7 +190,7 @@ export const editImage = functions.region('europe-west3').https.onCall(async (da
         ];
 
         const response = await ai.models.generateContent({
-            model: "imagen-3",
+            model: "gemini-3-pro-image-preview",
             contents: [{
                 role: 'user',
                 parts: parts
@@ -226,7 +226,7 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, model = "gemini-1.5-pro", apiKey: clientApiKey, responseSchema } = data;
+    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, apiKey: clientApiKey, responseSchema, tools } = data;
 
     if (!prompt) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
@@ -248,9 +248,12 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
             config.responseSchema = responseSchema;
             config.responseMimeType = "application/json"; // Schema implies JSON usually
         }
+        if (tools) {
+            config.tools = tools;
+        }
 
         const generateParams: any = {
-            model: model === "gemini-3-pro-preview" ? "gemini-1.5-pro" : model,
+            model: "gemini-3-flash-preview",
             contents: prompt,
             config: config
         };

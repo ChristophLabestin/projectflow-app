@@ -1,0 +1,16 @@
+{
+  "" : {
+    "const-values" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary.swiftconstvalues",
+    "dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary.d",
+    "diagnostics" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary.dia",
+    "emit-module-dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary-emit-module.dia",
+    "pch" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAI-primary.swiftdeps"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseAI/Wrapper/Sources/FirebaseAIWrapper.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAIWrapper.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAIWrapper.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseAI.build/Objects-normal/x86_64/FirebaseAIWrapper.o"
+  }
+}

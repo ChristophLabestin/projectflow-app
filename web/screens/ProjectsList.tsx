@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,12 +10,19 @@ import {
     getUserIdeas,
     getUserIssues,
     subscribeProjectMilestones,
-    getProjectActivity
+    getProjectActivity,
+    getProjectOverviewTemplates,
+    saveProjectOverviewTemplate,
+    deleteProjectOverviewTemplate,
+    updateProjectFields,
+    getTenant,
+    setWorkspaceFocusProject,
+    getActiveTenantId
 } from '../services/dataService';
 import { subscribeProjectSprints } from '../services/sprintService';
 import { collection, collectionGroup, onSnapshot, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint } from '../types';
+import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/common/Badge/Badge';
@@ -23,8 +30,10 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { calculateSpotlightScore, SpotlightReason, calculateProjectHealth, HealthStatus, ProjectHealth } from '../services/healthService';
-import { getTenant, setWorkspaceFocusProject, getActiveTenantId } from '../services/dataService';
 import { Tenant } from '../types';
+import { Modal } from '../components/common/Modal/Modal';
+import { Select, type SelectOption } from '../components/common/Select/Select';
+import { useConfirm, useToast } from '../context/UIContext';
 import './projects-list.scss';
 
 // --- Types ---
@@ -563,6 +572,62 @@ export const getDeterministicColor = (str: string) => {
     return colors[Math.abs(hash) % colors.length];
 };
 
+const TEMPLATE_SOURCE_DEFAULT = 'default';
+const TEMPLATE_SOURCE_BASE = 'base';
+
+const PROJECT_STATUS_ORDER: Project['status'][] = [
+    'Active',
+    'Planning',
+    'Review',
+    'On Hold',
+    'Completed',
+    'Brainstorming'
+];
+
+const PROJECT_STATUS_I18N_KEYS: Record<Project['status'], string> = {
+    'Active': 'project.status.active',
+    'Planning': 'project.status.planning',
+    'Review': 'project.status.review',
+    'On Hold': 'project.status.onHold',
+    'Completed': 'project.status.completed',
+    'Brainstorming': 'project.status.brainstorming'
+};
+
+const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
+    templateId: 'core',
+    cards: [
+        { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
+        { id: 'execution', enabled: true, span: 12, placement: 'primary' },
+        { id: 'updates', enabled: true, span: 12, placement: 'primary' },
+        { id: 'resources', enabled: true, span: 12, placement: 'primary' },
+        { id: 'planning', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'milestones', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'aiInsights', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'team', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'controls', enabled: true, span: 3, placement: 'secondary' }
+    ]
+};
+
+const cloneOverviewLayout = (layout: ProjectOverviewLayout): ProjectOverviewLayout => ({
+    templateId: layout.templateId,
+    cards: layout.cards.map((card) => ({ ...card }))
+});
+
+type TemplateVariantForm = {
+    enabled: boolean;
+    sourceProjectId: string;
+    layout: ProjectOverviewLayout;
+};
+
+type TemplateFormState = {
+    name: string;
+    description: string;
+    autoApply: boolean;
+    baseSourceProjectId: string;
+    baseLayout: ProjectOverviewLayout;
+    variants: Record<Project['status'], TemplateVariantForm>;
+};
+
 export const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
     const { t, dateFormat, dateLocale } = useLanguage();
@@ -574,10 +639,71 @@ export const ProjectsList: React.FC = () => {
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [templateModalOpen, setTemplateModalOpen] = useState(false);
+    const [templates, setTemplates] = useState<ProjectOverviewTemplate[]>([]);
+    const [templatesLoading, setTemplatesLoading] = useState(false);
+    const [templatesLoaded, setTemplatesLoaded] = useState(false);
+    const templatesTenantIdRef = useRef<string | null>(null);
+    const [templateSaving, setTemplateSaving] = useState(false);
+    const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+    const createEmptyTemplateForm = (): TemplateFormState => ({
+        name: '',
+        description: '',
+        autoApply: false,
+        baseSourceProjectId: TEMPLATE_SOURCE_DEFAULT,
+        baseLayout: cloneOverviewLayout(DEFAULT_PROJECT_OVERVIEW_LAYOUT),
+        variants: PROJECT_STATUS_ORDER.reduce((acc, status) => {
+            acc[status] = {
+                enabled: false,
+                sourceProjectId: TEMPLATE_SOURCE_BASE,
+                layout: cloneOverviewLayout(DEFAULT_PROJECT_OVERVIEW_LAYOUT)
+            };
+            return acc;
+        }, {} as Record<Project['status'], TemplateVariantForm>)
+    });
+
+    const [templateForm, setTemplateForm] = useState<TemplateFormState>(createEmptyTemplateForm);
 
     const currentUser = auth.currentUser;
-    const { can, hasPermission } = useWorkspacePermissions();
+    const { can, hasPermission, isOwner } = useWorkspacePermissions();
+    const { showSuccess, showError } = useToast();
+    const confirm = useConfirm();
     const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
+    const canManageTemplates = hasPermission('tenant.settings.edit') || can('canManageWorkspace') || isOwner;
+
+    const projectLayoutOptions: SelectOption[] = useMemo(() => ([
+        { value: TEMPLATE_SOURCE_DEFAULT, label: t('projects.templates.form.base.core') },
+        ...projects.map((project) => ({
+            value: project.id,
+            label: `${project.title} • ${t(PROJECT_STATUS_I18N_KEYS[project.status])}`
+        }))
+    ]), [projects, t]);
+
+    const variantLayoutOptions: SelectOption[] = useMemo(() => ([
+        { value: TEMPLATE_SOURCE_BASE, label: t('projects.templates.form.variants.useBase') },
+        { value: TEMPLATE_SOURCE_DEFAULT, label: t('projects.templates.form.variants.useCore') },
+        ...projects.map((project) => ({
+            value: project.id,
+            label: `${project.title} • ${t(PROJECT_STATUS_I18N_KEYS[project.status])}`
+        }))
+    ]), [projects, t]);
+
+    const getLayoutFromSource = (sourceId: string, baseLayout: ProjectOverviewLayout) => {
+        if (sourceId === TEMPLATE_SOURCE_BASE) {
+            return cloneOverviewLayout(baseLayout);
+        }
+        if (sourceId === TEMPLATE_SOURCE_DEFAULT) {
+            return cloneOverviewLayout(DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+        }
+        const sourceProject = projects.find((project) => project.id === sourceId);
+        return cloneOverviewLayout(sourceProject?.overviewLayout || DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+    };
+
+    const getLayoutCardLabels = (layout: ProjectOverviewLayout) => (
+        layout.cards.filter((card) => card.enabled).map((card) => (
+            t(`projectOverview.layout.cards.${card.id}.title`)
+        ))
+    );
 
     // Fetch Tenant Data for Focus Project
     useEffect(() => {
@@ -592,6 +718,286 @@ export const ProjectsList: React.FC = () => {
         };
         fetchTenant();
     }, []);
+
+    useEffect(() => {
+        if (canManageTemplates) return;
+        setTemplatesLoading(false);
+        setTemplatesLoaded(false);
+        setTemplates([]);
+        templatesTenantIdRef.current = null;
+    }, [canManageTemplates]);
+
+    useEffect(() => {
+        if (!templateModalOpen || !canManageTemplates) return;
+        const tenantId = getActiveTenantId() || null;
+        if (!tenantId) {
+            setTemplatesLoading(false);
+            setTemplatesLoaded(false);
+            setTemplates([]);
+            templatesTenantIdRef.current = null;
+            return;
+        }
+        if (templatesTenantIdRef.current === tenantId && templatesLoaded) return;
+        let mounted = true;
+        const loadTemplates = async () => {
+            setTemplatesLoading(true);
+            setTemplatesLoaded(false);
+            try {
+                const savedTemplates = await getProjectOverviewTemplates(tenantId);
+                if (mounted) {
+                    setTemplates(savedTemplates);
+                    setTemplatesLoaded(true);
+                    templatesTenantIdRef.current = tenantId;
+                }
+            } catch (error) {
+                console.error("Failed to load project templates", error);
+                showError(t('projects.templates.toast.loadFailed'));
+                if (mounted) {
+                    setTemplatesLoaded(true);
+                }
+            } finally {
+                if (mounted) {
+                    setTemplatesLoading(false);
+                }
+            }
+        };
+        loadTemplates();
+        return () => { mounted = false; };
+    }, [templateModalOpen, canManageTemplates, templatesLoaded, showError, t]);
+
+    const resetTemplateForm = () => {
+        setEditingTemplateId(null);
+        setTemplateForm(createEmptyTemplateForm());
+    };
+
+    const buildTemplateForm = (template: ProjectOverviewTemplate): TemplateFormState => {
+        const baseLayout = cloneOverviewLayout(template.baseLayout || DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+        const baseSourceProjectId = template.baseSourceProjectId || TEMPLATE_SOURCE_DEFAULT;
+        const variantsList = template.variants || [];
+        const variants = PROJECT_STATUS_ORDER.reduce((acc, status) => {
+            const variant = variantsList.find((item) => item.status === status);
+            acc[status] = {
+                enabled: Boolean(variant?.enabled),
+                sourceProjectId: variant?.sourceProjectId || TEMPLATE_SOURCE_BASE,
+                layout: cloneOverviewLayout(variant?.layout || baseLayout)
+            };
+            return acc;
+        }, {} as Record<Project['status'], TemplateVariantForm>);
+
+        return {
+            name: template.name,
+            description: template.description || '',
+            autoApply: Boolean(template.autoApply),
+            baseSourceProjectId,
+            baseLayout,
+            variants
+        };
+    };
+
+    const openTemplateEditor = (template?: ProjectOverviewTemplate) => {
+        if (template) {
+            setEditingTemplateId(template.id);
+            setTemplateForm(buildTemplateForm(template));
+        } else {
+            resetTemplateForm();
+        }
+        setTemplateModalOpen(true);
+    };
+
+    const handleBaseSourceChange = (value: string) => {
+        setTemplateForm((prev) => {
+            const nextBaseLayout = getLayoutFromSource(value, prev.baseLayout);
+            const nextVariants = { ...prev.variants };
+            PROJECT_STATUS_ORDER.forEach((status) => {
+                if (nextVariants[status].sourceProjectId === TEMPLATE_SOURCE_BASE) {
+                    nextVariants[status] = {
+                        ...nextVariants[status],
+                        layout: cloneOverviewLayout(nextBaseLayout)
+                    };
+                }
+            });
+            return {
+                ...prev,
+                baseSourceProjectId: value,
+                baseLayout: nextBaseLayout,
+                variants: nextVariants
+            };
+        });
+    };
+
+    const handleVariantToggle = (status: Project['status']) => {
+        setTemplateForm((prev) => ({
+            ...prev,
+            variants: {
+                ...prev.variants,
+                [status]: {
+                    ...prev.variants[status],
+                    enabled: !prev.variants[status].enabled
+                }
+            }
+        }));
+    };
+
+    const handleVariantSourceChange = (status: Project['status'], value: string) => {
+        setTemplateForm((prev) => ({
+            ...prev,
+            variants: {
+                ...prev.variants,
+                [status]: {
+                    ...prev.variants[status],
+                    sourceProjectId: value,
+                    layout: getLayoutFromSource(value, prev.baseLayout)
+                }
+            }
+        }));
+    };
+
+    const handleTemplateSave = async () => {
+        if (!templateForm.name.trim()) {
+            showError(t('projects.templates.toast.nameRequired'));
+            return;
+        }
+        setTemplateSaving(true);
+        try {
+            if (templateForm.autoApply) {
+                const autoApplyTemplates = templates.filter((template) => template.autoApply && template.id !== editingTemplateId);
+                await Promise.all(autoApplyTemplates.map((template) => (
+                    saveProjectOverviewTemplate({ ...template, autoApply: false }, template.tenantId)
+                )));
+                if (autoApplyTemplates.length > 0) {
+                    setTemplates((prev) => prev.map((template) => (
+                        template.id === editingTemplateId ? template : { ...template, autoApply: false }
+                    )));
+                }
+            }
+
+            const payload: Omit<ProjectOverviewTemplate, 'id'> = {
+                name: templateForm.name.trim(),
+                description: templateForm.description.trim(),
+                autoApply: templateForm.autoApply,
+                baseLayout: templateForm.baseLayout,
+                baseSourceProjectId: templateForm.baseSourceProjectId === TEMPLATE_SOURCE_DEFAULT ? undefined : templateForm.baseSourceProjectId,
+                variants: PROJECT_STATUS_ORDER.map((status) => {
+                    const variant = templateForm.variants[status];
+                    return {
+                        status,
+                        enabled: variant.enabled,
+                        layout: variant.layout,
+                        sourceProjectId: variant.sourceProjectId
+                    } as ProjectOverviewTemplateVariant;
+                })
+            };
+
+            const savedId = await saveProjectOverviewTemplate(
+                {
+                    ...(editingTemplateId ? { id: editingTemplateId } : {}),
+                    ...payload
+                },
+                getActiveTenantId()
+            );
+
+            setTemplates((prev) => {
+                const next = prev.filter((template) => template.id !== savedId);
+                return [
+                    {
+                        id: savedId,
+                        ...payload,
+                        tenantId: getActiveTenantId()
+                    },
+                    ...next
+                ];
+            });
+
+            setEditingTemplateId(savedId);
+            showSuccess(t('projects.templates.toast.saved'));
+        } catch (error) {
+            console.error("Failed to save project template", error);
+            showError(t('projects.templates.toast.saveFailed'));
+        } finally {
+            setTemplateSaving(false);
+        }
+    };
+
+    const handleTemplateDelete = async (template: ProjectOverviewTemplate) => {
+        if (!await confirm(
+            t('projects.templates.confirm.delete.title'),
+            t('projects.templates.confirm.delete.body').replace('{name}', template.name)
+        )) {
+            return;
+        }
+        try {
+            await deleteProjectOverviewTemplate(template.id, template.tenantId);
+            setTemplates((prev) => prev.filter((item) => item.id !== template.id));
+            if (editingTemplateId === template.id) {
+                resetTemplateForm();
+            }
+            showSuccess(t('projects.templates.toast.deleted'));
+        } catch (error) {
+            console.error("Failed to delete project template", error);
+            showError(t('projects.templates.toast.deleteFailed'));
+        }
+    };
+
+    const autoApplyTemplate = useMemo(() => (
+        templates.find((template) => template.autoApply) || null
+    ), [templates]);
+
+    const isLayoutEqual = (a?: ProjectOverviewLayout, b?: ProjectOverviewLayout) => {
+        if (!a || !b) return false;
+        if (a.templateId !== b.templateId) return false;
+        if (a.cards.length !== b.cards.length) return false;
+        for (let i = 0; i < a.cards.length; i += 1) {
+            const cardA = a.cards[i];
+            const cardB = b.cards[i];
+            if (cardA.id !== cardB.id) return false;
+            if (cardA.enabled !== cardB.enabled) return false;
+            if (cardA.span !== cardB.span) return false;
+        }
+        return true;
+    };
+
+    useEffect(() => {
+        if (!autoApplyTemplate || !canManageTemplates) return;
+        if (projects.length === 0) return;
+
+        const templateId = autoApplyTemplate.id;
+        const updates: Project[] = [];
+
+        projects.forEach((project) => {
+            const existingTemplateId = project.overviewLayout?.templateId;
+            if (existingTemplateId && existingTemplateId !== 'core' && existingTemplateId !== templateId) {
+                return;
+            }
+            const variants = autoApplyTemplate.variants || [];
+            const variant = variants.find((item) => item.status === project.status && item.enabled);
+            const layoutSource = variant?.layout || autoApplyTemplate.baseLayout;
+            const desiredLayout: ProjectOverviewLayout = {
+                ...cloneOverviewLayout(layoutSource),
+                templateId
+            };
+            if (!isLayoutEqual(project.overviewLayout, desiredLayout)) {
+                updates.push({ ...project, overviewLayout: desiredLayout });
+            }
+        });
+
+        if (updates.length === 0) return;
+
+        const applyUpdates = async () => {
+            try {
+                await Promise.all(updates.map((project) => (
+                    updateProjectFields(project.id, { overviewLayout: project.overviewLayout }, undefined, project.tenantId)
+                )));
+                setProjects((prev) => prev.map((project) => {
+                    const updated = updates.find((item) => item.id === project.id);
+                    return updated ? { ...project, overviewLayout: updated.overviewLayout } : project;
+                }));
+            } catch (error) {
+                console.error("Failed to auto-apply project templates", error);
+            }
+        };
+
+        applyUpdates();
+    }, [autoApplyTemplate, canManageTemplates, projects]);
 
     const handleSetFocus = async (projectId: string) => {
         const tid = getActiveTenantId();
@@ -880,11 +1286,22 @@ export const ProjectsList: React.FC = () => {
                         onChange={(e) => setSearch(e.target.value)}
                     />
                 </div>
-                {can('canCreateProjects') && (
-                    <Link to="/create">
-                        <Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button>
-                    </Link>
-                )}
+                <div className="projects-toolbar__actions">
+                    {canManageTemplates && (
+                        <Button
+                            variant="ghost"
+                            icon={<span className="material-symbols-outlined">dashboard_customize</span>}
+                            onClick={() => openTemplateEditor()}
+                        >
+                            {t('projects.templates.button')}
+                        </Button>
+                    )}
+                    {can('canCreateProjects') && (
+                        <Link to="/create">
+                            <Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button>
+                        </Link>
+                    )}
+                </div>
             </div>
 
             <div className="rich-content">
@@ -976,6 +1393,238 @@ export const ProjectsList: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            <Modal
+                isOpen={templateModalOpen}
+                onClose={() => setTemplateModalOpen(false)}
+                title={t('projects.templates.title')}
+                size="xl"
+            >
+                <div className="template-configurator">
+                    <div className="template-configurator__layout">
+                        <aside className="template-configurator__list">
+                            <div className="template-configurator__list-header">
+                                <div>
+                                    <span className="template-configurator__list-title">{t('projects.templates.list.title')}</span>
+                                    <span className="template-configurator__list-subtitle">{t('projects.templates.list.subtitle')}</span>
+                                </div>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                    onClick={resetTemplateForm}
+                                >
+                                    {t('projects.templates.create')}
+                                </Button>
+                            </div>
+
+                            {(!templatesLoaded && templatesLoading) ? (
+                                <div className="template-configurator__skeleton">
+                                    <div className="template-skeleton-card" />
+                                    <div className="template-skeleton-card" />
+                                    <div className="template-skeleton-card" />
+                                </div>
+                            ) : templates.length === 0 ? (
+                                <div className="template-configurator__empty">
+                                    <p>{t('projects.templates.empty')}</p>
+                                    <span>{t('projects.templates.emptyHint')}</span>
+                                </div>
+                            ) : (
+                                <div className="template-configurator__list-body">
+                                    {templates.map((template) => {
+                                        const baseLabels = getLayoutCardLabels(template.baseLayout || DEFAULT_PROJECT_OVERVIEW_LAYOUT);
+                                        return (
+                                            <div
+                                                key={template.id}
+                                                className={`template-card ${template.id === editingTemplateId ? 'is-active' : ''}`.trim()}
+                                                onClick={() => openTemplateEditor(template)}
+                                                role="button"
+                                                tabIndex={0}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter' || event.key === ' ') {
+                                                        event.preventDefault();
+                                                        openTemplateEditor(template);
+                                                    }
+                                                }}
+                                            >
+                                                <div className="template-card__header">
+                                                    <div>
+                                                        <span className="template-card__title">{template.name}</span>
+                                                        {template.description && (
+                                                            <span className="template-card__description">{template.description}</span>
+                                                        )}
+                                                    </div>
+                                                    {template.autoApply && (
+                                                        <span className="template-badge">{t('projects.templates.default.badge')}</span>
+                                                    )}
+                                                </div>
+                                                <div className="template-card__layout">
+                                                    {baseLabels.slice(0, 4).map((label) => (
+                                                        <span key={`${template.id}-${label}`} className="template-chip">{label}</span>
+                                                    ))}
+                                                    {baseLabels.length > 4 && (
+                                                        <span className="template-chip template-chip--muted">
+                                                            +{baseLabels.length - 4}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="template-card__actions">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        icon={<span className="material-symbols-outlined">edit</span>}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            openTemplateEditor(template);
+                                                        }}
+                                                    >
+                                                        {t('projects.templates.edit')}
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        icon={<span className="material-symbols-outlined">delete</span>}
+                                                        onClick={(event) => {
+                                                            event.stopPropagation();
+                                                            void handleTemplateDelete(template);
+                                                        }}
+                                                    >
+                                                        {t('projects.templates.delete')}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </aside>
+
+                        <section className="template-configurator__editor">
+                            <div className="template-editor__header">
+                                <div>
+                                    <span className="template-editor__title">
+                                        {editingTemplateId ? t('projects.templates.form.title.edit') : t('projects.templates.form.title.new')}
+                                    </span>
+                                    <span className="template-editor__subtitle">{t('projects.templates.form.subtitle')}</span>
+                                </div>
+                                {templateForm.autoApply && (
+                                    <span className="template-badge template-badge--accent">
+                                        {t('projects.templates.default.badge')}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="template-editor__form">
+                                <div className="template-field">
+                                    <label>{t('projects.templates.form.name.label')}</label>
+                                    <input
+                                        type="text"
+                                        value={templateForm.name}
+                                        placeholder={t('projects.templates.form.name.placeholder')}
+                                        onChange={(event) => setTemplateForm((prev) => ({ ...prev, name: event.target.value }))}
+                                    />
+                                </div>
+                                <div className="template-field">
+                                    <label>{t('projects.templates.form.description.label')}</label>
+                                    <textarea
+                                        rows={3}
+                                        value={templateForm.description}
+                                        placeholder={t('projects.templates.form.description.placeholder')}
+                                        onChange={(event) => setTemplateForm((prev) => ({ ...prev, description: event.target.value }))}
+                                    />
+                                </div>
+                                <div className="template-field template-field--toggle">
+                                    <div>
+                                        <label>{t('projects.templates.form.autoApply.label')}</label>
+                                        <span>{t('projects.templates.form.autoApply.help')}</span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className={`template-toggle ${templateForm.autoApply ? 'is-on' : ''}`.trim()}
+                                        onClick={() => setTemplateForm((prev) => ({ ...prev, autoApply: !prev.autoApply }))}
+                                        aria-pressed={templateForm.autoApply}
+                                    >
+                                        <span className="template-toggle__thumb" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="template-editor__section">
+                                <div className="template-section__header">
+                                    <div>
+                                        <h3>{t('projects.templates.form.base.title')}</h3>
+                                        <p>{t('projects.templates.form.base.help')}</p>
+                                    </div>
+                                </div>
+                                <Select
+                                    value={templateForm.baseSourceProjectId}
+                                    options={projectLayoutOptions}
+                                    onChange={(value) => handleBaseSourceChange(String(value))}
+                                />
+                                <div className="template-layout-preview">
+                                    {getLayoutCardLabels(templateForm.baseLayout).map((label) => (
+                                        <span key={`base-${label}`} className="template-chip">{label}</span>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="template-editor__section">
+                                <div className="template-section__header">
+                                    <div>
+                                        <h3>{t('projects.templates.form.variants.title')}</h3>
+                                        <p>{t('projects.templates.form.variants.help')}</p>
+                                    </div>
+                                </div>
+                                <div className="template-variants">
+                                    {PROJECT_STATUS_ORDER.map((status) => {
+                                        const variant = templateForm.variants[status];
+                                        return (
+                                            <div key={status} className={`template-variant ${variant.enabled ? 'is-enabled' : ''}`.trim()}>
+                                                <div className="template-variant__info">
+                                                    <span className="template-variant__status">{t(PROJECT_STATUS_I18N_KEYS[status])}</span>
+                                                    <span className="template-variant__hint">{t('projects.templates.form.variants.statusHint')}</span>
+                                                </div>
+                                                <div className="template-variant__controls">
+                                                    <button
+                                                        type="button"
+                                                        className={`template-toggle ${variant.enabled ? 'is-on' : ''}`.trim()}
+                                                        onClick={() => handleVariantToggle(status)}
+                                                        aria-pressed={variant.enabled}
+                                                    >
+                                                        <span className="template-toggle__thumb" />
+                                                    </button>
+                                                    <Select
+                                                        value={variant.sourceProjectId}
+                                                        options={variantLayoutOptions}
+                                                        onChange={(value) => handleVariantSourceChange(status, String(value))}
+                                                        disabled={!variant.enabled}
+                                                    />
+                                                </div>
+                                                {variant.enabled && (
+                                                    <div className="template-layout-preview template-layout-preview--compact">
+                                                        {getLayoutCardLabels(variant.layout).map((label) => (
+                                                            <span key={`${status}-${label}`} className="template-chip">{label}</span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="template-editor__actions">
+                                <Button variant="ghost" onClick={() => setTemplateModalOpen(false)}>
+                                    {t('projects.templates.form.actions.cancel')}
+                                </Button>
+                                <Button variant="primary" isLoading={templateSaving} onClick={handleTemplateSave}>
+                                    {templateSaving ? t('projects.templates.form.actions.saving') : t('projects.templates.form.actions.save')}
+                                </Button>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </Modal>
 
             <OnboardingOverlay
                 isOpen={onboardingActive}

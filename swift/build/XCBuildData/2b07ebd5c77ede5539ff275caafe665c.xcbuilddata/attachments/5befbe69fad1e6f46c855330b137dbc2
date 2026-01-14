@@ -1,0 +1,4 @@
+module GoogleUtilities_Environment {
+umbrella "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/GoogleUtilities/GoogleUtilities/Environment/Public"
+export *
+}

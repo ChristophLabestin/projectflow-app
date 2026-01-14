@@ -71,3 +71,14 @@ Build a slimmed-down iOS variant of the web app (in `swift/`) that preserves the
 - [x] Add offline/error handling and loading/empty states.
 - [x] Validate UI parity with web app design language in light/dark mode.
 - [x] Document iOS module coverage and MVP exclusions in `SITEMAP.md`.
+
+## Remaining Implementation Tasks (Gaps to Close)
+- [ ] Add OAuth provider sign-in (Apple/Google or other configured providers) to match web auth options.
+- [ ] Implement TOTP MFA flow (authenticator app codes) alongside existing phone MFA.
+- [ ] Add project archive flow (soft archive) in UI + repository updates; avoid hard delete where archive is expected.
+- [ ] Surface task assignments + due dates in task editor/list and persist to Firestore.
+- [ ] Surface issue assignees + due dates in issue editor/list and persist to Firestore.
+- [ ] Write project activity items on CRUD operations so Project Overview activity feed is populated.
+- [ ] Add notification deep links (open project/task/issue) and optional local creation hooks for key events.
+- [ ] Expand Settings (profile summary, security options, workspace context).
+- [ ] Add workspace selector to set `activeTenantId` when a user belongs to multiple tenants.

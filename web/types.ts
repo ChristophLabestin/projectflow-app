@@ -143,6 +143,52 @@ export interface ProjectInviteLink {
     originIdeaId?: string;
 }
 
+export type ProjectOverviewCardId =
+    | 'snapshot'
+    | 'execution'
+    | 'updates'
+    | 'resources'
+    | 'planning'
+    | 'milestones'
+    | 'aiInsights'
+    | 'team'
+    | 'controls';
+
+export type ProjectOverviewCardPlacement = 'primary' | 'secondary';
+
+export interface ProjectOverviewCardConfig {
+    id: ProjectOverviewCardId;
+    enabled: boolean;
+    span: number;
+    placement?: ProjectOverviewCardPlacement;
+}
+
+export interface ProjectOverviewLayout {
+    templateId: string;
+    cards: ProjectOverviewCardConfig[];
+}
+
+export interface ProjectOverviewTemplateVariant {
+    status: Project['status'];
+    enabled: boolean;
+    layout: ProjectOverviewLayout;
+    sourceProjectId?: string;
+}
+
+export interface ProjectOverviewTemplate {
+    id: string;
+    name: string;
+    description?: string;
+    baseLayout: ProjectOverviewLayout;
+    baseSourceProjectId?: string;
+    variants: ProjectOverviewTemplateVariant[];
+    autoApply: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+    createdBy?: string;
+    tenantId?: string;
+}
+
 export interface Project {
     id: string;
     title: string;
@@ -174,6 +220,7 @@ export interface Project {
     visibilityGroupIds?: string[]; // IDs of groups that can view this project
     visibilityGroupId?: string; // @deprecated Use visibilityGroupIds instead
     originIdeaId?: string;
+    overviewLayout?: ProjectOverviewLayout;
 }
 
 /**

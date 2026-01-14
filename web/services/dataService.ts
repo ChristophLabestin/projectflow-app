@@ -28,7 +28,7 @@ import { httpsCallable } from "firebase/functions";
 import { updateProfile, linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
+import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -52,6 +52,7 @@ const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
 const GEMINI_REPORTS = "geminiReports";
+const PROJECT_TEMPLATES = "project_templates";
 export const SOCIAL_CAMPAIGNS = "social_campaigns";
 export const SOCIAL_POSTS = "social_posts";
 export const SOCIAL_ASSETS = "social_assets";
@@ -433,6 +434,52 @@ export const setWorkspaceFocusProject = async (tenantId: string, projectId: stri
     await updateDoc(tenantDocRef(tenantId), {
         focusProjectId: projectId || null
     });
+};
+
+export const getProjectOverviewTemplates = async (tenantId?: string): Promise<ProjectOverviewTemplate[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const templatesRef = collection(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES);
+    const templatesQuery = query(templatesRef, orderBy('updatedAt', 'desc'));
+    const snapshot = await getDocs(templatesQuery);
+    return snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...docSnap.data()
+    })) as ProjectOverviewTemplate[];
+};
+
+export const saveProjectOverviewTemplate = async (
+    template: Omit<ProjectOverviewTemplate, 'id'> & { id?: string },
+    tenantId?: string
+): Promise<string> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const templatesRef = collection(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES);
+    const now = serverTimestamp();
+    const userId = auth.currentUser?.uid || null;
+    const payload = {
+        name: template.name,
+        description: template.description || '',
+        baseLayout: template.baseLayout,
+        baseSourceProjectId: template.baseSourceProjectId || null,
+        variants: template.variants || [],
+        autoApply: Boolean(template.autoApply),
+        tenantId: resolvedTenant,
+        updatedAt: now,
+        ...(template.id ? {} : { createdAt: now, createdBy: userId })
+    };
+
+    if (template.id) {
+        const docRef = doc(templatesRef, template.id);
+        await setDoc(docRef, payload, { merge: true });
+        return template.id;
+    }
+
+    const docRef = await addDoc(templatesRef, payload);
+    return docRef.id;
+};
+
+export const deleteProjectOverviewTemplate = async (templateId: string, tenantId?: string): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await deleteDoc(doc(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES, templateId));
 };
 
 const getProjectContextFromRef = (ref: { parent?: any }) => {

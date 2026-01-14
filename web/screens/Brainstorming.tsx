@@ -1,279 +1,672 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { generateBrainstormIdeas, generateProjectBlueprint, analyzeProjectRisks } from '../services/geminiService';
-import { saveIdea, createProject, addTask, getAIUsage } from '../services/dataService';
-import { Idea, ProjectBlueprint, ProjectRisk, StudioTool, AIUsage } from '../types';
-import { auth } from '../services/firebase';
-import { AIStudioHero } from '../components/studio/AIStudioHero';
-import { StudioToolCard } from '../components/studio/StudioToolCard';
-import { BlueprintResult } from '../components/studio/BlueprintResult';
-import { RiskResult } from '../components/studio/RiskResult';
-import { useToast } from '../context/UIContext';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { chatWithCora } from '../services/geminiService';
+import { getActiveTenantId, getAllWorkspaceProjects, getTenant } from '../services/dataService';
+import { StudioTool } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/UIContext';
 import { Button } from '../components/common/Button/Button';
-import { Card, CardBody, CardFooter, CardHeader } from '../components/common/Card/Card';
+import { Select } from '../components/common/Select/Select';
 import { TextArea } from '../components/common/Input/TextArea';
-import { Badge } from '../components/common/Badge/Badge';
 import './brainstorming.scss';
 
+type StudioMessage = {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    mode?: StudioTool | null;
+};
 
-const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; placeholderKey: string; icon: string }[] = [
+type ChatSession = {
+    id: string;
+    title: string;
+    messages: StudioMessage[];
+    createdAt: number;
+    updatedAt: number;
+};
+
+type Tenant = {
+    id: string;
+    name?: string;
+    description?: string;
+};
+
+type TenantContext = {
+    name?: string;
+    description?: string;
+    projects?: string[];
+    projectCount?: number;
+};
+
+type ModelOption = {
+    label: string;
+    value: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+};
+
+const renderMarkdownContent = (text: string) => {
+    if (!text) return null;
+
+    const cleanedText = text.replace(/\n{3,}/g, '\n\n').trim();
+    const lines = cleanedText.split('\n');
+    const elements: React.ReactNode[] = [];
+    let listItems: React.ReactNode[] = [];
+    let listType: 'ul' | 'ol' | null = null;
+    let inCodeBlock = false;
+    let codeLines: string[] = [];
+
+    const flushList = (keySeed: string) => {
+        if (listItems.length === 0 || !listType) return;
+        const list = listType === 'ul' ? (
+            <ul key={`list-${keySeed}`} className="ai-studio__markdown-list">
+                {listItems}
+            </ul>
+        ) : (
+            <ol key={`list-${keySeed}`} className="ai-studio__markdown-list">
+                {listItems}
+            </ol>
+        );
+        elements.push(list);
+        listItems = [];
+        listType = null;
+    };
+
+    const parseInline = (line: string) => {
+        const parts = line.split(/(\*\*.*?\*\*|`[^`]+`|https?:\/\/\S+)/g);
+        return parts.map((part, index) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <strong key={`bold-${index}`}>{part.slice(2, -2)}</strong>;
+            }
+            if (part.startsWith('`') && part.endsWith('`')) {
+                return <code key={`code-${index}`}>{part.slice(1, -1)}</code>;
+            }
+            if (/^https?:\/\//.test(part)) {
+                return (
+                    <a key={`link-${index}`} href={part} target="_blank" rel="noreferrer">
+                        {part}
+                    </a>
+                );
+            }
+            return part;
+        });
+    };
+
+    lines.forEach((line, index) => {
+        const trimmedLine = line.trim();
+
+        if (trimmedLine.startsWith('```')) {
+            if (!inCodeBlock) {
+                flushList(`code-open-${index}`);
+                inCodeBlock = true;
+                codeLines = [];
+            } else {
+                elements.push(
+                    <pre key={`code-${index}`} className="ai-studio__markdown-code">
+                        <code>{codeLines.join('\n')}</code>
+                    </pre>
+                );
+                inCodeBlock = false;
+                codeLines = [];
+            }
+            return;
+        }
+
+        if (inCodeBlock) {
+            codeLines.push(line);
+            return;
+        }
+
+        if (!trimmedLine) {
+            flushList(`space-${index}`);
+            elements.push(<div key={`space-${index}`} className="ai-studio__markdown-space" />);
+            return;
+        }
+
+        if (trimmedLine.startsWith('# ')) {
+            flushList(`h1-${index}`);
+            elements.push(
+                <h3 key={`h1-${index}`} className="ai-studio__markdown-heading">
+                    {parseInline(trimmedLine.replace('# ', ''))}
+                </h3>
+            );
+            return;
+        }
+
+        if (trimmedLine.startsWith('## ') || trimmedLine.startsWith('### ')) {
+            flushList(`h2-${index}`);
+            elements.push(
+                <h4 key={`h2-${index}`} className="ai-studio__markdown-subheading">
+                    {parseInline(trimmedLine.replace(/^##\s|^###\s/, ''))}
+                </h4>
+            );
+            return;
+        }
+
+        if (/^\d+\.\s/.test(trimmedLine)) {
+            const content = trimmedLine.replace(/^\d+\.\s/, '');
+            if (listType !== 'ol') {
+                flushList(`ol-${index}`);
+                listType = 'ol';
+            }
+            listItems.push(
+                <li key={`ol-item-${index}`} className="ai-studio__markdown-item">
+                    {parseInline(content)}
+                </li>
+            );
+            return;
+        }
+
+        if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+            const content = trimmedLine.replace(/^[-*]\s/, '');
+            if (listType !== 'ul') {
+                flushList(`ul-${index}`);
+                listType = 'ul';
+            }
+            listItems.push(
+                <li key={`ul-item-${index}`} className="ai-studio__markdown-item">
+                    {parseInline(content)}
+                </li>
+            );
+            return;
+        }
+
+        flushList(`p-${index}`);
+        elements.push(
+            <p key={`p-${index}`} className="ai-studio__markdown-paragraph">
+                {parseInline(trimmedLine)}
+            </p>
+        );
+    });
+
+    if (inCodeBlock && codeLines.length > 0) {
+        elements.push(
+            <pre key="code-end" className="ai-studio__markdown-code">
+                <code>{codeLines.join('\n')}</code>
+            </pre>
+        );
+    }
+
+    flushList('end');
+
+    return elements;
+};
+
+const MODE_OPTIONS: { id: StudioTool; icon: string; labelKey: string; descriptionKey: string }[] = [
     {
         id: 'Architect',
-        titleKey: 'aiStudio.tools.architect.title',
-        descriptionKey: 'aiStudio.tools.architect.description',
         icon: 'architecture',
-        placeholderKey: 'aiStudio.tools.architect.placeholder'
+        labelKey: 'aiStudio.tools.architect.label',
+        descriptionKey: 'aiStudio.tools.architect.description'
     },
     {
         id: 'Brainstormer',
-        titleKey: 'aiStudio.tools.brainstormer.title',
-        descriptionKey: 'aiStudio.tools.brainstormer.description',
         icon: 'lightbulb',
-        placeholderKey: 'aiStudio.tools.brainstormer.placeholder'
+        labelKey: 'aiStudio.tools.brainstormer.label',
+        descriptionKey: 'aiStudio.tools.brainstormer.description'
     },
     {
         id: 'RiskScout',
-        titleKey: 'aiStudio.tools.riskscout.title',
-        descriptionKey: 'aiStudio.tools.riskscout.description',
         icon: 'shield',
-        placeholderKey: 'aiStudio.tools.riskscout.placeholder'
+        labelKey: 'aiStudio.tools.riskscout.label',
+        descriptionKey: 'aiStudio.tools.riskscout.description'
     }
 ];
 
 export const Brainstorming = () => {
-    const { showToast } = useToast();
     const { t } = useLanguage();
-    const [activeTool, setActiveTool] = useState<StudioTool>('Architect');
-    const [prompt, setPrompt] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [isConverting, setIsConverting] = useState(false);
+    const { showToast } = useToast();
+    const [sessions, setSessions] = useState<ChatSession[]>([]);
+    const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [draft, setDraft] = useState('');
+    const [activeMode, setActiveMode] = useState<StudioTool | null>(null);
+    const [useSearch, setUseSearch] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [tenantContext, setTenantContext] = useState<TenantContext | null>(null);
+    const [selectedModel, setSelectedModel] = useState<ModelOption['value']>('gemini-3-flash-preview');
+    const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
-    // Results
-    const [blueprint, setBlueprint] = useState<ProjectBlueprint | null>(null);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
-    const [risks, setRisks] = useState<ProjectRisk[]>([]);
-    const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
-
-    const toolLabels = useMemo(() => ({
-        Architect: t('aiStudio.tools.architect.label'),
-        Brainstormer: t('aiStudio.tools.brainstormer.label'),
-        RiskScout: t('aiStudio.tools.riskscout.label'),
-    }), [t]);
-
-    const tools = useMemo(() => TOOL_CONFIGS.map(tool => ({
-        ...tool,
-        title: t(tool.titleKey),
-        description: t(tool.descriptionKey),
-        placeholder: t(tool.placeholderKey),
+    const modeOptions = useMemo(() => MODE_OPTIONS.map((option) => ({
+        ...option,
+        label: t(option.labelKey),
+        description: t(option.descriptionKey)
     })), [t]);
 
-    const activeToolLabel = toolLabels[activeTool] || activeTool;
-    const activeToolKey = activeTool.toLowerCase();
+    const modeLabels = useMemo(() => modeOptions.reduce((acc, option) => {
+        acc[option.id] = option.label;
+        return acc;
+    }, {} as Record<StudioTool, string>), [modeOptions]);
 
-    const fetchUsage = async () => {
-        const user = auth.currentUser;
-        if (user) {
-            const usage = await getAIUsage(user.uid);
-            setAiUsage(usage);
+    const modelOptions = useMemo<ModelOption[]>(() => ([
+        {
+            label: t('aiStudio.chat.model.flash'),
+            value: 'gemini-3-flash-preview'
+        },
+        {
+            label: t('aiStudio.chat.model.pro'),
+            value: 'gemini-3-pro-preview'
         }
-    };
+    ]), [t]);
 
-    useEffect(() => {
-        fetchUsage();
+    const activeModelLabel = modelOptions.find(option => option.value === selectedModel)?.label
+        || t('aiStudio.chat.model.flash');
+
+    const activeSession = useMemo(
+        () => sessions.find((session) => session.id === activeSessionId) || null,
+        [sessions, activeSessionId]
+    );
+
+    const messages = activeSession?.messages ?? [];
+
+    const tenantLabel = useMemo(() => {
+        if (tenantContext?.name) {
+            return t('aiStudio.chat.contextLabel').replace('{name}', tenantContext.name);
+        }
+        return '';
+    }, [tenantContext?.name, t]);
+
+    const emptyHistory = t('aiStudio.chat.noHistory');
+
+    const storageKey = useMemo(() => {
+        const tenantId = getActiveTenantId();
+        return `pf-ai-studio-chats-${tenantId || 'default'}`;
     }, []);
 
-    const handleGenerate = async () => {
-        if (!prompt.trim()) return;
-        setIsGenerating(true);
+    const getSessionTitle = (text: string) => {
+        const normalized = text.replace(/\s+/g, ' ').trim();
+        if (!normalized) return t('aiStudio.chat.newSessionTitle');
+        return normalized.length > 42 ? `${normalized.slice(0, 42)}...` : normalized;
+    };
 
-        // Clear previous results of the SAME type when generating new ones
-        if (activeTool === 'Architect') setBlueprint(null);
-        if (activeTool === 'Brainstormer') setIdeas([]);
-        if (activeTool === 'RiskScout') setRisks([]);
+    const createSession = (seedTitle?: string, initialMessages: StudioMessage[] = []) => {
+        const now = Date.now();
+        const session: ChatSession = {
+            id: `chat-${now}`,
+            title: seedTitle ? getSessionTitle(seedTitle) : t('aiStudio.chat.newSessionTitle'),
+            messages: initialMessages,
+            createdAt: now,
+            updatedAt: now
+        };
+        setSessions((prev) => [session, ...prev]);
+        setActiveSessionId(session.id);
+        return session.id;
+    };
+
+    const updateSession = (sessionId: string, updater: (session: ChatSession) => ChatSession) => {
+        setSessions((prev) => prev.map((session) => (session.id === sessionId ? updater(session) : session)));
+    };
+
+    // ... useEffects ...
+
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    const handleStop = () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+        }
+        setIsSending(false);
+    };
+
+    const handleSend = async () => {
+        const trimmed = draft.trim();
+        if (!trimmed || isSending) return;
+
+        const userMessage: StudioMessage = {
+            id: `user-${Date.now()}`,
+            role: 'user',
+            content: trimmed,
+            mode: activeMode
+        };
+
+        setDraft('');
+        setIsSending(true);
+
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        let currentSessionId = activeSessionId;
+        let nextMessages: StudioMessage[] = [];
+
+        if (!currentSessionId) {
+            // Use unified helper to create session with message
+            currentSessionId = createSession(trimmed, [userMessage]);
+            nextMessages = [userMessage];
+        } else {
+            // Update existing session
+            nextMessages = [...messages, userMessage];
+            updateSession(currentSessionId, (session) => ({
+                ...session,
+                title: session.title === t('aiStudio.chat.newSessionTitle') ? getSessionTitle(trimmed) : session.title,
+                messages: nextMessages,
+                updatedAt: Date.now()
+            }));
+        }
 
         try {
-            if (activeTool === 'Architect') {
-                const result = await generateProjectBlueprint(prompt);
-                setBlueprint(result);
-            } else if (activeTool === 'Brainstormer') {
-                const result = await generateBrainstormIdeas(prompt);
-                setIdeas(result);
-                // Save ideas to history (background)
-                for (const idea of result) {
-                    await saveIdea(idea);
+            if (controller.signal.aborted) return;
+
+            const resolvedContext = tenantContext || await (async () => {
+                const tenantId = getActiveTenantId();
+                if (!tenantId) return null;
+                try {
+                    const [tenant, projects] = await Promise.all([
+                        getTenant(tenantId) as Promise<Tenant | null>,
+                        getAllWorkspaceProjects(tenantId)
+                    ]);
+                    const projectSummaries = projects
+                        .slice(0, 12)
+                        .map((project) => {
+                            const details = [
+                                project.status ? `Status: ${project.status}` : null,
+                                project.priority ? `Priority: ${project.priority}` : null
+                            ].filter(Boolean).join(', ');
+                            const description = project.description ? ` - ${project.description}` : '';
+                            return `${project.title}${description}${details ? ` (${details})` : ''}`;
+                        });
+                    const context = {
+                        name: tenant?.name,
+                        description: tenant?.description,
+                        projects: projectSummaries,
+                        projectCount: projects.length
+                    };
+                    setTenantContext(context);
+                    return context;
+                } catch (error) {
+                    console.warn('Failed to refresh CORA context', error);
+                    return null;
                 }
-            } else if (activeTool === 'RiskScout') {
-                const result = await analyzeProjectRisks(prompt);
-                setRisks(result);
-            }
+            })();
 
-            showToast(t('aiStudio.toast.completed').replace('{tool}', activeToolLabel), 'success');
-            fetchUsage(); // Refresh usage after success
-        } catch (e) {
-            console.error(e);
-            showToast(e instanceof Error ? e.message : t('aiStudio.errors.generate'), 'error');
+            if (controller.signal.aborted) return;
+
+            const response = await chatWithCora(
+                nextMessages.map(({ role, content }) => ({ role, content })),
+                {
+                    mode: activeMode,
+                    useSearch,
+                    model: selectedModel,
+                    tenantContext: resolvedContext || undefined
+                }
+            );
+
+            if (controller.signal.aborted) return;
+
+            const assistantMessage: StudioMessage = {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: response || t('aiStudio.chat.emptyResponse'),
+                mode: activeMode
+            };
+
+            if (currentSessionId) {
+                updateSession(currentSessionId, (session) => ({
+                    ...session,
+                    messages: [...session.messages, assistantMessage],
+                    updatedAt: Date.now()
+                }));
+            }
+        } catch (error) {
+            if (!controller.signal.aborted) {
+                console.error(error);
+                showToast(error instanceof Error ? error.message : t('aiStudio.errors.generate'), 'error');
+            }
         } finally {
-            setIsGenerating(false);
+            if (!controller.signal.aborted) {
+                setIsSending(false);
+                abortControllerRef.current = null;
+            }
         }
     };
 
-    const handleConvertToProject = async (bp: ProjectBlueprint) => {
-        setIsConverting(true);
-        try {
-            const projectId = await createProject({
-                title: bp.title,
-                description: bp.description,
-                status: 'Planning',
-                priority: 'Medium',
-            });
-
-            // Add initial tasks
-            for (const task of bp.initialTasks) {
-                await addTask(projectId, task.title, undefined, undefined, task.priority, {
-                    category: ['CORA Generated', 'Setup']
-                });
-            }
-
-            // Add milestones as tasks with High priority? Or just mention in desc?
-            // For now, let's add them as tasks too but marked as milestones
-            for (const ms of bp.milestones) {
-                await addTask(projectId, `${t('aiStudio.blueprint.milestonePrefix')} ${ms.title}`, undefined, undefined, 'High', {
-                    description: ms.description,
-                    category: ['Milestone']
-                });
-            }
-
-            showToast(t('aiStudio.toast.projectCreated').replace('{title}', bp.title), 'success');
-            // Reset blueprint after conversion?
-            setBlueprint(null);
-            setPrompt('');
-        } catch (e) {
-            console.error(e);
-            showToast(t('aiStudio.errors.convert'), 'error');
-        } finally {
-            setIsConverting(false);
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            handleSend();
         }
     };
 
-    const currentToolPlaceholder = tools.find(tool => tool.id === activeTool)?.placeholder ?? '';
-    const usagePercent = aiUsage?.tokenLimit
-        ? Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)
-        : 0;
-    const isUsageCritical = usagePercent >= 90;
+    const handleModeToggle = (mode: StudioTool) => {
+        setActiveMode((current) => (current === mode ? null : mode));
+    };
+
+    const handleNewChat = () => {
+        createSession();
+        setDraft('');
+    };
+
+    const handleSelectSession = (sessionId: string) => {
+        setActiveSessionId(sessionId);
+        setDraft('');
+        if (window.innerWidth < 1024) {
+            setIsSidebarOpen(false);
+        }
+    };
+
+    const [greeting, setGreeting] = useState('');
+
+    useEffect(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) setGreeting(t('aiStudio.greeting.morning'));
+        else if (hour < 18) setGreeting(t('aiStudio.greeting.afternoon'));
+        else setGreeting(t('aiStudio.greeting.evening'));
+    }, [t]);
+
+    const handleSuggestionClick = (mode: StudioTool) => {
+        setActiveMode(mode);
+        const input = document.querySelector('.ai-studio__input') as HTMLTextAreaElement;
+        input?.focus();
+    };
+
+    const renderComposer = (variant: 'center' | 'dock') => (
+        <div className={`ai-studio__composer ai-studio__composer--${variant}`.trim()}>
+            <div className="ai-studio__input-pill">
+                <TextArea
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t('aiStudio.chat.placeholder')}
+                    className="ai-studio__input"
+                    rows={1}
+                    disabled={isSending}
+                />
+
+                <div className="ai-studio__pill-actions">
+                    <Select
+                        value={selectedModel}
+                        options={modelOptions}
+                        onChange={(value) => setSelectedModel(value as ModelOption['value'])}
+                        className="ai-studio__model-select-pill"
+                    />
+
+                    {isSending ? (
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="ai-studio__send-pill stop-btn"
+                            onClick={handleStop}
+                            isLoading={false}
+                            icon={<span className="material-symbols-outlined">stop_circle</span>}
+                            aria-label={t('aiStudio.chat.stop')}
+                        />
+                    ) : (
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="ai-studio__send-pill"
+                            onClick={handleSend}
+                            isLoading={false}
+                            disabled={!draft.trim()}
+                            icon={<span className="material-symbols-outlined">send</span>}
+                            aria-label={t('aiStudio.chat.send')}
+                        />
+                    )}
+                </div>
+            </div>
+
+            {variant === 'dock' && (
+                <div className="ai-studio__composer-meta">
+                    <div className="ai-studio__mode-selector-dock">
+                        {modeOptions.map((option) => (
+                            <button
+                                key={option.id}
+                                type="button"
+                                className={`ai-studio__mode-chip ${activeMode === option.id ? 'is-active' : ''}`.trim()}
+                                onClick={() => handleModeToggle(option.id)}
+                                aria-pressed={activeMode === option.id}
+                                title={option.description}
+                            >
+                                <span className="material-symbols-outlined">{option.icon}</span>
+                                <span>{option.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 
     return (
-        <div className={`ai-studio ${isGenerating ? 'is-generating' : ''}`.trim()} data-tool={activeToolKey}>
-            <div className="ai-studio__layout">
-                <AIStudioHero />
+        <div className={`ai-studio ${isSidebarOpen ? 'is-sidebar-open' : 'is-sidebar-collapsed'}`.trim()}>
+            <div className="ai-studio__workspace">
+                <aside className={`ai-studio__sidebar ${isSidebarOpen ? 'is-open' : ''}`.trim()}>
+                    <div className="ai-studio__sidebar-top">
+                        <button
+                            type="button"
+                            className="ai-studio__menu-button"
+                            onClick={() => setIsSidebarOpen(false)}
+                            aria-label={t('aiStudio.chat.closeSidebar')}
+                        >
+                            <span className="material-symbols-outlined">menu_open</span>
+                        </button>
+                    </div>
 
-
-                <div className="ai-studio__tool-grid">
-                    {tools.map((tool) => (
-                        <StudioToolCard
-                            key={tool.id}
-                            tool={tool.id}
-                            title={tool.title}
-                            description={tool.description}
-                            icon={tool.icon}
-                            active={activeTool === tool.id}
-                            onClick={() => setActiveTool(tool.id)}
-                        />
-                    ))}
-                </div>
-
-                <div className="ai-studio__command">
-                    <Card className="ai-studio-command">
-                        <div className="ai-studio-command__header">
-                            <div className="ai-studio-command__meta">
-                                <div className="ai-studio-command__icon">
-                                    <span className="material-symbols-outlined">{activeToolKey === 'brainstormer' ? 'lightbulb' : activeToolKey === 'riskscout' ? 'shield' : 'architecture'}</span>
-                                </div>
-                                <div>
-                                    <h3>{activeToolLabel} Studio</h3>
-                                    <p>{currentToolPlaceholder}</p>
-                                </div>
-                            </div>
-
-                            {aiUsage && (
-                                <div className={`ai-studio-usage ${isUsageCritical ? 'is-critical' : ''}`.trim()}>
-                                    <span className="ai-studio-usage__label">Usage Efficiency</span>
-                                    <div className="ai-studio-usage__bar">
-                                        <div
-                                            className="ai-studio-usage__fill"
-                                            style={{ width: `${usagePercent}%` }}
-                                        />
-                                    </div>
-                                    <span className="ai-studio-usage__value">{Math.round(usagePercent)}%</span>
-                                </div>
-                            )}
-                        </div>
-
-                        <CardBody className="ai-studio-command__body">
-                            <TextArea
-                                value={prompt}
-                                onChange={(e) => setPrompt(e.target.value)}
-                                className="ai-studio-command__input"
-                                placeholder="Describe your vision or project goal..."
-                            />
-                        </CardBody>
-
-                        <div className="ai-studio-command__footer">
-                            <p className="ai-studio-command__hint">
-                                <span className="material-symbols-outlined">auto_awesome</span>
-                                {t('aiStudio.hint.specific')}
-                            </p>
-
+                    <div className="ai-studio__sidebar-list">
+                        <div className="ai-studio__sidebar-actions">
                             <Button
-                                onClick={handleGenerate}
-                                disabled={!prompt.trim()}
-                                isLoading={isGenerating}
-                                icon={<span className="material-symbols-outlined">bolt</span>}
-                                className="ai-studio-command__action"
+                                variant="secondary"
+                                className="ai-studio__new-chat-btn"
+                                onClick={handleNewChat}
+                                icon={<span className="material-symbols-outlined">add</span>}
                             >
-                                {isGenerating ? t('aiStudio.actions.generating') : 'Initialize Generation'}
+                                {t('aiStudio.chat.newSession')}
                             </Button>
                         </div>
-                    </Card>
-                </div>
-
-                {(blueprint || ideas.length > 0 || risks.length > 0) && (
-                    <section className="ai-studio-results">
-                        <div className="ai-studio-results__header">
-                            <span className="material-symbols-outlined">output</span>
-                            <h3>{t('aiStudio.results.title')}</h3>
-                        </div>
-
-                        {activeTool === 'Architect' && blueprint && (
-                            <BlueprintResult
-                                blueprint={blueprint}
-                                onConvert={handleConvertToProject}
-                                isConverting={isConverting}
-                            />
+                        {sessions.length === 0 ? (
+                            <div className="ai-studio__sidebar-empty">{emptyHistory}</div>
+                        ) : (
+                            sessions
+                                .slice()
+                                .sort((a, b) => b.updatedAt - a.updatedAt)
+                                .map((session) => (
+                                    <button
+                                        key={session.id}
+                                        type="button"
+                                        className={`ai-studio__sidebar-item ${session.id === activeSessionId ? 'is-active' : ''}`.trim()}
+                                        onClick={() => handleSelectSession(session.id)}
+                                    >
+                                        <span className="material-symbols-outlined ai-studio__item-icon">chat_bubble_outline</span>
+                                        <div className="ai-studio__item-content">
+                                            <span className="ai-studio__sidebar-item-title">{session.title}</span>
+                                        </div>
+                                    </button>
+                                ))
                         )}
+                    </div>
+                </aside>
 
-                        {activeTool === 'Brainstormer' && ideas.length > 0 && (
-                            <div className="ai-studio-ideas animate-fade-in">
-                                {ideas.map((idea) => (
-                                    <Card key={idea.id} className="ai-studio-idea-card">
-                                        <CardBody className="ai-studio-idea-card__body">
-                                            <div className="ai-studio-idea-card__header">
-                                                <Badge variant="neutral" className="ai-studio-idea-card__badge">{idea.type}</Badge>
+                <div className="ai-studio__shell dotted-bg">
+                    {!isSidebarOpen && (
+                        <div className="ai-studio__shell-controls" style={{ position: 'absolute', top: 16, left: 16, zIndex: 50 }}>
+                            <button
+                                type="button"
+                                className="ai-studio__menu-button"
+                                onClick={() => setIsSidebarOpen(true)}
+                                aria-label={t('aiStudio.chat.toggleSidebar')}
+                            >
+                                <span className="material-symbols-outlined">menu</span>
+                            </button>
+                        </div>
+                    )}
+
+                    <div className={`ai-studio__body ${messages.length === 0 ? 'is-empty' : ''}`.trim()}>
+                        {messages.length === 0 ? (
+                            <div className="ai-studio__empty">
+                                <div className="ai-studio__empty-inner">
+                                    <div className="ai-studio__greeting">
+                                        <span className="ai-studio__greeting-icon">✨</span>
+                                        <h2 className="ai-studio__greeting-text">
+                                            {t('aiStudio.greeting.hello')} {tenantContext?.name || 'Christoph'}
+                                        </h2>
+                                        <p className="ai-studio__greeting-sub">{t('aiStudio.greeting.prompt')}</p>
+                                    </div>
+
+                                    {renderComposer('center')}
+
+                                    <div className="ai-studio__suggestions">
+                                        {modeOptions.map((option) => (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                className={`ai-studio__suggestion-chip ${activeMode === option.id ? 'is-active' : ''}`.trim()}
+                                                onClick={() => handleModeToggle(option.id)}
+                                            >
+                                                <span>{option.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="ai-studio__conversation">
+                                <div className="ai-studio__messages">
+                                    {messages.map((message) => (
+                                        <div
+                                            key={message.id}
+                                            className={`ai-studio__message ai-studio__message--${message.role}`.trim()}
+                                        >
+                                            {message.role === 'assistant' && (
+                                                <div className="ai-studio__message-avatar">
+                                                    <span className="material-symbols-outlined">auto_awesome</span>
+                                                </div>
+                                            )}
+                                            <div className="ai-studio__bubble">
+                                                <div className="ai-studio__message-content">
+                                                    {message.role === 'assistant'
+                                                        ? renderMarkdownContent(message.content)
+                                                        : <p className="ai-studio__markdown-paragraph">{message.content}</p>}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    {isSending && (
+                                        <div className="ai-studio__message ai-studio__message--assistant">
+                                            <div className="ai-studio__message-avatar">
                                                 <span className="material-symbols-outlined">auto_awesome</span>
                                             </div>
-                                            <h4 className="ai-studio-idea-card__title">{idea.title}</h4>
-                                            <p className="ai-studio-idea-card__description">{idea.description}</p>
-                                        </CardBody>
-                                    </Card>
-                                ))}
+                                            <div className="ai-studio__bubble ai-studio__bubble--typing">
+                                                <div className="ai-studio__typing">
+                                                    <span />
+                                                    <span />
+                                                    <span />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div ref={messagesEndRef} />
+                                </div>
+                                {renderComposer('dock')}
                             </div>
                         )}
-
-                        {activeTool === 'RiskScout' && risks.length > 0 && (
-                            <RiskResult risks={risks} />
-                        )}
-                    </section>
-                )}
+                    </div>
+                </div>
             </div>
+            {isSidebarOpen && (
+                <button
+                    type="button"
+                    className="ai-studio__sidebar-overlay"
+                    onClick={() => setIsSidebarOpen(false)}
+                    aria-label={t('aiStudio.chat.closeSidebar')}
+                />
+            )}
         </div>
     );
 };

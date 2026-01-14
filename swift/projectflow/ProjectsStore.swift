@@ -14,11 +14,19 @@ final class ProjectsStore: ObservableObject {
 
     func start(tenantId: String) {
         isLoading = true
+        errorMessage = nil
         listener?.remove()
-        listener = repository.listenProjects(tenantId: tenantId) { [weak self] projects in
-            self?.projects = projects.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
-            self?.isLoading = false
-        }
+        listener = repository.listenProjects(
+            tenantId: tenantId,
+            onUpdate: { [weak self] projects in
+                self?.projects = projects.sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+                self?.isLoading = false
+            },
+            onError: { [weak self] error in
+                self?.errorMessage = error.localizedDescription
+                self?.isLoading = false
+            }
+        )
     }
 
     func stop() {

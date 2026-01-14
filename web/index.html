@@ -12,7 +12,7 @@
         rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
     <script>
-        // Polyfill process.env to prevent ReferenceError in Gemini SDK and other libs
+        // Polyfill process.env to prevent ReferenceError in libs that expect it
         window.process = {
             env: {
                 API_KEY: '',
@@ -53,7 +53,6 @@
     "react": "https://esm.sh/react@18.2.0",
     "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
     "react-dom": "https://esm.sh/react-dom@18.2.0",
-    "@google/genai": "https://esm.sh/@google/genai@1.33.0",
     "react-router-dom": "https://esm.sh/react-router-dom@6.22.3?deps=react@18.2.0,react-dom@18.2.0",
     "firebase/app": "https://esm.sh/firebase@10.8.0/app",
     "firebase/auth": "https://esm.sh/firebase@10.8.0/auth",

@@ -8,6 +8,9 @@ enum FirestorePath {
     static let tasks = "tasks"
     static let flows = "ideas"
     static let issues = "issues"
+    static let milestones = "milestones"
+    static let sprints = "sprints"
+    static let activity = "activity"
     static let notifications = "notifications"
     static let users = "users"
 }
@@ -68,12 +71,21 @@ final class ProjectRepository {
         self.db = db
     }
 
-    func listenProjects(tenantId: String, onUpdate: @escaping ([Project]) -> Void) -> ListenerRegistration {
+    func listenProjects(
+        tenantId: String,
+        onUpdate: @escaping ([Project]) -> Void,
+        onError: ((Error) -> Void)? = nil
+    ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
 
-        return ref.addSnapshotListener { snapshot, _ in
+        return ref.addSnapshotListener { snapshot, error in
+            if let error {
+                onError?(error)
+                onUpdate([])
+                return
+            }
             let items = snapshot?.documents.map { Project(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }
@@ -124,14 +136,24 @@ final class TaskRepository {
         self.db = db
     }
 
-    func listenTasks(tenantId: String, projectId: String, onUpdate: @escaping ([Task]) -> Void) -> ListenerRegistration {
+    func listenTasks(
+        tenantId: String,
+        projectId: String,
+        onUpdate: @escaping ([Task]) -> Void,
+        onError: ((Error) -> Void)? = nil
+    ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
             .document(projectId)
             .collection(FirestorePath.tasks)
 
-        return ref.addSnapshotListener { snapshot, _ in
+        return ref.addSnapshotListener { snapshot, error in
+            if let error {
+                onError?(error)
+                onUpdate([])
+                return
+            }
             let items = snapshot?.documents.map { Task(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }
@@ -189,14 +211,24 @@ final class FlowRepository {
         self.db = db
     }
 
-    func listenFlows(tenantId: String, projectId: String, onUpdate: @escaping ([Flow]) -> Void) -> ListenerRegistration {
+    func listenFlows(
+        tenantId: String,
+        projectId: String,
+        onUpdate: @escaping ([Flow]) -> Void,
+        onError: ((Error) -> Void)? = nil
+    ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
             .document(projectId)
             .collection(FirestorePath.flows)
 
-        return ref.addSnapshotListener { snapshot, _ in
+        return ref.addSnapshotListener { snapshot, error in
+            if let error {
+                onError?(error)
+                onUpdate([])
+                return
+            }
             let items = snapshot?.documents.map { Flow(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }
@@ -254,14 +286,24 @@ final class IssueRepository {
         self.db = db
     }
 
-    func listenIssues(tenantId: String, projectId: String, onUpdate: @escaping ([Issue]) -> Void) -> ListenerRegistration {
+    func listenIssues(
+        tenantId: String,
+        projectId: String,
+        onUpdate: @escaping ([Issue]) -> Void,
+        onError: ((Error) -> Void)? = nil
+    ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.projects)
             .document(projectId)
             .collection(FirestorePath.issues)
 
-        return ref.addSnapshotListener { snapshot, _ in
+        return ref.addSnapshotListener { snapshot, error in
+            if let error {
+                onError?(error)
+                onUpdate([])
+                return
+            }
             let items = snapshot?.documents.map { Issue(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }
@@ -319,14 +361,24 @@ final class NotificationRepository {
         self.db = db
     }
 
-    func listenNotifications(tenantId: String, userId: String, onUpdate: @escaping ([NotificationItem]) -> Void) -> ListenerRegistration {
+    func listenNotifications(
+        tenantId: String,
+        userId: String,
+        onUpdate: @escaping ([NotificationItem]) -> Void,
+        onError: ((Error) -> Void)? = nil
+    ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)
             .collection(FirestorePath.notifications)
             .whereField("userId", isEqualTo: userId)
             .order(by: "createdAt", descending: true)
 
-        return ref.addSnapshotListener { snapshot, _ in
+        return ref.addSnapshotListener { snapshot, error in
+            if let error {
+                onError?(error)
+                onUpdate([])
+                return
+            }
             let items = snapshot?.documents.map { NotificationItem(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }

@@ -192,19 +192,11 @@ struct LoginView: View {
                 .disabled(!canSubmit || isMfaActive)
 
                 if mode == .signIn {
-                    // Divider
-                    HStack(spacing: PFSpacing.md) {
-                        Rectangle()
-                            .fill(colors.surfaceBorder)
-                            .frame(height: 1)
-                        Text("or")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(colors.textSubtle)
-                        Rectangle()
-                            .fill(colors.surfaceBorder)
-                            .frame(height: 1)
-                    }
-                    .padding(.vertical, PFSpacing.xs)
+                    Text("or")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(colors.textSubtle)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, PFSpacing.xs)
                     
                     Button {
                         session.signInWithPasskey(email: trimmedEmail.isEmpty ? nil : trimmedEmail)
@@ -222,10 +214,7 @@ struct LoginView: View {
                             RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
                                 .fill(colors.surfaceCard)
                         )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                                .stroke(colors.surfaceBorder, lineWidth: 1)
-                        )
+                        .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
                     }
                     .disabled(session.isBusy || isMfaActive)
                 }
@@ -263,6 +252,24 @@ private struct LoginInputField: View {
     let colors: PFColors
     let colorScheme: ColorScheme
     @FocusState private var isFocused: Bool
+
+    private var fieldBackground: Color {
+        if error != nil {
+            return colors.error.opacity(colorScheme == .dark ? 0.2 : 0.12)
+        }
+
+        return isFocused
+            ? (colorScheme == .dark ? colors.surfacePaper : colors.surfaceHover)
+            : (colorScheme == .dark ? colors.surfaceHover : colors.surfaceCard)
+    }
+
+    private var fieldShadowColor: Color {
+        isFocused ? colors.primary.opacity(0.25) : colors.shadowSm
+    }
+
+    private var fieldShadowRadius: CGFloat {
+        isFocused ? 6 : 3
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -291,15 +298,9 @@ private struct LoginInputField: View {
             .padding(.vertical, 12)
             .background(
                 RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                    .fill(colorScheme == .dark ? colors.surfaceHover : Color.white)
+                    .fill(fieldBackground)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                    .stroke(
-                        error != nil ? colors.error : (isFocused ? colors.primary : colors.surfaceBorder),
-                        lineWidth: isFocused ? 1.5 : 1
-                    )
-            )
+            .shadow(color: fieldShadowColor, radius: fieldShadowRadius, x: 0, y: 2)
             .animation(.easeInOut(duration: 0.15), value: isFocused)
             
             if let error = error {
@@ -454,10 +455,6 @@ private struct MfaOverlay: View {
                     .fill(colors.surfaceCard)
                     .shadow(color: .black.opacity(0.25), radius: 24, x: 0, y: 12)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: PFRadius.xl, style: .continuous)
-                    .stroke(colors.surfaceBorder.opacity(0.3), lineWidth: 1)
-            )
             .padding(PFSpacing.lg)
         }
     }
@@ -530,12 +527,12 @@ private struct DigitBox: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                .fill(colorScheme == .dark ? colors.surfaceHover : colors.surfacePaper)
-            
-            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                .stroke(
-                    isActive ? colors.primary : colors.surfaceBorder,
-                    lineWidth: isActive ? 2 : 1
+                .fill(isActive ? colors.surfaceCard : (colorScheme == .dark ? colors.surfaceHover : colors.surfacePaper))
+                .shadow(
+                    color: isActive ? colors.primary.opacity(0.25) : colors.shadowSm,
+                    radius: isActive ? 6 : 3,
+                    x: 0,
+                    y: 2
                 )
             
             if let digit = digit {
@@ -621,10 +618,6 @@ private struct AppIconView: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous)
-                .stroke(colors.surfaceBorder.opacity(0.5), lineWidth: 1)
-        )
     }
 }
 

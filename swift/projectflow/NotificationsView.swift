@@ -92,10 +92,6 @@ private struct NotificationRow: View {
                 }
             }
         }
-        .overlay(
-            RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous)
-                .stroke(notification.read ? colors.surfaceBorder : colors.primaryFade, lineWidth: 1)
-        )
     }
 
     private func relativeTime(_ date: Date?) -> String {

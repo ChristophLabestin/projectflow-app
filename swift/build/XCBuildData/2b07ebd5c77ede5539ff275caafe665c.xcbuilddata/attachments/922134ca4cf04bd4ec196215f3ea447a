@@ -1,0 +1,81 @@
+{
+  "" : {
+    "const-values" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary.swiftconstvalues",
+    "dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary.d",
+    "diagnostics" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary.dia",
+    "emit-module-dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary-emit-module.dia",
+    "pch" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/FirebaseCoreInternal-primary.swiftdeps"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/Heartbeat.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Heartbeat.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Heartbeat.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Heartbeat.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/HeartbeatController.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatController.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatController.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatController.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/HeartbeatLoggingTestUtils.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatLoggingTestUtils.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatLoggingTestUtils.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatLoggingTestUtils.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/HeartbeatStorage.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatStorage.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatStorage.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatStorage.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/HeartbeatsBundle.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsBundle.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsBundle.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsBundle.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/HeartbeatsPayload.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsPayload.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsPayload.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/HeartbeatsPayload.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/RingBuffer.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/RingBuffer.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/RingBuffer.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/RingBuffer.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/Storage.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Storage.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Storage.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/Storage.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/StorageFactory.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/StorageFactory.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/StorageFactory.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/StorageFactory.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/WeakContainer.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/WeakContainer.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/WeakContainer.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/WeakContainer.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/_ObjC_HeartbeatController.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatController.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatController.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatController.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/HeartbeatLogging/_ObjC_HeartbeatsPayload.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatsPayload.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatsPayload.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/_ObjC_HeartbeatsPayload.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/FirebaseCore/Internal/Sources/Utilities/UnfairLock.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/UnfairLock.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/UnfairLock.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/UnfairLock.o"
+  },
+  "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/DerivedSources/resource_bundle_accessor.swift" : {
+    "index-unit-output-path" : "/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/resource_bundle_accessor.o",
+    "llvm-bc" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/resource_bundle_accessor.bc",
+    "object" : "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/firebase-ios-sdk/build/Firebase.build/Release-iphonesimulator/FirebaseCoreInternal.build/Objects-normal/arm64/resource_bundle_accessor.o"
+  }
+}

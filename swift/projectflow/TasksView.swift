@@ -20,6 +20,9 @@ struct TasksView: View {
     private var selectedProject: Project? {
         projectsStore.projects.first { $0.id == selectedProjectId }
     }
+    private var selectedTenantId: String? {
+        selectedProject?.tenantId ?? tenantStore.activeTenantId
+    }
 
     var body: some View {
         let base = AnyView(ScrollView { content })
@@ -44,7 +47,7 @@ struct TasksView: View {
             }
         })
         let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
-            guard let tenantId = tenantStore.activeTenantId, let projectId else {
+            guard let tenantId = selectedTenantId, let projectId else {
                 tasksStore.stop()
                 return
             }
@@ -277,7 +280,7 @@ struct TasksView: View {
     }
 
     private func saveTask() async {
-        guard let tenantId = tenantStore.activeTenantId, let projectId = selectedProjectId else { return }
+        guard let tenantId = selectedTenantId, let projectId = selectedProjectId else { return }
         let permissions = tenantStore.permissionContext(projectOwnerId: selectedProject?.ownerId)
 
         if let task = editingTask {
@@ -309,7 +312,7 @@ struct TasksView: View {
     }
 
     private func deleteTask(_ task: Task) async {
-        guard let tenantId = tenantStore.activeTenantId, let projectId = selectedProjectId else { return }
+        guard let tenantId = selectedTenantId, let projectId = selectedProjectId else { return }
         let permissions = tenantStore.permissionContext(projectOwnerId: selectedProject?.ownerId)
         await tasksStore.deleteTask(
             tenantId: tenantId,
@@ -320,7 +323,7 @@ struct TasksView: View {
     }
 
     private func toggleComplete(_ task: Task) async {
-        guard let tenantId = tenantStore.activeTenantId, let projectId = selectedProjectId else { return }
+        guard let tenantId = selectedTenantId, let projectId = selectedProjectId else { return }
         let permissions = tenantStore.permissionContext(projectOwnerId: selectedProject?.ownerId)
         await tasksStore.toggleComplete(
             tenantId: tenantId,
@@ -331,7 +334,7 @@ struct TasksView: View {
     }
 
     private func togglePin(_ task: Task) {
-        guard let tenantId = tenantStore.activeTenantId else { return }
+        guard let tenantId = selectedTenantId else { return }
         if pinnedTasksStore.isPinned(task.id) {
             pinnedTasksStore.unpin(itemId: task.id)
         } else {
@@ -388,10 +391,7 @@ private struct TaskEditorView: View {
                         .padding(PFSpacing.sm)
                         .background(colors.surfacePaper)
                         .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                                .stroke(colors.surfaceBorder, lineWidth: 1)
-                        )
+                        .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
                 }
 
                 VStack(alignment: .leading, spacing: PFSpacing.xs) {

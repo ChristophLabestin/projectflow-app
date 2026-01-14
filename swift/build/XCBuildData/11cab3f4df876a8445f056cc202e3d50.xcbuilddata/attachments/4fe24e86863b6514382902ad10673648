@@ -1,0 +1,4 @@
+module FirebaseAILogic {
+header "FirebaseAILogic-Swift.h"
+export *
+}

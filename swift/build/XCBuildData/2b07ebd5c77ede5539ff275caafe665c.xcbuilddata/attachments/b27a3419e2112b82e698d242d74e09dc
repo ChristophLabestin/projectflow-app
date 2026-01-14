@@ -1,0 +1,4 @@
+module RecaptchaInterop {
+umbrella header "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/interop-ios-for-google-sdks/RecaptchaEnterprise/RecaptchaInterop/Public/RecaptchaInterop/RecaptchaInterop.h"
+export *
+}

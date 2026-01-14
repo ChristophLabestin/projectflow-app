@@ -342,8 +342,8 @@ export const AppLayout = () => {
                 />
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>

@@ -185,7 +185,7 @@ These tokens define key layout constants used across the app shell.
 - Do not hardcode colors, radii, shadows, transitions, or layout constants when a token exists.
 - New UI components must reference tokens from `web/styles/_tokens.scss`.
 - If a new token is introduced, it must be documented here and added to `_tokens.scss`.
-- **Borderless Design:** Avoid using borders for component separation. Use **depth (shadows)** and **background differentiation** (`surface-card` vs `surface-hover`) to distinguish elements.
+- **Borderless Design (Strict):** Never use borders or outlines on any element. Separate layers with **background contrast** (lighter/darker surfaces) and **shadows** only.
 
 ---
 

@@ -33,13 +33,22 @@ struct PFCard<Content: View>: View {
 struct PFSectionHeader: View {
     @Environment(\.colorScheme) private var colorScheme
     let title: String
+    var subtitle: String? = nil
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        Text(title)
-            .font(.headline)
-            .foregroundStyle(colors.textMain)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(colors.textMain)
+            
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+            }
+        }
     }
 }
 
@@ -131,6 +140,10 @@ struct PFInputField: View {
                 .font(.caption)
                 .foregroundStyle(colors.textMuted)
 
+            let fieldBackground = error == nil
+                ? colors.surfacePaper
+                : colors.error.opacity(colorScheme == .dark ? 0.2 : 0.12)
+
             Group {
                 if isSecure {
                     SecureField(placeholder, text: $text)
@@ -146,12 +159,9 @@ struct PFInputField: View {
             .keyboardType(keyboardType)
 #endif
             .padding(PFSpacing.sm)
-            .background(colors.surfacePaper)
+            .background(fieldBackground)
             .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-            .overlay(
-                RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
-                    .stroke(error == nil ? colors.surfaceBorder : colors.error, lineWidth: 1)
-            )
+            .shadow(color: colors.shadowSm, radius: 3, x: 0, y: 1)
 
             if let error {
                 Text(error)

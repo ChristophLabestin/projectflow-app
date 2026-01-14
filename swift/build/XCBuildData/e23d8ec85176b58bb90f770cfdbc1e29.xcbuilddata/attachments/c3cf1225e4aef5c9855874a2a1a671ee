@@ -1,0 +1,4 @@
+module leveldb {
+umbrella "/Users/christophlabestin/Library/Developer/Xcode/DerivedData/projectflow-clryzaokrpektnbxdbxznetpjmfu/SourcePackages/checkouts/leveldb/include"
+export *
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
@@ -6,7 +6,23 @@ import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { subscribeProjectSprints } from '../services/sprintService';
-import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport, Milestone, ProjectGroup, Sprint, CustomRole } from '../types';
+import {
+    Activity,
+    Idea,
+    Project,
+    Task,
+    Issue,
+    ProjectRole,
+    GeminiReport,
+    Milestone,
+    ProjectGroup,
+    Sprint,
+    CustomRole,
+    ProjectOverviewLayout,
+    ProjectOverviewCardId,
+    ProjectOverviewCardConfig,
+    ProjectOverviewCardPlacement
+} from '../types';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
@@ -84,6 +100,179 @@ const getTypeBadgeClass = (type?: string) => {
 };
 
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
+
+const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
+    'snapshot',
+    'execution',
+    'updates',
+    'resources',
+    'planning',
+    'milestones',
+    'aiInsights',
+    'team',
+    'controls'
+];
+
+const OVERVIEW_CARD_SPANS = [12, 9, 6, 3] as const;
+type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
+
+const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: OverviewCardSpan; defaultEnabled: boolean; defaultPlacement: ProjectOverviewCardPlacement }> = {
+    snapshot: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    execution: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    updates: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    resources: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    planning: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
+    milestones: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
+    aiInsights: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
+    team: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
+    controls: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' }
+};
+
+const normalizeOverviewSpan = (span: number | undefined, fallback: OverviewCardSpan): OverviewCardSpan => {
+    if (span && OVERVIEW_CARD_SPANS.includes(span as OverviewCardSpan)) {
+        return span as OverviewCardSpan;
+    }
+    return fallback;
+};
+
+const normalizeOverviewPlacement = (placement: ProjectOverviewCardPlacement | undefined, fallback: ProjectOverviewCardPlacement) => {
+    if (placement === 'secondary') {
+        return 'secondary';
+    }
+    return fallback === 'secondary' ? 'secondary' : 'primary';
+};
+
+const DEFAULT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
+    templateId: 'core',
+    cards: OVERVIEW_CARD_ORDER.map((id) => ({
+        id,
+        enabled: OVERVIEW_CARD_DEFINITIONS[id].defaultEnabled,
+        span: OVERVIEW_CARD_DEFINITIONS[id].defaultSpan,
+        placement: OVERVIEW_CARD_DEFINITIONS[id].defaultPlacement
+    }))
+};
+
+const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOverviewLayout => {
+    if (!layout || !Array.isArray(layout.cards)) {
+        return DEFAULT_OVERVIEW_LAYOUT;
+    }
+
+    const seen = new Set<ProjectOverviewCardId>();
+    const normalized: ProjectOverviewCardConfig[] = [];
+
+    for (const card of layout.cards) {
+        if (!card || !OVERVIEW_CARD_DEFINITIONS[card.id] || seen.has(card.id)) {
+            continue;
+        }
+        const def = OVERVIEW_CARD_DEFINITIONS[card.id];
+        const isLegacyPrimary = layout.templateId === 'core' && card.placement == null && def.defaultPlacement === 'primary';
+        normalized.push({
+            id: card.id,
+            enabled: Boolean(card.enabled),
+            span: normalizeOverviewSpan(isLegacyPrimary ? def.defaultSpan : card.span, def.defaultSpan),
+            placement: normalizeOverviewPlacement(card.placement, def.defaultPlacement)
+        });
+        seen.add(card.id);
+    }
+
+    for (const id of OVERVIEW_CARD_ORDER) {
+        if (seen.has(id)) continue;
+        const def = OVERVIEW_CARD_DEFINITIONS[id];
+        normalized.push({
+            id,
+            enabled: def.defaultEnabled,
+            span: def.defaultSpan,
+            placement: def.defaultPlacement
+        });
+    }
+
+    return {
+        templateId: layout.templateId || DEFAULT_OVERVIEW_LAYOUT.templateId,
+        cards: normalized
+    };
+};
+
+const markLayoutCustom = (layout: ProjectOverviewLayout): ProjectOverviewLayout => {
+    if (layout.templateId === 'custom') {
+        return layout;
+    }
+    return { ...layout, templateId: 'custom' };
+};
+
+const resolveCardPlacement = (card: ProjectOverviewCardConfig) => {
+    const def = OVERVIEW_CARD_DEFINITIONS[card.id];
+    return normalizeOverviewPlacement(card.placement, def.defaultPlacement);
+};
+
+const reorderPlacementCards = (
+    cards: ProjectOverviewCardConfig[],
+    placement: ProjectOverviewCardPlacement,
+    fromId: ProjectOverviewCardId,
+    toId: ProjectOverviewCardId
+) => {
+    const placementCards = cards.filter((card) => resolveCardPlacement(card) === placement);
+    const fromIndex = placementCards.findIndex((card) => card.id === fromId);
+    const toIndex = placementCards.findIndex((card) => card.id === toId);
+    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
+        return cards;
+    }
+    const reordered = [...placementCards];
+    const [moved] = reordered.splice(fromIndex, 1);
+    reordered.splice(toIndex, 0, moved);
+    let placementIndex = 0;
+    return cards.map((card) => {
+        if (resolveCardPlacement(card) !== placement) {
+            return card;
+        }
+        return reordered[placementIndex++];
+    });
+};
+
+const moveOverviewCard = (
+    cards: ProjectOverviewCardConfig[],
+    fromId: ProjectOverviewCardId,
+    toId: ProjectOverviewCardId
+) => {
+    const fromCard = cards.find((card) => card.id === fromId);
+    const toCard = cards.find((card) => card.id === toId);
+    if (!fromCard || !toCard) {
+        return cards;
+    }
+    const targetPlacement = resolveCardPlacement(toCard);
+    const next = cards.map((card) => (
+        card.id === fromId
+            ? { ...card, placement: targetPlacement }
+            : card
+    ));
+    return reorderPlacementCards(next, targetPlacement, fromId, toId);
+};
+
+const moveOverviewCardToPlacement = (
+    cards: ProjectOverviewCardConfig[],
+    cardId: ProjectOverviewCardId,
+    placement: ProjectOverviewCardPlacement
+) => {
+    const target = cards.find((card) => card.id === cardId);
+    if (!target) return cards;
+    const resolvedPlacement = placement;
+    const next = cards.map((card) => (
+        card.id === cardId
+            ? { ...card, placement: resolvedPlacement }
+            : card
+    ));
+    const placementCards = next.filter((card) => resolveCardPlacement(card) === resolvedPlacement);
+    const moved = placementCards.filter((card) => card.id !== cardId);
+    const movedCard = next.find((card) => card.id === cardId);
+    if (!movedCard) return next;
+    const ordered = [...moved, movedCard];
+    let placementIndex = 0;
+    return next.map((card) => {
+        if (resolveCardPlacement(card) !== resolvedPlacement) {
+            return card;
+        }
+        return ordered[placementIndex++];
+    });
+};
 
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
@@ -167,6 +356,14 @@ export const ProjectOverview = () => {
 
     // View Mode State
     const [viewMode, setViewMode] = useState<'overview' | 'mindmap'>('overview');
+    const [overviewLayout, setOverviewLayout] = useState<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
+    const [layoutDraft, setLayoutDraft] = useState<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
+    const [layoutEditMode, setLayoutEditMode] = useState(false);
+    const [layoutModalOpen, setLayoutModalOpen] = useState(false);
+    const [draggingCardId, setDraggingCardId] = useState<ProjectOverviewCardId | null>(null);
+    const [layoutSaving, setLayoutSaving] = useState(false);
+    const [layoutError, setLayoutError] = useState<string | null>(null);
+    const layoutRef = useRef<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
 
     const fetchProjectAssets = async () => {
         if (!id || !project?.tenantId) return;
@@ -304,6 +501,30 @@ export const ProjectOverview = () => {
         };
         fetchData();
     }, [id]);
+
+    useEffect(() => {
+        if (!project) return;
+        const normalized = normalizeOverviewLayout(project.overviewLayout);
+        setOverviewLayout(normalized);
+        layoutRef.current = normalized;
+        if (!layoutModalOpen) {
+            setLayoutDraft(normalized);
+        }
+    }, [project, layoutModalOpen]);
+
+    useEffect(() => {
+        layoutRef.current = overviewLayout;
+        if (!layoutModalOpen) {
+            setLayoutDraft(overviewLayout);
+        }
+    }, [overviewLayout, layoutModalOpen]);
+
+    useEffect(() => {
+        if (viewMode !== 'overview' && layoutEditMode) {
+            setLayoutEditMode(false);
+            setDraggingCardId(null);
+        }
+    }, [viewMode, layoutEditMode]);
 
     useEffect(() => {
         const loadSubtaskStats = async () => {
@@ -823,6 +1044,1489 @@ export const ProjectOverview = () => {
     const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
     const workloadMetric = { label: t('tasks.status.inProgress'), value: inProgressCount, icon: 'pending_actions' };
     const projectPriorityKey = (project.priority || 'Medium').toLowerCase();
+    const canCustomizeLayout = can('canEdit') || isOwner;
+    const templateLabel = overviewLayout.templateId === 'custom'
+        ? t('projectOverview.layout.template.custom')
+        : overviewLayout.templateId === 'core'
+            ? t('projectOverview.layout.template.core')
+            : t('projectOverview.layout.template.template');
+    const draftTemplateLabel = layoutDraft.templateId === 'custom'
+        ? t('projectOverview.layout.template.custom')
+        : layoutDraft.templateId === 'core'
+            ? t('projectOverview.layout.template.core')
+            : t('projectOverview.layout.template.template');
+    const layoutSizeOptions = [
+        { value: 12, label: t('projectOverview.layout.size.full') },
+        { value: 9, label: t('projectOverview.layout.size.wide') },
+        { value: 6, label: t('projectOverview.layout.size.half') },
+        { value: 3, label: t('projectOverview.layout.size.slim') }
+    ];
+    const layoutPlacementOptions = [
+        { value: 'primary' as ProjectOverviewCardPlacement, label: t('projectOverview.layout.placement.primary') },
+        { value: 'secondary' as ProjectOverviewCardPlacement, label: t('projectOverview.layout.placement.secondary') }
+    ];
+    const overviewCardMeta: Record<ProjectOverviewCardId, { title: string; description: string }> = {
+        snapshot: {
+            title: t('projectOverview.layout.cards.snapshot.title'),
+            description: t('projectOverview.layout.cards.snapshot.description')
+        },
+        execution: {
+            title: t('projectOverview.layout.cards.execution.title'),
+            description: t('projectOverview.layout.cards.execution.description')
+        },
+        updates: {
+            title: t('projectOverview.layout.cards.updates.title'),
+            description: t('projectOverview.layout.cards.updates.description')
+        },
+        resources: {
+            title: t('projectOverview.layout.cards.resources.title'),
+            description: t('projectOverview.layout.cards.resources.description')
+        },
+        planning: {
+            title: t('projectOverview.layout.cards.planning.title'),
+            description: t('projectOverview.layout.cards.planning.description')
+        },
+        milestones: {
+            title: t('projectOverview.layout.cards.milestones.title'),
+            description: t('projectOverview.layout.cards.milestones.description')
+        },
+        aiInsights: {
+            title: t('projectOverview.layout.cards.aiInsights.title'),
+            description: t('projectOverview.layout.cards.aiInsights.description')
+        },
+        team: {
+            title: t('projectOverview.layout.cards.team.title'),
+            description: t('projectOverview.layout.cards.team.description')
+        },
+        controls: {
+            title: t('projectOverview.layout.cards.controls.title'),
+            description: t('projectOverview.layout.cards.controls.description')
+        }
+    };
+    const isCardRenderable = (cardId: ProjectOverviewCardId) => {
+        if (cardId === 'controls') {
+            return isOwner;
+        }
+        return true;
+    };
+    const overviewCardsToRender = overviewLayout.cards.filter((card) => (
+        (layoutEditMode || card.enabled) && isCardRenderable(card.id)
+    ));
+    const primaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'primary');
+    const secondaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'secondary');
+
+    const persistOverviewLayout = async (nextLayout: ProjectOverviewLayout) => {
+        if (!project || !id || !canCustomizeLayout) return;
+        setLayoutSaving(true);
+        setLayoutError(null);
+        try {
+            await updateProjectFields(id, { overviewLayout: nextLayout }, undefined, project.tenantId);
+            setProject(prev => prev ? { ...prev, overviewLayout: nextLayout } : prev);
+        } catch (error) {
+            console.error("Error updating overview layout:", error);
+            setLayoutError(t('projectOverview.layout.error'));
+        } finally {
+            setLayoutSaving(false);
+        }
+    };
+
+    const openLayoutModal = () => {
+        setLayoutDraft(overviewLayout);
+        setLayoutModalOpen(true);
+    };
+
+    const resetLayoutDraft = () => {
+        setLayoutDraft(DEFAULT_OVERVIEW_LAYOUT);
+    };
+
+    const applyLayoutDraft = async () => {
+        const normalized = normalizeOverviewLayout(layoutDraft);
+        setOverviewLayout(normalized);
+        layoutRef.current = normalized;
+        await persistOverviewLayout(normalized);
+        setLayoutModalOpen(false);
+    };
+
+    const updateLayoutDraft = (updater: (layout: ProjectOverviewLayout) => ProjectOverviewLayout) => {
+        setLayoutDraft(prev => markLayoutCustom(updater(prev)));
+    };
+
+    const updateOverviewLayout = (updater: (layout: ProjectOverviewLayout) => ProjectOverviewLayout) => {
+        setOverviewLayout(prev => {
+            const next = markLayoutCustom(updater(prev));
+            layoutRef.current = next;
+            return next;
+        });
+    };
+
+    const handleLayoutToggle = (cardId: ProjectOverviewCardId) => {
+        updateLayoutDraft((prev) => ({
+            ...prev,
+            cards: prev.cards.map(card => (
+                card.id === cardId ? { ...card, enabled: !card.enabled } : card
+            ))
+        }));
+    };
+
+    const handleLayoutSpanChange = (cardId: ProjectOverviewCardId, span: number) => {
+        updateLayoutDraft((prev) => ({
+            ...prev,
+            cards: prev.cards.map(card => {
+                if (card.id !== cardId) return card;
+                const def = OVERVIEW_CARD_DEFINITIONS[cardId];
+                return {
+                    ...card,
+                    span: normalizeOverviewSpan(span, def.defaultSpan)
+                };
+            })
+        }));
+    };
+
+    const handleLayoutPlacementChange = (cardId: ProjectOverviewCardId, placement: ProjectOverviewCardPlacement) => {
+        updateLayoutDraft((prev) => ({
+            ...prev,
+            cards: prev.cards.map(card => {
+                if (card.id !== cardId) return card;
+                const def = OVERVIEW_CARD_DEFINITIONS[cardId];
+                return {
+                    ...card,
+                    placement: normalizeOverviewPlacement(placement, def.defaultPlacement)
+                };
+            })
+        }));
+    };
+
+    const handleLayoutDragStart = (cardId: ProjectOverviewCardId) => (event: React.DragEvent<HTMLDivElement>) => {
+        if (!layoutEditMode) return;
+        setDraggingCardId(cardId);
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', cardId);
+    };
+
+    const handleLayoutDragOver = (cardId: ProjectOverviewCardId) => (event: React.DragEvent<HTMLDivElement>) => {
+        if (!layoutEditMode) return;
+        event.preventDefault();
+        event.stopPropagation();
+        event.dataTransfer.dropEffect = 'move';
+        if (!draggingCardId || draggingCardId === cardId) return;
+        updateOverviewLayout(prev => ({
+            ...prev,
+            cards: moveOverviewCard(prev.cards, draggingCardId, cardId)
+        }));
+    };
+
+    const handleLayoutColumnDragOver = (placement: ProjectOverviewCardPlacement) => (event: React.DragEvent<HTMLDivElement>) => {
+        if (!layoutEditMode) return;
+        if (event.currentTarget !== event.target) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        if (!draggingCardId) return;
+        updateOverviewLayout(prev => ({
+            ...prev,
+            cards: moveOverviewCardToPlacement(prev.cards, draggingCardId, placement)
+        }));
+    };
+
+    const handleLayoutDrop = () => {
+        if (!layoutEditMode) return;
+        setDraggingCardId(null);
+        void persistOverviewLayout(layoutRef.current);
+    };
+
+    const handleLayoutColumnDrop = () => {
+        if (!layoutEditMode) return;
+        setDraggingCardId(null);
+        void persistOverviewLayout(layoutRef.current);
+    };
+
+    const handleLayoutDragEnd = () => {
+        setDraggingCardId(null);
+    };
+
+    const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
+        snapshot: (
+            <section data-onboarding-id="project-overview-snapshot" className="section-group">
+                <div className="section-header">
+                    <h2>{t('projectOverview.snapshot.title')}</h2>
+                    <span className="subtitle">{t('projectOverview.snapshot.subtitle')}</span>
+                </div>
+                <div className="snapshot-grid">
+                    {/* Health Card */}
+                    <Card className="widget-card health-widget">
+                        <div className="card-header">
+                            <h3 className="title">
+                                <span className="material-symbols-outlined icon">monitor_heart</span>
+                                {t('projectOverview.snapshot.health.title')}
+                            </h3>
+                            <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </button>
+                        </div>
+
+                        {/* Semi-Circle Gauge Section */}
+                        <div className="health-widget__gauge-section">
+                            <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
+                                <svg viewBox="0 0 120 70" className="health-widget__svg">
+                                    {/* Background arc */}
+                                    <path
+                                        d="M 10 60 A 50 50 0 0 1 110 60"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        strokeLinecap="round"
+                                        className="health-widget__track"
+                                    />
+                                    {/* Progress arc */}
+                                    <path
+                                        d="M 10 60 A 50 50 0 0 1 110 60"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        strokeLinecap="round"
+                                        strokeDasharray="157"
+                                        strokeDashoffset={157 - (health.score / 100) * 157}
+                                        className="health-widget__progress"
+                                    />
+                                </svg>
+                                <div className="health-widget__score-group">
+                                    <span className="health-widget__score">{health.score}</span>
+                                    <span className="health-widget__score-suffix">/100</span>
+                                </div>
+                            </div>
+
+                            {/* Status & Trend Row */}
+                            <div className="health-widget__status-row">
+                                <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
+                                    {healthStatusLabels[health.status] || health.status}
+                                </span>
+                                <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
+                                    <span className="material-symbols-outlined">
+                                        {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
+                                    </span>
+                                    {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
+                                </span>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Workload Card */}
+                    <Card className="widget-card">
+                        <div className="card-header">
+                            <h3 className="title">
+                                <span className="material-symbols-outlined icon">inbox</span>
+                                {t('projectOverview.snapshot.workload.title')}
+                            </h3>
+                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                        <div className="workload-content">
+                            <div className="stat-row">
+                                <div className="stat-label">
+                                    <span className="material-symbols-outlined icon">list_alt</span>
+                                    {t('projectOverview.snapshot.workload.openTasks')}
+                                </div>
+                                <span className="stat-value">{openTasks}</span>
+                            </div>
+                            <div className="stat-row">
+                                <div className="stat-label">
+                                    <span className="material-symbols-outlined icon urgent">priority_high</span>
+                                    {t('tasks.priority.urgent')}
+                                </div>
+                                <span className="stat-value">{urgentCount}</span>
+                            </div>
+                            <div className="stat-row">
+                                <div className="stat-label">
+                                    <span className="material-symbols-outlined icon">{workloadMetric.icon}</span>
+                                    {workloadMetric.label}
+                                </div>
+                                <span className="stat-value">{workloadMetric.value}</span>
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* Priority Card */}
+                    <Card className="widget-card priority-widget">
+                        <div className="card-header">
+                            <h3 className="title">
+                                <span className="material-symbols-outlined icon">flag</span>
+                                {t('projectOverview.snapshot.priority.title', 'Priority')}
+                            </h3>
+                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                        <div className="priority-widget__content">
+                            {[
+                                { key: 'Urgent', label: t('tasks.priority.urgent', 'Urgent'), color: 'urgent' },
+                                { key: 'High', label: t('tasks.priority.high', 'High'), color: 'high' },
+                                { key: 'Medium', label: t('tasks.priority.medium', 'Medium'), color: 'medium' },
+                                { key: 'Low', label: t('tasks.priority.low', 'Low'), color: 'low' },
+                            ].map(p => {
+                                const count = tasks.filter(t => !t.isCompleted && t.priority === p.key).length;
+                                return (
+                                    <div key={p.key} className="priority-widget__row">
+                                        <span className={`priority-widget__dot priority-widget__dot--${p.color}`} />
+                                        <span className="priority-widget__label">{p.label}</span>
+                                        <span className="priority-widget__count">{count}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+
+                    {/* Activity Card */}
+                    <Card className="widget-card">
+                        <div className="card-header">
+                            <h3 className="title">
+                                <span className="material-symbols-outlined icon">insights</span>
+                                {t('projectOverview.snapshot.activity.title')}
+                            </h3>
+                            <Link to={`/project/${id}/activity`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                        <div className="activity-stats-grid">
+                            <div>
+                                <div className="big-num">{activity.length}</div>
+                                <div className="label">{t('projectOverview.snapshot.activity.events')}</div>
+                            </div>
+                            <div>
+                                <div className="big-num comments">{activity.filter(a => a.type === 'comment').length}</div>
+                                <div className="label">{t('projectOverview.snapshot.activity.comments')}</div>
+                            </div>
+                        </div>
+                        <div className="recent-activity-preview">
+                            {activity[0]
+                                ? (
+                                    <>
+                                        <span className="user-name">{activity[0].user}</span> {activity[0].action.length > 35 ? activity[0].action.substring(0, 35) + '...' : activity[0].action}
+                                        <span className="time">{timeAgo(activity[0].createdAt)}</span>
+                                    </>
+                                )
+                                : t('projectOverview.snapshot.activity.empty')}
+                        </div>
+                    </Card>
+
+                </div>
+            </section>
+        ),
+        execution: (
+            <section data-onboarding-id="project-overview-execution" className="section-group">
+                <div className="section-header">
+                    <h2>{t('projectOverview.execution.title')}</h2>
+                    <div className="header-stats">
+                        <span>{t('projectOverview.execution.openTasks').replace('{count}', String(openTasks))}</span>
+                        {showIssueCard && <span>{t('projectOverview.execution.openIssues').replace('{count}', String(openIssues))}</span>}
+                        {showIdeaCard && <span>{t('projectOverview.execution.flows').replace('{count}', String(ideas.length))}</span>}
+                    </div>
+                </div>
+                <div className="execution-grid">
+                    <Card className={`widget-card execution-main ${executionSideCards === 0 ? 'execution-main--full' : ''}`.trim()}>
+                        <div className="card-header">
+                            <div className="title-group">
+                                <span className="material-symbols-outlined icon">checklist</span>
+                                <h3 className="title">{t('nav.tasks')}</h3>
+                            </div>
+                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                        <div className="list-content">
+                            {recentTasks.length === 0 ? (
+                                <div className="empty-state">
+                                    {t('projectOverview.execution.noActiveTasks')}
+                                </div>
+                            ) : (
+                                recentTasks.slice(0, 6).map(task => (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                        className="list-row"
+                                    >
+                                        <button
+                                            onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
+                                            className={`checkbox ${task.isCompleted ? 'checked' : ''}`}
+                                        >
+                                            <span className="material-symbols-outlined">check</span>
+                                        </button>
+                                        <div className="row-content">
+                                            <p className={`row-title ${task.isCompleted ? 'completed' : ''}`}>
+                                                {task.title}
+                                            </p>
+                                            <div className="meta-row">
+                                                {task.priority && (
+                                                    <div className={`badge priority-${task.priority.toLowerCase()}`}>
+                                                        <span className="material-symbols-outlined">
+                                                            {task.priority === 'Urgent' ? 'error' :
+                                                                task.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                    task.priority === 'Medium' ? 'drag_handle' :
+                                                                        'keyboard_arrow_down'}
+                                                        </span>
+                                                        {task.priority ? (priorityLabels[task.priority] || task.priority) : ''}
+                                                    </div>
+                                                )}
+                                                {/* Subtask Count */}
+                                                {subtaskStats[task.id]?.total > 0 && (
+                                                    <div className="badge subtask">
+                                                        <span className="material-symbols-outlined">checklist</span>
+                                                        {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
+                                                    </div>
+                                                )}
+                                                {/* Timeline or Due Date Display */}
+                                                {(() => {
+                                                    const hasStart = Boolean(task.startDate);
+                                                    const hasDue = Boolean(task.dueDate);
+                                                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                                                    const isOverdue = dueDate && dueDate < new Date() && !task.isCompleted;
+
+                                                    // Timeline when both dates exist
+                                                    if (hasStart && hasDue) {
+                                                        const start = new Date(task.startDate!).getTime();
+                                                        const end = dueDate!.getTime();
+                                                        const now = new Date().getTime();
+                                                        const total = end - start;
+                                                        const elapsed = now - start;
+                                                        const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                                        return (
+                                                            <div className="timeline-mini">
+                                                                <span className="date-label">
+                                                                    {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}
+                                                                </span>
+                                                                <div className="progress-bar-bg">
+                                                                    <div
+                                                                        className={`progress-bar-fill ${isOverdue ? 'overdue' : ''}`}
+                                                                        style={{ width: `${pct}%` }}
+                                                                    />
+                                                                </div>
+                                                                <span className={`date-label ${isOverdue ? 'overdue-text' : ''}`}>
+                                                                    {format(dueDate!, dateFormat, { locale: dateLocale })}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    }
+
+                                                    // Due date only
+                                                    if (hasDue && dueDate) {
+                                                        return (
+                                                            <span className={`date-text ${isOverdue ? 'overdue' : ''}`}>
+                                                                {format(dueDate, dateFormat, { locale: dateLocale })}
+                                                            </span>
+                                                        );
+                                                    }
+
+                                                    return null;
+                                                })()}
+                                                {/* Smart Scheduled Date */}
+                                                {task.scheduledDate && (
+                                                    <span className="scheduled-date">
+                                                        <span className="material-symbols-outlined">event_available</span>
+                                                        {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
+                                                    </span>
+                                                )}
+                                                {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
+                                                    <div className="assigned-groups">
+                                                        {task.assignedGroupIds.map(gid => {
+                                                            const group = projectGroups.find(g => g.id === gid);
+                                                            if (!group) return null;
+                                                            return (
+                                                                <div
+                                                                    key={gid}
+                                                                    className="group-avatar"
+                                                                    style={{ backgroundColor: group.color }}
+                                                                    title={t('projectTasks.groupLabel').replace('{name}', group.name)}
+                                                                >
+                                                                    {group.name.substring(0, 1).toUpperCase()}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isPinned(task.id)) {
+                                                    unpinItem(task.id);
+                                                } else {
+                                                    pinItem({
+                                                        id: task.id,
+                                                        type: 'task',
+                                                        title: task.title,
+                                                        projectId: id!,
+                                                        priority: task.priority,
+                                                        isCompleted: task.isCompleted
+                                                    });
+                                                }
+                                            }}
+                                            className={`pin-btn ${isPinned(task.id) ? 'pinned' : ''}`}
+                                            title={isPinned(task.id) ? t('projectOverview.execution.unpinTask') : t('projectOverview.execution.pinTask')}
+                                        >
+                                            <span className="material-symbols-outlined">push_pin</span>
+                                        </button>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+
+                    {(showIdeaCard || showIssueCard) && (
+                        <div className={`execution-side ${executionSideCards > 1 ? 'execution-side--stacked' : ''}`.trim()}>
+                            {showIdeaCard && (
+                                <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
+                                    <div className="card-header">
+                                        <h3 className="title">
+                                            <span className="material-symbols-outlined icon">lightbulb</span>
+                                            {t('projectOverview.execution.flowSpotlight')}
+                                        </h3>
+                                        <Link to={`/project/${id}/flows`} className="header-action-btn">
+                                            <span className="material-symbols-outlined">arrow_forward</span>
+                                        </Link>
+                                    </div>
+                                    {topIdea ? (() => {
+                                        const typeBadgeClass = getTypeBadgeClass(topIdea.type);
+                                        return (
+                                            <Link
+                                                to={`/project/${id}/flows/${topIdea.id}`}
+                                                className="flow-spotlight-card"
+                                            >
+                                                {/* Type Badge Row */}
+                                                <div className="flow-meta">
+                                                    <span className={`type-badge ${typeBadgeClass}`}>
+                                                        {topIdea.type}
+                                                    </span>
+                                                    {topIdea.generated && (
+                                                        <span className="ai-badge">
+                                                            <span className="material-symbols-outlined">auto_awesome</span>
+                                                            {t('projectOverview.execution.aiLabel')}
+                                                        </span>
+                                                    )}
+                                                    {topIdea.stage && (
+                                                        <span className="stage-badge">
+                                                            <span className="material-symbols-outlined">layers</span>
+                                                            {topIdea.stage}
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {/* Title */}
+                                                <h4 className="flow-title">
+                                                    {topIdea.title}
+                                                </h4>
+
+                                                {/* Description */}
+                                                {topIdea.description && (
+                                                    <p className="flow-desc">
+                                                        {topIdea.description}
+                                                    </p>
+                                                )}
+
+                                                {/* Meta Row */}
+                                                <div className="interaction-stats">
+                                                    <span className="stat">
+                                                        <span className="material-symbols-outlined">thumb_up</span>
+                                                        {topIdea.votes || 0}
+                                                    </span>
+                                                    <span className="stat">
+                                                        <span className="material-symbols-outlined">chat_bubble</span>
+                                                        {topIdea.comments || 0}
+                                                    </span>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })() : (
+                                        <div className="empty-state">
+                                            {t('projectOverview.execution.noFlows')}
+                                        </div>
+                                    )}
+                                </Card>
+                            )}
+
+                            {showIssueCard && (
+                                <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
+                                    <div className="card-header">
+                                        <h3 className="title">
+                                            <span className="material-symbols-outlined icon">bug_report</span>
+                                            {t('projectOverview.execution.issueFocus')}
+                                        </h3>
+                                        <Link to={`/project/${id}/issues`} className="header-action-btn">
+                                            <span className="material-symbols-outlined">arrow_forward</span>
+                                        </Link>
+                                    </div>
+
+                                    <div className="list-content scrollable">
+                                        {recentIssues.length === 0 ? (
+                                            <div className="empty-state">{t('projectOverview.execution.noOpenIssues')}</div>
+                                        ) : (
+                                            recentIssues.map(issue => (
+                                                <div
+                                                    key={issue.id}
+                                                    onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
+                                                    className="list-row"
+                                                >
+                                                    <div className="row-content">
+                                                        <p className="row-title row-title--truncate">{issue.title}</p>
+                                                        <div className="meta-row">
+                                                            <div className={`badge priority-${issue.priority.toLowerCase()}`}>
+                                                                <span className="material-symbols-outlined">
+                                                                    {issue.priority === 'Urgent' ? 'error' :
+                                                                        issue.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                            issue.priority === 'Medium' ? 'drag_handle' :
+                                                                                'keyboard_arrow_down'}
+                                                                </span>
+                                                                {issue.priority ? (priorityLabels[issue.priority] || issue.priority) : ''}
+                                                            </div>
+                                                            <div className="badge status">
+                                                                {issueStatusLabels[issue.status] || issue.status}
+                                                            </div>
+                                                            {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
+                                                                <div className="assigned-groups">
+                                                                    {issue.assignedGroupIds.map(gid => {
+                                                                        const group = projectGroups.find(g => g.id === gid);
+                                                                        if (!group) return null;
+                                                                        return (
+                                                                            <div
+                                                                                key={gid}
+                                                                                className="group-avatar"
+                                                                                style={{ backgroundColor: group.color }}
+                                                                                title={t('projectTasks.groupLabel').replace('{name}', group.name)}
+                                                                            >
+                                                                                {group.name.substring(0, 1).toUpperCase()}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="row-actions">
+                                                        {(() => {
+                                                            const hasStart = Boolean(issue.startDate);
+                                                            const hasDue = Boolean(issue.dueDate || issue.scheduledDate);
+                                                            const dueDateStr = issue.dueDate || issue.scheduledDate;
+                                                            const dueDate = dueDateStr ? new Date(dueDateStr) : null;
+                                                            const isResolved = ['Resolved', 'Closed'].includes(issue.status);
+                                                            const isOverdue = dueDate && dueDate < new Date() && !isResolved;
+
+                                                            // Timeline view when both start and due exist
+                                                            if (hasStart && hasDue) {
+                                                                const start = new Date(issue.startDate!).getTime();
+                                                                const end = dueDate!.getTime();
+                                                                const now = new Date().getTime();
+                                                                const total = end - start;
+                                                                const elapsed = now - start;
+                                                                const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                                                return (
+                                                                    <div className="timeline-mini stacked">
+                                                                        <div className="timeline-header">
+                                                                            <span>{t('projectOverview.execution.timeline')}</span>
+                                                                            <span>{Math.round(pct)}%</span>
+                                                                        </div>
+                                                                        <div className="progress-bar-bg">
+                                                                            <div
+                                                                                className={`progress-bar-fill ${isOverdue ? 'overdue' : ''}`}
+                                                                                style={{ width: `${pct}%` }}
+                                                                            />
+                                                                        </div>
+                                                                        <div className="timeline-footer">
+                                                                            <span>{format(new Date(issue.startDate!), dateFormat, { locale: dateLocale })}</span>
+                                                                            <span className={isOverdue ? 'overdue-text' : ''}>
+                                                                                {format(dueDate!, dateFormat, { locale: dateLocale })}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Due date only
+                                                            if (hasDue && dueDate) {
+                                                                return (
+                                                                    <div className={`date-badge ${isOverdue ? 'overdue' : ''}`}>
+                                                                        <span className="material-symbols-outlined">event</span>
+                                                                        <div className="date-col">
+                                                                            <span className="label">
+                                                                                {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
+                                                                            </span>
+                                                                            <span className="value">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            return null;
+                                                        })()}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (isPinned(issue.id)) {
+                                                                    unpinItem(issue.id);
+                                                                } else {
+                                                                    pinItem({
+                                                                        id: issue.id,
+                                                                        type: 'issue',
+                                                                        title: issue.title,
+                                                                        projectId: id!,
+                                                                        priority: issue.priority
+                                                                    });
+                                                                }
+                                                            }}
+                                                            className={`pin-btn ${isPinned(issue.id) ? 'pinned' : ''}`}
+                                                            title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
+                                                        >
+                                                            <span className="material-symbols-outlined">push_pin</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </Card>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Initiatives Row */}
+                {initiatives.length > 0 && (
+                    <div className="initiatives-section">
+                        <div className="initiatives-header">
+                            <h3 className="initiatives-title">
+                                <span className="material-symbols-outlined initiatives-title-icon">rocket_launch</span>
+                                {t('projectOverview.initiatives.title')}
+                                <span className="initiatives-count">({initiatives.length})</span>
+                            </h3>
+                            <Link to={`/project/${id}/tasks`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                        <div className="initiatives-grid">
+                            {initiatives.map(initiative => {
+                                const { done: doneSub, total: totalSub } = subtaskStats[initiative.id] || { done: 0, total: 0 };
+                                const hasStart = !!initiative.startDate;
+                                const hasDue = !!initiative.dueDate;
+
+                                // Calculate timeline percentage
+                                let pct = 0;
+                                let isOverdue = false;
+                                if (hasStart && hasDue) {
+                                    const start = new Date(initiative.startDate!).getTime();
+                                    const due = new Date(initiative.dueDate!).getTime();
+                                    const now = new Date().getTime();
+                                    if (due > start) {
+                                        pct = Math.min(100, Math.max(0, ((now - start) / (due - start)) * 100));
+                                    }
+                                    isOverdue = now > due && initiative.status !== 'Done';
+                                } else if (hasDue) {
+                                    const due = (initiative.dueDate instanceof Date ? initiative.dueDate : new Date(initiative.dueDate!)).getTime();
+                                    isOverdue = Date.now() > due && initiative.status !== 'Done';
+                                }
+                                const dueDate = initiative.dueDate ? new Date(initiative.dueDate) : null;
+
+                                // Status-based styling
+                                const statusKey = initiative.status?.toLowerCase().replace(/\s+/g, '-') || '';
+                                const isInProgress = statusKey === 'in-progress' || statusKey === 'inprogress';
+                                const isReview = statusKey === 'review' || statusKey === 'in-review';
+                                const isBlocked = statusKey === 'blocked';
+
+                                let statusClass = '';
+                                if (isBlocked) statusClass = 'status-blocked';
+                                else if (isInProgress) statusClass = 'status-active';
+                                else if (isReview) statusClass = 'status-review';
+
+                                const priorityKey = initiative.priority?.toLowerCase() || '';
+                                const priorityClass = priorityKey === 'urgent' ? 'priority-urgent' :
+                                    priorityKey === 'high' ? 'priority-high' :
+                                        priorityKey === 'medium' ? 'priority-medium' : 'priority-low';
+
+                                return (
+                                    <div
+                                        key={initiative.id}
+                                        onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                        className={`initiative-card ${statusClass}`}
+                                    >
+                                        {/* Priority indicator */}
+                                        <div className={`initiative-priority-indicator ${priorityClass}`} />
+
+                                        <div className="initiative-header">
+                                            <h4 className="initiative-title">
+                                                {initiative.title}
+                                            </h4>
+                                            <span className="material-symbols-outlined initiative-icon">rocket_launch</span>
+                                        </div>
+
+                                        {/* Description */}
+                                        {initiative.description && (
+                                            <p className="initiative-description">
+                                                {initiative.description}
+                                            </p>
+                                        )}
+
+                                        {/* Status & Priority Row */}
+                                        <div className="initiative-tags">
+                                            {initiative.status && (
+                                                <span className={`initiative-tag initiative-tag--status status-${statusKey}`}>
+                                                    {taskStatusLabels[initiative.status] || initiative.status}
+                                                </span>
+                                            )}
+                                            {initiative.priority && (
+                                                <span className={`initiative-tag initiative-tag--priority priority-${priorityKey}`}>
+                                                    <span className="material-symbols-outlined">
+                                                        {initiative.priority === 'Urgent' ? 'error' :
+                                                            initiative.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                initiative.priority === 'Medium' ? 'drag_handle' : 'keyboard_arrow_down'}
+                                                    </span>
+                                                    {priorityLabels[initiative.priority] || initiative.priority}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Assignees */}
+                                        {initiative.assignedGroupIds && initiative.assignedGroupIds.length > 0 && (
+                                            <div className="initiative-assignees">
+                                                <div className="initiative-avatars">
+                                                    {initiative.assignedGroupIds.slice(0, 3).map(gid => {
+                                                        const group = projectGroups.find(g => g.id === gid);
+                                                        if (!group) return null;
+                                                        return (
+                                                            <div
+                                                                key={gid}
+                                                                className="initiative-avatar"
+                                                                style={{ backgroundColor: group.color }}
+                                                                title={group.name}
+                                                            >
+                                                                {group.name.substring(0, 1).toUpperCase()}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {initiative.assignedGroupIds.length > 3 && (
+                                                    <span className="initiative-assignees-more">+{initiative.assignedGroupIds.length - 3}</span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Subtask progress if available */}
+                                        {subtaskStats[initiative.id]?.total > 0 && (
+                                            <div className="initiative-progress">
+                                                <span className="material-symbols-outlined initiative-progress-icon">checklist</span>
+                                                <div className="initiative-progress-bar">
+                                                    <div
+                                                        className="initiative-progress-fill"
+                                                        style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
+                                                    />
+                                                </div>
+                                                <span className="initiative-progress-text">
+                                                    {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Timeline */}
+                                        {hasStart && hasDue && (
+                                            <div className={`initiative-timeline ${isOverdue ? 'is-overdue' : ''}`}>
+                                                <span className="material-symbols-outlined">schedule</span>
+                                                <span className="initiative-timeline-date">{format(new Date(initiative.startDate!), dateFormat, { locale: dateLocale })}</span>
+                                                <div className="initiative-timeline-bar">
+                                                    <div
+                                                        className="initiative-timeline-fill"
+                                                        style={{ width: `${pct}%` }}
+                                                    />
+                                                </div>
+                                                <span className="initiative-timeline-date">{format(dueDate!, dateFormat, { locale: dateLocale })}</span>
+                                            </div>
+                                        )}
+                                        {/* Due Date Only */}
+                                        {!hasStart && hasDue && (
+                                            <div className={`initiative-due ${isOverdue ? 'is-overdue' : ''}`}>
+                                                <span className="material-symbols-outlined">event</span>
+                                                {t('projectOverview.initiatives.due')} {format(dueDate!, dateFormat, { locale: dateLocale })}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </section>
+        ),
+        updates: (
+            <section className="updates-section">
+                <div className="section-header-simple">
+                    <h2>{t('projectOverview.updates.title')}</h2>
+                    <span className="subtitle">{t('projectOverview.updates.subtitle')}</span>
+                </div>
+                <div className="updates-grid">
+                    <Card className={`updates-card ${showGithubCard ? 'span-half' : 'span-full'}`}>
+                        <div className="updates-card__header">
+                            <h3 className="updates-card__title">
+                                <span className="material-symbols-outlined updates-card__title-icon">history</span>
+                                {t('projectOverview.updates.latestActivity')}
+                            </h3>
+                            <Link to={`/project/${id}/activity`} className="icon-btn" aria-label={t('projectOverview.updates.latestActivity')}>
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+
+                        <div className="activity-list">
+                            {activity.slice(0, 6).map((item) => {
+                                const { icon, color, bg } = activityIcon(item.type, item.action);
+                                return (
+                                    <div key={item.id} className="activity-item">
+                                        <div className="activity-icon" style={{ backgroundColor: bg }}>
+                                            <span className="material-symbols-outlined" style={{ color }}>{icon}</span>
+                                        </div>
+                                        <div className="activity-content">
+                                            <p className="activity-text">
+                                                <span className="activity-user">{item.user}</span> {item.action}
+                                            </p>
+                                            <p className="activity-time">{timeAgo(item.createdAt)}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {activity.length === 0 && <p className="activity-empty">{t('projectOverview.updates.noActivity')}</p>}
+                        </div>
+                    </Card>
+
+                    {showGithubCard && (
+                        <Card className="updates-card span-half">
+                            <div className="github-card__header">
+                                <div className="github-card__info">
+                                    <div className="github-card__icon">
+                                        <span className="material-symbols-outlined">terminal</span>
+                                    </div>
+                                    <div className="github-card__text">
+                                        <h3 className="github-card__title">{t('projectOverview.github.title')}</h3>
+                                        <p className="github-card__subtitle">
+                                            {project.githubRepo || t('projectOverview.github.noRepo')}
+                                        </p>
+                                    </div>
+                                </div>
+                                {project.githubRepo && (
+                                    <a
+                                        href={`https://github.com/${project.githubRepo}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="github-card__link"
+                                    >
+                                        {t('projectOverview.github.repoLink')} <span className="material-symbols-outlined">open_in_new</span>
+                                    </a>
+                                )}
+                            </div>
+
+                            {!project.githubRepo ? (
+                                <div className="github-card__empty-state">
+                                    <p>{t('projectOverview.github.noRepoHint')}</p>
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => {
+                                                setEditModalTab('integrations');
+                                                setShowEditModal(true);
+                                            }}
+                                            className="github-card__settings-btn"
+                                        >
+                                            {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined">settings</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : commitsLoading ? (
+                                <div className="github-card__loading">
+                                    <span className="material-symbols-outlined github-card__loading-icon">progress_activity</span>
+                                    {t('projectOverview.github.loading')}
+                                </div>
+                            ) : commitsError ? (
+                                <div className="github-card__error">{commitsError}</div>
+                            ) : githubCommits.length === 0 ? (
+                                <div className="github-card__empty">{t('projectOverview.github.none')}</div>
+                            ) : (
+                                <div className="github-card__list">
+                                    {githubCommits.map(commit => (
+                                        <a
+                                            key={commit.sha}
+                                            href={commit.html_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="github-commit-item"
+                                        >
+                                            <div className="github-commit__row">
+                                                <div className="github-commit__meta">
+                                                    {commit.author?.avatar_url ? (
+                                                        <img
+                                                            src={commit.author.avatar_url}
+                                                            alt={commit.author.login}
+                                                            className="github-commit__avatar"
+                                                        />
+                                                    ) : (
+                                                        <div className="github-commit__avatar-fallback">
+                                                            {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div className="github-commit__details">
+                                                        <p className="github-commit__message">
+                                                            {commit.commit.message.split(/\r?\n/)[0]}
+                                                        </p>
+                                                        <div className="github-commit__sub">
+                                                            <span>@{commit.author?.login || commit.commit.author.name || t('projectOverview.github.unknownAuthor')}</span>
+                                                            <span>•</span>
+                                                            <span>{format(new Date(commit.commit.author.date), dateFormat, { locale: dateLocale })}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="github-commit__sha">
+                                                    {commit.sha.slice(0, 7)}
+                                                </span>
+                                            </div>
+                                        </a>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    )}
+                </div>
+            </section>
+        ),
+        resources: (
+            <section className="resources-section">
+                <div className="section-header-simple">
+                    <h2>{t('projectOverview.resources.title')}</h2>
+                    <span className="subtitle">{t('projectOverview.resources.subtitle')}</span>
+                </div>
+                <div className="resources-grid">
+                    <Card className="updates-card">
+                        <div className="resources-card__header">
+                            <h3 className="resources-card__title">{t('projectOverview.resources.quickLinks')}</h3>
+                            {isOwner && (
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                    setEditModalTab('resources');
+                                    setShowEditModal(true);
+                                }}>
+                                    {t('projectOverview.resources.manage')}
+                                </Button>
+                            )}
+                        </div>
+                        <div className="resources-card__list">
+                            {project.links?.slice(0, 4).map((link, i) => (
+                                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="resource-link-item">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined">link</span>
+                                    </div>
+                                    <div className="link-info">
+                                        <p className="link-title">{link.title}</p>
+                                        <p className="link-url">{link.url.replace(/^https?:\/\//, '')}</p>
+                                    </div>
+                                    <span className="material-symbols-outlined open-icon">open_in_new</span>
+                                </a>
+                            ))}
+                            {(!project.links || project.links.length === 0) && <p className="resources-card__empty">{t('projectOverview.resources.noLinks')}</p>}
+                        </div>
+                        {project.links && project.links.length > 4 && (
+                            <p className="resources-card__footer">
+                                {t('projectOverview.resources.moreLinks').replace('{count}', String(project.links.length - 4))}
+                            </p>
+                        )}
+                    </Card>
+
+                    <Card className="updates-card">
+                        <div className="resources-card__header">
+                            <h3 className="resources-card__title">{t('projectOverview.resources.gallery')}</h3>
+                            <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>{t('projectOverview.resources.manage')}</Button>
+                        </div>
+
+                        <div className="gallery-grid">
+                            {galleryAssets.map((asset) => (
+                                <div
+                                    key={`${asset.url}-${asset.index}`}
+                                    className="gallery-item"
+                                    onClick={() => { setSelectedImageIndex(asset.index); setShowGalleryModal(true); }}
+                                >
+                                    <img src={asset.url} alt="" />
+                                </div>
+                            ))}
+                            {projectAssets.length < 3 && (
+                                <button onClick={() => setShowMediaLibrary(true)} className="add-btn">
+                                    <span className="material-symbols-outlined">add</span>
+                                </button>
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            </section>
+        ),
+        planning: (
+            <Card data-onboarding-id="project-overview-planning" className="updates-card">
+                <div className="planning-card__header">
+                    <div className="planning-card__title-wrap">
+                        <div className="planning-card__icon">
+                            <span className="material-symbols-outlined">schedule</span>
+                        </div>
+                        <h3 className="planning-card__title">{t('projectOverview.planning.title')}</h3>
+                    </div>
+                    {isOwner && (
+                        <button
+                            onClick={() => {
+                                setEditModalTab('general');
+                                setShowEditModal(true);
+                            }}
+                            className="icon-btn"
+                            title={t('projectOverview.planning.editDates')}
+                        >
+                            <span className="material-symbols-outlined">edit_calendar</span>
+                        </button>
+                    )}
+                </div>
+                <div className="planning-card__meta">
+                    <span className="planning-card__meta-label">{t('projectOverview.planning.subtitle')}</span>
+                    <span className="planning-card__meta-progress">
+                        <span className="planning-card__dot" />
+                        <span className="planning-card__percent">{progress}%</span>
+                        {t('projectOverview.planning.complete')}
+                    </span>
+                </div>
+
+                <div className="planning-card-content">
+                    <div className="dates-grid">
+                        <div>
+                            <p className="date-label">{t('projectOverview.planning.start')}</p>
+                            <p className="date-value">
+                                {project.startDate ? format(new Date(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                            </p>
+                        </div>
+                        <div className="dates-grid__item dates-grid__item--right">
+                            <p className="date-label">{t('projectOverview.planning.due')}</p>
+                            <p className="date-value">
+                                {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="progress-track">
+                        <div className="progress-bar-planning" style={{ width: `${progress}%` }} />
+                    </div>
+                </div>
+            </Card>
+        ),
+        milestones: (
+            <Card data-onboarding-id="project-overview-milestones" className="milestones-card">
+                <div className="milestones-header">
+                    <h3 className="milestones-title">
+                        <span className="material-symbols-outlined milestones-title-icon">flag</span>
+                        {t('projectOverview.milestones.title')}
+                    </h3>
+                    <Link to={`/project/${id}/milestones`} className="icon-btn" aria-label={t('projectOverview.milestones.title')}>
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+                </div>
+
+                {/* Progress Header */}
+                <div className="milestone-progress-header">
+                    <div className="milestone-progress">
+                        <div className="milestone-progress-bar">
+                            <div
+                                className="milestone-progress-fill"
+                                style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.status === 'Achieved').length / milestones.length) * 100 : 0}%` }}
+                            />
+                        </div>
+                        <div className="milestone-progress-meta">
+                            <span className="milestone-progress-label">{t('projectOverview.milestones.progress')}</span>
+                            <span className="milestone-progress-count">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="milestone-list">
+                    {/* Vertical Line */}
+                    {pendingMilestones.length > 0 && (
+                        <div className="milestone-line" />
+                    )}
+
+                    {pendingMilestones.length > 0 ? (
+                        pendingMilestones
+                            .slice()
+                            .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
+                            .slice(0, 3)
+                            .map((milestone, index) => {
+                                const isFirst = index === 0;
+                                const isOverdue = milestone.dueDate ? new Date(milestone.dueDate) < new Date() : false;
+                                return (
+                                    <div key={milestone.id} className="milestone-item">
+                                        <div className={`timeline-dot ${isFirst ? 'is-next' : 'is-future'}`}>
+                                            {isFirst && <div className="inner-pulse" />}
+                                        </div>
+
+                                        <div className={`milestone-content ${isFirst ? 'is-primary' : 'is-secondary'}`}>
+                                            <div className="milestone-row">
+                                                <div className="milestone-text">
+                                                    <p className={`milestone-title ${isFirst ? 'is-next' : ''}`}>
+                                                        {milestone.title.length > 35 ? milestone.title.substring(0, 35) + '...' : milestone.title}
+                                                    </p>
+                                                    <div className="milestone-meta">
+                                                        <p className={`milestone-date ${isOverdue ? 'is-overdue' : isFirst ? 'is-up-next' : ''}`}>
+                                                            {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
+                                                        </p>
+                                                        {isFirst && (
+                                                            <span className="milestone-tag">
+                                                                {t('projectOverview.milestones.nextUp')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {isFirst && (
+                                                    <button
+                                                        onClick={() => handleToggleMilestone(milestone)}
+                                                        className="milestone-action"
+                                                        title={t('projectOverview.milestones.markAchieved')}
+                                                    >
+                                                        <span className="material-symbols-outlined">check</span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                    ) : (
+                        <div className="milestone-empty">
+                            <div className="milestone-empty-icon">
+                                <span className="material-symbols-outlined">emoji_events</span>
+                            </div>
+                            <p className="milestone-empty-title">{t('projectOverview.milestones.allAchieved')}</p>
+                            <p className="milestone-empty-text">{t('projectOverview.milestones.celebrate')}</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Background Decoration */}
+                <div className="bg-decoration">
+                    <span className="material-symbols-outlined bg-decoration-icon">flag</span>
+                </div>
+            </Card>
+        ),
+        aiInsights: (
+            <div
+                className="ai-insights-card-compact"
+                onClick={() => setShowReportModal(true)}
+            >
+                <div className="bg-icon">
+                    <span className="material-symbols-outlined">auto_awesome</span>
+                </div>
+                <div className="content-wrapper">
+                    <div className="ai-insights__icon">
+                        <span className="material-symbols-outlined">psychology</span>
+                    </div>
+                    <div className="ai-insights__text">
+                        <h3 className="ai-insights__title">{t('projectOverview.aiReport.title')}</h3>
+                        <p className="ai-insights__subtitle">
+                            {pinnedReport ? t('projectOverview.aiReport.updated').replace('{time}', timeAgo(pinnedReport.createdAt)) : t('projectOverview.aiReport.generateAnalysis')}
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined ai-insights__arrow">arrow_forward</span>
+                </div>
+            </div>
+        ),
+        team: (
+            <Card className="updates-card">
+                <div className="team-card__header">
+                    <h3 className="team-card__title">
+                        <span className="material-symbols-outlined team-card__title-icon">group</span>
+                        {t('projectOverview.team.title')}
+                        <span className="team-card__count">
+                            {teamMemberProfiles.length}
+                        </span>
+                    </h3>
+                    <div className="team-card__actions">
+                        {can('canInvite') && (
+                            <button
+                                onClick={handleInvite}
+                                className="icon-btn"
+                                title={t('projectOverview.team.invite')}
+                            >
+                                <span className="material-symbols-outlined">person_add</span>
+                            </button>
+                        )}
+                        <Link
+                            to="#"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setEditModalTab('team');
+                                setShowEditModal(true);
+                            }}
+                            className="icon-btn"
+                            title={t('projectOverview.team.manage')}
+                        >
+                            <span className="material-symbols-outlined">settings</span>
+                        </Link>
+                    </div>
+                </div>
+
+                {teamMemberProfiles.length === 0 ? (
+                    <div className="team-empty">
+                        <span className="material-symbols-outlined">person_add</span>
+                        <p>{t('projectOverview.team.empty')}</p>
+                    </div>
+                ) : (
+                    <div className="team-grid">
+                        {teamMemberProfiles.slice(0, 4).map(member => {
+                            const presenceData = activeProjectUsers.find(u => u.uid === member.id);
+                            const isOnline = presenceData?.isOnline || false;
+
+                            return (
+                                <div key={member.id} className="team-member-row">
+                                    <div className="member-avatar">
+                                        {member.photoURL ? (
+                                            <img
+                                                src={member.photoURL}
+                                                alt={member.displayName}
+                                                className={`member-avatar__image ${isOnline ? 'is-online' : ''}`}
+                                            />
+                                        ) : (
+                                            <div className={`avatar-placeholder ${isOnline ? 'is-online' : ''}`}>
+                                                {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                                            </div>
+                                        )}
+                                        {isOnline && (
+                                            <div className="status-dot" />
+                                        )}
+                                    </div>
+
+                                    <div className="member-info">
+                                        <div className="row-top">
+                                            <span className="member-name">
+                                                {member.displayName}
+                                            </span>
+                                            <span
+                                                style={{
+                                                    backgroundColor: getRoleDisplayInfo(workspaceRoles, member.role).color + '20',
+                                                    color: getRoleDisplayInfo(workspaceRoles, member.role).color,
+                                                    borderColor: getRoleDisplayInfo(workspaceRoles, member.role).color + '40'
+                                                }}
+                                                className="member-role-badge"
+                                            >
+                                                {getRoleDisplayInfo(workspaceRoles, member.role).name}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                        {teamMemberProfiles.length > 4 && (
+                            <button
+                                onClick={() => { setEditModalTab('team'); setShowEditModal(true); }}
+                                className="view-all-btn"
+                            >
+                                <div className="view-all-avatars">
+                                    {teamMemberProfiles.slice(4, 7).map(m => (
+                                        <div key={m.id} className="view-all-avatar">
+                                            {m.photoURL ? (
+                                                <img src={m.photoURL} alt="" className="view-all-avatar__image" />
+                                            ) : (
+                                                <div className="view-all-avatar__fallback">{m.displayName?.charAt(0)}</div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                                {t('common.andXOthers', '+ {count} others').replace('{count}', (teamMemberProfiles.length - 4).toString())}
+                            </button>
+                        )}
+                    </div>
+                )}
+            </Card>
+        ),
+        controls: isOwner ? (
+            <Card className="updates-card">
+                <div className="controls-card__header">
+                    <span className="material-symbols-outlined controls-card__icon">tune</span>
+                    <h3 className="controls-card__title">{t('projectOverview.controls.title')}</h3>
+                </div>
+                <div className="controls-form">
+                    <div className="form-group-row">
+                        <Select
+                            label={t('projectOverview.controls.status')}
+                            value={project.status}
+                            options={statusOptions}
+                            onChange={(value) => handleUpdateField('status', value)}
+                            className="project-overview__select"
+                        />
+
+                        <Select
+                            label={t('projectOverview.controls.priority')}
+                            value={project.priority || 'Medium'}
+                            options={priorityOptions}
+                            onChange={(value) => handleUpdateField('priority', value)}
+                            className="project-overview__select"
+                        />
+                    </div>
+
+                    <div>
+                        <Select
+                            label={t('projectOverview.controls.projectState')}
+                            value={project.projectState || 'not specified'}
+                            options={projectStateOptions}
+                            onChange={(value) => handleUpdateField('projectState', value)}
+                            className="project-overview__select"
+                        />
+                    </div>
+
+                    <div className="date-inputs">
+                        <DatePicker
+                            label={t('projectOverview.planning.start')}
+                            value={toDateValue(project.startDate)}
+                            onChange={(date) => handleUpdateField('startDate', toDateString(date))}
+                            placeholder={t('projectOverview.controls.startPlaceholder')}
+                        />
+                        <DatePicker
+                            label={t('projectOverview.planning.due')}
+                            value={toDateValue(project.dueDate)}
+                            onChange={(date) => handleUpdateField('dueDate', toDateString(date))}
+                            placeholder={t('projectOverview.controls.duePlaceholder')}
+                        />
+                    </div>
+                </div>
+            </Card>
+        ) : null
+    };
+
+    const renderOverviewCard = (card: ProjectOverviewCardConfig) => {
+        const content = overviewCardContent[card.id];
+        if (!content) return null;
+        const isDragging = draggingCardId === card.id;
+        const placement = resolveCardPlacement(card);
+        const cardStyle = {
+            '--overview-card-span': placement === 'secondary' ? 12 : card.span
+        } as React.CSSProperties;
+        const dragProps = layoutEditMode ? {
+            draggable: true,
+            onDragStart: handleLayoutDragStart(card.id),
+            onDragOver: handleLayoutDragOver(card.id),
+            onDrop: handleLayoutDrop,
+            onDragEnd: handleLayoutDragEnd
+        } : {};
+
+        return (
+            <div
+                key={card.id}
+                className={`overview-card ${layoutEditMode ? 'is-editing' : ''} ${placement === 'secondary' ? 'is-secondary' : 'is-primary'} ${!card.enabled ? 'is-disabled' : ''} ${isDragging ? 'is-dragging' : ''}`.trim()}
+                style={cardStyle}
+                {...dragProps}
+            >
+                {layoutEditMode && (
+                    <div className="overview-card__drag-handle">
+                        <span className="material-symbols-outlined">drag_indicator</span>
+                    </div>
+                )}
+                {layoutEditMode && !card.enabled && (
+                    <div className="overview-card__disabled-pill">
+                        {t('projectOverview.layout.hidden')}
+                    </div>
+                )}
+                <div className="overview-card__body">
+                    {content}
+                </div>
+            </div>
+        );
+    };
 
 
     return (
@@ -1128,1254 +2832,151 @@ export const ProjectOverview = () => {
 
 
                             {/* Project Overview Layout */}
-                            <div className="overview-grid-layout">
-                                <div className="main-column">
-                                    {/* Snapshot */}
-                                    <section data-onboarding-id="project-overview-snapshot" className="section-group">
-                                        <div className="section-header">
-                                            <h2>{t('projectOverview.snapshot.title')}</h2>
-                                            <span className="subtitle">{t('projectOverview.snapshot.subtitle')}</span>
-                                        </div>
-                                        <div className="snapshot-grid">
-                                            {/* Health Card */}
-                                            <Card className="widget-card health-widget">
-                                                <div className="card-header">
-                                                    <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">monitor_heart</span>
-                                                        {t('projectOverview.snapshot.health.title')}
-                                                    </h3>
-                                                    <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </button>
-                                                </div>
-
-                                                {/* Semi-Circle Gauge Section */}
-                                                <div className="health-widget__gauge-section">
-                                                    <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
-                                                        <svg viewBox="0 0 120 70" className="health-widget__svg">
-                                                            {/* Background arc */}
-                                                            <path
-                                                                d="M 10 60 A 50 50 0 0 1 110 60"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="8"
-                                                                strokeLinecap="round"
-                                                                className="health-widget__track"
-                                                            />
-                                                            {/* Progress arc */}
-                                                            <path
-                                                                d="M 10 60 A 50 50 0 0 1 110 60"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                strokeWidth="8"
-                                                                strokeLinecap="round"
-                                                                strokeDasharray="157"
-                                                                strokeDashoffset={157 - (health.score / 100) * 157}
-                                                                className="health-widget__progress"
-                                                            />
-                                                        </svg>
-                                                        <div className="health-widget__score-group">
-                                                            <span className="health-widget__score">{health.score}</span>
-                                                            <span className="health-widget__score-suffix">/100</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Status & Trend Row */}
-                                                    <div className="health-widget__status-row">
-                                                        <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
-                                                            {healthStatusLabels[health.status] || health.status}
-                                                        </span>
-                                                        <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
-                                                            <span className="material-symbols-outlined">
-                                                                {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
-                                                            </span>
-                                                            {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </Card>
-
-                                            {/* Workload Card */}
-                                            <Card className="widget-card">
-                                                <div className="card-header">
-                                                    <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">inbox</span>
-                                                        {t('projectOverview.snapshot.workload.title')}
-                                                    </h3>
-                                                    <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="workload-content">
-                                                    <div className="stat-row">
-                                                        <div className="stat-label">
-                                                            <span className="material-symbols-outlined icon">list_alt</span>
-                                                            {t('projectOverview.snapshot.workload.openTasks')}
-                                                        </div>
-                                                        <span className="stat-value">{openTasks}</span>
-                                                    </div>
-                                                    <div className="stat-row">
-                                                        <div className="stat-label">
-                                                            <span className="material-symbols-outlined icon urgent">priority_high</span>
-                                                            {t('tasks.priority.urgent')}
-                                                        </div>
-                                                        <span className="stat-value">{urgentCount}</span>
-                                                    </div>
-                                                    <div className="stat-row">
-                                                        <div className="stat-label">
-                                                            <span className="material-symbols-outlined icon">{workloadMetric.icon}</span>
-                                                            {workloadMetric.label}
-                                                        </div>
-                                                        <span className="stat-value">{workloadMetric.value}</span>
-                                                    </div>
-                                                </div>
-                                            </Card>
-
-                                            {/* Priority Card */}
-                                            <Card className="widget-card priority-widget">
-                                                <div className="card-header">
-                                                    <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">flag</span>
-                                                        {t('projectOverview.snapshot.priority.title', 'Priority')}
-                                                    </h3>
-                                                    <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="priority-widget__content">
-                                                    {[
-                                                        { key: 'Urgent', label: t('tasks.priority.urgent', 'Urgent'), color: 'urgent' },
-                                                        { key: 'High', label: t('tasks.priority.high', 'High'), color: 'high' },
-                                                        { key: 'Medium', label: t('tasks.priority.medium', 'Medium'), color: 'medium' },
-                                                        { key: 'Low', label: t('tasks.priority.low', 'Low'), color: 'low' },
-                                                    ].map(p => {
-                                                        const count = tasks.filter(t => !t.isCompleted && t.priority === p.key).length;
-                                                        return (
-                                                            <div key={p.key} className="priority-widget__row">
-                                                                <span className={`priority-widget__dot priority-widget__dot--${p.color}`} />
-                                                                <span className="priority-widget__label">{p.label}</span>
-                                                                <span className="priority-widget__count">{count}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </Card>
-
-                                            {/* Activity Card */}
-                                            <Card className="widget-card">
-                                                <div className="card-header">
-                                                    <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">insights</span>
-                                                        {t('projectOverview.snapshot.activity.title')}
-                                                    </h3>
-                                                    <Link to={`/project/${id}/activity`} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="activity-stats-grid">
-                                                    <div>
-                                                        <div className="big-num">{activity.length}</div>
-                                                        <div className="label">{t('projectOverview.snapshot.activity.events')}</div>
-                                                    </div>
-                                                    <div>
-                                                        <div className="big-num comments">{activity.filter(a => a.type === 'comment').length}</div>
-                                                        <div className="label">{t('projectOverview.snapshot.activity.comments')}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="recent-activity-preview">
-                                                    {activity[0]
-                                                        ? (
-                                                            <>
-                                                                <span className="user-name">{activity[0].user}</span> {activity[0].action.length > 35 ? activity[0].action.substring(0, 35) + '...' : activity[0].action}
-                                                                <span className="time">{timeAgo(activity[0].createdAt)}</span>
-                                                            </>
-                                                        )
-                                                        : t('projectOverview.snapshot.activity.empty')}
-                                                </div>
-                                            </Card>
-
-                                        </div>
-                                    </section>
-
-                                    {/* Execution */}
-                                    <section data-onboarding-id="project-overview-execution" className="section-group">
-                                        <div className="section-header">
-                                            <h2>{t('projectOverview.execution.title')}</h2>
-                                            <div className="header-stats">
-                                                <span>{t('projectOverview.execution.openTasks').replace('{count}', String(openTasks))}</span>
-                                                {showIssueCard && <span>{t('projectOverview.execution.openIssues').replace('{count}', String(openIssues))}</span>}
-                                                {showIdeaCard && <span>{t('projectOverview.execution.flows').replace('{count}', String(ideas.length))}</span>}
-                                            </div>
-                                        </div>
-                                        <div className="execution-grid">
-                                            <Card className={`widget-card execution-main ${executionSideCards === 0 ? 'execution-main--full' : ''}`.trim()}>
-                                                <div className="card-header">
-                                                    <div className="title-group">
-                                                        <span className="material-symbols-outlined icon">checklist</span>
-                                                        <h3 className="title">{t('nav.tasks')}</h3>
-                                                    </div>
-                                                    <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="list-content">
-                                                    {recentTasks.length === 0 ? (
-                                                        <div className="empty-state">
-                                                            {t('projectOverview.execution.noActiveTasks')}
-                                                        </div>
-                                                    ) : (
-                                                        recentTasks.slice(0, 6).map(task => (
-                                                            <div
-                                                                key={task.id}
-                                                                onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                                className="list-row"
-                                                            >
-                                                                <button
-                                                                    onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
-                                                                    className={`checkbox ${task.isCompleted ? 'checked' : ''}`}
-                                                                >
-                                                                    <span className="material-symbols-outlined">check</span>
-                                                                </button>
-                                                                <div className="row-content">
-                                                                    <p className={`row-title ${task.isCompleted ? 'completed' : ''}`}>
-                                                                        {task.title}
-                                                                    </p>
-                                                                    <div className="meta-row">
-                                                                        {task.priority && (
-                                                                            <div className={`badge priority-${task.priority.toLowerCase()}`}>
-                                                                                <span className="material-symbols-outlined">
-                                                                                    {task.priority === 'Urgent' ? 'error' :
-                                                                                        task.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                                                            task.priority === 'Medium' ? 'drag_handle' :
-                                                                                                'keyboard_arrow_down'}
-                                                                                </span>
-                                                                                {task.priority ? (priorityLabels[task.priority] || task.priority) : ''}
-                                                                            </div>
-                                                                        )}
-                                                                        {/* Subtask Count */}
-                                                                        {subtaskStats[task.id]?.total > 0 && (
-                                                                            <div className="badge subtask">
-                                                                                <span className="material-symbols-outlined">checklist</span>
-                                                                                {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
-                                                                            </div>
-                                                                        )}
-                                                                        {/* Timeline or Due Date Display */}
-                                                                        {(() => {
-                                                                            const hasStart = Boolean(task.startDate);
-                                                                            const hasDue = Boolean(task.dueDate);
-                                                                            const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-                                                                            const isOverdue = dueDate && dueDate < new Date() && !task.isCompleted;
-
-                                                                            // Timeline when both dates exist
-                                                                            if (hasStart && hasDue) {
-                                                                                const start = new Date(task.startDate!).getTime();
-                                                                                const end = dueDate!.getTime();
-                                                                                const now = new Date().getTime();
-                                                                                const total = end - start;
-                                                                                const elapsed = now - start;
-                                                                                const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                                                                return (
-                                                                                    <div className="timeline-mini">
-                                                                                        <span className="date-label">
-                                                                                            {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}
-                                                                                        </span>
-                                                                                        <div className="progress-bar-bg">
-                                                                                            <div
-                                                                                                className={`progress-bar-fill ${isOverdue ? 'overdue' : ''}`}
-                                                                                                style={{ width: `${pct}%` }}
-                                                                                            />
-                                                                                        </div>
-                                                                                        <span className={`date-label ${isOverdue ? 'overdue-text' : ''}`}>
-                                                                                            {format(dueDate!, dateFormat, { locale: dateLocale })}
-                                                                                        </span>
-                                                                                    </div>
-                                                                                );
-                                                                            }
-
-                                                                            // Due date only
-                                                                            if (hasDue && dueDate) {
-                                                                                return (
-                                                                                    <span className={`date-text ${isOverdue ? 'overdue' : ''}`}>
-                                                                                        {format(dueDate, dateFormat, { locale: dateLocale })}
-                                                                                    </span>
-                                                                                );
-                                                                            }
-
-                                                                            return null;
-                                                                        })()}
-                                                                        {/* Smart Scheduled Date */}
-                                                                        {task.scheduledDate && (
-                                                                            <span className="scheduled-date">
-                                                                                <span className="material-symbols-outlined">event_available</span>
-                                                                                {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
-                                                                            </span>
-                                                                        )}
-                                                                        {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
-                                                                            <div className="assigned-groups">
-                                                                                {task.assignedGroupIds.map(gid => {
-                                                                                    const group = projectGroups.find(g => g.id === gid);
-                                                                                    if (!group) return null;
-                                                                                    return (
-                                                                                        <div
-                                                                                            key={gid}
-                                                                                            className="group-avatar"
-                                                                                            style={{ backgroundColor: group.color }}
-                                                                                            title={t('projectTasks.groupLabel').replace('{name}', group.name)}
-                                                                                        >
-                                                                                            {group.name.substring(0, 1).toUpperCase()}
-                                                                                        </div>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        if (isPinned(task.id)) {
-                                                                            unpinItem(task.id);
-                                                                        } else {
-                                                                            pinItem({
-                                                                                id: task.id,
-                                                                                type: 'task',
-                                                                                title: task.title,
-                                                                                projectId: id!,
-                                                                                priority: task.priority,
-                                                                                isCompleted: task.isCompleted
-                                                                            });
-                                                                        }
-                                                                    }}
-                                                                    className={`pin-btn ${isPinned(task.id) ? 'pinned' : ''}`}
-                                                                    title={isPinned(task.id) ? t('projectOverview.execution.unpinTask') : t('projectOverview.execution.pinTask')}
-                                                                >
-                                                                    <span className="material-symbols-outlined">push_pin</span>
-                                                                </button>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                            </Card>
-
-                                            {(showIdeaCard || showIssueCard) && (
-                                                <div className={`execution-side ${executionSideCards > 1 ? 'execution-side--stacked' : ''}`.trim()}>
-                                                    {showIdeaCard && (
-                                                        <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
-                                                            <div className="card-header">
-                                                                <h3 className="title">
-                                                                    <span className="material-symbols-outlined icon">lightbulb</span>
-                                                                    {t('projectOverview.execution.flowSpotlight')}
-                                                                </h3>
-                                                                <Link to={`/project/${id}/flows`} className="header-action-btn">
-                                                                    <span className="material-symbols-outlined">arrow_forward</span>
-                                                                </Link>
-                                                            </div>
-                                                            {topIdea ? (() => {
-                                                                const typeBadgeClass = getTypeBadgeClass(topIdea.type);
-                                                                return (
-                                                                    <Link
-                                                                        to={`/project/${id}/flows/${topIdea.id}`}
-                                                                        className="flow-spotlight-card"
-                                                                    >
-                                                                        {/* Type Badge Row */}
-                                                                        <div className="flow-meta">
-                                                                            <span className={`type-badge ${typeBadgeClass}`}>
-                                                                                {topIdea.type}
-                                                                            </span>
-                                                                            {topIdea.generated && (
-                                                                                <span className="ai-badge">
-                                                                                    <span className="material-symbols-outlined">auto_awesome</span>
-                                                                                    {t('projectOverview.execution.aiLabel')}
-                                                                                </span>
-                                                                            )}
-                                                                            {topIdea.stage && (
-                                                                                <span className="stage-badge">
-                                                                                    <span className="material-symbols-outlined">layers</span>
-                                                                                    {topIdea.stage}
-                                                                                </span>
-                                                                            )}
-                                                                        </div>
-
-                                                                        {/* Title */}
-                                                                        <h4 className="flow-title">
-                                                                            {topIdea.title}
-                                                                        </h4>
-
-                                                                        {/* Description */}
-                                                                        {topIdea.description && (
-                                                                            <p className="flow-desc">
-                                                                                {topIdea.description}
-                                                                            </p>
-                                                                        )}
-
-                                                                        {/* Meta Row */}
-                                                                        <div className="interaction-stats">
-                                                                            <span className="stat">
-                                                                                <span className="material-symbols-outlined">thumb_up</span>
-                                                                                {topIdea.votes || 0}
-                                                                            </span>
-                                                                            <span className="stat">
-                                                                                <span className="material-symbols-outlined">chat_bubble</span>
-                                                                                {topIdea.comments || 0}
-                                                                            </span>
-                                                                        </div>
-                                                                    </Link>
-                                                                );
-                                                            })() : (
-                                                                <div className="empty-state">
-                                                                    {t('projectOverview.execution.noFlows')}
-                                                                </div>
-                                                            )}
-                                                        </Card>
-                                                    )}
-
-                                                    {showIssueCard && (
-                                                        <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
-                                                            <div className="card-header">
-                                                                <h3 className="title">
-                                                                    <span className="material-symbols-outlined icon">bug_report</span>
-                                                                    {t('projectOverview.execution.issueFocus')}
-                                                                </h3>
-                                                                <Link to={`/project/${id}/issues`} className="header-action-btn">
-                                                                    <span className="material-symbols-outlined">arrow_forward</span>
-                                                                </Link>
-                                                            </div>
-
-                                                            <div className="list-content scrollable">
-                                                                {recentIssues.length === 0 ? (
-                                                                    <div className="empty-state">{t('projectOverview.execution.noOpenIssues')}</div>
-                                                                ) : (
-                                                                    recentIssues.map(issue => (
-                                                                        <div
-                                                                            key={issue.id}
-                                                                            onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                                                            className="list-row"
-                                                                        >
-                                                                            <div className="row-content">
-                                                                                <p className="row-title row-title--truncate">{issue.title}</p>
-                                                                                <div className="meta-row">
-                                                                                    <div className={`badge priority-${issue.priority.toLowerCase()}`}>
-                                                                                        <span className="material-symbols-outlined">
-                                                                                            {issue.priority === 'Urgent' ? 'error' :
-                                                                                                issue.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                                                                    issue.priority === 'Medium' ? 'drag_handle' :
-                                                                                                        'keyboard_arrow_down'}
-                                                                                        </span>
-                                                                                        {issue.priority ? (priorityLabels[issue.priority] || issue.priority) : ''}
-                                                                                    </div>
-                                                                                    <div className="badge status">
-                                                                                        {issueStatusLabels[issue.status] || issue.status}
-                                                                                    </div>
-                                                                                    {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
-                                                                                        <div className="assigned-groups">
-                                                                                            {issue.assignedGroupIds.map(gid => {
-                                                                                                const group = projectGroups.find(g => g.id === gid);
-                                                                                                if (!group) return null;
-                                                                                                return (
-                                                                                                    <div
-                                                                                                        key={gid}
-                                                                                                        className="group-avatar"
-                                                                                                        style={{ backgroundColor: group.color }}
-                                                                                                        title={t('projectTasks.groupLabel').replace('{name}', group.name)}
-                                                                                                    >
-                                                                                                        {group.name.substring(0, 1).toUpperCase()}
-                                                                                                    </div>
-                                                                                                );
-                                                                                            })}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                            <div className="row-actions">
-                                                                                {(() => {
-                                                                                    const hasStart = Boolean(issue.startDate);
-                                                                                    const hasDue = Boolean(issue.dueDate || issue.scheduledDate);
-                                                                                    const dueDateStr = issue.dueDate || issue.scheduledDate;
-                                                                                    const dueDate = dueDateStr ? new Date(dueDateStr) : null;
-                                                                                    const isResolved = ['Resolved', 'Closed'].includes(issue.status);
-                                                                                    const isOverdue = dueDate && dueDate < new Date() && !isResolved;
-
-                                                                                    // Timeline view when both start and due exist
-                                                                                    if (hasStart && hasDue) {
-                                                                                        const start = new Date(issue.startDate!).getTime();
-                                                                                        const end = dueDate!.getTime();
-                                                                                        const now = new Date().getTime();
-                                                                                        const total = end - start;
-                                                                                        const elapsed = now - start;
-                                                                                        const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                                                                        return (
-                                                                                            <div className="timeline-mini stacked">
-                                                                                                <div className="timeline-header">
-                                                                                                    <span>{t('projectOverview.execution.timeline')}</span>
-                                                                                                    <span>{Math.round(pct)}%</span>
-                                                                                                </div>
-                                                                                                <div className="progress-bar-bg">
-                                                                                                    <div
-                                                                                                        className={`progress-bar-fill ${isOverdue ? 'overdue' : ''}`}
-                                                                                                        style={{ width: `${pct}%` }}
-                                                                                                    />
-                                                                                                </div>
-                                                                                                <div className="timeline-footer">
-                                                                                                    <span>{format(new Date(issue.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                                                                                    <span className={isOverdue ? 'overdue-text' : ''}>
-                                                                                                        {format(dueDate!, dateFormat, { locale: dateLocale })}
-                                                                                                    </span>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        );
-                                                                                    }
-
-                                                                                    // Due date only
-                                                                                    if (hasDue && dueDate) {
-                                                                                        return (
-                                                                                            <div className={`date-badge ${isOverdue ? 'overdue' : ''}`}>
-                                                                                                <span className="material-symbols-outlined">event</span>
-                                                                                                <div className="date-col">
-                                                                                                    <span className="label">
-                                                                                                        {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
-                                                                                                    </span>
-                                                                                                    <span className="value">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                                                                                </div>
-                                                                                            </div>
-                                                                                        );
-                                                                                    }
-
-                                                                                    return null;
-                                                                                })()}
-                                                                                <button
-                                                                                    onClick={(e) => {
-                                                                                        e.stopPropagation();
-                                                                                        if (isPinned(issue.id)) {
-                                                                                            unpinItem(issue.id);
-                                                                                        } else {
-                                                                                            pinItem({
-                                                                                                id: issue.id,
-                                                                                                type: 'issue',
-                                                                                                title: issue.title,
-                                                                                                projectId: id!,
-                                                                                                priority: issue.priority
-                                                                                            });
-                                                                                        }
-                                                                                    }}
-                                                                                    className={`pin-btn ${isPinned(issue.id) ? 'pinned' : ''}`}
-                                                                                    title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
-                                                                                >
-                                                                                    <span className="material-symbols-outlined">push_pin</span>
-                                                                                </button>
-                                                                            </div>
-                                                                        </div>
-                                                                    ))
-                                                                )}
-                                                            </div>
-                                                        </Card>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Initiatives Row */}
-                                        {initiatives.length > 0 && (
-                                            <div className="initiatives-section">
-                                                <div className="initiatives-header">
-                                                    <h3 className="initiatives-title">
-                                                        <span className="material-symbols-outlined initiatives-title-icon">rocket_launch</span>
-                                                        {t('projectOverview.initiatives.title')}
-                                                        <span className="initiatives-count">({initiatives.length})</span>
-                                                    </h3>
-                                                    <Link to={`/project/${id}/tasks`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="initiatives-grid">
-                                                    {initiatives.map(initiative => {
-                                                        const { done: doneSub, total: totalSub } = subtaskStats[initiative.id] || { done: 0, total: 0 };
-                                                        const hasStart = !!initiative.startDate;
-                                                        const hasDue = !!initiative.dueDate;
-
-                                                        // Calculate timeline percentage
-                                                        let pct = 0;
-                                                        let isOverdue = false;
-                                                        if (hasStart && hasDue) {
-                                                            const start = new Date(initiative.startDate!).getTime();
-                                                            const due = new Date(initiative.dueDate!).getTime();
-                                                            const now = new Date().getTime();
-                                                            if (due > start) {
-                                                                pct = Math.min(100, Math.max(0, ((now - start) / (due - start)) * 100));
-                                                            }
-                                                            isOverdue = now > due && initiative.status !== 'Done';
-                                                        } else if (hasDue) {
-                                                            const due = (initiative.dueDate instanceof Date ? initiative.dueDate : new Date(initiative.dueDate!)).getTime();
-                                                            isOverdue = Date.now() > due && initiative.status !== 'Done';
-                                                        }
-                                                        const dueDate = initiative.dueDate ? new Date(initiative.dueDate) : null;
-
-                                                        // Status-based styling
-                                                        const statusKey = initiative.status?.toLowerCase().replace(/\s+/g, '-') || '';
-                                                        const isInProgress = statusKey === 'in-progress' || statusKey === 'inprogress';
-                                                        const isReview = statusKey === 'review' || statusKey === 'in-review';
-                                                        const isBlocked = statusKey === 'blocked';
-
-                                                        let statusClass = '';
-                                                        if (isBlocked) statusClass = 'status-blocked';
-                                                        else if (isInProgress) statusClass = 'status-active';
-                                                        else if (isReview) statusClass = 'status-review';
-
-                                                        const priorityKey = initiative.priority?.toLowerCase() || '';
-                                                        const priorityClass = priorityKey === 'urgent' ? 'priority-urgent' :
-                                                            priorityKey === 'high' ? 'priority-high' :
-                                                                priorityKey === 'medium' ? 'priority-medium' : 'priority-low';
-
-                                                        return (
-                                                            <div
-                                                                key={initiative.id}
-                                                                onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                                className={`initiative-card ${statusClass}`}
-                                                            >
-                                                                {/* Priority indicator */}
-                                                                <div className={`initiative-priority-indicator ${priorityClass}`} />
-
-                                                                <div className="initiative-header">
-                                                                    <h4 className="initiative-title">
-                                                                        {initiative.title}
-                                                                    </h4>
-                                                                    <span className="material-symbols-outlined initiative-icon">rocket_launch</span>
-                                                                </div>
-
-                                                                {/* Description */}
-                                                                {initiative.description && (
-                                                                    <p className="initiative-description">
-                                                                        {initiative.description}
-                                                                    </p>
-                                                                )}
-
-                                                                {/* Status & Priority Row */}
-                                                                <div className="initiative-tags">
-                                                                    {initiative.status && (
-                                                                        <span className={`initiative-tag initiative-tag--status status-${statusKey}`}>
-                                                                            {taskStatusLabels[initiative.status] || initiative.status}
-                                                                        </span>
-                                                                    )}
-                                                                    {initiative.priority && (
-                                                                        <span className={`initiative-tag initiative-tag--priority priority-${priorityKey}`}>
-                                                                            <span className="material-symbols-outlined">
-                                                                                {initiative.priority === 'Urgent' ? 'error' :
-                                                                                    initiative.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                                                        initiative.priority === 'Medium' ? 'drag_handle' : 'keyboard_arrow_down'}
-                                                                            </span>
-                                                                            {priorityLabels[initiative.priority] || initiative.priority}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Assignees */}
-                                                                {initiative.assignedGroupIds && initiative.assignedGroupIds.length > 0 && (
-                                                                    <div className="initiative-assignees">
-                                                                        <div className="initiative-avatars">
-                                                                            {initiative.assignedGroupIds.slice(0, 3).map(gid => {
-                                                                                const group = projectGroups.find(g => g.id === gid);
-                                                                                if (!group) return null;
-                                                                                return (
-                                                                                    <div
-                                                                                        key={gid}
-                                                                                        className="initiative-avatar"
-                                                                                        style={{ backgroundColor: group.color }}
-                                                                                        title={group.name}
-                                                                                    >
-                                                                                        {group.name.substring(0, 1).toUpperCase()}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                        {initiative.assignedGroupIds.length > 3 && (
-                                                                            <span className="initiative-assignees-more">+{initiative.assignedGroupIds.length - 3}</span>
-                                                                        )}
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Subtask progress if available */}
-                                                                {subtaskStats[initiative.id]?.total > 0 && (
-                                                                    <div className="initiative-progress">
-                                                                        <span className="material-symbols-outlined initiative-progress-icon">checklist</span>
-                                                                        <div className="initiative-progress-bar">
-                                                                            <div
-                                                                                className="initiative-progress-fill"
-                                                                                style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
-                                                                            />
-                                                                        </div>
-                                                                        <span className="initiative-progress-text">
-                                                                            {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-
-                                                                {/* Timeline */}
-                                                                {hasStart && hasDue && (
-                                                                    <div className={`initiative-timeline ${isOverdue ? 'is-overdue' : ''}`}>
-                                                                        <span className="material-symbols-outlined">schedule</span>
-                                                                        <span className="initiative-timeline-date">{format(new Date(initiative.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                                                        <div className="initiative-timeline-bar">
-                                                                            <div
-                                                                                className="initiative-timeline-fill"
-                                                                                style={{ width: `${pct}%` }}
-                                                                            />
-                                                                        </div>
-                                                                        <span className="initiative-timeline-date">{format(dueDate!, dateFormat, { locale: dateLocale })}</span>
-                                                                    </div>
-                                                                )}
-                                                                {/* Due Date Only */}
-                                                                {!hasStart && hasDue && (
-                                                                    <div className={`initiative-due ${isOverdue ? 'is-overdue' : ''}`}>
-                                                                        <span className="material-symbols-outlined">event</span>
-                                                                        {t('projectOverview.initiatives.due')} {format(dueDate!, dateFormat, { locale: dateLocale })}
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </section>
-
-                                    {/* Updates */}
-                                    <section className="updates-section">
-                                        <div className="section-header-simple">
-                                            <h2>{t('projectOverview.updates.title')}</h2>
-                                            <span className="subtitle">{t('projectOverview.updates.subtitle')}</span>
-                                        </div>
-                                        <div className="updates-grid">
-                                            <Card className={`updates-card ${showGithubCard ? 'span-half' : 'span-full'}`}>
-                                                <div className="updates-card__header">
-                                                    <h3 className="updates-card__title">
-                                                        <span className="material-symbols-outlined updates-card__title-icon">history</span>
-                                                        {t('projectOverview.updates.latestActivity')}
-                                                    </h3>
-                                                    <Link to={`/project/${id}/activity`} className="icon-btn" aria-label={t('projectOverview.updates.latestActivity')}>
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-
-                                                <div className="activity-list">
-                                                    {activity.slice(0, 6).map((item) => {
-                                                        const { icon, color, bg } = activityIcon(item.type, item.action);
-                                                        return (
-                                                            <div key={item.id} className="activity-item">
-                                                                <div className="activity-icon" style={{ backgroundColor: bg }}>
-                                                                    <span className="material-symbols-outlined" style={{ color }}>{icon}</span>
-                                                                </div>
-                                                                <div className="activity-content">
-                                                                    <p className="activity-text">
-                                                                        <span className="activity-user">{item.user}</span> {item.action}
-                                                                    </p>
-                                                                    <p className="activity-time">{timeAgo(item.createdAt)}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {activity.length === 0 && <p className="activity-empty">{t('projectOverview.updates.noActivity')}</p>}
-                                                </div>
-                                            </Card>
-
-                                            {showGithubCard && (
-                                                <Card className="updates-card span-half">
-                                                    <div className="github-card__header">
-                                                        <div className="github-card__info">
-                                                            <div className="github-card__icon">
-                                                                <span className="material-symbols-outlined">terminal</span>
-                                                            </div>
-                                                            <div className="github-card__text">
-                                                                <h3 className="github-card__title">{t('projectOverview.github.title')}</h3>
-                                                                <p className="github-card__subtitle">
-                                                                    {project.githubRepo || t('projectOverview.github.noRepo')}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        {project.githubRepo && (
-                                                            <a
-                                                                href={`https://github.com/${project.githubRepo}`}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="github-card__link"
-                                                            >
-                                                                {t('projectOverview.github.repoLink')} <span className="material-symbols-outlined">open_in_new</span>
-                                                            </a>
-                                                        )}
-                                                    </div>
-
-                                                    {!project.githubRepo ? (
-                                                        <div className="github-card__empty-state">
-                                                            <p>{t('projectOverview.github.noRepoHint')}</p>
-                                                            {isOwner && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setEditModalTab('integrations');
-                                                                        setShowEditModal(true);
-                                                                    }}
-                                                                    className="github-card__settings-btn"
-                                                                >
-                                                                    {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined">settings</span>
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    ) : commitsLoading ? (
-                                                        <div className="github-card__loading">
-                                                            <span className="material-symbols-outlined github-card__loading-icon">progress_activity</span>
-                                                            {t('projectOverview.github.loading')}
-                                                        </div>
-                                                    ) : commitsError ? (
-                                                        <div className="github-card__error">{commitsError}</div>
-                                                    ) : githubCommits.length === 0 ? (
-                                                        <div className="github-card__empty">{t('projectOverview.github.none')}</div>
-                                                    ) : (
-                                                        <div className="github-card__list">
-                                                            {githubCommits.map(commit => (
-                                                                <a
-                                                                    key={commit.sha}
-                                                                    href={commit.html_url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="github-commit-item"
-                                                                >
-                                                                    <div className="github-commit__row">
-                                                                        <div className="github-commit__meta">
-                                                                            {commit.author?.avatar_url ? (
-                                                                                <img
-                                                                                    src={commit.author.avatar_url}
-                                                                                    alt={commit.author.login}
-                                                                                    className="github-commit__avatar"
-                                                                                />
-                                                                            ) : (
-                                                                                <div className="github-commit__avatar-fallback">
-                                                                                    {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
-                                                                                </div>
-                                                                            )}
-                                                                            <div className="github-commit__details">
-                                                                                <p className="github-commit__message">
-                                                                                    {commit.commit.message.split(/\r?\n/)[0]}
-                                                                                </p>
-                                                                                <div className="github-commit__sub">
-                                                                                    <span>@{commit.author?.login || commit.commit.author.name || t('projectOverview.github.unknownAuthor')}</span>
-                                                                                    <span>•</span>
-                                                                                    <span>{format(new Date(commit.commit.author.date), dateFormat, { locale: dateLocale })}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <span className="github-commit__sha">
-                                                                            {commit.sha.slice(0, 7)}
-                                                                        </span>
-                                                                    </div>
-                                                                </a>
-                                                            ))}
-                                                        </div>
-                                                    )}
-                                                </Card>
-                                            )}
-                                        </div>
-                                    </section>
-
-                                    {/* Resources */}
-                                    <section className="resources-section">
-                                        <div className="section-header-simple">
-                                            <h2>{t('projectOverview.resources.title')}</h2>
-                                            <span className="subtitle">{t('projectOverview.resources.subtitle')}</span>
-                                        </div>
-                                        <div className="resources-grid">
-                                            <Card className="updates-card">
-                                                <div className="resources-card__header">
-                                                    <h3 className="resources-card__title">{t('projectOverview.resources.quickLinks')}</h3>
-                                                    {isOwner && (
-                                                        <Button size="sm" variant="ghost" onClick={() => {
-                                                            setEditModalTab('resources');
-                                                            setShowEditModal(true);
-                                                        }}>
-                                                            {t('projectOverview.resources.manage')}
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                                <div className="resources-card__list">
-                                                    {project.links?.slice(0, 4).map((link, i) => (
-                                                        <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="resource-link-item">
-                                                            <div className="icon-box">
-                                                                <span className="material-symbols-outlined">link</span>
-                                                            </div>
-                                                            <div className="link-info">
-                                                                <p className="link-title">{link.title}</p>
-                                                                <p className="link-url">{link.url.replace(/^https?:\/\//, '')}</p>
-                                                            </div>
-                                                            <span className="material-symbols-outlined open-icon">open_in_new</span>
-                                                        </a>
-                                                    ))}
-                                                    {(!project.links || project.links.length === 0) && <p className="resources-card__empty">{t('projectOverview.resources.noLinks')}</p>}
-                                                </div>
-                                                {project.links && project.links.length > 4 && (
-                                                    <p className="resources-card__footer">
-                                                        {t('projectOverview.resources.moreLinks').replace('{count}', String(project.links.length - 4))}
-                                                    </p>
+                            <div className="overview-layout">
+                                {canCustomizeLayout && (
+                                    <div className="overview-layout__toolbar">
+                                        <div className="overview-layout__info">
+                                            <span className="overview-layout__label">{t('projectOverview.layout.title')}</span>
+                                            <div className="overview-layout__meta">
+                                                <span className="overview-layout__template">{templateLabel}</span>
+                                                {layoutEditMode && (
+                                                    <span className="overview-layout__hint">{t('projectOverview.layout.dragHint')}</span>
                                                 )}
-                                            </Card>
-
-                                            <Card className="updates-card">
-                                                <div className="resources-card__header">
-                                                    <h3 className="resources-card__title">{t('projectOverview.resources.gallery')}</h3>
-                                                    <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>{t('projectOverview.resources.manage')}</Button>
-                                                </div>
-
-                                                <div className="gallery-grid">
-                                                    {galleryAssets.map((asset) => (
-                                                        <div
-                                                            key={`${asset.url}-${asset.index}`}
-                                                            className="gallery-item"
-                                                            onClick={() => { setSelectedImageIndex(asset.index); setShowGalleryModal(true); }}
-                                                        >
-                                                            <img src={asset.url} alt="" />
-                                                        </div>
-                                                    ))}
-                                                    {projectAssets.length < 3 && (
-                                                        <button onClick={() => setShowMediaLibrary(true)} className="add-btn">
-                                                            <span className="material-symbols-outlined">add</span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </Card>
-                                        </div>
-                                    </section>
-                                </div>
-
-                                <div className="project-overview__sidebar">
-                                    <Card data-onboarding-id="project-overview-planning" className="updates-card">
-                                        <div className="planning-card__header">
-                                            <div className="planning-card__title-wrap">
-                                                <div className="planning-card__icon">
-                                                    <span className="material-symbols-outlined">schedule</span>
-                                                </div>
-                                                <h3 className="planning-card__title">{t('projectOverview.planning.title')}</h3>
+                                                {layoutSaving && (
+                                                    <span className="overview-layout__saving">{t('projectOverview.layout.saving')}</span>
+                                                )}
                                             </div>
-                                            {isOwner && (
-                                                <button
-                                                    onClick={() => {
-                                                        setEditModalTab('general');
-                                                        setShowEditModal(true);
-                                                    }}
-                                                    className="icon-btn"
-                                                    title={t('projectOverview.planning.editDates')}
-                                                >
-                                                    <span className="material-symbols-outlined">edit_calendar</span>
-                                                </button>
+                                            {layoutError && (
+                                                <span className="overview-layout__error">{layoutError}</span>
                                             )}
                                         </div>
-                                        <div className="planning-card__meta">
-                                            <span className="planning-card__meta-label">{t('projectOverview.planning.subtitle')}</span>
-                                            <span className="planning-card__meta-progress">
-                                                <span className="planning-card__dot" />
-                                                <span className="planning-card__percent">{progress}%</span>
-                                                {t('projectOverview.planning.complete')}
-                                            </span>
-                                        </div>
-
-                                        <div className="planning-card-content">
-                                            <div className="dates-grid">
-                                                <div>
-                                                    <p className="date-label">{t('projectOverview.planning.start')}</p>
-                                                    <p className="date-value">
-                                                        {project.startDate ? format(new Date(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
-                                                    </p>
-                                                </div>
-                                                <div className="dates-grid__item dates-grid__item--right">
-                                                    <p className="date-label">{t('projectOverview.planning.due')}</p>
-                                                    <p className="date-value">
-                                                        {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="progress-track">
-                                                <div className="progress-bar-planning" style={{ width: `${progress}%` }} />
-                                            </div>
-                                        </div>
-                                    </Card>
-
-                                    <Card data-onboarding-id="project-overview-milestones" className="milestones-card">
-                                        <div className="milestones-header">
-                                            <h3 className="milestones-title">
-                                                <span className="material-symbols-outlined milestones-title-icon">flag</span>
-                                                {t('projectOverview.milestones.title')}
-                                            </h3>
-                                            <Link to={`/project/${id}/milestones`} className="icon-btn" aria-label={t('projectOverview.milestones.title')}>
-                                                <span className="material-symbols-outlined">arrow_forward</span>
-                                            </Link>
-                                        </div>
-
-                                        {/* Progress Header */}
-                                        <div className="milestone-progress-header">
-                                            <div className="milestone-progress">
-                                                <div className="milestone-progress-bar">
-                                                    <div
-                                                        className="milestone-progress-fill"
-                                                        style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.status === 'Achieved').length / milestones.length) * 100 : 0}%` }}
-                                                    />
-                                                </div>
-                                                <div className="milestone-progress-meta">
-                                                    <span className="milestone-progress-label">{t('projectOverview.milestones.progress')}</span>
-                                                    <span className="milestone-progress-count">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="milestone-list">
-                                            {/* Vertical Line */}
-                                            {pendingMilestones.length > 0 && (
-                                                <div className="milestone-line" />
-                                            )}
-
-                                            {pendingMilestones.length > 0 ? (
-                                                pendingMilestones
-                                                    .slice()
-                                                    .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
-                                                    .slice(0, 3)
-                                                    .map((milestone, index) => {
-                                                        const isFirst = index === 0;
-                                                        const isOverdue = milestone.dueDate ? new Date(milestone.dueDate) < new Date() : false;
-                                                        return (
-                                                            <div key={milestone.id} className="milestone-item">
-                                                                <div className={`timeline-dot ${isFirst ? 'is-next' : 'is-future'}`}>
-                                                                    {isFirst && <div className="inner-pulse" />}
-                                                                </div>
-
-                                                                <div className={`milestone-content ${isFirst ? 'is-primary' : 'is-secondary'}`}>
-                                                                    <div className="milestone-row">
-                                                                        <div className="milestone-text">
-                                                                            <p className={`milestone-title ${isFirst ? 'is-next' : ''}`}>
-                                                                                {milestone.title.length > 35 ? milestone.title.substring(0, 35) + '...' : milestone.title}
-                                                                            </p>
-                                                                            <div className="milestone-meta">
-                                                                                <p className={`milestone-date ${isOverdue ? 'is-overdue' : isFirst ? 'is-up-next' : ''}`}>
-                                                                                    {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
-                                                                                </p>
-                                                                                {isFirst && (
-                                                                                    <span className="milestone-tag">
-                                                                                        {t('projectOverview.milestones.nextUp')}
-                                                                                    </span>
-                                                                                )}
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {isFirst && (
-                                                                            <button
-                                                                                onClick={() => handleToggleMilestone(milestone)}
-                                                                                className="milestone-action"
-                                                                                title={t('projectOverview.milestones.markAchieved')}
-                                                                            >
-                                                                                <span className="material-symbols-outlined">check</span>
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })
-                                            ) : (
-                                                <div className="milestone-empty">
-                                                    <div className="milestone-empty-icon">
-                                                        <span className="material-symbols-outlined">emoji_events</span>
-                                                    </div>
-                                                    <p className="milestone-empty-title">{t('projectOverview.milestones.allAchieved')}</p>
-                                                    <p className="milestone-empty-text">{t('projectOverview.milestones.celebrate')}</p>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Background Decoration */}
-                                        <div className="bg-decoration">
-                                            <span className="material-symbols-outlined bg-decoration-icon">flag</span>
-                                        </div>
-                                    </Card>
-
-                                    {/* AI Intelligence Card - Compact */}
-                                    <div
-                                        className="ai-insights-card-compact"
-                                        onClick={() => setShowReportModal(true)}
-                                    >
-                                        <div className="bg-icon">
-                                            <span className="material-symbols-outlined">auto_awesome</span>
-                                        </div>
-                                        <div className="content-wrapper">
-                                            <div className="ai-insights__icon">
-                                                <span className="material-symbols-outlined">psychology</span>
-                                            </div>
-                                            <div className="ai-insights__text">
-                                                <h3 className="ai-insights__title">{t('projectOverview.aiReport.title')}</h3>
-                                                <p className="ai-insights__subtitle">
-                                                    {pinnedReport ? t('projectOverview.aiReport.updated').replace('{time}', timeAgo(pinnedReport.createdAt)) : t('projectOverview.aiReport.generateAnalysis')}
-                                                </p>
-                                            </div>
-                                            <span className="material-symbols-outlined ai-insights__arrow">arrow_forward</span>
+                                        <div className="overview-layout__actions">
+                                            <Button
+                                                variant={layoutEditMode ? 'primary' : 'ghost'}
+                                                size="sm"
+                                                icon={<span className="material-symbols-outlined">drag_indicator</span>}
+                                                onClick={() => setLayoutEditMode(prev => !prev)}
+                                            >
+                                                {layoutEditMode ? t('projectOverview.layout.done') : t('projectOverview.layout.edit')}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                icon={<span className="material-symbols-outlined">tune</span>}
+                                                onClick={openLayoutModal}
+                                            >
+                                                {t('projectOverview.layout.customize')}
+                                            </Button>
                                         </div>
                                     </div>
-
-                                    <Card className="updates-card">
-                                        <div className="team-card__header">
-                                            <h3 className="team-card__title">
-                                                <span className="material-symbols-outlined team-card__title-icon">group</span>
-                                                {t('projectOverview.team.title')}
-                                                <span className="team-card__count">
-                                                    {teamMemberProfiles.length}
-                                                </span>
-                                            </h3>
-                                            <div className="team-card__actions">
-                                                {can('canInvite') && (
-                                                    <button
-                                                        onClick={handleInvite}
-                                                        className="icon-btn"
-                                                        title={t('projectOverview.team.invite')}
-                                                    >
-                                                        <span className="material-symbols-outlined">person_add</span>
-                                                    </button>
-                                                )}
-                                                <Link
-                                                    to="#"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        setEditModalTab('team');
-                                                        setShowEditModal(true);
-                                                    }}
-                                                    className="icon-btn"
-                                                    title={t('projectOverview.team.manage')}
-                                                >
-                                                    <span className="material-symbols-outlined">settings</span>
-                                                </Link>
-                                            </div>
+                                )}
+                                <div className={`overview-layout__columns ${layoutEditMode ? 'is-editing' : ''}`.trim()}>
+                                    <div
+                                        className="overview-layout__column overview-layout__column--primary"
+                                        onDragOver={handleLayoutColumnDragOver('primary')}
+                                        onDrop={handleLayoutColumnDrop}
+                                    >
+                                        <div className="overview-layout__primary">
+                                            {primaryCardsToRender.map(renderOverviewCard)}
                                         </div>
-
-                                        {teamMemberProfiles.length === 0 ? (
-                                            <div className="team-empty">
-                                                <span className="material-symbols-outlined">person_add</span>
-                                                <p>{t('projectOverview.team.empty')}</p>
-                                            </div>
-                                        ) : (
-                                            <div className="team-grid">
-                                                {teamMemberProfiles.slice(0, 4).map(member => {
-                                                    const presenceData = activeProjectUsers.find(u => u.uid === member.id);
-                                                    const isOnline = presenceData?.isOnline || false;
-
-                                                    return (
-                                                        <div key={member.id} className="team-member-row">
-                                                            <div className="member-avatar">
-                                                                {member.photoURL ? (
-                                                                    <img
-                                                                        src={member.photoURL}
-                                                                        alt={member.displayName}
-                                                                        className={`member-avatar__image ${isOnline ? 'is-online' : ''}`}
-                                                                    />
-                                                                ) : (
-                                                                    <div className={`avatar-placeholder ${isOnline ? 'is-online' : ''}`}>
-                                                                        {member.displayName?.charAt(0)?.toUpperCase() || '?'}
-                                                                    </div>
-                                                                )}
-                                                                {isOnline && (
-                                                                    <div className="status-dot" />
-                                                                )}
-                                                            </div>
-
-                                                            <div className="member-info">
-                                                                <div className="row-top">
-                                                                    <span className="member-name">
-                                                                        {member.displayName}
-                                                                    </span>
-                                                                    <span
-                                                                        style={{
-                                                                            backgroundColor: getRoleDisplayInfo(workspaceRoles, member.role).color + '20',
-                                                                            color: getRoleDisplayInfo(workspaceRoles, member.role).color,
-                                                                            borderColor: getRoleDisplayInfo(workspaceRoles, member.role).color + '40'
-                                                                        }}
-                                                                        className="member-role-badge"
-                                                                    >
-                                                                        {getRoleDisplayInfo(workspaceRoles, member.role).name}
-                                                                    </span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-
-                                                {teamMemberProfiles.length > 4 && (
-                                                    <button
-                                                        onClick={() => { setEditModalTab('team'); setShowEditModal(true); }}
-                                                        className="view-all-btn"
-                                                    >
-                                                        <div className="view-all-avatars">
-                                                            {teamMemberProfiles.slice(4, 7).map(m => (
-                                                                <div key={m.id} className="view-all-avatar">
-                                                                    {m.photoURL ? (
-                                                                        <img src={m.photoURL} alt="" className="view-all-avatar__image" />
-                                                                    ) : (
-                                                                        <div className="view-all-avatar__fallback">{m.displayName?.charAt(0)}</div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                        {t('common.andXOthers', '+ {count} others').replace('{count}', (teamMemberProfiles.length - 4).toString())}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </Card>
-
-                                    {isOwner && (
-                                        <Card className="updates-card">
-                                            <div className="controls-card__header">
-                                                <span className="material-symbols-outlined controls-card__icon">tune</span>
-                                                <h3 className="controls-card__title">{t('projectOverview.controls.title')}</h3>
-                                            </div>
-                                            <div className="controls-form">
-                                                <div className="form-group-row">
-                                                    <Select
-                                                        label={t('projectOverview.controls.status')}
-                                                        value={project.status}
-                                                        options={statusOptions}
-                                                        onChange={(value) => handleUpdateField('status', value)}
-                                                        className="project-overview__select"
-                                                    />
-
-                                                    <Select
-                                                        label={t('projectOverview.controls.priority')}
-                                                        value={project.priority || 'Medium'}
-                                                        options={priorityOptions}
-                                                        onChange={(value) => handleUpdateField('priority', value)}
-                                                        className="project-overview__select"
-                                                    />
-                                                </div>
-
-                                                <div>
-                                                    <Select
-                                                        label={t('projectOverview.controls.projectState')}
-                                                        value={project.projectState || 'not specified'}
-                                                        options={projectStateOptions}
-                                                        onChange={(value) => handleUpdateField('projectState', value)}
-                                                        className="project-overview__select"
-                                                    />
-                                                </div>
-
-                                                <div className="date-inputs">
-                                                    <DatePicker
-                                                        label={t('projectOverview.planning.start')}
-                                                        value={toDateValue(project.startDate)}
-                                                        onChange={(date) => handleUpdateField('startDate', toDateString(date))}
-                                                        placeholder={t('projectOverview.controls.startPlaceholder')}
-                                                    />
-                                                    <DatePicker
-                                                        label={t('projectOverview.planning.due')}
-                                                        value={toDateValue(project.dueDate)}
-                                                        onChange={(date) => handleUpdateField('dueDate', toDateString(date))}
-                                                        placeholder={t('projectOverview.controls.duePlaceholder')}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </Card>
-                                    )}
+                                    </div>
+                                    <div
+                                        className="overview-layout__column overview-layout__column--secondary"
+                                        onDragOver={handleLayoutColumnDragOver('secondary')}
+                                        onDrop={handleLayoutColumnDrop}
+                                    >
+                                        <div className="overview-layout__secondary">
+                                            {secondaryCardsToRender.map(renderOverviewCard)}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
+                            {/* Overview Layout Modal */}
+                            <Modal
+                                isOpen={layoutModalOpen}
+                                onClose={() => setLayoutModalOpen(false)}
+                                title={t('projectOverview.layout.modalTitle')}
+                                size="lg"
+                            >
+                                <div className="overview-layout-modal">
+                                    <div className="overview-layout-template">
+                                        <div>
+                                            <span className="overview-layout-template__label">{t('projectOverview.layout.template.label')}</span>
+                                            <span className="overview-layout-template__value">{draftTemplateLabel}</span>
+                                        </div>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            icon={<span className="material-symbols-outlined">restart_alt</span>}
+                                            onClick={resetLayoutDraft}
+                                        >
+                                            {t('projectOverview.layout.reset')}
+                                        </Button>
+                                    </div>
 
+                                    <p className="overview-layout-modal__hint">{t('projectOverview.layout.modalHint')}</p>
 
+                                    <div className="overview-layout-list">
+                                        {layoutDraft.cards.map(card => {
+                                            const placement = resolveCardPlacement(card);
+                                            const isSecondary = placement === 'secondary';
+                                            return (
+                                                <div key={card.id} className={`overview-layout-item ${card.enabled ? 'is-enabled' : 'is-disabled'}`.trim()}>
+                                                    <div className="overview-layout-item__info">
+                                                        <h4>{overviewCardMeta[card.id].title}</h4>
+                                                        <p>{overviewCardMeta[card.id].description}</p>
+                                                    </div>
+                                                    <div className="overview-layout-item__controls">
+                                                        <button
+                                                            type="button"
+                                                            className={`overview-layout-toggle ${card.enabled ? 'is-on' : ''}`.trim()}
+                                                            onClick={() => handleLayoutToggle(card.id)}
+                                                            aria-pressed={card.enabled}
+                                                        >
+                                                            <span className="overview-layout-toggle__thumb" />
+                                                        </button>
+                                                        <div className="overview-layout-placement">
+                                                            {layoutPlacementOptions.map(option => (
+                                                                <button
+                                                                    key={`${card.id}-${option.value}`}
+                                                                    type="button"
+                                                                    className={`overview-layout-placement__chip ${placement === option.value ? 'is-active' : ''}`.trim()}
+                                                                    onClick={() => handleLayoutPlacementChange(card.id, option.value)}
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        <div className={`overview-layout-size ${isSecondary ? 'is-disabled' : ''}`.trim()}>
+                                                            {layoutSizeOptions.map(option => (
+                                                                <button
+                                                                    key={`${card.id}-${option.value}`}
+                                                                    type="button"
+                                                                    className={`overview-layout-size__chip ${card.span === option.value ? 'is-active' : ''}`.trim()}
+                                                                    onClick={() => handleLayoutSpanChange(card.id, option.value)}
+                                                                    disabled={isSecondary}
+                                                                >
+                                                                    {option.label}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="overview-layout-modal__actions">
+                                        <Button variant="ghost" onClick={() => setLayoutModalOpen(false)}>
+                                            {t('projectOverview.layout.cancel')}
+                                        </Button>
+                                        <Button variant="primary" onClick={applyLayoutDraft} isLoading={layoutSaving}>
+                                            {t('projectOverview.layout.save')}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </Modal>
 
                             {/* Gallery Modal */}
                             <Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title={t('projectOverview.gallery.title')} size="xl">

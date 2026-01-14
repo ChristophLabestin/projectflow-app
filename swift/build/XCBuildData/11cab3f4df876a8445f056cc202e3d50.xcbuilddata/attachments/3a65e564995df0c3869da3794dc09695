@@ -1,0 +1,201 @@
+{
+  "" : {
+    "const-values" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary.swiftconstvalues",
+    "dependencies" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary.d",
+    "diagnostics" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary.dia",
+    "emit-module-dependencies" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary-emit-module.dia",
+    "pch" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflow-primary.swiftdeps"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/GeneratedAssetSymbols.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/AppBackground.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppBackground.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppBackground.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppBackground.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/AppDelegate.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppDelegate.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/AppShellView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppShellView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppShellView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/AppShellView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/Base64URL.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Base64URL.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Base64URL.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Base64URL.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/Color+Hex.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Color+Hex.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Color+Hex.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Color+Hex.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/ContentView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ContentView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ContentView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ContentView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/DashboardCharts.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardCharts.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardCharts.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardCharts.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/DashboardStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/DashboardView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/DashboardView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/FirestoreModels.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreModels.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreModels.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreModels.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/FirestoreRepositories.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreRepositories.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreRepositories.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FirestoreRepositories.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/FlowsStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/FlowsView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/FlowsView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/IssuesStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/IssuesView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/IssuesView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/LoginView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/LoginView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/LoginView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/LoginView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/NetworkMonitor.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NetworkMonitor.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NetworkMonitor.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NetworkMonitor.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/NotificationStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/NotificationsView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationsView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationsView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/NotificationsView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/PasskeyService.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PasskeyService.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PasskeyService.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PasskeyService.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/Permissions.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Permissions.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Permissions.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Permissions.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/PinnedProjectStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedProjectStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedProjectStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedProjectStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/PinnedTasksSheet.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksSheet.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksSheet.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksSheet.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/PinnedTasksStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PinnedTasksStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/ProjectOverviewStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/ProjectOverviewView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectOverviewView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/ProjectsStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/ProjectsView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/ProjectsView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/PushTokenManager.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PushTokenManager.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PushTokenManager.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/PushTokenManager.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/SessionStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SessionStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SessionStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SessionStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/SettingsView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SettingsView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SettingsView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/SettingsView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/TasksStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/TasksView.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksView.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksView.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TasksView.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/TenantStore.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TenantStore.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TenantStore.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/TenantStore.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/Theme.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Theme.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Theme.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/Theme.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/UIComponents.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/UIComponents.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/UIComponents.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/UIComponents.o"
+  },
+  "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/projectflow/projectflowApp.swift" : {
+    "index-unit-output-path" : "/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflowApp.o",
+    "llvm-bc" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflowApp.bc",
+    "object" : "/Users/christophlabestin/Documents/GitHub/projectflow-app/swift/build/projectflow.build/Release-iphonesimulator/projectflow.build/Objects-normal/arm64/projectflowApp.o"
+  }
+}
