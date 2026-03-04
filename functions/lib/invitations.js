@@ -82,7 +82,7 @@ exports.sendInvitation = functions.region(REGION).https.onCall(async (data, cont
         const subject = content.subject;
         const bodyHtml = `${content.bodyPrefix} <strong>${type}</strong> ${content.rolePrefix} <strong>${role || 'Member'}</strong>. ${content.bodySuffix}`;
         const html = (0, email_1.getSystemEmailTemplate)(content.title, bodyHtml, inviteUrl, content.button, locale);
-        await (0, email_1.sendEmail)(email, subject, html);
+        await (0, email_1.sendEmail)(email, subject, html, { tenantId });
         return { success: true, message: 'Invitation sent' };
     }
     catch (error) {

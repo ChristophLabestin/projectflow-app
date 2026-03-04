@@ -1,8 +1,13 @@
 import * as functions from 'firebase-functions';
 import * as nodemailer from 'nodemailer';
+import { db } from './init';
 const REGION = 'europe-west3'; // Frankfurt
 
 export const testSMTPConnection = functions.region(REGION).https.onCall(async (data, context) => {
+  if (!context.auth?.uid) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+  }
+
   console.log('SMTP Test Connection initiated with data:', JSON.stringify(data));
   const { host, port, user, pass, secure } = data;
 
@@ -43,38 +48,84 @@ export const testSMTPConnection = functions.region(REGION).https.onCall(async (d
   }
 });
 
-// Helper to create a reuseable transporter
-const createTransporter = () => {
-  // Ideally use functions.config() but for now use user provided as fallback or env
+type EmailSendOptions = {
+  tenantId?: string;
+  fromEmail?: string;
+};
+
+const SYSTEM_FROM_EMAIL = 'no-reply@getprojectflow.com';
+
+const getTenantSmtpConfig = async (tenantId?: string) => {
+  if (!tenantId) {
+    return null;
+  }
+
+  try {
+    const snap = await db.collection('tenants').doc(tenantId).collection('secrets').doc('smtp').get();
+    const data = snap.data();
+
+    if (!snap.exists || !data?.useCustom || !data?.host || !data?.user || !data?.pass) {
+      return null;
+    }
+
+    const port = parseInt(String(data.port || '587'), 10) || 587;
+    return {
+      host: data.host,
+      port,
+      secure: port === 465,
+      user: data.user,
+      pass: data.pass,
+      fromEmail: data.fromEmail || SYSTEM_FROM_EMAIL
+    };
+  } catch (error) {
+    console.warn(`Failed to load tenant SMTP config for ${tenantId}`, error);
+    return null;
+  }
+};
+
+// Helper to create a reusable transporter
+const createTransporter = async (options?: EmailSendOptions) => {
+  const tenantSmtpConfig = await getTenantSmtpConfig(options?.tenantId);
+
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = parseInt(process.env.SMTP_PORT || '587');
   const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
-  // IMPORTANT: User must set this env var or config
   const pass = process.env.SMTP_PASS;
 
-  if (!pass) {
+  if (!tenantSmtpConfig && !pass) {
     console.warn("SMTP Password not set! Emails will fail.");
   }
 
-  return nodemailer.createTransport({
+  const config = tenantSmtpConfig || {
     host,
     port,
-    secure: port === 465, // true for 465, false for other ports
-    auth: {
-      user,
-      pass
-    },
-    tls: {
-      rejectUnauthorized: false
-    }
-  });
+    secure: port === 465,
+    user,
+    pass
+  };
+
+  return {
+    transporter: nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth: {
+        user: config.user,
+        pass: config.pass
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    }),
+    fromEmail: options?.fromEmail || tenantSmtpConfig?.fromEmail || SYSTEM_FROM_EMAIL
+  };
 };
 
-export const sendEmail = async (to: string, subject: string, html: string) => {
-  const transporter = createTransporter();
+export const sendEmail = async (to: string, subject: string, html: string, options?: EmailSendOptions) => {
+  const { transporter, fromEmail } = await createTransporter(options);
 
   const mailOptions = {
-    from: '"ProjectFlow" <no-reply@getprojectflow.com>', // Amazon SES verified sender
+    from: `"ProjectFlow" <${fromEmail}>`,
     to,
     subject,
     html

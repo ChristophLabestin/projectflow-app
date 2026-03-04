@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import '../src/styles/components/_project-flow-detail.scss';
 import { Button } from '../components/common/Button/Button';
 import { Select } from '../components/common/Select/Select';
 import { deleteField } from 'firebase/firestore';
-import { updateIdea, addTask, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
+import { getSocialCampaign, updateCampaign, deleteSocialCampaign } from '../services/domain/socialService';
+import { subscribeToIdea, updateIdea } from '../services/domain/ideasService';
+import { addTask } from '../services/domain/tasksService';
 import { BrainstormView } from '../components/flows/stages/BrainstormView';
 import { RefinementView } from '../components/flows/stages/RefinementView';
 import { ConceptView } from '../components/flows/stages/ConceptView';
@@ -31,26 +34,17 @@ import { SocialCampaignStrategyView } from '../components/flows/stages/SocialCam
 import { SocialCampaignPlanningView } from '../components/flows/stages/SocialCampaignPlanningView';
 import { SocialCampaignSubmitView } from '../components/flows/stages/SocialCampaignSubmitView';
 import { SocialCampaignApprovedView } from '../components/flows/stages/SocialCampaignApprovedView';
-import { PaidAdsBriefView } from '../components/flows/stages/PaidAdsBriefView';
-import { PaidAdsResearchView } from '../components/flows/stages/PaidAdsResearchView';
-import { PaidAdsCreativeView } from '../components/flows/stages/PaidAdsCreativeView';
-import { PaidAdsTargetingView } from '../components/flows/stages/PaidAdsTargetingView';
-import { PaidAdsBudgetView } from '../components/flows/stages/PaidAdsBudgetView';
-import { PaidAdsBuildView } from '../components/flows/stages/PaidAdsBuildView';
-import { PaidAdsReviewView } from '../components/flows/stages/PaidAdsReviewView';
-import { PaidAdsLiveView } from '../components/flows/stages/PaidAdsLiveView';
-import { PaidAdsOptimizationView } from '../components/flows/stages/PaidAdsOptimizationView';
 import { MarketingTypeSelection } from '../components/flows/stages/MarketingTypeSelection';
 import { Idea, SocialCampaign } from '../types';
 import { PIPELINE_CONFIGS } from '../components/flows/constants';
 import { useLanguage } from '../context/LanguageContext';
 
-
+const PaidAdsStageRenderer = lazy(() => import('../components/flows/stages/PaidAdsStageRenderer'));
 
 export const FlowDetail = () => {
     const { id: projectId, flowId } = useParams<{ id: string; flowId: string }>();
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, flowStageTranslationsReady, loadFlowStageTranslations } = useLanguage();
 
     const [idea, setIdea] = useState<Idea | null>(null);
     const [loading, setLoading] = useState(true);
@@ -73,6 +67,10 @@ export const FlowDetail = () => {
             }
         };
     }, []);
+
+    useEffect(() => {
+        void loadFlowStageTranslations();
+    }, [loadFlowStageTranslations]);
 
     useEffect(() => {
         if (!flowId || !projectId) return;
@@ -310,7 +308,7 @@ export const FlowDetail = () => {
         // 1. Delete the campaign linked to this idea
         if (idea.convertedCampaignId) {
             try {
-                await deleteSocialCampaign(idea.convertedCampaignId);
+                await deleteSocialCampaign(projectId, idea.convertedCampaignId);
             } catch (error) {
                 console.error("Failed to delete campaign", error);
             }
@@ -329,6 +327,11 @@ export const FlowDetail = () => {
     // Render Logic
     const renderStageView = () => {
         if (!idea) return null;
+        const stageLoadingFallback = (
+            <div className="flow-detail__loading">
+                <span className="material-symbols-outlined flow-detail__loading-icon animate-spin">progress_activity</span>
+            </div>
+        );
 
         // Legacy/Feature specific mappings
         if (idea.type === 'Feature' || !idea.type) {
@@ -458,25 +461,22 @@ export const FlowDetail = () => {
 
         // Paid Ads specific mappings
         if (idea.type === 'PaidAds') {
-            switch (activeTab) {
-                case 'Brief': return <PaidAdsBriefView idea={idea} onUpdate={handleUpdate} />;
-                case 'Research': return <PaidAdsResearchView idea={idea} onUpdate={handleUpdate} />;
-                case 'Creative': return <PaidAdsCreativeView idea={idea} onUpdate={handleUpdate} />;
-                case 'Targeting': return <PaidAdsTargetingView idea={idea} onUpdate={handleUpdate} />;
-                case 'Budget': return <PaidAdsBudgetView idea={idea} onUpdate={handleUpdate} />;
-                case 'Build': return <PaidAdsBuildView idea={idea} onUpdate={handleUpdate} />;
-                case 'Review': return <PaidAdsReviewView idea={idea} onUpdate={handleUpdate} />;
-                case 'Live': return <PaidAdsLiveView idea={idea} onUpdate={handleUpdate} />;
-                case 'Optimization': return <PaidAdsOptimizationView idea={idea} onUpdate={handleUpdate} />;
-                default: return <PaidAdsBriefView idea={idea} onUpdate={handleUpdate} />;
-            }
+            return (
+                <Suspense fallback={stageLoadingFallback}>
+                    <PaidAdsStageRenderer
+                        activeTab={activeTab}
+                        idea={idea}
+                        onUpdate={handleUpdate}
+                    />
+                </Suspense>
+            );
         }
 
         // Return Generic View for other types (for now)
         return <GenericStageView idea={idea} stageId={activeTab} onUpdate={handleUpdate} />;
     };
 
-    if (loading) return (
+    if (loading || !flowStageTranslationsReady) return (
         <div className="flow-detail__loading">
             <span className="material-symbols-outlined flow-detail__loading-icon animate-spin">progress_activity</span>
         </div>

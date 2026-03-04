@@ -1,16 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Breadcrumbs } from './ui/Breadcrumbs';
-import { AISearchBar } from './AISearchBar';
-import { PinnedProjectPill } from './PinnedProjectPill';
-import { UserProfileDropdown } from './UserProfileDropdown';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { getSubTasks } from '../services/dataService';
+import { getSubTasks } from '../services/domain/tasksService';
 import { Project } from '../types';
-import { useUIState } from '../context/UIContext';
 import { useHelpCenter } from '../context/HelpCenterContext';
 import { getHelpTargetForPath } from './help/helpCenterContent';
 import { useLanguage } from '../context/LanguageContext';
+
+const AISearchBar = lazy(() => import('./AISearchBar').then((module) => ({ default: module.AISearchBar })));
+const PinnedProjectPill = lazy(() => import('./PinnedProjectPill').then((module) => ({ default: module.PinnedProjectPill })));
+const UserProfileDropdown = lazy(() => import('./UserProfileDropdown').then((module) => ({ default: module.UserProfileDropdown })));
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
@@ -80,10 +80,10 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav }) => {
-    const { openTaskCreateModal } = useUIState();
     const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
+    void project;
 
     const handleOpenHelp = () => {
         openHelpCenter(getHelpTargetForPath(location.pathname));
@@ -118,12 +118,16 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
 
                 {/* Search - Right Aligned Now */}
                 <div className="hidden sm:block w-64 md:w-72 lg:w-80 transition-all">
-                    <AISearchBar />
+                    <Suspense fallback={<div className="h-9 rounded-lg bg-surface/60" />}>
+                        <AISearchBar />
+                    </Suspense>
                 </div>
 
                 <div className="h-4 w-px bg-surface-border mx-1 hidden sm:block" />
 
-                <PinnedProjectPill />
+                <Suspense fallback={null}>
+                    <PinnedProjectPill />
+                </Suspense>
 
                 <div className="hidden md:block w-px h-4 bg-surface-border mx-1" />
 
@@ -138,7 +142,9 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
                 </button>
 
                 <div className="pl-1">
-                    <UserProfileDropdown />
+                    <Suspense fallback={<div className="size-8 rounded-full bg-surface/60" />}>
+                        <UserProfileDropdown />
+                    </Suspense>
                 </div>
             </div>
         </header>

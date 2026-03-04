@@ -4,10 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useUIState } from '../context/UIContext';
 import { Project, Task, Issue, Milestone, Activity } from '../types';
-import { subscribeProjectTasks, subscribeProjectIssues, subscribeProjectMilestones, subscribeProjectActivity } from '../services/dataService';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { getHealthFactorText } from '../utils/healthLocalization';
+import { subscribeProjectTasks } from '../services/domain/tasksService';
+import { subscribeProjectIssues } from '../services/domain/issuesService';
+import { subscribeProjectMilestones } from '../services/domain/projectMetaService';
+import { subscribeProjectActivity } from '../services/domain/activityService';
 
 export const PinnedProjectPill = () => {
     const { pinnedProject, isLoading } = usePinnedProject();

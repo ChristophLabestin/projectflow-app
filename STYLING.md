@@ -63,7 +63,15 @@ These colors are reserved for specific pre-beta settings. Do not introduce them 
 | `--color-blue-600` | `#2563eb` |
 | `--color-blue-900` | `#1e3a8a` |
 
-### 1.6 Legacy Alias Tokens (Migration)
+### 1.6 AI Studio Mode Accents
+
+| Token | Value | Description |
+|------|-------|-------------|
+| `--color-mode-architect` | `#4285f4` | Accent color for AI Studio Architect mode |
+| `--color-mode-brainstormer` | `#ea4335` | Accent color for AI Studio Brainstormer mode |
+| `--color-mode-riskscout` | `#34a853` | Accent color for AI Studio RiskScout mode |
+
+### 1.7 Legacy Alias Tokens (Migration)
 
 These aliases exist for legacy styles during the Tailwind → SCSS migration. Prefer the canonical tokens above for new UI work.
 
@@ -88,7 +96,7 @@ These aliases exist for legacy styles during the Tailwind → SCSS migration. Pr
 
 ---
 
-## 1.7 Derived RGB Tokens (Alpha Overlays)
+## 1.8 Derived RGB Tokens (Alpha Overlays)
 
 Use these RGB triplets with `rgba(var(--token), alpha)` when a translucent surface is needed.
 

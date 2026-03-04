@@ -1,15 +1,17 @@
 import React from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 
 const MarketingLayout = () => {
     const location = useLocation();
+    const { t } = useLanguage();
     const tabs = [
-        { to: "", label: "Overview", end: true, icon: "dashboard" },
-        { to: "ads", label: "Paid Ads", icon: "ads_click" },
-        { to: "email", label: "Email Marketing", icon: "mail" },
-        { to: "recipients", label: "Recipients", icon: "group" },
-        { to: "blog", label: "Example Blog", icon: "article" },
-        { to: "settings", label: "Settings", icon: "settings" },
+        { to: '', label: t('marketing.layout.tabs.overview'), end: true, icon: 'dashboard' },
+        { to: 'ads', label: t('marketing.layout.tabs.ads'), icon: 'ads_click' },
+        { to: 'email', label: t('marketing.layout.tabs.email'), icon: 'mail' },
+        { to: 'recipients', label: t('marketing.layout.tabs.recipients'), icon: 'group' },
+        { to: 'blog', label: t('marketing.layout.tabs.blog'), icon: 'article' },
+        { to: 'settings', label: t('marketing.layout.tabs.settings'), icon: 'settings' },
     ];
 
     return (
@@ -19,7 +21,7 @@ const MarketingLayout = () => {
 
                 {/* Title (Text Only) */}
                 <h1 className="text-sm font-bold text-main shrink-0">
-                    Online Marketing
+                    {t('marketing.layout.title')}
                 </h1>
 
                 <div className="h-4 w-px bg-surface-border shrink-0" />

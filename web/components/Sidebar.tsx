@@ -1,13 +1,15 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { auth } from '../services/firebase';
-import { getProjectIdeas, getUserTasks } from '../services/dataService';
+import { getUserIdeas } from '../services/domain/ideasService';
+import { getUserTasks } from '../services/domain/tasksService';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
 import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { usePermissions } from '../context/PermissionContext';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -108,6 +110,8 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const { theme } = useTheme();
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated } = useAuth();
+    const { hasPermission } = usePermissions();
+    const canViewFinance = hasPermission('tenant.finance.view');
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
@@ -122,7 +126,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             try {
                 const [tasks, ideas] = await Promise.all([
                     getUserTasks(),
-                    getProjectIdeas('').catch(() => [])
+                    getUserIdeas().catch(() => [])
                 ]);
                 if (mounted && user) {
                     const myIncompleteTasks = Array.isArray(tasks) ? tasks.filter(t =>
@@ -204,6 +208,9 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                         <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
                         <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
                         <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
+                        {canViewFinance && (
+                            <NavItem to="/finance" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
+                        )}
                         <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
                         <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
                     </div>

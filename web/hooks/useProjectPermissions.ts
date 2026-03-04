@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { Project, RoleCapabilities } from '../types';
 import { getUserRole, getUserCapabilities, checkPermission, hasPermission as legacyHasPermission } from '../utils/permissions';
 import { auth } from '../services/firebase';
-import { getActiveTenantId } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
 import { ProjectPermissionNode, Role, LegacyProjectRole } from '../types/permissions';
 import { evaluatePermission, getLegacyProjectRolePermissions, ALL_PROJECT_PERMISSIONS } from '../services/permissionService';
 

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { subscribeSocialAssets, createSocialAsset, deleteSocialAsset } from '../../services/dataService';
+import { createSocialAsset, deleteSocialAsset, subscribeSocialAssets } from '../../services/domain/socialService';
 import { SocialAsset } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { auth } from '../../services/firebase';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { SocialPost } from '../../types';
-import { subscribeSocialPosts, updateSocialPost } from '../../services/dataService';
+import { subscribeSocialPosts, updateSocialPost } from '../../services/domain/socialService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, getHours } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
 

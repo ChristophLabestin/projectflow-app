@@ -1,9 +1,42 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
+import '../src/styles/components/_project-overview.scss';
+import {
+    type CollisionDetection,
+    closestCenter,
+    DndContext,
+    DragCancelEvent,
+    DragEndEvent,
+    DragOverEvent,
+    DragOverlay,
+    DragStartEvent,
+    KeyboardSensor,
+    pointerWithin,
+    PointerSensor,
+    TouchSensor,
+    useDroppable,
+    useSensor,
+    useSensors
+} from '@dnd-kit/core';
+import {
+    rectSortingStrategy,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, getLatestGeminiReport, saveGeminiReport, getProjectMembers, getSubTasks, sendTeamInvitation, generateInviteLink } from '../services/dataService';
-import { TaskCreateModal } from '../components/TaskCreateModal';
+import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues } from '../services/dataService';
+import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getHealthDelta, getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
+import { subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
+import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
+import { getSubTasks, toggleTaskStatus } from '../services/domain/tasksService';
+import { getUserProfile } from '../services/domain/usersService';
+import { CreateFlowModal } from '../components/flows/CreateFlowModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { subscribeProjectSprints } from '../services/sprintService';
 import {
@@ -41,13 +74,15 @@ import { InviteMemberModal } from '../components/InviteMemberModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
-import { getUserProfile, subscribeProjectMilestones, updateMilestone, saveHealthSnapshot, getHealthDelta } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { calculateProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
+
+const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
+const CreateIssueModal = lazy(() => import('../components/CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -103,7 +138,9 @@ import { usePresence, useProjectPresence } from '../hooks/usePresence';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'snapshot',
-    'execution',
+    'executionTasks',
+    'executionFlows',
+    'executionIssues',
     'updates',
     'resources',
     'planning',
@@ -115,10 +152,13 @@ const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
 
 const OVERVIEW_CARD_SPANS = [12, 9, 6, 3] as const;
 type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
+type ExecutionCardVariant = 'wide' | 'balanced' | 'compact';
 
 const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: OverviewCardSpan; defaultEnabled: boolean; defaultPlacement: ProjectOverviewCardPlacement }> = {
     snapshot: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    execution: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    executionTasks: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
+    executionFlows: { defaultSpan: 6, defaultEnabled: true, defaultPlacement: 'primary' },
+    executionIssues: { defaultSpan: 6, defaultEnabled: true, defaultPlacement: 'primary' },
     updates: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
     resources: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
     planning: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
@@ -143,6 +183,7 @@ const normalizeOverviewPlacement = (placement: ProjectOverviewCardPlacement | un
 };
 
 const DEFAULT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
+    layoutVersion: 3,
     templateId: 'core',
     cards: OVERVIEW_CARD_ORDER.map((id) => ({
         id,
@@ -152,6 +193,10 @@ const DEFAULT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
     }))
 };
 
+const isOverviewCardId = (value: string): value is ProjectOverviewCardId => (
+    Object.prototype.hasOwnProperty.call(OVERVIEW_CARD_DEFINITIONS, value)
+);
+
 const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOverviewLayout => {
     if (!layout || !Array.isArray(layout.cards)) {
         return DEFAULT_OVERVIEW_LAYOUT;
@@ -160,10 +205,37 @@ const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOvervie
     const seen = new Set<ProjectOverviewCardId>();
     const normalized: ProjectOverviewCardConfig[] = [];
 
-    for (const card of layout.cards) {
-        if (!card || !OVERVIEW_CARD_DEFINITIONS[card.id] || seen.has(card.id)) {
+    for (const card of layout.cards as Array<(ProjectOverviewCardConfig & { id: string }) | null | undefined>) {
+        if (!card) {
             continue;
         }
+
+        if (card.id === 'execution') {
+            const legacyEnabled = Boolean(card.enabled);
+            const legacyPlacement = normalizeOverviewPlacement(card.placement, 'primary');
+            const executionCards: ProjectOverviewCardId[] = ['executionTasks', 'executionFlows', 'executionIssues'];
+
+            executionCards.forEach((executionCardId) => {
+                if (seen.has(executionCardId)) return;
+                const def = OVERVIEW_CARD_DEFINITIONS[executionCardId];
+                const legacySpan = executionCardId === 'executionTasks'
+                    ? normalizeOverviewSpan(card.span, def.defaultSpan)
+                    : def.defaultSpan;
+                normalized.push({
+                    id: executionCardId,
+                    enabled: legacyEnabled,
+                    span: legacySpan,
+                    placement: legacyPlacement
+                });
+                seen.add(executionCardId);
+            });
+            continue;
+        }
+
+        if (!isOverviewCardId(card.id) || seen.has(card.id)) {
+            continue;
+        }
+
         const def = OVERVIEW_CARD_DEFINITIONS[card.id];
         const isLegacyPrimary = layout.templateId === 'core' && card.placement == null && def.defaultPlacement === 'primary';
         normalized.push({
@@ -187,6 +259,7 @@ const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOvervie
     }
 
     return {
+        layoutVersion: layout.layoutVersion || DEFAULT_OVERVIEW_LAYOUT.layoutVersion,
         templateId: layout.templateId || DEFAULT_OVERVIEW_LAYOUT.templateId,
         cards: normalized
     };
@@ -274,6 +347,132 @@ const moveOverviewCardToPlacement = (
     });
 };
 
+const moveOverviewCardByPlacementOffset = (
+    cards: ProjectOverviewCardConfig[],
+    cardId: ProjectOverviewCardId,
+    offset: -1 | 1
+) => {
+    const card = cards.find((entry) => entry.id === cardId);
+    if (!card) return cards;
+
+    const placement = resolveCardPlacement(card);
+    const placementCards = cards.filter((entry) => resolveCardPlacement(entry) === placement);
+    const currentIndex = placementCards.findIndex((entry) => entry.id === cardId);
+    if (currentIndex < 0) return cards;
+
+    const nextIndex = Math.max(0, Math.min(placementCards.length - 1, currentIndex + offset));
+    if (nextIndex === currentIndex) return cards;
+
+    return reorderPlacementCards(cards, placement, cardId, placementCards[nextIndex].id);
+};
+
+const areOverviewLayoutsEqual = (a: ProjectOverviewLayout, b: ProjectOverviewLayout) => {
+    if (a.templateId !== b.templateId) return false;
+    if ((a.layoutVersion || 0) !== (b.layoutVersion || 0)) return false;
+    if (a.cards.length !== b.cards.length) return false;
+
+    for (let i = 0; i < a.cards.length; i += 1) {
+        const cardA = a.cards[i];
+        const cardB = b.cards[i];
+        if (cardA.id !== cardB.id) return false;
+        if (cardA.enabled !== cardB.enabled) return false;
+        if (cardA.span !== cardB.span) return false;
+        if (resolveCardPlacement(cardA) !== resolveCardPlacement(cardB)) return false;
+    }
+
+    return true;
+};
+
+const OVERVIEW_PRIMARY_COLUMN_DROP_ID = 'overview-column-primary';
+const OVERVIEW_SECONDARY_COLUMN_DROP_ID = 'overview-column-secondary';
+
+const getOverviewDropPlacement = (
+    dropId: string | null | undefined,
+    cards: ProjectOverviewCardConfig[]
+): ProjectOverviewCardPlacement | null => {
+    if (!dropId) return null;
+    if (dropId === OVERVIEW_PRIMARY_COLUMN_DROP_ID) return 'primary';
+    if (dropId === OVERVIEW_SECONDARY_COLUMN_DROP_ID) return 'secondary';
+    const targetCard = cards.find((card) => card.id === dropId);
+    return targetCard ? resolveCardPlacement(targetCard) : null;
+};
+
+type OverviewSortableCardProps = {
+    card: ProjectOverviewCardConfig;
+    layoutEditMode: boolean;
+    draggingCardId: ProjectOverviewCardId | null;
+    keyboardDraggingCardId: ProjectOverviewCardId | null;
+    onHandleKeyDown: (cardId: ProjectOverviewCardId, event: React.KeyboardEvent<HTMLButtonElement>) => void;
+    hiddenLabel: string;
+    children: JSX.Element;
+};
+
+const OverviewSortableCard = ({
+    card,
+    layoutEditMode,
+    draggingCardId,
+    keyboardDraggingCardId,
+    onHandleKeyDown,
+    hiddenLabel,
+    children
+}: OverviewSortableCardProps) => {
+    const placement = resolveCardPlacement(card);
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        setActivatorNodeRef,
+        transform,
+        transition,
+        isDragging,
+        isOver
+    } = useSortable({
+        id: card.id,
+        disabled: !layoutEditMode
+    });
+
+    const cardStyle = {
+        '--overview-card-span': placement === 'secondary' ? 12 : card.span,
+        transform: CSS.Transform.toString(transform),
+        transition
+    } as React.CSSProperties;
+
+    const isKeyboardDragging = keyboardDraggingCardId === card.id;
+    const isPointerDragging = draggingCardId === card.id || isDragging;
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={`overview-card ${layoutEditMode ? 'is-editing' : ''} ${placement === 'secondary' ? 'is-secondary' : 'is-primary'} ${!card.enabled ? 'is-disabled' : ''} ${isPointerDragging ? 'is-dragging' : ''} ${isOver && layoutEditMode ? 'is-drop-target' : ''} ${isKeyboardDragging ? 'is-keyboard-dragging' : ''}`.trim()}
+            style={cardStyle}
+        >
+            {layoutEditMode && (
+                <button
+                    type="button"
+                    className="overview-card__drag-handle"
+                    ref={setActivatorNodeRef}
+                    {...attributes}
+                    {...listeners}
+                    onKeyDown={(event) => {
+                        onHandleKeyDown(card.id, event);
+                    }}
+                    aria-label={`Reorder ${card.id}`}
+                >
+                    <span className="material-symbols-outlined">drag_indicator</span>
+                </button>
+            )}
+            {layoutEditMode && !card.enabled && (
+                <div className="overview-card__disabled-pill">
+                    {hiddenLabel}
+                </div>
+            )}
+            <div className="overview-card__body">
+                {children}
+            </div>
+        </div>
+    );
+};
+
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -285,7 +484,7 @@ export const ProjectOverview = () => {
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [loading, setLoading] = useState(true);
-    const { dateFormat, dateLocale, t } = useLanguage();
+    const { dateFormat, dateLocale, t, projectOverviewTranslationsReady, loadProjectOverviewTranslations } = useLanguage();
     const [insight, setInsight] = useState<string | null>(null);
     const [activity, setActivity] = useState<Activity[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -308,6 +507,8 @@ export const ProjectOverview = () => {
     const [editModalTab, setEditModalTab] = useState<Tab>('general');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showFlowModal, setShowFlowModal] = useState(false);
+    const [showIssueModal, setShowIssueModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showHealthModal, setShowHealthModal] = useState(false);
 
@@ -354,6 +555,10 @@ export const ProjectOverview = () => {
     // Subscribe to other users' presence
     const activeProjectUsers = useProjectPresence(id || '', project?.tenantId);
 
+    useEffect(() => {
+        void loadProjectOverviewTranslations();
+    }, [loadProjectOverviewTranslations]);
+
     // View Mode State
     const [viewMode, setViewMode] = useState<'overview' | 'mindmap'>('overview');
     const [overviewLayout, setOverviewLayout] = useState<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
@@ -361,9 +566,67 @@ export const ProjectOverview = () => {
     const [layoutEditMode, setLayoutEditMode] = useState(false);
     const [layoutModalOpen, setLayoutModalOpen] = useState(false);
     const [draggingCardId, setDraggingCardId] = useState<ProjectOverviewCardId | null>(null);
+    const [keyboardDraggingCardId, setKeyboardDraggingCardId] = useState<ProjectOverviewCardId | null>(null);
+    const [dragOverPlacement, setDragOverPlacement] = useState<ProjectOverviewCardPlacement | null>(null);
     const [layoutSaving, setLayoutSaving] = useState(false);
     const [layoutError, setLayoutError] = useState<string | null>(null);
     const layoutRef = useRef<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
+    const keyboardDragStartLayoutRef = useRef<ProjectOverviewLayout | null>(null);
+
+    const layoutSensors = useSensors(
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8
+            }
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 180,
+                tolerance: 5
+            }
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates
+        })
+    );
+    const { setNodeRef: setPrimaryDropRef, isOver: isOverPrimaryDrop } = useDroppable({
+        id: OVERVIEW_PRIMARY_COLUMN_DROP_ID,
+        disabled: !layoutEditMode
+    });
+    const { setNodeRef: setSecondaryDropRef, isOver: isOverSecondaryDrop } = useDroppable({
+        id: OVERVIEW_SECONDARY_COLUMN_DROP_ID,
+        disabled: !layoutEditMode
+    });
+    const layoutCollisionDetection = useMemo<CollisionDetection>(() => (args) => {
+        const pointerCollisions = pointerWithin(args);
+        if (pointerCollisions.length > 0) {
+            const activeId = String(args.active.id);
+            const activeCard = layoutRef.current.cards.find((card) => card.id === activeId);
+            const activePlacement = activeCard ? resolveCardPlacement(activeCard) : null;
+
+            const crossColumnCollision = pointerCollisions.find((collision) => {
+                const dropPlacement = getOverviewDropPlacement(String(collision.id), layoutRef.current.cards);
+                return dropPlacement != null && dropPlacement !== activePlacement;
+            });
+
+            if (crossColumnCollision) {
+                return [crossColumnCollision];
+            }
+
+            const columnCollision = pointerCollisions.find((collision) => (
+                String(collision.id) === OVERVIEW_PRIMARY_COLUMN_DROP_ID
+                || String(collision.id) === OVERVIEW_SECONDARY_COLUMN_DROP_ID
+            ));
+
+            if (columnCollision) {
+                return [columnCollision];
+            }
+
+            return pointerCollisions;
+        }
+
+        return closestCenter(args);
+    }, []);
 
     const fetchProjectAssets = async () => {
         if (!id || !project?.tenantId) return;
@@ -381,8 +644,8 @@ export const ProjectOverview = () => {
                         .filter(i => i.name.includes(`_media_${id}`))
                         .map(i => getDownloadURL(i))
                 );
-            } catch (e) {
-                console.log("No root assets found or error", e);
+            } catch (_e) {
+                // Root folder assets are optional for older projects.
             }
 
             // 2. Check Project Subfolder
@@ -523,8 +786,18 @@ export const ProjectOverview = () => {
         if (viewMode !== 'overview' && layoutEditMode) {
             setLayoutEditMode(false);
             setDraggingCardId(null);
+            setKeyboardDraggingCardId(null);
+            setDragOverPlacement(null);
         }
     }, [viewMode, layoutEditMode]);
+
+    useEffect(() => {
+        if (layoutEditMode) return;
+        setDraggingCardId(null);
+        setKeyboardDraggingCardId(null);
+        setDragOverPlacement(null);
+        keyboardDragStartLayoutRef.current = null;
+    }, [layoutEditMode]);
 
     useEffect(() => {
         const loadSubtaskStats = async () => {
@@ -936,7 +1209,7 @@ export const ProjectOverview = () => {
             .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
     }, [sprints]);
 
-    if (loading) return (
+    if (loading || !projectOverviewTranslationsReady) return (
         <div className="project-overview__loading">
             <span className="material-symbols-outlined project-overview__loading-icon">progress_activity</span>
         </div>
@@ -1027,9 +1300,28 @@ export const ProjectOverview = () => {
     const ideaHighlights = ideas.slice().sort((a, b) => b.votes - a.votes).slice(0, 4);
     const topIdea = ideaHighlights[0];
     const showGithubCard = hasIssuesModule;
-    const showIdeaCard = hasIdeasModule;
-    const showIssueCard = hasIssuesModule;
+    const showIdeaCard = Boolean(hasIdeasModule);
+    const showIssueCard = Boolean(hasIssuesModule);
     const executionSideCards = Number(showIdeaCard) + Number(showIssueCard);
+    const getExecutionCardVariant = (cardId: ProjectOverviewCardId): ExecutionCardVariant => {
+        const cardConfig = overviewLayout.cards.find((card) => card.id === cardId);
+        const fallback = OVERVIEW_CARD_DEFINITIONS[cardId];
+        const placement = normalizeOverviewPlacement(cardConfig?.placement, fallback.defaultPlacement);
+        const span = normalizeOverviewSpan(cardConfig?.span, fallback.defaultSpan);
+        if (placement === 'secondary' || span <= 3) return 'compact';
+        if (span <= 6) return 'balanced';
+        return 'wide';
+    };
+    const executionTasksVariant = getExecutionCardVariant('executionTasks');
+    const executionFlowsVariant = getExecutionCardVariant('executionFlows');
+    const executionIssuesVariant = getExecutionCardVariant('executionIssues');
+    const executionTaskLimit = executionTasksVariant === 'wide' ? 6 : executionTasksVariant === 'balanced' ? 4 : 3;
+    const executionIssueLimit = executionIssuesVariant === 'wide' ? 5 : executionIssuesVariant === 'balanced' ? 4 : 3;
+    const isExecutionTasksWide = executionTasksVariant === 'wide';
+    const isExecutionTasksCompact = executionTasksVariant === 'compact';
+    const isExecutionTasksBalanced = executionTasksVariant === 'balanced';
+    const isExecutionFlowsCompact = executionFlowsVariant === 'compact';
+    const isExecutionIssuesCompact = executionIssuesVariant === 'compact';
     const galleryAssets = projectAssets
         .map((url, index) => {
             const match = url.match(/(?:^|%2F)(\d+)_media_/);
@@ -1070,9 +1362,17 @@ export const ProjectOverview = () => {
             title: t('projectOverview.layout.cards.snapshot.title'),
             description: t('projectOverview.layout.cards.snapshot.description')
         },
-        execution: {
-            title: t('projectOverview.layout.cards.execution.title'),
-            description: t('projectOverview.layout.cards.execution.description')
+        executionTasks: {
+            title: t('projectOverview.layout.cards.executionTasks.title'),
+            description: t('projectOverview.layout.cards.executionTasks.description')
+        },
+        executionFlows: {
+            title: t('projectOverview.layout.cards.executionFlows.title'),
+            description: t('projectOverview.layout.cards.executionFlows.description')
+        },
+        executionIssues: {
+            title: t('projectOverview.layout.cards.executionIssues.title'),
+            description: t('projectOverview.layout.cards.executionIssues.description')
         },
         updates: {
             title: t('projectOverview.layout.cards.updates.title'),
@@ -1107,6 +1407,12 @@ export const ProjectOverview = () => {
         if (cardId === 'controls') {
             return isOwner;
         }
+        if (cardId === 'executionFlows') {
+            return Boolean(hasIdeasModule);
+        }
+        if (cardId === 'executionIssues') {
+            return Boolean(hasIssuesModule);
+        }
         return true;
     };
     const overviewCardsToRender = overviewLayout.cards.filter((card) => (
@@ -1114,8 +1420,15 @@ export const ProjectOverview = () => {
     ));
     const primaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'primary');
     const secondaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'secondary');
+    const primaryCardIds = primaryCardsToRender.map((card) => card.id);
+    const secondaryCardIds = secondaryCardsToRender.map((card) => card.id);
+    const primaryColumnDropActive = layoutEditMode && (isOverPrimaryDrop || dragOverPlacement === 'primary');
+    const secondaryColumnDropActive = layoutEditMode && (isOverSecondaryDrop || dragOverPlacement === 'secondary');
 
-    const persistOverviewLayout = async (nextLayout: ProjectOverviewLayout) => {
+    const persistOverviewLayout = async (
+        nextLayout: ProjectOverviewLayout,
+        rollbackLayout?: ProjectOverviewLayout
+    ) => {
         if (!project || !id || !canCustomizeLayout) return;
         setLayoutSaving(true);
         setLayoutError(null);
@@ -1125,6 +1438,10 @@ export const ProjectOverview = () => {
         } catch (error) {
             console.error("Error updating overview layout:", error);
             setLayoutError(t('projectOverview.layout.error'));
+            if (rollbackLayout) {
+                setOverviewLayout(rollbackLayout);
+                layoutRef.current = rollbackLayout;
+            }
         } finally {
             setLayoutSaving(false);
         }
@@ -1157,6 +1474,17 @@ export const ProjectOverview = () => {
             layoutRef.current = next;
             return next;
         });
+    };
+
+    const commitOverviewLayout = (nextLayout: ProjectOverviewLayout, rollbackLayout?: ProjectOverviewLayout) => {
+        const normalizedNextLayout = markLayoutCustom(normalizeOverviewLayout(nextLayout));
+        if (rollbackLayout && areOverviewLayoutsEqual(normalizedNextLayout, rollbackLayout)) {
+            return;
+        }
+
+        setOverviewLayout(normalizedNextLayout);
+        layoutRef.current = normalizedNextLayout;
+        void persistOverviewLayout(normalizedNextLayout, rollbackLayout);
     };
 
     const handleLayoutToggle = (cardId: ProjectOverviewCardId) => {
@@ -1196,51 +1524,143 @@ export const ProjectOverview = () => {
         }));
     };
 
-    const handleLayoutDragStart = (cardId: ProjectOverviewCardId) => (event: React.DragEvent<HTMLDivElement>) => {
+    const handleLayoutDragStart = (event: DragStartEvent) => {
         if (!layoutEditMode) return;
-        setDraggingCardId(cardId);
-        event.dataTransfer.effectAllowed = 'move';
-        event.dataTransfer.setData('text/plain', cardId);
+        const activeId = String(event.active.id) as ProjectOverviewCardId;
+        setDraggingCardId(activeId);
+        setDragOverPlacement(getOverviewDropPlacement(activeId, layoutRef.current.cards));
     };
 
-    const handleLayoutDragOver = (cardId: ProjectOverviewCardId) => (event: React.DragEvent<HTMLDivElement>) => {
+    const handleLayoutDragOver = (event: DragOverEvent) => {
         if (!layoutEditMode) return;
-        event.preventDefault();
-        event.stopPropagation();
-        event.dataTransfer.dropEffect = 'move';
-        if (!draggingCardId || draggingCardId === cardId) return;
-        updateOverviewLayout(prev => ({
-            ...prev,
-            cards: moveOverviewCard(prev.cards, draggingCardId, cardId)
-        }));
+        const collisionId = event.collisions
+            ?.map((collision) => String(collision.id))
+            .find((collisionId) => collisionId !== String(event.active.id));
+        const overId = collisionId || (event.over ? String(event.over.id) : null);
+        setDragOverPlacement(getOverviewDropPlacement(overId, layoutRef.current.cards));
     };
 
-    const handleLayoutColumnDragOver = (placement: ProjectOverviewCardPlacement) => (event: React.DragEvent<HTMLDivElement>) => {
-        if (!layoutEditMode) return;
-        if (event.currentTarget !== event.target) return;
-        event.preventDefault();
-        event.dataTransfer.dropEffect = 'move';
-        if (!draggingCardId) return;
-        updateOverviewLayout(prev => ({
-            ...prev,
-            cards: moveOverviewCardToPlacement(prev.cards, draggingCardId, placement)
-        }));
-    };
-
-    const handleLayoutDrop = () => {
-        if (!layoutEditMode) return;
+    const handleLayoutDragCancel = (_event: DragCancelEvent) => {
         setDraggingCardId(null);
-        void persistOverviewLayout(layoutRef.current);
+        setDragOverPlacement(null);
     };
 
-    const handleLayoutColumnDrop = () => {
+    const handleLayoutDragEnd = (event: DragEndEvent) => {
         if (!layoutEditMode) return;
+        const activeId = String(event.active.id) as ProjectOverviewCardId;
+        const collisionId = event.collisions
+            ?.map((collision) => String(collision.id))
+            .find((collisionId) => collisionId !== activeId);
+        const overId = collisionId || (event.over ? String(event.over.id) : null);
+        const currentLayout = layoutRef.current;
+        const activeCard = currentLayout.cards.find((card) => card.id === activeId);
+        const activePlacement = activeCard ? resolveCardPlacement(activeCard) : null;
+        const overPlacement = overId ? getOverviewDropPlacement(overId, currentLayout.cards) : null;
+        const fallbackPlacement = dragOverPlacement || overPlacement;
         setDraggingCardId(null);
-        void persistOverviewLayout(layoutRef.current);
+        setDragOverPlacement(null);
+
+        if (!overId || activeId === overId) {
+            if (fallbackPlacement && activePlacement && fallbackPlacement !== activePlacement) {
+                const nextCards = moveOverviewCardToPlacement(currentLayout.cards, activeId, fallbackPlacement);
+                if (nextCards !== currentLayout.cards) {
+                    const nextLayout = { ...currentLayout, cards: nextCards };
+                    commitOverviewLayout(nextLayout, currentLayout);
+                }
+            }
+            return;
+        }
+
+        let nextCards = currentLayout.cards;
+        if (overId === OVERVIEW_PRIMARY_COLUMN_DROP_ID || overId === OVERVIEW_SECONDARY_COLUMN_DROP_ID) {
+            nextCards = moveOverviewCardToPlacement(
+                currentLayout.cards,
+                activeId,
+                overId === OVERVIEW_PRIMARY_COLUMN_DROP_ID ? 'primary' : 'secondary'
+            );
+        } else {
+            nextCards = moveOverviewCard(currentLayout.cards, activeId, overId as ProjectOverviewCardId);
+        }
+
+        if (nextCards === currentLayout.cards) return;
+        const nextLayout = { ...currentLayout, cards: nextCards };
+        commitOverviewLayout(nextLayout, currentLayout);
     };
 
-    const handleLayoutDragEnd = () => {
-        setDraggingCardId(null);
+    const beginKeyboardLayoutDrag = (cardId: ProjectOverviewCardId) => {
+        if (keyboardDraggingCardId === cardId) return;
+        keyboardDragStartLayoutRef.current = layoutRef.current;
+        setKeyboardDraggingCardId(cardId);
+        setLayoutError(null);
+    };
+
+    const commitKeyboardLayoutDrag = () => {
+        const startLayout = keyboardDragStartLayoutRef.current;
+        const nextLayout = layoutRef.current;
+        setKeyboardDraggingCardId(null);
+        keyboardDragStartLayoutRef.current = null;
+
+        if (!startLayout || areOverviewLayoutsEqual(startLayout, nextLayout)) {
+            return;
+        }
+        void persistOverviewLayout(nextLayout, startLayout);
+    };
+
+    const cancelKeyboardLayoutDrag = () => {
+        const startLayout = keyboardDragStartLayoutRef.current;
+        setKeyboardDraggingCardId(null);
+        keyboardDragStartLayoutRef.current = null;
+        if (!startLayout) return;
+        setOverviewLayout(startLayout);
+        layoutRef.current = startLayout;
+    };
+
+    const handleLayoutCardHandleKeyDown = (cardId: ProjectOverviewCardId, event: React.KeyboardEvent<HTMLButtonElement>) => {
+        if (!layoutEditMode) return;
+
+        if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault();
+            if (keyboardDraggingCardId === cardId) {
+                commitKeyboardLayoutDrag();
+            } else {
+                beginKeyboardLayoutDrag(cardId);
+            }
+            return;
+        }
+
+        if (keyboardDraggingCardId !== cardId) {
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            cancelKeyboardLayoutDrag();
+            return;
+        }
+
+        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+            event.preventDefault();
+            updateOverviewLayout((prev) => ({
+                ...prev,
+                cards: moveOverviewCardByPlacementOffset(prev.cards, cardId, event.key === 'ArrowUp' ? -1 : 1)
+            }));
+            return;
+        }
+
+        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+            event.preventDefault();
+            updateOverviewLayout((prev) => ({
+                ...prev,
+                cards: moveOverviewCardToPlacement(prev.cards, cardId, event.key === 'ArrowLeft' ? 'primary' : 'secondary')
+            }));
+        }
+    };
+
+    const toggleLayoutEditMode = () => {
+        if (layoutEditMode && keyboardDraggingCardId) {
+            commitKeyboardLayoutDrag();
+        }
+        setLayoutEditMode((prev) => !prev);
     };
 
     const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
@@ -1411,26 +1831,37 @@ export const ProjectOverview = () => {
                 </div>
             </section>
         ),
-        execution: (
-            <section data-onboarding-id="project-overview-execution" className="section-group">
+        executionTasks: (
+            <section data-onboarding-id="project-overview-execution" className={`section-group execution-card-shell execution-card-shell--tasks execution-card-shell--${executionTasksVariant}`.trim()}>
                 <div className="section-header">
-                    <h2>{t('projectOverview.execution.title')}</h2>
+                    <h2>{t('nav.tasks')}</h2>
                     <div className="header-stats">
                         <span>{t('projectOverview.execution.openTasks').replace('{count}', String(openTasks))}</span>
-                        {showIssueCard && <span>{t('projectOverview.execution.openIssues').replace('{count}', String(openIssues))}</span>}
-                        {showIdeaCard && <span>{t('projectOverview.execution.flows').replace('{count}', String(ideas.length))}</span>}
+                        <span>{t('projectOverview.initiatives.title')} {initiatives.length}</span>
                     </div>
                 </div>
-                <div className="execution-grid">
-                    <Card className={`widget-card execution-main ${executionSideCards === 0 ? 'execution-main--full' : ''}`.trim()}>
+                <div className="execution-grid execution-grid--single">
+                    <Card className={`widget-card execution-card execution-card--tasks execution-card--${executionTasksVariant}`.trim()}>
                         <div className="card-header">
                             <div className="title-group">
                                 <span className="material-symbols-outlined icon">checklist</span>
                                 <h3 className="title">{t('nav.tasks')}</h3>
                             </div>
-                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
+                            <div className="execution-card__actions">
+                                {can('canManageTasks') && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowTaskModal(true)}
+                                        className="header-action-btn"
+                                        aria-label={t('projectOverview.actions.newTask')}
+                                    >
+                                        <span className="material-symbols-outlined">add</span>
+                                    </button>
+                                )}
+                                <Link to={`/project/${id}/tasks`} className="header-action-btn">
+                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                </Link>
+                            </div>
                         </div>
                         <div className="list-content">
                             {recentTasks.length === 0 ? (
@@ -1438,7 +1869,7 @@ export const ProjectOverview = () => {
                                     {t('projectOverview.execution.noActiveTasks')}
                                 </div>
                             ) : (
-                                recentTasks.slice(0, 6).map(task => (
+                                recentTasks.slice(0, executionTaskLimit).map(task => (
                                     <div
                                         key={task.id}
                                         onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
@@ -1467,7 +1898,7 @@ export const ProjectOverview = () => {
                                                     </div>
                                                 )}
                                                 {/* Subtask Count */}
-                                                {subtaskStats[task.id]?.total > 0 && (
+                                                {!isExecutionTasksCompact && subtaskStats[task.id]?.total > 0 && (
                                                     <div className="badge subtask">
                                                         <span className="material-symbols-outlined">checklist</span>
                                                         {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
@@ -1479,6 +1910,10 @@ export const ProjectOverview = () => {
                                                     const hasDue = Boolean(task.dueDate);
                                                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                                                     const isOverdue = dueDate && dueDate < new Date() && !task.isCompleted;
+
+                                                    if (isExecutionTasksCompact) {
+                                                        return null;
+                                                    }
 
                                                     // Timeline when both dates exist
                                                     if (hasStart && hasDue) {
@@ -1518,13 +1953,13 @@ export const ProjectOverview = () => {
                                                     return null;
                                                 })()}
                                                 {/* Smart Scheduled Date */}
-                                                {task.scheduledDate && (
+                                                {!isExecutionTasksCompact && task.scheduledDate && (
                                                     <span className="scheduled-date">
                                                         <span className="material-symbols-outlined">event_available</span>
                                                         {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
                                                     </span>
                                                 )}
-                                                {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
+                                                {isExecutionTasksWide && task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
                                                     <div className="assigned-groups">
                                                         {task.assignedGroupIds.map(gid => {
                                                             const group = projectGroups.find(g => g.id === gid);
@@ -1570,221 +2005,6 @@ export const ProjectOverview = () => {
                             )}
                         </div>
                     </Card>
-
-                    {(showIdeaCard || showIssueCard) && (
-                        <div className={`execution-side ${executionSideCards > 1 ? 'execution-side--stacked' : ''}`.trim()}>
-                            {showIdeaCard && (
-                                <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
-                                    <div className="card-header">
-                                        <h3 className="title">
-                                            <span className="material-symbols-outlined icon">lightbulb</span>
-                                            {t('projectOverview.execution.flowSpotlight')}
-                                        </h3>
-                                        <Link to={`/project/${id}/flows`} className="header-action-btn">
-                                            <span className="material-symbols-outlined">arrow_forward</span>
-                                        </Link>
-                                    </div>
-                                    {topIdea ? (() => {
-                                        const typeBadgeClass = getTypeBadgeClass(topIdea.type);
-                                        return (
-                                            <Link
-                                                to={`/project/${id}/flows/${topIdea.id}`}
-                                                className="flow-spotlight-card"
-                                            >
-                                                {/* Type Badge Row */}
-                                                <div className="flow-meta">
-                                                    <span className={`type-badge ${typeBadgeClass}`}>
-                                                        {topIdea.type}
-                                                    </span>
-                                                    {topIdea.generated && (
-                                                        <span className="ai-badge">
-                                                            <span className="material-symbols-outlined">auto_awesome</span>
-                                                            {t('projectOverview.execution.aiLabel')}
-                                                        </span>
-                                                    )}
-                                                    {topIdea.stage && (
-                                                        <span className="stage-badge">
-                                                            <span className="material-symbols-outlined">layers</span>
-                                                            {topIdea.stage}
-                                                        </span>
-                                                    )}
-                                                </div>
-
-                                                {/* Title */}
-                                                <h4 className="flow-title">
-                                                    {topIdea.title}
-                                                </h4>
-
-                                                {/* Description */}
-                                                {topIdea.description && (
-                                                    <p className="flow-desc">
-                                                        {topIdea.description}
-                                                    </p>
-                                                )}
-
-                                                {/* Meta Row */}
-                                                <div className="interaction-stats">
-                                                    <span className="stat">
-                                                        <span className="material-symbols-outlined">thumb_up</span>
-                                                        {topIdea.votes || 0}
-                                                    </span>
-                                                    <span className="stat">
-                                                        <span className="material-symbols-outlined">chat_bubble</span>
-                                                        {topIdea.comments || 0}
-                                                    </span>
-                                                </div>
-                                            </Link>
-                                        );
-                                    })() : (
-                                        <div className="empty-state">
-                                            {t('projectOverview.execution.noFlows')}
-                                        </div>
-                                    )}
-                                </Card>
-                            )}
-
-                            {showIssueCard && (
-                                <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
-                                    <div className="card-header">
-                                        <h3 className="title">
-                                            <span className="material-symbols-outlined icon">bug_report</span>
-                                            {t('projectOverview.execution.issueFocus')}
-                                        </h3>
-                                        <Link to={`/project/${id}/issues`} className="header-action-btn">
-                                            <span className="material-symbols-outlined">arrow_forward</span>
-                                        </Link>
-                                    </div>
-
-                                    <div className="list-content scrollable">
-                                        {recentIssues.length === 0 ? (
-                                            <div className="empty-state">{t('projectOverview.execution.noOpenIssues')}</div>
-                                        ) : (
-                                            recentIssues.map(issue => (
-                                                <div
-                                                    key={issue.id}
-                                                    onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                                    className="list-row"
-                                                >
-                                                    <div className="row-content">
-                                                        <p className="row-title row-title--truncate">{issue.title}</p>
-                                                        <div className="meta-row">
-                                                            <div className={`badge priority-${issue.priority.toLowerCase()}`}>
-                                                                <span className="material-symbols-outlined">
-                                                                    {issue.priority === 'Urgent' ? 'error' :
-                                                                        issue.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                                            issue.priority === 'Medium' ? 'drag_handle' :
-                                                                                'keyboard_arrow_down'}
-                                                                </span>
-                                                                {issue.priority ? (priorityLabels[issue.priority] || issue.priority) : ''}
-                                                            </div>
-                                                            <div className="badge status">
-                                                                {issueStatusLabels[issue.status] || issue.status}
-                                                            </div>
-                                                            {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
-                                                                <div className="assigned-groups">
-                                                                    {issue.assignedGroupIds.map(gid => {
-                                                                        const group = projectGroups.find(g => g.id === gid);
-                                                                        if (!group) return null;
-                                                                        return (
-                                                                            <div
-                                                                                key={gid}
-                                                                                className="group-avatar"
-                                                                                style={{ backgroundColor: group.color }}
-                                                                                title={t('projectTasks.groupLabel').replace('{name}', group.name)}
-                                                                            >
-                                                                                {group.name.substring(0, 1).toUpperCase()}
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <div className="row-actions">
-                                                        {(() => {
-                                                            const hasStart = Boolean(issue.startDate);
-                                                            const hasDue = Boolean(issue.dueDate || issue.scheduledDate);
-                                                            const dueDateStr = issue.dueDate || issue.scheduledDate;
-                                                            const dueDate = dueDateStr ? new Date(dueDateStr) : null;
-                                                            const isResolved = ['Resolved', 'Closed'].includes(issue.status);
-                                                            const isOverdue = dueDate && dueDate < new Date() && !isResolved;
-
-                                                            // Timeline view when both start and due exist
-                                                            if (hasStart && hasDue) {
-                                                                const start = new Date(issue.startDate!).getTime();
-                                                                const end = dueDate!.getTime();
-                                                                const now = new Date().getTime();
-                                                                const total = end - start;
-                                                                const elapsed = now - start;
-                                                                const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                                                return (
-                                                                    <div className="timeline-mini stacked">
-                                                                        <div className="timeline-header">
-                                                                            <span>{t('projectOverview.execution.timeline')}</span>
-                                                                            <span>{Math.round(pct)}%</span>
-                                                                        </div>
-                                                                        <div className="progress-bar-bg">
-                                                                            <div
-                                                                                className={`progress-bar-fill ${isOverdue ? 'overdue' : ''}`}
-                                                                                style={{ width: `${pct}%` }}
-                                                                            />
-                                                                        </div>
-                                                                        <div className="timeline-footer">
-                                                                            <span>{format(new Date(issue.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                                                            <span className={isOverdue ? 'overdue-text' : ''}>
-                                                                                {format(dueDate!, dateFormat, { locale: dateLocale })}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            // Due date only
-                                                            if (hasDue && dueDate) {
-                                                                return (
-                                                                    <div className={`date-badge ${isOverdue ? 'overdue' : ''}`}>
-                                                                        <span className="material-symbols-outlined">event</span>
-                                                                        <div className="date-col">
-                                                                            <span className="label">
-                                                                                {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
-                                                                            </span>
-                                                                            <span className="value">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            }
-
-                                                            return null;
-                                                        })()}
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (isPinned(issue.id)) {
-                                                                    unpinItem(issue.id);
-                                                                } else {
-                                                                    pinItem({
-                                                                        id: issue.id,
-                                                                        type: 'issue',
-                                                                        title: issue.title,
-                                                                        projectId: id!,
-                                                                        priority: issue.priority
-                                                                    });
-                                                                }
-                                                            }}
-                                                            className={`pin-btn ${isPinned(issue.id) ? 'pinned' : ''}`}
-                                                            title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
-                                                        >
-                                                            <span className="material-symbols-outlined">push_pin</span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </Card>
-                            )}
-                        </div>
-                    )}
                 </div>
 
                 {/* Initiatives Row */}
@@ -1949,6 +2169,205 @@ export const ProjectOverview = () => {
                         </div>
                     </div>
                 )}
+            </section>
+        ),
+        executionFlows: (
+            <section className={`section-group execution-card-shell execution-card-shell--flows execution-card-shell--${executionFlowsVariant}`.trim()}>
+                <Card className={`widget-card execution-card execution-card--flows execution-card--${executionFlowsVariant}`.trim()}>
+                    <div className="card-header">
+                        <h3 className="title">
+                            <span className="material-symbols-outlined icon">lightbulb</span>
+                            {t('projectOverview.execution.flowSpotlight')}
+                        </h3>
+                        <div className="execution-card__actions">
+                            {can('canManageIdeas') && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowFlowModal(true)}
+                                    className="header-action-btn"
+                                    aria-label={t('flows.actions.add')}
+                                >
+                                    <span className="material-symbols-outlined">add</span>
+                                </button>
+                            )}
+                            <Link to={`/project/${id}/flows`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                    </div>
+                    {topIdea ? (() => {
+                        const typeBadgeClass = getTypeBadgeClass(topIdea.type);
+                        return (
+                            <Link
+                                to={`/project/${id}/flows/${topIdea.id}`}
+                                className={`flow-spotlight-card flow-spotlight-card--${executionFlowsVariant}`.trim()}
+                            >
+                                <div className="flow-meta">
+                                    <span className={`type-badge ${typeBadgeClass}`}>
+                                        {topIdea.type}
+                                    </span>
+                                    {topIdea.generated && (
+                                        <span className="ai-badge">
+                                            <span className="material-symbols-outlined">auto_awesome</span>
+                                            {t('projectOverview.execution.aiLabel')}
+                                        </span>
+                                    )}
+                                    {topIdea.stage && !isExecutionFlowsCompact && (
+                                        <span className="stage-badge">
+                                            <span className="material-symbols-outlined">layers</span>
+                                            {topIdea.stage}
+                                        </span>
+                                    )}
+                                </div>
+
+                                <h4 className="flow-title">{topIdea.title}</h4>
+
+                                {!isExecutionFlowsCompact && topIdea.description && (
+                                    <p className="flow-desc">
+                                        {topIdea.description}
+                                    </p>
+                                )}
+
+                                {!isExecutionFlowsCompact && (
+                                    <div className="interaction-stats">
+                                        <span className="stat">
+                                            <span className="material-symbols-outlined">thumb_up</span>
+                                            {topIdea.votes || 0}
+                                        </span>
+                                        <span className="stat">
+                                            <span className="material-symbols-outlined">chat_bubble</span>
+                                            {topIdea.comments || 0}
+                                        </span>
+                                    </div>
+                                )}
+                            </Link>
+                        );
+                    })() : (
+                        <div className="empty-state">
+                            {t('projectOverview.execution.noFlows')}
+                        </div>
+                    )}
+                </Card>
+            </section>
+        ),
+        executionIssues: (
+            <section className={`section-group execution-card-shell execution-card-shell--issues execution-card-shell--${executionIssuesVariant}`.trim()}>
+                <Card className={`widget-card execution-card execution-card--issues execution-card--${executionIssuesVariant}`.trim()}>
+                    <div className="card-header">
+                        <h3 className="title">
+                            <span className="material-symbols-outlined icon">bug_report</span>
+                            {t('projectOverview.execution.issueFocus')}
+                        </h3>
+                        <div className="execution-card__actions">
+                            {can('canManageIssues') && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowIssueModal(true)}
+                                    className="header-action-btn"
+                                    aria-label={t('projectIssues.actions.reportIssue')}
+                                >
+                                    <span className="material-symbols-outlined">add</span>
+                                </button>
+                            )}
+                            <Link to={`/project/${id}/issues`} className="header-action-btn">
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div className="list-content scrollable">
+                        {recentIssues.length === 0 ? (
+                            <div className="empty-state">{t('projectOverview.execution.noOpenIssues')}</div>
+                        ) : (
+                            recentIssues.slice(0, executionIssueLimit).map(issue => (
+                                <div
+                                    key={issue.id}
+                                    onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
+                                    className="list-row"
+                                >
+                                    <div className="row-content">
+                                        <p className="row-title row-title--truncate">{issue.title}</p>
+                                        <div className="meta-row">
+                                            <div className={`badge priority-${issue.priority.toLowerCase()}`}>
+                                                <span className="material-symbols-outlined">
+                                                    {issue.priority === 'Urgent' ? 'error' :
+                                                        issue.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                            issue.priority === 'Medium' ? 'drag_handle' :
+                                                                'keyboard_arrow_down'}
+                                                </span>
+                                                {issue.priority ? (priorityLabels[issue.priority] || issue.priority) : ''}
+                                            </div>
+                                            <div className="badge status">
+                                                {issueStatusLabels[issue.status] || issue.status}
+                                            </div>
+                                            {!isExecutionIssuesCompact && issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
+                                                <div className="assigned-groups">
+                                                    {issue.assignedGroupIds.map(gid => {
+                                                        const group = projectGroups.find(g => g.id === gid);
+                                                        if (!group) return null;
+                                                        return (
+                                                            <div
+                                                                key={gid}
+                                                                className="group-avatar"
+                                                                style={{ backgroundColor: group.color }}
+                                                                title={t('projectTasks.groupLabel').replace('{name}', group.name)}
+                                                            >
+                                                                {group.name.substring(0, 1).toUpperCase()}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="row-actions">
+                                        {!isExecutionIssuesCompact && (() => {
+                                            const dueDateStr = issue.dueDate || issue.scheduledDate;
+                                            const dueDate = dueDateStr ? new Date(dueDateStr) : null;
+                                            const isResolved = ['Resolved', 'Closed'].includes(issue.status);
+                                            const isOverdue = dueDate && dueDate < new Date() && !isResolved;
+
+                                            if (dueDate) {
+                                                return (
+                                                    <div className={`date-badge ${isOverdue ? 'overdue' : ''}`}>
+                                                        <span className="material-symbols-outlined">event</span>
+                                                        <div className="date-col">
+                                                            <span className="label">
+                                                                {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
+                                                            </span>
+                                                            <span className="value">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (isPinned(issue.id)) {
+                                                    unpinItem(issue.id);
+                                                } else {
+                                                    pinItem({
+                                                        id: issue.id,
+                                                        type: 'issue',
+                                                        title: issue.title,
+                                                        projectId: id!,
+                                                        priority: issue.priority
+                                                    });
+                                                }
+                                            }}
+                                            className={`pin-btn ${isPinned(issue.id) ? 'pinned' : ''}`}
+                                            title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
+                                        >
+                                            <span className="material-symbols-outlined">push_pin</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </Card>
             </section>
         ),
         updates: (
@@ -2491,42 +2910,22 @@ export const ProjectOverview = () => {
     const renderOverviewCard = (card: ProjectOverviewCardConfig) => {
         const content = overviewCardContent[card.id];
         if (!content) return null;
-        const isDragging = draggingCardId === card.id;
-        const placement = resolveCardPlacement(card);
-        const cardStyle = {
-            '--overview-card-span': placement === 'secondary' ? 12 : card.span
-        } as React.CSSProperties;
-        const dragProps = layoutEditMode ? {
-            draggable: true,
-            onDragStart: handleLayoutDragStart(card.id),
-            onDragOver: handleLayoutDragOver(card.id),
-            onDrop: handleLayoutDrop,
-            onDragEnd: handleLayoutDragEnd
-        } : {};
-
         return (
-            <div
+            <OverviewSortableCard
                 key={card.id}
-                className={`overview-card ${layoutEditMode ? 'is-editing' : ''} ${placement === 'secondary' ? 'is-secondary' : 'is-primary'} ${!card.enabled ? 'is-disabled' : ''} ${isDragging ? 'is-dragging' : ''}`.trim()}
-                style={cardStyle}
-                {...dragProps}
+                card={card}
+                layoutEditMode={layoutEditMode}
+                draggingCardId={draggingCardId}
+                keyboardDraggingCardId={keyboardDraggingCardId}
+                onHandleKeyDown={handleLayoutCardHandleKeyDown}
+                hiddenLabel={t('projectOverview.layout.hidden')}
             >
-                {layoutEditMode && (
-                    <div className="overview-card__drag-handle">
-                        <span className="material-symbols-outlined">drag_indicator</span>
-                    </div>
-                )}
-                {layoutEditMode && !card.enabled && (
-                    <div className="overview-card__disabled-pill">
-                        {t('projectOverview.layout.hidden')}
-                    </div>
-                )}
-                <div className="overview-card__body">
-                    {content}
-                </div>
-            </div>
+                {content}
+            </OverviewSortableCard>
         );
     };
+
+    const draggingCardMeta = draggingCardId ? overviewCardMeta[draggingCardId] : null;
 
 
     return (
@@ -2855,7 +3254,7 @@ export const ProjectOverview = () => {
                                                 variant={layoutEditMode ? 'primary' : 'ghost'}
                                                 size="sm"
                                                 icon={<span className="material-symbols-outlined">drag_indicator</span>}
-                                                onClick={() => setLayoutEditMode(prev => !prev)}
+                                                onClick={toggleLayoutEditMode}
                                             >
                                                 {layoutEditMode ? t('projectOverview.layout.done') : t('projectOverview.layout.edit')}
                                             </Button>
@@ -2870,26 +3269,59 @@ export const ProjectOverview = () => {
                                         </div>
                                     </div>
                                 )}
-                                <div className={`overview-layout__columns ${layoutEditMode ? 'is-editing' : ''}`.trim()}>
-                                    <div
-                                        className="overview-layout__column overview-layout__column--primary"
-                                        onDragOver={handleLayoutColumnDragOver('primary')}
-                                        onDrop={handleLayoutColumnDrop}
-                                    >
-                                        <div className="overview-layout__primary">
-                                            {primaryCardsToRender.map(renderOverviewCard)}
+                                <DndContext
+                                    sensors={layoutSensors}
+                                    collisionDetection={layoutCollisionDetection}
+                                    onDragStart={handleLayoutDragStart}
+                                    onDragOver={handleLayoutDragOver}
+                                    onDragEnd={handleLayoutDragEnd}
+                                    onDragCancel={handleLayoutDragCancel}
+                                >
+                                    <div className={`overview-layout__columns ${layoutEditMode ? 'is-editing' : ''}`.trim()}>
+                                        <div
+                                            ref={setPrimaryDropRef}
+                                            className={`overview-layout__column overview-layout__column--primary ${primaryColumnDropActive ? 'is-drop-target' : ''}`.trim()}
+                                        >
+                                            <SortableContext items={primaryCardIds} strategy={rectSortingStrategy}>
+                                                <div className="overview-layout__primary">
+                                                    {primaryCardsToRender.map(renderOverviewCard)}
+                                                    {layoutEditMode && primaryCardIds.length === 0 && (
+                                                        <div className="overview-layout__drop-placeholder">
+                                                            {t('projectOverview.layout.dropZone')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </SortableContext>
+                                        </div>
+                                        <div
+                                            ref={setSecondaryDropRef}
+                                            className={`overview-layout__column overview-layout__column--secondary ${secondaryColumnDropActive ? 'is-drop-target' : ''}`.trim()}
+                                        >
+                                            <SortableContext items={secondaryCardIds} strategy={verticalListSortingStrategy}>
+                                                <div className="overview-layout__secondary">
+                                                    {secondaryCardsToRender.map(renderOverviewCard)}
+                                                    {layoutEditMode && secondaryCardIds.length === 0 && (
+                                                        <div className="overview-layout__drop-placeholder">
+                                                            {t('projectOverview.layout.dropZone')}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </SortableContext>
                                         </div>
                                     </div>
-                                    <div
-                                        className="overview-layout__column overview-layout__column--secondary"
-                                        onDragOver={handleLayoutColumnDragOver('secondary')}
-                                        onDrop={handleLayoutColumnDrop}
-                                    >
-                                        <div className="overview-layout__secondary">
-                                            {secondaryCardsToRender.map(renderOverviewCard)}
-                                        </div>
-                                    </div>
-                                </div>
+                                    <DragOverlay>
+                                        {draggingCardMeta ? (
+                                            <div className="overview-card overview-card--overlay">
+                                                <div className="overview-card__body">
+                                                    <Card className="updates-card">
+                                                        <h3 className="overview-card__overlay-title">{draggingCardMeta.title}</h3>
+                                                        <p className="overview-card__overlay-description">{draggingCardMeta.description}</p>
+                                                    </Card>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </DragOverlay>
+                                </DndContext>
                             </div>
 
                             {/* Overview Layout Modal */}
@@ -3082,15 +3514,38 @@ export const ProjectOverview = () => {
 
                             {
                                 showTaskModal && can('canManageTasks') && (
-                                    <TaskCreateModal
+                                    <Suspense fallback={null}>
+                                        <TaskCreateModal
+                                            projectId={id!}
+                                            tenantId={project?.tenantId}
+                                            onClose={() => setShowTaskModal(false)}
+                                            onCreated={() => {
+                                                // Task subscription will handle update
+                                                setShowTaskModal(false);
+                                            }}
+                                        />
+                                    </Suspense>
+                                )
+                            }
+                            {
+                                showFlowModal && can('canManageIdeas') && (
+                                    <CreateFlowModal
+                                        isOpen={showFlowModal}
+                                        onClose={() => setShowFlowModal(false)}
                                         projectId={id!}
-                                        tenantId={project?.tenantId}
-                                        onClose={() => setShowTaskModal(false)}
-                                        onCreated={() => {
-                                            // Task subscription will handle update
-                                            setShowTaskModal(false);
-                                        }}
+                                        onCreated={() => setShowFlowModal(false)}
                                     />
+                                )
+                            }
+                            {
+                                showIssueModal && can('canManageIssues') && (
+                                    <Suspense fallback={null}>
+                                        <CreateIssueModal
+                                            isOpen={showIssueModal}
+                                            onClose={() => setShowIssueModal(false)}
+                                            projectId={id!}
+                                        />
+                                    </Suspense>
                                 )
                             }
 

@@ -1,7 +1,8 @@
 import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { CustomRole, Permission, Project, ProjectRole, Tenant } from '../types';
-import { getActiveTenantId, getTenant } from './dataService';
+import { getActiveTenantId } from './domain/authService';
+import { getTenant } from './domain/workspaceService';
 import { RoleCapabilities } from '../types';
 
 /**

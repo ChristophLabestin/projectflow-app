@@ -1,20 +1,24 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useMemo } from 'react';
 import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
-import { Sidebar } from './Sidebar';
-import { TaskCreateModal } from './TaskCreateModal';
-import { CreateFlowModal } from './flows/CreateFlowModal';
-import { CreateIssueModal } from './CreateIssueModal';
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
-import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas, getUserProjectNavPrefs, subscribeUserProjectNavPrefs, subscribeUserStatusPreference, getCampaignById } from '../services/dataService';
+import { subscribeProjectIdeas, subscribeUserProjectNavPrefs } from '../services/dataService';
 import { Project } from '../types';
 import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { getProjectById, subscribeProject } from '../services/domain/projectsService';
+import { getSocialCampaign } from '../services/domain/socialService';
+import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
+import { subscribeProjectTasks } from '../services/domain/tasksService';
+import { subscribeProjectIssues } from '../services/domain/issuesService';
 
-
-import { TopBar } from './TopBar';
+const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
+const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
+const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
+const CreateFlowModal = lazy(() => import('./flows/CreateFlowModal').then((module) => ({ default: module.CreateFlowModal })));
+const CreateIssueModal = lazy(() => import('./CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 
 export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
@@ -33,6 +37,9 @@ export const AppLayout = () => {
     }, [location.pathname]);
 
     const projectId = paramProjectId || derivedProjectId;
+    const resolvedTaskCreateProjectId = taskCreateProjectId || projectId || null;
+    const resolvedIdeaCreateProjectId = ideaCreateProjectId || projectId || null;
+    const resolvedIssueCreateProjectId = issueCreateProjectId || projectId || null;
 
     const [navOpen, setNavOpen] = useState(false);
     const [project, setProject] = useState<Project | null>(null);
@@ -64,7 +71,7 @@ export const AppLayout = () => {
         const pathMatch = location.pathname.match(/\/project\/([^/]+)\/social\/campaigns\/([^/]+)/);
         if (pathMatch && pathMatch[1] && pathMatch[2]) {
             const [, pId, campId] = pathMatch;
-            getCampaignById(pId, campId).then(campaign => {
+            getSocialCampaign(pId, campId).then(campaign => {
                 setCampaignName(campaign?.name || null);
             }).catch(() => setCampaignName(null));
             return;
@@ -77,7 +84,7 @@ export const AppLayout = () => {
 
         if (createEditMatch && createEditMatch[1] && queryCampaignId) {
             const pId = createEditMatch[1];
-            getCampaignById(pId, queryCampaignId).then(campaign => {
+            getSocialCampaign(pId, queryCampaignId).then(campaign => {
                 setCampaignName(campaign?.name || null);
             }).catch(() => setCampaignName(null));
             return;
@@ -267,6 +274,8 @@ export const AppLayout = () => {
             rawItems.push({ label: t('breadcrumbs.team') });
         } else if (parts[0] === 'calendar') {
             rawItems.push({ label: t('breadcrumbs.calendar') });
+        } else if (parts[0] === 'finance') {
+            rawItems.push({ label: t('breadcrumbs.finance') });
         } else if (parts[0] === 'settings') {
             rawItems.push({ label: t('breadcrumbs.settings') });
         } else if (parts[0] === 'create') {
@@ -289,19 +298,21 @@ export const AppLayout = () => {
         <div className="flex h-screen w-full bg-surface overflow-hidden">
             {/* Sidebar Desktop */}
             <div className="hidden md:flex flex-shrink-0 h-full">
-                <Sidebar
-                    workspace={projectId ? {
-                        projectId,
-                        projectTitle: project?.title,
-                        tasksCount,
-                        ideasCount,
-                        issuesCount,
-                        modules: project?.modules,
-                        externalResources: project?.externalResources,
-                        isLoaded: Boolean(project),
-                        navPrefs: navPrefs
-                    } : undefined}
-                />
+                <Suspense fallback={<div className="h-full w-72 border-r border-surface bg-card" />}>
+                    <Sidebar
+                        workspace={projectId ? {
+                            projectId,
+                            projectTitle: project?.title,
+                            tasksCount,
+                            ideasCount,
+                            issuesCount,
+                            modules: project?.modules,
+                            externalResources: project?.externalResources,
+                            isLoaded: Boolean(project),
+                            navPrefs: navPrefs
+                        } : undefined}
+                    />
+                </Suspense>
             </div>
 
             {/* Mobile Sidebar Drawer */}
@@ -312,21 +323,23 @@ export const AppLayout = () => {
                         onClick={() => setNavOpen(false)}
                     />
                     <div className="relative w-4/5 max-w-xs h-full bg-card shadow-2xl animate-fade-in-left">
-                        <Sidebar
-                            isDrawer
-                            onClose={() => setNavOpen(false)}
-                            workspace={projectId ? {
-                                projectId,
-                                projectTitle: project?.title,
-                                tasksCount,
-                                ideasCount,
-                                issuesCount,
-                                modules: project?.modules,
-                                externalResources: project?.externalResources,
-                                isLoaded: Boolean(project),
-                                navPrefs: navPrefs
-                            } : undefined}
-                        />
+                        <Suspense fallback={<div className="h-full w-full bg-card" />}>
+                            <Sidebar
+                                isDrawer
+                                onClose={() => setNavOpen(false)}
+                                workspace={projectId ? {
+                                    projectId,
+                                    projectTitle: project?.title,
+                                    tasksCount,
+                                    ideasCount,
+                                    issuesCount,
+                                    modules: project?.modules,
+                                    externalResources: project?.externalResources,
+                                    isLoaded: Boolean(project),
+                                    navPrefs: navPrefs
+                                } : undefined}
+                            />
+                        </Suspense>
                     </div>
                 </div>
             )}
@@ -335,11 +348,13 @@ export const AppLayout = () => {
             <div className="flex-1 flex flex-col min-w-0 h-full relative">
 
                 {/* Header */}
-                <TopBar
-                    project={project}
-                    breadcrumbs={breadcrumbs}
-                    onOpenNav={() => setNavOpen(true)}
-                />
+                <Suspense fallback={<div className="h-14 border-b border-surface bg-card/95 backdrop-blur-sm" />}>
+                    <TopBar
+                        project={project}
+                        breadcrumbs={breadcrumbs}
+                        onOpenNav={() => setNavOpen(true)}
+                    />
+                </Suspense>
 
                 {/* Main Scroll Area */}
                 <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
@@ -350,30 +365,36 @@ export const AppLayout = () => {
 
             </div>
             {/* Global Task Create Modal */}
-            {isTaskCreateModalOpen && taskCreateProjectId && (
-                <TaskCreateModal
-                    onClose={closeTaskCreateModal}
-                    projectId={taskCreateProjectId}
-                />
+            {isTaskCreateModalOpen && resolvedTaskCreateProjectId && (
+                <Suspense fallback={null}>
+                    <TaskCreateModal
+                        onClose={closeTaskCreateModal}
+                        projectId={resolvedTaskCreateProjectId}
+                    />
+                </Suspense>
             )}
 
             {/* Global Flow Create Modal */}
-            {isIdeaCreateModalOpen && ideaCreateProjectId && (
-                <CreateFlowModal
-                    isOpen={isIdeaCreateModalOpen}
-                    onClose={closeIdeaCreateModal}
-                    projectId={ideaCreateProjectId}
-                    onCreated={closeIdeaCreateModal}
-                />
+            {isIdeaCreateModalOpen && resolvedIdeaCreateProjectId && (
+                <Suspense fallback={null}>
+                    <CreateFlowModal
+                        isOpen={isIdeaCreateModalOpen}
+                        onClose={closeIdeaCreateModal}
+                        projectId={resolvedIdeaCreateProjectId}
+                        onCreated={closeIdeaCreateModal}
+                    />
+                </Suspense>
             )}
 
             {/* Global Issue Create Modal */}
-            {isIssueCreateModalOpen && issueCreateProjectId && (
-                <CreateIssueModal
-                    isOpen={isIssueCreateModalOpen}
-                    onClose={closeIssueCreateModal}
-                    projectId={issueCreateProjectId}
-                />
+            {isIssueCreateModalOpen && resolvedIssueCreateProjectId && (
+                <Suspense fallback={null}>
+                    <CreateIssueModal
+                        isOpen={isIssueCreateModalOpen}
+                        onClose={closeIssueCreateModal}
+                        projectId={resolvedIssueCreateProjectId}
+                    />
+                </Suspense>
             )}
         </div>
     );

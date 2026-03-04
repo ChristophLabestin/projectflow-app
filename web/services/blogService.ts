@@ -173,7 +173,6 @@ export const fetchExternalBlogPosts = async (projectId: string): Promise<BlogPos
 
     try {
         const data = await executeApiRequest(config, 'posts', 'list');
-        console.log('Blog Fetch Response Data:', data);
 
         // Basic mapping - assumes the API returns an array of objects roughly matching BlogPost
         // In a real app, we might need a mapper function or the Data Model definition to map fields
@@ -191,8 +190,6 @@ export const fetchExternalBlogPosts = async (projectId: string): Promise<BlogPos
             // specific case for Strapi or similar that might wrap in attributes
             else if (Array.isArray(data.entries)) postsArray = data.entries;
         }
-
-        console.log('Found posts array:', postsArray.length, 'items');
 
         if (postsArray.length > 0) {
             return postsArray.map((item: any) => {

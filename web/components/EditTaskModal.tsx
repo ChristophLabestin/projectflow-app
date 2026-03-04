@@ -5,7 +5,8 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
-import { updateTaskFields } from '../services/dataService';
+import { updateTaskFields } from '../services/domain/tasksService';
+import { useLanguage } from '../context/LanguageContext';
 
 interface EditTaskModalProps {
     task: Task;
@@ -16,6 +17,7 @@ interface EditTaskModalProps {
 }
 
 export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onUpdate }) => {
+    const { t } = useLanguage();
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description || '');
     const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []));
@@ -54,7 +56,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal-overlay task-modal center-aligned" onClick={onClose}>
+        <div className="modal-overlay modal-overlay--open task-modal center-aligned" onClick={onClose}>
             <div
                 className="modal-content max-w-2xl"
                 onClick={(e) => e.stopPropagation()}
@@ -62,36 +64,36 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                 {/* Header */}
                 <div className="edit-task-header">
                     <div>
-                        <h3>Edit Task</h3>
-                        <p>Update task details and assignments.</p>
+                        <h3>{t('editTaskModal.title')}</h3>
+                        <p>{t('editTaskModal.subtitle')}</p>
                     </div>
-                    <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
+                    <Button variant="ghost" onClick={onClose} size="sm">{t('common.cancel')}</Button>
                 </div>
 
                 <form onSubmit={handleSave} className="edit-task-form">
                     <div className="form-group">
                         <Input
-                            label="Title"
+                            label={t('editTaskModal.fields.title')}
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Task title"
+                            placeholder={t('editTaskModal.fields.titlePlaceholder')}
                             required
                             className="text-lg font-medium"
                         />
 
                         <div className="field-wrapper">
-                            <label>Description</label>
+                            <label>{t('editTaskModal.fields.description')}</label>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe the task..."
+                                placeholder={t('editTaskModal.fields.descriptionPlaceholder')}
                                 rows={8}
                                 className="min-h-[200px]"
                             />
                         </div>
 
                         <div className="field-wrapper">
-                            <label>Assignees</label>
+                            <label>{t('editTaskModal.fields.assignees')}</label>
                             <MultiAssigneeSelector
                                 projectId={task.projectId}
                                 assigneeIds={assigneeIds}
@@ -104,8 +106,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                     </div>
 
                     <div className="edit-task-footer">
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
-                        <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
+                        <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>{t('common.cancel')}</Button>
+                        <Button type="submit" isLoading={loading} disabled={!title.trim()}>{t('common.saveChanges')}</Button>
                     </div>
                 </form>
             </div >

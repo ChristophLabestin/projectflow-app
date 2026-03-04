@@ -1,6 +1,11 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom';
-import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
+import '../src/styles/components/_project-task-detail.scss';
+import { getIdeaById } from '../services/domain/ideasService';
+import { getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
+import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
+import { addSubTask, deleteSubTask, deleteTask, getProjectTasks, getSubTasks, getTaskById, subscribeTaskActivity, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
+import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
 import { deleteField } from 'firebase/firestore';
 import { SubTask, Task, Member, Project, Activity, Milestone, TaskCategory } from '../types';
 import { CommentSection } from '../components/CommentSection';
@@ -9,7 +14,6 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskDependenciesCard } from '../components/TaskDependenciesCard';
-import { TaskCreateModal } from '../components/TaskCreateModal';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
@@ -20,6 +24,8 @@ import { TaskStrategicContext } from '../components/tasks/TaskStrategicContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
+
+const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Review', 'Blocked', 'Done'] as const;
 
@@ -452,6 +458,33 @@ export const ProjectTaskDetail = () => {
 
     const currentStatus = task?.status || 'Open';
     const currentStatusLabel = statusLabels[currentStatus as keyof typeof statusLabels] || t('tasks.status.unknown');
+    const taskWorkbenchCards = [
+        {
+            label: t('taskDetail.workbench.execution'),
+            value: currentStatusLabel,
+            meta: task.isCompleted ? t('taskDetail.workbench.executionDone') : t('taskDetail.workbench.executionActive')
+        },
+        {
+            label: t('taskDetail.workbench.progress'),
+            value: totalCount > 0 ? `${doneCount}/${totalCount}` : t('taskDetail.workbench.progressZero'),
+            meta: totalCount > 0
+                ? t('taskDetail.workbench.progressMeta').replace('{percent}', String(progressPct))
+                : t('taskDetail.workbench.progressEmpty')
+        },
+        {
+            label: t('taskDetail.workbench.nextStep'),
+            value: task.linkedIssueId
+                ? t('taskDetail.workbench.linkedIssue')
+                : task.dueDate
+                    ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale })
+                    : t('taskDetail.workbench.unscheduled'),
+            meta: task.linkedIssueId
+                ? t('taskDetail.workbench.followIssue')
+                : task.startDate
+                    ? t('taskDetail.workbench.windowDefined')
+                    : t('taskDetail.workbench.scheduleFollowUp')
+        }
+    ];
 
     return (
         <div className="task-detail">
@@ -478,15 +511,17 @@ export const ProjectTaskDetail = () => {
             )}
 
             {showTaskModal && (
-                <TaskCreateModal
-                    isOpen={showTaskModal}
-                    onClose={() => setShowTaskModal(false)}
-                    projectId={id!}
-                    onSuccess={() => {
-                        setShowTaskModal(false);
-                        // Refresh if needed, but since it's a new task it won't affect this page's task data
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <TaskCreateModal
+                        isOpen={showTaskModal}
+                        onClose={() => setShowTaskModal(false)}
+                        projectId={id!}
+                        onSuccess={() => {
+                            setShowTaskModal(false);
+                            // Refresh if needed, but since it's a new task it won't affect this page's task data
+                        }}
+                    />
+                </Suspense>
             )}
 
             <ConfirmModal
@@ -740,6 +775,30 @@ export const ProjectTaskDetail = () => {
                             </div>
                         </div>
                     )}
+
+                    <div className="task-detail__workbench">
+                        {taskWorkbenchCards.map((card) => (
+                            <div key={card.label} className="task-detail__workbench-card">
+                                <span className="task-detail__workbench-label">{card.label}</span>
+                                <span className="task-detail__workbench-value">{card.value}</span>
+                                <span className="task-detail__workbench-meta">{card.meta}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="task-detail__workbench-actions">
+                        <Link to={`/project/${id}/tasks`} className="task-detail__workbench-link">
+                            {t('taskDetail.workbench.actions.board')}
+                        </Link>
+                        <Link to={`/project/${id}`} className="task-detail__workbench-link">
+                            {t('taskDetail.workbench.actions.workspace')}
+                        </Link>
+                        {task.linkedIssueId && (
+                            <Link to={`/project/${id}/issues/${task.linkedIssueId}`} className="task-detail__workbench-link">
+                                {t('taskDetail.workbench.actions.issue')}
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </header>
 

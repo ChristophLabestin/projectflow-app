@@ -2,21 +2,17 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { auth } from '../services/firebase';
+import { sendTeamInvitation } from '../services/domain/projectAdminService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { removeUserFromWorkspace, subscribeTenantUsers, updateUserRole } from '../services/domain/workspaceMembersService';
+import { getSharedProjects, subscribeTenantProjects } from '../services/domain/projectsService';
 import {
-    getActiveTenantId,
-    subscribeTenantUsers,
-    subscribeTenantProjects,
-    removeUserFromWorkspace,
-    getSharedProjects,
-    revokeWorkspaceInviteLink,
-    revokeProjectInviteLink,
-    updateUserRole,
-    getWorkspaceInviteLinks,
-    getProjectInviteLinks,
-    getUserProfile,
     generateWorkspaceInviteLink,
-    sendTeamInvitation
-} from '../services/dataService';
+    getTenantProjectInviteLinks,
+    getWorkspaceInviteLinks,
+    revokeProjectInviteLink,
+    revokeWorkspaceInviteLink
+} from '../services/domain/inviteLinksService';
 import { getWorkspaceRoles } from '../services/rolesService';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { Project, WorkspaceRole, Member, CustomRole } from '../types';
@@ -34,6 +30,7 @@ interface TeamMember extends Member {
 
 interface InviteLink {
     id: string;
+    inviteLinkId?: string;
     email?: string;
     role: WorkspaceRole;
     type: 'workspace' | 'project';
@@ -46,11 +43,15 @@ type Tab = 'members' | 'projects' | 'invites';
 
 export const Team = () => {
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, teamTranslationsReady, loadTeamTranslations } = useLanguage();
     const confirm = useConfirm();
     const { showError, showSuccess } = useToast();
     const { can, isOwner } = useWorkspacePermissions();
     const tenantId = useMemo(() => getActiveTenantId() || auth.currentUser?.uid || '', []);
+
+    useEffect(() => {
+        void loadTeamTranslations();
+    }, [loadTeamTranslations]);
 
     // --- State ---
     const [activeTab, setActiveTab] = useState<Tab>('members');
@@ -83,29 +84,49 @@ export const Team = () => {
         getSharedProjects().then(setSharedProjects).catch(console.error);
         getWorkspaceRoles(tenantId).then(setCustomRoles).catch(console.error);
 
-        const fetchInvites = async () => {
-            try {
-                const [wsInvites, projInvites] = await Promise.all([
-                    getWorkspaceInviteLinks(tenantId),
-                    getProjectInviteLinks(tenantId)
-                ]);
-
-                const allInvites: InviteLink[] = [
-                    ...wsInvites.map((i: any) => ({ ...i, type: 'workspace' as const })),
-                    ...projInvites.map((i: any) => ({ ...i, type: 'project' as const }))
-                ];
-                setInviteLinks(allInvites);
-            } catch (e) {
-                console.error("Failed to fetch invites", e);
-            }
-        };
-        fetchInvites();
-
         return () => {
             unsubUsers();
             unsubProjects();
         };
     }, [tenantId]);
+
+    useEffect(() => {
+        if (!tenantId) return;
+
+        const loadInvites = async () => {
+            try {
+                const projectLookup = new Map(
+                    [...projects, ...sharedProjects].map((project) => [project.id, project])
+                );
+                const [workspaceLinks, projectLinks] = await Promise.all([
+                    getWorkspaceInviteLinks(tenantId),
+                    getTenantProjectInviteLinks(tenantId)
+                ]);
+
+                const allInvites: InviteLink[] = [
+                    ...workspaceLinks.map((link: any) => ({
+                        ...link,
+                        inviteLinkId: link.id,
+                        id: `workspace:${link.id}`,
+                        type: 'workspace' as const
+                    })),
+                    ...projectLinks.map((link: any) => ({
+                        ...link,
+                        inviteLinkId: link.id,
+                        id: `project:${link.projectId}:${link.id}`,
+                        type: 'project' as const,
+                        projectName: projectLookup.get(link.projectId)?.title
+                    }))
+                ];
+
+                setInviteLinks(allInvites);
+            } catch (error) {
+                console.error('Failed to fetch invites', error);
+            }
+        };
+
+        void loadInvites();
+    }, [projects, sharedProjects, tenantId]);
 
     // --- Helpers ---
     const getRoleDetails = (roleId?: string) => {
@@ -153,6 +174,28 @@ export const Team = () => {
         return items;
     }, [activeTab, users, projects, sharedProjects, inviteLinks, searchQuery]);
 
+    const summaryCards = useMemo(() => {
+        const uniqueProjectCount = new Set([...projects, ...sharedProjects].map((project) => project.id)).size;
+
+        return [
+            {
+                key: 'members',
+                label: t('team.summary.members'),
+                value: users.length
+            },
+            {
+                key: 'projects',
+                label: t('team.summary.projects'),
+                value: uniqueProjectCount
+            },
+            {
+                key: 'invites',
+                label: t('team.summary.invites'),
+                value: inviteLinks.length
+            }
+        ];
+    }, [inviteLinks.length, projects, sharedProjects, t, users.length]);
+
     // Auto-select first item on tab change or search if nothing selected
     useEffect(() => {
         // If the currently selected ID is not in the new list, select the first one
@@ -166,6 +209,10 @@ export const Team = () => {
             setSelectedId(null);
         }
     }, [listItems, activeTab]);
+
+    if (!teamTranslationsReady) {
+        return <div className="p-10 text-center">Loading team...</div>;
+    }
 
 
     // --- Handlers ---
@@ -193,8 +240,9 @@ export const Team = () => {
 
     const handleRevokeInvite = async (link: InviteLink) => {
         try {
-            if (link.type === 'workspace') await revokeWorkspaceInviteLink(link.id, tenantId);
-            else await revokeProjectInviteLink(link.projectId!, link.id, tenantId);
+            const inviteLinkId = link.inviteLinkId || link.id;
+            if (link.type === 'workspace') await revokeWorkspaceInviteLink(inviteLinkId, tenantId);
+            else await revokeProjectInviteLink(link.projectId!, inviteLinkId, tenantId);
             setInviteLinks(prev => prev.filter(l => l.id !== link.id));
             showSuccess('Invitation revoked');
         } catch (e) {
@@ -295,7 +343,7 @@ export const Team = () => {
                     </div>
                     <div className="min-w-0 flex-1">
                         <p className="text-[14px]/none font-semibold truncate tracking-tight">{link.email || 'Pending Invite'}</p>
-                        <p className="text-[12px] text-[var(--color-text-muted)] opacity-60 truncate mt-1 font-medium">{link.id}</p>
+                        <p className="text-[12px] text-[var(--color-text-muted)] opacity-60 truncate mt-1 font-medium">{link.inviteLinkId || link.id}</p>
                     </div>
                 </div>
             );
@@ -389,7 +437,7 @@ export const Team = () => {
                         </Card>
                         <Card className="flex flex-col gap-1 items-center justify-center text-center p-6">
                             <span className="material-symbols-outlined text-[24px] text-emerald-500 mb-2">check_circle</span>
-                            <span className="text-11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">Status</span>
+                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">Status</span>
                             <span className="text-2xl font-bold text-emerald-500 leading-none">Active</span>
                         </Card>
                         <Card className="flex flex-col gap-1 items-center justify-center text-center p-6">
@@ -498,6 +546,10 @@ export const Team = () => {
         if (activeTab === 'invites') {
             const link = selectedItem as InviteLink;
             const role = getRoleDetails(link.role);
+            const inviteLinkId = link.inviteLinkId || link.id;
+            const inviteUrl = link.type === 'workspace'
+                ? `${window.location.origin}/join-workspace/${inviteLinkId}?tenantId=${tenantId}`
+                : `${window.location.origin}/join/${inviteLinkId}?projectId=${link.projectId}&tenantId=${tenantId}`;
             return (
                 <div className="h-full flex flex-col items-center justify-center animate-fade-in p-12 text-center gap-8">
                     <Card padding="lg" className="max-w-xl w-full flex flex-col items-center shadow-xl border-dashed">
@@ -513,7 +565,7 @@ export const Team = () => {
                             <Button
                                 variant="secondary"
                                 onClick={() => {
-                                    navigator.clipboard.writeText(`${window.location.origin}/join/${link.id}`);
+                                    navigator.clipboard.writeText(inviteUrl);
                                     showSuccess('Copied link');
                                 }}
                                 className="rounded-xl px-6 py-2.5 font-bold text-[13px]"
@@ -583,6 +635,25 @@ export const Team = () => {
                             placeholder={t('common.search') || "Search..."}
                             className="w-full bg-[var(--color-surface-hover)]/40 hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl pl-10 pr-4 py-2 text-[13px] font-medium focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] outline-none transition-all"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-4 px-1">
+                        {summaryCards.map((card) => (
+                            <div
+                                key={card.key}
+                                className="rounded-2xl border border-[var(--color-surface-border)] px-3 py-3"
+                                style={{
+                                    background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 65%), var(--color-surface-card)'
+                                }}
+                            >
+                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--color-text-subtle)]">
+                                    {card.label}
+                                </div>
+                                <div className="mt-1 text-lg font-black text-[var(--color-text-main)]">
+                                    {card.value}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

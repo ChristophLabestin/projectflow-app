@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Project } from '../types';
-import { getUserProjects, getSharedProjects } from '../services/dataService';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {

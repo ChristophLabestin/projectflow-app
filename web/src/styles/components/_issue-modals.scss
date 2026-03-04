@@ -82,8 +82,6 @@
 
 .issue-modal__select .select-input__trigger {
     background-color: var(--color-surface-hover);
-    border: 0;
-    box-shadow: var(--shadow-sm);
 }
 
 .issue-modal__section {
@@ -102,29 +100,7 @@
 }
 
 .issue-modal__description-input .text-area {
-    width: 100%;
-    min-height: 0;
-    padding: 0.75rem;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface-bg);
-    border: 0;
-    font-size: 0.875rem;
-    color: var(--color-text-main);
-    outline: none;
-    resize: none;
-    box-shadow: var(--shadow-inner);
-}
-
-.issue-modal__description-input .text-area::placeholder {
-    color: var(--color-text-muted);
-}
-
-.issue-modal__description-input .text-area:hover,
-.issue-modal__description-input .text-area:focus,
-.issue-modal__description-input .text-area:focus-visible {
-    background-color: var(--color-surface-bg);
-    box-shadow: var(--shadow-inner);
-    transform: none;
+    min-height: 88px;
 }
 
 .issue-modal__dates {
@@ -139,9 +115,7 @@
 }
 
 .issue-modal__date-input .text-input {
-    background-color: var(--color-surface-bg);
-    border: 0;
-    box-shadow: var(--shadow-inner);
+    background-color: var(--color-surface-hover);
 }
 
 .issue-modal__footer {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { useOutletContext, useParams } from 'react-router-dom';
+import '../src/styles/components/_project-sprints.scss';
 import { Sprint, Task, Member } from '../types';
 import {
     subscribeProjectSprints,
@@ -15,7 +16,10 @@ import {
     approveJoinRequest,
     rejectJoinRequest
 } from '../services/sprintService';
-import { subscribeProjectTasks, updateTaskFields, getActiveTenantId, getProjectById, getUsersByIds } from '../services/dataService';
+import { subscribeProjectTasks, getUsersByIds } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getProjectById } from '../services/domain/projectsService';
+import { updateTaskFields } from '../services/domain/tasksService';
 import { auth } from '../services/firebase';
 import { SprintBacklog } from '../components/sprints/SprintBacklog';
 import { ActiveSprintBoard } from '../components/sprints/ActiveSprintBoard';

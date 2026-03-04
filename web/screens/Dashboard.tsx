@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { auth } from '../services/firebase';
-import { getUserProjects, getSharedProjects, getUserTasks, getUserIdeas, getUserIssues, saveIdea, getUserGlobalActivities, getUserProfile, updateUserData, getProjectMembers } from '../services/dataService';
+import { getUserGlobalActivities } from '../services/domain/activityService';
+import { getUserIdeas } from '../services/domain/ideasService';
+import { getUserIssues } from '../services/domain/issuesService';
+import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
+import { getUserTasks } from '../services/domain/tasksService';
+import { getUserProfile, updateUserData } from '../services/domain/usersService';
 import { Project, Task, Idea, Issue, Activity, Member } from '../types';
 import { toMillis, toDate } from '../utils/time';
 import { Button } from '../components/ui/Button';
@@ -97,8 +102,9 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 
 export const Dashboard = () => {
-    const { t, language, dateFormat, dateLocale } = useLanguage();
+    const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
     const locale = language === 'de' ? 'de-DE' : 'en-US';
+    const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
     const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
     const [stats, setStats] = useState({
@@ -122,6 +128,17 @@ export const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [hoverTrendIndex, setHoverTrendIndex] = useState<number | null>(null);
     const trendRef = useRef<SVGSVGElement | null>(null);
+
+    useEffect(() => {
+        void loadDashboardTranslations();
+    }, [loadDashboardTranslations]);
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            setAuthUserId(user?.uid ?? null);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const hasIssuesModule = useMemo(() => projects.some(p => p.modules?.includes('issues')), [projects]);
     const hasMilestonesModule = useMemo(() => projects.some(p => p.modules?.includes('milestones')), [projects]);
@@ -294,7 +311,25 @@ export const Dashboard = () => {
     };
 
     useEffect(() => {
+        if (!authUserId) {
+            setProjects([]);
+            setRecentProjects([]);
+            setTasks([]);
+            setIdeas([]);
+            setIssues([]);
+            setActivities([]);
+            setStats({
+                activeProjects: 0,
+                completedProjects: 0,
+                openTasks: 0,
+                ideas: 0
+            });
+            setLoading(false);
+            return;
+        }
+
         const loadDashboard = async () => {
+            setLoading(true);
             try {
                 try {
                     const userProjects = await getUserProjects();
@@ -321,16 +356,21 @@ export const Dashboard = () => {
                     setIssues(issues);
 
                     // Fetch global activities
-                    const recentActivities = await getUserGlobalActivities(auth.currentUser?.uid, 6);
+                    const recentActivities = await getUserGlobalActivities(authUserId, 6);
                     setActivities(recentActivities);
 
                     // Fetch user preference for calendar view
-                    if (auth.currentUser?.uid) {
-                        const profile = await getUserProfile(auth.currentUser.uid);
+                    if (authUserId) {
+                        const profile = await getUserProfile(authUserId);
                         if (profile?.preferences?.dashboard?.calendarView) {
                             const view = profile.preferences.dashboard.calendarView;
                             setCalendarView(view);
                             localStorage.setItem('dashboard_calendar_view', view);
+                        }
+
+                        const displayName = auth.currentUser?.displayName || profile?.displayName;
+                        if (displayName) {
+                            setUserName(displayName.split(' ')[0]);
                         }
                     }
                     setStats({
@@ -345,12 +385,6 @@ export const Dashboard = () => {
                         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
                     setRecentProjects(sortedProjects.slice(0, 4));
 
-
-                    // Set user info
-                    if (auth.currentUser?.displayName) {
-                        setUserName(auth.currentUser.displayName.split(' ')[0]);
-                    }
-
                 } catch (error) {
                     console.error('Dashboard load failed', error);
                 } finally {
@@ -362,7 +396,7 @@ export const Dashboard = () => {
             }
         };
         loadDashboard();
-    }, []);
+    }, [authUserId]);
 
     const taskTrend = useMemo(() => bucketByDay(tasks), [tasks]);
     const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);
@@ -858,6 +892,42 @@ export const Dashboard = () => {
         }
     ];
 
+    const workbenchCards = [
+        {
+            key: 'today',
+            icon: 'today',
+            label: t('dashboard.workbench.today.label'),
+            value: dueTodayTasks.length + overdueTasks.length,
+            detail: overdueTasks.length > 0
+                ? t('dashboard.workbench.today.overdue').replace('{count}', String(overdueTasks.length))
+                : t('dashboard.workbench.today.clear'),
+            link: '/tasks',
+            action: t('dashboard.workbench.today.action')
+        },
+        {
+            key: 'risk',
+            icon: 'warning',
+            label: t('dashboard.workbench.risk.label'),
+            value: projectsAtRisk.length,
+            detail: projectsAtRisk[0]
+                ? t('dashboard.workbench.risk.detail').replace('{project}', projectsAtRisk[0].project.title)
+                : t('dashboard.workbench.risk.clear'),
+            link: '/projects',
+            action: t('dashboard.workbench.risk.action')
+        },
+        {
+            key: 'review',
+            icon: 'rate_review',
+            label: t('dashboard.workbench.review.label'),
+            value: reviewIdeas.length,
+            detail: reviewIdeas.length > 0
+                ? t('dashboard.workbench.review.detail').replace('{count}', String(reviewIdeas.length))
+                : t('dashboard.workbench.review.clear'),
+            link: '/projects',
+            action: t('dashboard.workbench.review.action')
+        }
+    ];
+
 
 
 
@@ -886,7 +956,7 @@ export const Dashboard = () => {
         checkPasskeyStatus();
     }, []);
 
-    if (loading) {
+    if (loading || !dashboardTranslationsReady) {
         return (
             <div className="flex items-center justify-center p-12">
                 <span className="material-symbols-outlined text-3xl dashboard-spinner">rotate_right</span>
@@ -931,6 +1001,23 @@ export const Dashboard = () => {
                             <div className="stat-label">{t('dashboard.header.stats.completed')}</div>
                         </div>
                     </div>
+                </div>
+
+                <div className="dashboard-workbench">
+                    {workbenchCards.map((card) => (
+                        <Card key={card.key} padding="md" className="dashboard-workbench-card">
+                            <div className="dashboard-workbench-card__header">
+                                <span className="material-symbols-outlined dashboard-workbench-card__icon">{card.icon}</span>
+                                <span className="dashboard-workbench-card__label">{card.label}</span>
+                            </div>
+                            <div className="dashboard-workbench-card__value">{card.value}</div>
+                            <p className="dashboard-workbench-card__detail">{card.detail}</p>
+                            <Link to={card.link} className="dashboard-workbench-card__link">
+                                {card.action}
+                                <span className="material-symbols-outlined">arrow_forward</span>
+                            </Link>
+                        </Card>
+                    ))}
                 </div>
 
                 {/* Main Dashboard Grid */}

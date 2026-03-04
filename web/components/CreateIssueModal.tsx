@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 
-import { createIssue } from '../services/dataService';
+import { createIssue } from '../services/domain/issuesService';
 
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 
@@ -270,7 +270,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
 
         <div
 
-            className="modal-overlay issue-modal"
+            className="modal-overlay modal-overlay--open issue-modal"
 
             onClick={onClose}
 
@@ -480,4 +480,3 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
     );
 
 };
-

@@ -1,20 +1,9 @@
 @use './tokens';
 @use './utilities';
 @use '../src/styles/components/dashboard';
-@use '../src/styles/components/project-overview';
-@use '../src/styles/components/project-details';
-@use '../src/styles/components/project-activity';
 @use '../src/styles/components/recent-activity-card';
 @use '../src/styles/components/scheduled-tasks-card';
 @use '../src/styles/components/tasks';
-@use '../src/styles/components/project-issues';
-@use '../src/styles/components/project-issue-detail';
-@use '../src/styles/components/project-milestones';
-@use '../src/styles/components/project-sprints';
-@use '../src/styles/components/project-flows';
-@use '../src/styles/components/project-flow-detail';
-@use '../src/styles/components/project-task-detail';
-@use '../src/styles/components/task-dependencies';
 @use '../src/styles/components/project-edit-modal';
 @use '../src/styles/components/calendar';
 @use '../src/styles/components/ai-studio';
@@ -144,15 +133,19 @@ input[type=number] {
 }
 
 input:focus,
-input:focus-visible,
 select:focus,
-select:focus-visible,
 textarea:focus,
+button:focus {
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+input:focus-visible,
+select:focus-visible,
 textarea:focus-visible,
-button:focus,
 button:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
+  outline: 2px solid var(--color-primary, #2563eb) !important;
+  outline-offset: 2px;
 }
 
 /* --- Layout Utilities --- */

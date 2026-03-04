@@ -4,7 +4,7 @@ import { Button } from '../../common/Button/Button';
 import { Card } from '../../common/Card/Card';
 import { Select } from '../../common/Select/Select';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
-import { subscribeCampaigns, createSocialPost } from '../../../services/dataService';
+import { createSocialPost, subscribeCampaigns } from '../../../services/domain/socialService';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
 

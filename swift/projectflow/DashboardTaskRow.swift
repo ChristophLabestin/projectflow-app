@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DashboardTaskRow: View {
-    let task: Task
+    let task: ProjectTask
     @Environment(\.colorScheme) private var colorScheme
     
     private var colors: PFColors { PFColors.palette(for: colorScheme) }

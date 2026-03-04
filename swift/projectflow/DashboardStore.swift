@@ -4,11 +4,11 @@ import FirebaseAuth
 import FirebaseFirestore
 import SwiftUI
 
-struct ChartData: Identifiable {
+struct TrendData: Identifiable {
     let id = UUID()
-    let label: String
+    let date: Date
     let value: Int
-    let color: Color
+    let type: String // "Tasks", "Issues", "Flows"
 }
 
 @MainActor
@@ -20,9 +20,10 @@ final class DashboardStore: ObservableObject {
     @Published var issueCount = 0
     @Published var openIssueCount = 0
     @Published var flowCount = 0
-    @Published var recentTasks: [Task] = []
+    @Published var recentTasks: [ProjectTask] = []
     @Published var recentIssues: [Issue] = []
     @Published var recentFlows: [Flow] = []
+    @Published var scheduledTasks: [Date: [ProjectTask]] = [:]
     
     // Focus Metrics
     @Published var overdueTaskCount = 0
@@ -34,6 +35,9 @@ final class DashboardStore: ObservableObject {
     // Distributions
     @Published var projectStatusDistribution: [ChartData] = []
     @Published var taskPriorityDistribution: [ChartData] = []
+    
+    // Trends
+    @Published var trendData: [TrendData] = []
 
     private let db = Firestore.firestore()
     private let projectRepository = ProjectRepository()
@@ -43,6 +47,11 @@ final class DashboardStore: ObservableObject {
     private var flowListener: ListenerRegistration?
     
     private var currentUserId: String?
+    
+    // Temp storage for aggregating trends
+    private var rawTasks: [ProjectTask] = []
+    private var rawIssues: [Issue] = []
+    private var rawFlows: [Flow] = []
 
     func start() {
         guard let user = Auth.auth().currentUser else {
@@ -90,11 +99,13 @@ final class DashboardStore: ObservableObject {
                 print("DashboardStore: Task snapshot received. Documents: \(snapshot.documents.count)")
                 
                 let tasks = snapshot.documents.map { doc in
-                    Task(id: doc.documentID, data: doc.data())
+                    ProjectTask(id: doc.documentID, data: doc.data())
                 }
                 
                 print("DashboardStore: Successfully decoded \(tasks.count) tasks")
+                self.rawTasks = tasks
                 self.processTasks(tasks)
+                self.updateTrends()
                 self.isLoading = false
             }
 
@@ -110,9 +121,11 @@ final class DashboardStore: ObservableObject {
                 print("DashboardStore: Issue snapshot received. Documents: \(snapshot.documents.count)")
                 
                 let issues = snapshot.documents.map { Issue(id: $0.documentID, data: $0.data()) }
+                self.rawIssues = issues
                 self.issueCount = issues.count
                 self.openIssueCount = issues.filter { $0.status != "Resolved" && $0.status != "Closed" }.count
                 self.recentIssues = self.recentItems(from: issues, limit: 4) { $0.createdAt }
+                self.updateTrends()
                 self.isLoading = false
             }
 
@@ -128,8 +141,10 @@ final class DashboardStore: ObservableObject {
                 print("DashboardStore: Flow snapshot received. Documents: \(snapshot.documents.count)")
                 
                 let flows = snapshot.documents.map { Flow(id: $0.documentID, data: $0.data()) }
+                self.rawFlows = flows
                 self.flowCount = flows.count
                 self.recentFlows = self.recentItems(from: flows, limit: 4) { $0.createdAt }
+                self.updateTrends()
                 self.isLoading = false
             }
     }
@@ -157,6 +172,11 @@ final class DashboardStore: ObservableObject {
         assignedToMeTaskCount = 0
         projectStatusDistribution = []
         taskPriorityDistribution = []
+        trendData = []
+        
+        rawTasks = []
+        rawIssues = []
+        rawFlows = []
     }
 
     private func removeListeners() {
@@ -179,7 +199,7 @@ final class DashboardStore: ObservableObject {
         return Array(sorted.prefix(limit))
     }
     
-    private func processTasks(_ tasks: [Task]) {
+    private func processTasks(_ tasks: [ProjectTask]) {
         taskCount = tasks.count
         let openTasks = tasks.filter { !$0.isCompleted }
         openTaskCount = openTasks.count
@@ -191,10 +211,8 @@ final class DashboardStore: ObservableObject {
         let startOfToday = calendar.startOfDay(for: now)
         let endOfToday = calendar.date(byAdding: .day, value: 1, to: startOfToday)!
         
-        // DateFormatter for parsing string dates (Assuming "yyyy-MM-dd" or ISO from backend)
-        // Adjust format based on actual data. Assuming standard ISO8601 or yyyy-MM-dd
         let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd" // Typical for simple date strings
+        dateFormatter.dateFormat = "yyyy-MM-dd"
         
         overdueTaskCount = openTasks.filter { task in
             guard let date = dateFormatter.date(from: task.dueDate) else { return false }
@@ -215,6 +233,16 @@ final class DashboardStore: ObservableObject {
         } else {
             assignedToMeTaskCount = 0
         }
+        
+        // Scheduled Tasks (last 7 days + next 7 days)
+        var scheduled: [Date: [ProjectTask]] = [:]
+        for task in tasks {
+            guard !task.dueDate.isEmpty,
+                  let date = dateFormatter.date(from: task.dueDate) else { continue }
+            let startOfDay = calendar.startOfDay(for: date)
+            scheduled[startOfDay, default: []].append(task)
+        }
+        self.scheduledTasks = scheduled
         
         // Task Distribution
         updateTaskDistribution(openTasks)
@@ -237,7 +265,7 @@ final class DashboardStore: ObservableObject {
         }.sorted { $0.value > $1.value }
     }
     
-    private func updateTaskDistribution(_ tasks: [Task]) {
+    private func updateTaskDistribution(_ tasks: [ProjectTask]) {
         let priorityCounts = Dictionary(grouping: tasks, by: { $0.priority })
             .mapValues { $0.count }
         
@@ -254,5 +282,43 @@ final class DashboardStore: ObservableObject {
             let order = ["Urgent": 0, "High": 1, "Medium": 2, "Low": 3]
             return (order[$0.label] ?? 4) < (order[$1.label] ?? 4)
         }
+    }
+    
+    private func updateTrends() {
+        // Aggregate last 7 days
+        var trends: [TrendData] = []
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Helper to bucket items by day
+        func bucket<T>(items: [T], type: String, dateExtractor: (T) -> Date?) {
+            var counts: [Date: Int] = [:]
+            
+            // Initialize last 7 days with 0
+            for i in 0..<7 {
+                if let day = calendar.date(byAdding: .day, value: -i, to: now) {
+                    let startOfDay = calendar.startOfDay(for: day)
+                    counts[startOfDay] = 0
+                }
+            }
+            
+            for item in items {
+                guard let date = dateExtractor(item) else { continue }
+                let startOfDay = calendar.startOfDay(for: date)
+                if counts.keys.contains(startOfDay) {
+                    counts[startOfDay] = (counts[startOfDay] ?? 0) + 1
+                }
+            }
+            
+            for (date, count) in counts {
+                trends.append(TrendData(date: date, value: count, type: type))
+            }
+        }
+        
+        bucket(items: rawTasks, type: "Tasks") { $0.createdAt?.dateValue() }
+        bucket(items: rawIssues, type: "Issues") { $0.createdAt?.dateValue() }
+        bucket(items: rawFlows, type: "Flows") { $0.createdAt?.dateValue() }
+        
+        trendData = trends.sorted { $0.date < $1.date }
     }
 }

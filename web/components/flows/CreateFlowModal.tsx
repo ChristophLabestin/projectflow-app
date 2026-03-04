@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../common/Modal/Modal';
 import { Button } from '../common/Button/Button';
 import { TextInput } from '../common/Input/TextInput';
-import { saveIdea } from '../../services/dataService';
+import { saveIdea } from '../../services/domain/ideasService';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface CreateFlowModalProps {

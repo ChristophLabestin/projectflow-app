@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { subscribeCampaigns, subscribeSocialPosts, deleteSocialPost, createSocialPost, getProjectById, updateSocialPost, updateCampaign, getIdeaById, updateIdea } from '../../services/dataService';
+import { getIdeaById, updateIdea } from '../../services/domain/ideasService';
+import { getProjectById } from '../../services/domain/projectsService';
+import { createSocialPost, deleteSocialPost, subscribeCampaigns, subscribeSocialPosts, updateCampaign, updateSocialPost } from '../../services/domain/socialService';
 import { SocialCampaign, SocialPost, Project, Idea, SocialPostFormat, SocialPostStatus } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
@@ -9,13 +11,14 @@ import { generateCampaignContentPlan, SocialPostDraft } from '../../services/gem
 import { format } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialPostFormatLabel, getSocialPostStatusLabel } from '../../utils/socialLocalization';
-import { CampaignStrategyView } from './tabs/CampaignStrategyView';
-import { CampaignKanbanView } from './tabs/CampaignKanbanView';
-import { CampaignCalendarView } from './tabs/CampaignCalendarView';
-import { CampaignDashboardView } from './tabs/CampaignDashboardView';
 import { CampaignHeader } from './components/CampaignHeader';
-import { SocialCampaignReviewView } from '../../components/flows/stages/SocialCampaignReviewView';
-import { PlannedPostsSelectModal } from './components/PlannedPostsSelectModal';
+
+const CampaignStrategyView = lazy(() => import('./tabs/CampaignStrategyView').then((module) => ({ default: module.CampaignStrategyView })));
+const CampaignKanbanView = lazy(() => import('./tabs/CampaignKanbanView').then((module) => ({ default: module.CampaignKanbanView })));
+const CampaignCalendarView = lazy(() => import('./tabs/CampaignCalendarView').then((module) => ({ default: module.CampaignCalendarView })));
+const CampaignDashboardView = lazy(() => import('./tabs/CampaignDashboardView').then((module) => ({ default: module.CampaignDashboardView })));
+const SocialCampaignReviewView = lazy(() => import('../../components/flows/stages/SocialCampaignReviewView').then((module) => ({ default: module.SocialCampaignReviewView })));
+const PlannedPostsSelectModal = lazy(() => import('./components/PlannedPostsSelectModal').then((module) => ({ default: module.PlannedPostsSelectModal })));
 
 export const CampaignDetailView = () => {
     const { id: projectId, campaignId } = useParams<{ id: string; campaignId: string }>();
@@ -528,6 +531,11 @@ export const CampaignDetailView = () => {
     }
 
     const brandColor = campaign.color || '#E1306C';
+    const sectionLoadingFallback = (
+        <div className="flex items-center justify-center h-full">
+            <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+        </div>
+    );
 
     return (
         <div className="h-full flex flex-col relative overflow-hidden bg-surface">
@@ -539,12 +547,13 @@ export const CampaignDetailView = () => {
                 {campaign.status === 'Concept' ? (
                     <div className="flex-1 overflow-auto bg-surface">
                         {conceptIdea ? (
-                            <SocialCampaignReviewView
-                                idea={conceptIdea}
-                                onUpdate={() => { }} // No-op, we update campaign instead
-                                mode="campaign"
-                                isApproved={campaign.status === 'Planning' || campaign.status === 'Active'}
-                                onApprove={async () => {
+                            <Suspense fallback={sectionLoadingFallback}>
+                                <SocialCampaignReviewView
+                                    idea={conceptIdea}
+                                    onUpdate={() => { }} // No-op, we update campaign instead
+                                    mode="campaign"
+                                    isApproved={campaign.status === 'Planning' || campaign.status === 'Active'}
+                                    onApprove={async () => {
                                     if (!projectId || !campaignId) return;
 
                                     // Extract data from Concept
@@ -627,8 +636,9 @@ export const CampaignDetailView = () => {
                                         console.error("Failed to reject campaign", e);
                                         showError(t('social.campaignDetail.approval.rejectError'));
                                     }
-                                }}
-                            />
+                                    }}
+                                />
+                            </Suspense>
                         ) : (
                             <div className="flex items-center justify-center h-full">
                                 <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
@@ -721,45 +731,53 @@ export const CampaignDetailView = () => {
                         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                             {activeTab === 'dashboard' && (
                                 <div className="h-full overflow-y-auto custom-scrollbar px-8 pb-12 pt-4">
-                                    <CampaignDashboardView
-                                        campaign={campaign}
-                                        posts={posts}
-                                    />
+                                    <Suspense fallback={sectionLoadingFallback}>
+                                        <CampaignDashboardView
+                                            campaign={campaign}
+                                            posts={posts}
+                                        />
+                                    </Suspense>
                                 </div>
                             )}
 
                             {activeTab === 'strategy' && (
                                 <div className="h-full overflow-y-auto custom-scrollbar px-8 pb-12 pt-4">
-                                    <CampaignStrategyView
-                                        campaign={campaign}
-                                        posts={posts}
-                                        onTabChange={setActiveTab}
-                                    />
+                                    <Suspense fallback={sectionLoadingFallback}>
+                                        <CampaignStrategyView
+                                            campaign={campaign}
+                                            posts={posts}
+                                            onTabChange={setActiveTab}
+                                        />
+                                    </Suspense>
                                 </div>
                             )}
 
                             {activeTab === 'board' && (
                                 <div className="h-full flex flex-col pt-4">
-                                    <CampaignKanbanView
-                                        posts={posts}
-                                        onUpdateStatus={handleUpdateStatus}
-                                        onEditPost={handleEditPost}
-                                        onDeletePost={handleDeletePost}
-                                        onReviewAction={handleReviewAction}
-                                        onSplitPost={handleSplitPost}
-                                        onRevertDraft={handleRevertDraft}
-                                    />
+                                    <Suspense fallback={sectionLoadingFallback}>
+                                        <CampaignKanbanView
+                                            posts={posts}
+                                            onUpdateStatus={handleUpdateStatus}
+                                            onEditPost={handleEditPost}
+                                            onDeletePost={handleDeletePost}
+                                            onReviewAction={handleReviewAction}
+                                            onSplitPost={handleSplitPost}
+                                            onRevertDraft={handleRevertDraft}
+                                        />
+                                    </Suspense>
                                 </div>
                             )}
 
                             {activeTab === 'calendar' && (
                                 <div className="h-full flex flex-col overflow-hidden">
-                                    <CampaignCalendarView
-                                        posts={allProjectPosts}
-                                        currentCampaignId={campaignId}
-                                        onSchedulePost={handleSchedulePost}
-                                        onEditPost={handleEditPost}
-                                    />
+                                    <Suspense fallback={sectionLoadingFallback}>
+                                        <CampaignCalendarView
+                                            posts={allProjectPosts}
+                                            currentCampaignId={campaignId}
+                                            onSchedulePost={handleSchedulePost}
+                                            onEditPost={handleEditPost}
+                                        />
+                                    </Suspense>
                                 </div>
                             )}
                         </div>
@@ -877,12 +895,14 @@ export const CampaignDetailView = () => {
             </Modal>
             {/* Planned Content Modal */}
             {campaign && (
-                <PlannedPostsSelectModal
-                    isOpen={showPlannedContentModal}
-                    onClose={() => setShowPlannedContentModal(false)}
-                    plannedContent={campaign.plannedContent || []}
-                    onSelect={handleSelectPlannedPost}
-                />
+                <Suspense fallback={null}>
+                    <PlannedPostsSelectModal
+                        isOpen={showPlannedContentModal}
+                        onClose={() => setShowPlannedContentModal(false)}
+                        plannedContent={campaign.plannedContent || []}
+                        onSelect={handleSelectPlannedPost}
+                    />
+                </Suspense>
             )}
         </div >
     );

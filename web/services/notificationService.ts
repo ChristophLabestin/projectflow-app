@@ -57,11 +57,8 @@ export const createNotification = async (data: {
 }): Promise<void> => {
     const user = auth.currentUser;
 
-    console.log('Creating notification:', data.type, 'to user:', data.userId);
-
     // Don't send notification to yourself
     if (user?.uid === data.userId) {
-        console.log('Skipping notification - sender is recipient.');
         return;
     }
 
@@ -72,9 +69,8 @@ export const createNotification = async (data: {
         );
 
         const tenantId = resolveTenantId(data.tenantId);
-        console.log('[Notification] Attempting addDoc to tenant collection:', tenantId);
 
-        const docRef = await addDoc(getNotificationsCollection(tenantId), {
+        await addDoc(getNotificationsCollection(tenantId), {
             ...cleanData,
             actorId: user?.uid,
             actorName: user?.displayName || 'Someone',
@@ -82,7 +78,6 @@ export const createNotification = async (data: {
             read: false,
             createdAt: serverTimestamp()
         });
-        console.log('[Notification] Success! Document ID:', docRef.id);
     } catch (error) {
         console.error('[Notification] ERROR:', error);
     }
@@ -351,7 +346,6 @@ export const notifyMention = async (
     commentId: string,
     tenantId?: string
 ): Promise<void> => {
-    console.log('[notifyMention] Called with:', { userId, targetTitle, targetType, projectId, targetId, commentId, tenantId });
     await createNotification({
         userId,
         type: 'comment_mention',

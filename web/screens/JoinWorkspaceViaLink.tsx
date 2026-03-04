@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { joinWorkspaceViaLink } from '../services/dataService';
+import { joinWorkspaceViaLink } from '../services/domain/inviteLinksService';
 import { auth } from '../services/firebase';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/common/Button/Button';
@@ -12,10 +12,14 @@ export const JoinWorkspaceViaLink = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const hasJoined = useRef(false);
-    const { t } = useLanguage();
+    const { t, joinLinkTranslationsReady, loadJoinLinkTranslations } = useLanguage();
 
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [error, setError] = useState<string>('');
+
+    useEffect(() => {
+        void loadJoinLinkTranslations();
+    }, [loadJoinLinkTranslations]);
 
     useEffect(() => {
         const handleJoin = async () => {
@@ -30,9 +34,11 @@ export const JoinWorkspaceViaLink = () => {
 
             hasJoined.current = true;
 
-            if (!inviteLinkId) {
-                setError(t('joinWorkspaceLink.error.invalidLink'));
-                setStatus('error');
+            if (!inviteLinkId || !joinLinkTranslationsReady) {
+                if (!inviteLinkId) {
+                    setError(t('joinWorkspaceLink.error.invalidLink'));
+                    setStatus('error');
+                }
                 return;
             }
 
@@ -65,11 +71,21 @@ export const JoinWorkspaceViaLink = () => {
         };
 
         handleJoin();
-    }, [inviteLinkId, searchParams, navigate, t]);
+    }, [inviteLinkId, joinLinkTranslationsReady, searchParams, navigate, t]);
 
     return (
         <div className="join-link">
-            {status === 'loading' && (
+            {!joinLinkTranslationsReady && (
+                <StatusCard
+                    className="join-link__card"
+                    tone="info"
+                    icon={<span className="material-symbols-outlined status-card__spin">progress_activity</span>}
+                    title="Joining Workspace..."
+                    message="Please wait while we prepare your invite."
+                />
+            )}
+
+            {joinLinkTranslationsReady && status === 'loading' && (
                 <StatusCard
                     className="join-link__card"
                     tone="info"
@@ -79,7 +95,7 @@ export const JoinWorkspaceViaLink = () => {
                 />
             )}
 
-            {status === 'success' && (
+            {joinLinkTranslationsReady && status === 'success' && (
                 <StatusCard
                     className="join-link__card"
                     tone="success"
@@ -93,7 +109,7 @@ export const JoinWorkspaceViaLink = () => {
                 </StatusCard>
             )}
 
-            {status === 'error' && (
+            {joinLinkTranslationsReady && status === 'error' && (
                 <StatusCard
                     className="join-link__card"
                     tone="error"

@@ -6,9 +6,9 @@ import {
     updatePersonalTask,
     deletePersonalTask,
     togglePersonalTaskStatus,
-    movePersonalTaskToProject,
-    getUserProjects
-} from '../services/dataService';
+    movePersonalTaskToProject
+} from '../services/domain/personalTasksService';
+import { getUserProjects } from '../services/domain/projectsService';
 import { PersonalTask, Project } from '../types';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';

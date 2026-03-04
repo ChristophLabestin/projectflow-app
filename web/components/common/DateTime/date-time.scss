@@ -141,7 +141,7 @@
         &:focus {
             outline: none;
             background: var(--color-surface-card);
-            box-shadow: 0 0 0 2px var(--color-primary-fade);
+            box-shadow: none;
             color: var(--color-primary);
         }
 

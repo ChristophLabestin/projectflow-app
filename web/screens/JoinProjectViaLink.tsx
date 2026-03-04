@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { joinProjectViaLink } from '../services/dataService';
+import { joinProjectViaLink } from '../services/domain/inviteLinksService';
 import { auth } from '../services/firebase';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/common/Button/Button';
@@ -12,11 +12,14 @@ export const JoinProjectViaLink = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const hasJoined = useRef(false);
-    const { t } = useLanguage();
+    const { t, joinLinkTranslationsReady, loadJoinLinkTranslations } = useLanguage();
 
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [error, setError] = useState<string>('');
-    const [projectId, setProjectId] = useState<string>('');
+
+    useEffect(() => {
+        void loadJoinLinkTranslations();
+    }, [loadJoinLinkTranslations]);
 
     useEffect(() => {
         const handleJoin = async () => {
@@ -31,9 +34,11 @@ export const JoinProjectViaLink = () => {
 
             hasJoined.current = true;
 
-            if (!inviteLinkId) {
-                setError(t('joinProjectLink.error.invalidLink'));
-                setStatus('error');
+            if (!inviteLinkId || !joinLinkTranslationsReady) {
+                if (!inviteLinkId) {
+                    setError(t('joinProjectLink.error.invalidLink'));
+                    setStatus('error');
+                }
                 return;
             }
 
@@ -49,7 +54,6 @@ export const JoinProjectViaLink = () => {
             try {
                 setStatus('loading');
                 await joinProjectViaLink(inviteLinkId, projectIdParam, tenantIdParam);
-                setProjectId(projectIdParam);
                 setStatus('success');
 
                 // Redirect to project after 1.5 seconds
@@ -60,7 +64,6 @@ export const JoinProjectViaLink = () => {
                 console.error('Failed to join project:', err);
                 // If error says "already a member", treat as success or redirect
                 if (err.message && err.message.includes('already a member')) {
-                    setProjectId(projectIdParam);
                     setStatus('success');
                     setTimeout(() => {
                         navigate(`/project/${projectIdParam}`);
@@ -73,11 +76,21 @@ export const JoinProjectViaLink = () => {
         };
 
         handleJoin();
-    }, [inviteLinkId, searchParams, navigate, t]);
+    }, [inviteLinkId, joinLinkTranslationsReady, searchParams, navigate, t]);
 
     return (
         <div className="join-link">
-            {status === 'loading' && (
+            {!joinLinkTranslationsReady && (
+                <StatusCard
+                    className="join-link__card"
+                    tone="info"
+                    icon={<span className="material-symbols-outlined status-card__spin">progress_activity</span>}
+                    title="Joining Project..."
+                    message="Please wait while we prepare your invite."
+                />
+            )}
+
+            {joinLinkTranslationsReady && status === 'loading' && (
                 <StatusCard
                     className="join-link__card"
                     tone="info"
@@ -87,7 +100,7 @@ export const JoinProjectViaLink = () => {
                 />
             )}
 
-            {status === 'success' && (
+            {joinLinkTranslationsReady && status === 'success' && (
                 <StatusCard
                     className="join-link__card"
                     tone="success"
@@ -101,7 +114,7 @@ export const JoinProjectViaLink = () => {
                 </StatusCard>
             )}
 
-            {status === 'error' && (
+            {joinLinkTranslationsReady && status === 'error' && (
                 <StatusCard
                     className="join-link__card"
                     tone="error"

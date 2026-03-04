@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
     DndContext,
@@ -23,19 +23,20 @@ import {
 } from '@dnd-kit/sortable';
 
 import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable, EmailTemplate } from '../../../types';
-import { saveEmailComponent, getEmailComponents, deleteEmailComponent } from '../../../../services/dataService';
+import { saveEmailComponent, getEmailComponents, deleteEmailComponent } from '../../../../services/domain/emailComponentsService';
 import { useToast, useConfirm } from '../../../../context/UIContext';
 import { format } from 'date-fns';
 import { dateLocale } from '../../../../utils/activityHelpers';
 
 // Imported Components
 import { BlockRenderer } from './BlockRenderer';
-import { PropertiesPanel } from './PropertiesPanel';
 import { NestedBlock, HoverProvider } from './NestedBlock';
-import { LayerTree } from './LayerTree';
-import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { createBlock, deepCloneBlock, findContainer, useHistory, insertBlockAfter } from './emailBuilderUtils';
-import { VariableManager } from './VariableManager';
+
+const PropertiesPanel = lazy(() => import('./PropertiesPanel').then((module) => ({ default: module.PropertiesPanel })));
+const LayerTree = lazy(() => import('./LayerTree').then((module) => ({ default: module.LayerTree })));
+const GlobalSettingsPanel = lazy(() => import('./GlobalSettingsPanel').then((module) => ({ default: module.GlobalSettingsPanel })));
+const VariableManager = lazy(() => import('./VariableManager').then((module) => ({ default: module.VariableManager })));
 
 interface GlobalSettings {
     canvasWidth: number;
@@ -60,7 +61,6 @@ interface EmailBuilderProps {
     onCancel: () => void;
     saving?: boolean;
     projectId: string; // Required for saved components
-    initialName?: string;
     initialName?: string;
     readOnly?: boolean;
     tenantId?: string;
@@ -894,8 +894,17 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
         setSelectedBlockId(newBlock.id);
     };
 
+    const sidebarPanelFallback = (
+        <div className="p-6 flex items-center justify-center text-muted">
+            <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+        </div>
+    );
 
-
+    const inspectorPanelFallback = (
+        <div className="p-6 flex items-center justify-center text-muted">
+            <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+        </div>
+    );
 
     const builderContent = (
         <div
@@ -964,9 +973,11 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {sidebarTab === 'layers' && (
-                        <div className="py-2">
-                            <LayerTree blocks={blocks} selectedId={selectedBlockId} onSelect={setSelectedBlockId} onDelete={deleteBlock} />
-                        </div>
+                        <Suspense fallback={sidebarPanelFallback}>
+                            <div className="py-2">
+                                <LayerTree blocks={blocks} selectedId={selectedBlockId} onSelect={setSelectedBlockId} onDelete={deleteBlock} />
+                            </div>
+                        </Suspense>
                     )}
                     {sidebarTab === 'blocks' && (
                         <div className="p-4 space-y-6">
@@ -1020,7 +1031,9 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                         </div>
                     )}
                     {sidebarTab === 'variables' && (
-                        <VariableManager variables={variables} onChange={setVariables} />
+                        <Suspense fallback={sidebarPanelFallback}>
+                            <VariableManager variables={variables} onChange={setVariables} />
+                        </Suspense>
                     )}
                 </div>
             </div>
@@ -1279,23 +1292,27 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
             {/* Right Sidebar: Properties */}
             <div className="w-80 border-l border-surface bg-surface-paper overflow-y-auto z-10">
                 {selectedBlock ? (
-                    <PropertiesPanel
-                        block={selectedBlock}
-                        parentType={parentBlock?.type}
-                        columnCount={parentBlock?.type === 'columns' ? parentBlock?.content?.columns?.length : undefined}
-                        variables={variables}
-                        onChange={(updates) => updateBlock(selectedBlock.id, updates)}
-                        onSaveAsComponent={(name) => handleSaveComponent(selectedBlock, name)}
-                        projectId={projectId}
-                        tenantId={tenantId}
-                    />
+                    <Suspense fallback={inspectorPanelFallback}>
+                        <PropertiesPanel
+                            block={selectedBlock}
+                            parentType={parentBlock?.type}
+                            columnCount={parentBlock?.type === 'columns' ? parentBlock?.content?.columns?.length : undefined}
+                            variables={variables}
+                            onChange={(updates) => updateBlock(selectedBlock.id, updates)}
+                            onSaveAsComponent={(name) => handleSaveComponent(selectedBlock, name)}
+                            projectId={projectId}
+                            tenantId={tenantId}
+                        />
+                    </Suspense>
                 ) : (
-                    <GlobalSettingsPanel
-                        settings={globalSettings}
-                        onChange={setGlobalSettings}
-                        viewMode={viewMode}
-                        onViewModeChange={setViewMode}
-                    />
+                    <Suspense fallback={inspectorPanelFallback}>
+                        <GlobalSettingsPanel
+                            settings={globalSettings}
+                            onChange={setGlobalSettings}
+                            viewMode={viewMode}
+                            onViewModeChange={setViewMode}
+                        />
+                    </Suspense>
                 )}
             </div>
         </div>

@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { subscribeCampaigns, deleteCampaign } from '../../services/dataService';
+import { deleteCampaign, subscribeCampaigns } from '../../services/domain/socialService';
 import { SocialCampaign } from '../../types';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { format } from 'date-fns';

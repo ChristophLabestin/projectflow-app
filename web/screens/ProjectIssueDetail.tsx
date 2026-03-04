@@ -1,6 +1,11 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link, useParams, useNavigate, useOutletContext } from 'react-router-dom';
-import { getProjectById, subscribeProjectIssues, updateIssue, deleteIssue, addTask, getIssueById, getUserProfile, subscribeTenantUsers } from '../services/dataService';
+import '../src/styles/components/_project-issue-detail.scss';
+import { subscribeProjectIssues, subscribeTenantUsers } from '../services/dataService';
+import { deleteIssue, getIssueById, updateIssue } from '../services/domain/issuesService';
+import { getProjectById } from '../services/domain/projectsService';
+import { addTask } from '../services/domain/tasksService';
+import { getUserProfile } from '../services/domain/usersService';
 import { Issue, Project } from '../types';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { CommentSection } from '../components/CommentSection';
@@ -260,6 +265,33 @@ export const ProjectIssueDetail = () => {
     const reporter = issue.ownerId
         ? allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)
         : null;
+    const issueWorkbenchCards = [
+        {
+            label: t('issueDetail.workbench.triage'),
+            value: statusLabel,
+            meta: priorityLabel
+        },
+        {
+            label: t('issueDetail.workbench.ownership'),
+            value: assigneeIds.length > 0
+                ? t('issueDetail.workbench.assigneeCount').replace('{count}', String(assigneeIds.length))
+                : t('issueDetail.workbench.unassigned'),
+            meta: assigneeIds.length > 1
+                ? t('issueDetail.workbench.sharedCoverage')
+                : assigneeIds.length === 1
+                    ? t('issueDetail.workbench.singleOwner')
+                    : t('issueDetail.workbench.assignOwner')
+        },
+        {
+            label: t('issueDetail.workbench.resolution'),
+            value: issue.linkedTaskId
+                ? t('issueDetail.workbench.linkedTask')
+                : t('issueDetail.workbench.noLinkedTask'),
+            meta: issue.linkedTaskId
+                ? t('issueDetail.workbench.deliveryAttached')
+                : t('issueDetail.workbench.deliveryMissing')
+        }
+    ];
 
     return (
         <div className="issue-detail">
@@ -434,6 +466,30 @@ export const ProjectIssueDetail = () => {
                                 {t('issueDetail.actions.convert')}
                             </Button>
                         </div>
+                    </div>
+
+                    <div className="issue-detail__workbench">
+                        {issueWorkbenchCards.map((card) => (
+                            <div key={card.label} className="issue-detail__workbench-card">
+                                <span className="issue-detail__workbench-label">{card.label}</span>
+                                <span className="issue-detail__workbench-value">{card.value}</span>
+                                <span className="issue-detail__workbench-meta">{card.meta}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    <div className="issue-detail__workbench-actions">
+                        <Link to={`/project/${id}/issues`} className="issue-detail__workbench-link">
+                            {t('issueDetail.workbench.actions.backlog')}
+                        </Link>
+                        <Link to={`/project/${id}`} className="issue-detail__workbench-link">
+                            {t('issueDetail.workbench.actions.workspace')}
+                        </Link>
+                        {issue.linkedTaskId && (
+                            <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="issue-detail__workbench-link">
+                                {t('issueDetail.workbench.actions.linkedTask')}
+                            </Link>
+                        )}
                     </div>
                 </div>
             </header>

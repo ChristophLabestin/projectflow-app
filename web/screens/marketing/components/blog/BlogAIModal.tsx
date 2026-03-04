@@ -3,9 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles, Wand2, Search } from 'lucide-react';
 import { useLanguage } from '../../../../context/LanguageContext';
 import { generateBlogPostAI, suggestBlogTopicsAI } from '../../../../services/geminiService';
-import { getProjectById } from '../../../../services/dataService';
 import { useToast } from '../../../../context/UIContext';
 import { Button } from '../../../../components/ui/Button';
+import { getProjectById } from '../../../../services/domain/projectsService';
 
 interface BlogAIModalProps {
     isOpen: boolean;

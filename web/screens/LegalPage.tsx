@@ -11,13 +11,24 @@ export type LegalPageType = 'impressum' | 'privacy' | 'terms';
 const LegalPage: React.FC = () => {
     const { type } = useParams<{ type: string }>();
     const navigate = useNavigate();
-    const { t, language } = useLanguage();
+    const { t, language, legalTranslationsReady, loadLegalTranslations } = useLanguage();
 
-
+    React.useEffect(() => {
+        void loadLegalTranslations();
+    }, [loadLegalTranslations]);
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState<string>('');
     const contentRef = React.useRef<HTMLDivElement>(null);
+    const legalContentLoaded = t('legal.impressum.intro') !== 'legal.impressum.intro';
+
+    if (!legalTranslationsReady || !legalContentLoaded) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-surface">
+                <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+            </div>
+        );
+    }
 
     const page: LegalPageType = (type === 'privacy' || type === 'terms' || type === 'impressum') ? type : 'impressum';
 

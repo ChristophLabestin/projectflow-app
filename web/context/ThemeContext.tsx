@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../services/firebase';
-import { getUserProfile, updateUserData } from '../services/dataService';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getUserProfile, updateUserData } from '../services/domain/usersService';
 
 type Theme = 'light' | 'dark' | 'system';
 

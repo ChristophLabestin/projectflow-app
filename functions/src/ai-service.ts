@@ -21,16 +21,24 @@ const trackUsage = async (uid: string, tokens: number) => {
 };
 
 
-// Initialize with process.env for standard Cloud Functions config
-// Ensure GEMINI_API_KEY is set in functions configuration
-// Pre-Alpha: Optionally accept key from client
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+
+// Initialize with process.env for standard Cloud Functions config.
+// Only the local emulator accepts a client-supplied key to keep local development flexible.
 const getApiKey = (providedKey?: string) => {
-    if (providedKey) return providedKey;
+    if (isEmulator && providedKey) {
+        return providedKey;
+    }
 
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
-        throw new Error("GEMINI_API_KEY is not set in environment variables and no key provided.");
+        throw new Error('GEMINI_API_KEY is not set in environment variables.');
     }
+
+    if (providedKey && !isEmulator) {
+        console.warn('Ignoring client-provided Gemini API key for non-emulator execution.');
+    }
+
     return key;
 };
 
@@ -99,16 +107,13 @@ Rate your confidence in the answer as Low, Medium, or High.`;
             }
         });
 
-        const result = JSON.parse(response.text || "{}");
-        // Token usage tracking could be done here if we had access to the user's document reference via admin SDK
-        // For now, we return the usage and let the client increment? NO, that's insecure for quotas.
-        // Better: Helper to increment usage server-side.
-        // However, to keep this migration simple/focused, we'll return the result first.
-        // TODO: Move token usage incrementing here securely.
+        const result = JSON.parse(response.text || '{}');
+        const tokensUsed = response.usageMetadata?.totalTokenCount || 0;
+        await trackUsage(context.auth.uid, tokensUsed);
 
         return {
             ...result,
-            tokensUsed: response.usageMetadata?.totalTokenCount || 0
+            tokensUsed
         };
 
     } catch (error: any) {
@@ -226,7 +231,7 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, apiKey: clientApiKey, responseSchema, tools } = data;
+    const { systemInstruction, prompt, image, mimeType = 'image/png', temperature = 0.7, jsonMode = false, apiKey: clientApiKey, responseSchema, tools } = data;
 
     if (!prompt) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
@@ -252,9 +257,29 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
             config.tools = tools;
         }
 
+        let contents: any;
+        if (image) {
+            contents = [
+                {
+                    role: 'user',
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: mimeType,
+                                data: image
+                            }
+                        }
+                    ]
+                }
+            ];
+        } else {
+            contents = prompt;
+        }
+
         const generateParams: any = {
-            model: "gemini-3-flash-preview",
-            contents: prompt,
+            model: image ? "gemini-3-flash-preview" : "gemini-3-flash-preview", // Both support vision in 3.0
+            contents: contents,
             config: config
         };
 

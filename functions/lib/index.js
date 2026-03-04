@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.deleteWorkspaceApiToken = exports.createWorkspaceApiToken = exports.listWorkspaceApiTokens = exports.saveWorkspaceSmtpConfig = exports.getWorkspaceSmtpConfig = exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -61,5 +61,11 @@ Object.defineProperty(exports, "debugHealthSnapshots", { enumerable: true, get: 
 const facebook_1 = require("./facebook");
 Object.defineProperty(exports, "getFacebookAuthUrl", { enumerable: true, get: function () { return facebook_1.getFacebookAuthUrl; } });
 Object.defineProperty(exports, "facebookCallback", { enumerable: true, get: function () { return facebook_1.facebookCallback; } });
+const workspace_admin_1 = require("./workspace-admin");
+Object.defineProperty(exports, "createWorkspaceApiToken", { enumerable: true, get: function () { return workspace_admin_1.createWorkspaceApiToken; } });
+Object.defineProperty(exports, "deleteWorkspaceApiToken", { enumerable: true, get: function () { return workspace_admin_1.deleteWorkspaceApiToken; } });
+Object.defineProperty(exports, "getWorkspaceSmtpConfig", { enumerable: true, get: function () { return workspace_admin_1.getWorkspaceSmtpConfig; } });
+Object.defineProperty(exports, "listWorkspaceApiTokens", { enumerable: true, get: function () { return workspace_admin_1.listWorkspaceApiTokens; } });
+Object.defineProperty(exports, "saveWorkspaceSmtpConfig", { enumerable: true, get: function () { return workspace_admin_1.saveWorkspaceSmtpConfig; } });
 __exportStar(require("./passkeys"), exports);
 //# sourceMappingURL=index.js.map

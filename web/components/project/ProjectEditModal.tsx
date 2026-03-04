@@ -12,14 +12,15 @@ import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
-import { getWorkspaceGroups } from '../../services/dataService';
+import { getWorkspaceGroups } from '../../services/domain/workspaceGroupsService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { RolesTab } from './RolesTab';
 import { getWorkspaceRoles } from '../../services/rolesService';
 
 import { auth } from '../../services/firebase';
-import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
+import { linkWithGithub, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
+import { getUserProfile, updateUserData } from '../../services/domain/usersService';
 import { fetchUserRepositories, GithubRepo } from '../../services/githubService';
 
 interface ProjectEditModalProps {

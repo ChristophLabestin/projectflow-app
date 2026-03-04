@@ -14,6 +14,8 @@ struct ProjectOverviewView: View {
     @StateObject private var tenantStore = TenantStore()
     @State private var draggingCardId: String?
     @State private var showingCustomizer = false
+    @State private var showingTeamManagement = false
+    @State private var showingReport = false
     @State private var isEditing = false
 
     init(project: Project, tenantId: String? = nil) {
@@ -75,6 +77,30 @@ struct ProjectOverviewView: View {
                 }
             )
         }
+        .sheet(isPresented: $showingTeamManagement) {
+            if let tenantId = resolvedTenantId {
+                ProjectMemberManagementView(project: project, tenantId: tenantId)
+            }
+        }
+        .sheet(isPresented: $showingReport) {
+            if let userProfile = session.userProfile {
+                ProjectReportView(
+                    report: store.pinnedReport,
+                    isGenerating: store.isGeneratingReport,
+                    onGenerate: {
+                        guard let tenantId = resolvedTenantId else { return }
+                        _Concurrency.Task {
+                            await store.generateReport(tenantId: tenantId, projectId: project.id, user: userProfile)
+                        }
+                    }
+                )
+            } else {
+                VStack {
+                    ProgressView()
+                    Text("Loading Profile...")
+                }
+            }
+        }
         .onAppear {
             tenantStore.update(for: session.user)
             guard let tenantId = resolvedTenantId else { return }
@@ -94,39 +120,26 @@ struct ProjectOverviewView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let _ = resolvedTenantId {
-                if store.isLoading {
+                if store.isLoading || layoutStore.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 200)
                 } else {
-                    // Always show Snapshot & Execution. 
-                    // Layout customization logic reserved for future or re-enabled later.
-                    
-                    SnapshotSection(health: healthSnapshot, tasks: store.tasks, activity: store.activity)
-                    
-                    ExecutionSection(tasks: store.tasks, flows: store.flows, issues: store.issues, projectGroups: [])
-                    
-                    // Added Missing Cards
-                    Group {
-                         // Updates
-                        UpdatesWidget(activity: store.activity)
-                        
-                        // Resources
-                        ResourcesWidget() // Needs project links
-                        
-                        // Planning
-                        PlanningWidget(project: project)
-                        
-                        // Milestones
-                        MilestonesWidget(milestones: store.milestones)
-                        
-                        // AI Insights
-                        AiInsightsWidget()
-                        
-                        // Team
-                        TeamWidget() // Needs team profiles
-                        
-                        // Controls
-                        ControlsWidget(project: project)
+                    // Dynamic Cards based on Layout
+                    ForEach(layoutStore.layout.enabledCards) { card in
+                        renderCard(for: card.type)
+                            .onDrag {
+                                self.draggingCardId = card.id
+                                return NSItemProvider(object: card.id as NSString)
+                            }
+                            .onDrop(of: [UTType.text], delegate: ProjectOverviewDropDelegate(
+                                item: card,
+                                cards: $layoutStore.layout.cards,
+                                draggingCardId: $draggingCardId,
+                                onDrop: {
+                                    layoutStore.markCustom()
+                                    persistLayoutChanges()
+                                }
+                            ))
                     }
                 }
             } else {
@@ -144,7 +157,73 @@ struct ProjectOverviewView: View {
         }
     }
 
-    private var persistLayoutChanges: () -> Void = {} // Placeholder if needed
+    @ViewBuilder
+    private func renderCard(for type: ProjectOverviewCardType) -> some View {
+        switch type {
+        case .snapshot:
+            SnapshotSection(
+                health: healthSnapshot,
+                history: store.healthHistory,
+                tasks: store.tasks,
+                activity: store.activity
+            )
+        case .execution:
+            ExecutionSection(
+                tasks: store.tasks,
+                flows: store.flows,
+                issues: store.issues,
+                projectGroups: [],
+                resolvedTenantId: resolvedTenantId,
+                permissionContext: permissionContext,
+                onToggleTask: { task in
+                    _Concurrency.Task {
+                        await store.toggleTask(
+                            tenantId: resolvedTenantId ?? "",
+                            projectId: project.id,
+                            task: task,
+                            permissions: permissionContext
+                        )
+                    }
+                }
+            )
+        case .updates:
+            UpdatesWidget(
+                activity: store.activity,
+                tasks: store.tasks,
+                flows: store.flows,
+                issues: store.issues,
+                resolvedTenantId: resolvedTenantId,
+                permissionContext: permissionContext
+            )
+        case .resources:
+            ResourcesWidget(project: project)
+        case .planning:
+            PlanningWidget(project: project)
+        case .milestones:
+            MilestonesWidget(milestones: store.milestones)
+        case .aiInsights:
+            AiInsightsWidget(report: store.pinnedReport) {
+                showingReport = true
+            }
+        case .team:
+            TeamWidget(profiles: store.memberProfiles) {
+                showingTeamManagement = true
+            }
+        case .controls:
+            ControlsWidget(project: project)
+        }
+    }
+
+    private func persistLayoutChanges() {
+        guard let tenantId = resolvedTenantId else { return }
+        _Concurrency.Task {
+            await layoutStore.saveLayout(
+                tenantId: tenantId,
+                projectId: project.id,
+                permissions: permissionContext
+            )
+        }
+    }
 }
 
 // MARK: - Header
@@ -256,7 +335,8 @@ struct CoverImageHeader: View {
 // MARK: - Snapshot Section
 struct SnapshotSection: View {
     let health: ProjectHealthSnapshot
-    let tasks: [Task]
+    let history: [ProjectHealthSnapshotEntry]
+    let tasks: [ProjectTask]
     let activity: [ActivityItem]
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
@@ -278,7 +358,7 @@ struct SnapshotSection: View {
             
             // 2x2 Grid for Snapshot items
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                HealthWidget(health: health)
+                HealthWidget(health: health, history: history)
                 WorkloadWidget(open: openTasks, urgent: urgentTasks, inProgress: inProgressTasks)
                 PriorityWidget(tasks: tasks)
                 ActivityWidget(activity: activity)
@@ -291,6 +371,7 @@ struct SnapshotSection: View {
 
 struct HealthWidget: View {
     let health: ProjectHealthSnapshot
+    let history: [ProjectHealthSnapshotEntry]
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     
@@ -320,28 +401,34 @@ struct HealthWidget: View {
                 Spacer()
                 
                 HStack(alignment: .bottom, spacing: 12) {
-                    // Gauge
-                    ZStack {
-                        // Background Track
-                        Circle()
-                            .trim(from: 0.0, to: 0.5)
-                            .stroke(colors.surfaceHover, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .rotationEffect(.degrees(180))
-                            .frame(width: 60, height: 60)
-                        
-                        // Progress
-                        Circle()
-                            .trim(from: 0.0, to: 0.5 * min(1.0, max(0.0, Double(health.score) / 100.0)))
-                            .stroke(statusColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                            .rotationEffect(.degrees(180))
-                            .frame(width: 60, height: 60)
-                        
-                        Text("\(Int(health.score))")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(colors.textMain)
-                            .offset(y: -5)
+                    // Gauge or Chart
+                    if history.count > 1 {
+                        TrendChart(values: history.map { $0.score }, color: statusColor)
+                            .frame(height: 40)
+                    } else {
+                        // Gauge (legacy fallback)
+                        ZStack {
+                            // Background Track
+                            Circle()
+                                .trim(from: 0.0, to: 0.5)
+                                .stroke(colors.surfaceHover, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .rotationEffect(.degrees(180))
+                                .frame(width: 60, height: 60)
+                            
+                            // Progress
+                            Circle()
+                                .trim(from: 0.0, to: 0.5 * min(1.0, max(0.0, Double(health.score) / 100.0)))
+                                .stroke(statusColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                .rotationEffect(.degrees(180))
+                                .frame(width: 60, height: 60)
+                            
+                            Text("\(Int(health.score))")
+                                .font(.system(size: 14, weight: .bold))
+                                .foregroundStyle(colors.textMain)
+                                .offset(y: -5)
+                        }
+                        .frame(width: 60, height: 30)
                     }
-                    .frame(width: 60, height: 30)
                     
                     // Status Details
                     VStack(alignment: .leading, spacing: 2) {
@@ -426,7 +513,7 @@ struct WorkloadRow: View {
 }
 
 struct PriorityWidget: View {
-    let tasks: [Task]
+    let tasks: [ProjectTask]
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -532,10 +619,13 @@ struct ActivityWidget: View {
 
 // MARK: - Execution Section
 struct ExecutionSection: View {
-    let tasks: [Task]
+    let tasks: [ProjectTask]
     let flows: [Flow]
     let issues: [Issue]
     let projectGroups: [String] // Simplified for now
+    let resolvedTenantId: String?
+    let permissionContext: PermissionContext
+    let onToggleTask: (ProjectTask) -> Void
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -548,14 +638,30 @@ struct ExecutionSection: View {
             }
             
             VStack(spacing: PFSpacing.md) {
-                ExecutionTaskList(tasks: tasks)
+                ExecutionTaskList(
+                    tasks: tasks,
+                    tenantId: resolvedTenantId ?? "",
+                    permissions: permissionContext,
+                    onToggle: onToggleTask
+                )
                 
                 if !flows.isEmpty {
-                    FlowSpotlight(flow: flows.first!)
+                    NavigationLink(destination: FlowDetailView(
+                        flow: flows.first!,
+                        tenantId: resolvedTenantId ?? "",
+                        permissions: permissionContext
+                    )) {
+                        FlowSpotlight(flow: flows.first!)
+                    }
+                    .buttonStyle(.plain)
                 }
                 
                 if !issues.isEmpty {
-                    IssueFocus(issues: Array(issues.prefix(5)))
+                    IssueFocus(
+                        issues: Array(issues.prefix(5)),
+                        tenantId: resolvedTenantId ?? "",
+                        permissions: permissionContext
+                    )
                 }
             }
         }
@@ -563,11 +669,14 @@ struct ExecutionSection: View {
 }
 
 struct ExecutionTaskList: View {
-    let tasks: [Task]
+    let tasks: [ProjectTask]
+    let tenantId: String
+    let permissions: PermissionContext
+    let onToggle: (ProjectTask) -> Void
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
-    private var displayTasks: [Task] {
+    private var displayTasks: [ProjectTask] {
         tasks.filter { !$0.isCompleted } // Show only open
              .sorted {
                  // Sort by Priority then Date
@@ -612,7 +721,14 @@ struct ExecutionTaskList: View {
                         .padding(PFSpacing.lg)
                 } else {
                     ForEach(displayTasks) { task in
-                        TaskRowView(task: task)
+                        NavigationLink(destination: ProjectTaskDetailView(
+                            task: task,
+                            tenantId: tenantId,
+                            permissions: permissions
+                        )) {
+                            TaskRowView(task: task, onToggle: { onToggle(task) })
+                        }
+                        .buttonStyle(.plain)
                         
                         if task.id != displayTasks.last?.id {
                             Divider().padding(.leading, 16)
@@ -625,7 +741,8 @@ struct ExecutionTaskList: View {
 }
 
 struct TaskRowView: View {
-    let task: Task
+    let task: ProjectTask
+    let onToggle: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     
@@ -650,10 +767,15 @@ struct TaskRowView: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             // Checkbox
-            Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                .font(.title3)
-                .foregroundStyle(task.isCompleted ? colors.success : colors.textMuted)
-                .padding(.top, 2)
+            Button {
+                onToggle()
+            } label: {
+                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(task.isCompleted ? colors.success : colors.textMuted)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
             
             VStack(alignment: .leading, spacing: 6) {
                 Text(task.title)
@@ -754,6 +876,8 @@ struct FlowSpotlight: View {
 
 struct IssueFocus: View {
     let issues: [Issue]
+    let tenantId: String
+    let permissions: PermissionContext
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -772,19 +896,26 @@ struct IssueFocus: View {
                 
                 VStack(spacing: 12) {
                     ForEach(issues) { issue in
-                        HStack {
-                            Circle()
-                                .fill(colors.error)
-                                .frame(width: 8, height: 8)
-                            Text(issue.title)
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMain)
-                                .lineLimit(1)
-                            Spacer()
-                            Text(issue.status)
-                                .font(.caption2)
-                                .foregroundStyle(colors.textMuted)
+                        NavigationLink(destination: ProjectIssueDetailView(
+                            issue: issue,
+                            tenantId: tenantId,
+                            permissions: permissions
+                        )) {
+                            HStack {
+                                Circle()
+                                    .fill(colors.error)
+                                    .frame(width: 8, height: 8)
+                                Text(issue.title)
+                                    .font(.subheadline)
+                                    .foregroundStyle(colors.textMain)
+                                    .lineLimit(1)
+                                Spacer()
+                                Text(issue.status)
+                                    .font(.caption2)
+                                    .foregroundStyle(colors.textMuted)
+                            }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -915,6 +1046,11 @@ private struct ProjectOverviewCustomizationSheet: View {
 
 struct UpdatesWidget: View {
     let activity: [ActivityItem]
+    let tasks: [ProjectTask]
+    let flows: [Flow]
+    let issues: [Issue]
+    let resolvedTenantId: String?
+    let permissionContext: PermissionContext
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -933,27 +1069,7 @@ struct UpdatesWidget: View {
                 
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(activity.prefix(5)) { item in
-                        HStack(alignment: .top, spacing: 10) {
-                            Circle()
-                                .fill(colors.surfaceHover)
-                                .frame(width: 28, height: 28)
-                                .overlay(
-                                    Image(systemName: "bubble.left.fill") // Generic icon
-                                        .font(.caption2)
-                                        .foregroundStyle(colors.textMuted)
-                                )
-                            
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(item.user) \(item.action)")
-                                    .font(.subheadline)
-                                    .foregroundStyle(colors.textMain)
-                                    .lineLimit(2)
-                                
-                                Text(item.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "Just now")
-                                    .font(.caption2)
-                                    .foregroundStyle(colors.textMuted)
-                            }
-                        }
+                        activityRow(for: item)
                     }
                     if activity.isEmpty {
                         Text("No recent updates.")
@@ -965,9 +1081,93 @@ struct UpdatesWidget: View {
             .padding(12)
         }
     }
+
+    @ViewBuilder
+    private func activityRow(for item: ActivityItem) -> some View {
+        let tenantId = resolvedTenantId ?? ""
+        let permissions = permissionContext
+        
+        Group {
+            if let task = findTask(for: item) {
+                NavigationLink(destination: ProjectTaskDetailView(
+                    task: task,
+                    tenantId: tenantId,
+                    permissions: permissions
+                )) {
+                    rowContent(for: item)
+                }
+            } else if let issue = findIssue(for: item) {
+                NavigationLink(destination: ProjectIssueDetailView(
+                    issue: issue,
+                    tenantId: tenantId,
+                    permissions: permissions
+                )) {
+                    rowContent(for: item)
+                }
+            } else if let flow = findFlow(for: item) {
+                NavigationLink(destination: FlowDetailView(flow: flow, tenantId: tenantId, permissions: permissions)) {
+                    rowContent(for: item)
+                }
+            } else {
+                rowContent(for: item)
+            }
+        }
+    }
+
+    private func rowContent(for item: ActivityItem) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Circle()
+                .fill(colors.surfaceHover)
+                .frame(width: 28, height: 28)
+                .overlay(
+                    Image(systemName: icon(for: item.type))
+                        .font(.system(size: 12))
+                        .foregroundStyle(colors.textMuted)
+                )
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(item.user) \(item.action)")
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(2)
+                
+                Text(item.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "Just now")
+                    .font(.caption2)
+                    .foregroundStyle(colors.textMuted)
+            }
+            Spacer()
+        }
+    }
+
+    private func findTask(for activity: ActivityItem) -> ProjectTask? {
+        guard activity.type == "task", let relatedId = activity.relatedId else { return nil }
+        return tasks.first { $0.id == relatedId }
+    }
+
+    private func findIssue(for activity: ActivityItem) -> Issue? {
+        guard activity.type == "issue", let relatedId = activity.relatedId else { return nil }
+        return issues.first { $0.id == relatedId }
+    }
+
+    private func findFlow(for activity: ActivityItem) -> Flow? {
+        guard activity.type == "idea" || activity.type == "flow", let relatedId = activity.relatedId else { return nil }
+        return flows.first { $0.id == relatedId }
+    }
+
+    private func icon(for type: String) -> String {
+        switch type {
+        case "task": return "checklist"
+        case "issue": return "ant.fill"
+        case "comment": return "bubble.left.fill"
+        case "file": return "doc.fill"
+        case "report": return "sparkles"
+        default: return "circle.fill"
+        }
+    }
 }
 
 struct ResourcesWidget: View {
+    let project: Project
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -978,14 +1178,18 @@ struct ResourcesWidget: View {
                     .font(.headline)
                     .foregroundStyle(colors.textMain)
                 
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Quick Links")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(colors.textMain)
-                    
-                    // Placeholder links
-                    LinkRow(title: "Project Drive", url: "https://drive.google.com")
-                    LinkRow(title: "Design System", url: "https://figma.com")
+                let allLinks = project.links + project.externalResources
+                
+                if allLinks.isEmpty {
+                    Text("No resources added yet.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(allLinks) { link in
+                            LinkRow(title: link.title, url: link.url)
+                        }
+                    }
                 }
             }
             .padding(12)
@@ -1000,19 +1204,34 @@ struct LinkRow: View {
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     
     var body: some View {
-        HStack {
-            Image(systemName: "link")
-                .font(.caption)
-                .foregroundStyle(colors.textMuted)
-            Text(title)
-                .font(.subheadline)
-                .foregroundStyle(colors.primary)
-            Spacer()
-            Image(systemName: "arrow.up.right")
-                .font(.caption2)
-                .foregroundStyle(colors.textMuted)
+        if let linkURL = URL(string: url.contains("://") ? url : "https://\(url)") {
+            Link(destination: linkURL) {
+                HStack {
+                    Image(systemName: "link")
+                        .font(.caption)
+                        .foregroundStyle(colors.textMuted)
+                    Text(title)
+                        .font(.subheadline)
+                        .foregroundStyle(colors.primary)
+                    Spacer()
+                    Image(systemName: "arrow.up.right")
+                        .font(.caption2)
+                        .foregroundStyle(colors.textMuted)
+                }
+                .padding(.vertical, 4)
+            }
+        } else {
+            HStack {
+                Image(systemName: "link")
+                    .font(.caption)
+                    .foregroundStyle(colors.textMuted)
+                Text(title)
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+                Spacer()
+            }
+            .padding(.vertical, 4)
         }
-        .padding(.vertical, 4)
     }
 }
 
@@ -1020,6 +1239,16 @@ struct PlanningWidget: View {
     let project: Project
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
+    
+    private func formatDate(_ isoString: String) -> String {
+        guard !isoString.isEmpty else { return "Not set" }
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = formatter.date(from: isoString) {
+            return date.formatted(date: .abbreviated, time: .omitted)
+        }
+        return isoString.prefix(10).description
+    }
 
     var body: some View {
         PFCard {
@@ -1033,7 +1262,7 @@ struct PlanningWidget: View {
                         Text("Start Date")
                             .font(.caption)
                             .foregroundStyle(colors.textMuted)
-                        Text(project.startDate.isEmpty ? "Not set" : project.startDate)
+                        Text(formatDate(project.startDate))
                             .font(.subheadline)
                             .foregroundStyle(colors.textMain)
                     }
@@ -1042,7 +1271,7 @@ struct PlanningWidget: View {
                         Text("Due Date")
                             .font(.caption)
                             .foregroundStyle(colors.textMuted)
-                        Text(project.dueDate.isEmpty ? "Not set" : project.dueDate)
+                        Text(formatDate(project.dueDate))
                             .font(.subheadline)
                             .foregroundStyle(colors.textMain)
                     }
@@ -1054,7 +1283,7 @@ struct PlanningWidget: View {
                         Text("Progress")
                             .font(.caption)
                         Spacer()
-                        Text("\(project.progress)%")
+                        Text("\(Int(project.progress))%")
                             .font(.caption.weight(.bold))
                     }
                     .foregroundStyle(colors.textMuted)
@@ -1092,23 +1321,25 @@ struct MilestonesWidget: View {
                         .font(.subheadline)
                         .foregroundStyle(colors.textMuted)
                 } else {
-                    ForEach(milestones.prefix(3)) { milestone in
-                        HStack {
-                            Circle()
-                                .fill(milestone.status == "Achieved" ? colors.success : colors.warning)
-                                .frame(width: 8, height: 8)
-                            
-                            Text(milestone.title)
-                                .font(.subheadline)
-                                .foregroundStyle(colors.textMain)
-                            
-                            Spacer()
-                            
-                            Text(milestone.dueDate ?? "")
-                                .font(.caption2)
-                                .foregroundStyle(colors.textMuted)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(milestones.prefix(3)) { milestone in
+                            HStack {
+                                Circle()
+                                    .fill(milestone.status == "Achieved" ? colors.success : colors.warning)
+                                    .frame(width: 8, height: 8)
+                                
+                                Text(milestone.title)
+                                    .font(.subheadline)
+                                    .foregroundStyle(colors.textMain)
+                                    .lineLimit(1)
+                                
+                                Spacer()
+                                
+                                Text(milestone.dueDate.prefix(10))
+                                    .font(.caption2)
+                                    .foregroundStyle(colors.textMuted)
+                            }
                         }
-                        .padding(.vertical, 2)
                     }
                 }
             }
@@ -1118,61 +1349,110 @@ struct MilestonesWidget: View {
 }
 
 struct AiInsightsWidget: View {
+    let report: GeminiReport?
+    let onTap: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        PFCard {
-            HStack(spacing: 12) {
-                Image(systemName: "sparkles")
-                    .font(.title2)
-                    .foregroundStyle(.purple)
-                    .frame(width: 40, height: 40)
-                    .background(Color.purple.opacity(0.1))
-                    .clipShape(Circle())
-                
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("AI Insights")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Text("Generate a new project report")
-                        .font(.caption)
+        Button(action: onTap) {
+            PFCard {
+                HStack(spacing: 12) {
+                    Image(systemName: "sparkles")
+                        .font(.title2)
+                        .foregroundStyle(.purple)
+                        .frame(width: 40, height: 40)
+                        .background(Color.purple.opacity(0.1))
+                        .clipShape(Circle())
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("CORA Intelligence")
+                            .font(.headline)
+                            .foregroundStyle(colors.textMain)
+                        
+                        if let report = report {
+                            Text("Updated \(report.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "recently")")
+                                .font(.caption)
+                                .foregroundStyle(colors.textMuted)
+                        } else {
+                            Text("Generate project analysis")
+                                .font(.caption)
+                                .foregroundStyle(colors.textMuted)
+                        }
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.right")
                         .foregroundStyle(colors.textMuted)
                 }
-                Spacer()
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(colors.textMuted)
+                .padding(12)
             }
-            .padding(12)
         }
+        .buttonStyle(.plain)
     }
 }
 
 struct TeamWidget: View {
+    let profiles: [UserProfile]
+    let onEdit: () -> Void
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Label("Team", systemImage: "person.2")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                
-                HStack(spacing: -8) {
-                    ForEach(0..<4) { i in
-                        Circle()
-                            .fill(Color(hue: Double(i) * 0.1, saturation: 0.5, brightness: 0.8))
-                            .frame(width: 32, height: 32)
-                            .overlay(Text("U\(i)").font(.caption2).foregroundStyle(.white))
-                            .shadow(color: colors.shadowSm, radius: 3, x: 0, y: 2)
+                HStack {
+                    Label("Team", systemImage: "person.2")
+                        .font(.headline)
+                        .foregroundStyle(colors.textMain)
+                    Spacer()
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil.circle")
+                            .foregroundStyle(colors.primary)
                     }
-                    
-                    Circle()
-                        .fill(colors.surfaceHover)
-                        .frame(width: 32, height: 32)
-                        .overlay(Text("+2").font(.caption2).foregroundStyle(colors.textMuted))
-                        .shadow(color: colors.shadowSm, radius: 3, x: 0, y: 2)
+                }
+                
+                if profiles.isEmpty {
+                    Text("No members listed.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                } else {
+                    HStack(spacing: -8) {
+                        ForEach(profiles.prefix(5)) { profile in
+                            ZStack {
+                                Circle()
+                                    .fill(colors.surfaceCard)
+                                    .frame(width: 34, height: 34)
+                                
+                                if let photoURL = profile.photoURL, let url = URL(string: photoURL) {
+                                    AsyncImage(url: url) { image in
+                                        image.resizable().scaledToFill()
+                                    } placeholder: {
+                                        colors.surfaceHover
+                                    }
+                                    .frame(width: 32, height: 32)
+                                    .clipShape(Circle())
+                                } else {
+                                    Circle()
+                                        .fill(colors.primary.opacity(0.2))
+                                        .frame(width: 32, height: 32)
+                                        .overlay(
+                                            Text(String(profile.displayName.prefix(1)).uppercased())
+                                                .font(.caption2.weight(.bold))
+                                                .foregroundStyle(colors.primary)
+                                        )
+                                }
+                            }
+                            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        }
+                        
+                        if profiles.count > 5 {
+                            Circle()
+                                .fill(colors.surfaceHover)
+                                .frame(width: 32, height: 32)
+                                .overlay(Text("+\(profiles.count - 5)").font(.caption2).foregroundStyle(colors.textMuted))
+                                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                        }
+                    }
                 }
             }
             .padding(12)
@@ -1207,7 +1487,7 @@ struct ControlsWidget: View {
                         .font(.subheadline)
                         .foregroundStyle(colors.textMuted)
                     Spacer()
-                    Text(project.priority)
+                    Text(project.priority.isEmpty ? "None" : project.priority)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(colors.textMain)
                 }

@@ -2,10 +2,12 @@ import Foundation
 import Combine
 import FirebaseAuth
 import FirebaseCore
+import FirebaseFirestore
 
 @MainActor
 final class SessionStore: ObservableObject {
     @Published var user: User?
+    @Published var userProfile: UserProfile?
     @Published var isLoading = true
     @Published var authError: String?
     @Published var authMessage: String?
@@ -16,6 +18,7 @@ final class SessionStore: ObservableObject {
     @Published var isMfaBusy = false
 
     private var handle: AuthStateDidChangeListenerHandle?
+    private var profileListener: ListenerRegistration?
     private let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 
     init() {
@@ -30,17 +33,36 @@ final class SessionStore: ObservableObject {
 
         handle = Auth.auth().addStateDidChangeListener { [weak self] _, user in
             self?.user = user
-            self?.isLoading = false
-            if user != nil {
+            self?.isLoading = (user != nil) // Keep loading if we need to fetch profile
+            
+            self?.profileListener?.remove()
+            if let user = user {
                 PushTokenManager.shared.syncPendingToken()
+                self?.fetchProfile(uid: user.uid)
+            } else {
+                self?.userProfile = nil
+                self?.isLoading = false
             }
         }
+    }
+
+    private func fetchProfile(uid: String) {
+        profileListener = Firestore.firestore().collection(FirestorePath.users)
+            .document(uid)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self = self else { return }
+                if let snapshot = snapshot, snapshot.exists {
+                    self.userProfile = UserProfile(id: snapshot.documentID, data: snapshot.data() ?? [:])
+                }
+                self.isLoading = false
+            }
     }
 
     deinit {
         if let handle {
             Auth.auth().removeStateDidChangeListener(handle)
         }
+        profileListener?.remove()
     }
 
     func signIn(email: String, password: String) {
@@ -84,6 +106,21 @@ final class SessionStore: ObservableObject {
         } catch {
             authError = Self.mapAuthError(error)
         }
+    }
+
+    func updateProfile(displayName: String, bio: String) async {
+        guard let uid = user?.uid else { return }
+        isBusy = true
+        do {
+            try await Firestore.firestore().collection(FirestorePath.users).document(uid).updateData([
+                "displayName": displayName,
+                "bio": bio
+            ])
+            // Profile listener will update the local userProfile
+        } catch {
+            authError = error.localizedDescription
+        }
+        isBusy = false
     }
 
     func sendPasswordReset(email: String) {

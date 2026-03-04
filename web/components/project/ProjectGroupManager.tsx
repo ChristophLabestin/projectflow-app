@@ -4,9 +4,12 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Modal } from '../ui/Modal';
 import { subscribeProjectGroups, createProjectGroup, updateProjectGroup, deleteProjectGroup } from '../../services/projectGroupService';
-import { getProjectMembers, getUserProfile, getActiveTenantId } from '../../services/dataService';
+import { getProjectMembers } from '../../services/domain/projectsService';
+import { getUserProfile } from '../../services/domain/usersService';
+import { getActiveTenantId } from '../../services/domain/authService';
 import { auth } from '../../services/firebase';
 import { useLanguage } from '../../context/LanguageContext';
+import { useConfirm } from '../../context/UIContext';
 
 interface ProjectGroupManagerProps {
     projectId: string;
@@ -19,6 +22,7 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<ProjectGroup | null>(null);
     const { t } = useLanguage();
+    const confirm = useConfirm();
 
     useEffect(() => {
         const unsub = subscribeProjectGroups(projectId, setGroups, tenantId);
@@ -31,9 +35,9 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
     };
 
     const handleDelete = async (groupId: string) => {
-        if (confirm(t('projectGroups.confirm.delete'))) {
-            await deleteProjectGroup(projectId, groupId, tenantId);
-        }
+        const approved = await confirm(t('projectGroups.confirm.delete.title'), t('projectGroups.confirm.delete.body'));
+        if (!approved) return;
+        await deleteProjectGroup(projectId, groupId, tenantId);
     };
 
     const handleCloseModal = () => {

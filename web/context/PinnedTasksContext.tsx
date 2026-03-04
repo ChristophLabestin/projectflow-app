@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Task } from '../types';
 import { auth } from '../services/firebase';
-import { getUserProfile, updateUserData, getActiveTenantId } from '../services/dataService';
 import { onAuthStateChanged } from 'firebase/auth';
+import { getUserProfile, updateUserData } from '../services/domain/usersService';
 
 export interface PinnedItem {
     id: string;

@@ -4,7 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Select } from '../../../components/ui/Select';
-import { subscribeCaptionPresets, createCaptionPreset, updateCaptionPreset, deleteCaptionPreset } from '../../../services/dataService';
+import { createCaptionPreset, deleteCaptionPreset, subscribeCaptionPresets, updateCaptionPreset } from '../../../services/domain/socialSettingsService';
 import { CaptionPreset, SocialPlatform } from '../../../types';
 import { useToast, useConfirm } from '../../../context/UIContext';
 import { AICaptionGenerator } from './AICaptionGenerator';

@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { signOut } from 'firebase/auth';
-import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/dataService';
 import { useLanguage } from '../context/LanguageContext';
 import { SettingsModal } from './SettingsModal';
+import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/domain/userStatusService';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -272,4 +272,3 @@ export const UserProfileDropdown: React.FC = () => {
         </div>
     );
 };
-

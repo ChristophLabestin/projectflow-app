@@ -1,7 +1,8 @@
-﻿import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { Suspense, lazy, useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { getUserTasks, toggleTaskStatus, getUserProjects, deleteTask, getSubTasks } from '../services/dataService';
+import { getUserProjects } from '../services/domain/projectsService';
+import { deleteTask, getSubTasks, getUserTasks, toggleTaskStatus } from '../services/domain/tasksService';
 import { Project, Task } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Badge } from '../components/common/Badge/Badge';
@@ -11,11 +12,12 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
 import { ProjectBoard } from '../components/ProjectBoard';
-import { TaskCreateModal } from '../components/TaskCreateModal';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 
+const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
+
 export const Tasks = () => {
-    const { t, dateFormat, dateLocale } = useLanguage();
+    const { t, dateFormat, dateLocale, taskPageTranslationsReady, loadTaskPageTranslations } = useLanguage();
     const navigate = useNavigate();
     const confirm = useConfirm();
 
@@ -40,6 +42,10 @@ export const Tasks = () => {
 
     // Arrow Replacement for Search
     const handleSearchChange = useArrowReplacement((e) => setSearch(e.target.value));
+
+    useEffect(() => {
+        void loadTaskPageTranslations();
+    }, [loadTaskPageTranslations]);
 
     // Fetch Data
     useEffect(() => {
@@ -428,7 +434,7 @@ export const Tasks = () => {
         );
     };
 
-    if (loading) return (
+    if (loading || !taskPageTranslationsReady) return (
         <div className="tasks-loading">
             <span className="material-symbols-outlined tasks-loading__icon">rotate_right</span>
         </div>
@@ -587,17 +593,18 @@ export const Tasks = () => {
 
             {/* Create Task Modal */}
             {showCreateModal && (
-                <TaskCreateModal
-                    projectId={projectFilter !== 'all' ? projectFilter : (projects[0]?.id || '')}
-                    onClose={() => setShowCreateModal(false)}
-                    onCreated={async () => {
-                        const taskData = await getUserTasks();
-                        setTasks(taskData);
-                        setShowCreateModal(false);
-                    }}
-                />
+                <Suspense fallback={null}>
+                    <TaskCreateModal
+                        projectId={projectFilter !== 'all' ? projectFilter : (projects[0]?.id || '')}
+                        onClose={() => setShowCreateModal(false)}
+                        onCreated={async () => {
+                            const taskData = await getUserTasks();
+                            setTasks(taskData);
+                            setShowCreateModal(false);
+                        }}
+                    />
+                </Suspense>
             )}
         </div>
     );
 };
-

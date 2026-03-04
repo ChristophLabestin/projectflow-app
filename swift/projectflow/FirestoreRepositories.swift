@@ -12,6 +12,7 @@ enum FirestorePath {
     static let sprints = "sprints"
     static let activity = "activity"
     static let notifications = "notifications"
+    static let presence = "presence"
     static let users = "users"
 }
 
@@ -61,6 +62,57 @@ private extension DocumentReference {
                 }
             }
         }
+    }
+}
+
+final class TenantRepository {
+    private let db: Firestore
+
+    init(db: Firestore = Firestore.firestore()) {
+        self.db = db
+    }
+
+    func createTenant(ownerId: String, name: String, planTier: String) async throws -> String {
+        let tenantRef = db.collection(FirestorePath.tenants).document()
+        let tenantId = tenantRef.documentID
+        
+        let tenant = Tenant(id: tenantId, data: [
+            "name": name,
+            "planTier": planTier,
+            "ownerId": ownerId,
+            "aiHardLimitEnabled": true,
+            "aiIncludedTokensPerSeat": planTier == "Starter" ? 0 : 1_000_000,
+            "aiIncludedImagesPerSeat": planTier == "Starter" ? 0 : 50
+        ])
+        
+        var payload = tenant.data
+        payload["createdAt"] = FieldValue.serverTimestamp()
+        payload["updatedAt"] = FieldValue.serverTimestamp()
+        
+        // Create Tenant and Initial Membership in a batch
+        let batch = db.batch()
+        batch.setData(payload, forDocument: tenantRef)
+        
+        let memberRef = tenantRef.collection(FirestorePath.members).document(ownerId)
+        batch.setData([
+            "role": "Owner",
+            "joinedAt": FieldValue.serverTimestamp(),
+            "groupIds": []
+        ], forDocument: memberRef)
+        
+        try await batch.commit()
+        return tenantId
+    }
+
+    func setupUserProfile(uid: String, email: String, displayName: String) async throws {
+        let ref = db.collection(FirestorePath.users).document(uid)
+        try await ref.setDataAsync([
+            "email": email,
+            "displayName": displayName,
+            "createdAt": FieldValue.serverTimestamp(),
+            "fcmTokens": [],
+            "pinnedItems": []
+        ])
     }
 }
 
@@ -139,7 +191,7 @@ final class TaskRepository {
     func listenTasks(
         tenantId: String,
         projectId: String,
-        onUpdate: @escaping ([Task]) -> Void,
+        onUpdate: @escaping ([ProjectTask]) -> Void,
         onError: ((Error) -> Void)? = nil
     ) -> ListenerRegistration {
         let ref = db.collection(FirestorePath.tenants)
@@ -154,12 +206,12 @@ final class TaskRepository {
                 onUpdate([])
                 return
             }
-            let items = snapshot?.documents.map { Task(id: $0.documentID, data: $0.data()) } ?? []
+            let items = snapshot?.documents.map { ProjectTask(id: $0.documentID, data: $0.data()) } ?? []
             onUpdate(items)
         }
     }
 
-    func createTask(tenantId: String, projectId: String, task: Task, permissions: PermissionContext) async throws -> String {
+    func createTask(tenantId: String, projectId: String, task: ProjectTask, permissions: PermissionContext) async throws -> String {
         try PermissionEvaluator(context: permissions).require(PermissionNode.tasksCreate)
         let ref = db.collection(FirestorePath.tenants)
             .document(tenantId)

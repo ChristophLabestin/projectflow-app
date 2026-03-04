@@ -11,12 +11,16 @@ import './invite-landing.scss';
 export const InviteLanding = () => {
     const { tenantId } = useParams<{ tenantId: string }>();
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, inviteLandingTranslationsReady, loadInviteLandingTranslations } = useLanguage();
     const [status, setStatus] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
 
     useEffect(() => {
+        void loadInviteLandingTranslations();
+    }, [loadInviteLandingTranslations]);
+
+    useEffect(() => {
         const tryAutoJoin = async () => {
-            if (!tenantId || !auth.currentUser) return;
+            if (!tenantId || !auth.currentUser || !inviteLandingTranslationsReady) return;
             try {
                 setStatus({ tone: 'info', message: t('inviteLanding.status.joining') });
                 await joinTenant(tenantId);
@@ -28,7 +32,7 @@ export const InviteLanding = () => {
             }
         };
         tryAutoJoin();
-    }, [tenantId, navigate, t]);
+    }, [tenantId, navigate, inviteLandingTranslationsReady, t]);
 
     const handleAccept = () => {
         if (!tenantId) return;
@@ -38,7 +42,22 @@ export const InviteLanding = () => {
     };
 
     if (!tenantId) {
-        return <div className="invite-landing">{t('inviteLanding.error.invalidLink')}</div>;
+        return (
+            <div className="invite-landing">
+                {inviteLandingTranslationsReady ? t('inviteLanding.error.invalidLink') : 'Invalid invite link.'}
+            </div>
+        );
+    }
+
+    if (!inviteLandingTranslationsReady) {
+        return (
+            <div className="invite-landing">
+                <Card className="invite-landing__card">
+                    <h1 className="invite-landing__title">Loading invitation...</h1>
+                    <p className="invite-landing__description">Please wait while we prepare your workspace invite.</p>
+                </Card>
+            </div>
+        );
     }
 
     return (

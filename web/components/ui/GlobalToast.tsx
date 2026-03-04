@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIState } from '../../context/UIContext';
 
-import { CreateIssueModal } from '../CreateIssueModal';
+const CreateIssueModal = lazy(() => import('../CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 
 export const GlobalToast = () => {
     const { toast, closeToast } = useUIState();
@@ -129,13 +129,15 @@ export const GlobalToast = () => {
                 )}
             </div>
 
-            <CreateIssueModal
-                isOpen={isIssueModalOpen}
-                onClose={() => setIsIssueModalOpen(false)}
-                projectId="ogZ8Pyz8pwEQtv8I64nu"
-                initialTitle="Bug Report"
-                initialDescription={`${modalMessage}\n\nDetails:\n${modalDetails}`}
-            />
+            <Suspense fallback={null}>
+                <CreateIssueModal
+                    isOpen={isIssueModalOpen}
+                    onClose={() => setIsIssueModalOpen(false)}
+                    projectId="ogZ8Pyz8pwEQtv8I64nu"
+                    initialTitle="Bug Report"
+                    initialDescription={`${modalMessage}\n\nDetails:\n${modalDetails}`}
+                />
+            </Suspense>
         </>
     );
 };

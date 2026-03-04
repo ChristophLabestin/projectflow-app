@@ -6,13 +6,15 @@ import { Button } from '../components/common/Button/Button';
 import { Modal } from '../components/common/Modal/Modal';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
-import { getUserTasks, getUserIssues, updateIssue, updateTask, getUnassignedTasks, getUsersTasks } from '../services/dataService';
+import { getUnassignedTasks, getUsersTasks } from '../services/dataService';
+import { getUserIssues, updateIssue } from '../services/domain/issuesService';
+import { getUserTasks, updateTask } from '../services/domain/tasksService';
 import { Task, Issue } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
 import { auth } from '../services/firebase';
 
 export const Calendar = () => {
-    const { t, dateLocale } = useLanguage();
+    const { t, dateLocale, calendarTranslationsReady, loadCalendarTranslations } = useLanguage();
     const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
@@ -33,6 +35,11 @@ export const Calendar = () => {
     const [isUnscheduledOpen, setIsUnscheduledOpen] = useState(true);
 
     const { showError, showSuccess, showToast } = useToast();
+
+    useEffect(() => {
+        void loadCalendarTranslations();
+    }, [loadCalendarTranslations]);
+
     const priorityLabels = useMemo(() => ({
         Urgent: t('tasks.priority.urgent'),
         High: t('tasks.priority.high'),
@@ -456,18 +463,26 @@ export const Calendar = () => {
         return [...personalTasks, ...personalIssues, ...unassignedUnscheduled];
     }, [tasks, issues, unassignedTasks]);
 
-    return (
-        <div className="calendar-page">
-            <div className={`calendar-loading ${loading ? 'is-visible' : ''}`}>
-                <div className="calendar-loading__content">
-                    <div className="calendar-loading__icon-wrap">
-                        <span className="calendar-loading__glow" />
-                        <span className="material-symbols-outlined calendar-loading__icon">progress_activity</span>
+    if (loading || !calendarTranslationsReady) {
+        return (
+            <div className="calendar-page">
+                <div className="calendar-loading is-visible">
+                    <div className="calendar-loading__content">
+                        <div className="calendar-loading__icon-wrap">
+                            <span className="calendar-loading__glow" />
+                            <span className="material-symbols-outlined calendar-loading__icon">progress_activity</span>
+                        </div>
+                        <p className="calendar-loading__text">
+                            {calendarTranslationsReady ? t('calendar.loading') : 'Loading calendar...'}
+                        </p>
                     </div>
-                    <p className="calendar-loading__text">{t('calendar.loading')}</p>
                 </div>
             </div>
+        );
+    }
 
+    return (
+        <div className="calendar-page">
             <div className="calendar-page__layout">
 
                 <section className="calendar-main">

@@ -4,6 +4,7 @@ import { X, Search, Grid, Star, Layout, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUI } from '../../../context/UIContext';
 import { useConfirm } from '../../../context/UIContext';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SlashCommandDrawerProps {
     isOpen: boolean;
@@ -17,10 +18,14 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
     const [search, setSearch] = useState('');
     const { showSuccess } = useUI();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     const handleDeletePreset = async (e: React.MouseEvent, title: string) => {
         e.stopPropagation();
-        if (await confirm('Delete Preset', `Are you sure you want to delete "${title}"?`)) {
+        if (await confirm(
+            t('editor.slashDrawer.confirm.deletePresetTitle'),
+            t('editor.slashDrawer.confirm.deletePresetMessage').replace('{title}', title)
+        )) {
             const stored = localStorage.getItem('card_presets');
             if (stored) {
                 const presets = JSON.parse(stored);
@@ -28,7 +33,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                 const updated = presets.filter((p: any) => p.title !== title);
                 localStorage.setItem('card_presets', JSON.stringify(updated));
                 window.dispatchEvent(new Event('storage'));
-                showSuccess(`Deleted preset "${title}"`);
+                showSuccess(t('editor.slashDrawer.toast.presetDeleted').replace('{title}', title));
             }
         }
     };
@@ -56,7 +61,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                         className="fixed top-0 right-0 bottom-0 w-80 bg-card border-l border-surface shadow-2xl z-[100001] flex flex-col"
                     >
                         <div className="p-4 border-b border-surface flex items-center justify-between">
-                            <h3 className="font-semibold text-main">Commands</h3>
+                            <h3 className="font-semibold text-main">{t('editor.slashDrawer.title')}</h3>
                             <button onClick={onClose} className="p-1 hover:bg-surface-hover rounded-full text-muted">
                                 <X size={20} />
                             </button>
@@ -68,10 +73,10 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                 <Search size={16} className="absolute left-3 top-2.5 text-muted" />
                                 <input
                                     type="text"
-                                    placeholder="Search commands..."
+                                    placeholder={t('editor.slashDrawer.searchPlaceholder')}
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface border border-surface text-sm focus:outline-none focus:border-primary text-main"
+                                    className="w-full pl-9 pr-3 py-2 rounded-lg bg-surface border border-surface text-sm focus:outline-none text-main"
                                 />
                             </div>
 
@@ -80,19 +85,19 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                     onClick={() => setFilter('all')}
                                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${filter === 'all' ? 'bg-card shadow-sm text-primary' : 'text-muted hover:text-main'}`}
                                 >
-                                    All
+                                    {t('editor.slashDrawer.filters.all')}
                                 </button>
                                 <button
                                     onClick={() => setFilter('general')}
                                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${filter === 'general' ? 'bg-card shadow-sm text-primary' : 'text-muted hover:text-main'}`}
                                 >
-                                    General
+                                    {t('editor.slashDrawer.filters.general')}
                                 </button>
                                 <button
                                     onClick={() => setFilter('custom')}
                                     className={`flex-1 py-1.5 text-xs font-medium rounded-md transition-colors ${filter === 'custom' ? 'bg-card shadow-sm text-primary' : 'text-muted hover:text-main'}`}
                                 >
-                                    Custom
+                                    {t('editor.slashDrawer.filters.custom')}
                                 </button>
                             </div>
                         </div>
@@ -119,7 +124,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                         <button
                                             onClick={(e) => handleDeletePreset(e, cmd.title)}
                                             className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                                            title="Delete Preset"
+                                            title={t('editor.slashDrawer.actions.deletePreset')}
                                         >
                                             <Trash2 size={16} />
                                         </button>
@@ -128,7 +133,7 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                             ))}
                             {filteredCommands.length === 0 && (
                                 <div className="text-center py-8 text-muted text-sm">
-                                    No commands found.
+                                    {t('editor.slashDrawer.empty')}
                                 </div>
                             )}
                         </div>

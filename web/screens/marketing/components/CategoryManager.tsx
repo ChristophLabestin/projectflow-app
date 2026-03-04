@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
-import { useToast } from '../../../context/UIContext';
+import { useConfirm, useToast } from '../../../context/UIContext';
 import { BlogCategory, fetchCategories, createCategory, updateCategory, deleteCategory } from '../../../services/blogService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface CategoryManagerProps {
     onClose: () => void;
@@ -12,6 +13,8 @@ interface CategoryManagerProps {
 
 export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSelect, projectId }) => {
     const { showSuccess, showError } = useToast();
+    const confirm = useConfirm();
+    const { t } = useLanguage();
     const [categories, setCategories] = useState<BlogCategory[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -44,10 +47,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
             if (isEditing === 'new') {
                 const newCat = await createCategory(projectId, { name: editName, slug: editSlug || undefined });
                 if (onSelect) onSelect(newCat);
-                showSuccess('Category created');
+                showSuccess(t('marketing.categoryManager.toast.created'));
             } else if (isEditing) {
-                const updated = await updateCategory(projectId, isEditing, { name: editName, slug: editSlug || undefined });
-                showSuccess('Category updated');
+                await updateCategory(projectId, isEditing, { name: editName, slug: editSlug || undefined });
+                showSuccess(t('marketing.categoryManager.toast.updated'));
             }
 
             // Re-fetch all to ensure sync and proper data shape
@@ -58,18 +61,22 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
             setEditSlug('');
         } catch (e) {
             console.error(e);
-            showError('Failed to save category');
+            showError(t('marketing.categoryManager.toast.saveError'));
         }
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this category?')) return;
+        const confirmed = await confirm(
+            t('marketing.categoryManager.confirm.deleteTitle'),
+            t('marketing.categoryManager.confirm.deleteMessage')
+        );
+        if (!confirmed) return;
         try {
             await deleteCategory(projectId, id);
             setCategories(categories.filter(c => c.id !== id));
-            showSuccess('Category deleted');
+            showSuccess(t('marketing.categoryManager.toast.deleted'));
         } catch (e) {
-            showError('Failed to delete category');
+            showError(t('marketing.categoryManager.toast.deleteError'));
         }
     };
 
@@ -83,7 +90,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
             <div className="bg-card border border-surface rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
                 <div className="p-4 border-b border-surface flex justify-between items-center">
-                    <h3 className="font-bold text-lg">Manage Categories</h3>
+                    <h3 className="font-bold text-lg">{t('marketing.categoryManager.title')}</h3>
                     <button onClick={onClose} className="p-1 hover:bg-surface-hover rounded-full">
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -98,7 +105,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
 
                     {!loading && categories.length === 0 && !isEditing && (
                         <div className="text-center py-8 text-muted">
-                            <p>No categories found.</p>
+                            <p>{t('marketing.categoryManager.empty')}</p>
                         </div>
                     )}
 
@@ -125,7 +132,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
                                     <button
                                         onClick={() => { onSelect(cat); onClose(); }}
                                         className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-primary"
-                                        title="Select"
+                                        title={t('marketing.categoryManager.actions.select')}
                                     >
                                         <span className="material-symbols-outlined text-sm">check</span>
                                     </button>
@@ -138,21 +145,21 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
                         <div className="p-4 bg-surface rounded-xl border border-primary animate-scale-up">
                             <div className="space-y-3">
                                 <Input
-                                    label="Name"
+                                    label={t('marketing.categoryManager.fields.name')}
                                     value={editName}
                                     onChange={(e) => setEditName(e.target.value)}
-                                    placeholder="Category Name"
+                                    placeholder={t('marketing.categoryManager.fields.namePlaceholder')}
                                     autoFocus
                                 />
                                 <Input
-                                    label="Slug (optional)"
+                                    label={t('marketing.categoryManager.fields.slug')}
                                     value={editSlug}
                                     onChange={(e) => setEditSlug(e.target.value)}
-                                    placeholder="category-slug"
+                                    placeholder={t('marketing.categoryManager.fields.slugPlaceholder')}
                                 />
                                 <div className="flex justify-end gap-2 pt-2">
-                                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(null)}>Cancel</Button>
-                                    <Button size="sm" variant="primary" onClick={handleSave}>Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setIsEditing(null)}>{t('common.cancel')}</Button>
+                                    <Button size="sm" variant="primary" onClick={handleSave}>{t('marketing.categoryManager.actions.save')}</Button>
                                 </div>
                             </div>
                         </div>
@@ -167,7 +174,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
                             setEditSlug('');
                         }}>
                             <span className="material-symbols-outlined mr-2">add</span>
-                            New Category
+                            {t('marketing.categoryManager.actions.newCategory')}
                         </Button>
                     </div>
                 )}

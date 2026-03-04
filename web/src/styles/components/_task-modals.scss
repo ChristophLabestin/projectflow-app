@@ -309,29 +309,7 @@
         padding: 0 1.5rem 1rem;
 
         .task-create__description-input .text-area {
-            width: 100%;
-            min-height: 0;
-            padding: 0.75rem;
-            border-radius: var(--radius-lg);
-            background-color: var(--color-surface-bg);
-            border: 0;
-            font-size: 0.875rem;
-            color: var(--color-text-main);
-            outline: none;
-            resize: none;
-            box-shadow: var(--shadow-inner);
-        }
-
-        .task-create__description-input .text-area::placeholder {
-            color: var(--color-text-muted);
-        }
-
-        .task-create__description-input .text-area:hover,
-        .task-create__description-input .text-area:focus,
-        .task-create__description-input .text-area:focus-visible {
-            background-color: var(--color-surface-bg);
-            box-shadow: var(--shadow-inner);
-            transform: none;
+            min-height: 88px;
         }
 
         .generate-btn {
@@ -446,37 +424,28 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
-        padding: 0.5rem 0.65rem;
-        border-radius: var(--radius-lg);
-        background-color: var(--color-surface-bg);
-        box-shadow: var(--shadow-inner);
+    }
 
-        input {
-            flex: 1;
+    .task-create__subtask-input {
+        flex: 1;
+
+        .text-input {
             font-size: 0.85rem;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--color-text-main);
-
-            &::placeholder {
-                color: var(--color-text-muted);
-            }
         }
+    }
 
-        .subtask-add-icon {
-            font-size: 0.9rem;
-            color: var(--color-text-muted);
-        }
+    .subtask-add-icon {
+        font-size: 0.9rem;
+        color: var(--color-text-muted);
+    }
 
-        .add-subtask-btn {
-            border: 0;
-            background: transparent;
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--color-primary);
-            cursor: pointer;
-        }
+    .add-subtask-btn {
+        border: 0;
+        background: transparent;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--color-primary);
+        cursor: pointer;
     }
 
     .task-create-form__error {

@@ -10,8 +10,8 @@ import { subscribeGroupColumns, addGroupColumn, deleteGroupColumn, subscribeGrou
 import { subscribeMarketingSettings, updateMarketingSettings } from '../../services/marketingSettingsService';
 import { auth, functions } from '../../services/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { getTenant } from '../../services/dataService';
-import { getActiveTenantId } from '../../services/dataService';
+import { getActiveTenantId } from '../../services/domain/authService';
+import { getTenant } from '../../services/domain/workspaceService';
 import { BlogConnectionWizard } from './components/BlogConnectionWizard';
 
 // SMTP Source options

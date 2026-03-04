@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Task } from '../types';
-import { subscribeProjectTasks } from '../services/dataService';
+import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { TextInput } from './common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 

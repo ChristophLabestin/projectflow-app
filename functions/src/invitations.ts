@@ -106,7 +106,7 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
             locale
         );
 
-        await sendEmail(email, subject, html);
+        await sendEmail(email, subject, html, { tenantId });
 
         return { success: true, message: 'Invitation sent' };
 

@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useToast } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea as TextArea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
-import { RichTextEditor } from '../../components/ui/RichTextEditor';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { SocialCampaign, SocialPlatform, CampaignPhase } from '../../types';
-import { updateCampaign, createSocialCampaign, getSocialCampaign, updateIdea } from '../../services/dataService';
+import { createSocialCampaign, getSocialCampaign, updateCampaign } from '../../services/domain/socialService';
+import { updateIdea } from '../../services/domain/ideasService';
 import { auth, db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { generateCampaignDetailsAI, generateCampaignDescriptionAI } from '../../services/geminiService';
@@ -17,6 +17,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 
 const ALL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'];
+const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor').then((module) => ({ default: module.RichTextEditor })));
 
 export const CreateCampaignPage = () => {
     const { id: projectId, campaignId } = useParams<{ id: string; campaignId?: string }>();
@@ -524,12 +525,20 @@ export const CreateCampaignPage = () => {
                                         {generatingDescription ? t('social.campaignForm.actions.generating') : t('social.campaignForm.actions.generateDescription')}
                                     </button>
                                 </div>
-                                <RichTextEditor
-                                    value={description}
-                                    onChange={setDescription}
-                                    placeholder={t('social.campaignForm.placeholders.description')}
-                                    className="min-h-[150px]"
-                                />
+                                <Suspense
+                                    fallback={(
+                                        <div className="min-h-[150px] rounded-lg border border-surface bg-surface-hover/50 flex items-center justify-center">
+                                            <span className="material-symbols-outlined animate-spin text-primary">progress_activity</span>
+                                        </div>
+                                    )}
+                                >
+                                    <RichTextEditor
+                                        value={description}
+                                        onChange={setDescription}
+                                        placeholder={t('social.campaignForm.placeholders.description')}
+                                        className="min-h-[150px]"
+                                    />
+                                </Suspense>
                             </div>
 
                             <div className="space-y-2">

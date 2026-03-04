@@ -8,6 +8,7 @@ import { HelpCenterProvider } from './context/HelpCenterContext';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { PinnedProjectProvider } from './context/PinnedProjectContext';
 import { AuthProvider } from './context/AuthContext';
+import { PermissionProvider } from './context/PermissionContext';
 import './styles/index.scss';
 
 const rootElement = document.getElementById('root');
@@ -25,7 +26,9 @@ root.render(
             <UIProvider>
               <HelpCenterProvider>
                 <AuthProvider>
-                  <App />
+                  <PermissionProvider>
+                    <App />
+                  </PermissionProvider>
                 </AuthProvider>
               </HelpCenterProvider>
             </UIProvider>

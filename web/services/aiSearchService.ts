@@ -1,7 +1,9 @@
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
-import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, getAIUsage, incrementAIUsage, incrementImageUsage, getUserProfile, getActiveTenantId } from "./dataService";
+import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, incrementAIUsage, incrementImageUsage } from "./dataService";
+import { getActiveTenantId } from './domain/authService';
+import { getAIUsage, getUserProfile } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
 
 // Helper to get user API key

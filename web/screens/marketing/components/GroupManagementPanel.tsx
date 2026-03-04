@@ -5,6 +5,7 @@ import { useToast } from '../../../context/UIContext';
 import { RecipientGroup } from '../../../types';
 import { subscribeGroups, createGroup, updateGroup, deleteGroup } from '../../../services/groupService';
 import { useConfirm } from '../../../context/UIContext';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface GroupManagementPanelProps {
     isOpen: boolean;
@@ -37,6 +38,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
     const [editColor, setEditColor] = useState('');
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (!projectId || !isOpen) return;
@@ -62,10 +64,10 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
             setNewGroupName('');
             setNewGroupDescription('');
             setNewGroupColor(GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)]);
-            showSuccess('Group created');
+            showSuccess(t('marketing.groupManager.toast.created'));
         } catch (e: any) {
             console.error('Failed to create group:', e);
-            showError(e?.message || 'Failed to create group');
+            showError(e?.message || t('marketing.groupManager.toast.createError'));
         } finally {
             setCreating(false);
         }
@@ -90,23 +92,26 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
             }
             await updateGroup(projectId, editingId, updateData);
             setEditingId(null);
-            showSuccess('Group updated');
+            showSuccess(t('marketing.groupManager.toast.updated'));
         } catch (e: any) {
             console.error('Failed to update group:', e);
-            showError(e?.message || 'Failed to update group');
+            showError(e?.message || t('marketing.groupManager.toast.updateError'));
         }
     };
 
     const handleDelete = async (group: RecipientGroup) => {
-        const confirmed = await confirm('Delete Group', `Are you sure you want to delete "${group.name}"? Recipients in this group will not be deleted.`);
+        const confirmed = await confirm(
+            t('marketing.groupManager.confirm.deleteTitle'),
+            t('marketing.groupManager.confirm.deleteMessage').replace('{name}', group.name)
+        );
 
         if (!confirmed) return;
 
         try {
             await deleteGroup(projectId, group.id);
-            showSuccess('Group deleted');
+            showSuccess(t('marketing.groupManager.toast.deleted'));
         } catch (e) {
-            showError('Failed to delete group');
+            showError(t('marketing.groupManager.toast.deleteError'));
         }
     };
 
@@ -115,7 +120,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
             <div className="bg-card border border-surface rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-surface">
-                    <h2 className="h4">Manage Groups</h2>
+                    <h2 className="h4">{t('marketing.groupManager.title')}</h2>
                     <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -125,20 +130,20 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {/* Create New Group */}
                     <div className="p-4 bg-surface rounded-xl border border-surface">
-                        <h3 className="font-medium mb-3">Create New Group</h3>
+                        <h3 className="font-medium mb-3">{t('marketing.groupManager.create.title')}</h3>
                         <div className="space-y-3">
                             <Input
-                                placeholder="Group name"
+                                placeholder={t('marketing.groupManager.fields.groupNamePlaceholder')}
                                 value={newGroupName}
                                 onChange={(e) => setNewGroupName(e.target.value)}
                             />
                             <Input
-                                placeholder="Description (optional)"
+                                placeholder={t('marketing.groupManager.fields.descriptionPlaceholder')}
                                 value={newGroupDescription}
                                 onChange={(e) => setNewGroupDescription(e.target.value)}
                             />
                             <div>
-                                <label className="block text-sm font-medium mb-2">Color</label>
+                                <label className="block text-sm font-medium mb-2">{t('marketing.groupManager.fields.color')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {GROUP_COLORS.map(color => (
                                         <button
@@ -153,7 +158,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                 </div>
                             </div>
                             <Button variant="primary" onClick={handleCreate} isLoading={creating} className="w-full">
-                                Create Group
+                                {t('marketing.groupManager.actions.createGroup')}
                             </Button>
                         </div>
                     </div>
@@ -161,16 +166,16 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                     {/* Group List */}
                     <div>
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-medium">Groups ({groups.length})</h3>
+                            <h3 className="font-medium">{t('marketing.groupManager.groupsCount').replace('{count}', String(groups.length))}</h3>
                             <Button variant="secondary" size="sm" onClick={onImportClick}>
                                 <span className="material-symbols-outlined mr-1 text-[16px]">upload</span>
-                                Import
+                                {t('marketing.groupManager.actions.import')}
                             </Button>
                         </div>
 
                         {groups.length === 0 ? (
                             <p className="text-center text-muted py-8">
-                                No groups yet. Create one above or import from CSV.
+                                {t('marketing.groupManager.empty')}
                             </p>
                         ) : (
                             <div className="space-y-2">
@@ -185,12 +190,12 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                                 <Input
                                                     value={editName}
                                                     onChange={(e) => setEditName(e.target.value)}
-                                                    placeholder="Group name"
+                                                    placeholder={t('marketing.groupManager.fields.groupNamePlaceholder')}
                                                 />
                                                 <Input
                                                     value={editDescription}
                                                     onChange={(e) => setEditDescription(e.target.value)}
-                                                    placeholder="Description"
+                                                    placeholder={t('marketing.groupManager.fields.description')}
                                                 />
                                                 <div className="flex flex-wrap gap-1">
                                                     {GROUP_COLORS.map(color => (
@@ -205,8 +210,8 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                                     ))}
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <Button variant="primary" size="sm" onClick={handleUpdate}>Save</Button>
-                                                    <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>Cancel</Button>
+                                                    <Button variant="primary" size="sm" onClick={handleUpdate}>{t('marketing.groupManager.actions.save')}</Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>{t('common.cancel')}</Button>
                                                 </div>
                                             </div>
                                         ) : (

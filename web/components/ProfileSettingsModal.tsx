@@ -5,7 +5,8 @@ import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
 import { useToast } from '../context/UIContext';
 import { auth } from '../services/firebase';
-import { updateUserProfile, linkWithGithub, updateUserData, getUserProfile } from '../services/dataService';
+import { linkWithGithub } from '../services/dataService';
+import { getUserProfile, updateUserData, updateUserProfile } from '../services/domain/usersService';
 import { MediaLibrary } from './MediaLibrary/MediaLibraryModal';
 import { PrivacySettings, PrivacyScope } from '../types';
 

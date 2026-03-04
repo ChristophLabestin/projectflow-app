@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { auth } from '../services/firebase';
-import { getActiveTenantId, subscribeTenantUsers } from '../services/dataService';
+import { subscribeTenantUsers } from '../services/dataService';
 import { WorkspaceRole, WorkspacePermissions, Member } from '../types';
 import { WORKSPACE_CAPABILITIES, getWorkspaceRole } from '../utils/permissions';
 import { TenantPermissionNode, AIPermissionNode, PermissionNode, Role } from '../types/permissions';
+import { getActiveTenantId } from '../services/domain/authService';
 import {
     evaluatePermission,
     SYSTEM_ROLE_DEFAULTS,

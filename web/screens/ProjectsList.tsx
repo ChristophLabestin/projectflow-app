@@ -4,25 +4,20 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import {
     getAllWorkspaceProjects,
-    getProjectMembers,
-    getUserProfile,
-    getUserTasks,
-    getUserIdeas,
-    getUserIssues,
     subscribeProjectMilestones,
     getProjectActivity,
     getProjectOverviewTemplates,
     saveProjectOverviewTemplate,
     deleteProjectOverviewTemplate,
     updateProjectFields,
-    getTenant,
+    resetWorkspaceOverviewLayoutsToDefault,
+    createProject,
     setWorkspaceFocusProject,
-    getActiveTenantId
 } from '../services/dataService';
 import { subscribeProjectSprints } from '../services/sprintService';
 import { collection, collectionGroup, onSnapshot, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant } from '../types';
+import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/common/Badge/Badge';
@@ -34,6 +29,14 @@ import { Tenant } from '../types';
 import { Modal } from '../components/common/Modal/Modal';
 import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useConfirm, useToast } from '../context/UIContext';
+import { downloadFile } from '../utils/download';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getUserIdeas } from '../services/domain/ideasService';
+import { getUserIssues } from '../services/domain/issuesService';
+import { getProjectMembers } from '../services/domain/projectsService';
+import { getTenant } from '../services/domain/workspaceService';
+import { getUserTasks } from '../services/domain/tasksService';
+import { getUserProfile } from '../services/domain/usersService';
 import './projects-list.scss';
 
 // --- Types ---
@@ -593,11 +596,35 @@ const PROJECT_STATUS_I18N_KEYS: Record<Project['status'], string> = {
     'Brainstorming': 'project.status.brainstorming'
 };
 
+const PROJECT_IMPORT_EXAMPLE_URL = new URL('../assets/project-import-example.json', import.meta.url).toString();
+
+const PROJECT_MODULE_OPTIONS: ProjectModule[] = [
+    'tasks',
+    'ideas',
+    'mindmap',
+    'activity',
+    'issues',
+    'milestones',
+    'social',
+    'marketing',
+    'accounting',
+    'sprints'
+];
+
+const PROJECT_STATE_OPTIONS: NonNullable<Project['projectState']>[] = [
+    'pre-release',
+    'released',
+    'not specified'
+];
+
 const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
+    layoutVersion: 3,
     templateId: 'core',
     cards: [
         { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
-        { id: 'execution', enabled: true, span: 12, placement: 'primary' },
+        { id: 'executionTasks', enabled: true, span: 12, placement: 'primary' },
+        { id: 'executionFlows', enabled: true, span: 6, placement: 'primary' },
+        { id: 'executionIssues', enabled: true, span: 6, placement: 'primary' },
         { id: 'updates', enabled: true, span: 12, placement: 'primary' },
         { id: 'resources', enabled: true, span: 12, placement: 'primary' },
         { id: 'planning', enabled: true, span: 3, placement: 'secondary' },
@@ -609,6 +636,7 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
 };
 
 const cloneOverviewLayout = (layout: ProjectOverviewLayout): ProjectOverviewLayout => ({
+    layoutVersion: layout.layoutVersion,
     templateId: layout.templateId,
     cards: layout.cards.map((card) => ({ ...card }))
 });
@@ -626,6 +654,23 @@ type TemplateFormState = {
     baseSourceProjectId: string;
     baseLayout: ProjectOverviewLayout;
     variants: Record<Project['status'], TemplateVariantForm>;
+};
+
+type ProjectImportItem = {
+    title: string;
+    description?: string;
+    status?: Project['status'];
+    dueDate?: string;
+    startDate?: string;
+    priority?: string;
+    isPrivate?: boolean;
+    links?: { title: string; url: string }[];
+    externalResources?: { title: string; url: string; icon?: string }[];
+    modules?: ProjectModule[];
+    projectState?: Project['projectState'];
+    coverImage?: string;
+    squareIcon?: string;
+    screenshots?: string[];
 };
 
 export const ProjectsList: React.FC = () => {
@@ -646,6 +691,12 @@ export const ProjectsList: React.FC = () => {
     const templatesTenantIdRef = useRef<string | null>(null);
     const [templateSaving, setTemplateSaving] = useState(false);
     const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+    const [importModalOpen, setImportModalOpen] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importProjects, setImportProjects] = useState<ProjectImportItem[]>([]);
+    const [importError, setImportError] = useState<string | null>(null);
+    const [isImportingProjects, setIsImportingProjects] = useState(false);
+    const importInputRef = useRef<HTMLInputElement | null>(null);
     const createEmptyTemplateForm = (): TemplateFormState => ({
         name: '',
         description: '',
@@ -663,13 +714,22 @@ export const ProjectsList: React.FC = () => {
     });
 
     const [templateForm, setTemplateForm] = useState<TemplateFormState>(createEmptyTemplateForm);
+    const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
 
-    const currentUser = auth.currentUser;
     const { can, hasPermission, isOwner } = useWorkspacePermissions();
-    const { showSuccess, showError } = useToast();
+    const { showSuccess, showError, showInfo } = useToast();
     const confirm = useConfirm();
     const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
     const canManageTemplates = hasPermission('tenant.settings.edit') || can('canManageWorkspace') || isOwner;
+    const [overviewLayoutResetComplete, setOverviewLayoutResetComplete] = useState(false);
+    const overviewLayoutResetRunningRef = useRef(false);
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            setAuthUserId(user?.uid ?? null);
+        });
+        return () => unsubscribe();
+    }, []);
 
     const projectLayoutOptions: SelectOption[] = useMemo(() => ([
         { value: TEMPLATE_SOURCE_DEFAULT, label: t('projects.templates.form.base.core') },
@@ -704,6 +764,294 @@ export const ProjectsList: React.FC = () => {
             t(`projectOverview.layout.cards.${card.id}.title`)
         ))
     );
+
+    const resetImportState = () => {
+        setImportFile(null);
+        setImportProjects([]);
+        setImportError(null);
+        if (importInputRef.current) {
+            importInputRef.current.value = '';
+        }
+    };
+
+    const normalizeStatus = (value: unknown): Project['status'] | null => {
+        if (typeof value !== 'string') return null;
+        const normalized = value.trim().toLowerCase();
+        return PROJECT_STATUS_ORDER.find((status) => status.toLowerCase() === normalized) || null;
+    };
+
+    const normalizeProjectState = (value: unknown): Project['projectState'] | undefined => {
+        if (typeof value !== 'string') return undefined;
+        const normalized = value.trim().toLowerCase();
+        return PROJECT_STATE_OPTIONS.find((state) => state.toLowerCase() === normalized);
+    };
+
+    const normalizeModules = (value: unknown): ProjectModule[] | undefined => {
+        if (!Array.isArray(value)) return undefined;
+        const modules = value
+            .map((entry) => (typeof entry === 'string' ? entry.trim().toLowerCase() : ''))
+            .map((entry) => PROJECT_MODULE_OPTIONS.find((option) => option.toLowerCase() === entry))
+            .filter((entry): entry is ProjectModule => Boolean(entry));
+        return modules.length ? modules : undefined;
+    };
+
+    const normalizeLinks = (value: unknown): ProjectImportItem['links'] => {
+        if (!Array.isArray(value)) return undefined;
+        const links = value
+            .map((entry) => {
+                if (!entry || typeof entry !== 'object') return null;
+                const data = entry as Record<string, unknown>;
+                const title = typeof data.title === 'string' ? data.title.trim() : '';
+                const url = typeof data.url === 'string' ? data.url.trim() : '';
+                if (!title || !url) return null;
+                return { title, url };
+            })
+            .filter((entry): entry is { title: string; url: string } => Boolean(entry));
+        return links.length ? links : undefined;
+    };
+
+    const normalizeResources = (value: unknown): ProjectImportItem['externalResources'] => {
+        if (!Array.isArray(value)) return undefined;
+        const resources = value
+            .map((entry) => {
+                if (!entry || typeof entry !== 'object') return null;
+                const data = entry as Record<string, unknown>;
+                const title = typeof data.title === 'string' ? data.title.trim() : '';
+                const url = typeof data.url === 'string' ? data.url.trim() : '';
+                const icon = typeof data.icon === 'string' ? data.icon.trim() : '';
+                if (!title || !url) return null;
+                return icon ? { title, url, icon } : { title, url };
+            })
+            .filter((entry): entry is { title: string; url: string; icon?: string } => Boolean(entry));
+        return resources.length ? resources : undefined;
+    };
+
+    const normalizeScreenshots = (value: unknown): string[] | undefined => {
+        if (!Array.isArray(value)) return undefined;
+        const screenshots = value
+            .map((entry) => (typeof entry === 'string' ? entry.trim() : ''))
+            .filter(Boolean);
+        return screenshots.length ? screenshots : undefined;
+    };
+
+    const normalizeDate = (value: unknown, field: 'startDate' | 'dueDate', index: number) => {
+        if (typeof value !== 'string') return undefined;
+        const trimmed = value.trim();
+        if (!trimmed) return undefined;
+        if (Number.isNaN(Date.parse(trimmed))) {
+            const fieldLabel = t(`projects.import.fields.${field}`);
+            throw new Error(
+                t('projects.import.errors.invalidDate')
+                    .replace('{index}', String(index + 1))
+                    .replace('{field}', fieldLabel)
+            );
+        }
+        return trimmed;
+    };
+
+    const parseImportFile = async (file: File) => {
+        const content = await file.text();
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(content);
+        } catch {
+            throw new Error(t('projects.import.errors.invalidJson'));
+        }
+
+        const entries = Array.isArray(parsed)
+            ? parsed
+            : (parsed && typeof parsed === 'object' && 'projects' in parsed)
+                ? (parsed as { projects?: unknown }).projects
+                : null;
+
+        if (!Array.isArray(entries)) {
+            throw new Error(t('projects.import.errors.invalidFormat'));
+        }
+
+        if (entries.length === 0) {
+            throw new Error(t('projects.import.errors.empty'));
+        }
+
+        return entries.map((entry, index) => {
+            if (!entry || typeof entry !== 'object') {
+                throw new Error(t('projects.import.errors.invalidEntry').replace('{index}', String(index + 1)));
+            }
+
+            const data = entry as Record<string, unknown>;
+            const title = typeof data.title === 'string' ? data.title.trim() : '';
+            if (!title) {
+                throw new Error(t('projects.import.errors.missingTitle').replace('{index}', String(index + 1)));
+            }
+
+            const status = normalizeStatus(data.status);
+            if (data.status !== undefined && !status) {
+                throw new Error(
+                    t('projects.import.errors.invalidStatus')
+                        .replace('{index}', String(index + 1))
+                        .replace('{status}', String(data.status))
+                );
+            }
+
+            const projectState = normalizeProjectState(data.projectState);
+            if (data.projectState !== undefined && !projectState) {
+                throw new Error(
+                    t('projects.import.errors.invalidProjectState')
+                        .replace('{index}', String(index + 1))
+                        .replace('{state}', String(data.projectState))
+                );
+            }
+
+            const description = typeof data.description === 'string' ? data.description.trim() : '';
+
+            return {
+                title,
+                description: description || '',
+                status: status || 'Planning',
+                dueDate: normalizeDate(data.dueDate, 'dueDate', index),
+                startDate: normalizeDate(data.startDate, 'startDate', index),
+                priority: typeof data.priority === 'string' ? data.priority.trim() : undefined,
+                isPrivate: typeof data.isPrivate === 'boolean' ? data.isPrivate : undefined,
+                links: normalizeLinks(data.links),
+                externalResources: normalizeResources(data.externalResources),
+                modules: normalizeModules(data.modules),
+                projectState,
+                coverImage: typeof data.coverImage === 'string' ? data.coverImage.trim() : undefined,
+                squareIcon: typeof data.squareIcon === 'string' ? data.squareIcon.trim() : undefined,
+                screenshots: normalizeScreenshots(data.screenshots)
+            } satisfies ProjectImportItem;
+        });
+    };
+
+    const handleImportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        setImportFile(file);
+        setImportError(null);
+
+        if (!file.name.toLowerCase().endsWith('.json')) {
+            setImportProjects([]);
+            setImportError(t('projects.import.errors.invalidType'));
+            return;
+        }
+
+        try {
+            const parsedProjects = await parseImportFile(file);
+            setImportProjects(parsedProjects);
+            setImportError(null);
+        } catch (error) {
+            setImportProjects([]);
+            setImportError(error instanceof Error ? error.message : t('projects.import.errors.failed'));
+        }
+    };
+
+    const handleImportProjects = async () => {
+        if (!importFile) {
+            showError(t('projects.import.errors.noFile'));
+            return;
+        }
+
+        if (importError) {
+            showError(importError);
+            return;
+        }
+
+        if (importProjects.length === 0) {
+            showError(t('projects.import.errors.empty'));
+            return;
+        }
+
+        const tenantId = getActiveTenantId();
+        if (!tenantId) {
+            showError(t('projects.import.errors.noTenant'));
+            return;
+        }
+
+        setIsImportingProjects(true);
+        let successCount = 0;
+        let failedCount = 0;
+        const sanitizeProjectData = (data: Partial<Project>) => (
+            Object.entries(data).reduce((acc, [key, value]) => {
+                if (value !== undefined) {
+                    acc[key] = value;
+                }
+                return acc;
+            }, {} as Partial<Project>)
+        );
+
+        for (const project of importProjects) {
+            try {
+                const projectData = sanitizeProjectData({
+                    title: project.title,
+                    description: project.description || '',
+                    status: project.status || 'Planning',
+                    dueDate: project.dueDate,
+                    startDate: project.startDate,
+                    priority: project.priority,
+                    isPrivate: project.isPrivate,
+                    links: project.links,
+                    externalResources: project.externalResources,
+                    modules: project.modules,
+                    projectState: project.projectState
+                });
+                await createProject(
+                    projectData,
+                    project.coverImage,
+                    project.squareIcon,
+                    project.screenshots,
+                    [],
+                    tenantId
+                );
+                successCount += 1;
+            } catch (error) {
+                failedCount += 1;
+                console.error('Failed to import project', project.title, error);
+            }
+        }
+
+        if (successCount > 0) {
+            showSuccess(t('projects.import.toast.success').replace('{count}', String(successCount)));
+        }
+
+        if (failedCount > 0) {
+            const messageKey = successCount > 0
+                ? 'projects.import.toast.partial'
+                : 'projects.import.toast.failed';
+            showError(
+                t(messageKey)
+                    .replace('{success}', String(successCount))
+                    .replace('{failed}', String(failedCount))
+            );
+        }
+
+        if (successCount > 0 && failedCount === 0) {
+            setImportModalOpen(false);
+            resetImportState();
+        }
+
+        try {
+            const refreshedProjects = await getAllWorkspaceProjects();
+            setProjects(refreshedProjects);
+        } catch (error) {
+            console.error('Failed to refresh projects after import', error);
+        } finally {
+            setIsImportingProjects(false);
+        }
+    };
+
+    const handleOpenImportModal = () => {
+        resetImportState();
+        setImportModalOpen(true);
+    };
+
+    const handleCloseImportModal = () => {
+        if (isImportingProjects) return;
+        setImportModalOpen(false);
+        resetImportState();
+    };
+
+    const handleDownloadImportExample = () => {
+        void downloadFile(PROJECT_IMPORT_EXAMPLE_URL, 'project-import-example.json');
+    };
 
     // Fetch Tenant Data for Focus Project
     useEffect(() => {
@@ -944,6 +1292,7 @@ export const ProjectsList: React.FC = () => {
 
     const isLayoutEqual = (a?: ProjectOverviewLayout, b?: ProjectOverviewLayout) => {
         if (!a || !b) return false;
+        if ((a.layoutVersion || 0) !== (b.layoutVersion || 0)) return false;
         if (a.templateId !== b.templateId) return false;
         if (a.cards.length !== b.cards.length) return false;
         for (let i = 0; i < a.cards.length; i += 1) {
@@ -952,6 +1301,7 @@ export const ProjectsList: React.FC = () => {
             if (cardA.id !== cardB.id) return false;
             if (cardA.enabled !== cardB.enabled) return false;
             if (cardA.span !== cardB.span) return false;
+            if (cardA.placement !== cardB.placement) return false;
         }
         return true;
     };
@@ -999,6 +1349,57 @@ export const ProjectsList: React.FC = () => {
         applyUpdates();
     }, [autoApplyTemplate, canManageTemplates, projects]);
 
+    useEffect(() => {
+        if (!canManageTemplates || overviewLayoutResetComplete) return;
+        if (overviewLayoutResetRunningRef.current) return;
+        if (projects.length === 0) return;
+        const tenantId = getActiveTenantId();
+        if (!tenantId) return;
+
+        const migrationFlagKey = `pf-overview-layout-reset-2026-02-11:${tenantId}`;
+        if (localStorage.getItem(migrationFlagKey) === 'done') {
+            setOverviewLayoutResetComplete(true);
+            return;
+        }
+
+        let cancelled = false;
+        overviewLayoutResetRunningRef.current = true;
+
+        const applyLayoutReset = async () => {
+            try {
+                const changedProjects = await resetWorkspaceOverviewLayoutsToDefault(tenantId);
+                if (cancelled) return;
+
+                if (changedProjects.length > 0) {
+                    setProjects((prev) => prev.map((project) => {
+                        const changed = changedProjects.find((item) => item.id === project.id);
+                        return changed ? { ...project, overviewLayout: changed.overviewLayout } : project;
+                    }));
+                    showInfo(
+                        t('projects.templates.toast.layoutReset')
+                            .replace('{count}', String(changedProjects.length))
+                    );
+                }
+
+                localStorage.setItem(migrationFlagKey, 'done');
+            } catch (error) {
+                console.error('Failed to reset project overview layouts', error);
+                showError(t('projects.templates.toast.layoutResetFailed'));
+            } finally {
+                if (!cancelled) {
+                    setOverviewLayoutResetComplete(true);
+                }
+                overviewLayoutResetRunningRef.current = false;
+            }
+        };
+
+        void applyLayoutReset();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [canManageTemplates, overviewLayoutResetComplete, projects, showError, showInfo, t]);
+
     const handleSetFocus = async (projectId: string) => {
         const tid = getActiveTenantId();
         if (tid) {
@@ -1018,8 +1419,20 @@ export const ProjectsList: React.FC = () => {
     };
 
     useEffect(() => {
+        if (!authUserId) {
+            setProjects([]);
+            setTasks([]);
+            setIdeas([]);
+            setIssues([]);
+            setMilestones([]);
+            setSprints([]);
+            setLoading(false);
+            return;
+        }
+
         let mounted = true;
         const load = async () => {
+            setLoading(true);
             try {
                 const [allProjects, allTasks, allIdeas, allIssues] = await Promise.all([
                     getAllWorkspaceProjects(),
@@ -1042,7 +1455,7 @@ export const ProjectsList: React.FC = () => {
         load();
 
         // Subscribe to all milestones and sprints in the workspace for current tenant
-        const activeTenantId = getActiveTenantId();
+        const activeTenantId = getActiveTenantId() || authUserId;
         if (activeTenantId) {
             const milestonesQuery = query(collectionGroup(db, 'milestones'), where('tenantId', '==', activeTenantId));
             const sprintsQuery = query(collectionGroup(db, 'sprints'), where('tenantId', '==', activeTenantId));
@@ -1062,7 +1475,7 @@ export const ProjectsList: React.FC = () => {
         }
 
         return () => { mounted = false; };
-    }, []);
+    }, [authUserId]);
 
     // Helper to get metrics for a project
     const getMetrics = (projectId: string): ProjectMetrics => {
@@ -1076,14 +1489,14 @@ export const ProjectsList: React.FC = () => {
     };
 
     const filteredProjects = useMemo(() => {
-        if (!currentUser) return [];
+        if (!authUserId) return [];
         return projects.filter(p => {
-            const isMember = !p.isPrivate || p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid);
+            const isMember = !p.isPrivate || p.ownerId === authUserId || (p.memberIds || []).includes(authUserId);
             if (!isMember) return false;
             if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
             return true;
         }).sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
-    }, [projects, currentUser, search]);
+    }, [projects, authUserId, search]);
 
     const activeList = useMemo(() =>
         filteredProjects.filter(p => p.status === 'Active'),
@@ -1244,6 +1657,38 @@ export const ProjectsList: React.FC = () => {
     }, [filteredProjects]);
 
     const activeWorkCount = useMemo(() => filteredProjects.filter(p => p.status === 'Active').length, [filteredProjects]);
+    const projectWorkbenchCards = useMemo(() => [
+        {
+            key: 'focus',
+            label: t('projects.workbench.focus.label'),
+            value: spotlightProject?.title || t('projects.workbench.focus.empty'),
+            detail: spotlightProject
+                ? t('projects.workbench.focus.detail')
+                : t('projects.workbench.focus.emptyDetail'),
+            link: spotlightProject ? `/project/${spotlightProject.id}` : '/create',
+            action: t('projects.workbench.focus.action')
+        },
+        {
+            key: 'risk',
+            label: t('projects.workbench.risk.label'),
+            value: `${criticalCount + warningCount}`,
+            detail: criticalCount > 0
+                ? t('projects.workbench.risk.detail').replace('{count}', String(criticalCount))
+                : t('projects.workbench.risk.clear'),
+            link: '/tasks',
+            action: t('projects.workbench.risk.action')
+        },
+        {
+            key: 'backlog',
+            label: t('projects.workbench.backlog.label'),
+            value: `${inactiveList.length}`,
+            detail: inactiveList.length > 0
+                ? t('projects.workbench.backlog.detail').replace('{count}', String(inactiveList.length))
+                : t('projects.workbench.backlog.clear'),
+            link: '/team',
+            action: t('projects.workbench.backlog.action')
+        }
+    ], [criticalCount, inactiveList.length, spotlightProject, t, warningCount]);
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
 
@@ -1275,6 +1720,20 @@ export const ProjectsList: React.FC = () => {
                 </div>
             </div>
 
+            <div className="projects-workbench">
+                {projectWorkbenchCards.map((card) => (
+                    <Card key={card.key} padding="md" className="projects-workbench-card">
+                        <div className="projects-workbench-card__label">{card.label}</div>
+                        <div className="projects-workbench-card__value">{card.value}</div>
+                        <p className="projects-workbench-card__detail">{card.detail}</p>
+                        <Link to={card.link} className="projects-workbench-card__link">
+                            {card.action}
+                            <span className="material-symbols-outlined">arrow_forward</span>
+                        </Link>
+                    </Card>
+                ))}
+            </div>
+
             {/* Toolbar: Search & Actions */}
             <div className="projects-toolbar">
                 <div className="search-pill">
@@ -1294,6 +1753,15 @@ export const ProjectsList: React.FC = () => {
                             onClick={() => openTemplateEditor()}
                         >
                             {t('projects.templates.button')}
+                        </Button>
+                    )}
+                    {can('canCreateProjects') && (
+                        <Button
+                            variant="secondary"
+                            icon={<span className="material-symbols-outlined">upload</span>}
+                            onClick={handleOpenImportModal}
+                        >
+                            {t('projects.import.button')}
                         </Button>
                     )}
                     {can('canCreateProjects') && (
@@ -1623,6 +2091,91 @@ export const ProjectsList: React.FC = () => {
                             </div>
                         </section>
                     </div>
+                </div>
+            </Modal>
+
+            <Modal
+                isOpen={importModalOpen}
+                onClose={handleCloseImportModal}
+                title={t('projects.import.modal.title')}
+                closeOnOutsideClick={!isImportingProjects}
+                footer={(
+                    <div className="project-import__footer">
+                        <Button variant="ghost" onClick={handleCloseImportModal} disabled={isImportingProjects}>
+                            {t('projects.import.modal.cancel')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={handleImportProjects}
+                            isLoading={isImportingProjects}
+                            disabled={isImportingProjects || !importFile || Boolean(importError) || importProjects.length === 0}
+                        >
+                            {isImportingProjects ? t('projects.import.modal.importing') : t('projects.import.modal.import')}
+                        </Button>
+                    </div>
+                )}
+            >
+                <div className="project-import">
+                    <p className="project-import__subtitle">{t('projects.import.modal.subtitle')}</p>
+
+                    <div className="project-import__example">
+                        <span className="project-import__example-label">{t('projects.import.modal.exampleLabel')}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<span className="material-symbols-outlined">download</span>}
+                            onClick={handleDownloadImportExample}
+                        >
+                            {t('projects.import.modal.exampleButton')}
+                        </Button>
+                    </div>
+
+                    <div
+                        className={`project-import__dropzone ${importError ? 'has-error' : ''}`.trim()}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => importInputRef.current?.click()}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                importInputRef.current?.click();
+                            }
+                        }}
+                    >
+                        <input
+                            ref={importInputRef}
+                            type="file"
+                            accept=".json,application/json"
+                            className="project-import__file-input"
+                            onChange={handleImportFileChange}
+                            disabled={isImportingProjects}
+                        />
+                        <span className="material-symbols-outlined">upload_file</span>
+                        <div className="project-import__dropzone-text">
+                            <span className="project-import__dropzone-title">
+                                {importFile
+                                    ? t('projects.import.modal.fileSelected').replace('{name}', importFile.name)
+                                    : t('projects.import.modal.fileLabel')}
+                            </span>
+                            <span className="project-import__dropzone-subtitle">
+                                {t('projects.import.modal.fileHint')}
+                            </span>
+                        </div>
+                    </div>
+
+                    {importProjects.length > 0 && (
+                        <div className="project-import__summary">
+                            {t('projects.import.modal.projectCount').replace('{count}', String(importProjects.length))}
+                        </div>
+                    )}
+
+                    {importError && (
+                        <div className="project-import__error">{importError}</div>
+                    )}
+
+                    <p className="project-import__format-hint">
+                        {t('projects.import.modal.formatHint')}
+                    </p>
                 </div>
             </Modal>
 

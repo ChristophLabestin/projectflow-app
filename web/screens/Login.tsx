@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/dataService';
+import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/domain/authService';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
@@ -10,7 +10,8 @@ import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import './login.scss';
 
 export const Login = () => {
-    const { t } = useLanguage();
+    const { t, authScreenTranslationsReady, loadAuthScreenTranslations } = useLanguage();
+    const isSignupEnabled = import.meta.env.VITE_AUDIT_SIGNUP_ENABLED !== 'false';
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -26,7 +27,15 @@ export const Login = () => {
     const [searchParams] = useSearchParams();
 
     // Get redirect URL from query param OR from location.state
-    const redirectUrl = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '/';
+    const requestedRedirect = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '';
+    const redirectUrl = requestedRedirect || '/';
+    const inviteTenantId = (location.state as any)?.inviteTenantId || getActiveTenantId();
+    const hasRedirectContext = requestedRedirect !== '' && requestedRedirect !== location.pathname;
+    const passkeyAvailable = authScreenTranslationsReady && !isRegister && !showMfaStep && shouldAutoPrompt();
+
+    useEffect(() => {
+        void loadAuthScreenTranslations();
+    }, [loadAuthScreenTranslations]);
 
     useEffect(() => {
         // If already logged in AND we have a redirect that isn't the current page, redirect now
@@ -36,13 +45,15 @@ export const Login = () => {
     }, [auth.currentUser, redirectUrl]);
 
     useEffect(() => {
-        const inviteTenant = (location.state as any)?.inviteTenantId || getActiveTenantId();
         const isRegisterMode = location.pathname.endsWith('/register') || searchParams.get('mode') === 'register';
 
-        if (inviteTenant || searchParams.get('redirect') || isRegisterMode) {
+        if (inviteTenantId || isRegisterMode) {
             setIsRegister(true);
+            return;
         }
-    }, [location.state, searchParams, location.pathname]);
+
+        setIsRegister(false);
+    }, [inviteTenantId, location.state, searchParams, location.pathname]);
 
     const handleAuthSuccess = async () => {
         // If we have a complex redirect URL (with search params), we need to extract the path and search
@@ -66,6 +77,9 @@ export const Login = () => {
 
         try {
             if (isRegister) {
+                if (!isSignupEnabled) {
+                    throw new Error(t('login.warning.registrationDisabled'));
+                }
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 if (name) await updateProfile(userCredential.user, { displayName: name });
                 const inviteTenant = (location.state as any)?.inviteTenantId;
@@ -165,10 +179,25 @@ export const Login = () => {
     // Auto-prompt effect
     useEffect(() => {
         // Only auto-prompt if checking for login, not register, and not already redirected
-        if (!isRegister && !auth.currentUser && !showMfaStep && shouldAutoPrompt()) {
+        if (authScreenTranslationsReady && !isRegister && !auth.currentUser && !showMfaStep && shouldAutoPrompt()) {
             handlePasskeySignIn(true);
         }
-    }, [isRegister]); // Run once on mount/mode switch if conditions met
+    }, [authScreenTranslationsReady, isRegister, showMfaStep]); // Run once on mount/mode switch if conditions met
+
+    if (!authScreenTranslationsReady) {
+        return (
+            <div className="login-page">
+                <div className="login-page__panel">
+                    <div className="login-page__panel-inner">
+                        <div className="login-page__heading">
+                            <h2 className="login-page__title">Loading sign-in...</h2>
+                            <p className="login-page__subtitle">Please wait while we prepare the authentication screen.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="login-page">
@@ -221,6 +250,27 @@ export const Login = () => {
                 <div className="login-page__panel-inner">
                     {!showMfaStep ? (
                         <>
+                            {inviteTenantId && (
+                                <div className="login-page__notice">
+                                    <span className="material-symbols-outlined">group_add</span>
+                                    <span>{t('login.notice.inviteWorkspace')}</span>
+                                </div>
+                            )}
+
+                            {!inviteTenantId && hasRedirectContext && !isRegister && (
+                                <div className="login-page__notice">
+                                    <span className="material-symbols-outlined">subdirectory_arrow_right</span>
+                                    <span>{t('login.notice.redirectContinue')}</span>
+                                </div>
+                            )}
+
+                            {passkeyAvailable && (
+                                <div className="login-page__notice">
+                                    <span className="material-symbols-outlined">fingerprint</span>
+                                    <span>{t('login.notice.passkeyReady')}</span>
+                                </div>
+                            )}
+
                             <div className="login-page__heading">
                                 <h2 className="login-page__title">
                                     {isRegister ? t('login.heading.register') : t('login.heading.login')}
@@ -236,7 +286,7 @@ export const Login = () => {
                                     <span>{t('login.warning.preBeta')}</span>
                                 </div>
 
-                                {isRegister && (
+                                {isRegister && !isSignupEnabled && (
                                     <div className="login-page__notice login-page__notice--danger">
                                         <span className="material-symbols-outlined">block</span>
                                         <span>{t('login.warning.registrationDisabled')}</span>
@@ -249,7 +299,7 @@ export const Login = () => {
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder={t('login.placeholder.fullName')}
-                                        disabled
+                                        disabled={!isSignupEnabled}
                                     />
                                 )}
                                 <TextInput
@@ -258,7 +308,7 @@ export const Login = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder={t('login.placeholder.email')}
-                                    disabled={isRegister}
+                                    disabled={isRegister && !isSignupEnabled}
                                 />
                                 <TextInput
                                     label={t('login.label.password')}
@@ -266,7 +316,7 @@ export const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder={t('login.placeholder.password')}
-                                    disabled={isRegister}
+                                    disabled={isRegister && !isSignupEnabled}
                                 />
 
                                 {error && (
@@ -276,7 +326,12 @@ export const Login = () => {
                                     </div>
                                 )}
 
-                                <Button type="submit" isLoading={isLoading} className="login-page__primary" disabled={isRegister || isLoading}>
+                                <Button
+                                    type="submit"
+                                    isLoading={isLoading}
+                                    className="login-page__primary"
+                                    disabled={isLoading || (isRegister && !isSignupEnabled)}
+                                >
                                     {isRegister ? t('login.action.createAccount') : t('login.action.signIn')}
                                 </Button>
                             </form>
@@ -321,47 +376,47 @@ export const Login = () => {
                         </div>
                     )}
 
-                    <div className="login-page__divider">{t('login.divider.orContinue')}</div>
-
                     {!isRegister && (
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            className="login-page__primary"
-                            onClick={handlePasskeySignIn}
-                            disabled={isLoading}
-                            icon={<span className="material-symbols-outlined">fingerprint</span>}
-                        >
-                            {t('passkey.login.action')}
-                        </Button>
-                    )}
+                        <>
+                            <div className="login-page__divider">{t('login.divider.orContinue')}</div>
 
-                    {!isRegister && (
-                        <div className="login-page__social-grid">
                             <Button
                                 type="button"
                                 variant="secondary"
-                                className="login-page__social-button"
-                                onClick={handleGoogleSignIn}
-                                icon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" className="login-page__social-icon" alt={t('login.social.google')} />}
+                                className="login-page__primary"
+                                onClick={handlePasskeySignIn}
+                                disabled={isLoading}
+                                icon={<span className="material-symbols-outlined">fingerprint</span>}
                             >
-                                {t('login.social.google')}
+                                {t('passkey.login.action')}
                             </Button>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                className="login-page__social-button"
-                                onClick={handleGithubSignIn}
-                                icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
-                            >
-                                {t('login.social.github')}
-                            </Button>
-                        </div>
+
+                            <div className="login-page__social-grid">
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="login-page__social-button"
+                                    onClick={handleGoogleSignIn}
+                                    icon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" className="login-page__social-icon" alt={t('login.social.google')} />}
+                                >
+                                    {t('login.social.google')}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="login-page__social-button"
+                                    onClick={handleGithubSignIn}
+                                    icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
+                                >
+                                    {t('login.social.github')}
+                                </Button>
+                            </div>
+                        </>
                     )}
 
                     <p className="login-page__toggle">
                         {isRegister ? t('login.toggle.hasAccount') : t('login.toggle.newToProjectFlow')}
-                        <button onClick={() => { setIsRegister(!isRegister); setError(''); }}>
+                        <button type="button" onClick={() => { setIsRegister(!isRegister); setError(''); }}>
                             {isRegister ? t('login.toggle.logIn') : t('login.toggle.createAccount')}
                         </button>
                     </p>

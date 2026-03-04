@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth } from '../../services/firebase';
-import { getUserProfile, updateUserOnboardingStatus } from '../../services/dataService';
+import { updateUserOnboardingStatus } from '../../services/dataService';
+import { getUserProfile } from '../../services/domain/usersService';
 
 type UseOnboardingTourOptions = {
     storageKey?: string;

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import '../src/styles/components/_project-activity.scss';
 import { format } from 'date-fns';
 import { getProjectActivity } from '../services/dataService';
 import { Activity } from '../types';

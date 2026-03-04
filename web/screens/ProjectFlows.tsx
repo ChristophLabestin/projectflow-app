@@ -1,6 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { deleteIdea, subscribeProjectIdeas, getProjectTasks, getProjectById, updateIdea } from '../services/dataService';
+import '../src/styles/components/_project-flows.scss';
+import { deleteIdea, updateIdea, subscribeProjectIdeas } from '../services/domain/ideasService';
+import { getProjectById } from '../services/domain/projectsService';
+import { getProjectTasks } from '../services/domain/tasksService';
 import { generateProjectIdeasAI } from '../services/geminiService';
 import { Idea, Project, Task } from '../types';
 import { Button } from '../components/common/Button/Button';

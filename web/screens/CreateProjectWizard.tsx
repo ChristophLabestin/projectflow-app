@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
-import { createProject, getWorkspaceMembers, createMilestone, addTask, getUserProfile, linkWithGithub, updateUserData, getWorkspaceGroups } from '../services/dataService';
+import { createMilestone, linkWithGithub } from '../services/dataService';
+import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
+import { getWorkspaceGroups } from '../services/domain/workspaceGroupsService';
+import { createProject } from '../services/domain/projectAdminService';
+import { getUserProfile, updateUserData } from '../services/domain/usersService';
+import { addTask } from '../services/domain/tasksService';
 import { fetchUserRepositories, GithubRepo } from '../services/githubService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';

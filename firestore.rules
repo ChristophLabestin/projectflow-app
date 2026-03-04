@@ -2,148 +2,230 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
     function authed() {
       return request.auth != null;
     }
-    
+
     function isOwner(tenantId) {
       return authed() && request.auth.uid == tenantId;
     }
-    
-    // Check if user is a member of the tenant (using members subcollection)
-    function isTenantMember(tenantId) {
-      return authed() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
+
+    function tenantExists(tenantId) {
+      return exists(/databases/$(database)/documents/tenants/$(tenantId));
     }
-    
+
+    function isTenantMember(tenantId) {
+      return authed() &&
+        exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
+    }
+
     function canAccessTenant(tenantId) {
       return isOwner(tenantId) || isTenantMember(tenantId);
     }
-    
-    // Check if user is a member of a specific project (supports external users)
+
     function isProjectMember(projectData) {
       return authed() && (
         projectData.ownerId == request.auth.uid ||
-        request.auth.uid in projectData.memberIds
+        (
+          ('memberIds' in projectData) &&
+          request.auth.uid in projectData.memberIds
+        )
       );
     }
 
-    // --- Public Collections (no auth required) ---
-    match /waitlist/{email} { 
-      allow read, write: if true; 
-    }
-    match /newsletter/{email} { 
-      allow read, write: if true; 
-    }
-    match /contact_submissions/{doc} { 
-      allow create: if true; 
-    }
-    match /blog_posts/{post} { 
-      allow read: if true; 
-    }
-    match /news/{doc} { 
-      allow read: if true; 
+    function projectExists(tenantId, projectId) {
+      return exists(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId));
     }
 
-    // --- Top-level Users Collection (global user profiles) ---
+    function projectData(tenantId, projectId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data;
+    }
+
+    function canAccessProjectById(tenantId, projectId) {
+      return canAccessTenant(tenantId) ||
+        (
+          projectExists(tenantId, projectId) &&
+          isProjectMember(projectData(tenantId, projectId))
+        );
+    }
+
+    function canAccessScopedDoc(data) {
+      return authed() && (
+        (('tenantId' in data) && canAccessTenant(data.tenantId)) ||
+        (
+          ('tenantId' in data) &&
+          ('projectId' in data) &&
+          canAccessProjectById(data.tenantId, data.projectId)
+        ) ||
+        (('ownerId' in data) && data.ownerId == request.auth.uid) ||
+        (('createdBy' in data) && data.createdBy == request.auth.uid) ||
+        (('userId' in data) && data.userId == request.auth.uid)
+      );
+    }
+
+    function canSelfCreateMembership(tenantId, userId) {
+      return authed() &&
+        tenantExists(tenantId) &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == request.auth.uid &&
+        (
+          !('role' in request.resource.data) ||
+          request.resource.data.role == 'Member'
+        );
+    }
+
+    function canSelfUpdateMembership(userId) {
+      return authed() &&
+        request.auth.uid == userId &&
+        request.resource.data.uid == resource.data.uid &&
+        request.resource.data.role == resource.data.role;
+    }
+
+    // Public marketing intake. These remain write-only from clients.
+    match /waitlist/{email} {
+      allow create: if true;
+    }
+
+    match /newsletter/{email} {
+      allow create: if true;
+    }
+
+    match /contact_submissions/{doc} {
+      allow create: if true;
+    }
+
+    match /blog_posts/{post} {
+      allow read: if true;
+    }
+
+    match /news/{doc} {
+      allow read: if true;
+    }
+
+    // Global user profiles
     match /users/{userId} {
-      // Users can read/write their own profile
-      allow read, write: if authed() && request.auth.uid == userId;
-      // Any authenticated user can read profiles (for team lists, @mentions, etc.)
       allow read: if authed();
+      allow write: if authed() && request.auth.uid == userId;
     }
 
-    // --- Tenant Rules ---
     match /tenants/{tenantId} {
-      // Owner or member can read tenant
       allow read: if canAccessTenant(tenantId);
-      // Only owner can write tenant doc
-      allow write: if isOwner(tenantId);
+      allow create, update, delete: if isOwner(tenantId);
 
-      // Members subcollection (workspace membership)
       match /members/{userId} {
-        // Tenant members can read all memberships
         allow read: if canAccessTenant(tenantId);
-        // Owner can manage all memberships
-        allow write: if isOwner(tenantId);
-        // Users can write their own membership (for joining)
-        allow write: if authed() && request.auth.uid == userId;
+        allow create: if isOwner(tenantId) || canSelfCreateMembership(tenantId, userId);
+        allow update: if isOwner(tenantId) || canSelfUpdateMembership(userId);
+        allow delete: if isOwner(tenantId) || (authed() && request.auth.uid == userId);
       }
-      
-      // Presence subcollection
+
       match /presence/{presenceId} {
         allow read, write: if canAccessTenant(tenantId);
       }
-      
-      // Invite links - public read
+
+      match /secrets/{secretId} {
+        allow read, write: if false;
+      }
+
+      match /api_tokens/{tokenId} {
+        allow read, write: if false;
+      }
+
+      match /entitlements/{docId} {
+        allow read: if canAccessTenant(tenantId);
+        allow write: if isOwner(tenantId);
+      }
+
       match /invite_links/{linkId} {
         allow read: if true;
-        allow write: if isOwner(tenantId);
+        allow create, update, delete: if isOwner(tenantId);
       }
+
       match /inviteLinks/{linkId} {
         allow read: if true;
-        allow write: if isOwner(tenantId);
+        allow create, update, delete: if isOwner(tenantId);
       }
 
-      // Projects within tenant
       match /projects/{projectId} {
-        // Tenant members OR project members (including external) can access
-        allow read: if canAccessTenant(tenantId) || isProjectMember(resource.data);
-        // Write requires tenant membership OR being project owner/member
-        allow write: if canAccessTenant(tenantId) || isProjectMember(resource.data);
+        allow read: if canAccessProjectById(tenantId, projectId);
+        allow create: if canAccessTenant(tenantId);
+        allow update, delete: if canAccessProjectById(tenantId, projectId);
 
-        // All project subcollections (tasks, issues, ideas, etc.)
-        match /{subcollection}/{docId} {
-          // Allow if user can access tenant OR is in project's memberIds
-          allow read, write: if canAccessTenant(tenantId) || 
-            isProjectMember(get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data);
-          
-          match /{nestedCollection}/{nestedDocId} {
-            allow read, write: if canAccessTenant(tenantId) ||
-              isProjectMember(get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data);
-          }
+        match /{document=**} {
+          allow read, write: if canAccessProjectById(tenantId, projectId);
         }
       }
-      
-      // Catch-all for OTHER tenant subcollections (notifications, groups, etc.)
+
+      // User-owned tenant data (for example personal tasks)
+      match /users/{userId}/{document=**} {
+        allow read, write: if authed() && request.auth.uid == userId && canAccessTenant(tenantId);
+      }
+
+      // Other direct tenant-scoped collections (notifications, groups, api tokens, etc.)
       match /{subcollection}/{docId} {
-        allow read, write: if canAccessTenant(tenantId);
+        allow read, write: if canAccessTenant(tenantId) &&
+          !(
+            subcollection in [
+              'members',
+              'presence',
+              'secrets',
+              'entitlements',
+              'invite_links',
+              'inviteLinks',
+              'projects',
+              'users',
+              'api_tokens'
+            ]
+          );
       }
     }
 
-    // --- CollectionGroup queries ---
-    // Projects (for getSharedProjects - external users finding their projects)
+    // Collection group access for project discovery
     match /{path=**}/projects/{projectId} {
-      allow read: if authed() && (
-        resource.data.ownerId == request.auth.uid ||
-        request.auth.uid in resource.data.memberIds
-      );
-    }
-    
-    // Tasks - allow if user is in memberIds of parent project
-    match /{path=**}/tasks/{taskId} {
-      allow read: if authed();
-    }
-    
-    // Ideas
-    match /{path=**}/ideas/{ideaId} {
-      allow read: if authed();
+      allow read: if canAccessScopedDoc(resource.data) || isProjectMember(resource.data);
     }
 
-    // --- Social Collections (any authenticated user) ---
+    match /{path=**}/tasks/{taskId} {
+      allow read: if canAccessScopedDoc(resource.data);
+    }
+
+    match /{path=**}/ideas/{ideaId} {
+      allow read: if canAccessScopedDoc(resource.data);
+    }
+
+    match /{path=**}/issues/{issueId} {
+      allow read: if canAccessScopedDoc(resource.data);
+    }
+
+    // Legacy top-level social collections. New writes should be project-scoped.
     match /social_campaigns/{docId} {
-       allow read, write: if authed();
+      allow read: if canAccessScopedDoc(resource.data);
+      allow create: if canAccessScopedDoc(request.resource.data);
+      allow update, delete: if canAccessScopedDoc(resource.data);
     }
-    match /social_posts/{docId} { 
-       allow read, write: if authed();
+
+    match /social_posts/{docId} {
+      allow read: if canAccessScopedDoc(resource.data);
+      allow create: if canAccessScopedDoc(request.resource.data);
+      allow update, delete: if canAccessScopedDoc(resource.data);
     }
-    match /social_assets/{docId} { 
-       allow read, write: if authed();
+
+    match /social_assets/{docId} {
+      allow read: if canAccessScopedDoc(resource.data);
+      allow create: if canAccessScopedDoc(request.resource.data);
+      allow update, delete: if canAccessScopedDoc(resource.data);
     }
-    
-    // --- Fallback for any unmatched paths (authenticated only) ---
-    match /{document=**} {
-      allow read, write: if authed();
+
+    match /caption_presets/{docId} {
+      allow read: if canAccessScopedDoc(resource.data);
+      allow create: if canAccessScopedDoc(request.resource.data);
+      allow update, delete: if canAccessScopedDoc(resource.data);
+    }
+
+    match /social_strategy/{docId} {
+      allow read: if canAccessScopedDoc(resource.data);
+      allow create: if canAccessScopedDoc(request.resource.data);
+      allow update, delete: if canAccessScopedDoc(resource.data);
     }
   }
 }

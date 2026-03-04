@@ -13,12 +13,16 @@ export const ProjectInviteLanding = () => {
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenantId');
     const navigate = useNavigate();
-    const { t } = useLanguage();
+    const { t, projectInviteTranslationsReady, loadProjectInviteTranslations } = useLanguage();
     const [status, setStatus] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
 
     useEffect(() => {
+        void loadProjectInviteTranslations();
+    }, [loadProjectInviteTranslations]);
+
+    useEffect(() => {
         const tryJoin = async () => {
-            if (!projectId || !tenantId || !auth.currentUser) return;
+            if (!projectId || !tenantId || !auth.currentUser || !projectInviteTranslationsReady) return;
             try {
                 setStatus({ tone: 'info', message: t('projectInvite.status.joinWorkspace') });
                 // Join as Guest first to prevent default 'Member' role
@@ -38,7 +42,7 @@ export const ProjectInviteLanding = () => {
             }
         };
         tryJoin();
-    }, [projectId, tenantId, navigate, t]);
+    }, [projectId, tenantId, navigate, projectInviteTranslationsReady, t]);
 
     const handleAccept = () => {
         if (!tenantId) return;
@@ -48,7 +52,15 @@ export const ProjectInviteLanding = () => {
     };
 
     if (!projectId || !tenantId) {
-        return <div className="invite-landing">{t('projectInvite.error.invalidLink')}</div>;
+        return (
+            <div className="invite-landing">
+                {projectInviteTranslationsReady ? t('projectInvite.error.invalidLink') : 'Invalid project invite link.'}
+            </div>
+        );
+    }
+
+    if (!projectInviteTranslationsReady) {
+        return <div className="invite-landing">Loading invite...</div>;
     }
 
     return (

@@ -7,12 +7,11 @@ import { TextInput } from '../common/Input/TextInput';
 import {
     updateMemberRole,
     removeMember,
-    generateInviteLink,
-    getProjectInviteLinks,
-    revokeProjectInviteLink,
-    getUserProfile,
-    resolveTenantId
 } from '../../services/dataService';
+import { generateInviteLink } from '../../services/domain/projectAdminService';
+import { resolveActiveTenantId } from '../../services/domain/authService';
+import { getUserProfile } from '../../services/domain/usersService';
+import { getProjectInviteLinks, revokeProjectInviteLink } from '../../services/domain/inviteLinksService';
 import { auth, db } from '../../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useConfirm, useToast } from '../../context/UIContext';
@@ -52,7 +51,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     useEffect(() => {
         if (!project.id) return;
 
-        const resolvedTenant = project.tenantId || resolveTenantId();
+        const resolvedTenant = project.tenantId || resolveActiveTenantId();
         const projectRef = doc(db, `tenants/${resolvedTenant}/projects`, project.id);
 
         const unsubscribe = onSnapshot(projectRef, async (snap) => {
@@ -195,8 +194,35 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
         return [{ value: inviteRole, label: `${inviteRole} (${legacySuffix})` }, ...baseRoleOptions];
     };
 
+    const summaryCards = [
+        {
+            key: 'members',
+            label: t('projectTeam.workbench.members'),
+            value: String(members.length)
+        },
+        {
+            key: 'invites',
+            label: t('projectTeam.workbench.invites'),
+            value: String(inviteLinks.length)
+        },
+        {
+            key: 'access',
+            label: t('projectTeam.workbench.access'),
+            value: canManage ? t('projectTeam.workbench.manage') : t('projectTeam.workbench.view')
+        }
+    ];
+
     return (
         <div className="project-team">
+            <div className="project-team__workbench">
+                {summaryCards.map((card) => (
+                    <div key={card.key} className="project-team__workbench-card">
+                        <span className="project-team__workbench-label">{card.label}</span>
+                        <span className="project-team__workbench-value">{card.value}</span>
+                    </div>
+                ))}
+            </div>
+
             {/* Team Members List */}
             <section className="project-team__section">
                 <div className="project-team__header">

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, Member, ProjectGroup } from '../types';
-import { addComment, subscribeComments, deleteComment, getProjectMembers, subscribeTenantUsers, getUserProfile, getMembersWithRole } from '../services/dataService';
+import { addComment, subscribeComments, deleteComment, subscribeTenantUsers, getMembersWithRole } from '../services/dataService';
+import { getProjectMembers } from '../services/domain/projectsService';
+import { getUserProfile } from '../services/domain/usersService';
 import { auth } from '../services/firebase';
 import { toMillis } from '../utils/time';
 import { Button } from './ui/Button';

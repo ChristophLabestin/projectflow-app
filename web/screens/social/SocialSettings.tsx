@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import {
-    subscribeIntegrations,
     connectIntegration,
+    deleteCaptionPreset,
     disconnectIntegration,
     subscribeCaptionPresets,
-    deleteCaptionPreset,
+    subscribeIntegrations,
     subscribeSocialStrategy,
-    updateSocialStrategy,
-    syncSocialStrategyPlatforms
-} from '../../services/dataService';
+    syncSocialStrategyPlatforms,
+    updateSocialStrategy
+} from '../../services/domain/socialSettingsService';
 import { SocialIntegration, SocialPlatform, CaptionPreset, SocialStrategy } from '../../types';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';

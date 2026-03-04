@@ -38,16 +38,17 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
+- [x] `/finance` — Tenant finance tracking (transactions + recurring, filters, chart, permissions)
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
 - [x] `/create` — Create Project Wizard (SCSS refactor, common inputs/buttons/selects, preview + assets panels aligned)
-- [ ] `/team` — Team / members management
-- [ ] `/media` — Media library
-- [ ] `/profile` — User profile
+- [x] `/team` — Team / members management
+- [x] `/media` — Media library
+- [x] `/profile` — User profile
 
 ### 2.2 Personal Tasks
 
-- [ ] `/personal-tasks` — Personal tasks list
-- [ ] `/personal-tasks/:taskId` — Personal task detail
+- [x] `/personal-tasks` — Personal tasks list
+- [x] `/personal-tasks/:taskId` — Personal task detail
 
 ---
 
@@ -76,7 +77,7 @@ Note: In the old routing, `ideas` reused the same components as `flows`.
 - [x] `/project/:id/flows` — Flow pipelines list (SCSS refactor, common components + i18n)
 - [~] `/project/:id/flows/:flowId` — Flow detail view (SCSS refactor in progress: product launch stage + analysis dashboard updated)
 - [x] `/project/:id/ideas` — Ideas list (alias/variant of flows) (SCSS refactor, common components + i18n)
-- [ ] `/project/:id/ideas/:flowId` — Idea detail view (shared detail component)
+- [x] `/project/:id/ideas/:flowId` — Idea detail view (shared detail component)
 
 ### 3.4 Issues
 
@@ -98,51 +99,51 @@ Some project areas require module access. Keep module routing grouped and consis
 
 #### 4.1.1 Social Module Shell (within project)
 
-- [ ] `/project/:id/social` (index) — Social dashboard
-- [ ] `/project/:id/social/campaigns` — Campaign list
-- [ ] `/project/:id/social/campaigns/create` — Create campaign
-- [ ] `/project/:id/social/campaigns/edit/:campaignId` — Edit campaign
-- [ ] `/project/:id/social/campaigns/:campaignId` — Campaign detail view
-- [ ] `/project/:id/social/review/:ideaId` — Social campaign review page
-- [ ] `/project/:id/social/posts` — Post list
-- [ ] `/project/:id/social/calendar` — Social calendar
-- [ ] `/project/:id/social/settings` — Social module settings
-- [ ] `/project/:id/social/assets` — Social assets library
+- [x] `/project/:id/social` (index) — Social dashboard
+- [x] `/project/:id/social/campaigns` — Campaign list
+- [x] `/project/:id/social/campaigns/create` — Create campaign
+- [x] `/project/:id/social/campaigns/edit/:campaignId` — Edit campaign
+- [x] `/project/:id/social/campaigns/:campaignId` — Campaign detail view
+- [x] `/project/:id/social/review/:ideaId` — Social campaign review page
+- [x] `/project/:id/social/posts` — Post list
+- [x] `/project/:id/social/calendar` — Social calendar
+- [x] `/project/:id/social/settings` — Social module settings
+- [x] `/project/:id/social/assets` — Social assets library
 
 #### 4.1.2 Social Standalone Routes (still under project)
 
 These are outside the Social module shell in the old routing.
 
-- [ ] `/project/:id/social/create` — Create social post
-- [ ] `/project/:id/social/edit/:postId` — Edit social post
-- [ ] `/project/:id/social/approvals` — Approvals queue
-- [ ] `/project/:id/social/archive` — Social post archive
+- [x] `/project/:id/social/create` — Create social post
+- [x] `/project/:id/social/edit/:postId` — Edit social post
+- [x] `/project/:id/social/approvals` — Approvals queue
+- [x] `/project/:id/social/archive` — Social post archive
 
 ### 4.2 Marketing Module (module: `marketing`)
 
-- [ ] `/project/:id/marketing` (index) — Marketing dashboard
-- [ ] `/project/:id/marketing/ads` — Paid ads list
-- [ ] `/project/:id/marketing/ads/create` — Create ad campaign
-- [ ] `/project/:id/marketing/ads/:campaignId` — Ad campaign detail
-- [ ] `/project/:id/marketing/ads/:campaignId/edit` — Edit ad campaign
-- [ ] `/project/:id/marketing/email` — Email marketing list
-- [ ] `/project/:id/marketing/email/create` — Create email
-- [ ] `/project/:id/marketing/email/builder` — Email builder
-- [ ] `/project/:id/marketing/recipients` — Recipients list
-- [ ] `/project/:id/marketing/blog` — Blog list
-- [ ] `/project/:id/marketing/blog/create` — Create blog post
-- [ ] `/project/:id/marketing/blog/:blogId` — Edit blog post
-- [ ] `/project/:id/marketing/settings` — Marketing settings
+- [x] `/project/:id/marketing` (index) — Marketing dashboard
+- [x] `/project/:id/marketing/ads` — Paid ads list
+- [x] `/project/:id/marketing/ads/create` — Create ad campaign
+- [x] `/project/:id/marketing/ads/:campaignId` — Ad campaign detail
+- [x] `/project/:id/marketing/ads/:campaignId/edit` — Edit ad campaign
+- [x] `/project/:id/marketing/email` — Email marketing list
+- [x] `/project/:id/marketing/email/create` — Create email
+- [x] `/project/:id/marketing/email/builder` — Email builder
+- [x] `/project/:id/marketing/recipients` — Recipients list
+- [x] `/project/:id/marketing/blog` — Blog list
+- [x] `/project/:id/marketing/blog/create` — Create blog post
+- [x] `/project/:id/marketing/blog/:blogId` — Edit blog post
+- [x] `/project/:id/marketing/settings` — Marketing settings
 
 ### 4.3 Accounting Module (module: `accounting`)
 
-- [ ] `/project/:id/accounting` — Accounting placeholder / module entry
+- [x] `/project/:id/accounting` — Accounting placeholder / module entry
 
 ---
 
 ## 5) Error & Fallback Routes
 
-- [ ] `*` — Catch-all: redirects to `/`
+- [x] `*` — Catch-all: redirects to `/`
 - [x] Error boundary page — Rendered when route errors occur (global error handler) (SCSS + i18n pass)
 
 ---
@@ -204,4 +205,3 @@ These are outside the Social module shell in the old routing.
 - [x] Settings (sign out, basic account state)
 
 MVP exclusions: Social and Marketing modules, media library, and macOS-specific UI. The macOS variant is planned after the iOS MVP.
-

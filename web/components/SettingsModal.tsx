@@ -7,7 +7,6 @@ import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Textarea } from './ui/Textarea';
 import { useToast, useConfirm } from '../context/UIContext';
-import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken, updateUserData } from '../services/dataService';
 import { auth, functions, db } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { Tenant, AIUsage, APITokenPermission } from '../types';
@@ -25,7 +24,7 @@ import {
     sendEmailVerification
 } from 'firebase/auth';
 import { format } from 'date-fns';
-import { getUserProfile, linkWithGithub, resetUserOnboarding } from '../services/dataService';
+import { linkWithGithub, resetUserOnboarding } from '../services/dataService';
 import { registerPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from './ui/Checkbox';
 import { AnimatePresence } from 'framer-motion';
@@ -33,6 +32,16 @@ import { Modal } from './ui/Modal';
 import { RoleManagement } from './settings/RoleManagement';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
+import { getActiveTenantId } from '../services/domain/authService';
+import {
+    createWorkspaceApiToken,
+    deleteWorkspaceApiToken,
+    getWorkspaceSmtpConfig,
+    listWorkspaceApiTokens,
+    saveWorkspaceSmtpConfig
+} from '../services/domain/adminSettingsService';
+import { getTenant, updateTenant } from '../services/domain/workspaceService';
+import { getAIUsage, getUserProfile, updateUserData } from '../services/domain/usersService';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta';
 
@@ -44,7 +53,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab = 'account' }) => {
     const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
-    const { language, setLanguage, dateFormat, setDateFormat, t } = useLanguage();
+    const { language, setLanguage, dateFormat, setDateFormat, t, settingsTranslationsReady, loadSettingsTranslations } = useLanguage();
     const [tenant, setTenant] = useState<Partial<Tenant>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -112,8 +121,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         if (isOpen) {
             // Reset state or reload when opened if needed
             setActiveTab(initialTab);
+            void loadSettingsTranslations();
         }
-    }, [isOpen, initialTab]);
+    }, [initialTab, isOpen, loadSettingsTranslations]);
 
     useEffect(() => {
         // Reset verification status when credentials change from saved values
@@ -317,7 +327,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const saveVerifiedStatus = async (verified: boolean) => {
         const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
         if (!id) return;
-        await updateTenantSecret(id, 'smtp', {
+        await saveWorkspaceSmtpConfig(id, {
             host: smtpHost,
             port: smtpPort,
             user: smtpUser,
@@ -343,16 +353,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                     setDescription(data.description || '');
                     setWebsite(data.website || '');
                     setContactEmail(data.contactEmail || '');
-                    if (data.smtpConfig) {
-                        setSmtpHost(data.smtpConfig.host || '');
-                        setSmtpPort(data.smtpConfig.port || 587);
-                        setSmtpUser(data.smtpConfig.user || '');
-                        setSmtpPass(data.smtpConfig.pass || '');
-                        setUseCustomSmtp(data.smtpConfig.useCustom || false);
-                        setSmtpFromEmail(data.smtpConfig.fromEmail || '');
-                    }
 
-                    const smtpSecret = await getTenantSecret(id, 'smtp');
+                    const smtpSecret = await getWorkspaceSmtpConfig(id);
                     if (smtpSecret) {
                         setSmtpHost(smtpSecret.host || '');
                         setSmtpPort(smtpSecret.port || 587);
@@ -407,7 +409,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         const loadAPITokens = async () => {
             setLoadingTokens(true);
             try {
-                const tokens = await getAPITokens();
+                const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+                if (!id) return;
+                const tokens = await listWorkspaceApiTokens(id);
                 setApiTokens(tokens);
             } catch (error) {
                 console.error('Failed to load API tokens', error);
@@ -419,7 +423,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         if (isOpen && activeTab === 'api') {
             loadAPITokens();
         }
-    }, [isOpen, activeTab]);
+    }, [isOpen, activeTab, tenantId]);
 
     useEffect(() => {
         const loadPasskeys = async () => {
@@ -478,7 +482,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
         setCreatingToken(true);
         try {
-            const result = await createAPIToken(
+            const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            if (!id) {
+                throw new Error('Workspace not found');
+            }
+
+            const result = await createWorkspaceApiToken(
+                id,
                 newTokenName.trim(),
                 ['newsletter:write'] as APITokenPermission[]
             );
@@ -486,7 +496,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             setShowNewTokenModal(true);
             setNewTokenName('');
             // reload tokens
-            const tokens = await getAPITokens();
+            const tokens = await listWorkspaceApiTokens(id);
             setApiTokens(tokens);
         } catch (error: any) {
             console.error('Failed to create token', error);
@@ -504,9 +514,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         if (!confirmed) return;
 
         try {
-            await deleteAPIToken(tokenId);
+            const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            if (!id) {
+                throw new Error('Workspace not found');
+            }
+            await deleteWorkspaceApiToken(id, tokenId);
             showSuccess(t('settings.api.toast.deleted'));
-            const tokens = await getAPITokens();
+            const tokens = await listWorkspaceApiTokens(id);
             setApiTokens(tokens);
         } catch (error) {
             showError(t('settings.api.errors.deleteFailed'));
@@ -534,7 +548,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 contactEmail
             });
 
-            await updateTenantSecret(tenantId, 'smtp', {
+            await saveWorkspaceSmtpConfig(tenantId, {
                 host: smtpHost,
                 port: smtpPort,
                 user: smtpUser,
@@ -1243,34 +1257,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
     return (
         <React.Fragment>
-            <Modal isOpen={isOpen} onClose={onClose} title={t('settings.title') || 'Settings'} size="4xl">
-                <div className="flex h-[80vh] -m-6">
-                    {/* Sidebar */}
-                    <div className="w-64 shrink-0 bg-surface-hover/50 border-r border-surface p-4 flex flex-col gap-1 overflow-y-auto">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`
-                                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                                    ${activeTab === tab.id
-                                        ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
-                                        : 'text-muted hover:bg-surface-hover hover:text-main'}
-                                `}
-                            >
-                                <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
-                                {tab.label}
-                            </button>
-                        ))}
+            <Modal isOpen={isOpen} onClose={onClose} title={settingsTranslationsReady ? (t('settings.title') || 'Settings') : 'Settings'} size="4xl">
+                {isOpen && !settingsTranslationsReady ? (
+                    <div className="flex h-[80vh] items-center justify-center">
+                        <span className="material-symbols-outlined animate-spin text-3xl text-muted">progress_activity</span>
                     </div>
+                ) : (
+                    <div className="flex h-[80vh] -m-6">
+                        {/* Sidebar */}
+                        <div className="w-64 shrink-0 bg-surface-hover/50 border-r border-surface p-4 flex flex-col gap-1 overflow-y-auto">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`
+                                        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                                        ${activeTab === tab.id
+                                            ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
+                                            : 'text-muted hover:bg-surface-hover hover:text-main'}
+                                    `}
+                                >
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
+                                    {tab.label}
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* Content Area */}
-                    <div className="flex-1 flex flex-col min-w-0 bg-surface">
-                        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
-                            {renderContent()}
+                        {/* Content Area */}
+                        <div className="flex-1 flex flex-col min-w-0 bg-surface">
+                            <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
+                                {renderContent()}
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
             </Modal>
 
             {/* Generated Token Modal */}

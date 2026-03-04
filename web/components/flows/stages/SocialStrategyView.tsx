@@ -3,7 +3,8 @@ import { Button } from '../../common/Button/Button';
 import { Card } from '../../common/Card/Card';
 import { Select } from '../../common/Select/Select';
 import { TextArea } from '../../common/Input/TextArea';
-import { subscribeSocialStrategy, subscribeCampaigns } from '../../../services/dataService';
+import { subscribeCampaigns } from '../../../services/domain/socialService';
+import { subscribeSocialStrategy } from '../../../services/domain/socialSettingsService';
 import { SocialStrategy as SocialStrategyType, Idea, SocialPlatform, SocialCampaign } from '../../../types';
 import {
     generateSocialStrategyAI,

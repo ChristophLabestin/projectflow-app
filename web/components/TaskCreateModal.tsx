@@ -2,7 +2,8 @@
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
-import { addTask, getProjectCategories, getProjectTasks, createSubTask } from '../services/dataService';
+import { getProjectCategories } from '../services/dataService';
+import { addTask, createSubTask, getProjectTasks } from '../services/domain/tasksService';
 import { IdeaGroup, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
 import { Button } from './common/Button/Button';
@@ -182,7 +183,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
 
     return createPortal(
         <div
-            className="modal-overlay task-modal"
+            className="modal-overlay modal-overlay--open task-modal"
             onClick={onClose}
         >
             <div
@@ -373,8 +374,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
 
                         {/* Add new subtask */}
                         <div className="add-subtask-row">
-                            <span className="material-symbols-outlined subtask-add-icon">add</span>
-                            <input
+                            <TextInput
                                 type="text"
                                 value={newSubtask}
                                 onChange={handleSubtaskChange}
@@ -385,6 +385,8 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                     }
                                 }}
                                 placeholder={t('taskCreate.subtasks.placeholder')}
+                                leftElement={<span className="material-symbols-outlined subtask-add-icon">add</span>}
+                                className="task-create__subtask-input"
                             />
                             {newSubtask && (
                                 <button
@@ -475,4 +477,3 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         document.body
     );
 };
-

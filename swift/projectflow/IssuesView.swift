@@ -23,91 +23,125 @@ struct IssuesView: View {
     private var selectedTenantId: String? {
         selectedProject?.tenantId ?? tenantStore.activeTenantId
     }
+    
+    private var issuesStats: (active: Int, resolved: Int, urgent: Int, progress: Double) {
+        let issues = issuesStore.issues
+        let total = issues.count
+        let resolved = issues.filter { $0.status == "Resolved" || $0.status == "Closed" }.count
+        let active = total - resolved
+        let urgent = issues.filter { $0.priority == "Urgent" && !($0.status == "Resolved" || $0.status == "Closed") }.count
+        let progress = total > 0 ? Double(resolved) / Double(total) : 0.0
+        return (active, resolved, urgent, progress)
+    }
 
     var body: some View {
-        let base = AnyView(ScrollView { content })
-        let withBackground = AnyView(base.background(colors.surfaceBg.ignoresSafeArea()))
-        let withAppear = AnyView(withBackground.onAppear {
+        NavigationStack {
+            ZStack {
+                AppBackground()
+                
+                ScrollView {
+                    content
+                }
+            }
+            .navigationTitle("Issues")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        beginCreate()
+                    } label: {
+                        Image(systemName: "plus")
+                            .foregroundStyle(colors.textMain)
+                    }
+                    .disabled(selectedProjectId == nil || issuesStore.isLoading)
+                }
+            }
+            .sheet(isPresented: $showingEditor) {
+                IssueEditorView(
+                    isEditing: editingIssue != nil,
+                    title: $draftTitle,
+                    description: $draftDescription,
+                    status: $draftStatus,
+                    priority: $draftPriority
+                ) {
+                    await saveIssue()
+                } onCancel: {
+                    showingEditor = false
+                }
+            }
+            .confirmationDialog(
+                "Delete Issue?",
+                isPresented: Binding(
+                    get: { deletingIssue != nil },
+                    set: { if !$0 { deletingIssue = nil } }
+                ),
+                titleVisibility: SwiftUI.Visibility.visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    guard let issue = deletingIssue else { return }
+                    _Concurrency.Task {
+                        await deleteIssue(issue)
+                        deletingIssue = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    deletingIssue = nil
+                }
+            } message: {
+                Text("This will permanently remove the issue.")
+            }
+        }
+        .onAppear {
             tenantStore.update(for: session.user)
             pinnedTasksStore.start()
-        })
-        let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
+        }
+        .onDisappear {
+            issuesStore.stop()
+            projectsStore.stop()
+            tenantStore.stop()
+            pinnedTasksStore.stop()
+        }
+        .onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
-        })
-        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
+        }
+        .onChange(of: tenantStore.activeTenantId) { _, tenantId in
             if let tenantId {
                 projectsStore.start(tenantId: tenantId)
             } else {
                 projectsStore.stop()
             }
-        })
-        let withProjectsChange = AnyView(withTenantChange.onChange(of: projectsStore.projects.map(\.id)) { _, _ in
+        }
+        .onChange(of: projectsStore.projects.map(\.id)) { _, _ in
             if selectedProjectId == nil {
                 selectedProjectId = projectsStore.projects.first?.id
             }
-        })
-        let withProjectSelection = AnyView(withProjectsChange.onChange(of: selectedProjectId) { _, projectId in
+        }
+        .onChange(of: selectedProjectId) { _, projectId in
             guard let tenantId = selectedTenantId, let projectId else {
                 issuesStore.stop()
                 return
             }
             issuesStore.start(tenantId: tenantId, projectId: projectId)
-        })
-        let withDisappear = AnyView(withProjectSelection.onDisappear {
-            issuesStore.stop()
-            projectsStore.stop()
-            tenantStore.stop()
-            pinnedTasksStore.stop()
-        })
-        let withSheet = AnyView(withDisappear.sheet(isPresented: $showingEditor) {
-            IssueEditorView(
-                isEditing: editingIssue != nil,
-                title: $draftTitle,
-                description: $draftDescription,
-                status: $draftStatus,
-                priority: $draftPriority
-            ) {
-                await saveIssue()
-            } onCancel: {
-                showingEditor = false
-            }
-        })
-        let withDialog = AnyView(withSheet.confirmationDialog(
-            "Delete Issue?",
-            isPresented: Binding(
-                get: { deletingIssue != nil },
-                set: { if !$0 { deletingIssue = nil } }
-            ),
-            titleVisibility: SwiftUI.Visibility.visible
-        ) {
-            Button("Delete", role: .destructive) {
-                guard let issue = deletingIssue else { return }
-                _Concurrency.Task {
-                    await deleteIssue(issue)
-                    deletingIssue = nil
-                }
-            }
-            Button("Cancel", role: .cancel) {
-                deletingIssue = nil
-            }
-        } message: {
-            Text("This will permanently remove the issue.")
-        })
-
-        return withDialog
+        }
     }
 
     private var content: some View {
-        AnyView(
-            VStack(alignment: .leading, spacing: PFSpacing.lg) {
-                headerSection
-                projectPicker
-                loadingSection
-                errorSection
-                listSection
-            }
-            .padding(PFSpacing.lg)
-        )
+        VStack(alignment: .leading, spacing: PFSpacing.lg) {
+            headerStatsSection
+            projectPicker
+            loadingSection
+            errorSection
+            listSection
+        }
+        .padding(PFSpacing.lg)
+    }
+    
+    private var headerStatsSection: some View {
+        let stats = issuesStats
+        return LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: PFSpacing.md) {
+            DashboardStatCard(stat: DashboardStat(title: "Active", value: "\(stats.active)", detail: "Open Issues", icon: "bug", tint: colors.primary))
+            DashboardStatCard(stat: DashboardStat(title: "Resolved", value: "\(stats.resolved)", detail: "\(Int(stats.progress * 100))% Done", icon: "checkmark.circle", tint: colors.success))
+            DashboardStatCard(stat: DashboardStat(title: "Urgent", value: "\(stats.urgent)", detail: "Needs Attention", icon: "exclamationmark.triangle", tint: colors.error))
+        }
     }
 
     private var headerSection: some View {

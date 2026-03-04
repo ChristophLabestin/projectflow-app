@@ -71,6 +71,36 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
 
+#### ↳ 📂 **`transactions`**
+**Path:** `/tenants/{tenantId}/transactions/{transactionId}`
+**Schema:** `Transaction`
+- `tenantId`: string
+- `userId`: string
+- `type`: "income" | "expense"
+- `date`: Timestamp
+- `category`: string
+- `amount`: number
+- `notes`: string
+- `isRecurring`: boolean
+- `recurringId`: string (Optional reference to recurring entry)
+- `createdAt`: Timestamp
+- `updatedAt`: Timestamp
+
+#### ↳ 📂 **`recurringTransactions`**
+**Path:** `/tenants/{tenantId}/recurringTransactions/{recurringId}`
+**Schema:** `RecurringTransaction`
+- `tenantId`: string
+- `userId`: string
+- `type`: "income" | "expense"
+- `frequency`: "daily" | "weekly" | "monthly" | "yearly"
+- `startDate`: Timestamp
+- `endDate`: Timestamp (Optional)
+- `category`: string
+- `amount`: number
+- `notes`: string
+- `createdAt`: Timestamp
+- `updatedAt`: Timestamp
+
 #### ↳ 📂 **`projects`**
 **Path:** `/tenants/{tenantId}/projects/{projectId}`
 **Schema:** `Project`

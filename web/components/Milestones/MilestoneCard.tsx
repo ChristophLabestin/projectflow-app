@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Milestone } from '../../types';
-import { subscribeProjectMilestones } from '../../services/dataService';
+import { subscribeProjectMilestones } from '../../services/domain/projectMetaService';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
 

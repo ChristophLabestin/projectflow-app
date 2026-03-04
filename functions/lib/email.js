@@ -3,8 +3,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSystemEmailTemplate = exports.sendEmail = exports.testSMTPConnection = void 0;
 const functions = require("firebase-functions");
 const nodemailer = require("nodemailer");
+const init_1 = require("./init");
 const REGION = 'europe-west3'; // Frankfurt
 exports.testSMTPConnection = functions.region(REGION).https.onCall(async (data, context) => {
+    var _a;
+    if (!((_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid)) {
+        throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
+    }
     console.log('SMTP Test Connection initiated with data:', JSON.stringify(data));
     const { host, port, user, pass, secure } = data;
     if (!host || !user || !pass) {
@@ -40,34 +45,69 @@ exports.testSMTPConnection = functions.region(REGION).https.onCall(async (data, 
         };
     }
 });
-// Helper to create a reuseable transporter
-const createTransporter = () => {
-    // Ideally use functions.config() but for now use user provided as fallback or env
+const SYSTEM_FROM_EMAIL = 'no-reply@getprojectflow.com';
+const getTenantSmtpConfig = async (tenantId) => {
+    if (!tenantId) {
+        return null;
+    }
+    try {
+        const snap = await init_1.db.collection('tenants').doc(tenantId).collection('secrets').doc('smtp').get();
+        const data = snap.data();
+        if (!snap.exists || !(data === null || data === void 0 ? void 0 : data.useCustom) || !(data === null || data === void 0 ? void 0 : data.host) || !(data === null || data === void 0 ? void 0 : data.user) || !(data === null || data === void 0 ? void 0 : data.pass)) {
+            return null;
+        }
+        const port = parseInt(String(data.port || '587'), 10) || 587;
+        return {
+            host: data.host,
+            port,
+            secure: port === 465,
+            user: data.user,
+            pass: data.pass,
+            fromEmail: data.fromEmail || SYSTEM_FROM_EMAIL
+        };
+    }
+    catch (error) {
+        console.warn(`Failed to load tenant SMTP config for ${tenantId}`, error);
+        return null;
+    }
+};
+// Helper to create a reusable transporter
+const createTransporter = async (options) => {
+    const tenantSmtpConfig = await getTenantSmtpConfig(options === null || options === void 0 ? void 0 : options.tenantId);
     const host = process.env.SMTP_HOST || 'smtp.gmail.com';
     const port = parseInt(process.env.SMTP_PORT || '587');
     const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
-    // IMPORTANT: User must set this env var or config
     const pass = process.env.SMTP_PASS;
-    if (!pass) {
+    if (!tenantSmtpConfig && !pass) {
         console.warn("SMTP Password not set! Emails will fail.");
     }
-    return nodemailer.createTransport({
+    const config = tenantSmtpConfig || {
         host,
         port,
         secure: port === 465,
-        auth: {
-            user,
-            pass
-        },
-        tls: {
-            rejectUnauthorized: false
-        }
-    });
+        user,
+        pass
+    };
+    return {
+        transporter: nodemailer.createTransport({
+            host: config.host,
+            port: config.port,
+            secure: config.secure,
+            auth: {
+                user: config.user,
+                pass: config.pass
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        }),
+        fromEmail: (options === null || options === void 0 ? void 0 : options.fromEmail) || (tenantSmtpConfig === null || tenantSmtpConfig === void 0 ? void 0 : tenantSmtpConfig.fromEmail) || SYSTEM_FROM_EMAIL
+    };
 };
-const sendEmail = async (to, subject, html) => {
-    const transporter = createTransporter();
+const sendEmail = async (to, subject, html, options) => {
+    const { transporter, fromEmail } = await createTransporter(options);
     const mailOptions = {
-        from: '"ProjectFlow" <no-reply@getprojectflow.com>',
+        from: `"ProjectFlow" <${fromEmail}>`,
         to,
         subject,
         html

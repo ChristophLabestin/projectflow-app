@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getIdeaById, getSocialCampaign, createSocialCampaign, updateIdea, updateCampaign } from '../../services/dataService';
+import { createSocialCampaign, getSocialCampaign, updateCampaign } from '../../services/domain/socialService';
+import { getIdeaById, updateIdea } from '../../services/domain/ideasService';
 import { Idea, SocialCampaign } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';

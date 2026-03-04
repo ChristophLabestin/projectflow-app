@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { Idea, AdCreative, AdTargetAudience, AdObjective, AdCampaign, AdPlatform } from '../types';
 import { createAdCampaign } from '../services/marketingService';
-import { updateIdea } from '../services/dataService';
 import { auth } from '../services/firebase';
+import { updateIdea } from '../services/domain/ideasService';
 
 export interface AdData {
     objective?: AdObjective | string;

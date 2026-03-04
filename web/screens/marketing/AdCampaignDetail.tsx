@@ -7,7 +7,8 @@ import {
     deleteAdCampaign,
     getAdPerformanceHistory
 } from '../../services/marketingService';
-import { getIdeaById, getSocialPostById } from '../../services/dataService';
+import { getIdeaById } from '../../services/domain/ideasService';
+import { getSocialPostById } from '../../services/domain/socialService';
 import { AdCampaign, AdSet, Idea, SocialPost, AdPlatform, AdCampaignStatus } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/UIContext';
@@ -51,7 +52,7 @@ export const AdCampaignDetail = () => {
 
             // Load origin idea if linked
             if (data?.originIdeaId && projectId) {
-                const idea = await getIdeaById(projectId, data.originIdeaId);
+                const idea = await getIdeaById(data.originIdeaId, projectId);
                 setOriginIdea(idea);
             }
 

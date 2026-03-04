@@ -16,6 +16,32 @@ struct ProjectMetrics: Equatable {
     }
 }
 
+struct ProjectDeadlineItem: Equatable {
+    let title: String
+    let dueDate: Date
+    let type: String
+}
+
+struct ProjectWorkloadSummary: Equatable {
+    var urgentTasks: Int
+    var urgentIssues: Int
+    var overdueCount: Int
+    var dueSoonCount: Int
+    var nextDueItem: ProjectDeadlineItem?
+
+    static let empty = ProjectWorkloadSummary(
+        urgentTasks: 0,
+        urgentIssues: 0,
+        overdueCount: 0,
+        dueSoonCount: 0,
+        nextDueItem: nil
+    )
+
+    var hasSignals: Bool {
+        urgentTasks > 0 || urgentIssues > 0 || overdueCount > 0 || dueSoonCount > 0 || nextDueItem != nil
+    }
+}
+
 @MainActor
 final class ProjectInsightsStore: ObservableObject {
     @Published var metricsByProject: [String: ProjectMetrics] = [:]
@@ -33,7 +59,7 @@ final class ProjectInsightsStore: ObservableObject {
     private var sprintListener: ListenerRegistration?
     private var activityListener: ListenerRegistration?
     private var projects: [Project] = []
-    private var tasks: [Task] = []
+    private var tasks: [ProjectTask] = []
     private var flows: [Flow] = []
     private var issues: [Issue] = []
     private var milestones: [Milestone] = []
@@ -87,7 +113,7 @@ final class ProjectInsightsStore: ObservableObject {
                     refreshInsights()
                     return
                 }
-                tasks = snapshot?.documents.map { Task(id: $0.documentID, data: $0.data()) } ?? []
+                tasks = snapshot?.documents.map { ProjectTask(id: $0.documentID, data: $0.data()) } ?? []
                 didLoadTasks = true
                 refreshInsights()
             }
@@ -213,6 +239,74 @@ final class ProjectInsightsStore: ObservableObject {
         return HealthService.calculateProjectHealth(project: fallback)
     }
 
+    func activity(for projectId: String) -> [ActivityItem] {
+        activities
+            .filter { $0.projectId == projectId }
+            .sorted { left, right in
+                let leftDate = left.createdAt?.dateValue() ?? Date.distantPast
+                let rightDate = right.createdAt?.dateValue() ?? Date.distantPast
+                if leftDate != rightDate {
+                    return leftDate > rightDate
+                }
+                return left.id < right.id
+            }
+    }
+
+    func workloadSummary(for projectId: String) -> ProjectWorkloadSummary {
+        let openTasks = tasks.filter {
+            $0.projectId == projectId && !$0.isCompleted && $0.status != "Done"
+        }
+        let openIssues = issues.filter {
+            $0.projectId == projectId && $0.status != "Resolved" && $0.status != "Closed"
+        }
+
+        let urgentTasks = openTasks.filter { $0.priority == "Urgent" }.count
+        let urgentIssues = openIssues.filter { $0.priority == "Urgent" }.count
+
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let soonDate = calendar.date(byAdding: .day, value: 7, to: today) ?? today
+
+        var overdueCount = 0
+        var dueSoonCount = 0
+        var nextDueItem: ProjectDeadlineItem?
+
+        func considerDueItem(title: String, type: String, date: Date) {
+            let dueDay = calendar.startOfDay(for: date)
+            if dueDay < today {
+                overdueCount += 1
+            } else if dueDay <= soonDate {
+                dueSoonCount += 1
+            }
+
+            if let existing = nextDueItem {
+                if dueDay < calendar.startOfDay(for: existing.dueDate) {
+                    nextDueItem = ProjectDeadlineItem(title: title, dueDate: date, type: type)
+                }
+            } else {
+                nextDueItem = ProjectDeadlineItem(title: title, dueDate: date, type: type)
+            }
+        }
+
+        for task in openTasks {
+            guard let dueDate = Self.parseDate(task.dueDate) else { continue }
+            considerDueItem(title: task.title, type: "Task", date: dueDate)
+        }
+
+        for issue in openIssues {
+            guard let dueDate = Self.parseDate(issue.dueDate) else { continue }
+            considerDueItem(title: issue.title, type: "Issue", date: dueDate)
+        }
+
+        return ProjectWorkloadSummary(
+            urgentTasks: urgentTasks,
+            urgentIssues: urgentIssues,
+            overdueCount: overdueCount,
+            dueSoonCount: dueSoonCount,
+            nextDueItem: nextDueItem
+        )
+    }
+
     private func refreshInsights() {
         var metrics = [String: ProjectMetrics]()
 
@@ -274,22 +368,26 @@ final class ProjectInsightsStore: ObservableObject {
             )
         }
 
-        spotlightProjectId = Self.spotlightProjectId(
-            projects: projectIds,
-            projectsById: projectsById,
-            tasksByProject: tasksByProject,
-            milestonesByProject: milestonesByProject,
-            issuesByProject: issuesByProject,
-            sprintsByProject: sprintsByProject,
-            activitiesByProject: activitiesByProject
-        )
-        isLoading = !(didLoadProjects && didLoadTasks && didLoadFlows && didLoadIssues && didLoadMilestones && didLoadSprints && didLoadActivities)
+        let allLoaded = didLoadProjects && didLoadTasks && didLoadFlows && didLoadIssues && didLoadMilestones && didLoadSprints && didLoadActivities
+        
+        if allLoaded {
+            spotlightProjectId = Self.spotlightProjectId(
+                projects: projectIds,
+                projectsById: projectsById,
+                tasksByProject: tasksByProject,
+                milestonesByProject: milestonesByProject,
+                issuesByProject: issuesByProject,
+                sprintsByProject: sprintsByProject,
+                activitiesByProject: activitiesByProject
+            )
+        }
+        isLoading = !allLoaded
     }
 
     private static func spotlightProjectId(
         projects: Set<String>,
         projectsById: [String: Project],
-        tasksByProject: [String: [Task]],
+        tasksByProject: [String: [ProjectTask]],
         milestonesByProject: [String: [Milestone]],
         issuesByProject: [String: [Issue]],
         sprintsByProject: [String: [Sprint]],
@@ -315,5 +413,21 @@ final class ProjectInsightsStore: ObservableObject {
             }
             return left.id < right.id
         }.first?.id
+    }
+
+    private static func parseDate(_ value: String) -> Date? {
+        guard !value.isEmpty else { return nil }
+        let fractionalFormatter = ISO8601DateFormatter()
+        fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractionalFormatter.date(from: value) {
+            return date
+        }
+        let isoFormatter = ISO8601DateFormatter()
+        if let date = isoFormatter.date(from: value) {
+            return date
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: value)
     }
 }

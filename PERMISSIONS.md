@@ -239,6 +239,10 @@ New nodes must be added here with consistent naming.
 - `tenant.plan.view` — View subscription plan and entitlements
 - `tenant.plan.manage` — Change plan tier or plan settings (may be Owner-only by policy)
 
+### 8.4.1 Tenant — Finance
+- `tenant.finance.view` — View tenant finance tracking (income, expenses, recurring)
+- `tenant.finance.manage` — Create/edit/delete finance transactions and recurring items
+
 ### 8.5 Tenant — SSO (Organization tier)
 - `tenant.sso.view` — View SSO configuration status
 - `tenant.sso.configure` — Configure SSO provider settings
@@ -553,4 +557,3 @@ Decision: Store system roles explicitly except Member.
   - in tenant contexts: `tenant.media.*`
   - in project contexts: `project.media.*`
   - plus AI feature permissions (`ai.image.*`) and entitlements
-

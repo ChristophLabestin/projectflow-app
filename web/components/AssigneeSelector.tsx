@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { getProjectMembers, subscribeTenantUsers, getActiveTenantId } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getProjectMembers } from '../services/domain/projectsService';
+import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
 import { auth } from '../services/firebase';
 import { Select } from './ui/Select';
 

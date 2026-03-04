@@ -1,5 +1,9 @@
 ﻿import React, { useEffect, useState, useRef } from 'react';
-import { getProjectMembers, subscribeTenantUsers, getActiveTenantId } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
+import { getUserProfile } from '../services/domain/usersService';
+import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
+import { getProjectGroups } from '../services/projectGroupService';
 import { auth } from '../services/firebase';
 import { Input } from './ui/Input';
 import { useLanguage } from '../context/LanguageContext';
@@ -45,7 +49,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             if (mounted) setMembers(memberIds);
 
             // 2. Get the project to determine its tenant
-            const { getProjectById, getUserProfile } = await import('../services/dataService');
             const project = await getProjectById(projectId);
             const projectTenantId = project?.tenantId || getActiveTenantId() || auth.currentUser?.uid;
 
@@ -122,7 +125,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             }
 
             // 5. Fetch Project Groups
-            const { getProjectGroups } = await import('../services/projectGroupService');
             try {
                 const projectGroups = await getProjectGroups(projectId);
                 if (mounted) setGroups(projectGroups);
@@ -328,4 +330,3 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
         </div>
     );
 };
-

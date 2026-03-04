@@ -41,7 +41,7 @@ exports.onNotificationCreated = functions.region(REGION).firestore
                 </div>
             `;
         // 3. Send Email
-        await (0, email_1.sendEmail)(email, subject, html);
+        await (0, email_1.sendEmail)(email, subject, html, { tenantId: context.params.tenantId });
         console.log(`Email sent to ${email} for notification ${notificationId}`);
     }
     catch (error) {

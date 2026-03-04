@@ -22,10 +22,10 @@ import {
     createMindmap,
     updateIdea,
     saveIdea,
-    subscribeProjectTasks,
-    subscribeProjectIssues,
-    subscribeProjectMilestones,
 } from '../../services/dataService';
+import { subscribeProjectTasks } from '../../services/domain/tasksService';
+import { subscribeProjectIssues } from '../../services/domain/issuesService';
+import { subscribeProjectMilestones } from '../../services/domain/projectMetaService';
 import { db } from '../../services/firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { suggestMindmapGrouping } from '../../services/geminiService';
@@ -791,4 +791,3 @@ export function ProjectMindmap({ projectId, className }: ProjectMindmapProps) {
 }
 
 export default ProjectMindmap;
-

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
-import { EMAIL_TEMPLATES, getProjectTemplates } from '../../services/dataService';
+import { getProjectTemplates } from '../../services/domain/marketingTemplatesService';
 import { createEmailCampaign } from '../../services/marketingService';
 import { format } from 'date-fns';
 import { dateLocale } from '../../utils/activityHelpers';

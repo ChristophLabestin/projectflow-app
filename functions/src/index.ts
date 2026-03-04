@@ -15,6 +15,13 @@ import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
 import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
 import { getFacebookAuthUrl, facebookCallback } from './facebook';
+import {
+    createWorkspaceApiToken,
+    deleteWorkspaceApiToken,
+    getWorkspaceSmtpConfig,
+    listWorkspaceApiTokens,
+    saveWorkspaceSmtpConfig
+} from './workspace-admin';
 
 
 
@@ -49,8 +56,12 @@ export {
     dailyHealthSnapshots,
     debugHealthSnapshots,
     getFacebookAuthUrl,
-    facebookCallback
+    facebookCallback,
+    getWorkspaceSmtpConfig,
+    saveWorkspaceSmtpConfig,
+    listWorkspaceApiTokens,
+    createWorkspaceApiToken,
+    deleteWorkspaceApiToken
 };
 export * from './passkeys';
-
 

@@ -4,7 +4,9 @@ import { Button } from '../../common/Button/Button';
 import { Card } from '../../common/Card/Card';
 import { Modal } from '../../common/Modal/Modal';
 import { Idea, SocialCampaign, ApprovalEvent, RiskWinAnalysis } from '../../../types';
-import { getProjectMembers, getUserProfile, getSocialCampaign, updateCampaign } from '../../../services/dataService';
+import { getProjectMembers } from '../../../services/domain/projectsService';
+import { getSocialCampaign, updateCampaign } from '../../../services/domain/socialService';
+import { getUserProfile } from '../../../services/domain/usersService';
 import { generateRiskWinAnalysis } from '../../../services/geminiService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -99,7 +101,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
     const handleSaveTeam = () => {
         onUpdate({ assignedUserIds: tempAssignedIds });
         if (idea.convertedCampaignId && idea.projectId) {
-            updateCampaign(idea.projectId, idea.convertedCampaignId, { assignedUserIds: tempAssignedIds });
+            void updateCampaign(idea.projectId, idea.convertedCampaignId, { assignedUserIds: tempAssignedIds });
         }
         setIsTeamModalOpen(false);
     };

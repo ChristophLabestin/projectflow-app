@@ -83,9 +83,10 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
     // Task Modal Functions
     const openTaskCreateModal = useCallback((projectId?: string) => {
-        setTaskCreateProjectId(projectId || null);
+        const resolvedProjectId = projectId || pinnedProject?.id || null;
+        setTaskCreateProjectId(resolvedProjectId);
         setTaskCreateModalOpen(true);
-    }, []);
+    }, [pinnedProject]);
 
     const closeTaskCreateModal = useCallback(() => {
         setTaskCreateModalOpen(false);

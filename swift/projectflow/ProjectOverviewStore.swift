@@ -5,30 +5,52 @@ import FirebaseStorage
 
 @MainActor
 final class ProjectOverviewStore: ObservableObject {
-    @Published var tasks: [Task] = []
+    @Published var project: Project?
+    @Published var tasks: [ProjectTask] = []
     @Published var flows: [Flow] = []
     @Published var issues: [Issue] = []
     @Published var activity: [ActivityItem] = []
     @Published var milestones: [Milestone] = []
     @Published var sprints: [Sprint] = []
+    @Published var memberProfiles: [UserProfile] = []
+    @Published var healthHistory: [ProjectHealthSnapshotEntry] = []
+    @Published var pinnedReport: GeminiReport?
     @Published var coverImageURL: URL?
     @Published var projectIconURL: URL?
     @Published var isLoading = true
+    @Published var isGeneratingReport = false
 
     private let db = Firestore.firestore()
     private let taskRepository = TaskRepository()
     private let flowRepository = FlowRepository()
     private let issueRepository = IssueRepository()
+    private let geminiService = GeminiService.shared
+    
+    private var projectListener: ListenerRegistration?
     private var taskListener: ListenerRegistration?
     private var flowListener: ListenerRegistration?
     private var issueListener: ListenerRegistration?
     private var activityListener: ListenerRegistration?
     private var milestoneListener: ListenerRegistration?
     private var sprintListener: ListenerRegistration?
+    private var reportListener: ListenerRegistration?
+    private var healthListener: ListenerRegistration?
 
     func start(tenantId: String, projectId: String) {
         isLoading = true
         stop()
+
+        // Fetch Project for Members and General Info
+        projectListener = db.collection(FirestorePath.tenants)
+            .document(tenantId)
+            .collection(FirestorePath.projects)
+            .document(projectId)
+            .addSnapshotListener { [weak self] snapshot, _ in
+                guard let self, let data = snapshot?.data() else { return }
+                let fetchedProject = Project(id: projectId, data: data)
+                self.project = fetchedProject
+                fetchMemberProfiles(memberIds: fetchedProject.memberIds)
+            }
 
         taskListener = taskRepository.listenTasks(tenantId: tenantId, projectId: projectId) { [weak self] tasks in
             self?.tasks = tasks.sorted { left, right in
@@ -100,7 +122,114 @@ final class ProjectOverviewStore: ObservableObject {
             isLoading = false
         }
         
+        // Listen for health snapshots (last 30 days)
+        let healthRef = db.collection(FirestorePath.tenants)
+            .document(tenantId)
+            .collection(FirestorePath.projects)
+            .document(projectId)
+            .collection("healthSnapshots")
+            .order(by: "__name__", descending: true) // Document IDs are dates (YYYY-MM-DD)
+            .limit(to: 30)
+            
+        healthListener = healthRef.addSnapshotListener { [weak self] snapshot, _ in
+            guard let self = self else { return }
+            let entries = snapshot?.documents.compactMap { ProjectHealthSnapshotEntry(id: $0.documentID, data: $0.data()) } ?? []
+            self.healthHistory = entries.reversed() // Order by date ascending for charts
+        }
+        
+        // Listen for latest Gemini Report
+        let reportRef = db.collection(FirestorePath.tenants)
+            .document(tenantId)
+            .collection(FirestorePath.projects)
+            .document(projectId)
+            .collection("geminiReports")
+            .order(by: "createdAt", descending: true)
+            .limit(to: 1)
+            
+        reportListener = reportRef.addSnapshotListener { [weak self] snapshot, _ in
+            guard let self else { return }
+            if let doc = snapshot?.documents.first {
+                pinnedReport = GeminiReport(id: doc.documentID, data: doc.data())
+            } else {
+                pinnedReport = nil
+            }
+        }
+        
         fetchProjectAssets(tenantId: tenantId, projectId: projectId)
+    }
+
+    func toggleTask(tenantId: String, projectId: String, task: ProjectTask, permissions: PermissionContext) async {
+        do {
+            let nextStatus = !task.isCompleted
+            try await taskRepository.updateTask(
+                tenantId: tenantId,
+                projectId: projectId,
+                taskId: task.id,
+                updates: ["isCompleted": nextStatus, "status": nextStatus ? "Done" : "Open"],
+                permissions: permissions
+            )
+        } catch {
+            print("Failed to toggle task: \(error)")
+        }
+    }
+
+    func generateReport(tenantId: String, projectId: String, user: UserProfile) async {
+        guard let project = project else { return }
+        
+        isGeneratingReport = true
+        
+        do {
+            let prompt = geminiService.generateProjectReportPrompt(
+                project: project,
+                tasks: tasks,
+                milestones: milestones,
+                issues: issues,
+                flows: flows,
+                activity: activity,
+                members: project.members
+            )
+            
+            let result = try await geminiService.callGemini(prompt: prompt, temperature: 0.4)
+            
+            // Save report to Firestore
+            let reportData: [String: Any] = [
+                "projectId": projectId,
+                "content": result.text,
+                "createdAt": FieldValue.serverTimestamp(),
+                "createdBy": user.id,
+                "userName": user.displayName
+            ]
+            
+            try await db.collection(FirestorePath.tenants)
+                .document(tenantId)
+                .collection(FirestorePath.projects)
+                .document(projectId)
+                .collection("geminiReports")
+                .addDocument(data: reportData)
+                
+            // Activity log
+            let activityLog: [String: Any] = [
+                "projectId": projectId,
+                "user": user.displayName,
+                "action": "Generated project report",
+                "target": "CORA Report",
+                "details": result.text,
+                "type": "report",
+                "createdAt": FieldValue.serverTimestamp()
+            ]
+            
+            try await db.collection(FirestorePath.tenants)
+                .document(tenantId)
+                .collection(FirestorePath.projects)
+                .document(projectId)
+                .collection("activity")
+                .addDocument(data: activityLog)
+                
+        } catch {
+            print("Failed to generate report: \(error)")
+        }
+        
+        isGeneratingReport = false
     }
 
     private func fetchProjectAssets(tenantId: String, projectId: String) {
@@ -141,17 +270,40 @@ final class ProjectOverviewStore: ObservableObject {
     }
 
     func stop() {
+        projectListener?.remove()
         taskListener?.remove()
         flowListener?.remove()
         issueListener?.remove()
         activityListener?.remove()
         milestoneListener?.remove()
         sprintListener?.remove()
+        reportListener?.remove()
+        healthListener?.remove()
+        projectListener = nil
         taskListener = nil
         flowListener = nil
         issueListener = nil
         activityListener = nil
         milestoneListener = nil
         sprintListener = nil
+        reportListener = nil
+        healthListener = nil
+    }
+
+    private func fetchMemberProfiles(memberIds: [String]) {
+        guard !memberIds.isEmpty else {
+            self.memberProfiles = []
+            return
+        }
+
+        db.collection(FirestorePath.users)
+            .whereField(FieldPath.documentID(), in: memberIds)
+            .getDocuments { [weak self] snapshot, _ in
+                guard let self else { return }
+                let profiles = snapshot?.documents.map { UserProfile(id: $0.documentID, data: $0.data()) } ?? []
+                DispatchQueue.main.async {
+                    self.memberProfiles = profiles
+                }
+            }
     }
 }

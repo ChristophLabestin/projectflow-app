@@ -6,7 +6,7 @@ import { useConfirm, useToast } from '../../context/UIContext';
 
 import { ImageEditor } from './ImageEditor';
 import { generateAIImage, editAIImage } from '../../services/aiSearchService';
-import { getAIUsage } from '../../services/dataService';
+import { getAIUsage } from '../../services/domain/usersService';
 import { AIUsage } from '../../types';
 import { searchStockImages, getCuratedPhotos, triggerDownload, UnsplashImage } from '../../services/unsplashService';
 import { Button } from '../ui/Button';

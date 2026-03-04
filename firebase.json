@@ -25,11 +25,6 @@
     ],
     "rewrites": [
       {
-        "source": "/editImageWithVertexAI",
-        "function": "editImageWithVertexAI",
-        "region": "europe-west3"
-      },
-      {
         "source": "/generatePasskeyRegistrationOptions",
         "function": "generatePasskeyRegistrationOptions",
         "region": "europe-west3"

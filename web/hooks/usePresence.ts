@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { auth } from '../services/firebase';
 import { updatePresence, subscribeProjectPresence } from '../services/dataService';
+import { subscribeWorkspaceMembers } from '../services/domain/workspaceMembersService';
 
 export type PresenceState = 'online' | 'idle' | 'busy' | 'offline';
 
@@ -239,7 +240,7 @@ export const useProjectPresence = (
 };
 
 // Import workspace presence functions
-import { updateWorkspacePresence, subscribeWorkspacePresence, subscribeWorkspaceMembers } from '../services/dataService';
+import { updateWorkspacePresence, subscribeWorkspacePresence } from '../services/dataService';
 
 interface UseWorkspacePresenceOptions {
     tenantId?: string;

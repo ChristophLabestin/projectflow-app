@@ -11,6 +11,11 @@ struct AppNotification: Identifiable {
     let read: Bool
     let createdAt: Date?
     let tenantId: String
+    let projectId: String?
+    let taskId: String?
+    let issueId: String?
+    let flowId: String?
+    let actorId: String?
 }
 
 @MainActor
@@ -63,6 +68,11 @@ final class NotificationStore: ObservableObject {
                 }
 
                 let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
+                let projectId = data["projectId"] as? String
+                let taskId = data["taskId"] as? String
+                let issueId = data["issueId"] as? String
+                let flowId = data["flowId"] as? String
+                let actorId = data["actorId"] as? String
 
                 return AppNotification(
                     id: doc.documentID,
@@ -71,7 +81,12 @@ final class NotificationStore: ObservableObject {
                     message: message,
                     read: read,
                     createdAt: createdAt,
-                    tenantId: tenantId
+                    tenantId: tenantId,
+                    projectId: projectId,
+                    taskId: taskId,
+                    issueId: issueId,
+                    flowId: flowId,
+                    actorId: actorId
                 )
             } ?? []
 
@@ -97,6 +112,54 @@ final class NotificationStore: ObservableObject {
             .document(notification.id)
             .updateData(["read": true])
     }
+
+    func markAllAsRead() {
+        let unread = items.filter { !$0.read }
+        for item in unread {
+            markAsRead(item)
+        }
+    }
+
+    func clearAll() {
+        for item in items {
+            db.collection("tenants")
+                .document(item.tenantId)
+                .collection("notifications")
+                .document(item.id)
+                .delete()
+        }
+    }
+
+    func deleteNotification(_ notification: AppNotification) {
+        db.collection("tenants")
+            .document(notification.tenantId)
+            .collection("notifications")
+            .document(notification.id)
+            .delete()
+    }
+
+    func respondToInvite(notification: AppNotification, accept: Bool) async {
+        guard let projectId = notification.projectId, let actorId = notification.actorId else { return }
+        
+        let projectRef = db.collection("tenants")
+            .document(notification.tenantId)
+            .collection("projects")
+            .document(projectId)
+            
+        do {
+            if accept {
+                // Add user to project members
+                try await projectRef.updateData([
+                    "memberIds": FieldValue.arrayUnion([actorId])
+                ])
+            }
+            
+            // Delete notification after responding
+            deleteNotification(notification)
+        } catch {
+            print("Failed to respond to invite: \(error)")
+        }
+    }
 }
 
 enum TenantResolver {
@@ -104,5 +167,9 @@ enum TenantResolver {
 
     static func resolveTenantId(for user: User) -> String? {
         UserDefaults.standard.string(forKey: activeTenantKey) ?? user.uid
+    }
+
+    static func setActiveTenantId(_ tenantId: String) {
+        UserDefaults.standard.set(tenantId, forKey: activeTenantKey)
     }
 }

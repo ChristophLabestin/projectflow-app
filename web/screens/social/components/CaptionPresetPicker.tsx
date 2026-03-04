@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { subscribeCaptionPresets } from '../../../services/dataService';
+import { subscribeCaptionPresets } from '../../../services/domain/socialSettingsService';
 import { CaptionPreset, SocialPlatform } from '../../../types';
 import { CaptionPresetManager } from './CaptionPresetManager';
 import { useLanguage } from '../../../context/LanguageContext';

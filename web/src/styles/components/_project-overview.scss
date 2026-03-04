@@ -873,13 +873,18 @@
 
 .overview-layout__column {
     min-width: 0;
-    transition: background-color var(--transition-fast);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
     border-radius: var(--radius-lg);
     padding: 0.25rem;
 }
 
 .overview-layout__columns.is-editing .overview-layout__column {
     background-color: rgba(var(--color-surface-hover-rgb), 0.35);
+}
+
+.overview-layout__columns.is-editing .overview-layout__column.is-drop-target {
+    background-color: rgba(var(--color-primary-rgb), 0.09);
+    box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.35);
 }
 
 .overview-layout__primary {
@@ -896,6 +901,18 @@
     @media (max-width: 1200px) {
         order: 2;
     }
+}
+
+.overview-layout__drop-placeholder {
+    border: 1px dashed rgba(var(--color-primary-rgb), 0.45);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1rem;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.78rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background-color: rgba(var(--color-primary-rgb), 0.04);
 }
 
 .overview-card {
@@ -922,6 +939,14 @@
     box-shadow: var(--shadow-lg);
 }
 
+.overview-card.is-drop-target:not(.is-dragging) {
+    box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.4);
+}
+
+.overview-card.is-keyboard-dragging {
+    box-shadow: 0 0 0 2px rgba(var(--color-warning-rgb), 0.45);
+}
+
 .overview-card.is-disabled {
     opacity: 0.55;
 }
@@ -935,11 +960,22 @@
     justify-content: center;
     width: 30px;
     height: 30px;
+    border: 0;
     border-radius: var(--radius-full);
     background-color: rgba(var(--color-surface-hover-rgb), 0.9);
     color: var(--color-text-muted);
     box-shadow: var(--shadow-sm);
     z-index: 2;
+    cursor: grab;
+}
+
+.overview-card__drag-handle:active {
+    cursor: grabbing;
+}
+
+.overview-card__drag-handle:focus-visible {
+    outline: 2px solid rgba(var(--color-primary-rgb), 0.55);
+    outline-offset: 2px;
 }
 
 .overview-card__disabled-pill {
@@ -960,6 +996,23 @@
 .overview-card.is-editing .overview-card__body {
     pointer-events: none;
     user-select: none;
+}
+
+.overview-card--overlay {
+    width: min(420px, 85vw);
+    pointer-events: none;
+}
+
+.overview-card__overlay-title {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-text-main);
+}
+
+.overview-card__overlay-description {
+    margin: 0.45rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
 }
 
 .overview-layout-modal {
@@ -1162,6 +1215,69 @@
 
     @media (min-width: 1024px) {
         grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+.execution-grid--single {
+    @media (min-width: 1024px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.execution-card-shell {
+    gap: 1rem;
+}
+
+.execution-card {
+    min-height: 100%;
+}
+
+.execution-card__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.execution-card--balanced {
+    .list-content .list-row {
+        padding-block: 0.55rem;
+    }
+}
+
+.execution-card--compact {
+    .list-content .list-row {
+        padding-block: 0.45rem;
+    }
+
+    .list-content .meta-row {
+        gap: 0.35rem;
+    }
+
+    .list-content .badge {
+        font-size: 0.62rem;
+        padding: 0.16rem 0.4rem;
+    }
+
+    .row-actions .date-badge {
+        display: none;
+    }
+}
+
+.flow-spotlight-card--balanced .flow-desc {
+    -webkit-line-clamp: 3;
+}
+
+.flow-spotlight-card--compact {
+    .flow-desc,
+    .interaction-stats {
+        display: none;
+    }
+
+    .flow-title {
+        margin-top: 0.25rem;
+        margin-bottom: 0;
+        font-size: 0.9rem;
+        line-height: 1.25;
     }
 }
 

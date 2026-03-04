@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { auth } from '../services/firebase';
-import { updateUserProfile, getActiveTenantId, subscribeTenantUsers, getUserGlobalActivities, getUserProfileStats, getAllMemberProjects } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
+import { getAllMemberProjects, getUserGlobalActivities, getUserProfileStats } from '../services/domain/profileService';
+import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { useToast } from '../context/UIContext';
 import { Activity, PrivacySettings, Project } from '../types';
 import { ProfileSettingsModal } from '../components/ProfileSettingsModal';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,8 +27,11 @@ export const Profile = () => {
     const [statsData, setStatsData] = useState({ projects: 0, teams: 1 });
     const [showEditModal, setShowEditModal] = useState(false);
 
-    const { showSuccess, showError } = useToast();
-    const { t, dateFormat, dateLocale } = useLanguage();
+    const { t, dateFormat, dateLocale, profileTranslationsReady, loadProfileTranslations } = useLanguage();
+
+    useEffect(() => {
+        void loadProfileTranslations();
+    }, [loadProfileTranslations]);
 
     useEffect(() => {
         if (!user) return;
@@ -64,7 +68,17 @@ export const Profile = () => {
         }
     }, [user]);
 
-    if (!user) return <div className="p-10 text-center">{t('profile.auth.required')}</div>;
+    if (!user) {
+        return (
+            <div className="p-10 text-center">
+                {profileTranslationsReady ? t('profile.auth.required') : 'You must be signed in to view your profile.'}
+            </div>
+        );
+    }
+
+    if (loading || !profileTranslationsReady) {
+        return <div className="p-10 text-center">Loading profile...</div>;
+    }
 
     const statsMetrics = [
         { label: t('profile.stats.activeProjects'), value: statsData.projects.toString(), icon: 'rocket_launch' },

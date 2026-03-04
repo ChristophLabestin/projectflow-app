@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
-import { getProjectById, subscribeProjectTasks, toggleTaskStatus, updateTaskFields, deleteTask, getSubTasks, getProjectCategories } from '../services/dataService';
+import { subscribeProjectTasks } from '../services/dataService';
+import { getProjectCategories } from '../services/domain/projectMetaService';
+import { deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
+import { getProjectById } from '../services/domain/projectsService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Task, Project, TaskCategory, ProjectGroup } from '../types';
-import { TaskCreateModal } from '../components/TaskCreateModal';
 import { Button } from '../components/common/Button/Button';
 import { Badge } from '../components/common/Badge/Badge';
 import { TextInput } from '../components/common/Input/TextInput';
@@ -17,6 +19,8 @@ import { useConfirm } from '../context/UIContext';
 import { ProjectBoard } from '../components/ProjectBoard';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+
+const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
@@ -238,6 +242,26 @@ export const ProjectTasks = () => {
         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
         return { total, open, completed, urgent, high, progress };
     }, [tasks]);
+
+    const workbenchCards = useMemo(() => ([
+        {
+            label: t('projectTasks.workbench.focus'),
+            value: filterLabels[filter],
+            meta: t('projectTasks.workbench.focusMeta').replace('{view}', viewLabels[view])
+        },
+        {
+            label: t('projectTasks.workbench.delivery'),
+            value: String(stats.open),
+            meta: t('projectTasks.workbench.deliveryMeta').replace('{count}', String(stats.high + stats.urgent))
+        },
+        {
+            label: t('projectTasks.workbench.completion'),
+            value: `${stats.progress}%`,
+            meta: t('projectTasks.workbench.completionMeta')
+                .replace('{done}', String(stats.completed))
+                .replace('{total}', String(stats.total))
+        }
+    ]), [filter, filterLabels, stats, t, view, viewLabels]);
 
     const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
         {
@@ -612,6 +636,16 @@ export const ProjectTasks = () => {
                     )}
                 </div>
 
+                <div className="tasks-workbench">
+                    {workbenchCards.map((card) => (
+                        <div key={card.label} className="tasks-workbench__card">
+                            <span className="tasks-workbench__label">{card.label}</span>
+                            <span className="tasks-workbench__value">{card.value}</span>
+                            <span className="tasks-workbench__meta">{card.meta}</span>
+                        </div>
+                    ))}
+                </div>
+
                 {/* Stats Row */}
                 <div data-onboarding-id="project-tasks-stats" className="tasks-stats-grid">
                     {[
@@ -729,14 +763,16 @@ export const ProjectTasks = () => {
 
                 {/* Check permission before showing modal */}
                 {showCreateModal && id && can('canManageTasks') && (
-                    <TaskCreateModal
-                        projectId={id}
-                        onClose={() => setShowCreateModal(false)}
-                        onCreated={(updated) => {
-                            setTasks(updated);
-                            setShowCreateModal(false);
-                        }}
-                    />
+                    <Suspense fallback={null}>
+                        <TaskCreateModal
+                            projectId={id}
+                            onClose={() => setShowCreateModal(false)}
+                            onCreated={(updated) => {
+                                setTasks(updated);
+                                setShowCreateModal(false);
+                            }}
+                        />
+                    </Suspense>
                 )}
             </div>
             <OnboardingOverlay

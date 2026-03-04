@@ -1,12 +1,16 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { EmailBuilder } from './components/email-builder/EmailBuilder';
 import { EmailBlock, TemplateVariable } from '../../types';
-import { getLatestEmailTemplateDraft, saveEmailTemplateDraft, getEmailTemplateDrafts, getProjectById, getEmailTemplateById, getTemplateVersions } from '../../services/dataService';
+import { getLatestEmailTemplateDraft, saveEmailTemplateDraft, getEmailTemplateDrafts, getEmailTemplateById, getTemplateVersions } from '../../services/domain/marketingTemplatesService';
+import { getProjectById } from '../../services/domain/projectsService';
 import { auth, db } from '../../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '../../context/UIContext';
+
+const EmailBuilder = lazy(() =>
+    import('./components/email-builder/EmailBuilder').then((module) => ({ default: module.EmailBuilder }))
+);
 
 // Helper to compare template content for change detection
 const hasContentChanged = (
@@ -261,20 +265,28 @@ export const EmailBuilderPage = () => {
 
     return (
         <div className="flex flex-col h-full">
-            <EmailBuilder
-                projectId={projectId || ''}
-                initialBlocks={initialBlocks}
-                initialVariables={initialVariables}
-                initialName={initialName}
-                onSave={handleSave}
-                onSaveDraft={handleSaveDraft}
-                onFetchDrafts={fetchDrafts}
-                onLoadDraft={handleLoadDraft}
-                onCancel={() => navigate(-1)}
-                saving={saving}
-                readOnly={isReadOnly}
-                tenantId={resolvedTenantId}
-            />
+            <Suspense
+                fallback={(
+                    <div className="flex items-center justify-center h-full bg-zinc-50 dark:bg-zinc-950">
+                        <span className="material-symbols-outlined animate-spin text-[32px] text-primary">progress_activity</span>
+                    </div>
+                )}
+            >
+                <EmailBuilder
+                    projectId={projectId || ''}
+                    initialBlocks={initialBlocks}
+                    initialVariables={initialVariables}
+                    initialName={initialName}
+                    onSave={handleSave}
+                    onSaveDraft={handleSaveDraft}
+                    onFetchDrafts={fetchDrafts}
+                    onLoadDraft={handleLoadDraft}
+                    onCancel={() => navigate(-1)}
+                    saving={saving}
+                    readOnly={isReadOnly}
+                    tenantId={resolvedTenantId}
+                />
+            </Suspense>
         </div>
     );
 };

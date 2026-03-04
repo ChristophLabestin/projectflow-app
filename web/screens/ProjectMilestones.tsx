@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
+import '../src/styles/components/_project-milestones.scss';
 import { collection, collectionGroup, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Milestone } from '../types';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
 import { MilestoneDetailModal } from '../components/Milestones/MilestoneDetailModal';
 import { useConfirm } from '../context/UIContext';
-import { subscribeProjectMilestones, deleteMilestone, updateMilestone } from '../services/dataService';
+import { deleteMilestone, subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
 import { db } from '../services/firebase';
 import { Badge } from '../components/common/Badge/Badge';
 import { Button } from '../components/common/Button/Button';

@@ -15,13 +15,17 @@ export const AuthAction = () => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const { showError, showSuccess } = useToast();
-    const { t } = useLanguage();
+    const { t, authActionTranslationsReady, loadAuthActionTranslations } = useLanguage();
 
     const mode = searchParams.get('mode');
     const oobCode = searchParams.get('oobCode');
 
     const [status, setStatus] = useState<Status>('loading');
-    const [message, setMessage] = useState(() => t('authAction.message.processing'));
+    const [message, setMessage] = useState('Processing your request...');
+
+    useEffect(() => {
+        void loadAuthActionTranslations();
+    }, [loadAuthActionTranslations]);
 
     useEffect(() => {
         console.log('AuthAction Component Mounted', { mode, oobCode, pathname: window.location.pathname });
@@ -31,6 +35,10 @@ export const AuthAction = () => {
     const [processing, setProcessing] = useState(false);
 
     useEffect(() => {
+        if (!authActionTranslationsReady) {
+            return;
+        }
+
         if (!mode || !oobCode) {
             setStatus('error');
             setMessage(t('authAction.message.invalidLink'));
@@ -113,7 +121,7 @@ export const AuthAction = () => {
         };
 
         handleAction();
-    }, [mode, oobCode, showSuccess, t]);
+    }, [authActionTranslationsReady, mode, oobCode, showSuccess, t]);
 
     const handleConfirmReset = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -152,6 +160,21 @@ export const AuthAction = () => {
         status === 'success' ? 'auth-action__status-icon--success' : '',
         status === 'error' ? 'auth-action__status-icon--error' : '',
     ].filter(Boolean).join(' ');
+
+    if (!authActionTranslationsReady) {
+        return (
+            <div className="auth-action">
+                <Card className="auth-action__card">
+                    <CardBody className="auth-action__body">
+                        <div>
+                            <h1 className="auth-action__title">Processing...</h1>
+                            <p className="auth-action__message">Please wait while we validate your action link.</p>
+                        </div>
+                    </CardBody>
+                </Card>
+            </div>
+        );
+    }
 
     return (
         <div className="auth-action">

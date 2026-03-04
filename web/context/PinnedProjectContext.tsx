@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../services/firebase';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { getProjectById } from '../services/dataService';
 import { Project } from '../types';
+import { getProjectById } from '../services/domain/projectsService';
 
 interface PinnedProjectContextType {
     pinnedProjectId: string | null;

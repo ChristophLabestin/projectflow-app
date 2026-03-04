@@ -1049,13 +1049,21 @@ html.dark .flow-create::after {
 }
 
 .flow-create__title-input .text-input {
-    background-color: rgba(var(--color-surface-card-rgb), 0.9);
-    border-radius: var(--radius-xl);
+    background: transparent;
+    border-radius: 0;
     border: 0;
-    box-shadow: var(--shadow-sm);
+    box-shadow: none;
     font-size: 1.25rem;
     font-weight: 700;
     text-align: left;
+}
+
+.flow-create__title-input .text-input:hover,
+.flow-create__title-input .text-input:focus,
+.flow-create__title-input .text-input:focus-visible {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
 }
 
 .flow-create__title p {

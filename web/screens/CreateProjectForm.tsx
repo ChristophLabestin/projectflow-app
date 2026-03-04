@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { generateProjectDescription } from '../services/geminiService';
-import { createProject } from '../services/dataService';
+import { createProject } from '../services/domain/projectAdminService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';

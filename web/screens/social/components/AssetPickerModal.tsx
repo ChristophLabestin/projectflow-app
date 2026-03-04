@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { SocialAsset } from '../../../types';
-import { subscribeSocialAssets } from '../../../services/dataService';
+import { subscribeSocialAssets } from '../../../services/domain/socialService';
 import { useParams } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
 

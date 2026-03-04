@@ -12,10 +12,56 @@ extension FirestoreConvertible {
     }
 }
 
+struct Tenant: FirestoreConvertible {
+    let id: String
+    var name: String
+    var planTier: String
+    var ownerId: String
+    var createdAt: Timestamp?
+    var updatedAt: Timestamp?
+    
+    // AI Policy
+    var aiHardLimitEnabled: Bool
+    var aiIncludedTokensPerSeat: Int
+    var aiIncludedImagesPerSeat: Int
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        name = data["name"] as? String ?? "New Workspace"
+        planTier = data["planTier"] as? String ?? "Starter"
+        ownerId = data["ownerId"] as? String ?? ""
+        createdAt = data["createdAt"] as? Timestamp
+        updatedAt = data["updatedAt"] as? Timestamp
+        
+        aiHardLimitEnabled = data["aiHardLimitEnabled"] as? Bool ?? true
+        aiIncludedTokensPerSeat = data["aiIncludedTokensPerSeat"] as? Int ?? 1_000_000
+        aiIncludedImagesPerSeat = data["aiIncludedImagesPerSeat"] as? Int ?? 50
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "name": name,
+            "planTier": planTier,
+            "ownerId": ownerId,
+            "aiHardLimitEnabled": aiHardLimitEnabled,
+            "aiIncludedTokensPerSeat": aiIncludedTokensPerSeat,
+            "aiIncludedImagesPerSeat": aiIncludedImagesPerSeat
+        ]
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        if let updatedAt {
+            payload["updatedAt"] = updatedAt
+        }
+        return payload
+    }
+}
+
 struct UserProfile: FirestoreConvertible {
     let id: String
     var email: String
     var displayName: String
+    var bio: String
     var photoURL: String?
     var fcmTokens: [String]
     var fcmUpdatedAt: Timestamp?
@@ -26,6 +72,7 @@ struct UserProfile: FirestoreConvertible {
         self.id = id
         email = data["email"] as? String ?? ""
         displayName = data["displayName"] as? String ?? ""
+        bio = data["bio"] as? String ?? ""
         photoURL = data["photoURL"] as? String
         fcmTokens = data["fcmTokens"] as? [String] ?? []
         fcmUpdatedAt = data["fcmUpdatedAt"] as? Timestamp
@@ -37,7 +84,8 @@ struct UserProfile: FirestoreConvertible {
         var payload: [String: Any] = [
             "uid": id,
             "email": email,
-            "displayName": displayName
+            "displayName": displayName,
+            "bio": bio
         ]
         if let photoURL {
             payload["photoURL"] = photoURL
@@ -148,6 +196,91 @@ struct TenantMembership: FirestoreConvertible {
     }
 }
 
+struct ProjectMember: Identifiable, Equatable {
+    let id: String
+    var userId: String
+    var role: String?
+    var joinedAt: Timestamp?
+    var invitedBy: String?
+    var originIdeaId: String?
+
+    init(userId: String, role: String? = nil, joinedAt: Timestamp? = nil, invitedBy: String? = nil, originIdeaId: String? = nil) {
+        self.id = userId
+        self.userId = userId
+        self.role = role
+        self.joinedAt = joinedAt
+        self.invitedBy = invitedBy
+        self.originIdeaId = originIdeaId
+    }
+
+    init(data: [String: Any]) {
+        let userId = data["userId"] as? String ?? data["uid"] as? String ?? ""
+        self.id = userId
+        self.userId = userId
+        role = data["role"] as? String
+        joinedAt = data["joinedAt"] as? Timestamp
+        invitedBy = data["invitedBy"] as? String
+        originIdeaId = data["originIdeaId"] as? String
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "userId": userId
+        ]
+        if let role {
+            payload["role"] = role
+        }
+        if let joinedAt {
+            payload["joinedAt"] = joinedAt
+        }
+        if let invitedBy {
+            payload["invitedBy"] = invitedBy
+        }
+        if let originIdeaId {
+            payload["originIdeaId"] = originIdeaId
+        }
+        return payload
+    }
+}
+
+struct ProjectLink: Identifiable, Equatable {
+    let id: String
+    var title: String
+    var url: String
+    var icon: String?
+    var originIdeaId: String?
+
+    init(title: String, url: String, icon: String? = nil, originIdeaId: String? = nil) {
+        self.id = "\(title)-\(url)"
+        self.title = title
+        self.url = url
+        self.icon = icon
+        self.originIdeaId = originIdeaId
+    }
+
+    init(data: [String: Any]) {
+        title = data["title"] as? String ?? ""
+        url = data["url"] as? String ?? ""
+        icon = data["icon"] as? String
+        originIdeaId = data["originIdeaId"] as? String
+        id = "\(title)-\(url)"
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "title": title,
+            "url": url
+        ]
+        if let icon {
+            payload["icon"] = icon
+        }
+        if let originIdeaId {
+            payload["originIdeaId"] = originIdeaId
+        }
+        return payload
+    }
+}
+
 struct Project: FirestoreConvertible {
     let id: String
     var tenantId: String?
@@ -159,8 +292,14 @@ struct Project: FirestoreConvertible {
     var dueDate: String
     var startDate: String
     var priority: String
+    var coverImage: String?
+    var squareIcon: String?
     var modules: [String]
     var visibilityGroupIds: [String]
+    var members: [ProjectMember]
+    var memberIds: [String]
+    var links: [ProjectLink]
+    var externalResources: [ProjectLink]
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
 
@@ -175,8 +314,14 @@ struct Project: FirestoreConvertible {
         dueDate = Project.parseDateString(from: data["dueDate"])
         startDate = Project.parseDateString(from: data["startDate"])
         priority = data["priority"] as? String ?? ""
+        coverImage = data["coverImage"] as? String
+        squareIcon = data["squareIcon"] as? String
         modules = data["modules"] as? [String] ?? []
         visibilityGroupIds = data["visibilityGroupIds"] as? [String] ?? []
+        members = Project.parseMembers(from: data["members"])
+        memberIds = data["memberIds"] as? [String] ?? members.map { $0.userId }
+        links = Project.parseLinks(from: data["links"])
+        externalResources = Project.parseLinks(from: data["externalResources"])
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
     }
@@ -196,6 +341,18 @@ struct Project: FirestoreConvertible {
         ]
         if let tenantId {
             payload["tenantId"] = tenantId
+        }
+        if !members.isEmpty {
+            payload["members"] = members.map { $0.data }
+        }
+        if !memberIds.isEmpty {
+            payload["memberIds"] = memberIds
+        }
+        if !links.isEmpty {
+            payload["links"] = links.map { $0.data }
+        }
+        if !externalResources.isEmpty {
+            payload["externalResources"] = externalResources.map { $0.data }
         }
         if let createdAt {
             payload["createdAt"] = createdAt
@@ -230,9 +387,108 @@ struct Project: FirestoreConvertible {
         }
         return ""
     }
+
+    private static func parseMembers(from value: Any?) -> [ProjectMember] {
+        guard let raw = value as? [Any] else { return [] }
+        return raw.compactMap { entry in
+            if let userId = entry as? String {
+                return ProjectMember(userId: userId)
+            }
+            if let data = entry as? [String: Any] {
+                return ProjectMember(data: data)
+            }
+            return nil
+        }.filter { !$0.userId.isEmpty }
+    }
+
+    private static func parseLinks(from value: Any?) -> [ProjectLink] {
+        guard let raw = value as? [[String: Any]] else { return [] }
+        return raw.map { ProjectLink(data: $0) }.filter { !$0.title.isEmpty && !$0.url.isEmpty }
+    }
 }
 
-struct Task: FirestoreConvertible {
+struct ProjectSubtask: Identifiable, Equatable {
+    let id: String
+    var title: String
+    var isCompleted: Bool
+
+    init(id: String = UUID().uuidString, title: String, isCompleted: Bool = false) {
+        self.id = id
+        self.title = title
+        self.isCompleted = isCompleted
+    }
+
+    init(data: [String: Any]) {
+        id = data["id"] as? String ?? UUID().uuidString
+        title = data["title"] as? String ?? ""
+        isCompleted = data["isCompleted"] as? Bool ?? false
+    }
+
+    var data: [String: Any] {
+        [
+            "id": id,
+            "title": title,
+            "isCompleted": isCompleted
+        ]
+    }
+}
+
+struct UserGroup: FirestoreConvertible {
+    let id: String
+    var tenantId: String?
+    var name: String
+    var description: String
+    var memberIds: [String]
+    var color: String // Hex string
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        tenantId = data["tenantId"] as? String
+        name = data["name"] as? String ?? "New Group"
+        description = data["description"] as? String ?? ""
+        memberIds = data["memberIds"] as? [String] ?? []
+        color = data["color"] as? String ?? "#808080"
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "name": name,
+            "description": description,
+            "memberIds": memberIds,
+            "color": color
+        ]
+        if let tenantId { payload["tenantId"] = tenantId }
+        return payload
+    }
+}
+
+struct ProjectLabel: FirestoreConvertible {
+    let id: String
+    var tenantId: String?
+    var projectId: String?
+    var title: String
+    var color: String // Hex string
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        tenantId = data["tenantId"] as? String
+        projectId = data["projectId"] as? String
+        title = data["title"] as? String ?? "New Label"
+        color = data["color"] as? String ?? "#808080"
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "title": title,
+            "color": color
+        ]
+        if let tenantId { payload["tenantId"] = tenantId }
+        if let projectId { payload["projectId"] = projectId }
+        return payload
+    }
+}
+
+struct ProjectTask: FirestoreConvertible {
     let id: String
     var projectId: String?
     var ownerId: String
@@ -245,6 +501,8 @@ struct Task: FirestoreConvertible {
     var priority: String
     var assigneeIds: [String]
     var assignedGroupIds: [String]
+    var subtasks: [ProjectSubtask]
+    var labelIds: [String]
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
 
@@ -261,6 +519,8 @@ struct Task: FirestoreConvertible {
         priority = data["priority"] as? String ?? "Medium"
         assigneeIds = data["assigneeIds"] as? [String] ?? []
         assignedGroupIds = data["assignedGroupIds"] as? [String] ?? []
+        subtasks = (data["subtasks"] as? [[String: Any]] ?? []).map { ProjectSubtask(data: $0) }
+        labelIds = data["labelIds"] as? [String] ?? []
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
     }
@@ -276,6 +536,8 @@ struct Task: FirestoreConvertible {
             "priority": priority,
             "assigneeIds": assigneeIds,
             "assignedGroupIds": assignedGroupIds,
+            "subtasks": subtasks.map { $0.data },
+            "labelIds": labelIds,
             "ownerId": ownerId
         ]
         if let projectId {
@@ -299,6 +561,14 @@ struct Flow: FirestoreConvertible {
     var description: String
     var type: String
     var stage: String
+    var impact: String?
+    var effort: String?
+    var concept: String?
+    var keywords: [String]
+    var strengths: [String]
+    var weaknesses: [String]
+    var opportunities: [String]
+    var threats: [String]
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
 
@@ -310,6 +580,17 @@ struct Flow: FirestoreConvertible {
         description = data["description"] as? String ?? ""
         type = data["type"] as? String ?? "Feature"
         stage = data["stage"] as? String ?? "Brainstorm"
+        impact = data["impact"] as? String
+        effort = data["effort"] as? String
+        concept = data["concept"] as? String
+        keywords = data["keywords"] as? [String] ?? []
+        
+        let analysis = data["analysis"] as? [String: Any] ?? [:]
+        strengths = analysis["strengths"] as? [String] ?? []
+        weaknesses = analysis["weaknesses"] as? [String] ?? []
+        opportunities = analysis["opportunities"] as? [String] ?? []
+        threats = analysis["threats"] as? [String] ?? []
+        
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
     }
@@ -320,11 +601,30 @@ struct Flow: FirestoreConvertible {
             "description": description,
             "type": type,
             "stage": stage,
-            "ownerId": ownerId
+            "ownerId": ownerId,
+            "keywords": keywords
         ]
         if let projectId {
             payload["projectId"] = projectId
         }
+        if let impact {
+            payload["impact"] = impact
+        }
+        if let effort {
+            payload["effort"] = effort
+        }
+        if let concept {
+            payload["concept"] = concept
+        }
+        
+        let analysis: [String: Any] = [
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "opportunities": opportunities,
+            "threats": threats
+        ]
+        payload["analysis"] = analysis
+        
         if let createdAt {
             payload["createdAt"] = createdAt
         }
@@ -345,6 +645,7 @@ struct Issue: FirestoreConvertible {
     var priority: String
     var reporterId: String
     var assigneeIds: [String]
+    var labelIds: [String]
     var dueDate: String
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
@@ -359,6 +660,7 @@ struct Issue: FirestoreConvertible {
         priority = data["priority"] as? String ?? "Medium"
         reporterId = data["reporterId"] as? String ?? ""
         assigneeIds = data["assigneeIds"] as? [String] ?? []
+        labelIds = data["labelIds"] as? [String] ?? []
         dueDate = data["dueDate"] as? String ?? ""
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
@@ -372,6 +674,7 @@ struct Issue: FirestoreConvertible {
             "priority": priority,
             "reporterId": reporterId,
             "assigneeIds": assigneeIds,
+            "labelIds": labelIds,
             "dueDate": dueDate,
             "ownerId": ownerId
         ]
@@ -575,6 +878,8 @@ struct ActivityItem: FirestoreConvertible {
     var action: String
     var target: String
     var details: String
+    var type: String
+    var relatedId: String?
     var createdAt: Timestamp?
 
     init(id: String, data: [String: Any]) {
@@ -584,6 +889,8 @@ struct ActivityItem: FirestoreConvertible {
         action = data["action"] as? String ?? ""
         target = data["target"] as? String ?? ""
         details = data["details"] as? String ?? ""
+        type = data["type"] as? String ?? "general"
+        relatedId = data["relatedId"] as? String
         createdAt = data["createdAt"] as? Timestamp
     }
 
@@ -593,10 +900,83 @@ struct ActivityItem: FirestoreConvertible {
             "user": user,
             "action": action,
             "target": target,
-            "details": details
+            "details": details,
+            "type": type
+        ]
+        if let relatedId {
+            payload["relatedId"] = relatedId
+        }
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        return payload
+    }
+}
+
+struct GeminiReport: FirestoreConvertible {
+    let id: String
+    var projectId: String
+    var content: String
+    var createdAt: Timestamp?
+    var createdBy: String
+    var userName: String
+    var originIdeaId: String?
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        projectId = data["projectId"] as? String ?? ""
+        content = data["content"] as? String ?? ""
+        createdAt = data["createdAt"] as? Timestamp
+        createdBy = data["createdBy"] as? String ?? ""
+        userName = data["userName"] as? String ?? ""
+        originIdeaId = data["originIdeaId"] as? String
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "projectId": projectId,
+            "content": content,
+            "createdBy": createdBy,
+            "userName": userName
+        ]
+        if let originIdeaId {
+            payload["originIdeaId"] = originIdeaId
+        }
+        if let createdAt {
+            payload["createdAt"] = createdAt
+        }
+        return payload
+    }
+}
+
+struct ProjectHealthSnapshotEntry: FirestoreConvertible {
+    let id: String
+    var projectId: String
+    var score: Int
+    var status: String
+    var createdAt: Timestamp?
+    var trend: String?
+
+    init(id: String, data: [String: Any]) {
+        self.id = id
+        projectId = data["projectId"] as? String ?? ""
+        score = data["score"] as? Int ?? 0
+        status = data["status"] as? String ?? "normal"
+        createdAt = data["createdAt"] as? Timestamp
+        trend = data["trend"] as? String
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "projectId": projectId,
+            "score": score,
+            "status": status
         ]
         if let createdAt {
             payload["createdAt"] = createdAt
+        }
+        if let trend {
+            payload["trend"] = trend
         }
         return payload
     }

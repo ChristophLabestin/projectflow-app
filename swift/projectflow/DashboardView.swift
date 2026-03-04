@@ -1,14 +1,17 @@
 import SwiftUI
 import FirebaseAuth
 import FirebaseCore
+import Charts
 
 struct DashboardView: View {
     @Binding var selectedTab: MainTab
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
     @StateObject private var store = DashboardStore()
+    @StateObject private var projectsStore = ProjectsStore()
     @StateObject private var pinnedProjectStore = PinnedProjectStore()
     @StateObject private var pinnedTasksStore = PinnedTasksStore()
+    @StateObject private var tenantStore = TenantStore()
     @State private var showPinnedTasks = false
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
@@ -38,13 +41,16 @@ struct DashboardView: View {
         .onAppear {
             store.start()
             pinnedTasksStore.start()
+            tenantStore.update(for: session.user)
             if let user = Auth.auth().currentUser,
                let tenantId = TenantResolver.resolveTenantId(for: user) {
                 pinnedProjectStore.start(tenantId: tenantId)
+                projectsStore.start(tenantId: tenantId)
             }
         }
         .onDisappear {
             store.stop()
+            projectsStore.stop()
             pinnedProjectStore.stop()
             pinnedTasksStore.stop()
         }
@@ -87,9 +93,11 @@ struct DashboardView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: PFSpacing.lg) {
             heroCard
+            activeProjectsCarousel
             quickActions
             quickStatsSection
             focusSection
+            calendarSection
             chartsSection
             pinnedSection
             highlightsSection
@@ -125,6 +133,37 @@ struct DashboardView: View {
             }
         }
         .padding(.vertical, PFSpacing.sm)
+    }
+    
+    private var activeProjectsCarousel: some View {
+        let active = projectsStore.projects.filter { $0.status == "Active" }
+        return VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            PFSectionHeader(title: "Active Projects", subtitle: "Jump back into your work")
+            
+            if active.isEmpty && !projectsStore.isLoading {
+                PFCard {
+                    Text("No active projects found.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                }
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: PFSpacing.md) {
+                        ForEach(active) { project in
+                            NavigationLink(destination: ProjectOverviewView(
+                                project: project,
+                                tenantId: tenantStore.activeTenantId ?? ""
+                            )) {
+                                DashboardProjectCard(project: project)
+                                    .frame(width: UIScreen.main.bounds.width * 0.65)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.horizontal, 4) // Slight padding for shadows
+                }
+            }
+        }
     }
 
     private var quickActions: some View {
@@ -182,7 +221,12 @@ struct DashboardView: View {
     private var quickStatsSection: some View {
         LazyVGrid(columns: columns, spacing: PFSpacing.md) {
             ForEach(quickStats) { stat in
-                DashboardStatCard(stat: stat)
+                Button {
+                    handleStatTap(stat)
+                } label: {
+                    DashboardStatCard(stat: stat)
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -200,6 +244,7 @@ struct DashboardView: View {
                         icon: "checkmark.circle",
                         tint: colors.success
                     )
+                    .onTapGesture { selectedTab = .tasks }
 
                     DashboardFocusCard(
                         title: "Open Tasks",
@@ -208,6 +253,7 @@ struct DashboardView: View {
                         icon: "checklist",
                         tint: colors.warning
                     )
+                    .onTapGesture { selectedTab = .tasks }
 
                     DashboardFocusCard(
                         title: "Open Issues",
@@ -216,6 +262,7 @@ struct DashboardView: View {
                         icon: "exclamationmark.bubble",
                         tint: colors.error
                     )
+                    .onTapGesture { selectedTab = .issues }
 
                     DashboardFocusCard(
                         title: "Flows",
@@ -224,6 +271,7 @@ struct DashboardView: View {
                         icon: "sparkles",
                         tint: colors.primaryLight
                     )
+                    .onTapGesture { selectedTab = .flows }
                 }
             }
         }
@@ -231,36 +279,123 @@ struct DashboardView: View {
 
     private var chartsSection: some View {
         VStack(spacing: PFSpacing.md) {
+            // Trend Chart
             PFCard {
-                VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                    PFSectionHeader(title: "Task Completion")
-
-                    ProgressView(value: taskCompletionRatio)
-                        .tint(colors.primary)
-
+                VStack(alignment: .leading, spacing: PFSpacing.md) {
                     HStack {
-                        Text("\(completedTaskCount) completed")
-                            .font(.caption)
-                            .foregroundStyle(colors.textMuted)
+                        PFSectionHeader(title: "Activity Trends")
                         Spacer()
-                        Text("\(store.openTaskCount) open")
+                        Image(systemName: "arrow.right")
                             .font(.caption)
                             .foregroundStyle(colors.textMuted)
                     }
-                }
-            }
-
-            PFCard {
-                VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                    PFSectionHeader(title: "Issue Load")
-
-                    HStack(spacing: PFSpacing.md) {
-                        DashboardHeroMetric(title: "Open", value: "\(store.openIssueCount)", tint: colors.error)
-                        DashboardHeroMetric(title: "Total", value: "\(store.issueCount)", tint: colors.surfaceHover)
-                        DashboardHeroMetric(title: "Flows", value: "\(store.flowCount)", tint: colors.primaryLight)
+                    .onTapGesture { selectedTab = .tasks }
+                    
+                    if store.trendData.isEmpty {
+                        Text("No activity data available yet.")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                            .frame(height: 150)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        Chart {
+                            ForEach(store.trendData) { item in
+                                AreaMark(
+                                    x: .value("Date", item.date, unit: .day),
+                                    y: .value("Count", item.value)
+                                )
+                                .foregroundStyle(by: .value("Type", item.type))
+                                .opacity(0.1)
+                                .interpolationMethod(.catmullRom)
+                                
+                                LineMark(
+                                    x: .value("Date", item.date, unit: .day),
+                                    y: .value("Count", item.value)
+                                )
+                                .foregroundStyle(by: .value("Type", item.type))
+                                .lineStyle(StrokeStyle(lineWidth: 2))
+                                .interpolationMethod(.catmullRom)
+                            }
+                        }
+                        .chartForegroundStyleScale([
+                            "Tasks": colors.warning,
+                            "Issues": colors.error,
+                            "Flows": colors.primary
+                        ])
+                        .chartXAxis {
+                            AxisMarks(values: .stride(by: .day)) { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5)).foregroundStyle(colors.surfaceBorder)
+                                AxisValueLabel(format: .dateTime.weekday(.abbreviated), centered: true)
+                                    .foregroundStyle(colors.textMuted)
+                            }
+                        }
+                        .chartYAxis {
+                            AxisMarks { value in
+                                AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5, dash: [2, 4])).foregroundStyle(colors.surfaceBorder)
+                                AxisValueLabel().foregroundStyle(colors.textMuted)
+                            }
+                        }
+                        .frame(height: 200)
                     }
                 }
             }
+            .onTapGesture { selectedTab = .tasks }
+
+            // Project Status Donut
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.md) {
+                    HStack {
+                        PFSectionHeader(title: "Project Status")
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.caption)
+                            .foregroundStyle(colors.textMuted)
+                    }
+                    .onTapGesture { selectedTab = .projects }
+                    
+                    if store.projectStatusDistribution.isEmpty {
+                        Text("No projects available.")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                            .frame(height: 150)
+                            .frame(maxWidth: .infinity)
+                    } else {
+                        HStack {
+                            Chart(store.projectStatusDistribution) { item in
+                                SectorMark(
+                                    angle: .value("Count", item.value),
+                                    innerRadius: .ratio(0.6),
+                                    angularInset: 1.5
+                                )
+                                .cornerRadius(4)
+                                .foregroundStyle(item.color)
+                            }
+                            .frame(height: 150)
+                            
+                            Spacer()
+                            
+                            VStack(alignment: .leading, spacing: 8) {
+                                ForEach(store.projectStatusDistribution) { item in
+                                    HStack {
+                                        Circle()
+                                            .fill(item.color)
+                                            .frame(width: 8, height: 8)
+                                        Text(item.label)
+                                            .font(.caption)
+                                            .foregroundStyle(colors.textMain)
+                                        Spacer()
+                                        Text("\(item.value)")
+                                            .font(.caption.weight(.bold))
+                                            .foregroundStyle(colors.textMain)
+                                    }
+                                }
+                            }
+                            .frame(width: 120)
+                        }
+                    }
+                }
+            }
+            .onTapGesture { selectedTab = .projects }
         }
     }
 
@@ -281,6 +416,27 @@ struct DashboardView: View {
                             DashboardHighlightRow(item: item)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    private var calendarSection: some View {
+        VStack(spacing: PFSpacing.md) {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.md) {
+                    PFSectionHeader(title: "Calendar", subtitle: "Your schedule")
+                    CalendarWidget()
+                }
+            }
+            
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.md) {
+                    PFSectionHeader(title: "Scheduled", subtitle: "Upcoming deadlines")
+                    ScheduledTasksCard(
+                        scheduledTasks: store.scheduledTasks,
+                        tenantStore: tenantStore
+                    )
                 }
             }
         }
@@ -312,7 +468,14 @@ struct DashboardView: View {
                     } else {
                         VStack(alignment: .leading, spacing: PFSpacing.sm) {
                             ForEach(store.recentTasks) { task in
-                                DashboardTaskRow(task: task)
+                                NavigationLink(destination: ProjectTaskDetailView(
+                                    task: task,
+                                    tenantId: tenantStore.activeTenantId ?? "",
+                                    permissions: tenantStore.permissionContext()
+                                )) {
+                                    DashboardTaskRow(task: task)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                     }
@@ -323,7 +486,16 @@ struct DashboardView: View {
                 title: "Recent Issues",
                 emptyMessage: "No issues yet.",
                 rows: store.recentIssues.map { issue in
-                    DashboardRow(title: issue.title, detail: issue.status)
+                    DashboardRow(
+                        id: issue.id,
+                        title: issue.title,
+                        detail: issue.status,
+                        destination: AnyView(ProjectIssueDetailView(
+                            issue: issue,
+                            tenantId: tenantStore.activeTenantId ?? "",
+                            permissions: tenantStore.permissionContext()
+                        ))
+                    )
                 }
             )
 
@@ -331,7 +503,16 @@ struct DashboardView: View {
                 title: "Recent Flows",
                 emptyMessage: "No flows yet.",
                 rows: store.recentFlows.map { flow in
-                    DashboardRow(title: flow.title, detail: flow.stage)
+                    DashboardRow(
+                        id: flow.id,
+                        title: flow.title,
+                        detail: flow.stage,
+                        destination: AnyView(FlowDetailView(
+                            flow: flow,
+                            tenantId: tenantStore.activeTenantId ?? "",
+                            permissions: tenantStore.permissionContext()
+                        ))
+                    )
                 }
             )
         }
@@ -447,6 +628,70 @@ struct DashboardView: View {
             return leftDate > rightDate
         }.prefix(6).map { $0 }
     }
+    
+    private func handleStatTap(_ stat: DashboardStat) {
+        switch stat.title {
+        case "Projects": selectedTab = .projects
+        case "Open Tasks": selectedTab = .tasks
+        case "Open Issues": selectedTab = .issues
+        case "Flows": selectedTab = .flows
+        default: break
+        }
+    }
+}
+
+private struct DashboardProjectCard: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let project: Project
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            ZStack(alignment: .topTrailing) {
+                RoundedRectangle(cornerRadius: PFRadius.lg)
+                    .fill(colors.primary.opacity(0.1))
+                    .frame(height: 100)
+                
+                Text(project.status)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(colors.primary)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(colors.surfaceCard)
+                    .clipShape(Capsule())
+                    .padding(8)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                Text(project.title)
+                    .font(.headline)
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+                
+                Text(project.description.isEmpty ? "No description" : project.description)
+                    .font(.caption)
+                    .foregroundStyle(colors.textMuted)
+                    .lineLimit(2)
+            }
+            
+            ProgressView(value: project.progress, total: 100)
+                .tint(colors.primary)
+            
+            HStack {
+                Text("\(Int(project.progress))%")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(colors.textMain)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption2)
+                    .foregroundStyle(colors.textSubtle)
+            }
+        }
+        .padding(PFSpacing.md)
+        .background(colors.surfaceCard)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
+        .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
+    }
 }
 
 private struct DashboardHeroMetric: View {
@@ -509,15 +754,6 @@ private struct DashboardActionButton: View {
     }
 }
 
-private struct DashboardStat: Identifiable {
-    let id = UUID()
-    let title: String
-    let value: String
-    let detail: String
-    let icon: String
-    let tint: Color
-}
-
 private struct DashboardHighlight: Identifiable {
     let id: String
     let title: String
@@ -525,45 +761,6 @@ private struct DashboardHighlight: Identifiable {
     let typeLabel: String
     let icon: String
     let timestamp: Date?
-}
-
-private struct DashboardStatCard: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let stat: DashboardStat
-
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                HStack {
-                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                        Text(stat.title.uppercased())
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(colors.textMuted)
-                        Text(stat.value)
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(colors.textMain)
-                    }
-
-                    Spacer()
-
-                    Circle()
-                        .fill(stat.tint.opacity(0.2))
-                        .frame(width: 36, height: 36)
-                        .overlay(
-                            Image(systemName: stat.icon)
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(stat.tint)
-                        )
-                }
-
-                Text(stat.detail)
-                    .font(.caption)
-                    .foregroundStyle(colors.textSubtle)
-            }
-        }
-    }
 }
 
 private struct DashboardFocusCard: View {
@@ -707,10 +904,136 @@ private struct StatusPill: View {
     }
 }
 
+struct CalendarWidget: View {
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+    private let calendar = Calendar.current
+    private let days = ["M", "T", "W", "T", "F", "S", "S"]
+    
+    var body: some View {
+        VStack(spacing: 12) {
+            HStack {
+                ForEach(days, id: \.self) { day in
+                    Text(day)
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(colors.textMuted)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+            
+            let today = calendar.startOfDay(for: Date())
+            let week = currentWeek(for: today)
+            
+            HStack {
+                ForEach(week, id: \.self) { date in
+                    VStack(spacing: 4) {
+                        Text("\(calendar.component(.day, from: date))")
+                            .font(.subheadline.weight(calendar.isDateInToday(date) ? .bold : .medium))
+                            .foregroundStyle(calendar.isDateInToday(date) ? .white : colors.textMain)
+                            .frame(width: 32, height: 32)
+                            .background(calendar.isDateInToday(date) ? colors.primary : Color.clear)
+                            .clipShape(Circle())
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func currentWeek(for date: Date) -> [Date] {
+        var days: [Date] = []
+        let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
+        guard let monday = calendar.date(from: components) else { return [] }
+        
+        for i in 0..<7 {
+            if let day = calendar.date(byAdding: .day, value: i, to: monday) {
+                days.append(day)
+            }
+        }
+        return days
+    }
+}
+
+struct ScheduledTasksCard: View {
+    let scheduledTasks: [Date: [ProjectTask]]
+    @ObservedObject var tenantStore: TenantStore
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+    
+    private var upcomingDays: [Date] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            let filteredDays = upcomingDays.filter { day in
+                !(scheduledTasks[day]?.isEmpty ?? true)
+            }
+            
+            if filteredDays.isEmpty {
+                Text("No tasks scheduled for this week.")
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 8)
+            } else {
+                ForEach(filteredDays, id: \.self) { day in
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(dayTitle(for: day))
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(colors.primary)
+                        
+                        ForEach(scheduledTasks[day] ?? []) { task in
+                            NavigationLink(destination: ProjectTaskDetailView(
+                                task: task,
+                                tenantId: tenantStore.activeTenantId ?? "",
+                                permissions: tenantStore.permissionContext()
+                            )) {
+                                HStack {
+                                    Circle()
+                                        .fill(task.isCompleted ? colors.success : colors.warning)
+                                        .frame(width: 8, height: 8)
+                                    Text(task.title)
+                                        .font(.subheadline)
+                                        .foregroundStyle(colors.textMain)
+                                        .lineLimit(1)
+                                    Spacer()
+                                    if !task.priority.isEmpty {
+                                        Text(task.priority)
+                                            .font(.caption2)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(colors.surfaceHover)
+                                            .cornerRadius(4)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    private func dayTitle(for date: Date) -> String {
+        if Calendar.current.isDateInToday(date) { return "TODAY" }
+        if Calendar.current.isDateInTomorrow(date) { return "TOMORROW" }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE"
+        return formatter.string(from: date).uppercased()
+    }
+}
+
 private struct DashboardRow: Identifiable {
-    let id = UUID()
+    let id: String
     let title: String
     let detail: String
+    let destination: AnyView
 }
 
 private extension DashboardView {
@@ -726,18 +1049,22 @@ private extension DashboardView {
                 } else {
                     VStack(alignment: .leading, spacing: PFSpacing.xs) {
                         ForEach(rows) { row in
-                            HStack {
-                                Text(row.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(colors.textMain)
-                                    .lineLimit(1)
+                            NavigationLink(destination: row.destination) {
+                                HStack {
+                                    Text(row.title)
+                                        .font(.subheadline.weight(.semibold))
+                                        .foregroundStyle(colors.textMain)
+                                        .lineLimit(1)
 
-                                Spacer()
+                                    Spacer()
 
-                                Text(row.detail)
-                                    .font(.caption)
-                                    .foregroundStyle(colors.textMuted)
+                                    Text(row.detail)
+                                        .font(.caption)
+                                        .foregroundStyle(colors.textMuted)
+                                }
+                                .padding(.vertical, 4)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }

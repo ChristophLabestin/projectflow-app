@@ -1,4 +1,5 @@
 import React from 'react';
+import '../src/styles/components/_task-dependencies.scss';
 import { TaskDependencySelector } from './TaskDependencySelector';
 import { useLanguage } from '../context/LanguageContext';
 

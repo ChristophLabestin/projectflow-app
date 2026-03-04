@@ -40,8 +40,8 @@
         &:focus {
             outline: none;
             background-color: var(--color-surface-card); // Match text-input focus state
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 2px var(--color-pattern-dot);
+            border-color: transparent;
+            box-shadow: none;
         }
 
         /* Placeholder style when nothing selected */
@@ -60,7 +60,7 @@
             border-color: var(--color-error);
 
             &:focus {
-                box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+                box-shadow: none;
             }
         }
     }

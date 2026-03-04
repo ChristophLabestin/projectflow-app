@@ -11,7 +11,7 @@ import {
     generateSocialCampaignStrategyAI,
     generateAudienceAlternativesAI
 } from '../../../services/geminiService';
-import { subscribeSocialStrategy } from '../../../services/dataService';
+import { subscribeSocialStrategy } from '../../../services/domain/socialSettingsService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { getDefaultPlatformFrequency } from '../constants/platformFrequencyData';
 import { useLanguage } from '../../../context/LanguageContext';

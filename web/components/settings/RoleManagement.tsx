@@ -717,7 +717,7 @@ export function RoleManagement() {
     };
 
     const handleSave = async () => {
-        if (!formData.name.trim()) { showError('Role name is required'); return; }
+        if (!formData.name.trim()) { showError(t('roles.errors.nameRequired')); return; }
         setSaving(true);
         try {
             const maxPosition = Math.max(...roles.filter(r => r.systemKey !== 'OWNER').map(r => r.position), 0);
@@ -735,7 +735,7 @@ export function RoleManagement() {
                         }
                     });
                 }
-                showSuccess('Role updated successfully');
+                showSuccess(t('roles.toast.updated'));
             } else {
                 // Create new role in Firebase
                 const newRoleId = await createTenantRole({
@@ -750,11 +750,11 @@ export function RoleManagement() {
                     }
                 });
                 setSelectedRoleId(newRoleId);
-                showSuccess('Role created successfully');
+                showSuccess(t('roles.toast.created'));
             }
             setShowCreateModal(false);
         } catch (error: any) {
-            showError(error.message || 'Failed to save role');
+            showError(error.message || t('roles.errors.saveFailed'));
         } finally {
             setSaving(false);
         }
@@ -762,19 +762,22 @@ export function RoleManagement() {
 
     const handleDelete = async (role: Role) => {
         if (role.isSystem) {
-            showError('Cannot delete system roles');
+            showError(t('roles.protected'));
             return;
         }
-        const confirmed = await confirm('Delete Role', `Are you sure you want to delete "${role.name}"?`);
+        const confirmed = await confirm(
+            t('roles.confirm.deleteTitle'),
+            t('roles.confirm.deleteMessage').replace('{name}', role.name)
+        );
         if (!confirmed) return;
         try {
             await deleteTenantRole(role.id);
             if (selectedRoleId === role.id) {
                 setSelectedRoleId(roles.find(r => r.id !== role.id)?.id || null);
             }
-            showSuccess('Role deleted successfully');
+            showSuccess(t('roles.toast.deleted'));
         } catch (error: any) {
-            showError(error.message || 'Failed to delete role');
+            showError(error.message || t('roles.errors.deleteFailed'));
         }
     };
 
@@ -795,13 +798,13 @@ export function RoleManagement() {
             {/* Header */}
             <div className="flex items-center justify-between mb-4 shrink-0">
                 <div>
-                    <h2 className="text-xl font-display font-bold text-main">Role Hierarchy</h2>
-                    <p className="text-muted text-sm">Manage roles and permissions</p>
+                    <h2 className="text-xl font-display font-bold text-main">{t('roles.force_list_title')}</h2>
+                    <p className="text-muted text-sm">{t('roles.subtitle')}</p>
                 </div>
                 {canManageRoles && (
                     <Button onClick={handleOpenCreate} size="sm">
                         <span className="material-symbols-outlined text-base mr-1">add</span>
-                        New Role
+                        {t('roles.form.create')}
                     </Button>
                 )}
             </div>
@@ -812,7 +815,7 @@ export function RoleManagement() {
                 <div className="lg:col-span-2 space-y-2 overflow-y-auto pr-2">
                     <div className="flex items-center gap-1.5 text-[10px] text-muted uppercase tracking-wider mb-3 px-2">
                         <span className="material-symbols-outlined text-xs">arrow_upward</span>
-                        <span>Higher Authority</span>
+                        <span>{t('roles.hierarchy.higher')}</span>
                     </div>
 
                     {sortedRoles.map((role, index) => (
@@ -838,7 +841,7 @@ export function RoleManagement() {
 
                     <div className="flex items-center gap-1.5 text-[10px] text-muted uppercase tracking-wider mt-3 px-2">
                         <span className="material-symbols-outlined text-xs">arrow_downward</span>
-                        <span>Lower Authority</span>
+                        <span>{t('roles.hierarchy.lower')}</span>
                     </div>
                 </div>
 
@@ -854,12 +857,23 @@ export function RoleManagement() {
             </div>
 
             {/* Create/Edit Modal */}
-            <Modal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} title={editingRole ? `Edit: ${editingRole.name}` : 'Create Role'} size="xl">
+            <Modal
+                isOpen={showCreateModal}
+                onClose={() => setShowCreateModal(false)}
+                title={editingRole ? `${t('roles.form.editTitle')}: ${editingRole.name}` : t('roles.form.createTitle')}
+                size="xl"
+            >
                 <div className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        <Input label="Name" value={formData.name} onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))} placeholder="e.g., Moderator" disabled={editingRole?.isSystem && editingRole?.systemKey !== 'MEMBER'} />
+                        <Input
+                            label={t('roles.form.name')}
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder={t('roles.form.namePlaceholder')}
+                            disabled={editingRole?.isSystem && editingRole?.systemKey !== 'MEMBER'}
+                        />
                         <div>
-                            <label className="block text-sm font-medium text-main mb-1">Color</label>
+                            <label className="block text-sm font-medium text-main mb-1">{t('roles.form.color')}</label>
                             <div className="flex flex-wrap gap-1">
                                 {DEFAULT_ROLE_COLORS.map(color => (
                                     <button key={color} type="button" onClick={() => setFormData(prev => ({ ...prev, color }))}
@@ -869,13 +883,18 @@ export function RoleManagement() {
                             </div>
                         </div>
                     </div>
-                    <Input label="Description" value={formData.description} onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))} placeholder="Brief description" />
+                    <Input
+                        label={t('roles.form.description')}
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder={t('roles.form.descriptionPlaceholder')}
+                    />
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-main">Permissions</label>
+                            <label className="text-sm font-medium text-main">{t('roles.form.permissions')}</label>
                             <div className="flex items-center gap-3 text-[10px] text-muted">
-                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-green-500" /> Allow</span>
-                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-red-500" /> Deny</span>
+                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-green-500" /> {t('roles.form.allow')}</span>
+                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-red-500" /> {t('roles.form.deny')}</span>
                             </div>
                         </div>
 
@@ -891,7 +910,7 @@ export function RoleManagement() {
                                 className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
-                                Allow All
+                                {t('roles.form.allowAll')}
                             </button>
                             <button
                                 type="button"
@@ -903,7 +922,7 @@ export function RoleManagement() {
                                 className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-sm">cancel</span>
-                                Deny All
+                                {t('roles.form.denyAll')}
                             </button>
                             <button
                                 type="button"
@@ -912,10 +931,12 @@ export function RoleManagement() {
                                 className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-surface-border text-muted hover:bg-surface-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-sm">remove_circle_outline</span>
-                                Clear All
+                                {t('roles.form.clearAll')}
                             </button>
                             <span className="text-[10px] text-muted ml-auto">
-                                {formData.permissions.allow.length} allowed, {formData.permissions.deny.length} denied
+                                {t('roles.form.summary')
+                                    .replace('{allowed}', String(formData.permissions.allow.length))
+                                    .replace('{denied}', String(formData.permissions.deny.length))}
                             </span>
                         </div>
 
@@ -927,8 +948,10 @@ export function RoleManagement() {
                         </div>
                     </div>
                     <div className="flex justify-end gap-2 pt-3 border-t border-surface">
-                        <Button variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                        <Button size="sm" onClick={handleSave} loading={saving}>{editingRole ? 'Save' : 'Create'}</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>{t('roles.form.cancel')}</Button>
+                        <Button size="sm" onClick={handleSave} loading={saving}>
+                            {editingRole ? t('roles.form.save') : t('roles.form.create')}
+                        </Button>
                     </div>
                 </div>
             </Modal>

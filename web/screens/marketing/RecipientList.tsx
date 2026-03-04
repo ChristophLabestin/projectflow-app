@@ -5,6 +5,7 @@ import { subscribeRecipients, subscribeRecipientColumns, deleteRecipient } from 
 import { subscribeGroups } from '../../services/groupService';
 import { useToast, useConfirm } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
+import { useLanguage } from '../../context/LanguageContext';
 
 // Modals
 import { ImportRecipientsModal } from './components/ImportRecipientsModal';
@@ -24,6 +25,7 @@ export const RecipientList = () => {
     const [selectedGroupFilter, setSelectedGroupFilter] = useState<string>('all');
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     // Modals
     const [isImportModalOpen, setImportModalOpen] = useState(false);
@@ -57,14 +59,17 @@ export const RecipientList = () => {
     }, [projectId]);
 
     const handleDelete = async (id: string) => {
-        const confirmed = await confirm('Delete Recipient', 'Are you sure you want to delete this recipient?');
+        const confirmed = await confirm(
+            t('marketing.recipientList.confirm.deleteTitle'),
+            t('marketing.recipientList.confirm.deleteMessage')
+        );
         if (!confirmed) return;
         if (!projectId) return;
         try {
             await deleteRecipient(projectId, id);
-            showSuccess('Recipient deleted successfully');
+            showSuccess(t('marketing.recipientList.toast.deleted'));
         } catch (e) {
-            showError('Failed to delete recipient');
+            showError(t('marketing.recipientList.toast.deleteError'));
         }
     };
 
@@ -98,25 +103,25 @@ export const RecipientList = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="h3 mb-1">Recipients</h2>
-                    <p className="text-muted">Manage your audience, import contacts, and organize into groups.</p>
+                    <h2 className="h3 mb-1">{t('marketing.recipientList.title')}</h2>
+                    <p className="text-muted">{t('marketing.recipientList.subtitle')}</p>
                 </div>
                 <div className="flex gap-3 flex-wrap">
                     <Button variant="secondary" onClick={() => setGroupModalOpen(true)}>
                         <span className="material-symbols-outlined mr-2">folder_shared</span>
-                        Groups{groups.length > 0 && ` (${groups.length})`}
+                        {t('marketing.recipientList.actions.groups')}{groups.length > 0 && ` (${groups.length})`}
                     </Button>
                     <Button variant="secondary" onClick={() => setExternalModalOpen(true)}>
                         <span className="material-symbols-outlined mr-2">database</span>
-                        Connect DB
+                        {t('marketing.recipientList.actions.connectDb')}
                     </Button>
                     <Button variant="primary" onClick={() => setImportModalOpen(true)}>
                         <span className="material-symbols-outlined mr-2">upload</span>
-                        Import CSV
+                        {t('marketing.recipientList.actions.importCsv')}
                     </Button>
                     <Button variant="primary" onClick={() => setManualModalOpen(true)}>
                         <span className="material-symbols-outlined mr-2">person_add</span>
-                        Add
+                        {t('marketing.recipientList.actions.add')}
                     </Button>
                 </div>
             </div>
@@ -127,8 +132,8 @@ export const RecipientList = () => {
                     <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">search</span>
                     <input
                         type="text"
-                        placeholder="Search by email or name..."
-                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
+                        placeholder={t('marketing.recipientList.searchPlaceholder')}
+                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg focus:outline-none text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -137,12 +142,12 @@ export const RecipientList = () => {
                 {/* Group Filter */}
                 {groups.length > 0 && (
                     <select
-                        className="px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
+                        className="px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none text-sm"
                         value={selectedGroupFilter}
                         onChange={(e) => setSelectedGroupFilter(e.target.value)}
                     >
-                        <option value="all">All Groups</option>
-                        <option value="ungrouped">Ungrouped</option>
+                        <option value="all">{t('marketing.recipientList.filters.allGroups')}</option>
+                        <option value="ungrouped">{t('marketing.recipientList.filters.ungrouped')}</option>
                         {groups.map(g => (
                             <option key={g.id} value={g.id}>{g.name}</option>
                         ))}
@@ -150,7 +155,7 @@ export const RecipientList = () => {
                 )}
 
                 <div className="text-sm text-muted">
-                    {filteredRecipients.length} recipients
+                    {t('marketing.recipientList.count').replace('{count}', String(filteredRecipients.length))}
                 </div>
             </div>
 
@@ -159,15 +164,15 @@ export const RecipientList = () => {
                 <table className="w-full text-sm text-left">
                     <thead className="bg-surface text-muted border-b border-surface sticky top-0 z-10">
                         <tr>
-                            <th className="px-4 py-3 font-medium">Email</th>
-                            <th className="px-4 py-3 font-medium">Name</th>
-                            <th className="px-4 py-3 font-medium">Groups</th>
-                            <th className="px-4 py-3 font-medium">Status</th>
+                            <th className="px-4 py-3 font-medium">{t('marketing.recipientList.table.email')}</th>
+                            <th className="px-4 py-3 font-medium">{t('marketing.recipientList.table.name')}</th>
+                            <th className="px-4 py-3 font-medium">{t('marketing.recipientList.table.groups')}</th>
+                            <th className="px-4 py-3 font-medium">{t('marketing.recipientList.table.status')}</th>
                             {customColumns.map(col => (
                                 <th key={col.id} className="px-4 py-3 font-medium">{col.label}</th>
                             ))}
-                            <th className="px-4 py-3 font-medium">Source</th>
-                            <th className="px-4 py-3 font-medium text-right">Actions</th>
+                            <th className="px-4 py-3 font-medium">{t('marketing.recipientList.table.source')}</th>
+                            <th className="px-4 py-3 font-medium text-right">{t('marketing.recipientList.table.actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--color-surface-border)]">
@@ -224,14 +229,14 @@ export const RecipientList = () => {
                                             <button
                                                 onClick={() => setEditingRecipient(recipient)}
                                                 className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors"
-                                                title="Edit"
+                                                title={t('marketing.recipientList.actions.edit')}
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(recipient.id)}
                                                 className="p-1.5 text-muted hover:text-red-500 hover:bg-surface-hover rounded transition-colors"
-                                                title="Delete"
+                                                title={t('marketing.recipientList.actions.delete')}
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">delete</span>
                                             </button>
@@ -243,7 +248,7 @@ export const RecipientList = () => {
                         {filteredRecipients.length === 0 && (
                             <tr>
                                 <td colSpan={7 + customColumns.length} className="px-4 py-8 text-center text-muted">
-                                    No recipients found.
+                                    {t('marketing.recipientList.empty')}
                                 </td>
                             </tr>
                         )}
@@ -295,4 +300,3 @@ export const RecipientList = () => {
         </div>
     );
 };
-

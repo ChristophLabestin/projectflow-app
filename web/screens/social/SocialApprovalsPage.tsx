@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { subscribeSocialPosts, updateSocialPost } from '../../services/dataService';
+import { subscribeSocialPosts, updateSocialPost } from '../../services/domain/socialService';
 import { SocialPost } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';

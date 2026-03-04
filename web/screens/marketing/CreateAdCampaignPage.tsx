@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createAdCampaign, updateAdCampaign, subscribeAdCampaign } from '../../services/marketingService';
-import { subscribeProjectIdeas } from '../../services/dataService';
+import { subscribeProjectIdeas } from '../../services/domain/ideasService';
 import { AdCampaign, AdPlatform, AdObjective, AdTargetAudience, Idea } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';

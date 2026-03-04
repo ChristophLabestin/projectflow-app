@@ -25,10 +25,10 @@ import {
     deleteField
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { updateProfile, linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
+import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth, functions, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
+import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
+import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -39,6 +39,46 @@ import {
     createNotification
 } from './notificationService';
 import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
+import {
+    createWorkspaceApiToken,
+    deleteWorkspaceApiToken,
+    getWorkspaceSmtpConfig,
+    listWorkspaceApiTokens,
+    saveWorkspaceSmtpConfig
+} from './domain/adminSettingsService';
+import {
+    ensureCategory,
+    ensureTenantAndUser,
+    findIdeaDoc,
+    findIssueDoc,
+    findSubtaskDoc,
+    findTaskDoc,
+    getCachedTenantId,
+    getProjectContextFromRef,
+    logActivity,
+    projectDocRef,
+    projectSubCollection,
+    resolveTenantId,
+    syncProjectProgress
+} from './internal/workspaceDataCore';
+
+// Legacy compatibility facade.
+// Prefer focused modules under web/services/domain and avoid adding new exports here.
+
+export {
+    ensureCategory,
+    ensureTenantAndUser,
+    findIdeaDoc,
+    findIssueDoc,
+    findSubtaskDoc,
+    findTaskDoc,
+    getProjectContextFromRef,
+    logActivity,
+    projectDocRef,
+    projectSubCollection,
+    resolveTenantId,
+    syncProjectProgress
+};
 
 const TENANTS = "tenants";
 const PROJECTS = "projects";
@@ -59,16 +99,25 @@ export const SOCIAL_ASSETS = "social_assets";
 export const CAPTION_PRESETS = "caption_presets";
 export const SOCIAL_STRATEGY = "social_strategy";
 
-const TENANT_CACHE_KEY = "activeTenantId";
-
-const getCachedTenantId = () => {
-    try {
-        if (typeof localStorage === "undefined") return undefined;
-        return localStorage.getItem(TENANT_CACHE_KEY) || undefined;
-    } catch {
-        return undefined;
-    }
+const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
+    layoutVersion: 3,
+    templateId: 'core',
+    cards: [
+        { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
+        { id: 'executionTasks', enabled: true, span: 12, placement: 'primary' },
+        { id: 'executionFlows', enabled: true, span: 6, placement: 'primary' },
+        { id: 'executionIssues', enabled: true, span: 6, placement: 'primary' },
+        { id: 'updates', enabled: true, span: 12, placement: 'primary' },
+        { id: 'resources', enabled: true, span: 12, placement: 'primary' },
+        { id: 'planning', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'milestones', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'aiInsights', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'team', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'controls', enabled: true, span: 3, placement: 'secondary' }
+    ]
 };
+
+const TENANT_CACHE_KEY = "activeTenantId";
 
 export const setActiveTenantId = (tenantId: string) => {
     try {
@@ -92,26 +141,22 @@ export const clearActiveTenantId = () => {
 
 export const getActiveTenantId = () => getCachedTenantId();
 
-export const resolveTenantId = (tenantId?: string) => {
-    const user = auth.currentUser;
-    const resolved = tenantId || getCachedTenantId() || user?.uid;
-    if (!resolved) {
-        throw new Error("User not authenticated");
-    }
-    return resolved;
-};
-
 const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
 
 export const getTenantSecret = async (tenantId: string, secretName: string) => {
-    const ref = doc(db, TENANTS, tenantId, "secrets", secretName);
-    const snap = await getDoc(ref);
-    return snap.exists() ? snap.data() : null;
+    if (secretName !== 'smtp') {
+        throw new Error('Only the smtp secret is available through the compatibility facade.');
+    }
+
+    return getWorkspaceSmtpConfig(tenantId);
 };
 
 export const updateTenantSecret = async (tenantId: string, secretName: string, data: any) => {
-    const ref = doc(db, TENANTS, tenantId, "secrets", secretName);
-    await setDoc(ref, data, { merge: true });
+    if (secretName !== 'smtp') {
+        throw new Error('Only the smtp secret is available through the compatibility facade.');
+    }
+
+    await saveWorkspaceSmtpConfig(tenantId, data);
 };
 
 // --- Top-level users collection (global user profiles) ---
@@ -124,83 +169,6 @@ const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, TENANTS
 
 // --- Project collections ---
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
-const projectDocRef = (tenantId: string, projectId: string) => doc(tenantDocRef(tenantId), PROJECTS, projectId);
-export const projectSubCollection = (tenantId: string, projectId: string, subCollectionName: string) => {
-    return collection(db, 'tenants', tenantId, 'projects', projectId, subCollectionName);
-};
-
-
-
-export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole) => {
-    const user = auth.currentUser;
-    if (!user) return; // No user, nothing to do
-
-    const isOwner = user.uid === tenantId;
-
-    // 1. Ensure user exists in top-level users collection
-    const globalUserRef = userDocRef(user.uid);
-    const globalUserSnap = await getDoc(globalUserRef);
-
-    await setDoc(globalUserRef, {
-        uid: user.uid,
-        email: user.email || "",
-        displayName: user.displayName || "User",
-        photoURL: user.photoURL || "",
-        updatedAt: serverTimestamp(),
-        ...(!globalUserSnap.exists() ? { createdAt: serverTimestamp() } : {})
-    }, { merge: true });
-
-    // Initialize AI usage if not present (on global user doc)
-    if (!globalUserSnap.exists() || !globalUserSnap.data()?.aiUsage) {
-        await setDoc(globalUserRef, {
-            aiUsage: {
-                tokensUsed: 0,
-                tokenLimit: 1000000,
-                imagesUsed: 0,
-                imageLimit: 50,
-                lastReset: serverTimestamp()
-            }
-        }, { merge: true });
-    }
-
-    // 2. Only the owner can create a tenant document
-    if (isOwner) {
-        await setDoc(
-            tenantDocRef(tenantId),
-            {
-                tenantId,
-                name: user.displayName || "Workspace",
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-        );
-    }
-
-    // Check if tenant exists before writing membership
-    const tenantDoc = await getDoc(tenantDocRef(tenantId));
-    if (!tenantDoc.exists() && !isOwner) {
-        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
-        return;
-    }
-
-    // 3. Add membership to tenants/{tenantId}/members/{userId}
-    const memberRef = tenantMemberDocRef(tenantId, user.uid);
-    const memberPayload: any = {
-        uid: user.uid,
-        joinedAt: serverTimestamp(),
-    };
-
-    // Set role if explicitly passed or if owner
-    if (role) {
-        memberPayload.role = role;
-    } else if (isOwner) {
-        memberPayload.role = 'Owner';
-    } else {
-        memberPayload.role = 'Member';
-    }
-
-    await setDoc(memberRef, memberPayload, { merge: true });
-};
 
 /**
  * Get user profile from top-level users collection
@@ -216,34 +184,16 @@ export const getUserProfile = async (userId: string, _tenantId?: string) => {
  * Get user's membership data for a specific tenant
  */
 export const getUserTenantMembership = async (userId: string, tenantId: string) => {
-    const snap = await getDoc(tenantMemberDocRef(tenantId, userId));
-    return snap.exists() ? snap.data() : null;
+    const { getUserTenantMembership: getUserTenantMembershipDomain } = await import('./domain/workspaceMembersService');
+    return getUserTenantMembershipDomain(userId, tenantId);
 };
 
 /**
  * Get all members of a workspace (combined profile + membership data)
  */
 export const getWorkspaceMembers = async (tenantId?: string): Promise<Member[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const memberRefs = await getDocs(tenantMembersCollection(resolvedTenant));
-
-    const members = await Promise.all(
-        memberRefs.docs.map(async (memberDoc) => {
-            const membership = memberDoc.data();
-            const userSnap = await getDoc(userDocRef(memberDoc.id));
-            const userData = userSnap.exists() ? userSnap.data() : {};
-            return {
-                ...userData,
-                uid: memberDoc.id,
-                role: membership.role,
-                joinedAt: membership.joinedAt,
-                groupIds: membership.groupIds,
-                pinnedProjectId: membership.pinnedProjectId,
-                githubToken: membership.githubToken,
-            } as Member;
-        })
-    );
-    return members;
+    const { getWorkspaceMembers: getWorkspaceMembersDomain } = await import('./domain/workspaceMembersService');
+    return getWorkspaceMembersDomain(tenantId);
 };
 
 /**
@@ -257,7 +207,8 @@ export const updateUserData = async (userId: string, data: Partial<any>) => {
  * Update user's membership data for a specific tenant
  */
 export const updateUserMembership = async (userId: string, tenantId: string, data: Partial<any>) => {
-    await setDoc(tenantMemberDocRef(tenantId, userId), data, { merge: true });
+    const { updateUserMembership: updateUserMembershipDomain } = await import('./domain/workspaceMembersService');
+    return updateUserMembershipDomain(userId, tenantId, data);
 };
 
 export const linkWithGithub = async (): Promise<string> => {
@@ -344,9 +295,9 @@ export const incrementCampaignAIUsage = async (campaignId: string, tokens: numbe
 };
 
 
-export const deleteSocialCampaign = async (campaignId: string) => {
-    const campaignRef = doc(db, SOCIAL_CAMPAIGNS, campaignId);
-    await deleteDoc(campaignRef);
+export const deleteSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
+    const { deleteSocialCampaign: deleteSocialCampaignDomain } = await import('./domain/socialService');
+    return deleteSocialCampaignDomain(projectId, campaignId, tenantId);
 };
 
 // --- User Project Navigation Preferences ---
@@ -412,23 +363,6 @@ export const subscribeUserStatusPreference = (userId: string, onUpdate: (status:
     });
 };
 
-export const getTenant = async (tenantId: string) => {
-    const snap = await getDoc(tenantDocRef(tenantId));
-    if (snap.exists()) {
-        return { id: snap.id, ...snap.data() };
-    }
-    return null;
-};
-
-export const updateTenant = async (tenantId: string, updates: Record<string, any>) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    // Ideally check if user is owner, but for now allow members to update name? 
-    // Or strictly owner? Let's assume loosely for now or just check ownership.
-    // prompt said "you can do general settings like the name", implying the user can do it.
-    await updateDoc(tenantDocRef(tenantId), updates);
-};
-
 export const setWorkspaceFocusProject = async (tenantId: string, projectId: string | null) => {
     // If projectId is null, we are clearing the focus
     await updateDoc(tenantDocRef(tenantId), {
@@ -482,63 +416,9 @@ export const deleteProjectOverviewTemplate = async (templateId: string, tenantId
     await deleteDoc(doc(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES, templateId));
 };
 
-const getProjectContextFromRef = (ref: { parent?: any }) => {
-    const projectRef = ref.parent?.parent;
-    const tenantRef = projectRef?.parent?.parent;
-    return {
-        projectId: projectRef?.id as string | undefined,
-        tenantId: tenantRef?.id as string | undefined,
-        projectRef,
-    };
-};
-
-const findTaskDoc = async (taskId: string, projectId?: string, tenantId?: string) => {
-    // If we have a tenantId, try direct lookup first
-    if (projectId && tenantId) {
-        const directRef = doc(projectSubCollection(tenantId, projectId, TASKS), taskId);
-        const snap = await getDoc(directRef);
-        if (snap.exists()) return snap;
-    }
-
-    // If only projectId, try to get project first to find its tenant
-    if (projectId && !tenantId) {
-        const project = await getProjectById(projectId);
-        if (project?.tenantId) {
-            const directRef = doc(projectSubCollection(project.tenantId, projectId, TASKS), taskId);
-            const snap = await getDoc(directRef);
-            if (snap.exists()) return snap;
-        }
-    }
-
-    // Fallback: global collectionGroup search
-    const cg = collectionGroup(db, TASKS);
-    const snapshot = await getDocs(cg);
-    const matchingDoc = snapshot.docs.find((d) => d.id === taskId);
-    return matchingDoc || null;
-};
-
-const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    if (projectId) {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const ref = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
-    }
-
-    // Note: documentId() in collection group queries requires a full path, not just the ID.
-    // So we iterate through results and find by ID instead.
-    const cg = collectionGroup(db, IDEAS);
-    const snapshot = await getDocs(cg);
-    const matchingDoc = snapshot.docs.find((d) => d.id === ideaId);
-    return matchingDoc || null;
-};
-
 export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?: string): Promise<Idea | null> => {
-    const docSnap = await findIdeaDoc(ideaId, projectId, tenantId);
-    if (docSnap && docSnap.exists()) {
-        return { ...docSnap.data(), id: docSnap.id } as Idea;
-    }
-    return null;
+    const { getIdeaById: getIdeaByIdDomain } = await import('./domain/ideasService');
+    return getIdeaByIdDomain(ideaId, projectId, tenantId);
 };
 
 export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (idea: Idea) => void, tenantId?: string) => {
@@ -566,47 +446,6 @@ const findMindmapDoc = async (mindmapId: string, projectId?: string, tenantId?: 
     const snapshot = await getDocs(cg);
     const matchingDoc = snapshot.docs.find((d) => d.id === mindmapId);
     return matchingDoc || null;
-};
-
-const findSubtaskDoc = async (subTaskId: string, taskId?: string, projectId?: string, tenantId?: string) => {
-    if (taskId) {
-        const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-        if (taskSnap) {
-            const ref = doc(collection(taskSnap.ref, SUBTASKS), subTaskId);
-            const snap = await getDoc(ref);
-            if (snap.exists()) return snap;
-        }
-    }
-
-    // Note: documentId() in collection group queries requires a full path, not just the ID.
-    const cg = collectionGroup(db, SUBTASKS);
-    const snapshot = await getDocs(cg);
-    const matchingDoc = snapshot.docs.find((d) => d.id === subTaskId);
-    return matchingDoc || null;
-};
-
-const logActivity = async (
-    projectId: string,
-    payload: Omit<Activity, "id" | "projectId" | "createdAt" | "user" | "userAvatar" | "ownerId"> & Partial<Activity>,
-    tenantId?: string
-) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    await addDoc(projectSubCollection(resolvedTenant, projectId, ACTIVITIES), {
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        user: payload.user || user.displayName || "User",
-        userAvatar: payload.userAvatar || user.photoURL || "",
-        action: payload.action,
-        target: payload.target || "Unknown",
-        details: payload.details || "",
-        relatedId: payload.relatedId || null,
-        type: payload.type || "task",
-        createdAt: serverTimestamp(),
-    });
 };
 
 export const addActivityEntry = async (projectId: string, payload: Omit<Activity, "id" | "projectId" | "createdAt" | "ownerId">) => {
@@ -652,91 +491,16 @@ export const createProject = async (
     tenantId?: string,
     visibilityGroupIds?: string[]
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    // 1. Create the project document first to get an ID
-    const docRef = await addDoc(projectsCollection(resolvedTenant), {
-        ...projectData,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        coverImage: "",
-        squareIcon: "",
-        screenshots: [],
-        progress: 0,
-        members: Array.from(new Set([user.uid, ...initialMemberIds])),
-        memberIds: Array.from(new Set([user.uid, ...initialMemberIds])),
-        visibilityGroupIds: visibilityGroupIds || [],
-        visibilityGroupId: visibilityGroupIds?.[0] || null, // Backwards compatibility
-        createdAt: serverTimestamp()
-    });
-
-    const projectId = docRef.id;
-    let coverImageUrl = typeof coverFile === 'string' ? coverFile : "";
-    let squareIconUrl = typeof squareIconFile === 'string' ? squareIconFile : "";
-    const screenshotUrls: string[] = [];
-
-    // 2. Upload assets to project-specific folder: tenants/{tid}/projects/{pid}/
-    // We include _media_{projectId}_ in the filename for library discovery
-    const timestamp = Date.now();
-    const getStoragePath = (file: File, kind: string) =>
-        `tenants/${resolvedTenant}/projects/${projectId}/${timestamp}_media_${projectId}_${kind}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
-
-    try {
-        if (coverFile && typeof coverFile !== 'string') {
-            const storageRef = ref(storage, getStoragePath(coverFile, 'cover'));
-            await uploadBytes(storageRef, coverFile);
-            coverImageUrl = await getDownloadURL(storageRef);
-        }
-    } catch (e) {
-        console.warn('Cover upload failed', e);
-    }
-
-    try {
-        if (squareIconFile && typeof squareIconFile !== 'string') {
-            const storageRef = ref(storage, getStoragePath(squareIconFile, 'icon'));
-            await uploadBytes(storageRef, squareIconFile);
-            squareIconUrl = await getDownloadURL(storageRef);
-        }
-    } catch (e) {
-        console.warn('Icon upload failed', e);
-    }
-
-    if (screenshotFiles && screenshotFiles.length) {
-        for (const file of screenshotFiles) {
-            if (typeof file === 'string') {
-                screenshotUrls.push(file);
-                continue;
-            }
-            try {
-                const storageRef = ref(storage, getStoragePath(file, 'screenshot'));
-                await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(storageRef);
-                screenshotUrls.push(url);
-            } catch (e) {
-                console.warn('Screenshot upload failed', file?.name, e);
-            }
-        }
-    }
-
-
-    // 3. Update the project document with the final URLs
-    await updateDoc(docRef, {
-        coverImage: coverImageUrl || deleteField(),
-        squareIcon: squareIconUrl || deleteField(),
-        screenshots: screenshotUrls
-    });
-
-    await logActivity(
-        projectId,
-        { action: `Created project "${projectData.title || "Project"}"`, target: "Project", type: "status" },
-        resolvedTenant
+    const { createProject: createProjectDomain } = await import('./domain/projectAdminService');
+    return createProjectDomain(
+        projectData,
+        coverFile,
+        squareIconFile,
+        screenshotFiles,
+        initialMemberIds,
+        tenantId,
+        visibilityGroupIds
     );
-
-    return projectId;
 };
 
 export const updateProjectFields = async (
@@ -745,25 +509,8 @@ export const updateProjectFields = async (
     activityMessage?: { action: string; target?: string; type?: Activity["type"] },
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const projectRef = projectDocRef(resolvedTenant, projectId);
-
-    // Sanitize updates to remove undefined values which cause Firestore errors
-    const sanitizedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-            acc[key] = value;
-        }
-        return acc;
-    }, {} as Record<string, any>);
-
-    await updateDoc(projectRef, sanitizedUpdates);
-    if (activityMessage?.action) {
-        await logActivity(
-            projectId,
-            { action: activityMessage.action, target: activityMessage.target || "Project", type: activityMessage.type || "status" },
-            resolvedTenant
-        );
-    }
+    const { updateProjectFields: updateProjectFieldsDomain } = await import('./domain/projectAdminService');
+    return updateProjectFieldsDomain(projectId, updates, activityMessage, tenantId);
 };
 
 // --- Milestones ---
@@ -802,9 +549,8 @@ export const updateMilestone = async (
     updates: Partial<Milestone>,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, MILESTONES), milestoneId);
-    await updateDoc(ref, updates);
+    const { updateMilestone: updateMilestoneDomain } = await import('./domain/projectMetaService');
+    return updateMilestoneDomain(projectId, milestoneId, updates, tenantId);
 };
 
 export const deleteMilestone = async (
@@ -812,9 +558,8 @@ export const deleteMilestone = async (
     milestoneId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, MILESTONES), milestoneId);
-    await deleteDoc(ref);
+    const { deleteMilestone: deleteMilestoneDomain } = await import('./domain/projectMetaService');
+    return deleteMilestoneDomain(projectId, milestoneId, tenantId);
 };
 
 export const subscribeProjectMilestones = (
@@ -822,19 +567,20 @@ export const subscribeProjectMilestones = (
     onUpdate: (milestones: Milestone[]) => void,
     tenantId?: string
 ): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, MILESTONES),
-        orderBy("dueDate", "asc")
-    );
+    let isCancelled = false;
+    let unsubscribe: Unsubscribe = () => undefined;
 
-    return onSnapshot(q, (snapshot) => {
-        const milestones = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Milestone));
-        onUpdate(milestones);
+    void import('./domain/projectMetaService').then(({ subscribeProjectMilestones: subscribeProjectMilestonesDomain }) => {
+        if (isCancelled) {
+            return;
+        }
+        unsubscribe = subscribeProjectMilestonesDomain(projectId, onUpdate, tenantId);
     });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 // --- Health Snapshots ---
@@ -864,19 +610,8 @@ export const saveHealthSnapshot = async (
     trend: string,
     tenantId?: string
 ): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-    const snapshotRef = doc(projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS), today);
-    await setDoc(snapshotRef, {
-        projectId,
-        tenantId: resolvedTenant,
-        score,
-        status,
-        trend,
-        date: today,
-        timestamp: serverTimestamp()
-    });
+    const { saveHealthSnapshot: saveHealthSnapshotDomain } = await import('./domain/projectInsightsService');
+    return saveHealthSnapshotDomain(projectId, score, status, trend, tenantId);
 };
 
 /**
@@ -929,207 +664,57 @@ export const getHealthDelta = async (
     currentScore: number,
     tenantId?: string
 ): Promise<number | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Get date from 7 days ago
-    const lastWeek = new Date();
-    lastWeek.setDate(lastWeek.getDate() - 7);
-    const lastWeekDate = lastWeek.toISOString().split('T')[0];
-
-    const snapshot = await getHealthSnapshot(projectId, lastWeekDate, resolvedTenant);
-    if (snapshot) {
-        return currentScore - snapshot.score;
-    }
-    return null;
+    const { getHealthDelta: getHealthDeltaDomain } = await import('./domain/projectInsightsService');
+    return getHealthDeltaDomain(projectId, currentScore, tenantId);
 };
 
 export const saveGeminiReport = async (projectId: string, content: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    await addDoc(projectSubCollection(resolvedTenant, projectId, GEMINI_REPORTS), {
-        projectId,
-        content,
-        createdBy: user.uid,
-        userName: user.displayName || "User",
-        createdAt: serverTimestamp()
-    });
-
-    await logActivity(
-        projectId,
-        { action: "Generated project report", target: "CORA Report", details: content, type: "report" },
-        resolvedTenant
-    );
+    const { saveGeminiReport: saveGeminiReportDomain } = await import('./domain/projectInsightsService');
+    return saveGeminiReportDomain(projectId, content, tenantId);
 };
 
 export const getLatestGeminiReport = async (projectId: string, tenantId?: string): Promise<GeminiReport | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, GEMINI_REPORTS),
-        orderBy("createdAt", "desc"),
-        limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    const data = snap.docs[0].data();
-    return {
-        id: snap.docs[0].id,
-        ...data
-    } as GeminiReport;
+    const { getLatestGeminiReport: getLatestGeminiReportDomain } = await import('./domain/projectInsightsService');
+    return getLatestGeminiReportDomain(projectId, tenantId);
 };
-
-// --- Email Components (Reusable Blocks) ---
-
-export const EMAIL_COMPONENTS = "email_components";
-
-export const saveEmailComponent = async (projectId: string, name: string, block: EmailBlock, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Clean block ID to ensure uniqueness on drag-out? No, we store the template structure.
-    // When using it, we should regenerate IDs.
-
-    await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS), {
-        projectId,
-        name,
-        block, // Stores the entire JSON structure of the block (and children if recursive)
-        createdBy: user.uid,
-        createdAt: serverTimestamp()
-    });
-};
-
-export const getEmailComponents = async (projectId: string, tenantId?: string): Promise<EmailComponent[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS),
-        orderBy("createdAt", "desc")
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as EmailComponent));
-};
-
-export const deleteEmailComponent = async (projectId: string, componentId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS), componentId));
-};
-
 
 // --- Email Templates (Main Drafts/Templates) ---
 
 export const EMAIL_TEMPLATES = "email_templates";
 
 export const getProjectTemplates = async (projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
-        orderBy("updatedAt", "desc")
-    );
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]; // Cast to any or EmailTemplate
+    const { getProjectTemplates: getProjectTemplatesDomain } = await import('./domain/marketingTemplatesService');
+    return getProjectTemplatesDomain(projectId, tenantId);
 };
 
 export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string, status: 'draft' | 'published' = 'draft', templateId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docData = {
-        projectId,
-        name: name || 'Unnamed Template',
-        blocks,
-        variables,
-        status: status,
-        createdBy: user.uid,
-        updatedAt: serverTimestamp(),
-        // Only set createdAt if creating new
-        ...(templateId ? {} : { createdAt: serverTimestamp() })
-    };
-
-    let savedTemplateId = templateId;
-
-    if (templateId) {
-        const docRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId);
-        await setDoc(docRef, docData, { merge: true });
-    } else {
-        const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), docData);
-        savedTemplateId = docRef.id;
-    }
-
-    // Save version snapshot
-    if (savedTemplateId) {
-        try {
-            const templateRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), savedTemplateId);
-            const versionsRef = collection(templateRef, "versions");
-            await addDoc(versionsRef, {
-                ...docData,
-                versionCreatedAt: serverTimestamp(),
-                savedBy: user.uid
-            });
-        } catch (e) {
-            console.error("Failed to save version snapshot", e);
-            // Non-blocking error for version history
-        }
-    }
-
-    return savedTemplateId;
+    const { saveEmailTemplateDraft: saveEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
+    return saveEmailTemplateDraftDomain(projectId, blocks, variables, tenantId, name, status, templateId);
 };
 
 export const getTemplateVersions = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const templateRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId);
-    const versionsRef = collection(templateRef, "versions");
-    const q = query(versionsRef, orderBy("versionCreatedAt", "desc"), limit(25));
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        updatedAt: doc.data().versionCreatedAt || doc.data().updatedAt // Map version timestamp to updatedAt for UI consistency
-    } as EmailTemplate));
+    const { getTemplateVersions: getTemplateVersionsDomain } = await import('./domain/marketingTemplatesService');
+    return getTemplateVersionsDomain(projectId, templateId, tenantId);
 };
 
 export const getLatestEmailTemplateDraft = async (projectId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
-        orderBy("updatedAt", "desc"),
-        limit(1)
-    );
-    const snap = await getDocs(q);
-    if (snap.empty) return null;
-    return { id: snap.docs[0].id, ...snap.docs[0].data() } as EmailTemplate;
+    const { getLatestEmailTemplateDraft: getLatestEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
+    return getLatestEmailTemplateDraftDomain(projectId, tenantId);
 };
 
 export const getEmailTemplateDrafts = async (projectId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
-        orderBy("updatedAt", "desc"),
-        limit(25)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailTemplate));
+    const { getEmailTemplateDrafts: getEmailTemplateDraftsDomain } = await import('./domain/marketingTemplatesService');
+    return getEmailTemplateDraftsDomain(projectId, tenantId);
 };
 
 export const deleteEmailTemplate = async (projectId: string, templateId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    if (!resolvedTenant) throw new Error("Tenant ID required");
-    await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId));
+    const { deleteEmailTemplate: deleteEmailTemplateDomain } = await import('./domain/marketingTemplatesService');
+    return deleteEmailTemplateDomain(projectId, templateId, tenantId);
 };
 
 export const getEmailTemplateById = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snap = await getDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId));
-    if (!snap.exists()) return null;
-    return { id: snap.id, ...snap.data() } as EmailTemplate;
+    const { getEmailTemplateById: getEmailTemplateByIdDomain } = await import('./domain/marketingTemplatesService');
+    return getEmailTemplateByIdDomain(projectId, templateId, tenantId);
 };
 
 // Helper to extract tenant ID from a Document Reference path
@@ -1144,40 +729,13 @@ const getTenantIdFromRef = (ref: any) => {
 };
 
 export const getProjectById = async (projectId: string, tenantId?: string): Promise<Project | null> => {
-    // 1. Try fetching from the provided/active tenant first
-    try {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const docSnap = await getDoc(projectDocRef(resolvedTenant, projectId));
-        if (docSnap.exists()) {
-            return { id: docSnap.id, tenantId: resolvedTenant, ...docSnap.data() } as Project;
-        }
-    } catch (e) {
-        console.warn("Failed to lookup project in active tenant, trying global search", e);
-    }
-
-    // 2. Fallback: Search globally across all tenants
-    // Note: Cannot use documentId() with just the ID in collectionGroup queries
-    // so we fetch all projects and filter client-side (less efficient but only used as fallback)
-    const cg = collectionGroup(db, PROJECTS);
-    const snapshot = await getDocs(cg);
-
-    const matchingDoc = snapshot.docs.find(docSnap => docSnap.id === projectId);
-    if (matchingDoc) {
-        const extractedTenantId = getTenantIdFromRef(matchingDoc.ref);
-        return {
-            id: matchingDoc.id,
-            tenantId: extractedTenantId,
-            ...matchingDoc.data()
-        } as Project;
-    }
-
-    return null;
+    const { getProjectById: getProjectByIdDomain } = await import('./domain/projectsService');
+    return getProjectByIdDomain(projectId, tenantId);
 };
 
 export const deleteProjectById = async (projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const projectRef = projectDocRef(resolvedTenant, projectId);
-    await deleteDoc(projectRef);
+    const { deleteProjectById: deleteProjectByIdDomain } = await import('./domain/projectAdminService');
+    return deleteProjectByIdDomain(projectId, tenantId);
 };
 
 export const getSharedProjects = async (): Promise<Project[]> => {
@@ -1203,47 +761,14 @@ export const getSharedProjects = async (): Promise<Project[]> => {
 };
 
 export const getAllMemberProjects = async (userId: string): Promise<Project[]> => {
-    // Query all projects where the user is a member
-    const q = query(
-        collectionGroup(db, PROJECTS),
-        where("memberIds", "array-contains", userId)
-    );
-
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs
-        .map(docSnap => ({
-            id: docSnap.id,
-            tenantId: getTenantIdFromRef(docSnap.ref), // Extract tenant from path
-            ...docSnap.data()
-        } as Project))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getAllMemberProjects: getAllMemberProjectsDomain } = await import('./domain/profileService');
+    return getAllMemberProjectsDomain(userId);
 };
 
 
 export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const q = query(
-        collectionGroup(db, ACTIVITIES),
-        where("tenantId", "==", resolvedTenant),
-        orderBy("createdAt", "desc"),
-        limit(limitCount)
-    );
-
-    try {
-        const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Activity));
-    } catch (error) {
-        console.error("Error fetching global activities:", error);
-        return [];
-    }
+    const { getUserGlobalActivities: getUserGlobalActivitiesDomain } = await import('./domain/profileService');
+    return getUserGlobalActivitiesDomain(tenantId, limitCount);
 };
 
 export const joinProject = async (projectId: string, tenantId: string, role: ProjectRole = 'Editor') => {
@@ -1463,8 +988,6 @@ export const removeMember = async (
     }
 
     const members = project.members || [];
-    console.log('Current members:', members);
-    console.log('Removing userId:', userId);
 
     // Filter out the member - handle both legacy string[] and new ProjectMember[] formats
     const updatedMembers = members.filter(m => {
@@ -1472,15 +995,11 @@ export const removeMember = async (
         return memberId !== userId;
     });
 
-    console.log('Updated members:', updatedMembers);
-
     await updateDoc(projectRef, {
         members: updatedMembers as any,
         memberIds: arrayRemove(userId),
         updatedAt: serverTimestamp()
     });
-
-    console.log('Member removed successfully');
 };
 
 /**
@@ -1493,36 +1012,8 @@ export const generateInviteLink = async (
     expiresInHours: number = 24,
     tenantId?: string
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Verify user has permission to invite
-    const project = await getProjectById(projectId, resolvedTenant);
-    if (!project) throw new Error("Project not found");
-    if (project.ownerId !== user.uid) {
-        throw new Error("Only the project owner can create invite links");
-    }
-
-    // Create invite link document
-    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`);
-    const inviteLink = {
-        projectId,
-        role,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
-        maxUses: maxUses || null,
-        uses: 0,
-        isActive: true
-    };
-
-    const docRef = await addDoc(inviteLinksRef, inviteLink);
-
-    // Generate URL
-    const base = window.location.origin;
-    return `${base}/join/${docRef.id}?projectId=${projectId}&tenantId=${resolvedTenant}`;
+    const { generateInviteLink: generateInviteLinkDomain } = await import('./domain/projectAdminService');
+    return generateInviteLinkDomain(projectId, role, maxUses, expiresInHours, tenantId);
 };
 
 /**
@@ -1569,67 +1060,8 @@ export const joinProjectViaLink = async (
     projectId: string,
     tenantId: string
 ): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // Validate the link and get the role
-    const role = await validateInviteLink(inviteLinkId, projectId, tenantId);
-
-    // Add user to project
-    const projectRef = doc(db, `tenants/${tenantId}/projects`, projectId);
-    const projectDoc = await getDoc(projectRef);
-
-    if (!projectDoc.exists()) {
-        throw new Error("Project not found");
-    }
-
-    const data = projectDoc.data();
-    const members = data.members || [];
-
-    // Check if already a member
-    // Support both legacy string[] and new ProjectMember[] formats
-    const isMember = typeof members[0] === 'string'
-        ? members.includes(user.uid)
-        : (members as ProjectMember[]).some((m: any) => m.userId === user.uid);
-
-    if (isMember) {
-        throw new Error("You are already a member of this project");
-    }
-
-    const newMember: ProjectMember = {
-        userId: user.uid,
-        role,
-        joinedAt: new Date(), // Cannot use serverTimestamp() inside arrays
-        invitedBy: "link", // Special marker
-    };
-
-    await updateDoc(projectRef, {
-        members: [...members, newMember],
-        memberIds: arrayUnion(user.uid) // Also add to memberIds for efficient querying
-    });
-
-    // Also ensure the user is added to the tenant users list (as a viewer or basic user)
-    // This is implicitly handled by ensureTenantAndUser but valid to reinforce here for metadata
-    await setDoc(doc(db, `tenants/${tenantId}/users`, user.uid), {
-        uid: user.uid,
-        displayName: user.displayName || 'User',
-        email: user.email,
-        photoURL: user.photoURL,
-        joinedAt: serverTimestamp(),
-        lastActive: serverTimestamp()
-    }, { merge: true });
-
-    // Increment link usage
-    const inviteLinkRef = doc(db, `tenants/${tenantId}/projects/${projectId}/inviteLinks`, inviteLinkId);
-    await updateDoc(inviteLinkRef, {
-        uses: increment(1)
-    });
-
-    await logActivity(
-        projectId,
-        { action: `${user.displayName || "User"} joined the project`, target: "Team", type: "status", user: user.displayName || "User" },
-        tenantId
-    );
+    const { joinProjectViaLink: joinProjectViaLinkDomain } = await import('./domain/inviteLinksService');
+    return joinProjectViaLinkDomain(inviteLinkId, projectId, tenantId);
 };
 
 // --- User Management ---
@@ -1675,18 +1107,8 @@ export const sendTeamInvitation = async (
     role: string,
     tenantId: string
 ): Promise<void> => {
-    const sendInviteFn = httpsCallable(functions, 'sendInvitation');
-
-    // If calling from existing "invite to project" UI, targetId is projectId.
-    // If "invite to workspace", targetId is tenantId.
-
-    await sendInviteFn({
-        email,
-        type,
-        targetId,
-        role,
-        tenantId
-    });
+    const { sendTeamInvitation: sendTeamInvitationDomain } = await import('./domain/projectAdminService');
+    return sendTeamInvitationDomain(email, type, targetId, role, tenantId);
 };
 
 // --- Workspace Invites ---
@@ -1700,28 +1122,8 @@ export const generateWorkspaceInviteLink = async (
     expiresInHours: number = 24,
     tenantId?: string
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Create invite link document in tenant root
-    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/inviteLinks`);
-    const inviteLink = {
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
-        maxUses: maxUses || null,
-        uses: 0,
-        role, // Store role
-        isActive: true
-    };
-
-    const docRef = await addDoc(inviteLinksRef, inviteLink);
-
-    // Generate URL
-    const base = window.location.origin;
-    return `${base}/join-workspace/${docRef.id}?tenantId=${resolvedTenant}`;
+    const { generateWorkspaceInviteLink: generateWorkspaceInviteLinkDomain } = await import('./domain/inviteLinksService');
+    return generateWorkspaceInviteLinkDomain(role, maxUses, expiresInHours, tenantId);
 };
 
 /**
@@ -1759,54 +1161,28 @@ export const joinWorkspaceViaLink = async (
     inviteLinkId: string,
     tenantId: string
 ): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // Validate and get role
-    const role = await validateWorkspaceInviteLink(inviteLinkId, tenantId);
-
-    // Join with assigned role
-    await joinTenant(tenantId, role);
-
-    // Increment usage
-    const inviteLinkRef = doc(db, `tenants/${tenantId}/inviteLinks`, inviteLinkId);
-    await updateDoc(inviteLinkRef, {
-        uses: increment(1)
-    });
+    const { joinWorkspaceViaLink: joinWorkspaceViaLinkDomain } = await import('./domain/inviteLinksService');
+    return joinWorkspaceViaLinkDomain(inviteLinkId, tenantId);
 };
 
 export const getWorkspaceInviteLinks = async (tenantId?: string): Promise<any[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/inviteLinks`);
-
-    // Fetch active links - Sorting client side to avoid index requirement
-    const q = query(inviteLinksRef, where('isActive', '==', true));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const { getWorkspaceInviteLinks: getWorkspaceInviteLinksDomain } = await import('./domain/inviteLinksService');
+    return getWorkspaceInviteLinksDomain(tenantId);
 };
 
 export const revokeWorkspaceInviteLink = async (inviteLinkId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const inviteLinkRef = doc(db, `tenants/${resolvedTenant}/inviteLinks`, inviteLinkId);
-    await updateDoc(inviteLinkRef, { isActive: false });
+    const { revokeWorkspaceInviteLink: revokeWorkspaceInviteLinkDomain } = await import('./domain/inviteLinksService');
+    return revokeWorkspaceInviteLinkDomain(inviteLinkId, tenantId);
 };
 
 export const getProjectInviteLinks = async (projectId: string, tenantId?: string): Promise<any[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`);
-
-    // Fetch active links - Sorting client side to avoid index requirement
-    const q = query(inviteLinksRef, where('isActive', '==', true));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const { getProjectInviteLinks: getProjectInviteLinksDomain } = await import('./domain/inviteLinksService');
+    return getProjectInviteLinksDomain(projectId, tenantId);
 };
 
 export const revokeProjectInviteLink = async (projectId: string, inviteLinkId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const inviteLinkRef = doc(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`, inviteLinkId);
-    await updateDoc(inviteLinkRef, { isActive: false });
+    const { revokeProjectInviteLink: revokeProjectInviteLinkDomain } = await import('./domain/inviteLinksService');
+    return revokeProjectInviteLinkDomain(projectId, inviteLinkId, tenantId);
 };
 
 export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {
@@ -1866,6 +1242,86 @@ export const getAllWorkspaceProjects = async (tenantId?: string): Promise<Projec
     return snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+const cloneOverviewLayout = (layout: ProjectOverviewLayout): ProjectOverviewLayout => ({
+    layoutVersion: layout.layoutVersion,
+    templateId: layout.templateId,
+    cards: layout.cards.map((card) => ({ ...card }))
+});
+
+const isOverviewLayoutAtDefault = (layout?: ProjectOverviewLayout): boolean => {
+    if (!layout) return true;
+    if (layout.templateId !== DEFAULT_PROJECT_OVERVIEW_LAYOUT.templateId) return false;
+    if (!Array.isArray(layout.cards)) return false;
+    if (layout.cards.length !== DEFAULT_PROJECT_OVERVIEW_LAYOUT.cards.length) return false;
+
+    for (let i = 0; i < DEFAULT_PROJECT_OVERVIEW_LAYOUT.cards.length; i += 1) {
+        const currentCard = layout.cards[i];
+        const defaultCard = DEFAULT_PROJECT_OVERVIEW_LAYOUT.cards[i];
+        if (currentCard.id !== defaultCard.id) return false;
+        if (currentCard.enabled !== defaultCard.enabled) return false;
+        if (currentCard.span !== defaultCard.span) return false;
+        if (currentCard.placement !== defaultCard.placement) return false;
+    }
+
+    return true;
+};
+
+export const createDefaultProjectOverviewLayout = (): ProjectOverviewLayout => (
+    cloneOverviewLayout(DEFAULT_PROJECT_OVERVIEW_LAYOUT)
+);
+
+/**
+ * One-time migration utility used during rollout:
+ * reset all existing workspace overview layouts back to core defaults.
+ */
+export const resetWorkspaceOverviewLayoutsToDefault = async (
+    tenantId?: string
+): Promise<Array<{ id: string; overviewLayout: ProjectOverviewLayout }>> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error('User not authenticated');
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    await ensureTenantAndUser(resolvedTenant);
+
+    const snapshot = await getDocs(projectsCollection(resolvedTenant));
+    const projectsToReset = snapshot.docs
+        .map((projectDoc) => ({ projectDoc, projectData: projectDoc.data() as Project }))
+        .filter(({ projectData }) => !isOverviewLayoutAtDefault(projectData.overviewLayout))
+        .map(({ projectDoc }) => projectDoc);
+
+    if (projectsToReset.length === 0) {
+        return [];
+    }
+
+    const changedProjects: Array<{ id: string; overviewLayout: ProjectOverviewLayout }> = [];
+    let batch = writeBatch(db);
+    let ops = 0;
+
+    const commitBatch = async () => {
+        if (ops === 0) return;
+        await batch.commit();
+        batch = writeBatch(db);
+        ops = 0;
+    };
+
+    for (const projectDoc of projectsToReset) {
+        const defaultLayout = createDefaultProjectOverviewLayout();
+        batch.update(projectDoc.ref, {
+            overviewLayout: defaultLayout,
+            updatedAt: serverTimestamp()
+        });
+        ops += 1;
+        changedProjects.push({ id: projectDoc.id, overviewLayout: defaultLayout });
+        if (ops >= 400) {
+            await commitBatch();
+        }
+    }
+
+    await commitBatch();
+
+    return changedProjects;
 };
 
 /**
@@ -1965,31 +1421,6 @@ export const getAllWorkspaceIdeas = async (tenantId?: string): Promise<Idea[]> =
 
 // --- Tasks ---
 
-const ensureCategory = async (projectId: string, name?: string | string[], tenantId?: string, color?: string) => {
-    const user = auth.currentUser;
-    const list = Array.isArray(name) ? name : [name || ""];
-    const trimmedList = list.map(n => n.trim()).filter(Boolean);
-    if (!trimmedList.length) return;
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const categoriesRef = projectSubCollection(resolvedTenant, projectId, CATEGORIES);
-    const snapshot = await getDocs(categoriesRef);
-    const existingNormalized = snapshot.docs.map(doc => (doc.data().normalized || doc.data().name || "").toLowerCase());
-    for (const entry of trimmedList) {
-        const normalized = entry.toLowerCase();
-        if (existingNormalized.includes(normalized)) continue;
-        await addDoc(categoriesRef, {
-            projectId,
-            tenantId: resolvedTenant,
-            ownerId: user?.uid || "",
-            name: entry,
-            normalized,
-            color: color || '#64748b', // Default slate-500
-            createdAt: serverTimestamp()
-        });
-    }
-};
-
 export const addProjectCategory = async (projectId: string, name: string, color: string, tenantId?: string) => {
     const user = auth.currentUser;
     const resolvedTenant = resolveTenantId(tenantId);
@@ -2029,11 +1460,8 @@ export const deleteProjectCategory = async (projectId: string, categoryId: strin
 };
 
 export const getProjectCategories = async (projectId: string, tenantId?: string): Promise<TaskCategory[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, CATEGORIES));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as TaskCategory))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getProjectCategories: getProjectCategoriesDomain } = await import('./domain/projectMetaService');
+    return getProjectCategoriesDomain(projectId, tenantId);
 };
 
 export const addTask = async (
@@ -2045,58 +1473,8 @@ export const addTask = async (
     extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'startDate'>>,
     tenantId?: string
 ) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const taskData: any = {
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        title,
-        isCompleted: false,
-        dueDate: dueDate || "",
-        startDate: extra?.startDate || "",
-        assignee: assignee || "",
-        priority,
-        description: extra?.description || "",
-        category: extra?.category || [],
-        status: extra?.status || "Open",
-        assigneeId: extra?.assigneeId || (user.uid === assignee ? user.uid : null),
-        assigneeIds: extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []),
-        assignedGroupIds: extra?.assignedGroupIds || [],
-        createdBy: user.uid,
-        createdAt: serverTimestamp()
-    };
-
-    // Add linked issue if converting from an issue
-    if (extra?.linkedIssueId) {
-        taskData.linkedIssueId = extra.linkedIssueId;
-    }
-
-    // Add linked idea if converting from an idea
-    if (extra?.convertedIdeaId) {
-        taskData.convertedIdeaId = extra.convertedIdeaId;
-    }
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), taskData);
-    await ensureCategory(projectId, extra?.category, resolvedTenant);
-    await logActivity(projectId, { action: `Added task "${title}"`, target: "Tasks", type: "task", relatedId: docRef.id }, resolvedTenant);
-
-    // Sync progress
-    await syncProjectProgress(projectId, resolvedTenant);
-
-    // Send notifications to assignees
-    const assigneeIds = extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []);
-    for (const assigneeId of assigneeIds) {
-        if (assigneeId && assigneeId !== user.uid) {
-            await notifyTaskAssignment(assigneeId, title, projectId, docRef.id, resolvedTenant);
-        }
-    }
-
-    return docRef.id;
+    const { addTask: addTaskDomain } = await import('./domain/tasksService');
+    return addTaskDomain(projectId, title, dueDate, assignee, priority, extra, tenantId);
 };
 
 export const createSubTask = async (
@@ -2106,123 +1484,23 @@ export const createSubTask = async (
     assigneeId?: string,
     tenantId?: string
 ) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const taskRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), taskId);
-    const subTasksRef = collection(taskRef, SUBTASKS);
-
-    const subTaskData = {
-        taskId,
-        projectId,
-        ownerId: user.uid,
-        title,
-        isCompleted: false,
-        assigneeId: assigneeId || null,
-        createdAt: serverTimestamp()
-    };
-
-    const docRef = await addDoc(subTasksRef, subTaskData);
-
-    await logActivity(
-        projectId,
-        { action: `Added subtask "${title}"`, target: "Tasks", type: "task", relatedId: taskId },
-        resolvedTenant
-    );
-
-    if (assigneeId && assigneeId !== user.uid) {
-        await notifySubtaskAssignment(assigneeId, title, projectId, taskId, docRef.id, resolvedTenant);
-    }
-
-    return docRef.id;
-};
-
-/**
- * Sync project progress based on task completion
- */
-export const syncProjectProgress = async (projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, TASKS));
-    const tasks = snapshot.docs.map(d => d.data() as Task);
-
-    if (tasks.length === 0) {
-        await updateDoc(projectDocRef(resolvedTenant, projectId), { progress: 0 });
-        return;
-    }
-
-    const completedCount = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
-    const progress = Math.round((completedCount / tasks.length) * 100);
-
-    await updateDoc(projectDocRef(resolvedTenant, projectId), {
-        progress,
-        updatedAt: serverTimestamp() // Force update to trigger UI re-fetch if needed
-    });
+    const { createSubTask: createSubTaskDomain } = await import('./domain/tasksService');
+    return createSubTaskDomain(projectId, taskId, title, assigneeId, tenantId);
 };
 
 export const getTaskById = async (taskId: string, projectId?: string, tenantId?: string): Promise<Task | null> => {
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (taskSnap?.exists()) {
-        const { tenantId: extractedTenantId, projectId: extractedProjectId } = getProjectContextFromRef(taskSnap.ref);
-        return {
-            id: taskSnap.id,
-            tenantId: extractedTenantId,
-            projectId: extractedProjectId,
-            ...taskSnap.data()
-        } as Task;
-    }
-    return null;
+    const { getTaskById: getTaskByIdDomain } = await import('./domain/tasksService');
+    return getTaskByIdDomain(taskId, projectId, tenantId);
 };
 
 export const getProjectTasks = async (projectId: string, tenantId?: string): Promise<Task[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, TASKS));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data(), path: docSnap.ref.path } as unknown as Task))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getProjectTasks: getProjectTasksDomain } = await import('./domain/tasksService');
+    return getProjectTasksDomain(projectId, tenantId);
 };
 
 export const getUserTasks = async (): Promise<Task[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    try {
-        // Fetch accessible projects efficiently (Owned + Shared)
-        // We reuse the existing functions which use filtered queries compatible with security rules.
-        const [myProjects, sharedProjects] = await Promise.all([
-            getUserProjects(),
-            getSharedProjects()
-        ]);
-
-        // Deduplicate in case of overlap (though logically distinct usually)
-        const allProjects = [...myProjects, ...sharedProjects];
-        const uniqueProjects = Array.from(new Map(allProjects.map(p => [p.id, p])).values());
-
-        const taskPromises = uniqueProjects.map(async p => {
-            try {
-                const projectTasks = await getProjectTasks(p.id, p.tenantId);
-                return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
-            } catch (e) {
-                console.warn(`Failed to fetch tasks for project ${p.id}`, e);
-                return [];
-            }
-        });
-
-        const results = await Promise.all(taskPromises);
-        const allTasks = results.flat();
-
-        // Client-side filtering for assignment (Business Logic)
-        return allTasks.filter(t =>
-            t.assigneeId === user.uid ||
-            (t.assigneeIds && t.assigneeIds.includes(user.uid)) ||
-            (t.ownerId === user.uid && !t.assigneeId && (!t.assigneeIds || t.assigneeIds.length === 0))
-        );
-    } catch (error) {
-        console.error("getUserTasks failed", error);
-        return [];
-    }
+    const { getUserTasks: getUserTasksDomain } = await import('./domain/tasksService');
+    return getUserTasksDomain();
 };
 
 export const getUnassignedTasks = async (): Promise<Task[]> => {
@@ -2302,168 +1580,35 @@ export const updateTask = async (
     tenantId?: string,
     path?: string
 ) => {
-    // Robustly find task doc, handling stale tenantId/projectId if needed
-    // First try path if available
-    if (path) {
-        const ref = doc(db, path);
-        await updateDoc(ref, updates);
-        return;
-    }
-
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) throw new Error("Task not found");
-
-    await updateDoc(taskSnap.ref, updates);
+    const { updateTask: updateTaskDomain } = await import('./domain/tasksService');
+    return updateTaskDomain(taskId, updates, projectId, tenantId, path);
 };
 
 export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, projectId?: string, tenantId?: string) => {
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) throw new Error("Task not found");
-
-    const newStatus = !currentStatus;
-    const user = auth.currentUser;
-    const updateData: any = { isCompleted: newStatus };
-
-    if (newStatus) {
-        updateData.completedBy = user?.uid;
-        updateData.completedAt = serverTimestamp();
-    } else {
-        updateData.completedBy = deleteField();
-        updateData.completedAt = deleteField();
-    }
-
-    await updateDoc(taskSnap.ref, updateData);
-    const data = taskSnap.data() as Task;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-    await logActivity(
-        data.projectId,
-        { action: `${newStatus ? "Completed" : "Reopened"} task "${data.title}"`, target: "Tasks", type: "task", relatedId: taskId },
-        resolvedTenant
-    );
-    await syncProjectProgress(data.projectId, resolvedTenant);
-
-    // Sync linked issue status if this task was converted from an issue
-    if (data.linkedIssueId) {
-        try {
-            const issueRef = doc(projectSubCollection(resolvedTenant, data.projectId, ISSUES), data.linkedIssueId);
-            const newIssueStatus = newStatus ? 'Resolved' : 'Open';
-            await updateDoc(issueRef, { status: newIssueStatus });
-            await logActivity(
-                data.projectId,
-                { action: `Auto-${newStatus ? "resolved" : "reopened"} linked issue`, target: "Issues", type: "status" },
-                resolvedTenant
-            );
-        } catch (e) {
-            console.warn("Failed to sync linked issue status", e);
-        }
-    }
+    const { toggleTaskStatus: toggleTaskStatusDomain } = await import('./domain/tasksService');
+    return toggleTaskStatusDomain(taskId, currentStatus, projectId, tenantId);
 };
 
 export const updateTaskFields = async (taskId: string, updates: Partial<Task>, projectId?: string, tenantId?: string) => {
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) throw new Error("Task not found");
-    const oldData = taskSnap.data() as Task;
-    const sanitized: Record<string, any> = {};
-    Object.entries(updates).forEach(([key, value]) => {
-        if (value === null) {
-            sanitized[key] = deleteField();
-        } else if (value !== undefined) {
-            sanitized[key] = value;
-        }
-    });
-
-    if (sanitized.isCompleted !== undefined) {
-        const user = auth.currentUser;
-        if (sanitized.isCompleted === true) {
-            sanitized.completedBy = user?.uid;
-            sanitized.completedAt = serverTimestamp();
-        } else {
-            sanitized.completedBy = deleteField();
-            sanitized.completedAt = deleteField();
-        }
-    }
-
-    if (Object.keys(sanitized).length === 0) return;
-
-    await updateDoc(taskSnap.ref, sanitized);
-    const data = taskSnap.data() as Task;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-    let action = `Updated task "${data.title}"`;
-    if (sanitized.isCompleted === true) {
-        action = `Completed task "${data.title}"`;
-    } else if (sanitized.isCompleted === false) {
-        action = `Reopened task "${data.title}"`;
-    }
-
-    await logActivity(
-        data.projectId,
-        { action, target: "Tasks", type: "task", relatedId: taskId },
-        resolvedTenant
-    );
-    if (sanitized.category) {
-        await ensureCategory(data.projectId, sanitized.category, resolvedTenant);
-    }
-    if (sanitized.isCompleted !== undefined || sanitized.status !== undefined) {
-        await syncProjectProgress(data.projectId, resolvedTenant);
-    }
-
-    // Notify newly assigned users
-    if (sanitized.assigneeIds) {
-        const oldAssignees = oldData.assigneeIds || [];
-        const newAssignees = sanitized.assigneeIds || [];
-        const addedAssignees = newAssignees.filter((id: string) => !oldAssignees.includes(id));
-        for (const assigneeId of addedAssignees) {
-            await notifyTaskAssignment(assigneeId, data.title, data.projectId, taskId, resolvedTenant);
-        }
-    } else if (sanitized.assigneeId && sanitized.assigneeId !== oldData.assigneeId) {
-        await notifyTaskAssignment(sanitized.assigneeId, data.title, data.projectId, taskId, resolvedTenant);
-    }
+    const { updateTaskFields: updateTaskFieldsDomain } = await import('./domain/tasksService');
+    return updateTaskFieldsDomain(taskId, updates, projectId, tenantId);
 };
 
 export const deleteTask = async (taskId: string, projectId?: string, tenantId?: string) => {
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) return;
-    const data = taskSnap.data() as Task;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-    await deleteDoc(taskSnap.ref);
-    await logActivity(
-        data.projectId,
-        { action: `Deleted task "${data.title}"`, target: "Tasks", type: "task", relatedId: taskId },
-        resolvedTenant
-    );
-    await syncProjectProgress(data.projectId, resolvedTenant);
+    const { deleteTask: deleteTaskDomain } = await import('./domain/tasksService');
+    return deleteTaskDomain(taskId, projectId, tenantId);
 };
 
 // --- Subtasks ---
 
 export const addSubTask = async (taskId: string, title: string, projectId?: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) throw new Error("Parent task not found");
-    const task = taskSnap.data() as Task;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-
-    await addDoc(collection(taskSnap.ref, SUBTASKS), {
-        taskId,
-        projectId: task.projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        title,
-        isCompleted: false,
-        createdAt: serverTimestamp()
-    });
-    await logActivity(task.projectId, { action: `Added subtask "${title}"`, target: task.title, type: "task", relatedId: taskId }, resolvedTenant);
+    const { addSubTask: addSubTaskDomain } = await import('./domain/tasksService');
+    return addSubTaskDomain(taskId, title, projectId, tenantId);
 };
 
 export const getSubTasks = async (taskId: string, projectId?: string, tenantId?: string): Promise<SubTask[]> => {
-    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
-    if (!taskSnap) return [];
-    const snapshot = await getDocs(collection(taskSnap.ref, SUBTASKS));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as SubTask))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getSubTasks: getSubTasksDomain } = await import('./domain/tasksService');
+    return getSubTasksDomain(taskId, projectId, tenantId);
 };
 
 export const toggleSubTaskStatus = async (
@@ -2473,44 +1618,13 @@ export const toggleSubTaskStatus = async (
     projectId?: string,
     tenantId?: string
 ) => {
-    const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
-    if (!subSnap) return;
-    const user = auth.currentUser;
-    const isNowCompleted = !currentStatus;
-
-    await updateDoc(subSnap.ref, {
-        isCompleted: isNowCompleted,
-        completedBy: isNowCompleted ? user?.uid : deleteField(),
-        completedAt: isNowCompleted ? serverTimestamp() : deleteField()
-    });
-
-    const data = subSnap.data() as SubTask | undefined;
-    if (!data) return;
-    const taskSnap = await findTaskDoc(data.taskId, projectId, tenantId);
-    const parentTask = taskSnap?.data() as Task | undefined;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(subSnap.ref);
-    if (parentTask) {
-        await logActivity(
-            parentTask.projectId,
-            { action: `${!currentStatus ? "Completed" : "Reopened"} subtask "${data.title}"`, target: parentTask.title, type: "task", relatedId: data.taskId },
-            resolvedTenant
-        );
-    }
+    const { toggleSubTaskStatus: toggleSubTaskStatusDomain } = await import('./domain/tasksService');
+    return toggleSubTaskStatusDomain(subTaskId, currentStatus, taskId, projectId, tenantId);
 };
 
 export const deleteSubTask = async (subTaskId: string, taskId: string, projectId?: string, tenantId?: string) => {
-    const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
-    if (!subSnap) return;
-
-    const data = subSnap.data() as SubTask;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(subSnap.ref);
-
-    await deleteDoc(subSnap.ref);
-    await logActivity(
-        data.projectId,
-        { action: `Deleted subtask "${data.title}"`, target: "Tasks", type: "task", relatedId: data.taskId }, // context might differ but this works
-        resolvedTenant
-    );
+    const { deleteSubTask: deleteSubTaskDomain } = await import('./domain/tasksService');
+    return deleteSubTaskDomain(subTaskId, taskId, projectId, tenantId);
 };
 
 export const updateSubtaskFields = async (
@@ -2520,70 +1634,30 @@ export const updateSubtaskFields = async (
     projectId?: string,
     tenantId?: string
 ) => {
-    const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
-    if (!subSnap) throw new Error("Subtask not found");
-    const oldData = subSnap.data() as SubTask;
-    await updateDoc(subSnap.ref, updates);
-
-    // Notify if assignee changed
-    if (updates.assigneeId && updates.assigneeId !== oldData.assigneeId) {
-        const taskSnap = await findTaskDoc(oldData.taskId, projectId, tenantId);
-        const task = taskSnap?.data() as Task | undefined;
-        if (task) {
-            await notifySubtaskAssignment(
-                updates.assigneeId,
-                oldData.title,
-                task.title,
-                task.projectId,
-                oldData.taskId,
-                tenantId
-            );
-        }
-    }
+    const { updateSubtaskFields: updateSubtaskFieldsDomain } = await import('./domain/tasksService');
+    return updateSubtaskFieldsDomain(subTaskId, updates, taskId, projectId, tenantId);
 };
 
 // --- Ideas ---
 
 export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const targetCollection = idea.projectId
-        ? projectSubCollection(resolvedTenant, idea.projectId, IDEAS)
-        : collection(tenantDocRef(resolvedTenant), IDEAS);
-
-    await addDoc(targetCollection, {
-        ...idea,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        createdAt: serverTimestamp()
-    });
+    const { saveIdea: saveIdeaDomain } = await import('./domain/ideasService');
+    return saveIdeaDomain(idea, tenantId);
 };
 
 export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
-    const ideaSnap = await findIdeaDoc(ideaId, projectId, tenantId);
-    if (!ideaSnap) throw new Error("Flow not found");
-    await updateDoc(ideaSnap.ref, updates);
+    const { updateIdea: updateIdeaDomain } = await import('./domain/ideasService');
+    return updateIdeaDomain(ideaId, updates, projectId, tenantId);
 };
 
 export const deleteIdea = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    const ideaSnap = await findIdeaDoc(ideaId, projectId, tenantId);
-    if (!ideaSnap) return;
-    await deleteDoc(ideaSnap.ref);
+    const { deleteIdea: deleteIdeaDomain } = await import('./domain/ideasService');
+    return deleteIdeaDomain(ideaId, projectId, tenantId);
 };
 
 export const getUserIdeas = async (): Promise<Idea[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const q = query(collectionGroup(db, IDEAS), where("ownerId", "==", user.uid));
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getUserIdeas: getUserIdeasDomain } = await import('./domain/ideasService');
+    return getUserIdeasDomain();
 };
 
 export const getProjectIdeas = async (projectId: string, tenantId?: string): Promise<Idea[]> => {
@@ -2641,97 +1715,27 @@ export const getProjectActivity = async (projectId: string, tenantId?: string): 
 };
 
 export const subscribeTaskActivity = (projectId: string, taskId: string, callback: (activities: Activity[]) => void, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, ACTIVITIES),
-        where("relatedId", "==", taskId),
-        orderBy("createdAt", "desc"),
-        limit(20)
-    );
-    return onSnapshot(q, (snapshot) => {
-        const activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
-        callback(activities);
+    let isCancelled = false;
+    let unsubscribe: Unsubscribe = () => undefined;
+
+    void import('./domain/tasksService').then(({ subscribeTaskActivity: subscribeTaskActivityDomain }) => {
+        if (isCancelled) {
+            return;
+        }
+        unsubscribe = subscribeTaskActivityDomain(projectId, taskId, callback, tenantId);
     });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 // --- Issues ---
 
 export const createIssue = async (projectId: string, issue: Partial<Issue>, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const issueData: any = {
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        title: issue.title || "Untitled Issue",
-        description: issue.description || "",
-        status: issue.status || "Open",
-        priority: issue.priority || "Medium",
-        reporter: user.displayName || "User",
-        assignee: issue.assignee || "",
-        assigneeId: issue.assigneeId || null,
-        assigneeIds: issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []),
-        assignedGroupIds: issue.assignedGroupIds || [],
-        reporterId: user.uid,
-        createdBy: user.uid,
-        createdAt: serverTimestamp()
-    };
-
-    // GitHub Sync
-    try {
-        const project = await getProjectById(projectId, resolvedTenant);
-        if (project?.githubIssueSync && project.githubRepo) {
-            // Get token: project-level or user-level
-            let githubToken = project.githubToken;
-            if (!githubToken && user.uid) {
-                const profile = await getUserProfile(user.uid, resolvedTenant);
-                githubToken = profile?.githubToken;
-            }
-
-            if (githubToken) {
-                const ghIssue = await createGithubIssue(
-                    project.githubRepo,
-                    githubToken,
-                    issueData.title,
-                    issueData.description || "Created via ProjectFlow"
-                );
-                issueData.githubIssueUrl = ghIssue.url;
-                issueData.githubIssueNumber = ghIssue.number;
-            }
-        }
-    } catch (e) {
-        console.warn("GitHub issue sync failed", e);
-    }
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueData);
-
-    await logActivity(projectId, { action: `Reported issue "${issue.title}"`, target: "Issues", type: "report" }, resolvedTenant);
-
-    return docRef.id;
-};
-
-const findIssueDoc = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
-    if (path) {
-        const ref = doc(db, path);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
-    }
-
-    if (projectId) {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const ref = doc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
-    }
-
-    // Fallback: global collectionGroup search
-    const cg = collectionGroup(db, ISSUES);
-    const snapshot = await getDocs(cg);
-    return snapshot.docs.find(d => d.id === issueId) || null;
+    const { createIssue: createIssueDomain } = await import('./domain/issuesService');
+    return createIssueDomain(projectId, issue, tenantId);
 };
 
 export const getProjectIssues = async (projectId: string, tenantId?: string): Promise<Issue[]> => {
@@ -2744,165 +1748,19 @@ export const getProjectIssues = async (projectId: string, tenantId?: string): Pr
 };
 
 export const getIssueById = async (issueId: string, projectId?: string, tenantId?: string): Promise<Issue | null> => {
-    const issueSnap = await findIssueDoc(issueId, projectId, tenantId);
-    if (issueSnap?.exists()) {
-        const { tenantId: extractedTenantId, projectId: extractedProjectId } = getProjectContextFromRef(issueSnap.ref);
-        return {
-            id: issueSnap.id,
-            tenantId: extractedTenantId,
-            projectId: extractedProjectId,
-            ...issueSnap.data()
-        } as Issue;
-    }
-    return null;
+    const { getIssueById: getIssueByIdDomain } = await import('./domain/issuesService');
+    return getIssueByIdDomain(issueId, projectId, tenantId);
 };
 
 
 export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    let issueData: Issue | null = null;
-    let issueRef: any = null;
-
-    if (updates.status) {
-        const user = auth.currentUser;
-        if (updates.status === 'Resolved' || updates.status === 'Closed') {
-            (updates as any).completedBy = user?.uid;
-            (updates as any).completedAt = serverTimestamp();
-        } else if (updates.status === 'Open' || updates.status === 'In Progress') {
-            (updates as any).completedBy = deleteField();
-            (updates as any).completedAt = deleteField();
-        }
-    }
-
-    // First try path if available
-    if (path) {
-        issueRef = doc(db, path);
-        const snap = await getDoc(issueRef);
-        if (snap.exists()) {
-            issueData = { id: snap.id, ...snap.data() } as Issue;
-        }
-        await updateDoc(issueRef, updates);
-    } else {
-        const issueSnap = await findIssueDoc(issueId, projectId, tenantId);
-        if (!issueSnap) throw new Error("Issue not found or access denied");
-        issueData = { id: issueSnap.id, ...issueSnap.data() } as Issue;
-        issueRef = issueSnap.ref;
-        await updateDoc(issueRef, updates);
-    }
-
-    if (issueData) {
-        let action = `Updated issue "${issueData.title}"`;
-        if (updates.status === 'Resolved' || updates.status === 'Closed') {
-            action = `Resolved issue "${issueData.title}"`;
-        } else if ((updates.status === 'Open' || updates.status === 'In Progress') &&
-            (issueData.status === 'Resolved' || issueData.status === 'Closed')) {
-            action = `Reopened issue "${issueData.title}"`;
-        }
-
-        await logActivity(
-            projectId,
-            { action, target: "Issues", type: "issue" },
-            resolvedTenant
-        );
-    }
-
-    // GitHub Sync (Status, Title, Description)
-    if (issueData?.githubIssueNumber && (updates.status || updates.title || updates.description)) {
-        try {
-            const project = await getProjectById(projectId, resolvedTenant);
-            if (project?.githubIssueSync && project.githubRepo) {
-                const user = auth.currentUser;
-                let githubToken = project.githubToken;
-                if (!githubToken && user?.uid) {
-                    const profile = await getUserProfile(user.uid, resolvedTenant);
-                    githubToken = profile?.githubToken;
-                }
-
-                if (githubToken) {
-                    const githubUpdates: any = {};
-                    if (updates.status) {
-                        githubUpdates.state = (updates.status === 'Resolved' || updates.status === 'Closed') ? 'closed' : 'open';
-                    }
-                    if (updates.title) {
-                        githubUpdates.title = updates.title;
-                    }
-                    if (updates.description) {
-                        githubUpdates.body = updates.description;
-                    }
-
-                    if (Object.keys(githubUpdates).length > 0) {
-                        await updateGithubIssue(project.githubRepo, githubToken, issueData.githubIssueNumber, githubUpdates);
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to sync changes to GitHub", e);
-        }
-    }
-
-    // Sync linked task status if this issue has a linked task
-    if (issueData?.linkedTaskId && updates.status) {
-        const isClosing = updates.status === 'Resolved' || updates.status === 'Closed';
-        const isReopening = updates.status === 'Open' || updates.status === 'In Progress';
-
-        if (isClosing || isReopening) {
-            try {
-                const taskRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), issueData.linkedTaskId);
-                const taskSnap = await getDoc(taskRef);
-                if (taskSnap.exists()) {
-                    const taskData = taskSnap.data() as Task;
-                    // Only update if status differs to avoid infinite loops
-                    const shouldComplete = isClosing && !taskData.isCompleted;
-                    const shouldReopen = isReopening && taskData.isCompleted;
-
-                    if (shouldComplete || shouldReopen) {
-                        await updateDoc(taskRef, {
-                            isCompleted: isClosing,
-                            status: isClosing ? 'Done' : 'Open'
-                        });
-                        await logActivity(
-                            projectId,
-                            { action: `Auto-${isClosing ? "completed" : "reopened"} linked task`, target: "Tasks", type: "task" },
-                            resolvedTenant
-                        );
-                        await syncProjectProgress(projectId, resolvedTenant);
-                    }
-                }
-            } catch (e) {
-                console.warn("Failed to sync linked task status", e);
-            }
-        }
-    }
+    const { updateIssue: updateIssueDomain } = await import('./domain/issuesService');
+    return updateIssueDomain(issueId, updates, projectId, tenantId, path);
 };
 
 export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string, path?: string) => {
-    const issueSnap = await findIssueDoc(issueId, projectId, tenantId, path);
-    if (!issueSnap) return;
-    const issueData = issueSnap.data() as Issue;
-
-    // GitHub Sync: Close issue on delete
-    if (issueData?.githubIssueNumber) {
-        try {
-            const resolvedTenant = resolveTenantId(tenantId);
-            const project = await getProjectById(projectId, resolvedTenant);
-            if (project?.githubIssueSync && project.githubRepo) {
-                const user = auth.currentUser;
-                let githubToken = project.githubToken;
-                if (!githubToken && user?.uid) {
-                    const profile = await getUserProfile(user.uid, resolvedTenant);
-                    githubToken = profile?.githubToken;
-                }
-
-                if (githubToken) {
-                    await updateGithubIssue(project.githubRepo, githubToken, issueData.githubIssueNumber, { state: 'closed' });
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to close GitHub issue on delete", e);
-        }
-    }
-
-    await deleteDoc(issueSnap.ref);
+    const { deleteIssue: deleteIssueDomain } = await import('./domain/issuesService');
+    return deleteIssueDomain(issueId, projectId, tenantId, path);
 };
 
 export const subscribeProjectIssues = (
@@ -2910,14 +1768,24 @@ export const subscribeProjectIssues = (
     callback: (issues: Issue[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Don't call ensureTenantAndUser here - this is a read operation
-    return onSnapshot(projectSubCollection(resolvedTenant, projectId, ISSUES), (snap) => {
-        const items = snap.docs
-            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        callback(items);
-    });
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    import('./domain/issuesService')
+        .then(({ subscribeProjectIssues: subscribeProjectIssuesDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeProjectIssuesDomain(projectId, callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe project issues', error);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 // --- Realtime subscriptions ---
@@ -2927,14 +1795,24 @@ export const subscribeProjectTasks = (
     callback: (tasks: Task[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Don't call ensureTenantAndUser here - this is a read operation
-    return onSnapshot(projectSubCollection(resolvedTenant, projectId, TASKS), (snap) => {
-        const items = snap.docs
-            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Task))
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        callback(items);
-    });
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    import('./domain/tasksService')
+        .then(({ subscribeProjectTasks: subscribeProjectTasksDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeProjectTasksDomain(projectId, callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe project tasks', error);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 
@@ -2974,79 +1852,13 @@ export const updateUserProfile = async (data: {
     file?: File,
     coverFile?: File
 }) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("No user");
-
-    let photoURL = data.photoURL || user.photoURL;
-    let coverURL = data.coverURL;
-
-    // Use tenant-scoped path if available to ensure we satisfy existing storage rules
-    const tenantId = getCachedTenantId();
-
-    if (data.file) {
-        const path = tenantId
-            ? `tenants/${tenantId}/users/${user.uid}/avatar_${Date.now()}`
-            : `users/${user.uid}/avatar_${Date.now()}`;
-
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, data.file);
-        photoURL = await getDownloadURL(storageRef);
-    }
-
-    if (data.coverFile) {
-        const path = tenantId
-            ? `tenants/${tenantId}/users/${user.uid}/cover_${Date.now()}`
-            : `users/${user.uid}/cover_${Date.now()}`;
-
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, data.coverFile);
-        coverURL = await getDownloadURL(storageRef);
-    }
-
-    if (data.displayName || photoURL) {
-        await updateProfile(user, {
-            displayName: data.displayName || user.displayName,
-            photoURL: photoURL
-        });
-    }
-
-    // Update global user profile
-    const globalUserRef = userDocRef(user.uid);
-    const updateData: any = {
-        displayName: data.displayName || user.displayName,
-        photoURL: photoURL,
-        title: data.title ?? '',
-        bio: data.bio ?? '',
-        email: user.email,
-        address: data.address ?? '',
-        skills: data.skills ?? [],
-        privacySettings: data.privacySettings || {},
-        updatedAt: serverTimestamp()
-    };
-    if (coverURL) updateData.coverURL = coverURL;
-
-    await setDoc(globalUserRef, updateData, { merge: true });
-
-    return { photoURL, coverURL };
+    const { updateUserProfile: updateUserProfileDomain } = await import('./domain/usersService');
+    return updateUserProfileDomain(data);
 };
 
 export const getUserProfileStats = async (uid: string, tenantId?: string) => {
-    const tid = tenantId || getActiveTenantId();
-    if (!tid) return { projects: 0, teams: 1 }; // Default to 1 team (current one)
-
-    // Count projects where user is a member
-    const projectsSnap = await getDocs(query(projectsCollection(tid), where('members', 'array_contains', uid)));
-    // Note: This only counts projects in the current tenant. 
-    // For a truly global count, we'd need to iterate all tenants or have a global index.
-
-    // In this app, "Teams" usually corresponds to Tenants.
-    // For now, let's fetch projects from the current tenant.
-    const projectCount = projectsSnap.size;
-
-    return {
-        projects: projectCount,
-        teams: 1 // Placeholder for multi-tenant count
-    };
+    const { getUserProfileStats: getUserProfileStatsDomain } = await import('./domain/profileService');
+    return getUserProfileStatsDomain(uid, tenantId);
 };
 
 export const subscribeProjectPresence = (
@@ -3145,24 +1957,20 @@ export const subscribeWorkspaceMembers = (
     callback: (members: { uid: string, displayName: string, photoURL?: string, email?: string, role?: string }[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
 
-    return onSnapshot(tenantMembersCollection(resolvedTenant), async (snap) => {
-        const memberPromises = snap.docs.map(async (memberDoc) => {
-            const membership = memberDoc.data();
-            const userSnap = await getDoc(userDocRef(memberDoc.id));
-            const userData = userSnap.exists() ? userSnap.data() : {};
-            return {
-                uid: memberDoc.id,
-                displayName: userData.displayName || 'Unknown User',
-                photoURL: userData.photoURL,
-                email: userData.email,
-                role: membership.role,
-            };
-        });
-        const members = await Promise.all(memberPromises);
-        callback(members);
+    void import('./domain/workspaceMembersService').then(({ subscribeWorkspaceMembers: subscribeWorkspaceMembersDomain }) => {
+        if (isCancelled) {
+            return;
+        }
+        unsubscribe = subscribeWorkspaceMembersDomain(callback, tenantId);
     });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 export const subscribeProject = (
@@ -3170,44 +1978,22 @@ export const subscribeProject = (
     callback: (project: Project | null) => void,
     tenantId?: string
 ) => {
-    // If tenantId is provided, subscribe directly
-    if (tenantId) {
-        ensureTenantAndUser(tenantId).catch(() => undefined);
-        return onSnapshot(projectDocRef(tenantId, projectId), (snap) => {
-            if (snap.exists()) {
-                callback({ id: snap.id, tenantId, ...snap.data() } as Project);
-            } else {
-                callback(null);
-            }
-        });
-    }
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
 
-    // Otherwise, find the project first to get its tenant
-    let unsubscribe: (() => void) | undefined;
-
-    getProjectById(projectId).then((project) => {
-        if (!project) {
-            callback(null);
+    void import('./domain/projectsService').then(({ subscribeProject: subscribeProjectDomain }) => {
+        if (isCancelled) {
             return;
         }
-
-        const projectTenantId = project.tenantId || resolveTenantId();
-        ensureTenantAndUser(projectTenantId).catch(() => undefined);
-
-        unsubscribe = onSnapshot(projectDocRef(projectTenantId, projectId), (snap) => {
-            if (snap.exists()) {
-                callback({ id: snap.id, tenantId: projectTenantId, ...snap.data() } as Project);
-            } else {
-                callback(null);
-            }
-        });
-    }).catch((err) => {
-        console.error("Failed to find project for subscription", err);
+        unsubscribe = subscribeProjectDomain(projectId, callback, tenantId);
+    }).catch((error) => {
+        console.error('Failed to subscribe project', error);
         callback(null);
     });
 
     return () => {
-        if (unsubscribe) unsubscribe();
+        isCancelled = true;
+        unsubscribe();
     };
 };
 
@@ -3216,14 +2002,22 @@ export const subscribeProjectIdeas = (
     callback: (ideas: Idea[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Don't call ensureTenantAndUser here - this is a read operation
-    return onSnapshot(projectSubCollection(resolvedTenant, projectId, IDEAS), (snap) => {
-        const items = snap.docs
-            .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        callback(items);
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
+
+    import('./domain/ideasService').then(({ subscribeProjectIdeas: subscribeProjectIdeasDomain }) => {
+        const nextUnsubscribe = subscribeProjectIdeasDomain(projectId, callback, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
+        }
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
 export const subscribeProjectActivity = (
@@ -3231,40 +2025,40 @@ export const subscribeProjectActivity = (
     callback: (activity: Activity[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Don't call ensureTenantAndUser here - this is a read operation
-    return onSnapshot(projectSubCollection(resolvedTenant, projectId, ACTIVITIES), (snap) => {
-        const items = snap.docs
-            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Activity))
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-        callback(items);
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    void import('./domain/activityService').then(({ subscribeProjectActivity: subscribeProjectActivityDomain }) => {
+        if (isCancelled) {
+            return;
+        }
+        unsubscribe = subscribeProjectActivityDomain(projectId, callback, tenantId);
     });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 export const subscribeTenantUsers = (
     callback: (users: { id: string; email?: string; displayName?: string; photoURL?: string; joinedAt?: any; role?: WorkspaceRole; groupIds?: string[] }[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Don't call ensureTenantAndUser here - this is a read operation and shouldn't create data
-    return onSnapshot(tenantMembersCollection(resolvedTenant), async (snap) => {
-        const userPromises = snap.docs.map(async (memberDoc) => {
-            const membership = memberDoc.data();
-            const userSnap = await getDoc(userDocRef(memberDoc.id));
-            const userData = userSnap.exists() ? userSnap.data() : {};
-            return {
-                id: memberDoc.id,
-                email: userData.email,
-                displayName: userData.displayName,
-                photoURL: userData.photoURL,
-                joinedAt: membership.joinedAt,
-                role: membership.role,
-                groupIds: membership.groupIds,
-            };
-        });
-        const items = await Promise.all(userPromises);
-        callback(items);
+    let isCancelled = false;
+    let unsubscribe: Unsubscribe = () => undefined;
+
+    void import('./domain/workspaceMembersService').then(({ subscribeTenantUsers: subscribeTenantUsersDomain }) => {
+        if (isCancelled) {
+            return;
+        }
+        unsubscribe = subscribeTenantUsersDomain(callback, tenantId);
     });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 // --- Comments ---
@@ -3414,66 +2208,33 @@ export const deleteComment = async (commentId: string, projectId: string, tenant
 };
 
 export const getUserIssues = async (): Promise<Issue[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const q = query(collectionGroup(db, ISSUES), where("assigneeId", "==", user.uid));
-    const snapshot = await getDocs(q);
-
-    const assignedToMe = snapshot.docs.map(docSnap => {
-        const data = docSnap.data();
-        const pathParts = docSnap.ref.path.split('/');
-        const derivedTenantId = pathParts.length >= 2 && pathParts[0] === 'tenants' ? pathParts[1] : undefined;
-        const derivedProjectId = pathParts.length >= 4 && pathParts[2] === 'projects' ? pathParts[3] : undefined;
-
-        return {
-            id: docSnap.id,
-            ...data,
-            tenantId: data.tenantId || derivedTenantId,
-            projectId: data.projectId || derivedProjectId,
-            path: docSnap.ref.path
-        } as unknown as Issue;
-    });
-
-    // Also check assigneeIds array if it exists (for multiple assignees)
-    const q2 = query(collectionGroup(db, ISSUES), where("assigneeIds", "array-contains", user.uid));
-    const snapshot2 = await getDocs(q2);
-    const assignedViaArray = snapshot2.docs.map(docSnap => {
-        const data = docSnap.data();
-        const pathParts = docSnap.ref.path.split('/');
-        const derivedTenantId = pathParts.length >= 2 && pathParts[0] === 'tenants' ? pathParts[1] : undefined;
-        const derivedProjectId = pathParts.length >= 4 && pathParts[2] === 'projects' ? pathParts[3] : undefined;
-
-        return {
-            id: docSnap.id,
-            ...data,
-            tenantId: data.tenantId || derivedTenantId,
-            projectId: data.projectId || derivedProjectId,
-            path: docSnap.ref.path
-        } as unknown as Issue;
-    });
-
-    // Merge and deduplicate
-    const allIssues = [...assignedToMe];
-    assignedViaArray.forEach(issue => {
-        if (!allIssues.find(i => i.id === issue.id)) {
-            allIssues.push(issue);
-        }
-    });
-
-    return allIssues.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getUserIssues: getUserIssuesDomain } = await import('./domain/issuesService');
+    return getUserIssuesDomain();
 };
 
 export const subscribeTenantProjects = (
     callback: (projects: Project[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
-    return onSnapshot(projectsCollection(resolvedTenant), (snap) => {
-        const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project));
-        callback(items);
-    });
+    let unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    void import('./domain/projectsService')
+        .then(({ subscribeTenantProjects: subscribeTenantProjectsDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeTenantProjectsDomain(callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe to tenant projects', error);
+            callback([]);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 // --- Workspace Groups & Permissions ---
@@ -3483,26 +2244,38 @@ export const updateUserRole = async (
     newRole: WorkspaceRole,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const userRef = doc(db, `tenants/${resolvedTenant}/users`, targetUserId);
-    await updateDoc(userRef, { role: newRole });
+    const { updateUserRole: updateUserRoleDomain } = await import('./domain/workspaceMembersService');
+    return updateUserRoleDomain(targetUserId, newRole, tenantId);
 };
 
 export const subscribeWorkspaceGroups = (
     callback: (groups: WorkspaceGroup[]) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return onSnapshot(collection(db, `tenants/${resolvedTenant}/groups`), (snap) => {
-        const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkspaceGroup));
-        callback(items);
-    });
+    let unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    void import('./domain/workspaceGroupsService')
+        .then(({ subscribeWorkspaceGroups: subscribeWorkspaceGroupsDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeWorkspaceGroupsDomain(callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe to workspace groups', error);
+            callback([]);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
 };
 
 export const getWorkspaceGroups = async (tenantId?: string): Promise<WorkspaceGroup[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snap = await getDocs(collection(db, `tenants/${resolvedTenant}/groups`));
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkspaceGroup));
+    const { getWorkspaceGroups: getWorkspaceGroupsDomain } = await import('./domain/workspaceGroupsService');
+    return getWorkspaceGroupsDomain(tenantId);
 };
 
 export const createWorkspaceGroup = async (
@@ -3511,15 +2284,8 @@ export const createWorkspaceGroup = async (
     description?: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await addDoc(collection(db, `tenants/${resolvedTenant}/groups`), {
-        tenantId: resolvedTenant,
-        name,
-        color: color || '#3b82f6', // Default blue
-        description: description || '',
-        memberIds: [],
-        createdAt: serverTimestamp()
-    });
+    const { createWorkspaceGroup: createWorkspaceGroupDomain } = await import('./domain/workspaceGroupsService');
+    return createWorkspaceGroupDomain(name, color, description, tenantId);
 };
 
 export const updateWorkspaceGroup = async (
@@ -3527,16 +2293,16 @@ export const updateWorkspaceGroup = async (
     data: Partial<WorkspaceGroup>,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await updateDoc(doc(db, `tenants/${resolvedTenant}/groups`, groupId), data);
+    const { updateWorkspaceGroup: updateWorkspaceGroupDomain } = await import('./domain/workspaceGroupsService');
+    return updateWorkspaceGroupDomain(groupId, data, tenantId);
 };
 
 export const deleteWorkspaceGroup = async (
     groupId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await deleteDoc(doc(db, `tenants/${resolvedTenant}/groups`, groupId));
+    const { deleteWorkspaceGroup: deleteWorkspaceGroupDomain } = await import('./domain/workspaceGroupsService');
+    return deleteWorkspaceGroupDomain(groupId, tenantId);
 };
 
 export const addUserToGroup = async (
@@ -3544,19 +2310,8 @@ export const addUserToGroup = async (
     groupId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Update Group
-    const groupRef = doc(db, `tenants/${resolvedTenant}/groups`, groupId);
-    await updateDoc(groupRef, {
-        memberIds: arrayUnion(userId)
-    });
-
-    // Update User
-    const userRef = doc(db, `tenants/${resolvedTenant}/users`, userId);
-    await updateDoc(userRef, {
-        groupIds: arrayUnion(groupId)
-    });
+    const { addUserToGroup: addUserToGroupDomain } = await import('./domain/workspaceGroupsService');
+    return addUserToGroupDomain(userId, groupId, tenantId);
 };
 
 export const removeUserFromGroup = async (
@@ -3564,19 +2319,8 @@ export const removeUserFromGroup = async (
     groupId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // Update Group
-    const groupRef = doc(db, `tenants/${resolvedTenant}/groups`, groupId);
-    await updateDoc(groupRef, {
-        memberIds: arrayRemove(userId)
-    });
-
-    // Update User
-    const userRef = doc(db, `tenants/${resolvedTenant}/users`, userId);
-    await updateDoc(userRef, {
-        groupIds: arrayRemove(groupId)
-    });
+    const { removeUserFromGroup: removeUserFromGroupDomain } = await import('./domain/workspaceGroupsService');
+    return removeUserFromGroupDomain(userId, groupId, tenantId);
 };
 
 /**
@@ -3584,22 +2328,8 @@ export const removeUserFromGroup = async (
  * This removes them from all workspace groups and deletes their user document in the tenant.
  */
 export const removeUserFromWorkspace = async (userId: string, tenantId: string) => {
-    // 1. Get user to find groups
-    const userRef = doc(db, `tenants/${tenantId}/users/${userId}`);
-    const userSnap = await getDoc(userRef);
-
-    if (userSnap.exists()) {
-        const userData = userSnap.data();
-        const groupIds = userData.groupIds || [];
-
-        // 2. Remove from all groups
-        for (const groupId of groupIds) {
-            await removeUserFromGroup(userId, groupId, tenantId);
-        }
-    }
-
-    // 3. Delete user document from tenant
-    await deleteDoc(userRef);
+    const { removeUserFromWorkspace: removeUserFromWorkspaceDomain } = await import('./domain/workspaceMembersService');
+    return removeUserFromWorkspaceDomain(userId, tenantId);
 };
 
 export const addProjectMember = async (
@@ -3814,13 +2544,8 @@ export const getCampaignById = async (
 };
 
 export const getSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const docRef = doc(db, 'tenants', resolvedTenant, 'projects', projectId, SOCIAL_CAMPAIGNS, campaignId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-        return { id: snap.id, ...snap.data() } as SocialCampaign;
-    }
-    return null;
+    const { getSocialCampaign: getSocialCampaignDomain } = await import('./domain/socialService');
+    return getSocialCampaignDomain(projectId, campaignId, tenantId);
 };
 
 
@@ -3829,17 +2554,8 @@ export const createSocialCampaign = async (
     campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'>,
     tenantId?: string
 ) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), {
-        ...campaignData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-
-    return docRef.id;
+    const { createSocialCampaign: createSocialCampaignDomain } = await import('./domain/socialService');
+    return createSocialCampaignDomain(projectId, campaignData, tenantId);
 };
 
 export const subscribeCampaigns = (
@@ -3847,19 +2563,22 @@ export const subscribeCampaigns = (
     onUpdate: (campaigns: SocialCampaign[]) => void,
     tenantId?: string
 ): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS),
-        orderBy("createdAt", "desc")
-    );
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-    return onSnapshot(q, (snapshot) => {
-        const campaigns = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SocialCampaign));
-        onUpdate(campaigns);
+    import('./domain/socialService').then(({ subscribeCampaigns: subscribeCampaignsDomain }) => {
+        const nextUnsubscribe = subscribeCampaignsDomain(projectId, onUpdate, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
+        }
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
 export const updateCampaign = async (
@@ -3868,12 +2587,8 @@ export const updateCampaign = async (
     updates: Partial<SocialCampaign>,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), campaignId);
-    await updateDoc(ref, {
-        ...updates,
-        updatedAt: serverTimestamp()
-    });
+    const { updateCampaign: updateCampaignDomain } = await import('./domain/socialService');
+    return updateCampaignDomain(projectId, campaignId, updates, tenantId);
 };
 
 export const deleteCampaign = async (
@@ -3881,9 +2596,8 @@ export const deleteCampaign = async (
     campaignId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), campaignId);
-    await deleteDoc(ref);
+    const { deleteCampaign: deleteCampaignDomain } = await import('./domain/socialService');
+    return deleteCampaignDomain(projectId, campaignId, tenantId);
 };
 
 // Social Posts
@@ -3892,26 +2606,8 @@ export const createSocialPost = async (
     postData: Omit<SocialPost, "id" | "createdAt" | "updatedAt" | "createdBy">,
     tenantId?: string
 ) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS), {
-        ...postData,
-        projectId,
-        tenantId: resolvedTenant,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-
-    await logActivity(
-        projectId,
-        { action: `Created social post for ${postData.platform}`, target: "Social Post", type: "status" },
-        resolvedTenant
-    );
-
-    return docRef.id;
+    const { createSocialPost: createSocialPostDomain } = await import('./domain/socialService');
+    return createSocialPostDomain(projectId, postData, tenantId);
 };
 
 export const subscribeSocialPosts = (
@@ -3920,28 +2616,22 @@ export const subscribeSocialPosts = (
     tenantId?: string,
     campaignId?: string
 ): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-    let q = query(
-        projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS),
-        orderBy("updatedAt", "desc")
-    );
-
-    if (campaignId) {
-        q = query(
-            projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS),
-            where("campaignId", "==", campaignId),
-            orderBy("updatedAt", "desc")
-        );
-    }
-
-    return onSnapshot(q, (snapshot) => {
-        const posts = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SocialPost));
-        onUpdate(posts);
+    import('./domain/socialService').then(({ subscribeSocialPosts: subscribeSocialPostsDomain }) => {
+        const nextUnsubscribe = subscribeSocialPostsDomain(projectId, onUpdate, tenantId, campaignId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
+        }
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
 export const updateSocialPost = async (
@@ -3950,12 +2640,8 @@ export const updateSocialPost = async (
     updates: Partial<SocialPost>,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS), postId);
-    await updateDoc(ref, {
-        ...updates,
-        updatedAt: serverTimestamp()
-    });
+    const { updateSocialPost: updateSocialPostDomain } = await import('./domain/socialService');
+    return updateSocialPostDomain(projectId, postId, updates, tenantId);
 };
 
 export const deleteSocialPost = async (
@@ -3963,9 +2649,8 @@ export const deleteSocialPost = async (
     postId: string,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS), postId);
-    await deleteDoc(ref);
+    const { deleteSocialPost: deleteSocialPostDomain } = await import('./domain/socialService');
+    return deleteSocialPostDomain(projectId, postId, tenantId);
 };
 
 export const getSocialPostById = async (
@@ -3973,14 +2658,8 @@ export const getSocialPostById = async (
     postId: string,
     tenantId?: string
 ): Promise<SocialPost | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_POSTS), postId);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-        return { id: snap.id, ...snap.data() } as SocialPost;
-    }
-    return null;
+    const { getSocialPostById: getSocialPostByIdDomain } = await import('./domain/socialService');
+    return getSocialPostByIdDomain(projectId, postId, tenantId);
 };
 
 // Assets
@@ -3989,19 +2668,8 @@ export const createSocialAsset = async (
     assetData: Omit<SocialAsset, "id" | "createdAt" | "createdBy">,
     tenantId?: string
 ) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_ASSETS), {
-        ...assetData,
-        projectId,
-        tenantId: resolvedTenant,
-        createdBy: user.uid,
-        createdAt: serverTimestamp()
-    });
-
-    return docRef.id;
+    const { createSocialAsset: createSocialAssetDomain } = await import('./domain/socialService');
+    return createSocialAssetDomain(projectId, assetData, tenantId);
 };
 
 export const subscribeSocialAssets = (
@@ -4009,25 +2677,27 @@ export const subscribeSocialAssets = (
     onUpdate: (assets: SocialAsset[]) => void,
     tenantId?: string
 ): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, SOCIAL_ASSETS),
-        orderBy("createdAt", "desc")
-    );
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-    return onSnapshot(q, (snapshot) => {
-        const assets = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as SocialAsset));
-        onUpdate(assets);
+    import('./domain/socialService').then(({ subscribeSocialAssets: subscribeSocialAssetsDomain }) => {
+        const nextUnsubscribe = subscribeSocialAssetsDomain(projectId, onUpdate, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
+        }
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
 export const deleteSocialAsset = async (projectId: string, assetId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const assetRef = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_ASSETS), assetId);
-    await deleteDoc(assetRef);
+    const { deleteSocialAsset: deleteSocialAssetDomain } = await import('./domain/socialService');
+    return deleteSocialAssetDomain(projectId, assetId, tenantId);
 };
 
 // Social Integrations
@@ -4040,18 +2710,8 @@ export const createCaptionPreset = async (
     presetData: Omit<CaptionPreset, "id" | "createdAt" | "createdBy">,
     tenantId?: string
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), {
-        ...presetData,
-        projectId,
-        createdBy: user.uid,
-        createdAt: serverTimestamp()
-    });
-
-    return docRef.id;
+    const { createCaptionPreset: createCaptionPresetDomain } = await import('./domain/socialSettingsService');
+    return createCaptionPresetDomain(projectId, presetData, tenantId);
 };
 
 export const subscribeCaptionPresets = (
@@ -4059,19 +2719,22 @@ export const subscribeCaptionPresets = (
     onUpdate: (presets: CaptionPreset[]) => void,
     tenantId?: string
 ): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS),
-        orderBy("createdAt", "desc")
-    );
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-    return onSnapshot(q, (snapshot) => {
-        const presets = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as CaptionPreset));
-        onUpdate(presets);
+    import('./domain/socialSettingsService').then(({ subscribeCaptionPresets: subscribeCaptionPresetsDomain }) => {
+        const nextUnsubscribe = subscribeCaptionPresetsDomain(projectId, onUpdate, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
+        }
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
 export const updateCaptionPreset = async (
@@ -4080,12 +2743,8 @@ export const updateCaptionPreset = async (
     updates: Partial<CaptionPreset>,
     tenantId?: string
 ): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const presetRef = doc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), presetId);
-    await updateDoc(presetRef, {
-        ...updates,
-        updatedAt: serverTimestamp()
-    });
+    const { updateCaptionPreset: updateCaptionPresetDomain } = await import('./domain/socialSettingsService');
+    return updateCaptionPresetDomain(projectId, presetId, updates, tenantId);
 };
 
 export const deleteCaptionPreset = async (
@@ -4093,318 +2752,44 @@ export const deleteCaptionPreset = async (
     presetId: string,
     tenantId?: string
 ): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const presetRef = doc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), presetId);
-    await deleteDoc(presetRef);
+    const { deleteCaptionPreset: deleteCaptionPresetDomain } = await import('./domain/socialSettingsService');
+    return deleteCaptionPresetDomain(projectId, presetId, tenantId);
 };
 
 export const subscribeIntegrations = (
     projectId: string,
-    onUpdate: (integrations: SocialIntegration[]) => void
+    onUpdate: (integrations: SocialIntegration[]) => void,
+    tenantId?: string
 ) => {
-    const tenantId = resolveTenantId();
-    const q = query(
-        projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS)
-    );
-    return onSnapshot(q, (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SocialIntegration));
-        onUpdate(data);
-    });
-};
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-export const linkWithFacebook = async (): Promise<{ accessToken: string, user: any }> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("No user logged in");
-
-    const provider = new FacebookAuthProvider();
-    // Permissions needed for Instagram Graph API
-    provider.addScope('business_management'); // Often needed for Business Manager owned pages
-    provider.addScope('pages_show_list');
-    provider.addScope('pages_read_engagement');
-    provider.addScope('instagram_basic');
-    provider.addScope('instagram_content_publish');
-    provider.addScope('public_profile');
-
-    // Force the dialog to show again so user can select pages they might have missed
-    provider.setCustomParameters({
-        auth_type: 'rerequest'
-    });
-
-    try {
-        // Check if already linked
-        const isLinked = user.providerData.some(p => p.providerId === 'facebook.com');
-
-        let result;
-        if (isLinked) {
-            result = await reauthenticateWithPopup(user, provider);
-        } else {
-            result = await linkWithPopup(user, provider);
-        }
-
-        const credential = FacebookAuthProvider.credentialFromResult(result);
-        if (!credential?.accessToken) {
-            throw new Error("Failed to get Facebook access token");
-        }
-        return { accessToken: credential.accessToken, user: result.user };
-    } catch (error: any) {
-        console.error("Facebook link error", error);
-
-        // Case 1: The provider is ALREADY linked to the CURRENT user.
-        // We just need to re-authenticate to get a fresh token.
-        if (error.code === 'auth/provider-already-linked') {
-            const reauthResult = await reauthenticateWithPopup(user, provider);
-            const credential = FacebookAuthProvider.credentialFromResult(reauthResult);
-            if (!credential?.accessToken) {
-                throw new Error("Failed to refresh Facebook access token");
-            }
-            return { accessToken: credential.accessToken, user: reauthResult.user };
-        }
-
-        // Case 2: The Facebook account is already linked to ANOTHER Firebase user.
-        if (error.code === 'auth/credential-already-in-use') {
-            throw new Error("This Facebook account is already connected to another user in the system.");
-        }
-
-        if (error.code === 'auth/popup-closed-by-user') {
-            throw new Error("Authentication cancelled.");
-        }
-        throw error;
-    }
-};
-
-export const connectIntegration = async (projectId: string, platform: SocialPlatform, existingAccessToken?: string) => {
-    const tenantId = resolveTenantId();
-
-    try {
-        if (platform === 'Instagram' || platform === 'Facebook') {
-
-            // 1. Initiate Headless Auth
-            const getAuthUrlFn = httpsCallable(functions, 'getFacebookAuthUrl');
-            const response = await getAuthUrlFn({ projectId, tenantId }) as any;
-            const authUrl = response.data.url;
-
-            const width = 600;
-            const height = 700;
-            const left = (window.screen.width / 2) - (width / 2);
-            const top = (window.screen.height / 2) - (height / 2);
-
-            const popup = window.open(authUrl, 'facebook_auth', `width=${width},height=${height},top=${top},left=${left}`);
-
-            if (!popup) {
-                throw new Error("Popup blocked. Please allow popups for this site.");
-            }
-
-            // 2. Wait for completion message
-            await new Promise<void>((resolve, reject) => {
-                const handleMessage = (event: MessageEvent) => {
-                    if (event.data?.type === 'FACEBOOK_CONNECTED') {
-                        window.removeEventListener('message', handleMessage);
-                        resolve();
-                    }
-                };
-                window.addEventListener('message', handleMessage);
-
-                // Poll check if popup closed without finishing
-                const timer = setInterval(() => {
-                    if (popup.closed) {
-                        clearInterval(timer);
-                        window.removeEventListener('message', handleMessage);
-                        // We don't reject here because sometimes it closes fast, but if we didn't get message it's a cancel.
-                        // Ideally we rely on user action or checking DB.
-                    }
-                }, 1000);
-            });
-
-            // 3. Find the 'PendingSetup' integration
-            // We wait a brief moment for Firestore to sync
-            await new Promise(r => setTimeout(r, 1000));
-
-            const integrationsRef = projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS);
-            const q = query(
-                integrationsRef,
-                where('platform', '==', 'FacebookData'),
-                where('status', '==', 'PendingSetup'),
-                orderBy('connectedAt', 'desc'),
-                limit(1)
-            );
-
-            const snapshot = await getDocs(q);
-
-            if (snapshot.empty) {
-                throw new Error("Connection successful, but failed to retrieve integration data. Please try again.");
-            }
-
-            const pendingDoc = snapshot.docs[0];
-            const pendingData = pendingDoc.data();
-            const accessToken = pendingData.accessToken;
-
-            // 4. Fetch Accounts using the new token
-            // Dynamic import
-            const { getInstagramAccounts, getInstagramProfile } = await import('./instagramService');
-            const accounts = await getInstagramAccounts(accessToken);
-
-            let integrationData: any = {};
-
-            if (platform === 'Instagram') {
-                const instagramAccounts = accounts.filter(acc => acc.instagram_business_account);
-
-                if (instagramAccounts.length === 0) {
-                    // Clean up pending doc
-                    await deleteDoc(pendingDoc.ref);
-                    throw new Error("No Instagram Business accounts found linked to your Facebook Pages. Please make sure your Instagram account is a Business account and linked to a Facebook Page.");
-                }
-
-                // Auto-select first for MVP
-                const selectedAccount = instagramAccounts[0];
-                const igBusinessId = selectedAccount.instagram_business_account!.id;
-                const pageId = selectedAccount.id;
-
-                const profile = await getInstagramProfile(igBusinessId, accessToken);
-
-                integrationData = {
-                    platform: 'Instagram',
-                    username: profile.username || pendingData.username,
-                    profilePictureUrl: profile.profile_picture_url || pendingData.profilePictureUrl,
-                    instagramBusinessAccountId: igBusinessId,
-                    facebookPageId: pageId,
-                    accessToken: accessToken,
-                    status: 'Connected',
-                    // Keep original fields
-                    authUserId: pendingData.authUserId,
-                    connectedAt: pendingData.connectedAt
-                };
-
-            } else {
-                // Facebook Page
-                if (accounts.length === 0) {
-                    await deleteDoc(pendingDoc.ref);
-                    throw new Error("No Facebook Pages found.");
-                }
-
-                const selectedAccount = accounts[0];
-
-                integrationData = {
-                    platform: 'Facebook',
-                    username: selectedAccount.name,
-                    profilePictureUrl: selectedAccount.picture?.data?.url || pendingData.profilePictureUrl,
-                    facebookPageId: selectedAccount.id,
-                    pageAccessToken: selectedAccount.access_token, // Page-specific token
-                    accessToken: accessToken, // User-level token back up
-                    status: 'Connected',
-                    authUserId: pendingData.authUserId,
-                    connectedAt: pendingData.connectedAt
-                };
-            }
-
-            // 5. Update the Pending Doc to be the Real Doc
-            await updateDoc(pendingDoc.ref, integrationData);
+    import('./domain/socialSettingsService').then(({ subscribeIntegrations: subscribeIntegrationsDomain }) => {
+        const nextUnsubscribe = subscribeIntegrationsDomain(projectId, onUpdate, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
             return;
         }
-
-        if (platform === 'TikTok') {
-            try {
-                const getAuthUrlFn = httpsCallable(functions, 'getTikTokAuthUrl');
-                const response = await getAuthUrlFn({ projectId, tenantId }) as any;
-                const authUrl = response.data.url;
-
-                // Open popup
-                const width = 600;
-                const height = 700;
-                const left = (window.screen.width / 2) - (width / 2);
-                const top = (window.screen.height / 2) - (height / 2);
-
-                window.open(authUrl, 'tiktok_auth', `width=${width},height=${height},top=${top},left=${left}`);
-
-                // Await message
-                await new Promise<void>((resolve, reject) => {
-                    const handleMessage = (event: MessageEvent) => {
-                        if (event.data?.type === 'TIKTOK_CONNECTED') {
-                            window.removeEventListener('message', handleMessage);
-                            resolve();
-                        }
-                    };
-                    window.addEventListener('message', handleMessage);
-                    // TODO: Add timeout
-                });
-                return;
-            } catch (e: any) {
-                console.error("TikTok Connect Failed", e);
-                throw new Error("Failed to initiate TikTok connection: " + e.message);
-            }
-        }
-
-        if (platform === 'YouTube') {
-            try {
-                const getAuthUrlFn = httpsCallable(functions, 'getYouTubeAuthUrl');
-                const response = await getAuthUrlFn({ projectId, tenantId }) as any;
-                const authUrl = response.data.url;
-
-                const width = 600;
-                const height = 700;
-                const left = (window.screen.width / 2) - (width / 2);
-                const top = (window.screen.height / 2) - (height / 2);
-
-                window.open(authUrl, 'youtube_auth', `width=${width},height=${height},top=${top},left=${left}`);
-
-                await new Promise<void>((resolve, reject) => {
-                    const handleMessage = (event: MessageEvent) => {
-                        if (event.data?.type === 'YOUTUBE_CONNECTED') {
-                            window.removeEventListener('message', handleMessage);
-                            resolve();
-                        }
-                    };
-                    window.addEventListener('message', handleMessage);
-                });
-                return;
-            } catch (e: any) {
-                console.error("YouTube Connect Failed", e);
-                throw new Error("Failed to initiate YouTube connection: " + e.message);
-            }
-        }
-    } catch (error) {
-        console.error("Social Auth failed:", error);
-        throw error;
-    }
-
-    // Fallback only for non-meta platforms or if explicitly requested (not implemented here)
-    if (['Facebook', 'Instagram'].includes(platform)) return;
-
-    // Mock implementation for others OR fallback
-    const mockUsernames: Record<string, string> = {
-        'Instagram': '@projectflow_ig',
-        'Facebook': 'ProjectFlow Page',
-        'LinkedIn': 'ProjectFlow Company',
-        'X': '@projectflow_app',
-        'TikTok': '@projectflow_tok'
-    };
-
-    // Simulate OAuth Delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    await addDoc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), {
-        projectId,
-        platform,
-        username: mockUsernames[platform] || 'Connected User',
-        status: 'Connected',
-        connectedAt: new Date().toISOString(),
-        isMock: true
+        unsubscribe = nextUnsubscribe;
     });
+
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
 };
 
-export const disconnectIntegration = async (projectId: string, integrationId: string) => {
-    const tenantId = resolveTenantId();
-    await deleteDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), integrationId));
+export const connectIntegration = async (projectId: string, platform: SocialPlatform, existingAccessToken?: string, tenantId?: string) => {
+    const { connectIntegration: connectIntegrationDomain } = await import('./domain/socialSettingsService');
+    return connectIntegrationDomain(projectId, platform, existingAccessToken, tenantId);
 };
 
-// --- Personal Tasks (Standalone, not tied to projects) ---
+export const disconnectIntegration = async (projectId: string, integrationId: string, tenantId?: string) => {
+    const { disconnectIntegration: disconnectIntegrationDomain } = await import('./domain/socialSettingsService');
+    return disconnectIntegrationDomain(projectId, integrationId, tenantId);
+};
 
-const PERSONAL_TASKS = "personalTasks";
-
-const personalTasksCollection = (tenantId: string, userId: string) =>
-    collection(db, `tenants/${tenantId}/users/${userId}/${PERSONAL_TASKS}`);
-
-const personalTaskDocRef = (tenantId: string, userId: string, taskId: string) =>
-    doc(db, `tenants/${tenantId}/users/${userId}/${PERSONAL_TASKS}`, taskId);
+// --- Personal Task Compatibility Facade ---
 
 export const addPersonalTask = async (
     title: string,
@@ -4413,42 +2798,13 @@ export const addPersonalTask = async (
     extra?: Partial<Pick<PersonalTask, 'description' | 'scheduledDate'>>,
     tenantId?: string
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    // Build task data without undefined values (Firestore rejects undefined)
-    const taskData: Record<string, any> = {
-        ownerId: user.uid,
-        title,
-        isCompleted: false,
-        priority,
-        description: extra?.description || "",
-        createdAt: serverTimestamp(),
-        tenantId: resolvedTenant
-    };
-
-    // Only add optional fields if they have values
-    if (dueDate) taskData.dueDate = dueDate;
-    if (extra?.scheduledDate) taskData.scheduledDate = extra.scheduledDate;
-
-    const docRef = await addDoc(personalTasksCollection(resolvedTenant, user.uid), taskData);
-    return docRef.id;
+    const { addPersonalTask: addPersonalTaskDomain } = await import('./domain/personalTasksService');
+    return addPersonalTaskDomain(title, dueDate, priority, extra, tenantId);
 };
 
 export const getPersonalTasks = async (tenantId?: string): Promise<PersonalTask[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const snapshot = await getDocs(personalTasksCollection(resolvedTenant, user.uid));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as PersonalTask))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const { getPersonalTasks: getPersonalTasksDomain } = await import('./domain/personalTasksService');
+    return getPersonalTasksDomain(tenantId);
 };
 
 export const updatePersonalTask = async (
@@ -4456,32 +2812,13 @@ export const updatePersonalTask = async (
     updates: Partial<PersonalTask>,
     tenantId?: string
 ): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-
-    const sanitized: any = { ...updates };
-    // Handle completedAt logic
-    if (sanitized.isCompleted !== undefined) {
-        if (sanitized.isCompleted === true) {
-            sanitized.completedAt = serverTimestamp();
-        } else if (sanitized.isCompleted === false) {
-            sanitized.completedAt = deleteField();
-        }
-    }
-
-    await updateDoc(taskRef, sanitized);
+    const { updatePersonalTask: updatePersonalTaskDomain } = await import('./domain/personalTasksService');
+    return updatePersonalTaskDomain(taskId, updates, tenantId);
 };
 
 export const deletePersonalTask = async (taskId: string, tenantId?: string): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-    await deleteDoc(taskRef);
+    const { deletePersonalTask: deletePersonalTaskDomain } = await import('./domain/personalTasksService');
+    return deletePersonalTaskDomain(taskId, tenantId);
 };
 
 export const togglePersonalTaskStatus = async (
@@ -4489,22 +2826,8 @@ export const togglePersonalTaskStatus = async (
     currentStatus: boolean,
     tenantId?: string
 ): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-
-    const newStatus = !currentStatus;
-    const updates: any = { isCompleted: newStatus };
-
-    if (newStatus) {
-        updates.completedAt = serverTimestamp();
-    } else {
-        updates.completedAt = deleteField();
-    }
-
-    await updateDoc(taskRef, updates);
+    const { togglePersonalTaskStatus: togglePersonalTaskStatusDomain } = await import('./domain/personalTasksService');
+    return togglePersonalTaskStatusDomain(taskId, currentStatus, tenantId);
 };
 
 /**
@@ -4515,45 +2838,8 @@ export const movePersonalTaskToProject = async (
     targetProjectId: string,
     tenantId?: string
 ): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // 1. Get the personal task data
-    const personalTaskRef = personalTaskDocRef(resolvedTenant, user.uid, personalTaskId);
-    const personalTaskSnap = await getDoc(personalTaskRef);
-
-    if (!personalTaskSnap.exists()) {
-        throw new Error("Personal task not found");
-    }
-
-    const personalTaskData = personalTaskSnap.data() as PersonalTask;
-
-    // 2. Create a new task in the target project
-    const newTaskId = await addTask(
-        targetProjectId,
-        personalTaskData.title,
-        personalTaskData.dueDate,
-        undefined, // assignee
-        personalTaskData.priority || 'Medium',
-        {
-            description: personalTaskData.description,
-            category: personalTaskData.category,
-            status: personalTaskData.status || 'Open'
-        },
-        resolvedTenant
-    );
-
-    // 3. If the personal task was completed, mark the new task as completed
-    if (personalTaskData.isCompleted) {
-        await toggleTaskStatus(newTaskId, false, targetProjectId, resolvedTenant);
-    }
-
-    // 4. Delete the personal task
-    await deleteDoc(personalTaskRef);
-
-    return newTaskId;
+    const { movePersonalTaskToProject: movePersonalTaskToProjectDomain } = await import('./domain/personalTasksService');
+    return movePersonalTaskToProjectDomain(personalTaskId, targetProjectId, tenantId);
 };
 
 /**
@@ -4563,16 +2849,8 @@ export const getPersonalTaskById = async (
     taskId: string,
     tenantId?: string
 ): Promise<PersonalTask | null> => {
-    const user = auth.currentUser;
-    if (!user) return null;
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-    const taskSnap = await getDoc(taskRef);
-
-    if (!taskSnap.exists()) return null;
-
-    return { id: taskSnap.id, ...taskSnap.data() } as PersonalTask;
+    const { getPersonalTaskById: getPersonalTaskByIdDomain } = await import('./domain/personalTasksService');
+    return getPersonalTaskByIdDomain(taskId, tenantId);
 };
 
 // --- API Tokens ---
@@ -4613,32 +2891,8 @@ export const createAPIToken = async (
     expiresAt?: Date,
     tenantId?: string
 ): Promise<{ token: string; id: string }> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
     const resolvedTenant = resolveTenantId(tenantId);
-    const plainToken = generateSecureToken();
-    const tokenHash = await hashToken(plainToken);
-    const tokenPrefix = plainToken.substring(0, 12); // "pfat_xxxxxxx" first 12 chars
-
-    const tokenData = {
-        tenantId: resolvedTenant,
-        name,
-        tokenHash,
-        tokenPrefix,
-        projectScope: projectScope || null,
-        permissions,
-        createdAt: serverTimestamp(),
-        lastUsedAt: null,
-        expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
-        createdBy: user.uid
-    };
-
-    // Store in tenant's secrets subcollection for API tokens
-    const tokensRef = collection(db, TENANTS, resolvedTenant, API_TOKENS);
-    const docRef = await addDoc(tokensRef, tokenData);
-
-    return { token: plainToken, id: docRef.id };
+    return createWorkspaceApiToken(resolvedTenant, name, permissions, projectScope, expiresAt);
 };
 
 /**
@@ -4655,23 +2909,7 @@ export const getAPITokens = async (tenantId?: string): Promise<{
     expiresAt?: any;
 }[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
-    const tokensRef = collection(db, TENANTS, resolvedTenant, API_TOKENS);
-    const q = query(tokensRef, orderBy("createdAt", "desc"));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-            id: doc.id,
-            name: data.name,
-            tokenPrefix: data.tokenPrefix,
-            permissions: data.permissions,
-            projectScope: data.projectScope,
-            createdAt: data.createdAt,
-            lastUsedAt: data.lastUsedAt,
-            expiresAt: data.expiresAt
-        };
-    });
+    return listWorkspaceApiTokens(resolvedTenant);
 };
 
 /**
@@ -4679,8 +2917,7 @@ export const getAPITokens = async (tenantId?: string): Promise<{
  */
 export const deleteAPIToken = async (tokenId: string, tenantId?: string): Promise<void> => {
     const resolvedTenant = resolveTenantId(tenantId);
-    const tokenRef = doc(db, TENANTS, resolvedTenant, API_TOKENS, tokenId);
-    await deleteDoc(tokenRef);
+    await deleteWorkspaceApiToken(resolvedTenant, tokenId);
 };
 
 /**
@@ -4692,36 +2929,14 @@ export const validateAPITokenLocally = async (
     requiredPermission: 'newsletter:write' | 'recipients:read',
     tenantId: string
 ): Promise<{ valid: boolean; tokenData?: any; error?: string }> => {
-    try {
-        const tokenHash = await hashToken(plainToken);
-        const tokensRef = collection(db, TENANTS, tenantId, API_TOKENS);
-        const q = query(tokensRef, where("tokenHash", "==", tokenHash));
-        const snapshot = await getDocs(q);
+    void plainToken;
+    void requiredPermission;
+    void tenantId;
 
-        if (snapshot.empty) {
-            return { valid: false, error: "Invalid token" };
-        }
-
-        const tokenDoc = snapshot.docs[0];
-        const tokenData = tokenDoc.data();
-
-        // Check expiration
-        if (tokenData.expiresAt) {
-            const expiresAt = tokenData.expiresAt.toDate();
-            if (new Date() > expiresAt) {
-                return { valid: false, error: "Token expired" };
-            }
-        }
-
-        // Check permissions
-        if (!tokenData.permissions.includes(requiredPermission)) {
-            return { valid: false, error: "Insufficient permissions" };
-        }
-
-        return { valid: true, tokenData };
-    } catch (error: any) {
-        return { valid: false, error: error.message };
-    }
+    return {
+        valid: false,
+        error: 'Client-side API token validation is no longer supported. Use the backend validation path.'
+    };
 };
 
 // --- Idea Interactions (Likes & Comments) ---
@@ -4869,59 +3084,37 @@ export const getIdeaComments = async (projectId: string, ideaId: string, tenantI
 
 // --- Social Strategy ---
 
-export const subscribeSocialStrategy = (projectId: string, onUpdate: (strategy: SocialStrategy | null) => void) => {
-    const tenantId = resolveTenantId();
-    const strategyRef = doc(db, 'tenants', tenantId, 'projects', projectId, SOCIAL_STRATEGY, 'default');
+export const subscribeSocialStrategy = (
+    projectId: string,
+    onUpdate: (strategy: SocialStrategy | null) => void,
+    tenantId?: string
+) => {
+    let unsubscribe: Unsubscribe = () => undefined;
+    let disposed = false;
 
-    return onSnapshot(strategyRef, (snap) => {
-        if (snap.exists()) {
-            onUpdate({ id: snap.id, ...snap.data() } as SocialStrategy);
-        } else {
-            onUpdate(null);
+    import('./domain/socialSettingsService').then(({ subscribeSocialStrategy: subscribeSocialStrategyDomain }) => {
+        const nextUnsubscribe = subscribeSocialStrategyDomain(projectId, onUpdate, tenantId);
+        if (disposed) {
+            nextUnsubscribe();
+            return;
         }
-    });
-};
-
-export const updateSocialStrategy = async (projectId: string, updates: Partial<SocialStrategy>) => {
-    const tenantId = resolveTenantId();
-    const strategyRef = doc(db, 'tenants', tenantId, 'projects', projectId, SOCIAL_STRATEGY, 'default');
-
-    await setDoc(strategyRef, {
-        ...updates,
-        projectId,
-        updatedAt: serverTimestamp()
-    }, { merge: true });
-};
-
-export const syncSocialStrategyPlatforms = async (projectId: string, platformToRemove: SocialPlatform) => {
-    const tenantId = resolveTenantId();
-    const ideasRef = collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas');
-    const q = query(ideasRef, where('type', '==', 'Marketing'), where('campaignType', '==', 'social'));
-
-    const snapshot = await getDocs(q);
-    const batch = writeBatch(db);
-    let count = 0;
-
-    snapshot.docs.forEach(docSnap => {
-        const data = docSnap.data() as Idea;
-        try {
-            const concept = JSON.parse(data.concept || '{}');
-            if (concept.channels && Array.isArray(concept.channels) && concept.channels.includes(platformToRemove)) {
-                const newChannels = concept.channels.filter((c: string) => c !== platformToRemove);
-                batch.update(docSnap.ref, {
-                    concept: JSON.stringify({ ...concept, channels: newChannels }),
-                    updatedAt: serverTimestamp()
-                });
-                count++;
-            }
-        } catch (e) {
-            console.error("Failed to parse concept for flow", docSnap.id, e);
-        }
+        unsubscribe = nextUnsubscribe;
     });
 
-    if (count > 0) {
-        await batch.commit();
-    }
+    return () => {
+        disposed = true;
+        unsubscribe();
+    };
+};
+
+export const updateSocialStrategy = async (projectId: string, updates: Partial<SocialStrategy>, tenantId?: string) => {
+    const { updateSocialStrategy: updateSocialStrategyDomain } = await import('./domain/socialSettingsService');
+    return updateSocialStrategyDomain(projectId, updates, tenantId);
+};
+
+export const syncSocialStrategyPlatforms = async (projectId: string, platformToRemove: SocialPlatform, tenantId?: string) => {
+    const { syncSocialStrategyPlatforms: syncSocialStrategyPlatformsDomain } = await import('./domain/socialSettingsService');
+    return syncSocialStrategyPlatformsDomain(projectId, platformToRemove, tenantId);
 };
 
 // --- Onboarding Persistence ---

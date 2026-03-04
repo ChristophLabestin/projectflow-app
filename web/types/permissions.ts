@@ -44,6 +44,9 @@ export type TenantPermissionNode =
     | 'tenant.seats.manage'
     | 'tenant.plan.view'
     | 'tenant.plan.manage'
+    // Finance
+    | 'tenant.finance.view'
+    | 'tenant.finance.manage'
     // SSO (Organization tier)
     | 'tenant.sso.view'
     | 'tenant.sso.configure'
@@ -390,6 +393,7 @@ export const DEFAULT_MEMBER_PERMISSIONS: PermissionNode[] = [
     'tenant.view',
     'tenant.members.view',
     'tenant.roles.view',
+    'tenant.finance.view',
     // Media library access
     'tenant.media.view',
     'tenant.media.upload',
@@ -539,6 +543,8 @@ export const ALL_TENANT_PERMISSIONS: TenantPermissionNode[] = [
     'tenant.seats.manage',
     'tenant.plan.view',
     'tenant.plan.manage',
+    'tenant.finance.view',
+    'tenant.finance.manage',
     'tenant.sso.view',
     'tenant.sso.configure',
     'tenant.sso.enforce',

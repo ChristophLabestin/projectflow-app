@@ -3,6 +3,7 @@
     "scripts": {
         "lint": "eslint --ext .js,.ts .",
         "build": "tsc",
+        "test:rules": "firebase emulators:exec --only firestore --project demo-projectflow --config ../firebase.json \"node scripts/firestore-rules-test.js\"",
         "build:watch": "tsc --watch",
         "serve": "npm run build && firebase emulators:start --only functions",
         "shell": "npm run build && firebase functions:shell",
@@ -25,6 +26,7 @@
         "nodemailer": "^6.9.13"
     },
     "devDependencies": {
+        "@firebase/rules-unit-testing": "^4.0.1",
         "@types/cors": "^2.8.17",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/nodemailer": "^6.4.14",

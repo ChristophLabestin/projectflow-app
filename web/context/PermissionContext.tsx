@@ -18,7 +18,8 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { auth } from '../services/firebase';
-import { getActiveTenantId, subscribeTenantUsers } from '../services/dataService';
+import { subscribeTenantUsers } from '../services/dataService';
+import { getActiveTenantId } from '../services/domain/authService';
 import {
     PermissionNode,
     TenantPermissionNode,

@@ -5,33 +5,48 @@ import FirebaseFirestore
 
 @MainActor
 final class TasksStore: ObservableObject {
-    @Published var tasks: [Task] = []
+    @Published var tasks: [ProjectTask] = []
     @Published var isLoading = true
     @Published var errorMessage: String?
 
     private let repository = TaskRepository()
     private var listener: ListenerRegistration?
 
-    func start(tenantId: String, projectId: String) {
+    func start(tenantId: String, projectId: String? = nil) {
         isLoading = true
         errorMessage = nil
         listener?.remove()
-        listener = repository.listenTasks(
-            tenantId: tenantId,
-            projectId: projectId,
-            onUpdate: { [weak self] tasks in
-                self?.tasks = tasks.sorted { left, right in
-                    let leftDate = left.createdAt?.dateValue() ?? Date.distantPast
-                    let rightDate = right.createdAt?.dateValue() ?? Date.distantPast
-                    return leftDate > rightDate
-                }
-                self?.isLoading = false
-            },
-            onError: { [weak self] error in
-                self?.errorMessage = error.localizedDescription
-                self?.isLoading = false
+        
+        let db = Firestore.firestore()
+        let query: Query
+        
+        if let projectId = projectId {
+            query = db.collection(FirestorePath.tenants)
+                .document(tenantId)
+                .collection(FirestorePath.projects)
+                .document(projectId)
+                .collection(FirestorePath.tasks)
+        } else {
+            query = db.collectionGroup(FirestorePath.tasks)
+                .whereField("tenantId", isEqualTo: tenantId)
+        }
+
+        listener = query.addSnapshotListener { [weak self] snapshot, error in
+            guard let self else { return }
+            if let error = error {
+                self.errorMessage = error.localizedDescription
+                self.isLoading = false
+                return
             }
-        )
+            
+            let tasks = snapshot?.documents.map { ProjectTask(id: $0.documentID, data: $0.data()) } ?? []
+            self.tasks = tasks.sorted { left, right in
+                let leftDate = left.createdAt?.dateValue() ?? Date.distantPast
+                let rightDate = right.createdAt?.dateValue() ?? Date.distantPast
+                return leftDate > rightDate
+            }
+            self.isLoading = false
+        }
     }
 
     func stop() {
@@ -54,7 +69,7 @@ final class TasksStore: ObservableObject {
             return
         }
 
-        var task = Task(id: UUID().uuidString, data: [:])
+        var task = ProjectTask(id: UUID().uuidString, data: [:])
         task.projectId = projectId
         task.ownerId = userId
         task.title = title
@@ -113,7 +128,28 @@ final class TasksStore: ObservableObject {
         }
     }
 
-    func toggleComplete(tenantId: String, projectId: String, task: Task, permissions: PermissionContext) async {
+    func updateTaskFields(
+        tenantId: String,
+        projectId: String,
+        taskId: String,
+        updates: [String: Any],
+        permissions: PermissionContext
+    ) async {
+        errorMessage = nil
+        do {
+            try await repository.updateTask(
+                tenantId: tenantId,
+                projectId: projectId,
+                taskId: taskId,
+                updates: updates,
+                permissions: permissions
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func toggleComplete(tenantId: String, projectId: String, task: ProjectTask, permissions: PermissionContext) async {
         let nextCompleted = !task.isCompleted
         let nextStatus = nextCompleted ? "Done" : "Open"
         await updateTask(
@@ -126,5 +162,65 @@ final class TasksStore: ObservableObject {
             priority: task.priority,
             permissions: permissions
         )
+    }
+
+    func addSubtask(tenantId: String, projectId: String, taskId: String, title: String, subtasks: [ProjectSubtask], permissions: PermissionContext) async {
+        errorMessage = nil
+        var nextSubtasks = subtasks
+        nextSubtasks.append(ProjectSubtask(title: title))
+        
+        let updates: [String: Any] = ["subtasks": nextSubtasks.map { $0.data }]
+        
+        do {
+            try await repository.updateTask(
+                tenantId: tenantId,
+                projectId: projectId,
+                taskId: taskId,
+                updates: updates,
+                permissions: permissions
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func toggleSubtask(tenantId: String, projectId: String, taskId: String, subtaskId: String, subtasks: [ProjectSubtask], permissions: PermissionContext) async {
+        errorMessage = nil
+        var nextSubtasks = subtasks
+        if let index = nextSubtasks.firstIndex(where: { $0.id == subtaskId }) {
+            nextSubtasks[index].isCompleted.toggle()
+        }
+        
+        let updates: [String: Any] = ["subtasks": nextSubtasks.map { $0.data }]
+        
+        do {
+            try await repository.updateTask(
+                tenantId: tenantId,
+                projectId: projectId,
+                taskId: taskId,
+                updates: updates,
+                permissions: permissions
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteSubtask(tenantId: String, projectId: String, taskId: String, subtaskId: String, subtasks: [ProjectSubtask], permissions: PermissionContext) async {
+        errorMessage = nil
+        let nextSubtasks = subtasks.filter { $0.id != subtaskId }
+        let updates: [String: Any] = ["subtasks": nextSubtasks.map { $0.data }]
+        
+        do {
+            try await repository.updateTask(
+                tenantId: tenantId,
+                projectId: projectId,
+                taskId: taskId,
+                updates: updates,
+                permissions: permissions
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

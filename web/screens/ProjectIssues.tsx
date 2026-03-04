@@ -1,12 +1,14 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { subscribeProjectIssues, getProjectById, subscribeTenantUsers, deleteIssue } from '../services/dataService';
+import '../src/styles/components/_project-issues.scss';
+import { subscribeProjectIssues, subscribeTenantUsers } from '../services/dataService';
+import { getProjectById } from '../services/domain/projectsService';
+import { deleteIssue } from '../services/domain/issuesService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Issue, Project, Member, ProjectGroup } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Badge } from '../components/common/Badge/Badge';
 import { TextInput } from '../components/common/Input/TextInput';
-import { CreateIssueModal } from '../components/CreateIssueModal';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { toMillis } from '../utils/time';
 import { useConfirm } from '../context/UIContext';
@@ -16,6 +18,8 @@ import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
+
+const CreateIssueModal = lazy(() => import('../components/CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 
 export const ProjectIssues = () => {
     const { id } = useParams<{ id: string }>();
@@ -98,7 +102,7 @@ export const ProjectIssues = () => {
     }, [id]);
 
     const handleDelete = async (issueId: string) => {
-        if (!can('canManageTasks')) return; // Assuming managing issues falls under managing tasks or similar
+        if (!can('canManageIssues')) return;
         if (!await confirm(t('projectIssues.confirm.delete.title'), t('projectIssues.confirm.delete.body'))) return;
         try {
             await deleteIssue(issueId);
@@ -129,6 +133,26 @@ export const ProjectIssues = () => {
         const progress = total > 0 ? Math.round((resolved / total) * 100) : 0;
         return { total, open, inProgress, resolved, urgent, progress };
     }, [issues]);
+
+    const workbenchCards = useMemo(() => ([
+        {
+            label: t('projectIssues.workbench.focus'),
+            value: filterLabels[filter],
+            meta: t('projectIssues.workbench.focusMeta').replace('{count}', String(filteredIssues.length))
+        },
+        {
+            label: t('projectIssues.workbench.triage'),
+            value: String(stats.open + stats.inProgress),
+            meta: t('projectIssues.workbench.triageMeta').replace('{count}', String(stats.urgent))
+        },
+        {
+            label: t('projectIssues.workbench.resolution'),
+            value: `${stats.progress}%`,
+            meta: t('projectIssues.workbench.resolutionMeta')
+                .replace('{done}', String(stats.resolved))
+                .replace('{total}', String(stats.total))
+        }
+    ]), [filter, filterLabels, filteredIssues.length, stats, t]);
 
     const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
         {
@@ -267,7 +291,7 @@ export const ProjectIssues = () => {
                 </div>
 
                 <div className="issue-card__actions">
-                    {can('canManageTasks') && (
+                    {can('canManageIssues') && (
                         <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); handleDelete(issue.id); }}
@@ -331,7 +355,7 @@ export const ProjectIssues = () => {
                                 : t('projectIssues.header.subtitleFallback')}
                         </p>
                     </div>
-                    {can('canManageTasks') && (
+                    {can('canManageIssues') && (
                         <Button
                             onClick={() => setShowNewIssueModal(true)}
                             icon={<span className="material-symbols-outlined">bug_report</span>}
@@ -342,6 +366,16 @@ export const ProjectIssues = () => {
                             {t('projectIssues.actions.reportIssue')}
                         </Button>
                     )}
+                </div>
+
+                <div className="issues-workbench">
+                    {workbenchCards.map((card) => (
+                        <div key={card.label} className="issues-workbench__card">
+                            <span className="issues-workbench__label">{card.label}</span>
+                            <span className="issues-workbench__value">{card.value}</span>
+                            <span className="issues-workbench__meta">{card.meta}</span>
+                        </div>
+                    ))}
                 </div>
 
                 <div data-onboarding-id="project-issues-stats" className="issues-stats-grid">
@@ -407,7 +441,7 @@ export const ProjectIssues = () => {
                             <p className="issues-empty__description">
                                 {t('projectIssues.empty.description')}
                             </p>
-                            {can('canManageTasks') && (
+                            {can('canManageIssues') && (
                                 <Button
                                     variant="secondary"
                                     className="issues-empty__action"
@@ -426,12 +460,14 @@ export const ProjectIssues = () => {
                     )}
                 </div>
 
-                {showNewIssueModal && can('canManageTasks') && id && (
-                    <CreateIssueModal
-                        isOpen={showNewIssueModal}
-                        onClose={() => setShowNewIssueModal(false)}
-                        projectId={id}
-                    />
+                {showNewIssueModal && can('canManageIssues') && id && (
+                    <Suspense fallback={null}>
+                        <CreateIssueModal
+                            isOpen={showNewIssueModal}
+                            onClose={() => setShowNewIssueModal(false)}
+                            projectId={id}
+                        />
+                    </Suspense>
                 )}
             </div>
             <OnboardingOverlay

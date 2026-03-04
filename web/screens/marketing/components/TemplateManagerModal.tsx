@@ -3,6 +3,7 @@ import { X, Search, Layout, Plus, Trash2, FileText, CheckCircle } from 'lucide-r
 import { BlogTemplate, getBlogTemplates, saveBlogTemplate, deleteBlogTemplate } from '../../../services/blogService';
 import { useToast, useConfirm } from '../../../context/UIContext';
 import { Button } from '../../../components/ui/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface TemplateManagerModalProps {
     isOpen: boolean;
@@ -21,6 +22,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 }) => {
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
     const [templates, setTemplates] = useState<BlogTemplate[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [mode, setMode] = useState<'list' | 'save'>('list');
@@ -40,7 +42,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
             setTemplates(data.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
         } catch (error) {
             console.error(error);
-            showError('Failed to load templates');
+            showError(t('marketing.templateManager.toast.loadError'));
         } finally {
             setIsLoading(false);
         }
@@ -48,33 +50,36 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
     const handleSaveTemplate = async () => {
         if (!newTemplateName.trim()) {
-            showError('Please enter a template name');
+            showError(t('marketing.templateManager.errors.nameRequired'));
             return;
         }
 
         try {
             await saveBlogTemplate(projectId, newTemplateName, currentContent);
-            showSuccess('Template saved successfully');
+            showSuccess(t('marketing.templateManager.toast.saved'));
             setNewTemplateName('');
             setMode('list');
             loadTemplates();
         } catch (error) {
             console.error(error);
-            showError('Failed to save template');
+            showError(t('marketing.templateManager.toast.saveError'));
         }
     };
 
     const handleDelete = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
 
-        if (await confirm('Delete Template', 'Are you sure you want to delete this template? This action cannot be undone.')) {
+        if (await confirm(
+            t('marketing.templateManager.confirm.deleteTitle'),
+            t('marketing.templateManager.confirm.deleteMessage')
+        )) {
             try {
                 await deleteBlogTemplate(id);
-                showSuccess('Template deleted');
+                showSuccess(t('marketing.templateManager.toast.deleted'));
                 setTemplates(prev => prev.filter(t => t.id !== id));
             } catch (error) {
                 console.error(error);
-                showError('Failed to delete template');
+                showError(t('marketing.templateManager.toast.deleteError'));
             }
         }
     };
@@ -92,7 +97,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                 <div className="flex items-center justify-between p-6 border-b border-surface">
                     <h2 className="text-xl font-bold flex items-center gap-2">
                         <Layout className="text-primary" />
-                        Template Manager
+                        {t('marketing.templateManager.title')}
                     </h2>
                     <button
                         onClick={onClose}
@@ -111,10 +116,10 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                                     <input
                                         type="text"
-                                        placeholder="Search templates..."
+                                        placeholder={t('marketing.templateManager.searchPlaceholder')}
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
+                                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg text-sm outline-none"
                                     />
                                 </div>
                                 <Button
@@ -122,7 +127,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                     className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors gap-2"
                                 >
                                     <Plus size={16} />
-                                    Save Current as Template
+                                    {t('marketing.templateManager.actions.saveCurrent')}
                                 </Button>
                             </div>
 
@@ -133,8 +138,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                             ) : filteredTemplates.length === 0 ? (
                                 <div className="text-center py-12 text-muted">
                                     <Layout size={48} className="mx-auto mb-4 opacity-20" />
-                                    <p>No templates found.</p>
-                                    <p className="text-sm mt-1">Save your current layout as a template to get started.</p>
+                                    <p>{t('marketing.templateManager.empty.title')}</p>
+                                    <p className="text-sm mt-1">{t('marketing.templateManager.empty.subtitle')}</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-2 gap-4">
@@ -142,7 +147,10 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                         <div
                                             key={template.id}
                                             onClick={async () => {
-                                                if (await confirm('Load Template', 'Load this template? Current content will be replaced with the template content.')) {
+                                                if (await confirm(
+                                                    t('marketing.templateManager.confirm.loadTitle'),
+                                                    t('marketing.templateManager.confirm.loadMessage')
+                                                )) {
                                                     onLoadTemplate(template.content);
                                                     onClose();
                                                 }
@@ -156,14 +164,14 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                                 <button
                                                     onClick={(e) => handleDelete(template.id, e)}
                                                     className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    title="Delete Template"
+                                                    title={t('marketing.templateManager.actions.deleteTemplate')}
                                                 >
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
                                             <h3 className="font-semibold text-main mb-1">{template.name}</h3>
                                             <p className="text-xs text-muted">
-                                                Created {new Date(template.createdAt).toLocaleDateString()}
+                                                {t('marketing.templateManager.createdOn').replace('{date}', new Date(template.createdAt).toLocaleDateString())}
                                             </p>
                                         </div>
                                     ))}
@@ -174,20 +182,20 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
                     {mode === 'save' && (
                         <div className="max-w-md mx-auto py-8">
-                            <h3 className="text-lg font-semibold mb-2">Save as Template</h3>
+                            <h3 className="text-lg font-semibold mb-2">{t('marketing.templateManager.saveMode.title')}</h3>
                             <p className="text-sm text-muted mb-6">
-                                Create a reusable template from your current editor content.
+                                {t('marketing.templateManager.saveMode.subtitle')}
                             </p>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-muted mb-1 uppercase">Template Name</label>
+                                    <label className="block text-xs font-medium text-muted mb-1 uppercase">{t('marketing.templateManager.fields.templateName')}</label>
                                     <input
                                         type="text"
                                         value={newTemplateName}
                                         onChange={(e) => setNewTemplateName(e.target.value)}
-                                        placeholder="e.g., Monthly Newsletter Layout"
-                                        className="w-full p-3 bg-surface border border-surface rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
+                                        placeholder={t('marketing.templateManager.fields.templateNamePlaceholder')}
+                                        className="w-full p-3 bg-surface border border-surface rounded-xl text-sm outline-none"
                                         autoFocus
                                     />
                                 </div>
@@ -197,14 +205,14 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                         onClick={() => setMode('list')}
                                         className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-surface text-muted hover:bg-surface-hover transition-colors"
                                     >
-                                        Cancel
+                                        {t('common.cancel')}
                                     </button>
                                     <Button
                                         onClick={handleSaveTemplate}
                                         disabled={!newTemplateName.trim()}
                                         className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50"
                                     >
-                                        Save Template
+                                        {t('marketing.templateManager.actions.saveTemplate')}
                                     </Button>
                                 </div>
                             </div>

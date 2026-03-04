@@ -1,0 +1,41 @@
+{
+    "projects": [
+        {
+            "title": "ProjectFlow Mobile App",
+            "description": "Launch the iOS companion app with core workflows and offline access.",
+            "status": "Planning",
+            "startDate": "2025-01-15",
+            "dueDate": "2025-03-30",
+            "priority": "High",
+            "isPrivate": false,
+            "links": [
+                {
+                    "title": "Product Brief",
+                    "url": "https://example.com/product-brief"
+                }
+            ],
+            "externalResources": [
+                {
+                    "title": "Design System",
+                    "url": "https://example.com/design-system",
+                    "icon": "palette"
+                }
+            ]
+        },
+        {
+            "title": "Growth Website Refresh",
+            "description": "Refresh the marketing site and onboarding funnel.",
+            "status": "Active",
+            "startDate": "2025-02-01",
+            "dueDate": "2025-04-01",
+            "priority": "Medium",
+            "isPrivate": true,
+            "links": [
+                {
+                    "title": "Analytics Dashboard",
+                    "url": "https://example.com/analytics"
+                }
+            ]
+        }
+    ]
+}

@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../common/Card/Card';
 import { Milestone, Project } from '../../types';
-import { subscribeProjectMilestones } from '../../services/dataService';
+import { subscribeProjectMilestones } from '../../services/domain/projectMetaService';
 import { toMillis } from '../../utils/time';
 import { useLanguage } from '../../context/LanguageContext';
 import './dashboard-cards.scss';

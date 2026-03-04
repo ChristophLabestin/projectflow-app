@@ -2,7 +2,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { Task, SubTask, Project, Member, PersonalTask } from '../types';
-import { getProjectById, getSubTasks, toggleTaskStatus, updateTaskFields, createSubTask, toggleSubTaskStatus, deleteSubTask, getUserProfile, updateSubtaskFields, deleteTask, addPersonalTask, deletePersonalTask } from '../services/dataService';
+import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
+import { updateIssue } from '../services/domain/issuesService';
+import { getProjectById } from '../services/domain/projectsService';
+import {
+    addPersonalTask,
+    deletePersonalTask,
+    getPersonalTasks,
+    togglePersonalTaskStatus,
+    updatePersonalTask
+} from '../services/domain/personalTasksService';
+import { getUserProfile } from '../services/domain/usersService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
@@ -154,7 +164,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
                         // Hack: we don't have easy `getPersonalTask(id)` exported.
                         // Let's fetch all personal tasks and find it? It's inefficient but safe.
-                        const { getPersonalTasks } = await import('../services/dataService');
                         const allPersonal = await getPersonalTasks();
                         const found = allPersonal.find(t => t.id === itemId);
                         if (found && mounted) {
@@ -267,7 +276,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             const t = item as PersonalTask;
             const newStatus = !t.isCompleted;
             setItem(prev => prev ? { ...prev, isCompleted: newStatus } : null);
-            const { togglePersonalTaskStatus } = await import('../services/dataService');
             await togglePersonalTaskStatus(t.id, newStatus, t.tenantId);
             if (newStatus && onComplete) {
                 onComplete(t.id);
@@ -278,10 +286,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             const newStatus = isResolved ? 'Open' : 'Resolved';
             setItem(prev => prev ? { ...prev, status: newStatus } : null);
 
-            const { updateIssue } = await import('../services/dataService');
-            // Optimistic update done, now server
             if (project) {
-                await updateIssue(project.id, i.id, { status: newStatus }, project.tenantId);
+                await updateIssue(i.id, { status: newStatus }, project.id, project.tenantId);
             }
 
             if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
@@ -302,9 +308,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             }
         } else if (itemType === 'issue') {
             setItem(prev => prev ? { ...prev, status: newStatus } : null);
-            const { updateIssue } = await import('../services/dataService');
             if (project) {
-                await updateIssue(project.id, item.id, { status: newStatus }, project.tenantId);
+                await updateIssue(item.id, { status: newStatus }, project.id, project.tenantId);
             }
             if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
                 onComplete(item.id);
@@ -355,11 +360,9 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             if (itemType === 'task') {
                 await updateTaskFields(item.id, { description: descValue });
             } else if (itemType === 'personal-task') {
-                const { updatePersonalTask } = await import('../services/dataService');
                 await updatePersonalTask(item.id, { description: descValue }, item.tenantId);
             } else {
-                const { updateIssue } = await import('../services/dataService');
-                await updateIssue(item.projectId, item.id, { description: descValue });
+                await updateIssue(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
             }
             setItem(prev => prev ? { ...prev, description: descValue } : null);
             setIsEditingDesc(false);
@@ -1064,7 +1067,7 @@ export const PinnedTasksModal = () => {
 
     // Full modal mode
     return (
-        <div className="modal-overlay task-modal center-aligned" onClick={toggleModal}>
+        <div className="modal-overlay modal-overlay--open task-modal center-aligned" onClick={toggleModal}>
             <div
                 className="pinned-tasks-layout"
                 onClick={(e) => e.stopPropagation()}

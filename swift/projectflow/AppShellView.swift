@@ -13,8 +13,12 @@ struct AppShellView: View {
             Group {
                 if session.isLoading {
                     ProgressView()
-                } else if session.user != nil {
-                    MainTabView()
+                } else if let _ = session.user {
+                    if session.userProfile == nil {
+                        OnboardingWizardView()
+                    } else {
+                        MainTabView()
+                    }
                 } else {
                     LoginView()
                 }
@@ -36,36 +40,47 @@ enum MainTab: Hashable {
 struct MainTabView: View {
     @State private var selection: MainTab = .dashboard
 
+    init() {
+        UITabBar.appearance().isHidden = true
+    }
+
     var body: some View {
-        TabView(selection: $selection) {
-            DashboardView(selectedTab: $selection)
-                .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
-                .tag(MainTab.dashboard)
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selection) {
+                DashboardView(selectedTab: $selection)
+                    .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
+                    .tag(MainTab.dashboard)
 
-            ProjectsView()
-                .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
-                .tag(MainTab.projects)
+                ProjectsView()
+                    .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
+                    .tag(MainTab.projects)
 
-            TasksView()
-                .tabItem { Label("Tasks", systemImage: "checklist") }
-                .tag(MainTab.tasks)
+                TasksView()
+                    .tabItem { Label("Tasks", systemImage: "checklist") }
+                    .tag(MainTab.tasks)
 
-            FlowsView()
-                .tabItem { Label("Flows", systemImage: "sparkles") }
-                .tag(MainTab.flows)
+                FlowsView()
+                    .tabItem { Label("Flows", systemImage: "sparkles") }
+                    .tag(MainTab.flows)
 
-            IssuesView()
-                .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
-                .tag(MainTab.issues)
+                IssuesView()
+                    .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
+                    .tag(MainTab.issues)
 
-            NotificationsView()
-                .tabItem { Label("Notifications", systemImage: "bell") }
-                .tag(MainTab.notifications)
+                NotificationsView()
+                    .tabItem { Label("Notifications", systemImage: "bell") }
+                    .tag(MainTab.notifications)
 
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
-                .tag(MainTab.settings)
+                SettingsView()
+                    .tabItem { Label("Settings", systemImage: "gearshape") }
+                    .tag(MainTab.settings)
+            }
+            .toolbar(.hidden, for: .tabBar)
+            .padding(.bottom, 100)
+
+            CustomTabBar(selection: $selection)
         }
+        .ignoresSafeArea(edges: .bottom)
     }
 }
 

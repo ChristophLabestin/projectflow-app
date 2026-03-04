@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
 import Papa from 'papaparse';
 import { Button } from '../../../components/ui/Button';
+import { Input } from '../../../components/ui/Input';
 import { useToast } from '../../../context/UIContext';
 import { batchImportRecipients, addRecipientColumn, subscribeRecipientColumns } from '../../../services/recipientService';
 import { RecipientColumn } from '../../../types';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ImportRecipientsModalProps {
     isOpen: boolean;
@@ -18,10 +20,13 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
     const [csvData, setCsvData] = useState<any[]>([]);
     const [columnMapping, setColumnMapping] = useState<Record<string, string>>({}); // csvHeader -> systemKey
     const [newFields, setNewFields] = useState<Record<string, string>>({}); // systemKey -> label
+    const [pendingNewFieldHeader, setPendingNewFieldHeader] = useState<string | null>(null);
+    const [pendingNewFieldLabel, setPendingNewFieldLabel] = useState('');
     const [existingColumns, setExistingColumns] = useState<RecipientColumn[]>([]);
     const [isImporting, setIsImporting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const { showSuccess, showError } = useToast();
+    const { t } = useLanguage();
 
     // Load existing columns when modal opens
     React.useEffect(() => {
@@ -33,6 +38,8 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
             setCsvData([]);
             setColumnMapping({});
             setNewFields({});
+            setPendingNewFieldHeader(null);
+            setPendingNewFieldLabel('');
             return;
         }
 
@@ -80,23 +87,47 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                 }
             },
             error: (err) => {
-                showError(`Failed to parse CSV: ${err.message}`);
+                showError(t('marketing.importRecipients.errors.parseFailed').replace('{message}', err.message));
             }
         });
     };
 
     const handleMappingChange = (header: string, value: string) => {
         if (value === 'NEW_FIELD') {
-            // Logic to create a new field
-            const label = prompt(`Enter label for new field based on "${header}":`, header);
-            if (label) {
-                const key = label.toLowerCase().replace(/[^a-z0-9]/g, '_');
-                setNewFields(prev => ({ ...prev, [key]: label }));
-                setColumnMapping(prev => ({ ...prev, [header]: key }));
-            }
+            setPendingNewFieldHeader(header);
+            setPendingNewFieldLabel(header);
         } else {
             setColumnMapping(prev => ({ ...prev, [header]: value }));
         }
+    };
+
+    const handleCreateNewField = () => {
+        if (!pendingNewFieldHeader) return;
+        const label = pendingNewFieldLabel.trim();
+        if (!label) return;
+
+        const baseKey = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'custom_field';
+        const existingKeys = new Set([
+            ...existingColumns.map((column) => column.key),
+            ...Object.keys(newFields)
+        ]);
+
+        let uniqueKey = baseKey;
+        let suffix = 1;
+        while (existingKeys.has(uniqueKey)) {
+            uniqueKey = `${baseKey}_${suffix}`;
+            suffix += 1;
+        }
+
+        setNewFields(prev => ({ ...prev, [uniqueKey]: label }));
+        setColumnMapping(prev => ({ ...prev, [pendingNewFieldHeader]: uniqueKey }));
+        setPendingNewFieldHeader(null);
+        setPendingNewFieldLabel('');
+    };
+
+    const cancelCreateNewField = () => {
+        setPendingNewFieldHeader(null);
+        setPendingNewFieldLabel('');
     };
 
     const handleImport = async () => {
@@ -146,19 +177,19 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
             }).filter(r => r.email); // Must have email
 
             if (recipientsToImport.length === 0) {
-                showError("No valid recipients found (Email is required).");
+                showError(t('marketing.importRecipients.errors.noValidRecipients'));
                 setIsImporting(false);
                 return;
             }
 
             // 3. Batch insert
             const count = await batchImportRecipients(projectId, recipientsToImport);
-            showSuccess(`Successfully imported ${count} recipients.`);
+            showSuccess(t('marketing.importRecipients.toast.success').replace('{count}', String(count)));
             onClose();
 
         } catch (e) {
             console.error(e);
-            showError("Failed to import recipients.");
+            showError(t('marketing.importRecipients.errors.importFailed'));
         } finally {
             setIsImporting(false);
         }
@@ -170,7 +201,7 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
         <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
             <div className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full border border-surface flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center p-6 border-b border-surface">
-                    <h2 className="text-xl font-bold">Import Recipients</h2>
+                    <h2 className="text-xl font-bold">{t('marketing.importRecipients.title')}</h2>
                     <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -188,19 +219,40 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                                 onChange={handleFileChange}
                             />
                             <span className="material-symbols-outlined text-4xl text-muted mb-2">upload_file</span>
-                            <p className="font-medium">Click to upload CSV</p>
-                            <p className="text-sm text-muted">Supported format: .csv</p>
+                            <p className="font-medium">{t('marketing.importRecipients.upload.title')}</p>
+                            <p className="text-sm text-muted">{t('marketing.importRecipients.upload.hint')}</p>
                         </div>
                     )}
 
                     {step === 2 && (
                         <div className="space-y-4">
-                            <p className="text-sm text-muted">Map columns from your CSV to ProjectFlow fields.</p>
+                            <p className="text-sm text-muted">{t('marketing.importRecipients.mapping.description')}</p>
+
+                            {pendingNewFieldHeader && (
+                                <div className="rounded-xl border border-primary/40 bg-surface p-3 space-y-2">
+                                    <p className="text-sm font-medium">
+                                        {t('marketing.importRecipients.mapping.createFieldFor').replace('{header}', pendingNewFieldHeader)}
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                        <Input
+                                            value={pendingNewFieldLabel}
+                                            onChange={(event) => setPendingNewFieldLabel(event.target.value)}
+                                            placeholder={t('marketing.importRecipients.mapping.fieldLabelPlaceholder')}
+                                            className="flex-1"
+                                            autoFocus
+                                        />
+                                        <Button variant="ghost" onClick={cancelCreateNewField}>{t('common.cancel')}</Button>
+                                        <Button variant="primary" onClick={handleCreateNewField} disabled={!pendingNewFieldLabel.trim()}>
+                                            {t('marketing.importRecipients.mapping.addField')}
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-12 gap-4 font-bold text-xs uppercase tracking-wider text-muted border-b border-surface pb-2">
-                                <div className="col-span-4">CSV Header</div>
-                                <div className="col-span-4">Preview (Row 1)</div>
-                                <div className="col-span-4">Map To Field</div>
+                                <div className="col-span-4">{t('marketing.importRecipients.mapping.columns.csvHeader')}</div>
+                                <div className="col-span-4">{t('marketing.importRecipients.mapping.columns.preview')}</div>
+                                <div className="col-span-4">{t('marketing.importRecipients.mapping.columns.mapTo')}</div>
                             </div>
 
                             <div className="space-y-2">
@@ -210,23 +262,23 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                                         <div className="col-span-4 text-muted truncate" title={csvData[0]?.[header]}>{csvData[0]?.[header] || '-'}</div>
                                         <div className="col-span-4">
                                             <select
-                                                className="w-full bg-surface border border-surface rounded px-2 py-1.5 focus:border-primary outline-none"
+                                                className="w-full bg-surface border border-surface rounded px-2 py-1.5 outline-none"
                                                 value={columnMapping[header] || ''}
                                                 onChange={(e) => handleMappingChange(header, e.target.value)}
                                             >
-                                                <option value="">Select Field...</option>
-                                                <option value="SKIP">-- Skip Column --</option>
-                                                <optgroup label="System Fields">
+                                                <option value="">{t('marketing.importRecipients.mapping.options.selectField')}</option>
+                                                <option value="SKIP">{t('marketing.importRecipients.mapping.options.skipColumn')}</option>
+                                                <optgroup label={t('marketing.importRecipients.mapping.options.systemFields')}>
                                                     {existingColumns.filter(c => c.isSystem).map(col => (
                                                         <option key={col.key} value={col.key}>{col.label}</option>
                                                     ))}
                                                 </optgroup>
-                                                <optgroup label="Custom Fields">
+                                                <optgroup label={t('marketing.importRecipients.mapping.options.customFields')}>
                                                     {existingColumns.filter(c => !c.isSystem).map(col => (
                                                         <option key={col.key} value={col.key}>{col.label}</option>
                                                     ))}
                                                 </optgroup>
-                                                <option value="NEW_FIELD">+ Create New Field</option>
+                                                <option value="NEW_FIELD">{t('marketing.importRecipients.mapping.options.createNewField')}</option>
                                             </select>
                                         </div>
                                     </div>
@@ -237,10 +289,10 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                 </div>
 
                 <div className="p-6 border-t border-surface flex justify-end gap-3 bg-surface rounded-b-2xl">
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
                     {step === 2 && (
-                        <Button variant="primary" onClick={handleImport} isLoading={isImporting}>
-                            Import {csvData.length} Recipients
+                        <Button variant="primary" onClick={handleImport} isLoading={isImporting} disabled={Boolean(pendingNewFieldHeader)}>
+                            {t('marketing.importRecipients.actions.import').replace('{count}', String(csvData.length))}
                         </Button>
                     )}
                 </div>

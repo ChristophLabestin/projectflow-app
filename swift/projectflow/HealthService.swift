@@ -112,7 +112,7 @@ enum HealthService {
 
     static func calculateProjectHealth(
         project: Project,
-        tasks: [Task] = [],
+        tasks: [ProjectTask] = [],
         milestones: [Milestone] = [],
         issues: [Issue] = [],
         sprints: [Sprint] = [],
@@ -546,7 +546,7 @@ enum HealthService {
 
     static func calculateSpotlightScore(
         project: Project,
-        tasks: [Task] = [],
+        tasks: [ProjectTask] = [],
         milestones: [Milestone] = [],
         issues: [Issue] = [],
         sprints: [Sprint] = [],

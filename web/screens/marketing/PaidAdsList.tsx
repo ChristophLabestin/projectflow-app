@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { subscribeAdCampaigns, updateAdCampaignStatus } from '../../services/marketingService';
-import { subscribeProjectIdeas } from '../../services/dataService';
+import { subscribeProjectIdeas } from '../../services/domain/ideasService';
 import { AdCampaign, Idea, AdPlatform, AdCampaignStatus } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';

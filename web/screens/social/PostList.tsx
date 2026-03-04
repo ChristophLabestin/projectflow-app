@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
-import { subscribeSocialPosts, deleteSocialPost } from '../../services/dataService';
+import { deleteSocialPost, subscribeSocialPosts } from '../../services/domain/socialService';
 import { SocialPost } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialPostStatusLabel } from '../../utils/socialLocalization';

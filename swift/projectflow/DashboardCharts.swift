@@ -99,3 +99,58 @@ struct ChartLegend: View {
         }
     }
 }
+
+import Charts
+
+struct TrendChart: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let values: [Int] // 0-100 scores
+    let color: Color
+    
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        Group {
+            if values.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("No trend data")
+                        .font(.caption2)
+                        .foregroundStyle(colors.textSubtle)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity)
+            } else {
+                Chart {
+                    ForEach(Array(values.enumerated()), id: \.offset) { index, value in
+                        AreaMark(
+                            x: .value("Index", index),
+                            y: .value("Score", value)
+                        )
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [color.opacity(0.3), color.opacity(0.0)],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                        .interpolationMethod(.catmullRom)
+                        
+                        LineMark(
+                            x: .value("Index", index),
+                            y: .value("Score", value)
+                        )
+                        .foregroundStyle(color)
+                        .lineStyle(StrokeStyle(lineWidth: 2))
+                        .interpolationMethod(.catmullRom)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .chartYScale(domain: 0...100)
+            }
+        }
+    }
+}
+
+// LineShape and AreaShape removed as they are replaced by Charts framework

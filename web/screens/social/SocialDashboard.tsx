@@ -1,7 +1,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { subscribeSocialPosts, subscribeCampaigns, subscribeProjectIdeas } from '../../services/dataService';
+import { subscribeProjectIdeas } from '../../services/domain/ideasService';
+import { subscribeCampaigns, subscribeSocialPosts } from '../../services/domain/socialService';
 import { SocialPost, SocialCampaign, Idea } from '../../types';
 import { subDays, format, isSameDay, differenceInDays } from 'date-fns';
 import { PlatformIcon } from './components/PlatformIcon';

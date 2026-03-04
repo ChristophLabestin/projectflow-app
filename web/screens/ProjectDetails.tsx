@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { getProjectById } from '../services/dataService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import '../src/styles/components/_project-details.scss';
+import { getProjectById } from '../services/domain/projectsService';
 import { Project } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { Badge } from '../components/common/Badge/Badge';
@@ -53,6 +54,26 @@ export const ProjectDetails = () => {
         Low: t('tasks.priority.low')
     };
 
+    const memberCount = Array.isArray(project.members) ? project.members.length : 0;
+    const moduleCount = project.modules?.length || 0;
+    const summaryCards = useMemo(() => [
+        {
+            key: 'status',
+            label: t('projectDetails.workbench.status'),
+            value: (project.status && statusLabels[project.status]) || project.status || t('projectDetails.unknown')
+        },
+        {
+            key: 'team',
+            label: t('projectDetails.workbench.team'),
+            value: `${memberCount}`
+        },
+        {
+            key: 'modules',
+            label: t('projectDetails.workbench.modules'),
+            value: `${moduleCount}`
+        }
+    ], [memberCount, moduleCount, project.status, statusLabels, t]);
+
     return (
         <div className="project-details animate-fade-up">
             <div className="project-details__header">
@@ -60,6 +81,30 @@ export const ProjectDetails = () => {
                 <h1 className="project-details__title">{t('projectDetails.title')}</h1>
                 <p className="project-details__subtitle">{t('projectDetails.subtitle')}</p>
             </div>
+
+            <div className="project-details__workbench">
+                {summaryCards.map((card) => (
+                    <Card key={card.key}>
+                        <CardBody className="project-details__workbench-card">
+                            <span className="project-details__workbench-label">{card.label}</span>
+                            <span className="project-details__workbench-value">{card.value}</span>
+                        </CardBody>
+                    </Card>
+                ))}
+            </div>
+
+            <Card>
+                <CardBody className="project-details__actions">
+                    <Link to={`/project/${project.id}`} className="project-details__action-link">
+                        {t('projectDetails.actions.openProject')}
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </Link>
+                    <Link to="/team" className="project-details__action-link">
+                        {t('projectDetails.actions.manageTeam')}
+                        <span className="material-symbols-outlined">groups</span>
+                    </Link>
+                </CardBody>
+            </Card>
 
             <Card>
                 <CardBody className="project-details__list">

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { subscribeProjectActivity } from '../services/dataService';
+import { subscribeProjectActivity } from '../services/domain/activityService';
 import { Activity } from '../types';
 import { timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';

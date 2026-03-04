@@ -13,6 +13,9 @@
 - `cd web && npm run build` produces a production build in `web/dist/`.
 - `cd web && npm run preview` serves the built app locally.
 - `cd web && npm run lint:theme` checks for invalid theme token usage.
+- `cd web && npm run test` runs Vitest in watch mode.
+- `cd web && npm run test:run` runs Vitest once.
+- `cd web && npm run test:e2e` runs Playwright E2E tests (expects a running web server or PLAYWRIGHT_BASE_URL).
 - `cd web && npm run deploy` builds and deploys hosting (requires Firebase CLI).
 - Cloud Functions: `cd functions && npm run build|serve|deploy|lint`.
 - After completing a task, run the build for the surface you touched:

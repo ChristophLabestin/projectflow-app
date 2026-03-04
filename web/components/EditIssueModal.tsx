@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Issue } from '../types';
-import { updateIssue } from '../services/dataService';
+import { updateIssue } from '../services/domain/issuesService';
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from './common/Button/Button';
 import { TextInput } from './common/Input/TextInput';

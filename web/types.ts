@@ -145,7 +145,9 @@ export interface ProjectInviteLink {
 
 export type ProjectOverviewCardId =
     | 'snapshot'
-    | 'execution'
+    | 'executionTasks'
+    | 'executionFlows'
+    | 'executionIssues'
     | 'updates'
     | 'resources'
     | 'planning'
@@ -160,10 +162,11 @@ export interface ProjectOverviewCardConfig {
     id: ProjectOverviewCardId;
     enabled: boolean;
     span: number;
-    placement?: ProjectOverviewCardPlacement;
+    placement: ProjectOverviewCardPlacement;
 }
 
 export interface ProjectOverviewLayout {
+    layoutVersion?: number;
     templateId: string;
     cards: ProjectOverviewCardConfig[];
 }
@@ -651,6 +654,23 @@ export interface ProjectRisk {
 }
 
 export type StudioTool = 'Architect' | 'Brainstormer' | 'RiskScout' | 'Strategist';
+
+export type StudioMessage = {
+    id: string;
+    role: 'user' | 'assistant';
+    content: string;
+    mode?: StudioTool | null;
+};
+
+export type StudioChatSession = {
+    id: string;
+    title: string;
+    messages: StudioMessage[];
+    createdAt: number;
+    updatedAt: number;
+    mode?: StudioTool | null;
+    blueprint?: ProjectBlueprint | null;
+};
 
 // AI Search Types
 export interface SearchResult {
@@ -1317,6 +1337,40 @@ export interface MarketingSettings {
     };
     updatedAt: any;
     originIdeaId?: string;
+}
+
+export type TransactionType = 'income' | 'expense';
+
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+export interface Transaction {
+    id: string;
+    tenantId: string;
+    userId: string;
+    type: TransactionType;
+    date: any;
+    category: string;
+    amount: number;
+    notes?: string;
+    isRecurring?: boolean;
+    recurringId?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface RecurringTransaction {
+    id: string;
+    tenantId: string;
+    userId: string;
+    type: TransactionType;
+    frequency: RecurringFrequency;
+    startDate: any;
+    endDate?: any;
+    category: string;
+    amount: number;
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
 }
 
 // --- API Token Types ---

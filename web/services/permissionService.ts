@@ -73,6 +73,8 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'tenant.seats.manage': { scope: 'tenant', description: 'Purchase/assign/revoke seats (owner-managed mode)', dangerLevel: 'high' },
     'tenant.plan.view': { scope: 'tenant', description: 'View subscription plan and entitlements' },
     'tenant.plan.manage': { scope: 'tenant', description: 'Change plan tier or plan settings', dangerLevel: 'high' },
+    'tenant.finance.view': { scope: 'tenant', description: 'View tenant finance tracking (income, expenses, recurring)' },
+    'tenant.finance.manage': { scope: 'tenant', description: 'Manage finance transactions and recurring items', dangerLevel: 'medium' },
 
     // Tenant - SSO
     'tenant.sso.view': { scope: 'tenant', description: 'View SSO configuration status' },
@@ -639,6 +641,8 @@ export function getLegacyWorkspaceRolePermissions(role: LegacyWorkspaceRole): Pe
                 'tenant.roles.create',
                 'tenant.roles.edit',
                 'tenant.roles.delete',
+                'tenant.finance.view',
+                'tenant.finance.manage',
                 'tenant.media.view',
                 'tenant.media.upload',
                 'tenant.media.edit',

@@ -2,7 +2,9 @@
 import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool } from "../types";
 import { auth, functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
-import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage, getUserProfile, getActiveTenantId } from "./dataService";
+import { incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
+import { getActiveTenantId } from './domain/authService';
+import { getAIUsage, getUserProfile } from './domain/usersService';
 import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
 
 // Polyfills for types removed from @google/genai import to specific string literals/types
@@ -116,13 +118,34 @@ const getModeInstruction = (mode?: StudioTool | null) => {
     if (!mode) return '';
     switch (mode) {
         case 'Architect':
-            return 'Mode: Architect. Provide structured plans with scope, milestones, and clear next steps.';
+            return `ROLE: AI ARCHITECT. 
+            GOAL: Create comprehensive, professional project blueprints and technical concepts.
+            BEHAVIOR:
+            - If the user provides an idea, IMMEDIATELY generate a detailed project concept including: Executive Summary, Key Features, Tech Stack, and Initial Milestones.
+            - Do NOT summarize existing workspace projects unless explicitly asked to compare.
+            - Focus on CREATION and STRUCTURING of the NEW idea.
+            - Use a professional, authoritative, yet innovative tone.
+            - Format the output as a clean, structured document using Markdown headers.`;
         case 'Brainstormer':
-            return 'Mode: Brainstormer. Generate multiple creative options with short, actionable ideas.';
+            return `ROLE: LEAD INNOVATOR.
+            GOAL: Generate a high volume of diverse, creative, and actionable ideas.
+            BEHAVIOR:
+            - Focus on variety and "out of the box" thinking.
+            - Provide lists, mind-map style breakdowns, and alternative angles.
+            - Do not get bogged down in technical feasibility yet; focus on the "What" and "Why".`;
         case 'RiskScout':
-            return 'Mode: Risk Scout. Highlight risks with impact, probability, and mitigation steps.';
+            return `ROLE: RISK ANALYST.
+            GOAL: Identify, assess, and mitigate potential pitfalls.
+            BEHAVIOR:
+            - Critically analyze the input for failure points, edge cases, and security gaps.
+            - Provide structured risk tables (Risk, Impact, Probability, Mitigation).
+            - Be skeptical and thorough.`;
         case 'Strategist':
-            return 'Mode: Strategist. Focus on prioritization, tradeoffs, and strategic direction.';
+            return `ROLE: CHIEF STRATEGY OFFICER.
+            GOAL: Align initiatives with high-level business goals and prioritize effectively.
+            BEHAVIOR:
+            - Focus on ROI, market fit, and prioritization (MoSCoW method).
+            - Ask strategic questions about target audience and monetization.`;
         default:
             return '';
     }
@@ -168,20 +191,24 @@ export const chatWithCora = async (
     }
 
     const contextBlock = contextLines.length > 0
-        ? `Workspace context (authoritative, use this data in your response):\n${contextLines.join('\n')}`
-        : 'Workspace context is not available. Ask the user to refresh or add projects.';
+        ? `Workspace context (Reference only if relevant to the request):\n${contextLines.join('\n')}`
+        : '';
     const modeInstruction = getModeInstruction(mode);
     const searchInstruction = useSearch
         ? 'Google Search is enabled. Use it to verify facts and include a short Sources section with links.'
         : '';
 
+    // If a mode is active, it OVERRIDES the default assistant persona.
+    const basePersona = mode
+        ? 'You are an advanced AI Engine specialized in the selected role.'
+        : 'You are CORA, a senior project and product assistant for ProjectFlow.';
+
     const systemInstruction = [
-        'You are CORA, a senior project and product assistant for ProjectFlow.',
-        'Use common knowledge and best practices to help the user move work forward.',
-        'You have access to the workspace context provided here; never claim you cannot access it.',
-        'Be concise, structured, and actionable. Ask clarifying questions if details are missing.',
+        basePersona,
+        modeInstruction, // Mode instruction comes FIRST after persona to set the frame
+        'Use common knowledge and best practices.',
+        'You have access to the workspace context provided here, but prioritize the specific user request and Mode goal.',
         contextBlock,
-        modeInstruction,
         searchInstruction
     ].filter(Boolean).join('\n\n');
 

@@ -103,6 +103,30 @@
         font-size: 18px;
         color: var(--color-text-muted);
     }
+
+    &.ai-studio__sidebar-item--architect {
+        box-shadow: inset 3px 0 0 var(--color-mode-architect);
+    }
+
+    &.ai-studio__sidebar-item--architect .ai-studio__item-icon {
+        color: var(--color-mode-architect);
+    }
+
+    &.ai-studio__sidebar-item--brainstormer {
+        box-shadow: inset 3px 0 0 var(--color-mode-brainstormer);
+    }
+
+    &.ai-studio__sidebar-item--brainstormer .ai-studio__item-icon {
+        color: var(--color-mode-brainstormer);
+    }
+
+    &.ai-studio__sidebar-item--riskscout {
+        box-shadow: inset 3px 0 0 var(--color-mode-riskscout);
+    }
+
+    &.ai-studio__sidebar-item--riskscout .ai-studio__item-icon {
+        color: var(--color-mode-riskscout);
+    }
 }
 
 .ai-studio__item-content {
@@ -182,12 +206,19 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    padding: 0 20px;
+    padding: 0;
+    /* Removed side padding */
     width: 100%;
     min-height: 0;
     /* Allow shrinking */
     overflow: hidden;
     position: relative;
+
+    /* When containing canvas-mode, allow full height flow */
+    &:has(.ai-studio__canvas-mode) {
+        overflow: hidden;
+        padding: 0;
+    }
 }
 
 .ai-studio__body.is-empty {
@@ -519,6 +550,19 @@
     min-height: 0;
     /* Allows shrinking */
     overflow: hidden;
+
+    /* When containing mode-result, remove the max-width constraint and allow overflow */
+    &:has(.ai-studio__mode-result) {
+        max-width: none;
+        overflow: visible;
+    }
+
+    /* When containing canvas-mode, ensure full sizing */
+    &:has(.ai-studio__canvas-mode) {
+        max-width: none;
+        overflow: hidden;
+        height: 100%;
+    }
 }
 
 .ai-studio__messages {
@@ -735,5 +779,636 @@
         transform: translateX(-110%);
         opacity: 0;
         pointer-events: none;
+    }
+}
+
+/* --- Mode Animations & Themes --- */
+
+@keyframes mode-enter {
+    0% {
+        opacity: 0;
+        clip-path: circle(0% at 50% 50%);
+    }
+
+    100% {
+        opacity: 1;
+        clip-path: circle(150% at 50% 50%);
+    }
+}
+
+@keyframes content-slide-up {
+    0% {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bg-pulse {
+    0% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.5;
+        transform: scale(1.05);
+    }
+
+    100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+}
+
+@keyframes grid-move {
+    0% {
+        background-position: 0 0;
+    }
+
+    100% {
+        background-position: 40px 40px;
+    }
+}
+
+@keyframes scan-line {
+    0% {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+
+    50% {
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+}
+
+.ai-studio__mode-entry {
+    /* Use clip-path for a "growing" reveal effect which feels less sudden than a simple fade */
+    animation: mode-enter 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    position: relative;
+    padding: 60px 40px;
+    border-radius: 32px;
+    overflow: hidden;
+    min-height: 600px;
+    /* Ensure enough height for the effect */
+
+    &::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        opacity: 0.1;
+        transition: all 0.5s ease;
+    }
+}
+
+.ai-studio__mode-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* Staggered Animations for Content */
+.ai-studio__mode-icon-wrapper {
+    width: 96px;
+    height: 96px;
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    background: var(--color-surface-elevated);
+    box-shadow: var(--shadow-xl);
+
+    opacity: 0;
+    animation: content-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+
+    .material-symbols-outlined {
+        font-size: 48px;
+    }
+}
+
+.ai-studio__mode-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.1;
+    opacity: 0;
+    animation: content-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+}
+
+.ai-studio__mode-description {
+    font-size: 1.2rem;
+    color: var(--color-text-subtle);
+    margin: 0;
+    line-height: 1.6;
+    max-width: 80%;
+    opacity: 0;
+    animation: content-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.4s forwards;
+}
+
+/* The composer needs to participate in the staggering */
+.ai-studio__mode-entry .ai-studio__composer {
+    opacity: 0;
+    animation: content-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.5s forwards;
+}
+
+.ai-studio__mode-entry .ai-studio__suggestions {
+    opacity: 0;
+    animation: content-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.6s forwards;
+}
+
+
+/* Architect Mode Theme */
+.ai-studio__mode-entry--architect {
+    background: radial-gradient(circle at top center, rgba(66, 133, 244, 0.08) 0%, rgba(66, 133, 244, 0.01) 70%, transparent 100%);
+    border: 1px solid rgba(66, 133, 244, 0.15);
+    box-shadow: 0 0 100px rgba(66, 133, 244, 0.05) inset;
+
+    &::before {
+        background-image:
+            linear-gradient(rgba(66, 133, 244, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(66, 133, 244, 0.1) 1px, transparent 1px);
+        background-size: 40px 40px;
+        opacity: 0.2;
+        animation: grid-move 30s linear infinite;
+    }
+
+    /* Add a scanning line effect for extra fancy factor */
+    &::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(66, 133, 244, 0.8), transparent);
+        box-shadow: 0 0 15px rgba(66, 133, 244, 0.8);
+        animation: scan-line 3s ease-in-out infinite;
+        opacity: 0.5;
+    }
+
+    .ai-studio__mode-icon-wrapper {
+        color: #4285f4;
+        background: rgba(66, 133, 244, 0.1);
+        border: 1px solid rgba(66, 133, 244, 0.2);
+        box-shadow: 0 20px 40px -10px rgba(66, 133, 244, 0.3);
+    }
+
+    .ai-studio__mode-title {
+        color: #4285f4;
+        text-shadow: 0 0 30px rgba(66, 133, 244, 0.2);
+    }
+}
+
+/* Brainstormer Mode Theme */
+.ai-studio__mode-entry--brainstormer {
+    background: radial-gradient(circle at center, rgba(234, 67, 53, 0.05) 0%, rgba(251, 188, 5, 0.05) 50%, transparent 100%);
+    border: 1px solid rgba(234, 67, 53, 0.1);
+
+    &::before {
+        background: radial-gradient(circle at 60% 40%, rgba(234, 67, 53, 0.15), transparent 40%),
+            radial-gradient(circle at 40% 60%, rgba(251, 188, 5, 0.15), transparent 40%);
+        animation: bg-pulse 6s ease-in-out infinite alternate;
+        filter: blur(40px);
+        opacity: 0.6;
+    }
+
+    .ai-studio__mode-icon-wrapper {
+        color: #ea4335;
+        background: linear-gradient(135deg, rgba(234, 67, 53, 0.15), rgba(251, 188, 5, 0.15));
+        border: 1px solid rgba(234, 67, 53, 0.1);
+        box-shadow: 0 20px 40px -10px rgba(234, 67, 53, 0.2);
+    }
+
+    .ai-studio__mode-title {
+        background: linear-gradient(90deg, #ea4335, #fbbc04);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        /* Fallback */
+        color: #ea4335;
+    }
+}
+
+/* RiskScout Mode Theme */
+.ai-studio__mode-entry--riskscout {
+    background: linear-gradient(180deg, rgba(52, 168, 83, 0.08) 0%, rgba(52, 168, 83, 0) 100%);
+    border: 1px solid rgba(52, 168, 83, 0.15);
+
+    &::before {
+        background-image: repeating-radial-gradient(circle at 50% 50%,
+                transparent 0,
+                transparent 39px,
+                rgba(52, 168, 83, 0.1) 40px,
+                transparent 41px);
+        opacity: 0.3;
+        animation: bg-pulse 3s linear infinite;
+    }
+
+    .ai-studio__mode-icon-wrapper {
+        color: #34a853;
+        background: rgba(52, 168, 83, 0.1);
+        border: 1px solid rgba(52, 168, 83, 0.2);
+        box-shadow: 0 20px 40px -10px rgba(52, 168, 83, 0.2);
+    }
+
+    .ai-studio__mode-title {
+        color: #34a853;
+        text-shadow: 0 0 30px rgba(52, 168, 83, 0.2);
+    }
+}
+
+.ai-studio__suggestion-chip--back {
+    color: var(--color-text-subtle);
+    background: transparent;
+    border: none;
+    padding-left: 0;
+
+    &:hover {
+        color: var(--color-text-main);
+        background: transparent;
+        transform: translateX(-4px);
+    }
+}
+
+.ai-studio__mode-result {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    position: relative;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    /* Allow shrinking for proper overflow */
+    overflow-y: auto;
+    /* Enable scrolling on the result container itself */
+    /* Override the 800px from .ai-studio__conversation */
+    /* Reuse the fancy background from ai-studio__mode-entry */
+    background-size: cover;
+    animation: none;
+    /* Don't re-run the entry animation on every render */
+}
+
+.ai-studio__result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    padding-left: 60px;
+    /* Add space for sidebar toggle button */
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: rgba(var(--color-surface-bg-rgb), 0.5);
+    /* Semi-transparent */
+    backdrop-filter: blur(10px);
+    z-index: 10;
+    position: sticky;
+    top: 0;
+}
+
+.ai-studio__result-title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.ai-studio__mode-icon-wrapper.mini {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    margin: 0;
+    box-shadow: var(--shadow-sm);
+    opacity: 1;
+    animation: none;
+
+    .material-symbols-outlined {
+        font-size: 24px;
+    }
+}
+
+.ai-studio__mode-title.mini {
+    font-size: 1.25rem;
+    opacity: 1;
+    animation: none;
+}
+
+.ai-studio__result-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+
+    /* Allow BlueprintResult to span full width */
+    .ai-studio-blueprint {
+        width: 100%;
+        max-width: none;
+        align-self: stretch;
+    }
+}
+
+.ai-studio__result-document {
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 800px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    animation: content-slide-up 0.5s ease-out;
+
+    /* Make it look like a document */
+    color: var(--color-text-main);
+    font-size: 1.05rem;
+    line-height: 1.7;
+}
+
+.ai-studio__result-composer {
+    padding: 24px;
+    background: linear-gradient(to top, var(--color-surface-bg) 20%, transparent);
+    z-index: 10;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.ai-studio__result-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 40px;
+    color: var(--color-text-subtle);
+}
+
+/* Ensure composer inside result view has appropriate width */
+.ai-studio__mode-result .ai-studio__composer--dock {
+    max-width: 100%;
+    padding: 0;
+}
+
+/* =====================================================
+   CANVAS MODE - Split View Layout
+   ===================================================== */
+
+.ai-studio__canvas-mode {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--color-surface-bg);
+}
+
+.ai-studio__canvas-chat {
+    display: flex;
+    flex-direction: column;
+    width: 380px;
+    min-width: 380px;
+    max-width: 380px;
+    border-right: 1px solid var(--color-border-subtle);
+    background: var(--color-surface-card);
+    height: 100%;
+    min-height: 0;
+}
+
+.ai-studio__canvas-chat-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-surface-elevated);
+    flex-shrink: 0;
+}
+
+.ai-studio__canvas-chat-header h3 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-studio__canvas-chat-header .material-symbols-outlined {
+    font-size: 18px;
+    color: var(--color-primary);
+}
+
+.ai-studio__canvas-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.ai-studio__canvas-composer {
+    padding: 16px;
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-surface-card);
+    flex-shrink: 0;
+}
+
+.ai-studio__canvas-composer .ai-studio__composer--dock {
+    max-width: 100%;
+    padding: 0;
+}
+
+.ai-studio__canvas-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    background: var(--color-surface-bg);
+}
+
+.ai-studio__canvas-panel-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--color-surface-card);
+    flex-shrink: 0;
+}
+
+.ai-studio__canvas-panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.ai-studio__canvas-content {
+    flex: 1 1 0;
+    height: 0;
+    /* Force flex to control height */
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 24px;
+}
+
+.ai-studio__canvas-content .ai-studio-blueprint {
+    width: 100%;
+    max-width: none;
+}
+
+/* Canvas Panel Mode Themes */
+.ai-studio__canvas-panel--architect {
+    background: linear-gradient(135deg, rgba(66, 133, 244, 0.03) 0%, rgba(66, 133, 244, 0.08) 100%);
+
+    .ai-studio__canvas-panel-header {
+        background: rgba(66, 133, 244, 0.08);
+        border-bottom-color: rgba(66, 133, 244, 0.15);
+    }
+
+    .ai-studio__canvas-panel-header h3 {
+        color: #4285f4;
+    }
+
+    .ai-studio__canvas-panel-header .material-symbols-outlined {
+        color: #4285f4;
+    }
+}
+
+.ai-studio__canvas-panel--brainstormer {
+    background: linear-gradient(135deg, rgba(234, 67, 53, 0.03) 0%, rgba(251, 188, 5, 0.05) 100%);
+
+    .ai-studio__canvas-panel-header {
+        background: rgba(234, 67, 53, 0.06);
+        border-bottom-color: rgba(234, 67, 53, 0.15);
+    }
+
+    .ai-studio__canvas-panel-header h3 {
+        color: #ea4335;
+    }
+
+    .ai-studio__canvas-panel-header .material-symbols-outlined {
+        color: #ea4335;
+    }
+}
+
+.ai-studio__canvas-panel--riskscout {
+    background: linear-gradient(135deg, rgba(52, 168, 83, 0.03) 0%, rgba(52, 168, 83, 0.08) 100%);
+
+    .ai-studio__canvas-panel-header {
+        background: rgba(52, 168, 83, 0.08);
+        border-bottom-color: rgba(52, 168, 83, 0.15);
+    }
+
+    .ai-studio__canvas-panel-header h3 {
+        color: #34a853;
+    }
+
+    .ai-studio__canvas-panel-header .material-symbols-outlined {
+        color: #34a853;
+    }
+}
+
+/* Responsive: Stack on mobile */
+@media (max-width: 900px) {
+    .ai-studio__canvas-mode {
+        flex-direction: column;
+    }
+
+    .ai-studio__canvas-chat {
+        width: 100%;
+        min-width: 100%;
+        max-width: 100%;
+        height: 50%;
+        border-right: none;
+        border-bottom: 1px solid var(--color-border-subtle);
+    }
+
+    .ai-studio__canvas-panel {
+        height: 50%;
+    }
+}
+
+/* =====================================================
+   FULLSCREEN MODE
+   ===================================================== */
+
+.ai-studio.is-fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: var(--color-surface-bg);
+
+    .ai-studio__workspace {
+        grid-template-columns: 1fr;
+    }
+
+    .ai-studio__sidebar {
+        display: none;
+    }
+
+    .ai-studio__sidebar-overlay {
+        display: none;
+    }
+
+    .ai-studio__shell-controls {
+        display: none;
+    }
+}
+
+.ai-studio__fullscreen-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: none;
+    background: var(--color-surface-hover);
+    color: var(--color-text-main);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+
+    &:hover {
+        background: var(--color-surface-elevated);
+        transform: scale(1.05);
+    }
+
+    .material-symbols-outlined {
+        font-size: 20px;
     }
 }
