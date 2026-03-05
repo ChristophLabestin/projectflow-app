@@ -45,3 +45,4 @@
 - Start with `APP_DOCS_INDEX.md` and `AI_AGENT_INSTRUCTIONS.md` for project rules and required docs.
 - Set secrets in `web/.env.local` (for example, `GEMINI_API_KEY`); avoid committing sensitive credentials.
 - Always log new pitfalls, edge cases, or workflow surprises in `GOTCHAS.md`.
+- Whenever a **new** follow-up item is discovered (bug, TODO, enhancement, missing test), create a ProjectFlow task for it in the linked project and document it in the relevant project docs (`SITEMAP.md`, `COMPONENTS.md`, `STYLING.md`, `APP_CONCEPT.md`, `PERMISSIONS.md`, or `GOTCHAS.md` with task id if no better fit).

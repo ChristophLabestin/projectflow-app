@@ -7,5 +7,5 @@ export default {
     'inviteLanding.status.failed': 'Automatischer Beitritt fehlgeschlagen. Bitte erneut versuchen.',
     'inviteLanding.actions.accept': 'Akzeptieren & fortfahren',
     'inviteLanding.signedIn': 'Du bist angemeldet. Beitritt wird automatisch versucht...',
-    'inviteLanding.error.invalidLink': 'Ungueltiger Einladungslink.'
+    'inviteLanding.error.invalidLink': 'Ungültiger Einladungslink.'
 };

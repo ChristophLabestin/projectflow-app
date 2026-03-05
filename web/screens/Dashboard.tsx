@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { auth } from '../services/firebase';
+import { getAllWorkspaceProjects } from '../services/dataService';
 import { getUserGlobalActivities } from '../services/domain/activityService';
+import { ensureActiveTenantId } from '../services/domain/authService';
 import { getUserIdeas } from '../services/domain/ideasService';
 import { getUserIssues } from '../services/domain/issuesService';
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
@@ -24,6 +26,7 @@ import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/Onbo
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 
@@ -102,6 +105,7 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 
 export const Dashboard = () => {
+    const { isAuthReady, user } = useAuth();
     const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
     const locale = language === 'de' ? 'de-DE' : 'en-US';
     const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
@@ -311,6 +315,11 @@ export const Dashboard = () => {
     };
 
     useEffect(() => {
+        if (!isAuthReady) {
+            setLoading(true);
+            return;
+        }
+
         if (!authUserId) {
             setProjects([]);
             setRecentProjects([]);
@@ -331,72 +340,72 @@ export const Dashboard = () => {
         const loadDashboard = async () => {
             setLoading(true);
             try {
-                try {
-                    const userProjects = await getUserProjects();
-                    const sharedProjects = await getSharedProjects().catch(e => {
-                        console.error("Shared projects load failed (likely missing index)", e);
-                        return [];
-                    });
+                const resolvedTenantId = await ensureActiveTenantId();
+                const [ownedProjects, sharedProjects] = await Promise.all([
+                    getUserProjects().catch(() => []),
+                    getSharedProjects().catch(() => [])
+                ]);
+                const dedupedProjects = new Map<string, Project>();
+                [...ownedProjects, ...sharedProjects].forEach((project) => {
+                    dedupedProjects.set(`${project.tenantId || 'none'}:${project.id}`, project);
+                });
 
-                    // Deduplicate (just in case)
-                    const allProjects = [...userProjects];
-                    sharedProjects.forEach(sp => {
-                        if (!allProjects.find(p => p.id === sp.id)) {
-                            allProjects.push(sp);
-                        }
-                    });
-
-                    const tasks = await getUserTasks();
-                    const ideas = await getUserIdeas();
-                    const issues = await getUserIssues();
-
-                    setProjects(allProjects);
-                    setTasks(tasks);
-                    setIdeas(ideas);
-                    setIssues(issues);
-
-                    // Fetch global activities
-                    const recentActivities = await getUserGlobalActivities(authUserId, 6);
-                    setActivities(recentActivities);
-
-                    // Fetch user preference for calendar view
-                    if (authUserId) {
-                        const profile = await getUserProfile(authUserId);
-                        if (profile?.preferences?.dashboard?.calendarView) {
-                            const view = profile.preferences.dashboard.calendarView;
-                            setCalendarView(view);
-                            localStorage.setItem('dashboard_calendar_view', view);
-                        }
-
-                        const displayName = auth.currentUser?.displayName || profile?.displayName;
-                        if (displayName) {
-                            setUserName(displayName.split(' ')[0]);
-                        }
+                let allProjects = Array.from(dedupedProjects.values());
+                if (allProjects.length === 0) {
+                    try {
+                        allProjects = await getAllWorkspaceProjects(resolvedTenantId);
+                    } catch (error) {
+                        console.warn('Dashboard workspace project query failed', error);
                     }
-                    setStats({
-                        activeProjects: allProjects.filter(p => p.status === 'Active').length,
-                        completedProjects: allProjects.filter(p => p.status === 'Completed').length,
-                        openTasks: tasks.filter(t => !t.isCompleted).length,
-                        ideas: ideas.length
-                    });
-
-                    const sortedProjects = [...allProjects]
-                        .filter(p => p.status !== 'On Hold' && p.status !== 'Planning')
-                        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-                    setRecentProjects(sortedProjects.slice(0, 4));
-
-                } catch (error) {
-                    console.error('Dashboard load failed', error);
-                } finally {
-                    setLoading(false);
                 }
+
+                setProjects(allProjects);
+
+                const [tasks, ideas, issues, recentActivities] = await Promise.all([
+                    getUserTasks().catch(() => []),
+                    getUserIdeas().catch(() => []),
+                    getUserIssues().catch(() => []),
+                    getUserGlobalActivities(resolvedTenantId || authUserId, 6).catch(() => [])
+                ]);
+
+                setTasks(tasks);
+                setIdeas(ideas);
+                setIssues(issues);
+                setActivities(recentActivities);
+
+                // Fetch user preference for calendar view
+                if (authUserId) {
+                    const profile = await getUserProfile(authUserId);
+                    if (profile?.preferences?.dashboard?.calendarView) {
+                        const view = profile.preferences.dashboard.calendarView;
+                        setCalendarView(view);
+                        localStorage.setItem('dashboard_calendar_view', view);
+                    }
+
+                    const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
+                    if (displayName) {
+                        setUserName(displayName.split(' ')[0]);
+                    }
+                }
+                setStats({
+                    activeProjects: allProjects.filter(p => p.status === 'Active').length,
+                    completedProjects: allProjects.filter(p => p.status === 'Completed').length,
+                    openTasks: tasks.filter(t => !t.isCompleted).length,
+                    ideas: ideas.length
+                });
+
+                const sortedProjects = [...allProjects]
+                    .filter(p => p.status !== 'On Hold' && p.status !== 'Planning')
+                    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+                setRecentProjects(sortedProjects.slice(0, 4));
             } catch (err) {
                 console.error(err);
+            } finally {
                 setLoading(false);
             }
         };
         loadDashboard();
-    }, [authUserId]);
+    }, [authUserId, isAuthReady, user?.displayName]);
 
     const taskTrend = useMemo(() => bucketByDay(tasks), [tasks]);
     const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);

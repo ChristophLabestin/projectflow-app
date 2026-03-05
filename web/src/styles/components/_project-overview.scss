@@ -10,6 +10,89 @@
     animation: fadeIn 0.3s ease-in-out;
 }
 
+.project-overview__metadata-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.project-overview__metadata-top {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+
+    .material-symbols-outlined {
+        font-size: 0.95rem;
+    }
+}
+
+.project-overview__metadata-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.project-overview__metadata-value-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.project-overview__metadata-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--color-text-subtle);
+}
+
+.project-overview__metadata-value {
+    margin: 0;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-surface-hover-rgb), 0.8);
+    color: var(--color-text-main);
+    font-size: 0.72rem;
+    line-height: 1.35;
+    letter-spacing: 0.01em;
+    word-break: break-all;
+    flex: 1;
+    min-width: 0;
+}
+
+.project-overview__metadata-copy {
+    width: 2rem;
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(var(--color-primary-rgb), 0.35);
+    background: rgba(var(--color-primary-rgb), 0.12);
+    color: var(--color-primary);
+    transition: background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+
+    .material-symbols-outlined {
+        font-size: 0.9rem;
+    }
+
+    &:hover {
+        background: rgba(var(--color-primary-rgb), 0.18);
+        border-color: rgba(var(--color-primary-rgb), 0.6);
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
 .icon-placeholder-text {
     color: var(--color-primary);
     letter-spacing: -0.02em;

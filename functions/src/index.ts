@@ -18,8 +18,11 @@ import { getFacebookAuthUrl, facebookCallback } from './facebook';
 import {
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
+    fetchWorkspaceFinancialUsage,
+    getWorkspaceFinancialConfig,
     getWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
+    saveWorkspaceFinancialConfig,
     saveWorkspaceSmtpConfig
 } from './workspace-admin';
 
@@ -61,7 +64,9 @@ export {
     saveWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
     createWorkspaceApiToken,
-    deleteWorkspaceApiToken
+    deleteWorkspaceApiToken,
+    getWorkspaceFinancialConfig,
+    saveWorkspaceFinancialConfig,
+    fetchWorkspaceFinancialUsage
 };
 export * from './passkeys';
-

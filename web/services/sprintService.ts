@@ -22,6 +22,29 @@ const getSprintsRef = (projectId: string, tenantId?: string) => {
     return collection(db, 'projects', projectId, 'sprints');
 };
 
+const coerceSprintDateToIso = (value: any, fallback: Date): string => {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return value.toISOString();
+    }
+
+    if (typeof value === 'string' || typeof value === 'number') {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+
+    if (value && typeof value.toDate === 'function') {
+        const parsed = value.toDate();
+        if (parsed instanceof Date && !Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+
+    if (value && typeof value.seconds === 'number') {
+        const parsed = new Date(value.seconds * 1000);
+        if (!Number.isNaN(parsed.getTime())) return parsed.toISOString();
+    }
+
+    return fallback.toISOString();
+};
+
 export const createSprint = async (projectId: string, data: Partial<Sprint>, tenantId?: string) => {
     const user = auth.currentUser;
     if (!user) {
@@ -63,20 +86,33 @@ export const subscribeProjectSprints = (projectId: string, callback: (sprints: S
     });
 };
 
-export const startSprint = async (projectId: string, sprintId: string, startDate: string, endDate: string, tenantId?: string) => {
+export const startSprint = async (projectId: string, sprintId: string, startDate: any, endDate: any, tenantId?: string) => {
     // Ideally check if there is already an active sprint, but we'll let the UI handle that warning or enforce it here.
     // Enforcing:
     const ref = getSprintsRef(projectId, tenantId);
     const q = query(ref, where('status', '==', 'Active'));
     const snapshot = await getDocs(q);
-    if (!snapshot.empty) {
+    const hasOtherActiveSprint = snapshot.docs.some(doc => doc.id !== sprintId);
+    if (hasOtherActiveSprint) {
         throw new Error("There is already an active sprint.");
     }
 
+    const fallbackStart = new Date();
+    const normalizedStartDate = coerceSprintDateToIso(startDate, fallbackStart);
+    const startAsDate = new Date(normalizedStartDate);
+    const fallbackEnd = new Date(startAsDate);
+    fallbackEnd.setDate(fallbackEnd.getDate() + 14);
+    const normalizedEndDate = coerceSprintDateToIso(endDate, fallbackEnd);
+
+    const endAsDate = new Date(normalizedEndDate);
+    const finalEndDate = endAsDate.getTime() >= startAsDate.getTime()
+        ? normalizedEndDate
+        : fallbackEnd.toISOString();
+
     return updateSprint(projectId, sprintId, {
         status: 'Active',
-        startDate,
-        endDate
+        startDate: normalizedStartDate,
+        endDate: finalEndDate
     }, tenantId);
 };
 

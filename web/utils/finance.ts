@@ -8,6 +8,7 @@ export interface FinanceFilters {
     endDate?: Date | null;
     categories?: string[];
     type?: TransactionType | 'all';
+    projectId?: string;
 }
 
 export interface FinanceTotals {
@@ -54,7 +55,7 @@ export const calculateFinanceTotals = (transactions: Transaction[]): FinanceTota
 };
 
 export const filterTransactions = (transactions: Transaction[], filters: FinanceFilters): Transaction[] => {
-    const { startDate, endDate, categories = [], type = 'all' } = filters;
+    const { startDate, endDate, categories = [], type = 'all', projectId = 'all' } = filters;
     const normalizedStart = normalizeToDay(startDate || null);
     const normalizedEnd = endDate ? endOfDay(endDate) : null;
 
@@ -65,6 +66,14 @@ export const filterTransactions = (transactions: Transaction[], filters: Finance
 
         if (categories.length > 0 && !categories.includes(transaction.category)) {
             return false;
+        }
+
+        if (projectId !== 'all') {
+            if (projectId === '__unassigned__') {
+                if (transaction.projectId) return false;
+            } else if (transaction.projectId !== projectId) {
+                return false;
+            }
         }
 
         if (!transactionDate) return false;

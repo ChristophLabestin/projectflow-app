@@ -154,6 +154,7 @@ export type ProjectOverviewCardId =
     | 'milestones'
     | 'aiInsights'
     | 'team'
+    | 'metadata'
     | 'controls';
 
 export type ProjectOverviewCardPlacement = 'primary' | 'secondary';
@@ -1343,10 +1344,15 @@ export type TransactionType = 'income' | 'expense';
 
 export type RecurringFrequency = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
+export type FinanceCalcPeriod = 'monthly';
+
+export type FinanceScenarioPreset = 'software' | 'generic';
+
 export interface Transaction {
     id: string;
     tenantId: string;
     userId: string;
+    projectId?: string;
     type: TransactionType;
     date: any;
     category: string;
@@ -1362,6 +1368,7 @@ export interface RecurringTransaction {
     id: string;
     tenantId: string;
     userId: string;
+    projectId?: string;
     type: TransactionType;
     frequency: RecurringFrequency;
     startDate: any;
@@ -1373,9 +1380,77 @@ export interface RecurringTransaction {
     updatedAt?: any;
 }
 
+export interface FinanceCostItem {
+    id: string;
+    label: string;
+    amount: number; // direct cost amount (fallback)
+    quantityPerUnit?: number; // optional usage quantity per scenario unit (e.g. 200 generations per user)
+    unitCost?: number; // optional cost per usage (e.g. $0.00013 per generation)
+    tokensPerUsage?: number; // optional token usage per usage/call (e.g. 1500 tokens per generation)
+}
+
+export interface FinanceScenario {
+    id: string;
+    tenantId: string;
+    userId: string;
+    projectId?: string;
+    name: string;
+    preset: FinanceScenarioPreset;
+    period: FinanceCalcPeriod;
+    unitLabel: string;
+    plannedUnits: number;
+    pricePerUnit: number;
+    tokenQuotaPerUnit?: number;
+    discountPercent?: number;
+    salesCommissionPercent?: number;
+    targetProfitPercentOnCost: number;
+    fixedCostItems: FinanceCostItem[];
+    variableCostItemsPerUnit: FinanceCostItem[];
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceScenarioResult {
+    fixedCostsTotal: number;
+    variableCostPerUnit: number;
+    variableCostsTotal: number;
+    tokenQuotaPerUnit: number;
+    tokenQuotaTotal: number;
+    tokensUsedPerUnit: number;
+    tokensUsedTotal: number;
+    tokensRemainingPerUnit: number;
+    tokensRemainingTotal: number;
+    isTokenQuotaExceededPerUnit: boolean;
+    isTokenQuotaExceededTotal: boolean;
+    totalCostPerUnit: number;
+    totalCosts: number;
+    netRevenuePerUnit: number;
+    netRevenueTotal: number;
+    revenuePerUnit: number;
+    revenueTotal: number;
+    contributionPerUnit: number;
+    contributionTotal: number;
+    contributionMarginPercent: number;
+    operatingProfitTotal: number;
+    profitPercentOnCost: number;
+    suggestedPricePerUnit: number;
+    breakEvenUnits: number | null;
+    breakEvenRevenue: number | null;
+    hasBreakEven: boolean;
+}
+
 // --- API Token Types ---
 
-export type APITokenPermission = 'newsletter:write' | 'recipients:read';
+export type APITokenPermission =
+    | 'newsletter:write'
+    | 'recipients:read'
+    | 'projects:read'
+    | 'projects:write'
+    | 'projects:delete'
+    | 'tasks:read'
+    | 'tasks:write'
+    | 'tasks:delete';
 
 export interface APIToken {
     id: string;

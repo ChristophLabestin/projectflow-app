@@ -85,6 +85,20 @@ This ensures future AI assistants and developers know what components exist and 
 
 ---
 
+## 8) ProjectFlow Task Creation for New Work (Mandatory)
+
+- Whenever you identify something **new that still needs to be done** (for example: new TODO, follow-up fix, refactor, missing test, or unresolved scope item), you must:
+  - Create a task in the linked **ProjectFlow** project before finishing the response.
+  - Use a clear title, actionable description, and include relevant file/module references.
+  - Set a realistic priority and due date when possible.
+- You must also **document that new item** in repository documentation:
+  - Update the most relevant doc (`SITEMAP.md`, `COMPONENTS.md`, `STYLING.md`, `APP_CONCEPT.md`, or `PERMISSIONS.md`) when applicable.
+  - If no domain-specific doc applies, add a brief entry to `GOTCHAS.md` noting the new follow-up and the ProjectFlow task id.
+
+- Do not leave new work only in chat output; it must be tracked in ProjectFlow and reflected in docs.
+
+---
+
 ## Required Project Docs (Minimum Set)
 
 The project must include at least these documentation files:

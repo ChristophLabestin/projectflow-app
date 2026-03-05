@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button/Button';
 import { Badge } from '../../components/common/Badge/Badge';
 import { Card } from '../../components/common/Card/Card';
 import { useLanguage } from '../../context/LanguageContext';
+import { toDate } from '../../utils/time';
 
 const SprintItem = ({ sprint, tasks, onStart, onDelete, onEdit, isDroppable = false }: {
     sprint: Sprint,
@@ -16,6 +17,10 @@ const SprintItem = ({ sprint, tasks, onStart, onDelete, onEdit, isDroppable = fa
     isDroppable?: boolean
 }) => {
     const { t, dateFormat, dateLocale } = useLanguage();
+    const startDate = toDate(sprint.startDate);
+    const endDate = toDate(sprint.endDate);
+    const formattedStartDate = startDate ? format(startDate, dateFormat, { locale: dateLocale }) : t('projectDetails.notSet');
+    const formattedEndDate = endDate ? format(endDate, dateFormat, { locale: dateLocale }) : t('projectDetails.notSet');
     const { setNodeRef, isOver } = useDroppable({
         id: `sprint-${sprint.id}`,
         data: { type: 'sprint', sprintId: sprint.id }
@@ -50,9 +55,9 @@ const SprintItem = ({ sprint, tasks, onStart, onDelete, onEdit, isDroppable = fa
                             )}
                         </div>
                         <p className="sprint-backlog__sprint-dates">
-                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                            {formattedStartDate}
                             <span className="sprint-backlog__date-separator">-</span>
-                            {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                            {formattedEndDate}
                         </p>
                         {sprint.goal && (
                             <p className="sprint-backlog__sprint-goal">{sprint.goal}</p>
@@ -177,7 +182,9 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
     const sortedSprints = [...sprints].sort((a, b) => {
         if (a.status === 'Active' && b.status !== 'Active') return -1;
         if (a.status !== 'Active' && b.status === 'Active') return 1;
-        return new Date(a.startDate).getTime() - new Date(b.startDate).getTime();
+        const aStart = toDate(a.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        const bStart = toDate(b.startDate)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+        return aStart - bStart;
     });
 
     const { setNodeRef: setBacklogRef, isOver: isBacklogOver } = useDroppable({
@@ -186,10 +193,12 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
     });
 
     const sortedBacklogTasks = [...backlogTasks].sort((a, b) => {
-        if (!a.dueDate && !b.dueDate) return 0;
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        const aDue = toDate(a.dueDate);
+        const bDue = toDate(b.dueDate);
+        if (!aDue && !bDue) return 0;
+        if (!aDue) return 1;
+        if (!bDue) return -1;
+        return aDue.getTime() - bDue.getTime();
     });
 
     return (

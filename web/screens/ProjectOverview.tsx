@@ -147,6 +147,7 @@ const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'milestones',
     'aiInsights',
     'team',
+    'metadata',
     'controls'
 ];
 
@@ -165,6 +166,7 @@ const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: Ov
     milestones: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
     aiInsights: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
     team: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
+    metadata: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
     controls: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' }
 };
 
@@ -534,6 +536,7 @@ export const ProjectOverview = () => {
     const [commitsLoading, setCommitsLoading] = useState(false);
     const [commitsError, setCommitsError] = useState<string | null>(null);
     const [healthDelta, setHealthDelta] = useState<number | null>(null);
+    const [projectIdCopied, setProjectIdCopied] = useState(false);
 
 
 
@@ -933,6 +936,16 @@ export const ProjectOverview = () => {
         }
     }, [pinnedReport]);
 
+    useEffect(() => {
+        if (!projectIdCopied) return;
+        const timeoutId = window.setTimeout(() => {
+            setProjectIdCopied(false);
+        }, 1800);
+        return () => {
+            window.clearTimeout(timeoutId);
+        };
+    }, [projectIdCopied]);
+
     const handleToggleTask = async (taskId: string, currentStatus: boolean, event?: React.MouseEvent<HTMLButtonElement>) => {
         event?.stopPropagation();
         if (!project) return;
@@ -1056,6 +1069,33 @@ export const ProjectOverview = () => {
 
     const toDateValue = (value?: string) => (value ? parseISO(value) : null);
     const toDateString = (value: Date | null) => (value ? format(value, 'yyyy-MM-dd') : '');
+
+    const handleCopyProjectId = async () => {
+        if (!project?.id) return;
+
+        try {
+            if (navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(project.id);
+                setProjectIdCopied(true);
+                return;
+            }
+
+            const helperInput = document.createElement('textarea');
+            helperInput.value = project.id;
+            helperInput.setAttribute('readonly', '');
+            helperInput.style.position = 'absolute';
+            helperInput.style.left = '-9999px';
+            document.body.appendChild(helperInput);
+            helperInput.select();
+            const copied = document.execCommand('copy');
+            document.body.removeChild(helperInput);
+            if (copied) {
+                setProjectIdCopied(true);
+            }
+        } catch (copyError) {
+            console.error('Failed to copy project ID', copyError);
+        }
+    };
 
 
 
@@ -1397,6 +1437,10 @@ export const ProjectOverview = () => {
         team: {
             title: t('projectOverview.layout.cards.team.title'),
             description: t('projectOverview.layout.cards.team.description')
+        },
+        metadata: {
+            title: t('projectOverview.layout.cards.metadata.title'),
+            description: t('projectOverview.layout.cards.metadata.description')
         },
         controls: {
             title: t('projectOverview.layout.cards.controls.title'),
@@ -2851,6 +2895,31 @@ export const ProjectOverview = () => {
                         )}
                     </div>
                 )}
+            </Card>
+        ),
+        metadata: (
+            <Card className="updates-card project-overview__metadata-card" aria-live="polite">
+                <div className="project-overview__metadata-top">
+                    <span className="material-symbols-outlined">fingerprint</span>
+                    <span>{t('projectOverview.metadata.title')}</span>
+                </div>
+                <div className="project-overview__metadata-body">
+                    <span className="project-overview__metadata-label">{t('projectOverview.metadata.projectId')}</span>
+                    <div className="project-overview__metadata-value-bar">
+                        <code className="project-overview__metadata-value">{project.id}</code>
+                        <button
+                            type="button"
+                            className="project-overview__metadata-copy"
+                            onClick={handleCopyProjectId}
+                            title={projectIdCopied ? t('projectOverview.metadata.copied') : t('projectOverview.metadata.copy')}
+                            aria-label={projectIdCopied ? t('projectOverview.metadata.copied') : t('projectOverview.metadata.copy')}
+                        >
+                            <span className="material-symbols-outlined">
+                                {projectIdCopied ? 'check' : 'content_copy'}
+                            </span>
+                        </button>
+                    </div>
+                </div>
             </Card>
         ),
         controls: isOwner ? (

@@ -38,7 +38,8 @@ import {
     deleteWorkspaceApiToken,
     getWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
-    saveWorkspaceSmtpConfig
+    saveWorkspaceSmtpConfig,
+    type WorkspaceApiToken
 } from '../services/domain/adminSettingsService';
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
 import { getAIUsage, getUserProfile, updateUserData } from '../services/domain/usersService';
@@ -50,6 +51,62 @@ interface SettingsModalProps {
     onClose: () => void;
     initialTab?: SettingsTab;
 }
+
+type TokenPreset = 'codex-full' | 'read-only' | 'write-no-delete';
+
+const TOKEN_PERMISSION_PRESETS: Record<TokenPreset, APITokenPermission[]> = {
+    'codex-full': [
+        'projects:read',
+        'projects:write',
+        'projects:delete',
+        'tasks:read',
+        'tasks:write',
+        'tasks:delete'
+    ],
+    'read-only': [
+        'projects:read',
+        'tasks:read'
+    ],
+    'write-no-delete': [
+        'projects:read',
+        'projects:write',
+        'tasks:read',
+        'tasks:write'
+    ]
+};
+
+const TOKEN_PRESET_KEYS: { id: TokenPreset; titleKey: string; descriptionKey: string; recommended?: boolean }[] = [
+    {
+        id: 'codex-full',
+        titleKey: 'settings.api.create.presets.codexFull.title',
+        descriptionKey: 'settings.api.create.presets.codexFull.description',
+        recommended: true
+    },
+    {
+        id: 'read-only',
+        titleKey: 'settings.api.create.presets.readOnly.title',
+        descriptionKey: 'settings.api.create.presets.readOnly.description'
+    },
+    {
+        id: 'write-no-delete',
+        titleKey: 'settings.api.create.presets.writeNoDelete.title',
+        descriptionKey: 'settings.api.create.presets.writeNoDelete.description'
+    }
+];
+
+const TOKEN_PERMISSION_LABEL_KEYS: Record<APITokenPermission, string> = {
+    'newsletter:write': 'settings.api.permissions.newsletterWrite',
+    'recipients:read': 'settings.api.permissions.recipientsRead',
+    'projects:read': 'settings.api.permissions.projectsRead',
+    'projects:write': 'settings.api.permissions.projectsWrite',
+    'projects:delete': 'settings.api.permissions.projectsDelete',
+    'tasks:read': 'settings.api.permissions.tasksRead',
+    'tasks:write': 'settings.api.permissions.tasksWrite',
+    'tasks:delete': 'settings.api.permissions.tasksDelete'
+};
+
+const hasDestructiveScope = (permissions: APITokenPermission[]) =>
+    permissions.includes('projects:delete') || permissions.includes('tasks:delete');
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab = 'account' }) => {
     const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
@@ -89,10 +146,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     } | null>(null);
 
     // API Token State
-    const [apiTokens, setApiTokens] = useState<any[]>([]);
+    const [apiTokens, setApiTokens] = useState<WorkspaceApiToken[]>([]);
     const [loadingTokens, setLoadingTokens] = useState(false);
     const [creatingToken, setCreatingToken] = useState(false);
     const [newTokenName, setNewTokenName] = useState('');
+    const [tokenPreset, setTokenPreset] = useState<TokenPreset>('codex-full');
     const [showNewTokenModal, setShowNewTokenModal] = useState(false);
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [copiedToken, setCopiedToken] = useState(false);
@@ -475,6 +533,48 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
     };
 
+    const selectedTokenPermissions = TOKEN_PERMISSION_PRESETS[tokenPreset];
+
+    const toDateValue = (value: unknown): Date | null => {
+        if (!value) {
+            return null;
+        }
+
+        if (value instanceof Date) {
+            return value;
+        }
+
+        if (typeof value === 'string' || typeof value === 'number') {
+            const parsed = new Date(value);
+            return Number.isNaN(parsed.getTime()) ? null : parsed;
+        }
+
+        if (typeof value === 'object') {
+            const firestoreLike = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+            if (typeof firestoreLike.toDate === 'function') {
+                return firestoreLike.toDate();
+            }
+
+            if (typeof firestoreLike.seconds === 'number') {
+                return new Date(firestoreLike.seconds * 1000);
+            }
+
+            if (typeof firestoreLike._seconds === 'number') {
+                return new Date(firestoreLike._seconds * 1000);
+            }
+        }
+
+        return null;
+    };
+
+    const formatTokenDate = (value: unknown): string => {
+        const parsed = toDateValue(value);
+        return parsed ? format(parsed, 'PPP') : t('settings.api.list.unknownDate');
+    };
+
+    const permissionLabel = (permission: string) =>
+        t(TOKEN_PERMISSION_LABEL_KEYS[permission as APITokenPermission] || permission, permission);
+
     const handleCreateToken = async () => {
         if (!newTokenName.trim()) {
             showError(t('settings.api.errors.tokenNameRequired'));
@@ -490,7 +590,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             const result = await createWorkspaceApiToken(
                 id,
                 newTokenName.trim(),
-                ['newsletter:write'] as APITokenPermission[]
+                selectedTokenPermissions
             );
             setGeneratedToken(result.token);
             setShowNewTokenModal(true);
@@ -1194,16 +1294,65 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             {/* Create Token Section */}
                             <section className="p-4 rounded-xl bg-surface-hover border border-surface space-y-4">
                                 <h3 className="font-bold text-main">{t('settings.api.create.title')}</h3>
-                                <div className="flex gap-2">
+                                <div className="space-y-4">
                                     <Input
                                         value={newTokenName}
                                         onChange={(e) => setNewTokenName(e.target.value)}
                                         placeholder={t('settings.api.create.placeholder')}
-                                        className="flex-1"
+                                        className="w-full"
                                     />
-                                    <Button onClick={handleCreateToken} loading={creatingToken}>
-                                        {t('settings.api.create.button')}
-                                    </Button>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs uppercase tracking-wide text-muted font-semibold">
+                                            {t('settings.api.create.presetLabel')}
+                                        </label>
+                                        <div className="grid gap-2 md:grid-cols-3">
+                                            {TOKEN_PRESET_KEYS.map((preset) => (
+                                                <button
+                                                    key={preset.id}
+                                                    onClick={() => setTokenPreset(preset.id)}
+                                                    className={`rounded-lg border p-3 text-left transition-colors ${
+                                                        tokenPreset === preset.id
+                                                            ? 'border-primary bg-primary/10'
+                                                            : 'border-surface bg-surface hover:border-primary/50'
+                                                    }`}
+                                                >
+                                                    <div className="font-semibold text-sm text-main">
+                                                        {t(preset.titleKey)}
+                                                        {preset.recommended && (
+                                                            <span className="ml-2 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+                                                                {t('settings.api.create.presets.recommended')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-muted mt-1">{t(preset.descriptionKey)}</div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                        {selectedTokenPermissions.map((permission) => (
+                                            <span
+                                                key={permission}
+                                                className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                                            >
+                                                {permissionLabel(permission)}
+                                            </span>
+                                        ))}
+                                    </div>
+
+                                    {hasDestructiveScope(selectedTokenPermissions) && (
+                                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                                            {t('settings.api.create.destructiveWarning')}
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-end">
+                                        <Button onClick={handleCreateToken} loading={creatingToken}>
+                                            {t('settings.api.create.button')}
+                                        </Button>
+                                    </div>
                                 </div>
                             </section>
 
@@ -1222,11 +1371,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     <div className="flex items-center gap-2">
                                                         <div className="font-bold text-sm text-main">{token.name}</div>
                                                         <div className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                                                            {token.prefix}...
+                                                            {token.tokenPrefix}...
                                                         </div>
                                                     </div>
                                                     <div className="text-xs text-muted mt-1">
-                                                        {t('settings.api.list.created')}: {format(new Date(token.createdAt), 'PPP')} • {t('settings.api.list.lastUsed')}: {token.lastUsedAt ? format(new Date(token.lastUsedAt), 'PPP') : t('settings.api.list.neverUsed')}
+                                                        {t('settings.api.list.created')}: {formatTokenDate(token.createdAt)} • {t('settings.api.list.lastUsed')}: {token.lastUsedAt ? formatTokenDate(token.lastUsedAt) : t('settings.api.list.neverUsed')}
+                                                    </div>
+                                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                                        {(token.permissions || []).map((permission) => (
+                                                            <span
+                                                                key={`${token.id}-${permission}`}
+                                                                className="rounded-full border border-surface px-2 py-0.5 text-[10px] text-muted"
+                                                            >
+                                                                {permissionLabel(permission)}
+                                                            </span>
+                                                        ))}
                                                     </div>
                                                 </div>
                                                 <Button
@@ -1311,7 +1470,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         {generatedToken}
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button size="sm" onClick={() => generatedToken && copyToClipboard(generatedToken)}>
-                                {copiedToken ? 'Copied!' : 'Copy'}
+                                {copiedToken ? t('settings.api.successModal.copied') : t('settings.api.successModal.copy')}
                             </Button>
                         </div>
                     </div>

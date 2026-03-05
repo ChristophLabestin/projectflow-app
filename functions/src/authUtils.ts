@@ -12,6 +12,12 @@ export const hashToken = (token: string): string => {
 export type ApiPermission =
     | 'newsletter:write'
     | 'recipients:read'
+    | 'projects:read'
+    | 'projects:write'
+    | 'projects:delete'
+    | 'tasks:read'
+    | 'tasks:write'
+    | 'tasks:delete'
     | 'blog:read'
     | 'blog:write'
     | 'blog:categories:read'

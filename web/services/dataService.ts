@@ -28,7 +28,7 @@ import { httpsCallable } from "firebase/functions";
 import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
+import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -113,6 +113,7 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
         { id: 'milestones', enabled: true, span: 3, placement: 'secondary' },
         { id: 'aiInsights', enabled: true, span: 3, placement: 'secondary' },
         { id: 'team', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'metadata', enabled: true, span: 3, placement: 'secondary' },
         { id: 'controls', enabled: true, span: 3, placement: 'secondary' }
     ]
 };
@@ -2886,7 +2887,7 @@ const hashToken = async (token: string): Promise<string> => {
  */
 export const createAPIToken = async (
     name: string,
-    permissions: ('newsletter:write' | 'recipients:read')[],
+    permissions: APITokenPermission[],
     projectScope?: string,
     expiresAt?: Date,
     tenantId?: string
@@ -2926,7 +2927,7 @@ export const deleteAPIToken = async (tokenId: string, tenantId?: string): Promis
  */
 export const validateAPITokenLocally = async (
     plainToken: string,
-    requiredPermission: 'newsletter:write' | 'recipients:read',
+    requiredPermission: APITokenPermission,
     tenantId: string
 ): Promise<{ valid: boolean; tokenData?: any; error?: string }> => {
     void plainToken;

@@ -25,15 +25,16 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { calculateSpotlightScore, SpotlightReason, calculateProjectHealth, HealthStatus, ProjectHealth } from '../services/healthService';
+import { useAuth } from '../context/AuthContext';
 import { Tenant } from '../types';
 import { Modal } from '../components/common/Modal/Modal';
 import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useConfirm, useToast } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
-import { getActiveTenantId } from '../services/domain/authService';
+import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
 import { getUserIdeas } from '../services/domain/ideasService';
 import { getUserIssues } from '../services/domain/issuesService';
-import { getProjectMembers } from '../services/domain/projectsService';
+import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
@@ -631,6 +632,7 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
         { id: 'milestones', enabled: true, span: 3, placement: 'secondary' },
         { id: 'aiInsights', enabled: true, span: 3, placement: 'secondary' },
         { id: 'team', enabled: true, span: 3, placement: 'secondary' },
+        { id: 'metadata', enabled: true, span: 3, placement: 'secondary' },
         { id: 'controls', enabled: true, span: 3, placement: 'secondary' }
     ]
 };
@@ -676,6 +678,7 @@ type ProjectImportItem = {
 export const ProjectsList: React.FC = () => {
     const navigate = useNavigate();
     const { t, dateFormat, dateLocale } = useLanguage();
+    const { isAuthReady } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
@@ -1419,6 +1422,11 @@ export const ProjectsList: React.FC = () => {
     };
 
     useEffect(() => {
+        if (!isAuthReady) {
+            setLoading(true);
+            return;
+        }
+
         if (!authUserId) {
             setProjects([]);
             setTasks([]);
@@ -1434,12 +1442,32 @@ export const ProjectsList: React.FC = () => {
         const load = async () => {
             setLoading(true);
             try {
-                const [allProjects, allTasks, allIdeas, allIssues] = await Promise.all([
-                    getAllWorkspaceProjects(),
-                    getUserTasks(),
-                    getUserIdeas(),
-                    getUserIssues()
+                const resolvedTenantId = await ensureActiveTenantId();
+                let allProjects: Project[] = [];
+                const [ownedProjects, sharedProjects] = await Promise.all([
+                    getUserProjects().catch(() => []),
+                    getSharedProjects().catch(() => [])
                 ]);
+                const dedupedProjects = new Map<string, Project>();
+                [...ownedProjects, ...sharedProjects].forEach((project) => {
+                    dedupedProjects.set(`${project.tenantId || 'none'}:${project.id}`, project);
+                });
+                allProjects = Array.from(dedupedProjects.values());
+
+                if (allProjects.length === 0) {
+                    try {
+                        allProjects = await getAllWorkspaceProjects(resolvedTenantId);
+                    } catch (error) {
+                        console.warn('Projects list workspace query failed', error);
+                    }
+                }
+
+                const [allTasks, allIdeas, allIssues] = await Promise.all([
+                    getUserTasks().catch(() => []),
+                    getUserIdeas().catch(() => []),
+                    getUserIssues().catch(() => [])
+                ]);
+
                 if (mounted) {
                     setProjects(allProjects);
                     setTasks(allTasks);
@@ -1475,7 +1503,7 @@ export const ProjectsList: React.FC = () => {
         }
 
         return () => { mounted = false; };
-    }, [authUserId]);
+    }, [authUserId, isAuthReady]);
 
     // Helper to get metrics for a project
     const getMetrics = (projectId: string): ProjectMetrics => {
@@ -1491,8 +1519,6 @@ export const ProjectsList: React.FC = () => {
     const filteredProjects = useMemo(() => {
         if (!authUserId) return [];
         return projects.filter(p => {
-            const isMember = !p.isPrivate || p.ownerId === authUserId || (p.memberIds || []).includes(authUserId);
-            if (!isMember) return false;
             if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
             return true;
         }).sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));

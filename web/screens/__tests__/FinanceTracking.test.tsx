@@ -29,6 +29,8 @@ vi.mock('../../context/LanguageContext', () => ({
         language: 'en',
         dateLocale: undefined,
         dateFormat: 'MM/dd/yyyy',
+        financeTranslationsReady: true,
+        loadFinanceTranslations: vi.fn().mockResolvedValue(undefined),
     }),
 }));
 
@@ -47,7 +49,7 @@ vi.mock('../../context/UIContext', () => ({
     }),
 }));
 
-vi.mock('../../services/dataService', () => ({
+vi.mock('../../services/domain/authService', () => ({
     getActiveTenantId: () => 'tenant-a',
 }));
 
@@ -71,6 +73,45 @@ vi.mock('../../services/financeService', () => ({
     updateRecurringTransaction: vi.fn().mockResolvedValue(undefined),
     deleteRecurringTransaction: vi.fn().mockResolvedValue(undefined),
     generateMissingRecurringTransactions: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../services/domain/projectsService', () => ({
+    subscribeTenantProjects: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/financeScenarioService', () => ({
+    subscribeFinanceScenarios: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    createFinanceScenario: vi.fn().mockResolvedValue('scenario-id'),
+    updateFinanceScenario: vi.fn().mockResolvedValue(undefined),
+    deleteFinanceScenario: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../services/domain/adminSettingsService', () => ({
+    fetchWorkspaceFinancialUsage: vi.fn().mockResolvedValue({
+        endpoint: 'https://example.com/financial',
+        linkedProjectId: null,
+        requestedMonths: 6,
+        totals: {
+            aiUsd: 42.5,
+            inputTokens: 1000,
+            outputTokens: 500,
+            totalTokens: 1500,
+        },
+        months: [],
+    }),
+    getWorkspaceFinancialConfig: vi.fn().mockResolvedValue(null),
+    saveWorkspaceFinancialConfig: vi.fn().mockResolvedValue({
+        endpoint: 'https://example.com/financial',
+        months: 6,
+        linkedProjectId: null,
+        hasToken: true,
+    }),
 }));
 
 describe('FinanceTracking', () => {
@@ -97,5 +138,15 @@ describe('FinanceTracking', () => {
         const payload = createTransaction.mock.calls[0][0];
         expect(payload.category).toBe('Consulting');
         expect(payload.amount).toBe(250);
+    });
+
+    it('switches to calculations view', async () => {
+        const user = userEvent.setup();
+        render(<FinanceTracking />);
+
+        await user.click(screen.getByText('finance.views.calculations'));
+
+        expect(screen.getByText('finance.calc.editor.new')).toBeInTheDocument();
+        expect(screen.getByText('finance.calc.actions.save')).toBeInTheDocument();
     });
 });

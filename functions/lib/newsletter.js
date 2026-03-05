@@ -9,6 +9,7 @@ const blog_1 = require("./blog");
 const categories_1 = require("./categories");
 const corsConfig_1 = require("./corsConfig");
 const authUtils_1 = require("./authUtils");
+const projectflow_api_1 = require("./projectflow-api");
 const REGION = 'europe-west3'; // Frankfurt
 /**
  * Newsletter Subscribe Endpoint
@@ -600,6 +601,10 @@ exports.api = functions.region(REGION).https.onRequest((req, res) => {
         if (path.startsWith('/blog/categories/manage') || path.startsWith('/api/blog/categories/manage')) {
             return (0, categories_1.manageCategories)(req, res);
         }
+        // Route: projectflow/* (GET, POST, PATCH, DELETE)
+        if (path.startsWith('/projectflow') || path.startsWith('/api/projectflow')) {
+            return (0, projectflow_api_1.handleProjectflowApiRoute)(req, res, path);
+        }
         // 404 for unknown routes
         res.status(404).json({
             success: false,
@@ -607,7 +612,37 @@ exports.api = functions.region(REGION).https.onRequest((req, res) => {
             path: req.path,
             availableEndpoints: [
                 'POST /api/newsletter/subscribe',
-                'GET/POST /api/newsletter/unsubscribe'
+                'GET/POST /api/newsletter/unsubscribe',
+                'GET /api/projectflow/projects',
+                'POST /api/projectflow/projects',
+                'GET /api/projectflow/projects/:projectId',
+                'PATCH /api/projectflow/projects/:projectId',
+                'DELETE /api/projectflow/projects/:projectId',
+                'GET /api/projectflow/projects/:projectId/tasks',
+                'POST /api/projectflow/projects/:projectId/tasks',
+                'GET /api/projectflow/projects/:projectId/tasks/:taskId',
+                'PATCH /api/projectflow/projects/:projectId/tasks/:taskId',
+                'DELETE /api/projectflow/projects/:projectId/tasks/:taskId',
+                'POST /api/projectflow/projects/:projectId/tasks/upsert-by-external-key',
+                'GET|POST /api/projectflow/projects/:projectId/tasks/:taskId/subtasks',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/tasks/:taskId/subtasks/:subtaskId',
+                'GET|POST /api/projectflow/projects/:projectId/issues',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/issues/:issueId',
+                'GET|POST /api/projectflow/projects/:projectId/ideas',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/ideas/:ideaId',
+                'GET|POST /api/projectflow/projects/:projectId/milestones',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/milestones/:milestoneId',
+                'GET|POST /api/projectflow/projects/:projectId/sprints',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/sprints/:sprintId',
+                'GET|POST /api/projectflow/projects/:projectId/categories',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/categories/:categoryId',
+                'GET|POST /api/projectflow/projects/:projectId/mindmaps',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/mindmaps/:mindmapId',
+                'GET|POST /api/projectflow/projects/:projectId/project-groups',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/project-groups/:groupId',
+                'GET|POST /api/projectflow/projects/:projectId/comments',
+                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/comments/:commentId',
+                'GET /api/projectflow/projects/:projectId/activities'
             ]
         });
     });

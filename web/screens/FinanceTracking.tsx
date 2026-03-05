@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { endOfDay, startOfDay, startOfMonth, startOfYear, subDays, subMonths } from 'date-fns';
 import '../src/styles/components/_finance-tracking.scss';
 import { Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -15,8 +15,16 @@ import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { Checkbox } from '../components/common/Checkbox/Checkbox';
 import { Modal } from '../components/common/Modal/Modal';
 import { StatusCard } from '../components/common/StatusCard/StatusCard';
+import { FinanceCalculationsPanel } from '../components/finance/FinanceCalculationsPanel';
 import { auth } from '../services/firebase';
 import { getActiveTenantId } from '../services/domain/authService';
+import { subscribeTenantProjects } from '../services/domain/projectsService';
+import {
+    fetchWorkspaceFinancialUsage,
+    getWorkspaceFinancialConfig,
+    saveWorkspaceFinancialConfig,
+    type WorkspaceFinancialUsage,
+} from '../services/domain/adminSettingsService';
 import {
     createRecurringTransaction,
     createTransaction,
@@ -28,7 +36,7 @@ import {
     updateRecurringTransaction,
     updateTransaction,
 } from '../services/financeService';
-import type { RecurringFrequency, RecurringTransaction, Transaction, TransactionType } from '../types';
+import type { Project, RecurringFrequency, RecurringTransaction, Transaction, TransactionType } from '../types';
 import {
     buildMonthlySeries,
     calculateFinanceTotals,
@@ -38,6 +46,7 @@ import {
 import { toDate } from '../utils/time';
 
 interface TransactionFormState {
+    projectId: string;
     type: TransactionType;
     date: Date | null;
     category: string;
@@ -49,6 +58,7 @@ interface TransactionFormState {
 }
 
 interface RecurringFormState {
+    projectId: string;
     type: TransactionType;
     frequency: RecurringFrequency;
     startDate: Date | null;
@@ -59,8 +69,19 @@ interface RecurringFormState {
 }
 
 type ChartPeriod = 'today' | '3d' | '7d' | '30d' | '90d' | '3m' | '6m' | '12m' | 'ytd' | 'all' | 'custom';
+type FinanceView = 'tracking' | 'calculations';
+const DEFAULT_FINANCIAL_ENDPOINT = 'https://europe-west3-quivena.cloudfunctions.net/projectflowFinancialLogs';
+
+interface FinancialConnectionFormState {
+    endpoint: string;
+    token: string;
+    months: string;
+    linkedProjectId: string;
+    hasToken: boolean;
+}
 
 const buildEmptyTransactionForm = (): TransactionFormState => ({
+    projectId: '',
     type: 'expense',
     date: new Date(),
     category: '',
@@ -72,6 +93,7 @@ const buildEmptyTransactionForm = (): TransactionFormState => ({
 });
 
 const buildEmptyRecurringForm = (): RecurringFormState => ({
+    projectId: '',
     type: 'expense',
     frequency: 'monthly',
     startDate: new Date(),
@@ -80,6 +102,52 @@ const buildEmptyRecurringForm = (): RecurringFormState => ({
     amount: '',
     notes: '',
 });
+
+const buildEmptyFinancialConnectionForm = (): FinancialConnectionFormState => ({
+    endpoint: DEFAULT_FINANCIAL_ENDPOINT,
+    token: '',
+    months: '6',
+    linkedProjectId: '',
+    hasToken: false,
+});
+
+const toFiniteNumber = (value: unknown) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const buildTopAiBreakdown = (
+    months: WorkspaceFinancialUsage['months'],
+    source: 'byModel' | 'byFunction',
+    labelKey: 'model' | 'function',
+    unknownLabel: string
+) => {
+    const totals = new Map<string, { aiUsd: number; totalTokens: number }>();
+
+    months.forEach((month) => {
+        const items = month[source] || [];
+        items.forEach((item) => {
+            const rawLabel = String((item as any)[labelKey] || '').trim();
+            const label = rawLabel && rawLabel !== 'Unknown' ? rawLabel : unknownLabel;
+            const previous = totals.get(label) || { aiUsd: 0, totalTokens: 0 };
+            totals.set(label, {
+                aiUsd: previous.aiUsd + toFiniteNumber(item.aiUsd),
+                totalTokens: previous.totalTokens + toFiniteNumber(item.totalTokens),
+            });
+        });
+    });
+
+    return Array.from(totals.entries())
+        .map(([name, values]) => ({
+            name,
+            aiUsd: values.aiUsd,
+            totalTokens: values.totalTokens,
+        }))
+        .sort((a, b) => b.aiUsd - a.aiUsd)
+        .slice(0, 5);
+};
+
+type SectionState = 'loading' | 'error' | 'empty' | 'ready';
 
 export const FinanceTracking = () => {
     const { t, language, dateLocale, financeTranslationsReady, loadFinanceTranslations } = useLanguage();
@@ -93,6 +161,7 @@ export const FinanceTracking = () => {
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
     const [transactionsLoaded, setTransactionsLoaded] = useState(false);
     const [recurringLoaded, setRecurringLoaded] = useState(false);
 
@@ -100,6 +169,7 @@ export const FinanceTracking = () => {
         startDate: null as Date | null,
         endDate: null as Date | null,
         type: 'all' as TransactionType | 'all',
+        projectId: 'all',
         categories: [] as string[],
         search: '',
     });
@@ -114,6 +184,14 @@ export const FinanceTracking = () => {
     const [recurringForm, setRecurringForm] = useState<RecurringFormState>(buildEmptyRecurringForm);
     const [editingRecurring, setEditingRecurring] = useState<RecurringTransaction | null>(null);
     const [savingRecurring, setSavingRecurring] = useState(false);
+    const [activeView, setActiveView] = useState<FinanceView>('tracking');
+    const [financialUsage, setFinancialUsage] = useState<WorkspaceFinancialUsage | null>(null);
+    const [financialUsageLoading, setFinancialUsageLoading] = useState(false);
+    const [financialUsageError, setFinancialUsageError] = useState<string | null>(null);
+    const [financialConfigLoading, setFinancialConfigLoading] = useState(false);
+    const [financialConfigPermissionDenied, setFinancialConfigPermissionDenied] = useState(false);
+    const [savingFinancialConfig, setSavingFinancialConfig] = useState(false);
+    const [financialConnectionForm, setFinancialConnectionForm] = useState<FinancialConnectionFormState>(buildEmptyFinancialConnectionForm);
 
     const locale = language === 'de' ? 'de-DE' : 'en-US';
     const currencyCode = t('finance.currencyCode');
@@ -129,6 +207,36 @@ export const FinanceTracking = () => {
             maximumFractionDigits: 2,
         }).format(value);
     };
+
+    const formatInteger = (value: number) => {
+        return new Intl.NumberFormat(locale, {
+            maximumFractionDigits: 0,
+        }).format(value);
+    };
+
+    const loadFinancialUsage = useCallback(async (monthsOverride?: number) => {
+        if (!tenantId || !canView) return;
+        setFinancialUsageLoading(true);
+        setFinancialUsageError(null);
+
+        try {
+            const usage = await fetchWorkspaceFinancialUsage(tenantId, monthsOverride ? { months: monthsOverride } : undefined);
+            setFinancialUsage(usage);
+        } catch (error: any) {
+            setFinancialUsage(null);
+            const message = String(error?.message || '');
+            const normalizedMessage = message.toLowerCase();
+            if (normalizedMessage.includes('not configured') || normalizedMessage.includes('token is missing')) {
+                setFinancialUsageError(t('finance.ai.error.notConfigured'));
+                console.info('Workspace financial endpoint is not configured yet.');
+            } else {
+                console.error('Failed to fetch workspace financial usage', error);
+                setFinancialUsageError(message || t('finance.ai.error.generic'));
+            }
+        } finally {
+            setFinancialUsageLoading(false);
+        }
+    }, [tenantId, canView, t]);
 
     useEffect(() => {
         if (!tenantId || !canView) return;
@@ -150,6 +258,21 @@ export const FinanceTracking = () => {
     }, [tenantId, canView]);
 
     useEffect(() => {
+        if (!tenantId || !canView) return;
+        void loadFinancialUsage();
+    }, [tenantId, canView, loadFinancialUsage]);
+
+    useEffect(() => {
+        if (!tenantId || !canView) return;
+
+        const unsubscribe = subscribeTenantProjects((nextProjects) => {
+            setProjects(nextProjects.filter((project) => !project.isPersonal));
+        }, tenantId);
+
+        return () => unsubscribe();
+    }, [tenantId, canView]);
+
+    useEffect(() => {
         if (!tenantId || !canManage) return;
         if (!transactionsLoaded || !recurringLoaded) return;
 
@@ -157,6 +280,42 @@ export const FinanceTracking = () => {
             console.error('Failed to generate recurring transactions', error);
         });
     }, [tenantId, canManage, transactionsLoaded, recurringLoaded, recurringTransactions, transactions]);
+
+    useEffect(() => {
+        if (!tenantId || !canManage) return;
+
+        setFinancialConfigLoading(true);
+        setFinancialConfigPermissionDenied(false);
+
+        getWorkspaceFinancialConfig(tenantId)
+            .then((config) => {
+                if (!config) {
+                    setFinancialConnectionForm(buildEmptyFinancialConnectionForm());
+                    return;
+                }
+
+                setFinancialConnectionForm((prev) => ({
+                    ...prev,
+                    endpoint: config.endpoint || DEFAULT_FINANCIAL_ENDPOINT,
+                    token: '',
+                    months: String(config.months || 6),
+                    linkedProjectId: config.linkedProjectId || '',
+                    hasToken: Boolean(config.hasToken),
+                }));
+            })
+            .catch((error: any) => {
+                console.error('Failed to load workspace financial config', error);
+                const code = String(error?.code || '');
+                if (code.includes('permission-denied')) {
+                    setFinancialConfigPermissionDenied(true);
+                } else {
+                    showError(t('finance.ai.config.toastError'), error?.message);
+                }
+            })
+            .finally(() => {
+                setFinancialConfigLoading(false);
+            });
+    }, [tenantId, canManage, showError, t]);
 
     const categoryOptions = useMemo(() => {
         const defaults = [
@@ -180,6 +339,14 @@ export const FinanceTracking = () => {
 
         return Array.from(unique).sort((a, b) => a.localeCompare(b));
     }, [t, transactions, recurringTransactions]);
+
+    const projectLookup = useMemo(() => {
+        const map = new Map<string, string>();
+        projects.forEach((project) => {
+            map.set(project.id, project.title);
+        });
+        return map;
+    }, [projects]);
 
     const applySearchFilter = (items: Transaction[]) => {
         if (!filters.search) return items;
@@ -242,6 +409,46 @@ export const FinanceTracking = () => {
             .sort((a, b) => b.value - a.value);
     }, [filteredTransactions, t]);
 
+    const projectProfitability = useMemo(() => {
+        const profitabilitySource = applySearchFilter(filterTransactions(transactions, {
+            ...filters,
+            type: 'all',
+        }));
+
+        const rows = new Map<string, { projectId: string; projectName: string; income: number; expenses: number }>();
+
+        profitabilitySource.forEach((transaction) => {
+            const projectId = transaction.projectId || '__unassigned__';
+            const projectName = transaction.projectId
+                ? (projectLookup.get(transaction.projectId) || t('finance.project.unknown'))
+                : t('finance.project.unassigned');
+
+            if (!rows.has(projectId)) {
+                rows.set(projectId, { projectId, projectName, income: 0, expenses: 0 });
+            }
+
+            const row = rows.get(projectId);
+            if (!row) return;
+
+            if (transaction.type === 'income') {
+                row.income += Number(transaction.amount) || 0;
+            } else {
+                row.expenses += Number(transaction.amount) || 0;
+            }
+        });
+
+        return Array.from(rows.values())
+            .map((row) => {
+                const net = row.income - row.expenses;
+                return {
+                    ...row,
+                    net,
+                    marginPercent: row.income > 0 ? (net / row.income) * 100 : 0,
+                };
+            })
+            .sort((a, b) => b.net - a.net);
+    }, [applySearchFilter, filters, projectLookup, t, transactions]);
+
     const COLORS = [
         'var(--color-primary)',
         'var(--color-primary-light)',
@@ -256,6 +463,29 @@ export const FinanceTracking = () => {
         { label: t('finance.type.all'), value: 'all' },
         { label: t('finance.type.income'), value: 'income' },
         { label: t('finance.type.expense'), value: 'expense' },
+    ];
+
+    const projectFilterOptions: SelectOption[] = [
+        { label: t('finance.project.all'), value: 'all' },
+        { label: t('finance.project.unassigned'), value: '__unassigned__' },
+        ...projects
+            .slice()
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((project) => ({
+                label: project.title,
+                value: project.id,
+            })),
+    ];
+
+    const projectFormOptions: SelectOption[] = [
+        { label: t('finance.project.unassigned'), value: '' },
+        ...projects
+            .slice()
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((project) => ({
+                label: project.title,
+                value: project.id,
+            })),
     ];
 
     const frequencyOptions: SelectOption[] = [
@@ -278,6 +508,113 @@ export const FinanceTracking = () => {
         { value: 'all', label: t('finance.period.allTime') },
         { value: 'custom', label: t('finance.period.custom') },
     ];
+
+    const aiSectionState: SectionState = financialUsageLoading
+        ? 'loading'
+        : financialUsageError
+            ? 'error'
+            : financialUsage && financialUsage.isConfigured !== false
+                ? 'ready'
+                : 'empty';
+
+    const projectProfitabilityState: SectionState = projectProfitability.length > 0 ? 'ready' : 'empty';
+    const transactionsState: SectionState = filteredTransactions.length > 0 ? 'ready' : 'empty';
+    const recurringState: SectionState = recurringTransactions.length > 0 ? 'ready' : 'empty';
+
+    const renderStateChip = (state: SectionState, count?: number) => {
+        const keyMap: Record<SectionState, string> = {
+            loading: 'finance.state.loading',
+            error: 'finance.state.error',
+            empty: 'finance.state.empty',
+            ready: 'finance.state.ready',
+        };
+
+        return (
+            <span className={`finance-state-chip finance-state-chip--${state}`}>
+                {t(keyMap[state])}
+                {typeof count === 'number' && (
+                    <span className="finance-state-chip__count">{count} {t('finance.state.rows')}</span>
+                )}
+            </span>
+        );
+    };
+
+    const projectLinkOptions: SelectOption[] = [
+        { label: t('finance.ai.linkedProject.none'), value: '' },
+        ...projects
+            .slice()
+            .sort((a, b) => a.title.localeCompare(b.title))
+            .map((project) => ({
+                label: project.title,
+                value: project.id,
+            })),
+    ];
+
+    const aiTopModels = useMemo(() => {
+        if (!financialUsage?.months) return [];
+        return buildTopAiBreakdown(financialUsage.months, 'byModel', 'model', t('finance.ai.breakdown.unknown'));
+    }, [financialUsage, t]);
+
+    const aiTopFunctions = useMemo(() => {
+        if (!financialUsage?.months) return [];
+        return buildTopAiBreakdown(financialUsage.months, 'byFunction', 'function', t('finance.ai.breakdown.unknown'));
+    }, [financialUsage, t]);
+
+    const linkedFinancialProjectName = useMemo(() => {
+        const linkedProjectId = financialUsage?.linkedProjectId;
+        if (!linkedProjectId) {
+            return t('finance.ai.linkedProject.none');
+        }
+        return projectLookup.get(linkedProjectId) || t('finance.project.unknown');
+    }, [financialUsage, projectLookup, t]);
+
+    const handleSaveFinancialConnection = async () => {
+        if (!tenantId || !canManage) return;
+
+        const endpoint = financialConnectionForm.endpoint.trim();
+        if (!endpoint) {
+            showError(t('finance.ai.config.validation.endpointRequired'));
+            return;
+        }
+
+        const monthsValue = Number(financialConnectionForm.months);
+        if (!Number.isInteger(monthsValue) || monthsValue < 1 || monthsValue > 24) {
+            showError(t('finance.ai.config.validation.monthsRange'));
+            return;
+        }
+
+        if (!financialConnectionForm.hasToken && !financialConnectionForm.token.trim()) {
+            showError(t('finance.ai.config.validation.tokenRequired'));
+            return;
+        }
+
+        setSavingFinancialConfig(true);
+        try {
+            const savedConfig = await saveWorkspaceFinancialConfig(tenantId, {
+                endpoint,
+                token: financialConnectionForm.token.trim(),
+                months: monthsValue,
+                linkedProjectId: financialConnectionForm.linkedProjectId || null,
+            });
+
+            setFinancialConnectionForm((prev) => ({
+                ...prev,
+                endpoint: savedConfig.endpoint || endpoint,
+                token: '',
+                months: String(savedConfig.months || monthsValue),
+                linkedProjectId: savedConfig.linkedProjectId || '',
+                hasToken: Boolean(savedConfig.hasToken),
+            }));
+
+            showSuccess(t('finance.ai.config.toastSaved'));
+            await loadFinancialUsage(savedConfig.months || monthsValue);
+        } catch (error: any) {
+            console.error('Failed to save workspace financial config', error);
+            showError(t('finance.ai.config.toastError'), error?.message);
+        } finally {
+            setSavingFinancialConfig(false);
+        }
+    };
 
     const LineChartTooltip = ({ active, payload, label }: { active?: boolean; payload?: any[]; label?: string }) => {
         if (!active || !payload || payload.length === 0) return null;
@@ -368,6 +705,7 @@ export const FinanceTracking = () => {
     const openEditTransactionModal = (transaction: Transaction) => {
         setEditingTransaction(transaction);
         setTransactionForm({
+            projectId: transaction.projectId || '',
             type: transaction.type,
             date: toDate(transaction.date),
             category: transaction.category || '',
@@ -389,6 +727,7 @@ export const FinanceTracking = () => {
     const openEditRecurringModal = (transaction: RecurringTransaction) => {
         setEditingRecurring(transaction);
         setRecurringForm({
+            projectId: transaction.projectId || '',
             type: transaction.type,
             frequency: transaction.frequency,
             startDate: toDate(transaction.startDate),
@@ -444,6 +783,7 @@ export const FinanceTracking = () => {
         try {
             if (editingTransaction) {
                 await updateTransaction(editingTransaction.id, {
+                    projectId: transactionForm.projectId || undefined,
                     type: transactionForm.type,
                     date: transactionForm.date,
                     category: transactionForm.category.trim(),
@@ -453,6 +793,7 @@ export const FinanceTracking = () => {
                 showSuccess(t('finance.toast.updated'));
             } else if (transactionForm.isRecurring) {
                 const recurringId = await createRecurringTransaction({
+                    projectId: transactionForm.projectId || undefined,
                     type: transactionForm.type,
                     frequency: transactionForm.frequency,
                     startDate: transactionForm.date,
@@ -463,6 +804,7 @@ export const FinanceTracking = () => {
                 }, tenantId || undefined);
 
                 await createTransaction({
+                    projectId: transactionForm.projectId || undefined,
                     type: transactionForm.type,
                     date: transactionForm.date,
                     category: transactionForm.category.trim(),
@@ -474,6 +816,7 @@ export const FinanceTracking = () => {
                 showSuccess(t('finance.toast.createdRecurring'));
             } else {
                 await createTransaction({
+                    projectId: transactionForm.projectId || undefined,
                     type: transactionForm.type,
                     date: transactionForm.date,
                     category: transactionForm.category.trim(),
@@ -517,6 +860,7 @@ export const FinanceTracking = () => {
         try {
             if (editingRecurring) {
                 await updateRecurringTransaction(editingRecurring.id, {
+                    projectId: recurringForm.projectId || undefined,
                     type: recurringForm.type,
                     frequency: recurringForm.frequency,
                     startDate: recurringForm.startDate,
@@ -528,6 +872,7 @@ export const FinanceTracking = () => {
                 showSuccess(t('finance.toast.updatedRecurring'));
             } else {
                 await createRecurringTransaction({
+                    projectId: recurringForm.projectId || undefined,
                     type: recurringForm.type,
                     frequency: recurringForm.frequency,
                     startDate: recurringForm.startDate,
@@ -567,6 +912,7 @@ export const FinanceTracking = () => {
 
         const headers = [
             t('finance.table.date'),
+            t('finance.project.label'),
             t('finance.table.category'),
             t('finance.table.amount'),
             t('finance.table.type'),
@@ -575,6 +921,7 @@ export const FinanceTracking = () => {
 
         const rows = filteredTransactions.map((transaction) => [
             toDate(transaction.date)?.toLocaleDateString(locale) || '',
+            transaction.projectId ? (projectLookup.get(transaction.projectId) || t('finance.project.unknown')) : t('finance.project.unassigned'),
             transaction.category || '',
             transaction.amount,
             t(`finance.type.${transaction.type}`),
@@ -626,15 +973,49 @@ export const FinanceTracking = () => {
                     <p className="text-muted finance-subtitle">{t('finance.subtitle')}</p>
                 </div>
                 <div className="finance-header__actions">
-                    <Button variant="secondary" onClick={openNewRecurringModal} disabled={!canManage}>
-                        {t('finance.actions.addRecurring')}
-                    </Button>
-                    <Button variant="primary" onClick={openNewTransactionModal} disabled={!canManage}>
-                        {t('finance.actions.addTransaction')}
-                    </Button>
+                    <div className="finance-view-switch">
+                        <button
+                            type="button"
+                            className={`finance-view-switch__item ${activeView === 'tracking' ? 'finance-view-switch__item--active' : ''}`}
+                            onClick={() => setActiveView('tracking')}
+                        >
+                            {t('finance.views.tracking')}
+                        </button>
+                        <button
+                            type="button"
+                            className={`finance-view-switch__item ${activeView === 'calculations' ? 'finance-view-switch__item--active' : ''}`}
+                            onClick={() => setActiveView('calculations')}
+                        >
+                            {t('finance.views.calculations')}
+                        </button>
+                    </div>
+                    {activeView === 'tracking' && (
+                        <>
+                            <Button variant="secondary" onClick={openNewRecurringModal} disabled={!canManage}>
+                                {t('finance.actions.addRecurring')}
+                            </Button>
+                            <Button variant="primary" onClick={openNewTransactionModal} disabled={!canManage}>
+                                {t('finance.actions.addTransaction')}
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
+            {activeView === 'calculations' ? (
+                <FinanceCalculationsPanel
+                    tenantId={tenantId}
+                    canManage={canManage}
+                    projects={projects}
+                    formatCurrency={formatCurrency}
+                    t={t}
+                    showError={showError}
+                    showSuccess={showSuccess}
+                    confirm={confirm}
+                    locale={locale}
+                />
+            ) : (
+                <>
             <div className="finance-summary">
                 <Card className="finance-summary-card finance-summary-card--income">
                     <div className="finance-summary-card__header">
@@ -668,6 +1049,196 @@ export const FinanceTracking = () => {
                     </div>
                 </Card>
             </div>
+
+            <Card className="finance-panel finance-ai-panel finance-panel--expanded">
+                <div className="finance-panel__header">
+                    <div>
+                        <h3 className="h3">{t('finance.ai.title')}</h3>
+                        <p className="text-muted">{t('finance.ai.subtitle')}</p>
+                    </div>
+                    <div className="finance-panel__header-actions">
+                        {renderStateChip(aiSectionState, financialUsage?.isConfigured === false ? 0 : financialUsage?.months?.length)}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => void loadFinancialUsage()}
+                            isLoading={financialUsageLoading}
+                        >
+                            {t('finance.ai.refresh')}
+                        </Button>
+                    </div>
+                </div>
+
+                {canManage && (
+                    <div className="finance-ai-config">
+                        <h4 className="h4">{t('finance.ai.config.title')}</h4>
+                        <div className="finance-ai-config__grid">
+                            <TextInput
+                                label={t('finance.ai.config.endpoint')}
+                                value={financialConnectionForm.endpoint}
+                                onChange={(event) =>
+                                    setFinancialConnectionForm((prev) => ({ ...prev, endpoint: event.target.value }))
+                                }
+                                placeholder={t('finance.ai.config.endpointPlaceholder')}
+                            />
+                            <TextInput
+                                label={t('finance.ai.config.token')}
+                                value={financialConnectionForm.token}
+                                onChange={(event) =>
+                                    setFinancialConnectionForm((prev) => ({ ...prev, token: event.target.value }))
+                                }
+                                placeholder={t('finance.ai.config.tokenPlaceholder')}
+                                type="password"
+                            />
+                            <TextInput
+                                label={t('finance.ai.config.months')}
+                                value={financialConnectionForm.months}
+                                onChange={(event) =>
+                                    setFinancialConnectionForm((prev) => ({ ...prev, months: event.target.value }))
+                                }
+                                type="number"
+                                min="1"
+                                max="24"
+                                step="1"
+                            />
+                            <Select
+                                label={t('finance.ai.config.linkedProject')}
+                                value={financialConnectionForm.linkedProjectId}
+                                onChange={(value) =>
+                                    setFinancialConnectionForm((prev) => ({ ...prev, linkedProjectId: String(value) }))
+                                }
+                                options={projectLinkOptions}
+                            />
+                        </div>
+                        <div className="finance-ai-config__actions">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleSaveFinancialConnection}
+                                isLoading={savingFinancialConfig || financialConfigLoading}
+                                disabled={financialConfigPermissionDenied || financialConfigLoading}
+                            >
+                                {t('finance.ai.config.save')}
+                            </Button>
+                            {financialConnectionForm.hasToken && (
+                                <span className="text-muted finance-ai-config__hint">{t('finance.ai.config.tokenStored')}</span>
+                            )}
+                            {financialConfigPermissionDenied && (
+                                <span className="text-muted finance-ai-config__hint">{t('finance.ai.config.ownerOnly')}</span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                <div className="finance-panel__content finance-panel__content--ai">
+                    {financialUsageLoading ? (
+                        <div className="finance-loading">{t('finance.ai.loading')}</div>
+                    ) : financialUsageError ? (
+                        <div className="finance-empty">{financialUsageError}</div>
+                    ) : !financialUsage ? (
+                        <div className="finance-empty">{t('finance.ai.empty')}</div>
+                    ) : financialUsage.isConfigured === false ? (
+                        <div className="finance-empty">{t('finance.ai.error.notConfigured')}</div>
+                    ) : (
+                        <>
+                        <div className="finance-ai-meta">
+                            <span className="text-muted">{t('finance.ai.linkedProject.label')}:</span>
+                            <strong>{linkedFinancialProjectName}</strong>
+                        </div>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.ai.metrics.aiUsd')}</span>
+                                <strong>{formatCurrency(toFiniteNumber(financialUsage.totals.aiUsd))}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.ai.metrics.inputTokens')}</span>
+                                <strong>{formatInteger(toFiniteNumber(financialUsage.totals.inputTokens))}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.ai.metrics.outputTokens')}</span>
+                                <strong>{formatInteger(toFiniteNumber(financialUsage.totals.outputTokens))}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.ai.metrics.totalTokens')}</span>
+                                <strong>{formatInteger(toFiniteNumber(financialUsage.totals.totalTokens))}</strong>
+                            </div>
+                        </div>
+
+                        <div className="finance-ai-breakdowns">
+                            <div className="finance-ai-breakdown">
+                                <div className="finance-ai-breakdown__header">
+                                    <span>{t('finance.ai.breakdown.topModels')}</span>
+                                    <span>{t('finance.ai.breakdown.aiUsd')}</span>
+                                </div>
+                                {aiTopModels.length === 0 ? (
+                                    <div className="finance-empty">{t('finance.ai.breakdown.empty')}</div>
+                                ) : (
+                                    aiTopModels.map((entry) => (
+                                        <div key={entry.name} className="finance-ai-breakdown__row">
+                                            <span>{entry.name}</span>
+                                            <span>{formatCurrency(entry.aiUsd)}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <div className="finance-ai-breakdown">
+                                <div className="finance-ai-breakdown__header">
+                                    <span>{t('finance.ai.breakdown.topFunctions')}</span>
+                                    <span>{t('finance.ai.breakdown.aiUsd')}</span>
+                                </div>
+                                {aiTopFunctions.length === 0 ? (
+                                    <div className="finance-empty">{t('finance.ai.breakdown.empty')}</div>
+                                ) : (
+                                    aiTopFunctions.map((entry) => (
+                                        <div key={entry.name} className="finance-ai-breakdown__row">
+                                            <span>{entry.name}</span>
+                                            <span>{formatCurrency(entry.aiUsd)}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                        </>
+                    )}
+                </div>
+            </Card>
+
+            <Card className="finance-panel finance-panel--expanded">
+                <div className="finance-panel__header">
+                    <div>
+                        <h3 className="h3">{t('finance.project.profitabilityTitle')}</h3>
+                        <p className="text-muted">{t('finance.project.profitabilitySubtitle')}</p>
+                    </div>
+                    {renderStateChip(projectProfitabilityState, projectProfitability.length)}
+                </div>
+                <div className="finance-panel__content finance-panel__content--table">
+                    <div className="finance-table">
+                        <div className="finance-table__header finance-table__header--profitability">
+                            <span>{t('finance.project.label')}</span>
+                            <span>{t('finance.summary.income')}</span>
+                            <span>{t('finance.summary.expenses')}</span>
+                            <span>{t('finance.project.net')}</span>
+                            <span>{t('finance.project.margin')}</span>
+                        </div>
+                        {projectProfitability.length === 0 ? (
+                            <div className="finance-empty">{t('finance.project.empty')}</div>
+                        ) : (
+                            projectProfitability.map((row) => (
+                                <div key={row.projectId} className="finance-table__row finance-table__row--profitability">
+                                    <span>{row.projectName}</span>
+                                    <span className="finance-amount finance-amount--income">{formatCurrency(row.income)}</span>
+                                    <span className="finance-amount finance-amount--expense">{formatCurrency(row.expenses)}</span>
+                                    <span className={row.net >= 0 ? 'finance-summary-card__value--positive' : 'finance-summary-card__value--negative'}>
+                                        {formatCurrency(row.net)}
+                                    </span>
+                                    <span>{row.marginPercent.toFixed(2)}%</span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            </Card>
 
             <div className="finance-panels">
                 <Card className="finance-panel">
@@ -729,7 +1300,7 @@ export const FinanceTracking = () => {
                                 size="sm"
                                 onClick={() => {
                                     setChartPeriod('all');
-                                    setFilters({ startDate: null, endDate: null, type: 'all', categories: [], search: '' });
+                                    setFilters({ startDate: null, endDate: null, type: 'all', projectId: 'all', categories: [], search: '' });
                                 }}
                             >
                                 {t('finance.filters.clear')}
@@ -773,6 +1344,12 @@ export const FinanceTracking = () => {
                             value={filters.type}
                             onChange={(value) => setFilters((prev) => ({ ...prev, type: value as TransactionType | 'all' }))}
                             options={typeOptions}
+                        />
+                        <Select
+                            label={t('finance.project.filter')}
+                            value={filters.projectId}
+                            onChange={(value) => setFilters((prev) => ({ ...prev, projectId: value }))}
+                            options={projectFilterOptions}
                         />
                         <div className="finance-filters__categories">
                             <span className="finance-filters__label">{t('finance.filters.categories')}</span>
@@ -870,130 +1447,145 @@ export const FinanceTracking = () => {
                 </Card>
             </div>
 
-            <Card className="finance-panel">
+            <Card className="finance-panel finance-panel--expanded">
                 <div className="finance-panel__header">
                     <h3 className="h3">{t('finance.table.title')}</h3>
-                    <span className="text-muted">{t('finance.table.subtitle')}</span>
-                </div>
-
-                <div className="finance-table">
-                    <div className="finance-table__header">
-                        <span>{t('finance.table.date')}</span>
-                        <span>{t('finance.table.category')}</span>
-                        <span>{t('finance.table.amount')}</span>
-                        <span>{t('finance.table.notes')}</span>
-                        <span>{t('finance.table.actions')}</span>
+                    <div className="finance-panel__header-actions">
+                        {renderStateChip(transactionsState, filteredTransactions.length)}
+                        <span className="text-muted">{t('finance.table.subtitle')}</span>
                     </div>
+                </div>
+                <div className="finance-panel__content finance-panel__content--table">
+                    <div className="finance-table">
+                        <div className="finance-table__header finance-table__header--transactions">
+                            <span>{t('finance.table.date')}</span>
+                            <span>{t('finance.project.label')}</span>
+                            <span>{t('finance.table.category')}</span>
+                            <span>{t('finance.table.amount')}</span>
+                            <span>{t('finance.table.notes')}</span>
+                            <span>{t('finance.table.actions')}</span>
+                        </div>
 
-                    {filteredTransactions.length === 0 ? (
-                        <div className="finance-empty">{t('finance.table.empty')}</div>
-                    ) : (
-                        filteredTransactions.map((transaction) => {
-                            const transactionDate = toDate(transaction.date);
-                            const amountValue = Number(transaction.amount) || 0;
-                            return (
-                                <motion.div
-                                    key={transaction.id}
-                                    className="finance-table__row"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <span>{transactionDate ? transactionDate.toLocaleDateString(locale) : '-'}</span>
-                                    <span>{transaction.category}</span>
-                                    <span className={`finance-amount finance-amount--${transaction.type}`}>
-                                        {transaction.type === 'expense' ? '-' : '+'}
-                                        {formatCurrency(Math.abs(amountValue))}
-                                    </span>
-                                    <span className="finance-table__notes">{transaction.notes || t('finance.table.notesEmpty')}</span>
-                                    <div className="finance-table__actions">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => openEditTransactionModal(transaction)}
-                                            disabled={!canManage}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteTransaction(transaction)}
-                                            disabled={!canManage}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-error)' }}>delete</span>
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            );
-                        })
-                    )}
+                        {filteredTransactions.length === 0 ? (
+                            <div className="finance-empty">{t('finance.table.empty')}</div>
+                        ) : (
+                            filteredTransactions.map((transaction) => {
+                                const transactionDate = toDate(transaction.date);
+                                const amountValue = Number(transaction.amount) || 0;
+                                return (
+                                    <motion.div
+                                        key={transaction.id}
+                                        className="finance-table__row finance-table__row--transactions"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        <span>{transactionDate ? transactionDate.toLocaleDateString(locale) : '-'}</span>
+                                        <span>{transaction.projectId ? (projectLookup.get(transaction.projectId) || t('finance.project.unknown')) : t('finance.project.unassigned')}</span>
+                                        <span>{transaction.category}</span>
+                                        <span className={`finance-amount finance-amount--${transaction.type}`}>
+                                            {transaction.type === 'expense' ? '-' : '+'}
+                                            {formatCurrency(Math.abs(amountValue))}
+                                        </span>
+                                        <span className="finance-table__notes">{transaction.notes || t('finance.table.notesEmpty')}</span>
+                                        <div className="finance-table__actions">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => openEditTransactionModal(transaction)}
+                                                disabled={!canManage}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleDeleteTransaction(transaction)}
+                                                disabled={!canManage}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-error)' }}>delete</span>
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             </Card>
 
-            <Card className="finance-panel">
+            <Card className="finance-panel finance-panel--expanded">
                 <div className="finance-panel__header">
                     <h3 className="h3">{t('finance.recurring.title')}</h3>
-                    <span className="text-muted">{t('finance.recurring.subtitle')}</span>
-                </div>
-                <div className="finance-table">
-                    <div className="finance-table__header">
-                        <span>{t('finance.recurring.category')}</span>
-                        <span>{t('finance.recurring.frequency')}</span>
-                        <span>{t('finance.recurring.amount')}</span>
-                        <span>{t('finance.recurring.range')}</span>
-                        <span>{t('finance.table.actions')}</span>
+                    <div className="finance-panel__header-actions">
+                        {renderStateChip(recurringState, recurringTransactions.length)}
+                        <span className="text-muted">{t('finance.recurring.subtitle')}</span>
                     </div>
+                </div>
+                <div className="finance-panel__content finance-panel__content--table">
+                    <div className="finance-table">
+                        <div className="finance-table__header finance-table__header--recurring">
+                            <span>{t('finance.project.label')}</span>
+                            <span>{t('finance.recurring.category')}</span>
+                            <span>{t('finance.recurring.frequency')}</span>
+                            <span>{t('finance.recurring.amount')}</span>
+                            <span>{t('finance.recurring.range')}</span>
+                            <span>{t('finance.table.actions')}</span>
+                        </div>
 
-                    {recurringTransactions.length === 0 ? (
-                        <div className="finance-empty">{t('finance.recurring.empty')}</div>
-                    ) : (
-                        recurringTransactions.map((transaction) => {
-                            const startDate = toDate(transaction.startDate);
-                            const endDate = toDate(transaction.endDate);
-                            const amountValue = Number(transaction.amount) || 0;
-                            return (
-                                <motion.div
-                                    key={transaction.id}
-                                    className="finance-table__row"
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ duration: 0.2 }}
-                                >
-                                    <span>{transaction.category}</span>
-                                    <span className="finance-pill">{t(`finance.frequency.${transaction.frequency}`)}</span>
-                                    <span className={`finance-amount finance-amount--${transaction.type}`}>
-                                        {transaction.type === 'expense' ? '-' : '+'}
-                                        {formatCurrency(Math.abs(amountValue))}
-                                    </span>
-                                    <span className="finance-table__notes">
-                                        {startDate ? startDate.toLocaleDateString(locale) : '-'}
-                                        {endDate ? ` -> ${endDate.toLocaleDateString(locale)}` : ''}
-                                    </span>
-                                    <div className="finance-table__actions">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => openEditRecurringModal(transaction)}
-                                            disabled={!canManage}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleDeleteRecurring(transaction)}
-                                            disabled={!canManage}
-                                        >
-                                            <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-error)' }}>delete</span>
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            );
-                        })
-                    )}
+                        {recurringTransactions.length === 0 ? (
+                            <div className="finance-empty">{t('finance.recurring.empty')}</div>
+                        ) : (
+                            recurringTransactions.map((transaction) => {
+                                const startDate = toDate(transaction.startDate);
+                                const endDate = toDate(transaction.endDate);
+                                const amountValue = Number(transaction.amount) || 0;
+                                return (
+                                    <motion.div
+                                        key={transaction.id}
+                                        className="finance-table__row finance-table__row--recurring"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.2 }}
+                                    >
+                                        <span>{transaction.projectId ? (projectLookup.get(transaction.projectId) || t('finance.project.unknown')) : t('finance.project.unassigned')}</span>
+                                        <span>{transaction.category}</span>
+                                        <span className="finance-pill">{t(`finance.frequency.${transaction.frequency}`)}</span>
+                                        <span className={`finance-amount finance-amount--${transaction.type}`}>
+                                            {transaction.type === 'expense' ? '-' : '+'}
+                                            {formatCurrency(Math.abs(amountValue))}
+                                        </span>
+                                        <span className="finance-table__notes">
+                                            {startDate ? startDate.toLocaleDateString(locale) : '-'}
+                                            {endDate ? ` -> ${endDate.toLocaleDateString(locale)}` : ''}
+                                        </span>
+                                        <div className="finance-table__actions">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => openEditRecurringModal(transaction)}
+                                                disabled={!canManage}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>edit</span>
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleDeleteRecurring(transaction)}
+                                                disabled={!canManage}
+                                            >
+                                                <span className="material-symbols-outlined" style={{ fontSize: '18px', color: 'var(--color-error)' }}>delete</span>
+                                            </Button>
+                                        </div>
+                                    </motion.div>
+                                );
+                            })
+                        )}
+                    </div>
                 </div>
             </Card>
+                </>
+            )}
 
             <Modal
                 isOpen={transactionModalOpen}
@@ -1019,6 +1611,12 @@ export const FinanceTracking = () => {
                     </div>
 
                     <div className="finance-modal__grid">
+                        <Select
+                            label={t('finance.project.field')}
+                            value={transactionForm.projectId}
+                            onChange={(value) => setTransactionForm((prev) => ({ ...prev, projectId: String(value) }))}
+                            options={projectFormOptions}
+                        />
                         <DatePicker
                             label={t('finance.form.date')}
                             value={transactionForm.date}
@@ -1111,6 +1709,12 @@ export const FinanceTracking = () => {
                     </div>
 
                     <div className="finance-modal__grid">
+                        <Select
+                            label={t('finance.project.field')}
+                            value={recurringForm.projectId}
+                            onChange={(value) => setRecurringForm((prev) => ({ ...prev, projectId: String(value) }))}
+                            options={projectFormOptions}
+                        />
                         <DatePicker
                             label={t('finance.form.startDate')}
                             value={recurringForm.startDate}

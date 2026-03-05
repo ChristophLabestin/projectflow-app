@@ -6,7 +6,7 @@ export const de: Translations = {
         back: "Zurück zum Start",
         titles: { impressum: "Impressum", privacy: "Datenschutzerklärung", terms: "Nutzungsbedingungen / SaaS-Vertrag für ProjectFlow", appPrivacy: "App Datenschutzerklärung" },
         nav: { impressum: "Impressum", privacy: "Datenschutzerklärung", terms: "AGB", appPrivacy: "App Datenschutz" },
-        errors: { termsMissing: "Fehler beim Laden der Nutzungsbedingungen. Uebersetzung fehlt moeglicherweise." },
+        errors: { termsMissing: "Fehler beim Laden der Nutzungsbedingungen. Übersetzung fehlt möglicherweise." },
         impressum: {
             intro: "Angaben gemäß § 5 DDG",
             providerTitle: "Anbieter",

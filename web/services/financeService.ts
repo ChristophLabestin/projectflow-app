@@ -188,6 +188,7 @@ export const generateMissingRecurringTransactions = async (
             batch.set(ref, {
                 tenantId: resolvedTenant,
                 userId: recurring.userId,
+                projectId: recurring.projectId || null,
                 type: recurring.type,
                 date: Timestamp.fromDate(date),
                 category: recurring.category,

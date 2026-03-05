@@ -8,6 +8,7 @@ const baseTransactions: Transaction[] = [
         id: 't1',
         tenantId: 'tenant-a',
         userId: 'user-a',
+        projectId: 'project-a',
         type: 'income',
         date: new Date('2025-01-10'),
         category: 'Sales',
@@ -19,6 +20,7 @@ const baseTransactions: Transaction[] = [
         id: 't2',
         tenantId: 'tenant-a',
         userId: 'user-a',
+        projectId: 'project-b',
         type: 'expense',
         date: new Date('2025-01-12'),
         category: 'Rent',
@@ -45,6 +47,16 @@ describe('finance utils', () => {
         });
         expect(filtered).toHaveLength(1);
         expect(filtered[0].id).toBe('t2');
+    });
+
+    it('filters transactions by project', () => {
+        const filtered = filterTransactions(baseTransactions, {
+            projectId: 'project-a',
+            type: 'all',
+        });
+
+        expect(filtered).toHaveLength(1);
+        expect(filtered[0].id).toBe('t1');
     });
 
     it('generates recurring occurrences based on frequency', () => {

@@ -61,6 +61,60 @@ const getStatusIcon = (status?: string, kind: StatusKind = 'task') => {
                                 'circle';
 };
 
+const COMPACT_DEFAULT_SIZE = { width: 400, height: 400 };
+const COMPACT_MIN_WIDTH = 320;
+const COMPACT_MIN_HEIGHT = 250;
+const COMPACT_VIEWPORT_BOTTOM_MARGIN = 100;
+const COMPACT_STORAGE_KEYS = {
+    mode: 'pinned_tasks_compact_mode',
+    position: 'pinned_tasks_compact_position',
+    size: 'pinned_tasks_compact_size'
+};
+
+const toFiniteNumber = (value: unknown, fallback: number) => {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const clampCompactSize = (size: { width: number; height: number }) => {
+    const maxWidth = typeof window !== 'undefined' ? Math.max(COMPACT_MIN_WIDTH, window.innerWidth) : COMPACT_DEFAULT_SIZE.width;
+    const maxHeight = typeof window !== 'undefined' ? Math.max(COMPACT_MIN_HEIGHT, window.innerHeight) : COMPACT_DEFAULT_SIZE.height;
+    const width = toFiniteNumber(size?.width, COMPACT_DEFAULT_SIZE.width);
+    const height = toFiniteNumber(size?.height, COMPACT_DEFAULT_SIZE.height);
+
+    return {
+        width: Math.min(maxWidth, Math.max(COMPACT_MIN_WIDTH, Math.round(width))),
+        height: Math.min(maxHeight, Math.max(COMPACT_MIN_HEIGHT, Math.round(height)))
+    };
+};
+
+const clampCompactPosition = (position: { x: number; y: number }, size: { width: number; height: number }) => {
+    if (typeof window === 'undefined') {
+        return { x: 0, y: 0 };
+    }
+
+    const maxX = Math.max(0, window.innerWidth - size.width);
+    const maxY = Math.max(0, window.innerHeight - COMPACT_VIEWPORT_BOTTOM_MARGIN);
+    const x = toFiniteNumber(position?.x, 0);
+    const y = toFiniteNumber(position?.y, 0);
+
+    return {
+        x: Math.max(0, Math.min(maxX, Math.round(x))),
+        y: Math.max(0, Math.min(maxY, Math.round(y)))
+    };
+};
+
+const getDefaultCompactPosition = (size: { width: number; height: number }) => {
+    if (typeof window === 'undefined') {
+        return { x: 0, y: 0 };
+    }
+
+    return {
+        x: Math.max(0, window.innerWidth - size.width - 24),
+        y: Math.max(0, window.innerHeight - size.height - 24)
+    };
+};
+
 
 
 const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClose?: () => void; onComplete?: (id: string) => void }) => {
@@ -727,35 +781,82 @@ export const PinnedTasksModal = () => {
     const [pressEnterPrefix, pressEnterSuffix] = pressEnterHint.split('{key}');
 
     // Draggable position and size state for compact mode
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [size, setSize] = useState({ width: 400, height: 400 });
+    const [position, setPosition] = useState(() => getDefaultCompactPosition(COMPACT_DEFAULT_SIZE));
+    const [size, setSize] = useState(() => COMPACT_DEFAULT_SIZE);
     const [isDragging, setIsDragging] = useState(false);
     const [isResizing, setIsResizing] = useState(false);
     const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-
-    // Reset position when entering compact mode
-    useEffect(() => {
-        if (isCompactMode) {
-            setPosition({
-                x: window.innerWidth - 424,
-                y: window.innerHeight - 424
-            });
-            setSize({ width: 400, height: 400 });
-        }
-    }, [isCompactMode]);
+    const [hasLoadedCompactState, setHasLoadedCompactState] = useState(false);
 
     // Default selection: Focus item if exists, else first pinned item
     useEffect(() => {
-        if (isModalOpen) {
-            if (focusItemId && pinnedItems.some(i => i.id === focusItemId)) {
-                setSelectedItemId(focusItemId);
-            } else if (pinnedItems.length > 0) {
-                setSelectedItemId(pinnedItems[0].id);
-            } else {
-                setSelectedItemId(null);
-            }
+        if (!isModalOpen) return;
+        const hasSelectedItem = selectedItemId && pinnedItems.some(i => i.id === selectedItemId);
+
+        if (hasSelectedItem) {
+            return;
         }
-    }, [isModalOpen, focusItemId, pinnedItems.length]);
+
+        if (focusItemId && pinnedItems.some(i => i.id === focusItemId)) {
+            setSelectedItemId(focusItemId);
+        } else if (pinnedItems.length > 0) {
+            setSelectedItemId(pinnedItems[0].id);
+        } else {
+            setSelectedItemId(null);
+        }
+    }, [isModalOpen, focusItemId, pinnedItems, selectedItemId]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') {
+            setHasLoadedCompactState(true);
+            return;
+        }
+
+        try {
+            const storedMode = localStorage.getItem(COMPACT_STORAGE_KEYS.mode);
+            const storedPosition = localStorage.getItem(COMPACT_STORAGE_KEYS.position);
+            const storedSize = localStorage.getItem(COMPACT_STORAGE_KEYS.size);
+
+            const parsedSize = storedSize ? JSON.parse(storedSize) : COMPACT_DEFAULT_SIZE;
+            const normalizedSize = clampCompactSize(parsedSize);
+
+            const parsedPosition = storedPosition ? JSON.parse(storedPosition) : getDefaultCompactPosition(normalizedSize);
+            const normalizedPosition = clampCompactPosition(parsedPosition, normalizedSize);
+
+            setSize(normalizedSize);
+            setPosition(normalizedPosition);
+            setIsCompactMode(storedMode === 'true');
+        } catch (error) {
+            console.warn('Failed to restore compact quick access state', error);
+            const fallbackSize = clampCompactSize(COMPACT_DEFAULT_SIZE);
+            setSize(fallbackSize);
+            setPosition(getDefaultCompactPosition(fallbackSize));
+            setIsCompactMode(false);
+        } finally {
+            setHasLoadedCompactState(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!hasLoadedCompactState || typeof window === 'undefined') return;
+
+        localStorage.setItem(COMPACT_STORAGE_KEYS.mode, String(isCompactMode));
+        localStorage.setItem(COMPACT_STORAGE_KEYS.position, JSON.stringify(position));
+        localStorage.setItem(COMPACT_STORAGE_KEYS.size, JSON.stringify(size));
+    }, [hasLoadedCompactState, isCompactMode, position, size]);
+
+    useEffect(() => {
+        const handleResize = () => {
+            setSize(prevSize => {
+                const nextSize = clampCompactSize(prevSize);
+                setPosition(prevPosition => clampCompactPosition(prevPosition, nextSize));
+                return nextSize;
+            });
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Drag handlers
     const handleDragStart = (e: React.MouseEvent) => {
@@ -866,10 +967,10 @@ export const PinnedTasksModal = () => {
             e.preventDefault(); // Prevent text selection
 
             if (isDragging) {
-                setPosition({
-                    x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x)),
-                    y: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y))
-                });
+                setPosition(clampCompactPosition({
+                    x: e.clientX - dragOffset.x,
+                    y: e.clientY - dragOffset.y
+                }, size));
             }
             if (isResizing && resizeDirection) {
                 const deltaX = e.clientX - dragOffset.x;
@@ -882,31 +983,33 @@ export const PinnedTasksModal = () => {
 
                 // Horizontal resize from right
                 if (resizeDirection.includes('e')) {
-                    newWidth = Math.max(320, size.width + deltaX);
+                    newWidth = Math.max(COMPACT_MIN_WIDTH, size.width + deltaX);
                 }
                 // Horizontal resize from left
                 if (resizeDirection.includes('w')) {
                     const potentialWidth = size.width - deltaX;
-                    if (potentialWidth >= 320) {
+                    if (potentialWidth >= COMPACT_MIN_WIDTH) {
                         newWidth = potentialWidth;
                         newX = position.x + deltaX;
                     }
                 }
                 // Vertical resize from bottom
                 if (resizeDirection.includes('s')) {
-                    newHeight = Math.max(250, size.height + deltaY);
+                    newHeight = Math.max(COMPACT_MIN_HEIGHT, size.height + deltaY);
                 }
                 // Vertical resize from top
                 if (resizeDirection.includes('n')) {
                     const potentialHeight = size.height - deltaY;
-                    if (potentialHeight >= 250) {
+                    if (potentialHeight >= COMPACT_MIN_HEIGHT) {
                         newHeight = potentialHeight;
                         newY = position.y + deltaY;
                     }
                 }
 
-                setSize({ width: newWidth, height: newHeight });
-                setPosition({ x: newX, y: newY });
+                const nextSize = clampCompactSize({ width: newWidth, height: newHeight });
+                const nextPosition = clampCompactPosition({ x: newX, y: newY }, nextSize);
+                setSize(nextSize);
+                setPosition(nextPosition);
                 setDragOffset({ x: e.clientX, y: e.clientY });
             }
         };
@@ -934,8 +1037,14 @@ export const PinnedTasksModal = () => {
 
     if (!isModalOpen) return null;
 
+    const activeItemId = selectedItemId && pinnedItems.some(i => i.id === selectedItemId)
+        ? selectedItemId
+        : focusItemId && pinnedItems.some(i => i.id === focusItemId)
+            ? focusItemId
+            : pinnedItems[0]?.id ?? null;
+
     // Compact floating mode - draggable and resizable
-    if (isCompactMode && selectedItemId) {
+    if (isCompactMode) {
         return (
             <div
                 className="pinned-tasks-compact"
@@ -955,16 +1064,16 @@ export const PinnedTasksModal = () => {
                         <span className="material-symbols-outlined pinned-tasks-compact__drag-icon">drag_indicator</span>
                         <span className="material-symbols-outlined pinned-tasks-compact__focus-icon">center_focus_strong</span>
                         <span className="pinned-tasks-compact__title">
-                            {pinnedItems.find(i => i.id === selectedItemId)?.title || t('pinnedTasks.header.focusFallback')}
+                            {pinnedItems.find(i => i.id === activeItemId)?.title || t('pinnedTasks.header.focusFallback')}
                         </span>
                     </div>
                     <div className="pinned-tasks-compact__actions">
                         {/* Compact Actions */}
-                        {selectedItemId && (
+                        {activeItemId && (
                             <>
                                 <button
                                     onClick={() => {
-                                        const item = pinnedItems.find(i => i.id === selectedItemId);
+                                        const item = pinnedItems.find(i => i.id === activeItemId);
                                         if (item && item.projectId) {
                                             toggleModal();
                                             navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
@@ -976,15 +1085,15 @@ export const PinnedTasksModal = () => {
                                     <span className="material-symbols-outlined">open_in_new</span>
                                 </button>
                                 <button
-                                    onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                    className={`pinned-tasks-compact__action ${focusItemId === selectedItemId ? 'is-active' : ''}`}
+                                    onClick={() => setFocusItem(focusItemId === activeItemId ? null : activeItemId)}
+                                    className={`pinned-tasks-compact__action ${focusItemId === activeItemId ? 'is-active' : ''}`}
                                     title={t('pinnedTasks.actions.toggleFocus')}
                                 >
-                                    <span className="material-symbols-outlined">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                    <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                                 </button>
                                 <button
                                     onClick={() => {
-                                        unpinItem(selectedItemId);
+                                        unpinItem(activeItemId);
                                         if (pinnedItems.length <= 1) toggleModal();
                                     }}
                                     className="pinned-tasks-compact__action is-danger"
@@ -1014,11 +1123,18 @@ export const PinnedTasksModal = () => {
 
                 {/* Compact Content */}
                 <div className="pinned-tasks-compact__body">
-                    <TaskDetailView
-                        itemId={selectedItemId}
-                        key={selectedItemId}
-                        onComplete={handleItemCompletion}
-                    />
+                    {activeItemId ? (
+                        <TaskDetailView
+                            itemId={activeItemId}
+                            key={activeItemId}
+                            onComplete={handleItemCompletion}
+                        />
+                    ) : (
+                        <div className="empty-state">
+                            <span className="material-symbols-outlined icon">checklist</span>
+                            <p>{t('pinnedTasks.empty.selectItem')}</p>
+                        </div>
+                    )}
                 </div>
 
                 {/* Edge Resize Handles */}
@@ -1074,11 +1190,11 @@ export const PinnedTasksModal = () => {
             >
                 {/* Header Bar with close button */}
                 <div className="modal-actions-header">
-                    {selectedItemId && (
+                    {activeItemId && (
                         <>
                             <button
                                 onClick={() => {
-                                    const item = pinnedItems.find(i => i.id === selectedItemId);
+                                    const item = pinnedItems.find(i => i.id === activeItemId);
                                     if (item && item.projectId) {
                                         toggleModal();
                                         navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
@@ -1090,15 +1206,15 @@ export const PinnedTasksModal = () => {
                                 <span className="material-symbols-outlined">open_in_new</span>
                             </button>
                             <button
-                                onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                className={`action-btn ${focusItemId === selectedItemId ? 'active' : ''}`}
-                                title={focusItemId === selectedItemId ? t('pinnedTasks.actions.unsetFocus') : t('pinnedTasks.actions.setFocus')}
+                                onClick={() => setFocusItem(focusItemId === activeItemId ? null : activeItemId)}
+                                className={`action-btn ${focusItemId === activeItemId ? 'active' : ''}`}
+                                title={focusItemId === activeItemId ? t('pinnedTasks.actions.unsetFocus') : t('pinnedTasks.actions.setFocus')}
                             >
-                                <span className="material-symbols-outlined">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                             </button>
                             <button
                                 onClick={() => {
-                                    unpinItem(selectedItemId);
+                                    unpinItem(activeItemId);
                                 }}
                                 className="action-btn danger"
                                 title={t('pinnedTasks.actions.unpin')}
@@ -1106,15 +1222,15 @@ export const PinnedTasksModal = () => {
                                 <span className="material-symbols-outlined">keep_off</span>
                             </button>
                             <div className="divider" />
-                            <button
-                                onClick={() => setIsCompactMode(true)}
-                                className="action-btn"
-                                title={t('pinnedTasks.actions.compactMode')}
-                            >
-                                <span className="material-symbols-outlined">picture_in_picture_alt</span>
-                            </button>
                         </>
                     )}
+                    <button
+                        onClick={() => setIsCompactMode(true)}
+                        className="action-btn"
+                        title={t('pinnedTasks.actions.compactMode')}
+                    >
+                        <span className="material-symbols-outlined">picture_in_picture_alt</span>
+                    </button>
                     <button
                         onClick={toggleModal}
                         className="action-btn danger"
@@ -1163,7 +1279,7 @@ export const PinnedTasksModal = () => {
 
                         {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).map(item => {
                             const isFocus = item.id === focusItemId;
-                            const isSelected = item.id === selectedItemId;
+                            const isSelected = item.id === activeItemId;
                             const isIssue = item.type === 'issue';
                             const isCompleting = completingItems.includes(item.id);
                             const isAdding = addingItems.includes(item.id);
@@ -1254,10 +1370,10 @@ export const PinnedTasksModal = () => {
 
                 {/* Main Content (Clipboard) */}
                 <div className="main-content-area">
-                    {selectedItemId && !completingItems.includes(selectedItemId) ? (
+                    {activeItemId && !completingItems.includes(activeItemId) ? (
                         <TaskDetailView
-                            itemId={selectedItemId}
-                            key={selectedItemId}
+                            itemId={activeItemId}
+                            key={activeItemId}
                             onComplete={handleItemCompletion}
                         />
                     ) : (

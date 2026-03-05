@@ -69,7 +69,8 @@ Before making architectural decisions or implementing features, read the documen
 Whenever implementing new pages, features, or components:
 1) Read the relevant docs above.
 2) Implement with the repo conventions (routing, SCSS, components).
-3) Update documentation:
+3) If new follow-up work is discovered, create a ProjectFlow task in the linked project and document it in the appropriate repo docs.
+4) Update documentation:
    - `SITEMAP.md` for pages/routes
    - `COMPONENTS.md` for new reusable components
    - `STYLING.md` if tokens/rules change
