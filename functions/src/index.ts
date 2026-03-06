@@ -25,6 +25,36 @@ import {
     saveWorkspaceFinancialConfig,
     saveWorkspaceSmtpConfig
 } from './workspace-admin';
+import {
+    allocatePayment,
+    buildFinancialReports,
+    buildTaxReport,
+    calculateScenarioSnapshot,
+    confirmReconciliation,
+    createBill,
+    createInvoice,
+    extractInvoiceFromDocument,
+    generateDatevExport,
+    importBankStatement,
+    issueInvoice,
+    migrateLegacyFinanceV1ToV2,
+    postBill,
+    postJournalEntry,
+    recordPayment,
+    reopenPeriod,
+    runMonthlyClose,
+    suggestReconciliation,
+    unallocatePayment,
+    upsertFinanceAccount,
+    upsertFinanceCustomer,
+    upsertFinancePeriod,
+    upsertFinanceSettings,
+    upsertFinanceTaxCode,
+    upsertFinanceVendor,
+    upsertScenario,
+    voidBill,
+    voidInvoice
+} from './finance-v2';
 
 
 
@@ -67,6 +97,34 @@ export {
     deleteWorkspaceApiToken,
     getWorkspaceFinancialConfig,
     saveWorkspaceFinancialConfig,
-    fetchWorkspaceFinancialUsage
+    fetchWorkspaceFinancialUsage,
+    postJournalEntry,
+    createInvoice,
+    issueInvoice,
+    voidInvoice,
+    createBill,
+    extractInvoiceFromDocument,
+    postBill,
+    voidBill,
+    recordPayment,
+    allocatePayment,
+    unallocatePayment,
+    importBankStatement,
+    suggestReconciliation,
+    confirmReconciliation,
+    runMonthlyClose,
+    reopenPeriod,
+    generateDatevExport,
+    buildFinancialReports,
+    buildTaxReport,
+    migrateLegacyFinanceV1ToV2,
+    upsertScenario,
+    calculateScenarioSnapshot,
+    upsertFinanceAccount,
+    upsertFinancePeriod,
+    upsertFinanceSettings,
+    upsertFinanceCustomer,
+    upsertFinanceVendor,
+    upsertFinanceTaxCode
 };
 export * from './passkeys';

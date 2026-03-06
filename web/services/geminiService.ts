@@ -1,10 +1,8 @@
-// Removed: import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool } from "../types";
-import { auth, functions } from "./firebase";
+import { functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
 import { incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
-import { getActiveTenantId } from './domain/authService';
-import { getAIUsage, getUserProfile } from './domain/usersService';
+import { getAIUsage } from './domain/usersService';
 import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
 
 // Polyfills for types removed from @google/genai import to specific string literals/types
@@ -18,7 +16,7 @@ enum Type {
 }
 type Schema = any;
 
-// Helper to call generic Gemini Cloud Function with user's specific API Key if available (Pre-Alpha)
+// Helper to call generic AI Cloud Function
 const callGeminiAPI = async (params: {
     prompt: string,
     systemInstruction?: string,
@@ -28,22 +26,7 @@ const callGeminiAPI = async (params: {
     model?: string,
     tools?: any
 }) => {
-    const user = auth.currentUser;
-    let apiKey = undefined;
-
-    // Pre-Alpha: Fetch user's API key from profile
-    if (user) {
-        try {
-            const profile = await getUserProfile(user.uid, getActiveTenantId());
-            if (profile?.geminiConfig?.apiKey) {
-                apiKey = profile.geminiConfig.apiKey;
-            }
-        } catch (e) {
-            console.warn("Failed to fetch API key from profile", e);
-        }
-    }
-
-    const { prompt, systemInstruction, responseSchema, temperature = 0.7, jsonMode = false, model = "gemini-3-flash-preview", tools } = params;
+    const { prompt, systemInstruction, responseSchema, temperature = 0.7, jsonMode = false, model = "gpt-5-mini", tools } = params;
 
     const callFn = httpsCallable(functions, 'callGemini');
 
@@ -55,7 +38,6 @@ const callGeminiAPI = async (params: {
         jsonMode: jsonMode || !!responseSchema, // schema implies json
         responseSchema,
         model,
-        apiKey,
         tools
     });
 
@@ -105,7 +87,7 @@ const runWithTokenCheck = async (
 };
 
 // Stub for getAiClient - used by legacy functions but ignored by runWithTokenCheck
-const getAiClient = (apiKey?: string) => {
+const getAiClient = () => {
     return { models: {} } as any;
 };
 
@@ -164,7 +146,7 @@ export const chatWithCora = async (
     options?: {
         mode?: StudioTool | null;
         useSearch?: boolean;
-        model?: 'gemini-3-flash-preview' | 'gemini-3-pro-preview';
+        model?: 'gpt-5-mini';
         tenantContext?: {
             name?: string;
             description?: string;
@@ -174,7 +156,7 @@ export const chatWithCora = async (
     }
 ): Promise<string> => {
     const { mode, useSearch, tenantContext } = options || {};
-    const model = options?.model || 'gemini-3-flash-preview';
+    const model = options?.model || 'gpt-5-mini';
     const contextLines: string[] = [];
 
     if (tenantContext?.name) {
@@ -249,7 +231,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: `Generate 4-6 specific, actionable project flows based on this goal: "${prompt}". 
             Keep descriptions concise (under 20 words).`,
             config: {
@@ -284,7 +266,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
 export const generateProjectDescription = async (projectName: string, context: string): Promise<string> => {
     try {
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: `Write a professional, concise (1-2 sentences) project description for a project named "${projectName}". 
             Context: ${context || "A general software or business initiative."}.`,
         }));
@@ -366,7 +348,7 @@ export const generateProjectReport = async (
         `;
 
         const response = await callGeminiAPI({
-            model: "gemini-3-flash-preview", // Use a stable model name or whatever is available
+            model: "gpt-5-mini", // Use a stable model name or whatever is available
             prompt: prompt,
             temperature: 0.4,
         });
@@ -416,7 +398,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
         Keep descriptions under 18 words.
         `;
         const response = await callGeminiAPI({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             prompt: prompt,
             responseSchema,
             temperature: 0.7
@@ -465,7 +447,7 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
             .join('\n');
 
         const response = await callGeminiAPI({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             prompt: `You are CORA, a mind-mapping assistant. Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
             Project: "${project.title}".
                 Flows (id: title — description):
@@ -529,7 +511,7 @@ export const generateProjectBlueprint = async (prompt: string): Promise<ProjectB
         };
 
         const response = await callGeminiAPI({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             prompt: `Create a comprehensive project blueprint for this flow: "${prompt}". 
             Flesh out the name, a compelling description, identify the target audience,
             plan 3 - 5 major milestones, and list 5 - 8 initial setup and development tasks.`,
@@ -567,7 +549,7 @@ export const analyzeProjectRisks = async (context: string): Promise<ProjectRisk[
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: `Analyze the potential project risks for this project description: "${context}".
             Identify 4 - 6 specific risks, assess their impact and probability, and suggest a practical mitigation strategy for each.`,
             config: {
@@ -622,7 +604,7 @@ export const generateSWOTAnalysisAI = async (idea: any): Promise<{ strengths: st
         Provide 3 - 5 NEW, concise bullet points for each category based on the description and keywords.
         `;
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -669,7 +651,7 @@ export const refineIdeaAI = async (idea: any, history: { role: string, content: 
         ];
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: contents
         }));
 
@@ -742,7 +724,7 @@ Keep the HTML clean. Use only h1, h2, h3, p, ul, li, strong, em tags. No div or 
 `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -773,7 +755,7 @@ export const generateMagicalDraft = async (title: string, type: string): Promise
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -806,7 +788,7 @@ export const generateKeywordsAI = async (idea: Idea, existingKeywords: string[])
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -906,7 +888,7 @@ Content Plan: ${parsed.planningPosts?.length || 0} posts scheduled.
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -973,7 +955,7 @@ export const generateBlogPostAI = async (topic: string, language: string = 'en',
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1023,7 +1005,7 @@ export const suggestBlogTopicsAI = async (project: Project): Promise<{ title: st
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1065,7 +1047,7 @@ export const generateProductStrategyAI = async (idea: Idea): Promise<{ vision: s
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1112,7 +1094,7 @@ export const generateAdCopy = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1172,7 +1154,7 @@ export const generateTargetingSuggestions = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1212,7 +1194,7 @@ export const generateBudgetRecommendation = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1252,7 +1234,7 @@ export const suggestObjective = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1284,7 +1266,7 @@ export const rewriteText = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "text/plain",
@@ -1359,7 +1341,7 @@ export const generateProductDiscoveryAI = async (idea: Idea): Promise<{
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1397,7 +1379,7 @@ export const generateSocialCaption = async (topic: string, tone: string, platfor
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.8,
@@ -1420,7 +1402,7 @@ export const generateSocialHashtags = async (topic: string, platform: string, li
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -1448,7 +1430,7 @@ export const reworkSocialHashtags = async (hashtags: string, caption: string, pl
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.5,
@@ -1484,7 +1466,7 @@ export const generateYouTubeScript = async (title: string, thumbnailIdea: string
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -1554,7 +1536,7 @@ Generate:
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1645,7 +1627,7 @@ Generate:
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1709,7 +1691,7 @@ Generate:
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1782,7 +1764,7 @@ export const generateCampaignDetailsAI = async (title: string): Promise<{
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1836,7 +1818,7 @@ Write the description in a way that:
 Respond ONLY with the HTML content (using <p>, <strong>, <em> tags). No markdown, no code blocks.`;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -1920,7 +1902,7 @@ Requirements:
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1974,7 +1956,7 @@ export const generateSocialStrategyAI = async (idea: Idea): Promise<{
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2030,7 +2012,7 @@ Generate:
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2063,7 +2045,7 @@ export const refineSocialContentAI = async (content: string, platform: string, t
 `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: { temperature: 0.7 }
         }));
@@ -2096,7 +2078,7 @@ export const generateAudienceAlternativesAI = async (idea: Idea): Promise<string
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2138,7 +2120,7 @@ export const expandStoryboardSceneAI = async (sceneTitle: string, visual: string
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2172,7 +2154,7 @@ export const generateSocialCTA_AI = async (content: string, platform: string, go
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2211,7 +2193,7 @@ export const scoreSocialContentAI = async (content: string, strategy: string): P
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2262,7 +2244,7 @@ export const generateSocialPlaybookAI = async (idea: Idea, platforms: SocialPlat
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2325,7 +2307,7 @@ export const generatePlatformConceptsAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2361,7 +2343,7 @@ export const refineCampaignConceptAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: { temperature: 0.8 }
         }));
@@ -2395,7 +2377,7 @@ export const generateCampaignHooksAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2442,7 +2424,7 @@ export const optimizeCampaignTimelineAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2498,7 +2480,7 @@ export const generateSocialCampaignConceptAI = async (idea: Idea): Promise<{
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2714,7 +2696,7 @@ export const generateSocialCampaignStrategyAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
             config: {
                 responseMimeType: "application/json",
@@ -2882,7 +2864,7 @@ export const generateCampaignWeekPlanAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -2941,7 +2923,7 @@ export const suggestOptimalScheduleAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -3021,7 +3003,7 @@ export const analyzeContentMixAI = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -3064,7 +3046,7 @@ export const generatePaidAdsRiskAnalysis = async (
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -3099,7 +3081,7 @@ const _deprecated_translateBlogPostAI = async (content: string, targetLanguage: 
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "text/plain",
@@ -3158,7 +3140,7 @@ export const translateBlogPostAI = async (
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-flash-preview",
+            model: "gpt-5-mini",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",

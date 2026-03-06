@@ -38,7 +38,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
-- [x] `/finance` — Tenant finance tracking + BWL calculations (transactions, recurring bookings, scenario-based unit/total pricing, contribution margin, break-even)
+- [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
 - [x] `/create` — Create Project Wizard (SCSS refactor, common inputs/buttons/selects, preview + assets panels aligned)
 - [x] `/team` — Team / members management

@@ -58,6 +58,8 @@ const en = {
     'nav.activity': 'Activity',
 
     'sidebar.resources': 'Resources',
+    'sidebar.finance.useRegularNavigation': 'Back to main navigation',
+    'sidebar.finance.useFinanceNavigation': 'Show finance navigation',
 
 
 

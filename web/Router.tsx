@@ -215,6 +215,7 @@ export const AppRouter = () => {
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
                         <Route path="/finance" element={withRouteSuspense(<FinanceTracking />)} />
+                        <Route path="/finance/:financeSection" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/brainstorm" element={<Brainstorming />} />
                         <Route path="/create" element={<CreateProjectWizard />} />
                         <Route path="/team" element={<Team />} />

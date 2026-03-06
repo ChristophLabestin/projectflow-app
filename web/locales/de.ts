@@ -58,6 +58,8 @@ const de = {
     'nav.activity': 'Aktivität',
 
     'sidebar.resources': 'Ressourcen',
+    'sidebar.finance.useRegularNavigation': 'Zur Hauptnavigation',
+    'sidebar.finance.useFinanceNavigation': 'Finance-Navigation anzeigen',
 
 
 

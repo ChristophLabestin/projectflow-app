@@ -1,5 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import { auth } from '../services/firebase';
 import { getUserIdeas } from '../services/domain/ideasService';
 import { getUserTasks } from '../services/domain/tasksService';
@@ -107,11 +108,21 @@ const NavItem = ({
 
 export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) => {
     const user = auth.currentUser;
+    const location = useLocation();
     const { theme } = useTheme();
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated } = useAuth();
     const { hasPermission } = usePermissions();
     const canViewFinance = hasPermission('tenant.finance.view');
+    const isFinanceContext = location.pathname === '/finance' || location.pathname.startsWith('/finance/');
+    const [useRegularNavInFinance, setUseRegularNavInFinance] = React.useState(false);
+    const showFinanceNavigation = isFinanceContext && canViewFinance && !useRegularNavInFinance;
+
+    React.useEffect(() => {
+        if (!isFinanceContext) {
+            setUseRegularNavInFinance(false);
+        }
+    }, [isFinanceContext]);
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
@@ -196,6 +207,23 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 
                 {/* Scope: Global Workspace */}
                 <div>
+                    {isFinanceContext && canViewFinance && (
+                        <button
+                            type="button"
+                            onClick={() => setUseRegularNavInFinance((prev) => !prev)}
+                            className="mb-3 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-surface text-[12px] font-bold text-main bg-surface-hover hover:bg-surface-hover/70 transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">
+                                {showFinanceNavigation ? 'menu_open' : 'account_balance_wallet'}
+                            </span>
+                            <span>
+                                {showFinanceNavigation
+                                    ? t('sidebar.finance.useRegularNavigation')
+                                    : t('sidebar.finance.useFinanceNavigation')}
+                            </span>
+                        </button>
+                    )}
+
                     <div className="flex items-center gap-3 px-1 mb-3">
                         <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
                             {t('nav.workspace')}
@@ -203,17 +231,43 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                         <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
                     </div>
 
-                    <div className="grid gap-1">
-                        <NavItem to="/" icon="space_dashboard" label={t('nav.dashboard')} exact onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
-                        {canViewFinance && (
-                            <NavItem to="/finance" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
-                        )}
-                        <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
-                    </div>
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.div
+                            key={showFinanceNavigation ? 'finance-nav' : 'regular-nav'}
+                            className="grid gap-1"
+                            initial={{ opacity: 0, y: 6, filter: 'blur(2px)' }}
+                            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                            exit={{ opacity: 0, y: -6, filter: 'blur(2px)' }}
+                            transition={{ duration: 0.2, ease: 'easeOut' }}
+                        >
+                            {showFinanceNavigation ? (
+                                <>
+                                    <NavItem to="/finance/cockpit" icon="space_dashboard" label={t('finance.v2.nav.cockpit')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/bookings" icon="receipt_long" label={t('finance.v2.nav.bookings')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/receivables" icon="payments" label={t('finance.v2.nav.receivables')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/payables" icon="request_quote" label={t('finance.v2.nav.payables')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/bank" icon="account_balance" label={t('finance.v2.nav.bank')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/tax" icon="gavel" label={t('finance.v2.nav.tax')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/reports" icon="analytics" label={t('finance.v2.nav.reports')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/exports" icon="file_download" label={t('finance.v2.nav.exports')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/settings" icon="tune" label={t('finance.v2.nav.settings')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/calculations" icon="calculate" label={t('finance.v2.nav.planning')} onClick={isDrawer ? onClose : undefined} />
+                                </>
+                            ) : (
+                                <>
+                                    <NavItem to="/" icon="space_dashboard" label={t('nav.dashboard')} exact onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
+                                    {canViewFinance && (
+                                        <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
+                                    )}
+                                    <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
+                                </>
+                            )}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
                 {/* Scope: Current Context (Active Project) */}

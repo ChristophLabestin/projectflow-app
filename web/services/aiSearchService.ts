@@ -2,19 +2,8 @@ import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
 import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, incrementAIUsage, incrementImageUsage } from "./dataService";
-import { getActiveTenantId } from './domain/authService';
-import { getAIUsage, getUserProfile } from './domain/usersService';
+import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
-
-// Helper to get user API key
-const getApiKey = async (userId: string) => {
-    try {
-        const profile = await getUserProfile(userId, getActiveTenantId());
-        return profile?.geminiConfig?.apiKey;
-    } catch (e) {
-        return undefined;
-    }
-};
 
 /**
  * Helper to check if a query looks like a question
@@ -176,7 +165,7 @@ const buildContextForAI = (projects: Project[], tasks: Task[]): string => {
 };
 
 /**
- * Answer a question using Gemini AI via Cloud Functions
+ * Answer a question using AI via Cloud Functions
  */
 export const answerQuestionWithContext = async (
     question: string,
@@ -192,8 +181,6 @@ export const answerQuestionWithContext = async (
     }
 
     try {
-        const apiKey = await getApiKey(user.uid);
-
         // Fetch context data
         const [projects, tasks] = await Promise.all([
             getAllWorkspaceProjects(tenantId),
@@ -208,15 +195,13 @@ export const answerQuestionWithContext = async (
             contextStr: string;
             instruction: string;
             language: string;
-            apiKey?: string;
         }, any>(functions, 'askCora');
 
         const { data: result } = await askCoraFn({
             question,
             contextStr,
             instruction,
-            language,
-            apiKey
+            language
         });
 
         // Track usage (increment based on backend report)
@@ -253,7 +238,7 @@ export const answerQuestionWithContext = async (
 };
 
 /**
- * Generate an image using Google Imagen 3 model via Cloud Functions
+ * Generate an image using OpenAI image model via Cloud Functions
  */
 export const generateAIImage = async (prompt: string): Promise<string[]> => {
     const user = auth.currentUser;
@@ -266,10 +251,8 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
     }
 
     try {
-        const apiKey = await getApiKey(user.uid);
-
-        const generateImageFn = httpsCallable<{ prompt: string; apiKey?: string }, { images: string[] }>(functions, 'generateImage');
-        const { data } = await generateImageFn({ prompt, apiKey });
+        const generateImageFn = httpsCallable<{ prompt: string }, { images: string[] }>(functions, 'generateImage');
+        const { data } = await generateImageFn({ prompt });
 
         if (!data.images || data.images.length === 0) {
             throw new Error("No images generated");
@@ -287,7 +270,7 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
 };
 
 /**
- * Edit/rework an existing image using Gemini 3 Pro via Cloud Functions
+ * Edit/rework an existing image using OpenAI image model via Cloud Functions
  */
 export const editAIImage = async (
     prompt: string,
@@ -304,8 +287,6 @@ export const editAIImage = async (
     }
 
     try {
-        const apiKey = await getApiKey(user.uid);
-
         // Fetch image and convert to base64 if it's a URL
         let base64Data: string;
         let mimeType = 'image/jpeg';
@@ -345,15 +326,13 @@ export const editAIImage = async (
             image: string;
             mimeType: string;
             editMode: string;
-            apiKey?: string;
         }, { images: string[] }>(functions, 'editImage');
 
         const { data } = await editImageFn({
             prompt,
             image: base64Data,
             mimeType,
-            editMode,
-            apiKey
+            editMode
         });
 
         if (!data.images || data.images.length === 0) {

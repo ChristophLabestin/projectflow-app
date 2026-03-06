@@ -34,6 +34,12 @@ const coerceDate = (value: any) => {
     return value;
 };
 
+const normalizeProjectId = (value: unknown) => {
+    if (typeof value !== 'string') return null;
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+};
+
 export const subscribeTransactions = (
     callback: (transactions: Transaction[]) => void,
     tenantId?: string
@@ -81,6 +87,7 @@ export const createTransaction = async (
         ...transaction,
         tenantId: resolvedTenant,
         userId,
+        projectId: normalizeProjectId(transaction.projectId),
         date: coerceDate(transaction.date),
         notes: transaction.notes ?? '',
         createdAt: serverTimestamp(),
@@ -101,6 +108,7 @@ export const updateTransaction = async (
 
     await updateDoc(ref, {
         ...updates,
+        ...('projectId' in updates ? { projectId: normalizeProjectId(updates.projectId) } : {}),
         ...(updates.date ? { date: coerceDate(updates.date) } : {}),
         updatedAt: serverTimestamp(),
     });
@@ -124,6 +132,7 @@ export const createRecurringTransaction = async (
         ...transaction,
         tenantId: resolvedTenant,
         userId,
+        projectId: normalizeProjectId(transaction.projectId),
         startDate: coerceDate(transaction.startDate),
         endDate: transaction.endDate ? coerceDate(transaction.endDate) : null,
         notes: transaction.notes ?? '',
@@ -145,6 +154,7 @@ export const updateRecurringTransaction = async (
 
     await updateDoc(ref, {
         ...updates,
+        ...('projectId' in updates ? { projectId: normalizeProjectId(updates.projectId) } : {}),
         ...(updates.startDate ? { startDate: coerceDate(updates.startDate) } : {}),
         ...('endDate' in updates ? { endDate: updates.endDate ? coerceDate(updates.endDate) : null } : {}),
         updatedAt: serverTimestamp(),

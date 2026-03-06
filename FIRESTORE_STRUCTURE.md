@@ -71,7 +71,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
 
-#### ↳ 📂 **`transactions`**
+#### ↳ 📂 **`transactions`** *(Legacy Finance V1, read-only after V2 cutover)*
 **Path:** `/tenants/{tenantId}/transactions/{transactionId}`
 **Schema:** `Transaction`
 - `tenantId`: string
@@ -86,7 +86,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `createdAt`: Timestamp
 - `updatedAt`: Timestamp
 
-#### ↳ 📂 **`recurringTransactions`**
+#### ↳ 📂 **`recurringTransactions`** *(Legacy Finance V1, read-only after V2 cutover)*
 **Path:** `/tenants/{tenantId}/recurringTransactions/{recurringId}`
 **Schema:** `RecurringTransaction`
 - `tenantId`: string
@@ -100,6 +100,27 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `notes`: string
 - `createdAt`: Timestamp
 - `updatedAt`: Timestamp
+
+#### ↳ 📂 **`finance_*`** *(Finance V2 domain; critical writes only via Cloud Functions)*
+**Path pattern:** `/tenants/{tenantId}/finance_*/{docId}`
+**Core collections:**
+- `finance_accounts` (Kontenplan + SKR/DATEV mapping)
+- `finance_fiscal_years`
+- `finance_periods` (Open / SoftClosed / Closed)
+- `finance_journal_entries` (Header)
+- `finance_journal_lines` (Soll/Haben Zeilen)
+- `finance_customers`, `finance_vendors`
+- `finance_invoices`, `finance_credit_notes`, `finance_bills`
+- `finance_payments`, `finance_payment_allocations`
+- `finance_bank_accounts`, `finance_bank_transactions`, `finance_reconciliations`
+- `finance_subscriptions`, `finance_subscription_events`
+- `finance_assets`, `finance_depreciation_schedules`
+- `finance_budgets`, `finance_forecasts`
+- `finance_scenarios` (BWL/AI/Token Planung)
+- `finance_tax_codes`, `finance_tax_periods`, `finance_tax_reports`
+- `finance_exports` (DATEV/CSV jobs + artifacts)
+- `finance_audit_log` (immutable audit trail)
+- `finance_settings` (`financeSchemaVersion: 2`, currency, defaults)
 
 #### ↳ 📂 **`projects`**
 **Path:** `/tenants/{tenantId}/projects/{projectId}`

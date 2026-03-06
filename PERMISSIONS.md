@@ -242,6 +242,15 @@ New nodes must be added here with consistent naming.
 ### 8.4.1 Tenant — Finance
 - `tenant.finance.view` — View tenant finance tracking (income, expenses, recurring)
 - `tenant.finance.manage` — Create/edit/delete finance transactions and recurring items
+- `tenant.finance.accounts.manage` — Manage chart of accounts, SKR mapping, and posting defaults
+- `tenant.finance.ledger.post` — Create/post manual journal entries
+- `tenant.finance.ar.manage` — Manage debtors, invoices, credit notes, dunning, and OPOS receivables
+- `tenant.finance.ap.manage` — Manage vendors, bills, and OPOS payables
+- `tenant.finance.tax.manage` — Manage tax codes, tax periods, and tax reports
+- `tenant.finance.close` — Run monthly close and reopen periods
+- `tenant.finance.export.datev` — Generate DATEV export jobs
+- `tenant.finance.audit.view` — View immutable finance audit trail
+- `tenant.finance.reconciliation.manage` — Import bank data and confirm reconciliations
 
 ### 8.5 Tenant — SSO (Organization tier)
 - `tenant.sso.view` — View SSO configuration status

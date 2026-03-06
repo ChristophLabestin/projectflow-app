@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { FinanceTracking } from '../FinanceTracking';
 import type { Transaction } from '../../types';
 
@@ -92,6 +93,106 @@ vi.mock('../../services/financeScenarioService', () => ({
     deleteFinanceScenario: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock('../../services/finance-v2/ledgerService', () => ({
+    subscribeJournalEntries: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/arService', () => ({
+    subscribeFinanceCustomers: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    subscribeFinanceInvoices: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    upsertFinanceCustomer: vi.fn().mockResolvedValue({ customerId: 'customer-1' }),
+    createInvoice: vi.fn().mockResolvedValue({ invoiceId: 'invoice-1' }),
+    issueInvoice: vi.fn().mockResolvedValue({ invoiceId: 'invoice-1' }),
+    voidInvoice: vi.fn().mockResolvedValue({ invoiceId: 'invoice-1' }),
+}));
+
+vi.mock('../../services/finance-v2/apService', () => ({
+    subscribeFinanceVendors: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    subscribeFinanceBills: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    upsertFinanceVendor: vi.fn().mockResolvedValue({ vendorId: 'vendor-1' }),
+    createBill: vi.fn().mockResolvedValue({ billId: 'bill-1' }),
+    extractInvoiceFromDocument: vi.fn().mockResolvedValue({
+        documentType: 'pdf',
+        vendorName: 'Vendor',
+        vendorEmail: '',
+        vendorVatId: '',
+        invoiceNumber: 'INV-1',
+        invoiceDate: '2026-01-01',
+        dueDate: '2026-01-15',
+        currencyCode: 'EUR',
+        lineDescription: 'Service',
+        quantity: 1,
+        unitCost: 100,
+        taxRatePercent: 19,
+        netAmount: 100,
+        taxAmount: 19,
+        grossAmount: 119,
+        confidence: 'medium',
+        isLikelyRecurring: false,
+        recurringHint: '',
+        notes: '',
+        model: 'gpt-5-mini',
+    }),
+    postBill: vi.fn().mockResolvedValue({ billId: 'bill-1' }),
+    voidBill: vi.fn().mockResolvedValue({ billId: 'bill-1' }),
+}));
+
+vi.mock('../../services/finance-v2/billingService', () => ({
+    subscribeFinancePayments: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/reconciliationService', () => ({
+    subscribeFinanceBankTransactions: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    subscribeFinanceReconciliations: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/taxService', () => ({
+    subscribeFinanceTaxReports: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/exportService', () => ({
+    subscribeFinanceExportJobs: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/migrationService', () => ({
+    migrateLegacyFinanceV1ToV2: vi.fn().mockResolvedValue({
+        dryRun: true,
+        transactions: { total: 0, migrated: 0, skipped: 0, incomeTotal: 0, expenseTotal: 0 },
+        recurring: { total: 0, migrated: 0, skipped: 0 },
+        scenarios: { total: 0, migrated: 0, skipped: 0 },
+    }),
+}));
+
 vi.mock('../../services/domain/adminSettingsService', () => ({
     fetchWorkspaceFinancialUsage: vi.fn().mockResolvedValue({
         endpoint: 'https://example.com/financial',
@@ -115,8 +216,19 @@ vi.mock('../../services/domain/adminSettingsService', () => ({
 }));
 
 describe('FinanceTracking', () => {
+    const renderFinance = (path = '/finance') => {
+        return render(
+            <MemoryRouter initialEntries={[path]}>
+                <Routes>
+                    <Route path="/finance" element={<FinanceTracking />} />
+                    <Route path="/finance/:financeSection" element={<FinanceTracking />} />
+                </Routes>
+            </MemoryRouter>
+        );
+    };
+
     it('renders subscribed transactions', async () => {
-        render(<FinanceTracking />);
+        renderFinance();
         const salesMatches = await screen.findAllByText('Sales');
         expect(salesMatches.length).toBeGreaterThan(0);
         expect(screen.getByText('Initial payment')).toBeInTheDocument();
@@ -124,7 +236,7 @@ describe('FinanceTracking', () => {
 
     it('submits a new transaction from the form', async () => {
         const user = userEvent.setup();
-        render(<FinanceTracking />);
+        renderFinance();
 
         await user.click(screen.getByText('finance.actions.addTransaction'));
         await user.type(screen.getByLabelText('finance.form.category'), 'Consulting');
@@ -141,12 +253,16 @@ describe('FinanceTracking', () => {
     });
 
     it('switches to calculations view', async () => {
-        const user = userEvent.setup();
-        render(<FinanceTracking />);
-
-        await user.click(screen.getByText('finance.views.calculations'));
+        renderFinance('/finance/calculations');
 
         expect(screen.getByText('finance.calc.editor.new')).toBeInTheDocument();
         expect(screen.getByText('finance.calc.actions.save')).toBeInTheDocument();
+    });
+
+    it('opens receivables section in finance v2 navigation', async () => {
+        renderFinance('/finance/receivables');
+
+        expect(screen.getByText('finance.v2.receivables.title')).toBeInTheDocument();
+        expect(screen.getByText('finance.v2.receivables.newInvoice')).toBeInTheDocument();
     });
 });

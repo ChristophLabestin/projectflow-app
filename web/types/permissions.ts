@@ -47,6 +47,15 @@ export type TenantPermissionNode =
     // Finance
     | 'tenant.finance.view'
     | 'tenant.finance.manage'
+    | 'tenant.finance.accounts.manage'
+    | 'tenant.finance.ledger.post'
+    | 'tenant.finance.ar.manage'
+    | 'tenant.finance.ap.manage'
+    | 'tenant.finance.tax.manage'
+    | 'tenant.finance.close'
+    | 'tenant.finance.export.datev'
+    | 'tenant.finance.audit.view'
+    | 'tenant.finance.reconciliation.manage'
     // SSO (Organization tier)
     | 'tenant.sso.view'
     | 'tenant.sso.configure'
@@ -545,6 +554,15 @@ export const ALL_TENANT_PERMISSIONS: TenantPermissionNode[] = [
     'tenant.plan.manage',
     'tenant.finance.view',
     'tenant.finance.manage',
+    'tenant.finance.accounts.manage',
+    'tenant.finance.ledger.post',
+    'tenant.finance.ar.manage',
+    'tenant.finance.ap.manage',
+    'tenant.finance.tax.manage',
+    'tenant.finance.close',
+    'tenant.finance.export.datev',
+    'tenant.finance.audit.view',
+    'tenant.finance.reconciliation.manage',
     'tenant.sso.view',
     'tenant.sso.configure',
     'tenant.sso.enforce',

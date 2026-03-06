@@ -14,7 +14,8 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.fetchWorkspaceFinancialUsage = exports.saveWorkspaceFinancialConfig = exports.getWorkspaceFinancialConfig = exports.deleteWorkspaceApiToken = exports.createWorkspaceApiToken = exports.listWorkspaceApiTokens = exports.saveWorkspaceSmtpConfig = exports.getWorkspaceSmtpConfig = exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.unallocatePayment = exports.allocatePayment = exports.recordPayment = exports.voidBill = exports.postBill = exports.extractInvoiceFromDocument = exports.createBill = exports.voidInvoice = exports.issueInvoice = exports.createInvoice = exports.postJournalEntry = exports.fetchWorkspaceFinancialUsage = exports.saveWorkspaceFinancialConfig = exports.getWorkspaceFinancialConfig = exports.deleteWorkspaceApiToken = exports.createWorkspaceApiToken = exports.listWorkspaceApiTokens = exports.saveWorkspaceSmtpConfig = exports.getWorkspaceSmtpConfig = exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.upsertFinanceTaxCode = exports.upsertFinanceVendor = exports.upsertFinanceCustomer = exports.upsertFinanceSettings = exports.upsertFinancePeriod = exports.upsertFinanceAccount = exports.calculateScenarioSnapshot = exports.upsertScenario = exports.migrateLegacyFinanceV1ToV2 = exports.buildTaxReport = exports.buildFinancialReports = exports.generateDatevExport = exports.reopenPeriod = exports.runMonthlyClose = exports.confirmReconciliation = exports.suggestReconciliation = exports.importBankStatement = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -70,5 +71,34 @@ Object.defineProperty(exports, "getWorkspaceSmtpConfig", { enumerable: true, get
 Object.defineProperty(exports, "listWorkspaceApiTokens", { enumerable: true, get: function () { return workspace_admin_1.listWorkspaceApiTokens; } });
 Object.defineProperty(exports, "saveWorkspaceFinancialConfig", { enumerable: true, get: function () { return workspace_admin_1.saveWorkspaceFinancialConfig; } });
 Object.defineProperty(exports, "saveWorkspaceSmtpConfig", { enumerable: true, get: function () { return workspace_admin_1.saveWorkspaceSmtpConfig; } });
+const finance_v2_1 = require("./finance-v2");
+Object.defineProperty(exports, "allocatePayment", { enumerable: true, get: function () { return finance_v2_1.allocatePayment; } });
+Object.defineProperty(exports, "buildFinancialReports", { enumerable: true, get: function () { return finance_v2_1.buildFinancialReports; } });
+Object.defineProperty(exports, "buildTaxReport", { enumerable: true, get: function () { return finance_v2_1.buildTaxReport; } });
+Object.defineProperty(exports, "calculateScenarioSnapshot", { enumerable: true, get: function () { return finance_v2_1.calculateScenarioSnapshot; } });
+Object.defineProperty(exports, "confirmReconciliation", { enumerable: true, get: function () { return finance_v2_1.confirmReconciliation; } });
+Object.defineProperty(exports, "createBill", { enumerable: true, get: function () { return finance_v2_1.createBill; } });
+Object.defineProperty(exports, "createInvoice", { enumerable: true, get: function () { return finance_v2_1.createInvoice; } });
+Object.defineProperty(exports, "extractInvoiceFromDocument", { enumerable: true, get: function () { return finance_v2_1.extractInvoiceFromDocument; } });
+Object.defineProperty(exports, "generateDatevExport", { enumerable: true, get: function () { return finance_v2_1.generateDatevExport; } });
+Object.defineProperty(exports, "importBankStatement", { enumerable: true, get: function () { return finance_v2_1.importBankStatement; } });
+Object.defineProperty(exports, "issueInvoice", { enumerable: true, get: function () { return finance_v2_1.issueInvoice; } });
+Object.defineProperty(exports, "migrateLegacyFinanceV1ToV2", { enumerable: true, get: function () { return finance_v2_1.migrateLegacyFinanceV1ToV2; } });
+Object.defineProperty(exports, "postBill", { enumerable: true, get: function () { return finance_v2_1.postBill; } });
+Object.defineProperty(exports, "postJournalEntry", { enumerable: true, get: function () { return finance_v2_1.postJournalEntry; } });
+Object.defineProperty(exports, "recordPayment", { enumerable: true, get: function () { return finance_v2_1.recordPayment; } });
+Object.defineProperty(exports, "reopenPeriod", { enumerable: true, get: function () { return finance_v2_1.reopenPeriod; } });
+Object.defineProperty(exports, "runMonthlyClose", { enumerable: true, get: function () { return finance_v2_1.runMonthlyClose; } });
+Object.defineProperty(exports, "suggestReconciliation", { enumerable: true, get: function () { return finance_v2_1.suggestReconciliation; } });
+Object.defineProperty(exports, "unallocatePayment", { enumerable: true, get: function () { return finance_v2_1.unallocatePayment; } });
+Object.defineProperty(exports, "upsertFinanceAccount", { enumerable: true, get: function () { return finance_v2_1.upsertFinanceAccount; } });
+Object.defineProperty(exports, "upsertFinanceCustomer", { enumerable: true, get: function () { return finance_v2_1.upsertFinanceCustomer; } });
+Object.defineProperty(exports, "upsertFinancePeriod", { enumerable: true, get: function () { return finance_v2_1.upsertFinancePeriod; } });
+Object.defineProperty(exports, "upsertFinanceSettings", { enumerable: true, get: function () { return finance_v2_1.upsertFinanceSettings; } });
+Object.defineProperty(exports, "upsertFinanceTaxCode", { enumerable: true, get: function () { return finance_v2_1.upsertFinanceTaxCode; } });
+Object.defineProperty(exports, "upsertFinanceVendor", { enumerable: true, get: function () { return finance_v2_1.upsertFinanceVendor; } });
+Object.defineProperty(exports, "upsertScenario", { enumerable: true, get: function () { return finance_v2_1.upsertScenario; } });
+Object.defineProperty(exports, "voidBill", { enumerable: true, get: function () { return finance_v2_1.voidBill; } });
+Object.defineProperty(exports, "voidInvoice", { enumerable: true, get: function () { return finance_v2_1.voidInvoice; } });
 __exportStar(require("./passkeys"), exports);
 //# sourceMappingURL=index.js.map

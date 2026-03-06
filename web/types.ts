@@ -1440,6 +1440,579 @@ export interface FinanceScenarioResult {
     hasBreakEven: boolean;
 }
 
+export type FinanceSchemaVersion = 1 | 2;
+
+export type FinanceAccountCategory =
+    | 'asset'
+    | 'liability'
+    | 'equity'
+    | 'revenue'
+    | 'expense'
+    | 'off_balance';
+
+export type FinanceAccountBalanceSide = 'debit' | 'credit';
+
+export interface FinanceAccount {
+    id: string;
+    tenantId: string;
+    accountNo: string;
+    name: string;
+    category: FinanceAccountCategory;
+    normalBalance: FinanceAccountBalanceSide;
+    datevAccountNo?: string;
+    taxCodeId?: string;
+    isActive: boolean;
+    allowManualPosting?: boolean;
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinanceFiscalYearStatus = 'open' | 'closed';
+
+export interface FinanceFiscalYear {
+    id: string;
+    tenantId: string;
+    year: number;
+    startDate: any;
+    endDate: any;
+    status: FinanceFiscalYearStatus;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinancePeriodStatus = 'open' | 'soft_closed' | 'closed';
+
+export interface FinancePeriod {
+    id: string; // YYYY-MM
+    tenantId: string;
+    fiscalYearId: string;
+    monthKey: string; // YYYY-MM
+    startDate: any;
+    endDate: any;
+    status: FinancePeriodStatus;
+    closedBy?: string;
+    closedAt?: any;
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinanceJournalSourceType =
+    | 'manual'
+    | 'invoice'
+    | 'credit_note'
+    | 'bill'
+    | 'payment'
+    | 'bank_import'
+    | 'reconciliation'
+    | 'migration'
+    | 'depreciation'
+    | 'tax'
+    | 'close';
+
+export type FinanceJournalEntryStatus = 'posted' | 'voided';
+
+export interface FinanceJournalEntry {
+    id: string;
+    tenantId: string;
+    entryNumber: string;
+    postingDate: any;
+    periodKey: string; // YYYY-MM
+    description: string;
+    sourceType: FinanceJournalSourceType;
+    sourceId?: string;
+    sourceRefNo?: string;
+    projectId?: string;
+    currencyCode: string;
+    totalDebit: number;
+    totalCredit: number;
+    status: FinanceJournalEntryStatus;
+    idempotencyKey: string;
+    postedBy: string;
+    postedAt?: any;
+    voidedAt?: any;
+    voidedBy?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceJournalLine {
+    id: string;
+    tenantId: string;
+    entryId: string;
+    lineNo: number;
+    accountId: string;
+    description?: string;
+    debit: number;
+    credit: number;
+    taxCodeId?: string;
+    projectId?: string;
+    customerId?: string;
+    vendorId?: string;
+    currencyCode: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceCounterpartyAddress {
+    line1?: string;
+    line2?: string;
+    postalCode?: string;
+    city?: string;
+    countryCode?: string;
+}
+
+export interface FinanceCustomer {
+    id: string;
+    tenantId: string;
+    customerNo: string;
+    name: string;
+    email?: string;
+    vatId?: string;
+    paymentTermsDays?: number;
+    defaultRevenueAccountId?: string;
+    address?: FinanceCounterpartyAddress;
+    isActive: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceVendor {
+    id: string;
+    tenantId: string;
+    vendorNo: string;
+    name: string;
+    email?: string;
+    vatId?: string;
+    paymentTermsDays?: number;
+    defaultExpenseAccountId?: string;
+    address?: FinanceCounterpartyAddress;
+    isActive: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinanceInvoiceUploadDocumentType = 'pdf' | 'xml';
+export type FinanceInvoiceExtractionConfidence = 'low' | 'medium' | 'high';
+
+export interface FinanceExtractedInvoiceDraft {
+    documentType: FinanceInvoiceUploadDocumentType;
+    vendorName: string;
+    vendorEmail: string;
+    vendorVatId: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    dueDate: string;
+    currencyCode: string;
+    lineDescription: string;
+    quantity: number;
+    unitCost: number;
+    taxRatePercent: number;
+    netAmount: number;
+    taxAmount: number;
+    grossAmount: number;
+    confidence: FinanceInvoiceExtractionConfidence;
+    isLikelyRecurring: boolean;
+    recurringHint: string;
+    notes: string;
+    model?: string;
+}
+
+export interface FinanceInvoiceLine {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    netAmount: number;
+    taxCodeId?: string;
+    taxRatePercent?: number;
+    taxAmount?: number;
+    accountId?: string;
+    projectId?: string;
+}
+
+export type FinanceInvoiceStatus = 'draft' | 'issued' | 'partially_paid' | 'paid' | 'voided';
+
+export interface FinanceInvoice {
+    id: string;
+    tenantId: string;
+    invoiceNo: string;
+    customerId: string;
+    projectId?: string;
+    issueDate: any;
+    dueDate: any;
+    currencyCode: string;
+    status: FinanceInvoiceStatus;
+    lines: FinanceInvoiceLine[];
+    notes?: string;
+    netAmount: number;
+    taxAmount: number;
+    grossAmount: number;
+    paidAmount: number;
+    openAmount: number;
+    journalEntryId?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceCreditNoteLine {
+    id: string;
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    netAmount: number;
+    taxCodeId?: string;
+    taxRatePercent?: number;
+    taxAmount?: number;
+    accountId?: string;
+    projectId?: string;
+}
+
+export type FinanceCreditNoteStatus = 'draft' | 'issued' | 'applied' | 'voided';
+
+export interface FinanceCreditNote {
+    id: string;
+    tenantId: string;
+    creditNoteNo: string;
+    customerId: string;
+    invoiceId?: string;
+    projectId?: string;
+    issueDate: any;
+    currencyCode: string;
+    status: FinanceCreditNoteStatus;
+    lines: FinanceCreditNoteLine[];
+    netAmount: number;
+    taxAmount: number;
+    grossAmount: number;
+    journalEntryId?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceBillLine {
+    id: string;
+    description: string;
+    quantity: number;
+    unitCost: number;
+    netAmount: number;
+    taxCodeId?: string;
+    taxRatePercent?: number;
+    taxAmount?: number;
+    accountId?: string;
+    projectId?: string;
+}
+
+export type FinanceBillStatus = 'draft' | 'posted' | 'partially_paid' | 'paid' | 'voided';
+
+export interface FinanceBill {
+    id: string;
+    tenantId: string;
+    billNo: string;
+    vendorId: string;
+    projectId?: string;
+    billDate: any;
+    dueDate: any;
+    currencyCode: string;
+    status: FinanceBillStatus;
+    lines: FinanceBillLine[];
+    notes?: string;
+    netAmount: number;
+    taxAmount: number;
+    grossAmount: number;
+    paidAmount: number;
+    openAmount: number;
+    journalEntryId?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinancePaymentDirection = 'incoming' | 'outgoing';
+
+export type FinancePaymentStatus = 'recorded' | 'allocated' | 'partially_allocated' | 'voided';
+
+export interface FinancePayment {
+    id: string;
+    tenantId: string;
+    paymentNo: string;
+    direction: FinancePaymentDirection;
+    paymentDate: any;
+    amount: number;
+    currencyCode: string;
+    bankAccountId?: string;
+    customerId?: string;
+    vendorId?: string;
+    projectId?: string;
+    notes?: string;
+    status: FinancePaymentStatus;
+    allocatedAmount: number;
+    unallocatedAmount: number;
+    journalEntryId?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinancePaymentTargetType = 'invoice' | 'bill';
+
+export interface FinancePaymentAllocation {
+    id: string;
+    tenantId: string;
+    paymentId: string;
+    targetType: FinancePaymentTargetType;
+    targetId: string;
+    amount: number;
+    currencyCode: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceSubscription {
+    id: string;
+    tenantId: string;
+    customerId: string;
+    projectId?: string;
+    planName: string;
+    unitLabel: string;
+    unitPrice: number;
+    quantity: number;
+    billingFrequency: 'monthly' | 'yearly';
+    status: 'active' | 'paused' | 'canceled';
+    nextBillingDate?: any;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceSubscriptionEvent {
+    id: string;
+    tenantId: string;
+    subscriptionId: string;
+    type: 'created' | 'changed' | 'paused' | 'resumed' | 'canceled' | 'invoiced';
+    payload?: Record<string, unknown>;
+    createdBy: string;
+    createdAt?: any;
+}
+
+export interface FinanceBankAccount {
+    id: string;
+    tenantId: string;
+    name: string;
+    iban?: string;
+    bic?: string;
+    accountNo?: string;
+    currencyCode: string;
+    isActive: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceBankTransaction {
+    id: string;
+    tenantId: string;
+    bankAccountId?: string;
+    bookingDate: any;
+    valueDate?: any;
+    amount: number;
+    currencyCode: string;
+    description?: string;
+    counterparty?: string;
+    externalReference?: string;
+    projectId?: string;
+    reconciled: boolean;
+    reconciliationId?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceReconciliation {
+    id: string;
+    tenantId: string;
+    bankAccountId?: string;
+    periodKey: string;
+    matchedTransactionIds: string[];
+    unmatchedTransactionIds: string[];
+    notes?: string;
+    confirmedBy: string;
+    confirmedAt?: any;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceAsset {
+    id: string;
+    tenantId: string;
+    name: string;
+    assetNo?: string;
+    acquisitionDate: any;
+    acquisitionCost: number;
+    usefulLifeMonths: number;
+    residualValue?: number;
+    depreciationMethod: 'straight_line';
+    expenseAccountId?: string;
+    assetAccountId?: string;
+    isActive: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceDepreciationSchedule {
+    id: string;
+    tenantId: string;
+    assetId: string;
+    periodKey: string;
+    depreciationAmount: number;
+    postedEntryId?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceBudget {
+    id: string;
+    tenantId: string;
+    periodKey: string;
+    accountId?: string;
+    projectId?: string;
+    amount: number;
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceForecast {
+    id: string;
+    tenantId: string;
+    periodKey: string;
+    accountId?: string;
+    projectId?: string;
+    amount: number;
+    confidence?: number;
+    notes?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceTaxCode {
+    id: string;
+    tenantId: string;
+    code: string;
+    label: string;
+    ratePercent: number;
+    kind: 'output' | 'input' | 'none';
+    datevKey?: string;
+    isActive: boolean;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceTaxPeriod {
+    id: string;
+    tenantId: string;
+    periodKey: string;
+    status: 'open' | 'filed' | 'locked';
+    filedAt?: any;
+    filedBy?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceTaxReport {
+    id: string;
+    tenantId: string;
+    periodKey: string;
+    outputTax: number;
+    inputTax: number;
+    payableTax: number;
+    currencyCode: string;
+    generatedAt?: any;
+    generatedBy?: string;
+}
+
+export type FinanceExportType = 'datev' | 'csv' | 'custom';
+
+export type FinanceExportStatus = 'queued' | 'running' | 'completed' | 'failed';
+
+export interface FinanceExportJob {
+    id: string;
+    tenantId: string;
+    type: FinanceExportType;
+    periodKey: string;
+    status: FinanceExportStatus;
+    fileName?: string;
+    fileUrl?: string;
+    payloadPreview?: string;
+    errorMessage?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceProjectProfitabilityRow {
+    projectId: string;
+    projectName: string;
+    revenue: number;
+    directCosts: number;
+    aiCosts: number;
+    overheadAllocated: number;
+    grossProfit: number;
+    netProfit: number;
+    marginPercent: number;
+}
+
+export interface FinanceTrialBalanceRow {
+    accountId: string;
+    accountNo?: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+    balance: number;
+}
+
+export interface FinancePnlRow {
+    accountId: string;
+    accountNo?: string;
+    accountName: string;
+    category: 'revenue' | 'expense';
+    amount: number;
+}
+
+export interface FinanceBalanceSheetRow {
+    accountId: string;
+    accountNo?: string;
+    accountName: string;
+    category: 'asset' | 'liability' | 'equity';
+    amount: number;
+}
+
+export interface FinanceReportBundle {
+    trialBalance: FinanceTrialBalanceRow[];
+    pnl: FinancePnlRow[];
+    balanceSheet: FinanceBalanceSheetRow[];
+    projectProfitability: FinanceProjectProfitabilityRow[];
+}
+
+export interface FinanceV2Settings {
+    id: string;
+    tenantId: string;
+    financeSchemaVersion: 2;
+    countryCode: string;
+    currencyCode: string;
+    fiscalYearStartMonth: number; // 1-12
+    softCloseEnabled: boolean;
+    defaultUnitLabel: string;
+    defaultScenarioPreset: FinanceScenarioPreset;
+    defaultRevenueAccountId?: string;
+    defaultExpenseAccountId?: string;
+    defaultReceivableAccountId?: string;
+    defaultPayableAccountId?: string;
+    defaultCashAccountId?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
 // --- API Token Types ---
 
 export type APITokenPermission =

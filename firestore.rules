@@ -161,10 +161,18 @@ service cloud.firestore {
         allow read, write: if authed() && request.auth.uid == userId && canAccessTenant(tenantId);
       }
 
+      // Finance V2 collections are write-protected for clients.
+      // Mutations must go through callable/HTTP Cloud Functions for auditability.
+      match /{financeCollection}/{docId} {
+        allow read: if canAccessTenant(tenantId) && financeCollection.matches('finance_.*');
+        allow write: if false;
+      }
+
       // Other direct tenant-scoped collections (notifications, groups, api tokens, etc.)
       match /{subcollection}/{docId} {
         allow read, write: if canAccessTenant(tenantId) &&
           !(
+            subcollection.matches('finance_.*') ||
             subcollection in [
               'members',
               'presence',
