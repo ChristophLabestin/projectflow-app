@@ -28,6 +28,7 @@ import { httpsCallable } from "firebase/functions";
 import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
+import { getTenantFileDownloadUrl } from './fileStorageService';
 import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
 import { toMillis } from "../utils/time";
 import {
@@ -729,6 +730,46 @@ const getTenantIdFromRef = (ref: any) => {
     return null;
 };
 
+const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
+    const tenantId = project.tenantId || '';
+    if (!tenantId) return project;
+
+    const next = { ...project };
+
+    if (project.coverImageFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId, fileId: project.coverImageFileId });
+            next.coverImage = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to hydrate project cover image URL', error);
+        }
+    }
+
+    if (project.squareIconFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId, fileId: project.squareIconFileId });
+            next.squareIcon = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to hydrate project square icon URL', error);
+        }
+    }
+
+    if (Array.isArray(project.screenshotFileIds) && project.screenshotFileIds.length > 0) {
+        const screenshotUrls = await Promise.all(project.screenshotFileIds.map(async (fileId) => {
+            try {
+                const signed = await getTenantFileDownloadUrl({ tenantId, fileId });
+                return signed.downloadUrl;
+            } catch (error) {
+                console.warn('Failed to hydrate project screenshot URL', error);
+                return '';
+            }
+        }));
+        next.screenshots = screenshotUrls.filter(Boolean);
+    }
+
+    return next;
+};
+
 export const getProjectById = async (projectId: string, tenantId?: string): Promise<Project | null> => {
     const { getProjectById: getProjectByIdDomain } = await import('./domain/projectsService');
     return getProjectByIdDomain(projectId, tenantId);
@@ -751,7 +792,7 @@ export const getSharedProjects = async (): Promise<Project[]> => {
 
     const snapshot = await getDocs(q);
 
-    return snapshot.docs
+    const projects = snapshot.docs
         .map(docSnap => ({
             id: docSnap.id,
             tenantId: getTenantIdFromRef(docSnap.ref), // Extract tenant from path
@@ -759,6 +800,8 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         } as Project))
         .filter(p => p.ownerId !== user.uid) // Exclude owned projects
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
 };
 
 export const getAllMemberProjects = async (userId: string): Promise<Project[]> => {
@@ -1240,9 +1283,11 @@ export const getAllWorkspaceProjects = async (tenantId?: string): Promise<Projec
     await ensureTenantAndUser(resolvedTenant);
 
     const snapshot = await getDocs(projectsCollection(resolvedTenant));
-    return snapshot.docs
+    const projects = snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls({ ...project, tenantId: resolvedTenant })));
 };
 
 const cloneOverviewLayout = (layout: ProjectOverviewLayout): ProjectOverviewLayout => ({

@@ -204,8 +204,11 @@ export interface Project {
     startDate?: string;
     ownerId: string;
     coverImage?: string;
+    coverImageFileId?: string;
     squareIcon?: string;
+    squareIconFileId?: string;
     screenshots?: string[];
+    screenshotFileIds?: string[];
     priority?: string;
     isPrivate?: boolean;
     modules?: ProjectModule[];
@@ -236,7 +239,9 @@ export interface User {
     email: string;
     displayName: string;
     photoURL?: string;
+    photoFileId?: string;
     coverURL?: string;
+    coverFileId?: string;
     title?: string;
     bio?: string;
     address?: string;
@@ -1598,6 +1603,9 @@ export type FinanceInvoiceExtractionConfidence = 'low' | 'medium' | 'high';
 
 export interface FinanceExtractedInvoiceDraft {
     documentType: FinanceInvoiceUploadDocumentType;
+    documentId?: string;
+    documentVersionId?: string;
+    fileName?: string;
     vendorName: string;
     vendorEmail: string;
     vendorVatId: string;
@@ -1616,6 +1624,8 @@ export interface FinanceExtractedInvoiceDraft {
     isLikelyRecurring: boolean;
     recurringHint: string;
     notes: string;
+    fieldConfidenceMap?: Record<string, FinanceInvoiceExtractionConfidence>;
+    warnings?: string[];
     model?: string;
 }
 
@@ -1652,6 +1662,9 @@ export interface FinanceInvoice {
     paidAmount: number;
     openAmount: number;
     journalEntryId?: string;
+    sourceDocumentId?: string;
+    sourceDocumentVersionId?: string;
+    sourceDocumentFileId?: string;
     createdBy: string;
     createdAt?: any;
     updatedAt?: any;
@@ -1719,12 +1732,16 @@ export interface FinanceBill {
     status: FinanceBillStatus;
     lines: FinanceBillLine[];
     notes?: string;
+    sourceDocumentFileId?: string;
     netAmount: number;
     taxAmount: number;
     grossAmount: number;
     paidAmount: number;
     openAmount: number;
     journalEntryId?: string;
+    sourceDocumentId?: string;
+    sourceDocumentVersionId?: string;
+    sourceDocumentFileId?: string;
     createdBy: string;
     createdAt?: any;
     updatedAt?: any;
@@ -1950,6 +1967,126 @@ export interface FinanceExportJob {
     updatedAt?: any;
 }
 
+export type FinanceDocumentStatus = 'active' | 'deleted';
+
+export interface FinanceDocument {
+    id: string;
+    tenantId: string;
+    projectId?: string;
+    linkedEntityType?: 'bill' | 'invoice' | 'transaction' | 'vendor' | 'customer' | 'other';
+    linkedEntityId?: string;
+    title: string;
+    documentType: FinanceInvoiceUploadDocumentType | 'other';
+    status: FinanceDocumentStatus;
+    latestVersionNo: number;
+    latestVersionId?: string;
+    createdBy: string;
+    deletedBy?: string;
+    deletedAt?: any;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceDocumentVersion {
+    id: string;
+    tenantId: string;
+    documentId: string;
+    versionNo: number;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    storagePath: string;
+    checksumSha256: string;
+    extraction?: FinanceExtractedInvoiceDraft;
+    extractionWarnings?: string[];
+    uploadedBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceRecurringTemplate {
+    id: string;
+    tenantId: string;
+    projectId?: string;
+    vendorId?: string;
+    customerId?: string;
+    type: 'bill' | 'invoice';
+    cadence: 'weekly' | 'monthly' | 'quarterly' | 'yearly';
+    nextRunAt: any;
+    endAt?: any;
+    autoPost: boolean;
+    isActive: boolean;
+    currencyCode: string;
+    notes?: string;
+    sourceDocumentId?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export type FinanceAllocationBasis = 'revenue_share' | 'cost_share' | 'unit_share' | 'token_share' | 'fixed_percent';
+
+export interface FinanceAllocationRule {
+    id: string;
+    tenantId: string;
+    name: string;
+    sourceAccountId?: string;
+    projectId?: string;
+    basis: FinanceAllocationBasis;
+    percent?: number;
+    isActive: boolean;
+    notes?: string;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceProjectProfitabilitySnapshot extends FinanceProjectProfitabilityRow {
+    periodKeyFrom?: string;
+    periodKeyTo?: string;
+    contributionOne?: number;
+    contributionTwo?: number;
+    generatedAt?: any;
+}
+
+export type FinanceSyncProvider = 'stripe' | 'paddle' | 'datev' | 'lexoffice' | 'custom';
+export type FinanceSyncDirection = 'import' | 'export' | 'bidirectional';
+export type FinanceSyncStatus = 'active' | 'paused' | 'disabled';
+
+export interface FinanceSyncConnection {
+    id: string;
+    tenantId: string;
+    provider: FinanceSyncProvider;
+    direction: FinanceSyncDirection;
+    status: FinanceSyncStatus;
+    name: string;
+    configRef?: string;
+    lastRunAt?: any;
+    lastRunStatus?: 'success' | 'partial' | 'failed';
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceSyncRun {
+    id: string;
+    tenantId: string;
+    connectionId: string;
+    provider: FinanceSyncProvider;
+    status: 'queued' | 'running' | 'completed' | 'failed';
+    mode: 'full' | 'delta';
+    idempotencyKey: string;
+    startedAt?: any;
+    finishedAt?: any;
+    processedCount?: number;
+    successCount?: number;
+    failureCount?: number;
+    errorMessage?: string;
+    triggeredBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
 export interface FinanceProjectProfitabilityRow {
     projectId: string;
     projectName: string;
@@ -1994,6 +2131,116 @@ export interface FinanceReportBundle {
     projectProfitability: FinanceProjectProfitabilityRow[];
 }
 
+export type FinanceOperationType =
+    | 'bank_import'
+    | 'reconciliation_suggest'
+    | 'reconciliation_confirm'
+    | 'tax_build_report'
+    | 'reports_build_bundle'
+    | 'export_datev'
+    | 'period_close'
+    | 'period_reopen'
+    | 'sync_run';
+
+export type FinanceOperationRisk = 'low' | 'medium' | 'high';
+
+export type FinanceOperationStatus =
+    | 'queued'
+    | 'validating'
+    | 'awaiting_confirmation'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'canceled';
+
+export interface FinanceOperationStep {
+    name: string;
+    status: FinanceOperationStatus;
+    error?: string;
+    startedAt?: any;
+    finishedAt?: any;
+}
+
+export interface FinanceOperationArtifact {
+    type: 'json' | 'csv' | 'report' | 'warning' | 'other';
+    name: string;
+    url?: string;
+    payloadPreview?: string;
+}
+
+export interface FinanceOperationRun {
+    id: string;
+    tenantId: string;
+    operationType: FinanceOperationType;
+    status: FinanceOperationStatus;
+    risk: FinanceOperationRisk;
+    payload: Record<string, unknown>;
+    payloadHash: string;
+    idempotencyKey: string;
+    steps: FinanceOperationStep[];
+    warnings: string[];
+    artifacts: FinanceOperationArtifact[];
+    resultSummary?: string;
+    error?: string;
+    requestedBy: string;
+    confirmedBy?: string;
+    createdAt?: any;
+    updatedAt?: any;
+    startedAt?: any;
+    finishedAt?: any;
+}
+
+export interface FinanceOperationBlockingCheck {
+    key: string;
+    count: number;
+    blocking: boolean;
+    message: string;
+}
+
+export interface FinanceOperationPreview {
+    operationType: FinanceOperationType;
+    canExecute: boolean;
+    blockingChecks: FinanceOperationBlockingCheck[];
+    warnings: string[];
+    estimatedImpact: Record<string, number | string | boolean>;
+    requiresConfirmation: boolean;
+    risk: FinanceOperationRisk;
+}
+
+export interface FinanceOperationTemplate {
+    id: string;
+    tenantId: string;
+    name: string;
+    operationType: FinanceOperationType;
+    defaultPayload: Record<string, unknown>;
+    isShared: boolean;
+    createdBy: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceOperationApproval {
+    id: string;
+    tenantId: string;
+    runId: string;
+    operationType: FinanceOperationType;
+    status: 'pending' | 'approved' | 'rejected' | 'expired';
+    requestedBy: string;
+    approvedBy?: string;
+    reason?: string;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface FinanceOperationRecommendation {
+    operationType: FinanceOperationType;
+    suggestedPayload: Record<string, unknown>;
+    confidence: number;
+    rationale: string;
+    risk: FinanceOperationRisk;
+    whyNow: string;
+}
+
 export interface FinanceV2Settings {
     id: string;
     tenantId: string;
@@ -2009,6 +2256,14 @@ export interface FinanceV2Settings {
     defaultReceivableAccountId?: string;
     defaultPayableAccountId?: string;
     defaultCashAccountId?: string;
+    documentRetentionDays?: number;
+    documentStorageRegion?: string;
+    defaultDiscountPolicy?: 'none' | 'campaign' | 'always';
+    defaultCommissionPolicy?: 'none' | 'sales_team';
+    profitabilityCostBuckets?: string[];
+    operationRunRetentionDays?: number;
+    requireHighRiskDualConfirm?: boolean;
+    aiOpsAssistantEnabled?: boolean;
     createdAt?: any;
     updatedAt?: any;
 }

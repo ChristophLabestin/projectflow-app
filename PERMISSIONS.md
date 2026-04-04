@@ -251,6 +251,14 @@ New nodes must be added here with consistent naming.
 - `tenant.finance.export.datev` — Generate DATEV export jobs
 - `tenant.finance.audit.view` — View immutable finance audit trail
 - `tenant.finance.reconciliation.manage` — Import bank data and confirm reconciliations
+- `tenant.finance.documents.manage` — Upload/version/link/delete finance documents (invoice PDFs/XML)
+- `tenant.finance.sync.manage` — Configure and run external accounting sync connectors
+- `tenant.finance.reports.manage` — Build/refresh finance reports and profitability snapshots
+- `tenant.finance.functions.view` — View Finance Functions Workspace (operations/runs/approvals/templates/insights)
+- `tenant.finance.functions.execute` — Execute finance operations through the runtime orchestrator
+- `tenant.finance.functions.retry` — Retry failed finance operation runs
+- `tenant.finance.functions.template.manage` — Create/update/delete operation templates
+- `tenant.finance.functions.approve.high_risk` — Approve/execute high-risk operations (for example close/export/reopen flows)
 
 ### 8.5 Tenant — SSO (Organization tier)
 - `tenant.sso.view` — View SSO configuration status
@@ -267,6 +275,20 @@ New nodes must be added here with consistent naming.
 - `tenant.integrations.view` — View tenant-level integrations
 - `tenant.integrations.manage` — Configure tenant-level integrations
 - `tenant.audit.view` — View audit logs
+
+#### 8.7.1 Workspace File Storage Integration Enforcement
+The workspace storage settings and routing APIs are permission-gated as follows:
+
+- `getWorkspaceFileStorageConfig`:
+  - requires `tenant.integrations.view` or `tenant.integrations.manage`
+- `saveWorkspaceFileStorageConfig`, `testWorkspaceFileStorageConnection`,
+  `getGoogleDriveStorageAuthUrl`, `disconnectGoogleDriveStorage`:
+  - require `tenant.integrations.manage`
+- `createTenantFileUploadSession` / `finalizeTenantFileUpload` / `listTenantFiles` / `getTenantFileDownloadUrl` / `deleteTenantFile`:
+  - `module = finance`: require `tenant.finance.ap.manage`
+  - non-finance modules (`media`, `profile`, `project`, ...): require `tenant.media.*` gates
+- Download access is always via short-lived URLs (15 minutes) returned by callable APIs.
+- Firestore client writes to `tenants/{tenantId}/files/*` and `tenants/{tenantId}/file_upload_drafts/*` are denied; functions are authoritative.
 
 ---
 

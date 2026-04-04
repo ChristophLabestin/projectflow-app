@@ -17,6 +17,7 @@ import { Checkbox } from '../components/common/Checkbox/Checkbox';
 import { Modal } from '../components/common/Modal/Modal';
 import { StatusCard } from '../components/common/StatusCard/StatusCard';
 import { FinanceCalculationsPanel } from '../components/finance/FinanceCalculationsPanel';
+import { FinanceFunctionsWorkspace } from '../components/finance/FinanceFunctionsWorkspace';
 import { auth } from '../services/firebase';
 import { getActiveTenantId } from '../services/domain/authService';
 import { subscribeTenantProjects } from '../services/domain/projectsService';
@@ -56,14 +57,36 @@ import {
     voidBill,
 } from '../services/finance-v2/apService';
 import { subscribeFinancePayments } from '../services/finance-v2/billingService';
-import { subscribeFinanceBankTransactions, subscribeFinanceReconciliations } from '../services/finance-v2/reconciliationService';
-import { subscribeFinanceTaxReports } from '../services/finance-v2/taxService';
-import { subscribeFinanceExportJobs } from '../services/finance-v2/exportService';
-import { migrateLegacyFinanceV1ToV2, type RunLegacyFinanceMigrationSummary } from '../services/finance-v2/migrationService';
+import {
+    confirmReconciliation,
+    importBankStatement,
+    subscribeFinanceBankTransactions,
+    subscribeFinanceReconciliations,
+    suggestReconciliation,
+} from '../services/finance-v2/reconciliationService';
+import { buildTaxReport, subscribeFinanceTaxReports } from '../services/finance-v2/taxService';
+import { generateDatevExport, reopenPeriod, runMonthlyClose, subscribeFinanceExportJobs } from '../services/finance-v2/exportService';
+import { buildFinancialReports, type BuildFinancialReportsResponse } from '../services/finance-v2/reportingService';
+import {
+    confirmExtractedInvoiceDraft,
+    subscribeFinanceDocuments,
+    uploadFinanceDocument,
+} from '../services/finance-v2/documentService';
+import { subscribeFinanceRecurringTemplates } from '../services/finance-v2/recurringTemplateService';
+import { subscribeFinanceAllocationRules, upsertFinanceAllocationRule } from '../services/finance-v2/allocationService';
+import {
+    runFinanceSync,
+    subscribeFinanceSyncConnections,
+    subscribeFinanceSyncRuns,
+    upsertFinanceSyncConnection,
+} from '../services/finance-v2/syncService';
 import type {
     FinanceBankTransaction,
     FinanceBill,
     FinanceCustomer,
+    FinanceAllocationBasis,
+    FinanceAllocationRule,
+    FinanceDocument,
     FinanceExtractedInvoiceDraft,
     FinanceExportJob,
     FinanceInvoice,
@@ -71,6 +94,9 @@ import type {
     FinanceJournalEntry,
     FinancePayment,
     FinanceReconciliation,
+    FinanceRecurringTemplate,
+    FinanceSyncConnection,
+    FinanceSyncRun,
     FinanceTaxReport,
     FinanceVendor,
     Project,
@@ -112,7 +138,7 @@ interface RecurringFormState {
 
 type ChartPeriod = 'today' | '3d' | '7d' | '30d' | '90d' | '3m' | '6m' | '12m' | 'ytd' | 'all' | 'custom';
 type FinanceView = 'tracking' | 'calculations';
-type FinanceWorkspaceSection = 'cockpit' | 'bookings' | 'receivables' | 'payables' | 'bank' | 'tax' | 'reports' | 'exports' | 'settings';
+type FinanceWorkspaceSection = 'cockpit' | 'bookings' | 'receivables' | 'payables' | 'bank' | 'tax' | 'reports' | 'exports' | 'sync' | 'settings' | 'functions';
 type FinanceRouteSection = FinanceWorkspaceSection | 'calculations' | 'planning';
 const DEFAULT_FINANCIAL_ENDPOINT = 'https://europe-west3-quivena.cloudfunctions.net/projectflowFinancialLogs';
 
@@ -156,11 +182,48 @@ interface BillFormState {
     projectId: string;
 }
 
+interface SyncConnectionFormState {
+    name: string;
+    provider: 'stripe' | 'paddle' | 'datev' | 'lexoffice' | 'custom';
+    direction: 'import' | 'export' | 'bidirectional';
+}
+
+interface BankImportFormState {
+    bookingDate: Date | null;
+    amount: string;
+    description: string;
+    counterparty: string;
+    externalReference: string;
+    projectId: string;
+}
+
+interface ReconciliationSuggestionState {
+    bankTransactionId: string;
+    targetType: 'invoice' | 'bill' | null;
+    targetId: string | null;
+    amount: number;
+    confidence: number;
+    rationale: string;
+    selected: boolean;
+}
+
+interface AllocationRuleFormState {
+    name: string;
+    basis: FinanceAllocationBasis;
+    projectId: string;
+    percent: string;
+    notes: string;
+    isActive: boolean;
+}
+
 type InvoiceUploadCadence = 'single' | 'recurring';
 
 interface InvoiceUploadReviewState {
     fileName: string;
     documentType: 'pdf' | 'xml';
+    documentId: string;
+    documentVersionId: string;
+    extractionWarnings: string[];
     vendorId: string;
     vendorName: string;
     vendorEmail: string;
@@ -248,6 +311,36 @@ const buildEmptyBillForm = (): BillFormState => ({
     projectId: '',
 });
 
+const buildEmptySyncConnectionForm = (): SyncConnectionFormState => ({
+    name: '',
+    provider: 'custom',
+    direction: 'import',
+});
+
+const buildEmptyBankImportForm = (): BankImportFormState => ({
+    bookingDate: new Date(),
+    amount: '',
+    description: '',
+    counterparty: '',
+    externalReference: '',
+    projectId: '',
+});
+
+const buildEmptyAllocationRuleForm = (): AllocationRuleFormState => ({
+    name: '',
+    basis: 'revenue_share',
+    projectId: '',
+    percent: '',
+    notes: '',
+    isActive: true,
+});
+
+const toPeriodKey = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
+};
+
 const MAX_INVOICE_UPLOAD_FILE_BYTES = 5 * 1024 * 1024;
 
 const fileToBase64 = (file: File) =>
@@ -280,8 +373,11 @@ const buildInvoiceUploadReviewState = (
     fallbackProjectId: string,
     matchedVendorId?: string
 ): InvoiceUploadReviewState => ({
-    fileName: '',
+    fileName: extracted.fileName || '',
     documentType: extracted.documentType,
+    documentId: extracted.documentId || '',
+    documentVersionId: extracted.documentVersionId || '',
+    extractionWarnings: extracted.warnings || [],
     vendorId: matchedVendorId || '',
     vendorName: extracted.vendorName || '',
     vendorEmail: extracted.vendorEmail || '',
@@ -349,11 +445,21 @@ export const FinanceTracking = () => {
     const { hasPermission, loading: permissionLoading } = usePermissions();
     const confirm = useConfirm();
     const { showError, showSuccess } = useToast();
-    const { financeSection } = useParams<{ financeSection?: string }>();
+    const { financeSection, financeOperationType } = useParams<{ financeSection?: string; financeOperationType?: string }>();
 
     const tenantId = getActiveTenantId() || auth?.currentUser?.uid || null;
     const canView = hasPermission('tenant.finance.view');
     const canManage = hasPermission('tenant.finance.manage');
+    const canManageReconciliation = canManage || hasPermission('tenant.finance.reconciliation.manage');
+    const canManageTax = canManage || hasPermission('tenant.finance.tax.manage');
+    const canManageReports = canManage || hasPermission('tenant.finance.reports.manage');
+    const canManageExports = canManage || hasPermission('tenant.finance.export.datev');
+    const canManageClose = canManage || hasPermission('tenant.finance.close');
+    const canViewFunctions = canManage || hasPermission('tenant.finance.functions.view');
+    const canExecuteFunctions = canManage || hasPermission('tenant.finance.functions.execute');
+    const canRetryFunctionRuns = canManage || hasPermission('tenant.finance.functions.retry');
+    const canManageFunctionTemplates = canManage || hasPermission('tenant.finance.functions.template.manage');
+    const canApproveHighRiskFunctions = canManage || hasPermission('tenant.finance.functions.approve.high_risk');
 
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
@@ -399,6 +505,32 @@ export const FinanceTracking = () => {
     const [reconciliationsV2, setReconciliationsV2] = useState<FinanceReconciliation[]>([]);
     const [taxReportsV2, setTaxReportsV2] = useState<FinanceTaxReport[]>([]);
     const [exportJobsV2, setExportJobsV2] = useState<FinanceExportJob[]>([]);
+    const [financeDocumentsV2, setFinanceDocumentsV2] = useState<FinanceDocument[]>([]);
+    const [financeSyncConnectionsV2, setFinanceSyncConnectionsV2] = useState<FinanceSyncConnection[]>([]);
+    const [financeSyncRunsV2, setFinanceSyncRunsV2] = useState<FinanceSyncRun[]>([]);
+    const [recurringTemplatesV2, setRecurringTemplatesV2] = useState<FinanceRecurringTemplate[]>([]);
+    const [allocationRulesV2, setAllocationRulesV2] = useState<FinanceAllocationRule[]>([]);
+    const [syncConnectionForm, setSyncConnectionForm] = useState<SyncConnectionFormState>(buildEmptySyncConnectionForm);
+    const [runningSyncConnectionId, setRunningSyncConnectionId] = useState<string | null>(null);
+    const [bankImportForm, setBankImportForm] = useState<BankImportFormState>(buildEmptyBankImportForm);
+    const [bankReconPeriodKey, setBankReconPeriodKey] = useState<string>(toPeriodKey(new Date()));
+    const [reconciliationSuggestions, setReconciliationSuggestions] = useState<ReconciliationSuggestionState[]>([]);
+    const [importingBankLine, setImportingBankLine] = useState(false);
+    const [suggestingReconciliation, setSuggestingReconciliation] = useState(false);
+    const [confirmingReconciliation, setConfirmingReconciliation] = useState(false);
+    const [taxBuildPeriodKey, setTaxBuildPeriodKey] = useState<string>(toPeriodKey(new Date()));
+    const [buildingTaxReport, setBuildingTaxReport] = useState(false);
+    const [reportPeriodFrom, setReportPeriodFrom] = useState<string>(toPeriodKey(new Date()));
+    const [reportPeriodTo, setReportPeriodTo] = useState<string>(toPeriodKey(new Date()));
+    const [buildingReports, setBuildingReports] = useState(false);
+    const [generatedReports, setGeneratedReports] = useState<BuildFinancialReportsResponse | null>(null);
+    const [closePeriodKey, setClosePeriodKey] = useState<string>(toPeriodKey(new Date()));
+    const [runningMonthlyClose, setRunningMonthlyClose] = useState(false);
+    const [runningReopenPeriod, setRunningReopenPeriod] = useState(false);
+    const [datevPeriodKey, setDatevPeriodKey] = useState<string>(toPeriodKey(new Date()));
+    const [runningDatevExport, setRunningDatevExport] = useState(false);
+    const [allocationRuleForm, setAllocationRuleForm] = useState<AllocationRuleFormState>(buildEmptyAllocationRuleForm);
+    const [savingAllocationRule, setSavingAllocationRule] = useState(false);
     const [customerForm, setCustomerForm] = useState<CustomerFormState>(buildEmptyCustomerForm);
     const [vendorForm, setVendorForm] = useState<VendorFormState>(buildEmptyVendorForm);
     const [invoiceForm, setInvoiceForm] = useState<InvoiceFormState>(buildEmptyInvoiceForm);
@@ -410,8 +542,6 @@ export const FinanceTracking = () => {
     const [savingInvoiceUpload, setSavingInvoiceUpload] = useState(false);
     const [savingReceivableAction, setSavingReceivableAction] = useState(false);
     const [savingPayableAction, setSavingPayableAction] = useState(false);
-    const [runningMigration, setRunningMigration] = useState(false);
-    const [migrationSummary, setMigrationSummary] = useState<RunLegacyFinanceMigrationSummary | null>(null);
 
     useEffect(() => {
         const normalizedSection = (financeSection || '').trim().toLowerCase() as FinanceRouteSection | '';
@@ -434,7 +564,9 @@ export const FinanceTracking = () => {
             || normalizedSection === 'tax'
             || normalizedSection === 'reports'
             || normalizedSection === 'exports'
+            || normalizedSection === 'sync'
             || normalizedSection === 'settings'
+            || normalizedSection === 'functions'
         ) {
             setActiveView('tracking');
             setActiveWorkspaceSection(normalizedSection);
@@ -538,6 +670,8 @@ export const FinanceTracking = () => {
             setReconciliationsV2([]);
             setTaxReportsV2([]);
             setExportJobsV2([]);
+            setRecurringTemplatesV2([]);
+            setAllocationRulesV2([]);
             return;
         }
 
@@ -551,6 +685,11 @@ export const FinanceTracking = () => {
         const unsubscribeReconciliations = subscribeFinanceReconciliations(setReconciliationsV2, tenantId);
         const unsubscribeTaxReports = subscribeFinanceTaxReports(setTaxReportsV2, tenantId);
         const unsubscribeExportJobs = subscribeFinanceExportJobs(setExportJobsV2, tenantId);
+        const unsubscribeDocuments = subscribeFinanceDocuments(setFinanceDocumentsV2, tenantId);
+        const unsubscribeSyncConnections = subscribeFinanceSyncConnections(setFinanceSyncConnectionsV2, tenantId);
+        const unsubscribeSyncRuns = subscribeFinanceSyncRuns(setFinanceSyncRunsV2, tenantId);
+        const unsubscribeRecurringTemplates = subscribeFinanceRecurringTemplates(setRecurringTemplatesV2, tenantId);
+        const unsubscribeAllocationRules = subscribeFinanceAllocationRules(setAllocationRulesV2, tenantId);
 
         return () => {
             unsubscribeCustomers();
@@ -563,6 +702,11 @@ export const FinanceTracking = () => {
             unsubscribeReconciliations();
             unsubscribeTaxReports();
             unsubscribeExportJobs();
+            unsubscribeDocuments();
+            unsubscribeSyncConnections();
+            unsubscribeSyncRuns();
+            unsubscribeRecurringTemplates();
+            unsubscribeAllocationRules();
         };
     }, [tenantId, canView]);
 
@@ -791,6 +935,17 @@ export const FinanceTracking = () => {
     const v2UnreconciledBankCount = useMemo(() => (
         bankTransactionsV2.filter((transaction) => !transaction.reconciled).length
     ), [bankTransactionsV2]);
+    const v2ActiveDocumentCount = useMemo(() => (
+        financeDocumentsV2.filter((document) => document.status !== 'deleted').length
+    ), [financeDocumentsV2]);
+    const v2SyncRunFailures = useMemo(() => (
+        financeSyncRunsV2.filter((run) => run.status === 'failed').length
+    ), [financeSyncRunsV2]);
+    const selectedReconciliationSuggestionCount = useMemo(() => (
+        reconciliationSuggestions.filter((item) => item.selected && item.targetId).length
+    ), [reconciliationSuggestions]);
+    const reportProfitabilityRows = generatedReports?.projectProfitability || [];
+    const reportTrialBalanceRows = generatedReports?.trialBalance || [];
 
     const COLORS = [
         'var(--color-primary)',
@@ -841,6 +996,25 @@ export const FinanceTracking = () => {
     const invoiceUploadCadenceOptions: SelectOption[] = [
         { label: t('finance.v2.payables.upload.cadence.single'), value: 'single' },
         { label: t('finance.v2.payables.upload.cadence.recurring'), value: 'recurring' },
+    ];
+    const syncProviderOptions: SelectOption[] = [
+        { label: 'Custom', value: 'custom' },
+        { label: 'Stripe', value: 'stripe' },
+        { label: 'Paddle', value: 'paddle' },
+        { label: 'DATEV', value: 'datev' },
+        { label: 'Lexoffice', value: 'lexoffice' },
+    ];
+    const syncDirectionOptions: SelectOption[] = [
+        { label: t('finance.v2.sync.directionImport'), value: 'import' },
+        { label: t('finance.v2.sync.directionExport'), value: 'export' },
+        { label: t('finance.v2.sync.directionBoth'), value: 'bidirectional' },
+    ];
+    const allocationBasisOptions: SelectOption[] = [
+        { label: t('finance.v2.settings.allocation.basis.revenueShare'), value: 'revenue_share' },
+        { label: t('finance.v2.settings.allocation.basis.costShare'), value: 'cost_share' },
+        { label: t('finance.v2.settings.allocation.basis.unitShare'), value: 'unit_share' },
+        { label: t('finance.v2.settings.allocation.basis.tokenShare'), value: 'token_share' },
+        { label: t('finance.v2.settings.allocation.basis.fixedPercent'), value: 'fixed_percent' },
     ];
 
     const invoiceUploadConfidenceLabel = (confidence: FinanceInvoiceExtractionConfidence) => {
@@ -992,21 +1166,45 @@ export const FinanceTracking = () => {
         }
     };
 
-    const handleRunLegacyMigration = async (dryRun: boolean) => {
-        if (!tenantId || !canManage) return;
-
-        setRunningMigration(true);
+    const handleRunFinanceSync = async (connectionId: string) => {
+        if (!tenantId || !canManage || !connectionId) return;
+        setRunningSyncConnectionId(connectionId);
         try {
-            const summary = await migrateLegacyFinanceV1ToV2({ tenantId, dryRun });
-            setMigrationSummary(summary);
-            showSuccess(dryRun
-                ? t('finance.v2.migration.dryRunDone')
-                : t('finance.v2.migration.executeDone'));
+            await runFinanceSync({ tenantId, connectionId, mode: 'delta' });
+            showSuccess(t('finance.v2.sync.runSuccess'));
         } catch (error: any) {
-            console.error('Failed to run legacy finance migration', error);
-            showError(t('finance.v2.migration.error'), error?.message);
+            console.error('Failed to run finance sync', error);
+            showError(t('finance.v2.sync.runError'), error?.message);
         } finally {
-            setRunningMigration(false);
+            setRunningSyncConnectionId(null);
+        }
+    };
+
+    const handleCreateSyncConnection = async () => {
+        if (!tenantId || !canManage) return;
+        if (!syncConnectionForm.name.trim()) {
+            showError(t('finance.v2.sync.nameRequired'));
+            return;
+        }
+
+        try {
+            await upsertFinanceSyncConnection({
+                tenantId,
+                connection: {
+                    name: syncConnectionForm.name.trim(),
+                    provider: syncConnectionForm.provider,
+                    direction: syncConnectionForm.direction,
+                    status: 'active',
+                    configRef: '',
+                    lastRunAt: undefined,
+                    lastRunStatus: undefined,
+                },
+            });
+            setSyncConnectionForm(buildEmptySyncConnectionForm());
+            showSuccess(t('finance.v2.sync.connectionSaved'));
+        } catch (error: any) {
+            console.error('Failed to create sync connection', error);
+            showError(t('finance.v2.sync.connectionError'), error?.message);
         }
     };
 
@@ -1174,11 +1372,19 @@ export const FinanceTracking = () => {
         setAnalyzingInvoiceUpload(true);
         try {
             const contentBase64 = await fileToBase64(invoiceUploadFile);
-            const extracted = await extractInvoiceFromDocument({
+            const uploaded = await uploadFinanceDocument({
                 tenantId,
+                title: invoiceUploadFile.name,
+                documentType: isPdf ? 'pdf' : 'xml',
+                projectId: billForm.projectId || undefined,
                 fileName: invoiceUploadFile.name,
                 mimeType: invoiceUploadFile.type || (isPdf ? 'application/pdf' : 'application/xml'),
                 contentBase64,
+            });
+            const extracted = await extractInvoiceFromDocument({
+                tenantId,
+                documentId: uploaded.documentId,
+                documentVersionId: uploaded.versionId,
             });
 
             const matchedVendor = vendorsV2.find(
@@ -1187,6 +1393,8 @@ export const FinanceTracking = () => {
 
             const reviewState = buildInvoiceUploadReviewState(extracted, billForm.projectId || '', matchedVendor?.id);
             reviewState.fileName = invoiceUploadFile.name;
+            reviewState.documentId = extracted.documentId || uploaded.documentId || '';
+            reviewState.documentVersionId = extracted.documentVersionId || uploaded.versionId || '';
             reviewState.description = reviewState.description || t('finance.v2.payables.defaultLineDescription');
             setInvoiceUploadReview(reviewState);
 
@@ -1213,37 +1421,13 @@ export const FinanceTracking = () => {
             showError(t('finance.v2.payables.amountRequired'));
             return;
         }
-
-        let vendorId = invoiceUploadReview.vendorId;
-        if (!vendorId) {
-            if (!invoiceUploadReview.vendorName.trim()) {
-                showError(t('finance.v2.payables.vendorRequired'));
-                return;
-            }
-
-            try {
-                const vendorResponse = await upsertFinanceVendor({
-                    tenantId,
-                    name: invoiceUploadReview.vendorName.trim(),
-                    email: invoiceUploadReview.vendorEmail.trim() || undefined,
-                });
-                vendorId = vendorResponse.vendorId;
-            } catch (error: any) {
-                console.error('Failed to auto-create vendor from uploaded invoice', error);
-                showError(t('finance.v2.payables.error'), error?.message);
-                return;
-            }
+        if (!invoiceUploadReview.vendorId && !invoiceUploadReview.vendorName.trim()) {
+            showError(t('finance.v2.payables.vendorRequired'));
+            return;
         }
 
-        const roundedNetAmount = Math.round((quantity * unitCost + Number.EPSILON) * 100) / 100;
         const safeTaxRate = Number.isFinite(taxRatePercent) ? Math.max(0, taxRatePercent) : 0;
-        const roundedGrossAmount = Math.round((roundedNetAmount * (1 + (safeTaxRate / 100)) + Number.EPSILON) * 100) / 100;
-        const selectedVendorName = vendorsV2.find((vendor) => vendor.id === vendorId)?.name?.trim()
-            || invoiceUploadReview.vendorName.trim();
-        const transactionCategory = selectedVendorName
-            ? `${t('finance.v2.payables.upload.transactionCategory')} ${selectedVendorName}`
-            : t('finance.v2.payables.upload.transactionCategoryFallback');
-        const transactionNotes = [
+        const confirmationNotes = [
             invoiceUploadReview.notes.trim(),
             invoiceUploadReview.recurringHint ? `Recurring hint: ${invoiceUploadReview.recurringHint}` : '',
             invoiceUploadReview.invoiceNumber ? `Invoice: ${invoiceUploadReview.invoiceNumber}` : '',
@@ -1252,61 +1436,42 @@ export const FinanceTracking = () => {
 
         setSavingInvoiceUpload(true);
         try {
-            await createBill({
+            const response = await confirmExtractedInvoiceDraft({
                 tenantId,
-                vendorId,
+                documentId: invoiceUploadReview.documentId || undefined,
+                documentVersionId: invoiceUploadReview.documentVersionId || undefined,
+                cadence: invoiceUploadReview.cadence,
+                recurringFrequency: invoiceUploadReview.recurringFrequency === 'daily'
+                    ? 'weekly'
+                    : invoiceUploadReview.recurringFrequency,
+                recurringEndDate: invoiceUploadReview.recurringEndDate
+                    ? invoiceUploadReview.recurringEndDate.toISOString()
+                    : undefined,
+                vendorId: invoiceUploadReview.vendorId || undefined,
+                vendorName: invoiceUploadReview.vendorName.trim() || undefined,
+                vendorEmail: invoiceUploadReview.vendorEmail.trim() || undefined,
+                vendorVatId: invoiceUploadReview.vendorVatId.trim() || undefined,
                 billNo: invoiceUploadReview.invoiceNumber.trim() || undefined,
                 billDate: invoiceUploadReview.billDate.toISOString(),
                 dueDate: invoiceUploadReview.dueDate.toISOString(),
                 projectId: invoiceUploadReview.projectId || undefined,
                 currencyCode: invoiceUploadReview.currencyCode || currencyCode,
-                notes: transactionNotes || undefined,
-                lines: [
-                    {
-                        description: invoiceUploadReview.description.trim() || t('finance.v2.payables.defaultLineDescription'),
-                        quantity,
-                        unitCost,
-                        taxRatePercent: safeTaxRate,
-                    },
-                ],
+                lineDescription: invoiceUploadReview.description.trim() || t('finance.v2.payables.defaultLineDescription'),
+                quantity,
+                unitCost,
+                taxRatePercent: safeTaxRate,
+                notes: confirmationNotes || undefined,
+                autoPost: true,
             });
 
             if (invoiceUploadReview.cadence === 'recurring') {
-                const recurringId = await createRecurringTransaction({
-                    projectId: invoiceUploadReview.projectId || undefined,
-                    type: 'expense',
-                    frequency: invoiceUploadReview.recurringFrequency,
-                    startDate: invoiceUploadReview.billDate,
-                    endDate: invoiceUploadReview.recurringEndDate || undefined,
-                    category: transactionCategory,
-                    amount: roundedGrossAmount,
-                    notes: transactionNotes,
-                }, tenantId);
-
-                await createTransaction({
-                    projectId: invoiceUploadReview.projectId || undefined,
-                    type: 'expense',
-                    date: invoiceUploadReview.billDate,
-                    category: transactionCategory,
-                    amount: roundedGrossAmount,
-                    notes: transactionNotes,
-                    isRecurring: true,
-                    recurringId,
-                }, tenantId);
-
                 showSuccess(t('finance.v2.payables.upload.confirmSuccessRecurring'));
             } else {
-                await createTransaction({
-                    projectId: invoiceUploadReview.projectId || undefined,
-                    type: 'expense',
-                    date: invoiceUploadReview.billDate,
-                    category: transactionCategory,
-                    amount: roundedGrossAmount,
-                    notes: transactionNotes,
-                    isRecurring: false,
-                }, tenantId);
-
                 showSuccess(t('finance.v2.payables.upload.confirmSuccessSingle'));
+            }
+
+            if (!invoiceUploadReview.vendorId && response?.vendorId) {
+                setInvoiceUploadReview((prev) => (prev ? { ...prev, vendorId: String(response.vendorId) } : prev));
             }
 
             resetInvoiceUploadFlow();
@@ -1395,6 +1560,296 @@ export const FinanceTracking = () => {
             showError(t('finance.v2.payables.error'), error?.message);
         } finally {
             setSavingPayableAction(false);
+        }
+    };
+
+    const isValidPeriodKey = (value: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(value.trim());
+
+    const handleImportBankLine = async () => {
+        if (!tenantId || !canManageReconciliation) return;
+        if (!bankImportForm.bookingDate) {
+            showError(t('finance.v2.bank.import.validation.date'));
+            return;
+        }
+
+        const amount = Number(bankImportForm.amount);
+        if (!Number.isFinite(amount) || amount === 0) {
+            showError(t('finance.v2.bank.import.validation.amount'));
+            return;
+        }
+
+        setImportingBankLine(true);
+        try {
+            await importBankStatement({
+                tenantId,
+                transactions: [
+                    {
+                        bookingDate: bankImportForm.bookingDate.toISOString(),
+                        amount,
+                        description: bankImportForm.description.trim() || undefined,
+                        counterparty: bankImportForm.counterparty.trim() || undefined,
+                        externalReference: bankImportForm.externalReference.trim() || undefined,
+                        projectId: bankImportForm.projectId || undefined,
+                    },
+                ],
+            });
+            setBankImportForm(buildEmptyBankImportForm());
+            showSuccess(t('finance.v2.bank.import.success'));
+        } catch (error: any) {
+            console.error('Failed to import bank line', error);
+            showError(t('finance.v2.bank.import.error'), error?.message);
+        } finally {
+            setImportingBankLine(false);
+        }
+    };
+
+    const handleSuggestReconciliation = async () => {
+        if (!tenantId || !canManageReconciliation) return;
+        if (!isValidPeriodKey(bankReconPeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+
+        setSuggestingReconciliation(true);
+        try {
+            const response = await suggestReconciliation({
+                tenantId,
+                periodKey: bankReconPeriodKey,
+            }) as { suggestions?: Array<{
+                bankTransactionId?: string;
+                targetType?: 'invoice' | 'bill' | null;
+                targetId?: string | null;
+                amount?: number;
+                confidence?: number;
+                rationale?: string;
+            }> };
+            const nextSuggestions = (response.suggestions || [])
+                .filter((row) => row.bankTransactionId)
+                .map((row) => ({
+                    bankTransactionId: String(row.bankTransactionId),
+                    targetType: row.targetType || null,
+                    targetId: row.targetId || null,
+                    amount: Number(row.amount) || 0,
+                    confidence: Number(row.confidence) || 0,
+                    rationale: String(row.rationale || ''),
+                    selected: Boolean(row.targetId),
+                }));
+            setReconciliationSuggestions(nextSuggestions);
+            showSuccess(t('finance.v2.bank.reconcile.suggestSuccess'));
+        } catch (error: any) {
+            console.error('Failed to suggest reconciliation', error);
+            showError(t('finance.v2.bank.reconcile.suggestError'), error?.message);
+        } finally {
+            setSuggestingReconciliation(false);
+        }
+    };
+
+    const handleToggleReconciliationSuggestion = (bankTransactionId: string) => {
+        setReconciliationSuggestions((prev) => prev.map((item) => (
+            item.bankTransactionId === bankTransactionId
+                ? { ...item, selected: !item.selected }
+                : item
+        )));
+    };
+
+    const handleConfirmReconciliation = async () => {
+        if (!tenantId || !canManageReconciliation) return;
+        if (!isValidPeriodKey(bankReconPeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+        if (reconciliationSuggestions.length === 0) {
+            showError(t('finance.v2.bank.reconcile.empty'));
+            return;
+        }
+
+        const matchedItems = reconciliationSuggestions
+            .filter((item) => item.selected && item.targetId && item.targetType)
+            .map((item) => ({
+                bankTransactionId: item.bankTransactionId,
+                targetType: item.targetType,
+                targetId: item.targetId,
+                confidence: item.confidence,
+                rationale: item.rationale,
+            }));
+        if (matchedItems.length === 0) {
+            showError(t('finance.v2.bank.reconcile.confirmValidation'));
+            return;
+        }
+
+        const matchedTransactionIds = matchedItems.map((item) => item.bankTransactionId);
+        const unmatchedTransactionIds = reconciliationSuggestions
+            .filter((item) => !matchedTransactionIds.includes(item.bankTransactionId))
+            .map((item) => item.bankTransactionId);
+
+        setConfirmingReconciliation(true);
+        try {
+            await confirmReconciliation({
+                tenantId,
+                periodKey: bankReconPeriodKey,
+                matchedTransactionIds,
+                matchedItems,
+                unmatchedTransactionIds,
+            });
+            setReconciliationSuggestions([]);
+            showSuccess(t('finance.v2.bank.reconcile.confirmSuccess'));
+        } catch (error: any) {
+            console.error('Failed to confirm reconciliation', error);
+            showError(t('finance.v2.bank.reconcile.confirmError'), error?.message);
+        } finally {
+            setConfirmingReconciliation(false);
+        }
+    };
+
+    const handleBuildTaxReport = async () => {
+        if (!tenantId || !canManageTax) return;
+        if (!isValidPeriodKey(taxBuildPeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+
+        setBuildingTaxReport(true);
+        try {
+            await buildTaxReport({
+                tenantId,
+                periodKey: taxBuildPeriodKey,
+            });
+            showSuccess(t('finance.v2.tax.build.success'));
+        } catch (error: any) {
+            console.error('Failed to build tax report', error);
+            showError(t('finance.v2.tax.build.error'), error?.message);
+        } finally {
+            setBuildingTaxReport(false);
+        }
+    };
+
+    const handleBuildReports = async () => {
+        if (!tenantId || !canManageReports) return;
+        if (!isValidPeriodKey(reportPeriodFrom) || !isValidPeriodKey(reportPeriodTo)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+        if (reportPeriodFrom > reportPeriodTo) {
+            showError(t('finance.v2.reports.validation.periodOrder'));
+            return;
+        }
+
+        setBuildingReports(true);
+        try {
+            const report = await buildFinancialReports({
+                tenantId,
+                periodKeyFrom: reportPeriodFrom,
+                periodKeyTo: reportPeriodTo,
+                includeProjectProfitability: true,
+            });
+            setGeneratedReports(report);
+            showSuccess(t('finance.v2.reports.build.success'));
+        } catch (error: any) {
+            console.error('Failed to build financial reports', error);
+            showError(t('finance.v2.reports.build.error'), error?.message);
+        } finally {
+            setBuildingReports(false);
+        }
+    };
+
+    const handleRunMonthlyClose = async () => {
+        if (!tenantId || !canManageClose) return;
+        if (!isValidPeriodKey(closePeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+
+        setRunningMonthlyClose(true);
+        try {
+            await runMonthlyClose({
+                tenantId,
+                periodKey: closePeriodKey,
+            });
+            showSuccess(t('finance.v2.exports.close.success'));
+        } catch (error: any) {
+            console.error('Failed to run monthly close', error);
+            showError(t('finance.v2.exports.close.error'), error?.message);
+        } finally {
+            setRunningMonthlyClose(false);
+        }
+    };
+
+    const handleReopenPeriod = async () => {
+        if (!tenantId || !canManageClose) return;
+        if (!isValidPeriodKey(closePeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+
+        setRunningReopenPeriod(true);
+        try {
+            await reopenPeriod({
+                tenantId,
+                periodKey: closePeriodKey,
+            });
+            showSuccess(t('finance.v2.exports.reopen.success'));
+        } catch (error: any) {
+            console.error('Failed to reopen period', error);
+            showError(t('finance.v2.exports.reopen.error'), error?.message);
+        } finally {
+            setRunningReopenPeriod(false);
+        }
+    };
+
+    const handleGenerateDatevExport = async () => {
+        if (!tenantId || !canManageExports) return;
+        if (!isValidPeriodKey(datevPeriodKey)) {
+            showError(t('finance.v2.common.validation.periodKey'));
+            return;
+        }
+
+        setRunningDatevExport(true);
+        try {
+            await generateDatevExport({
+                tenantId,
+                periodKey: datevPeriodKey,
+            });
+            showSuccess(t('finance.v2.exports.datev.success'));
+        } catch (error: any) {
+            console.error('Failed to generate DATEV export', error);
+            showError(t('finance.v2.exports.datev.error'), error?.message);
+        } finally {
+            setRunningDatevExport(false);
+        }
+    };
+
+    const handleSaveAllocationRule = async () => {
+        if (!tenantId || !canManage) return;
+        if (!allocationRuleForm.name.trim()) {
+            showError(t('finance.v2.settings.allocation.validation.name'));
+            return;
+        }
+        const percent = Number(allocationRuleForm.percent);
+        if (allocationRuleForm.basis === 'fixed_percent' && (!Number.isFinite(percent) || percent < 0 || percent > 100)) {
+            showError(t('finance.v2.settings.allocation.validation.percent'));
+            return;
+        }
+
+        setSavingAllocationRule(true);
+        try {
+            await upsertFinanceAllocationRule({
+                tenantId,
+                rule: {
+                    name: allocationRuleForm.name.trim(),
+                    basis: allocationRuleForm.basis,
+                    projectId: allocationRuleForm.projectId || undefined,
+                    percent: Number.isFinite(percent) ? percent : 0,
+                    notes: allocationRuleForm.notes.trim() || undefined,
+                    isActive: allocationRuleForm.isActive,
+                },
+            });
+            setAllocationRuleForm(buildEmptyAllocationRuleForm());
+            showSuccess(t('finance.v2.settings.allocation.saved'));
+        } catch (error: any) {
+            console.error('Failed to save allocation rule', error);
+            showError(t('finance.v2.settings.allocation.error'), error?.message);
+        } finally {
+            setSavingAllocationRule(false);
         }
     };
 
@@ -2120,6 +2575,16 @@ export const FinanceTracking = () => {
                                         {`${t('finance.v2.payables.upload.recurringHint')}: ${invoiceUploadReview.recurringHint}`}
                                     </p>
                                 )}
+                                {invoiceUploadReview.extractionWarnings.length > 0 && (
+                                    <div className="finance-v2-upload__hint text-muted">
+                                        {t('finance.v2.payables.upload.warnings')}
+                                        <ul style={{ margin: '8px 0 0 16px' }}>
+                                            {invoiceUploadReview.extractionWarnings.map((warning, index) => (
+                                                <li key={`${warning}-${index}`}>{warning}</li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                                 <div className="finance-v2-upload__metrics">
                                     <div className="finance-v2-upload__metric">
                                         <span>{t('finance.v2.payables.upload.netAmount')}</span>
@@ -2312,125 +2777,580 @@ export const FinanceTracking = () => {
 
         if (activeWorkspaceSection === 'bank') {
             return (
-                <Card className="finance-panel finance-panel--expanded">
-                    <div className="finance-panel__header">
-                        <div>
-                            <h3 className="h3">{t('finance.v2.bank.title')}</h3>
-                            <p className="text-muted">{t('finance.v2.bank.subtitle')}</p>
+                <div className="finance-v2-workspace">
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h3">{t('finance.v2.bank.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.bank.subtitle')}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="finance-ai-metrics">
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.bank.transactions')}</span>
-                            <strong>{formatInteger(bankTransactionsV2.length)}</strong>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.bank.transactions')}</span>
+                                <strong>{formatInteger(bankTransactionsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.bank.unreconciled')}</span>
+                                <strong>{formatInteger(v2UnreconciledBankCount)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.bank.reconciliations')}</span>
+                                <strong>{formatInteger(reconciliationsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.bank.journalLinks')}</span>
+                                <strong>{formatInteger(journalEntries.length)}</strong>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.bank.unreconciled')}</span>
-                            <strong>{formatInteger(v2UnreconciledBankCount)}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.bank.import.title')}</h3>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.bank.reconciliations')}</span>
-                            <strong>{formatInteger(reconciliationsV2.length)}</strong>
+                        <div className="finance-v2-form-grid">
+                            <DatePicker
+                                label={t('finance.v2.bank.import.bookingDate')}
+                                value={bankImportForm.bookingDate}
+                                onChange={(value) => setBankImportForm((prev) => ({ ...prev, bookingDate: value }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <TextInput
+                                label={t('finance.v2.bank.import.amount')}
+                                type="number"
+                                inputMode="decimal"
+                                value={bankImportForm.amount}
+                                onChange={(event) => setBankImportForm((prev) => ({ ...prev, amount: event.target.value }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <TextInput
+                                label={t('finance.v2.bank.import.description')}
+                                value={bankImportForm.description}
+                                onChange={(event) => setBankImportForm((prev) => ({ ...prev, description: event.target.value }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <TextInput
+                                label={t('finance.v2.bank.import.counterparty')}
+                                value={bankImportForm.counterparty}
+                                onChange={(event) => setBankImportForm((prev) => ({ ...prev, counterparty: event.target.value }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <TextInput
+                                label={t('finance.v2.bank.import.reference')}
+                                value={bankImportForm.externalReference}
+                                onChange={(event) => setBankImportForm((prev) => ({ ...prev, externalReference: event.target.value }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <Select
+                                label={t('finance.project.field')}
+                                value={bankImportForm.projectId}
+                                options={projectFormOptions}
+                                onChange={(value) => setBankImportForm((prev) => ({ ...prev, projectId: String(value || '') }))}
+                                disabled={!canManageReconciliation}
+                            />
+                            <Button
+                                variant="primary"
+                                onClick={() => void handleImportBankLine()}
+                                isLoading={importingBankLine}
+                                disabled={!canManageReconciliation}
+                            >
+                                {t('finance.v2.bank.import.submit')}
+                            </Button>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.bank.journalLinks')}</span>
-                            <strong>{formatInteger(journalEntries.length)}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h4">{t('finance.v2.bank.reconcile.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.bank.reconcile.subtitle')}</p>
+                            </div>
+                            <div className="finance-panel__header-actions">
+                                <TextInput
+                                    label={t('finance.v2.common.periodKey')}
+                                    value={bankReconPeriodKey}
+                                    onChange={(event) => setBankReconPeriodKey(event.target.value)}
+                                    disabled={!canManageReconciliation}
+                                />
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => void handleSuggestReconciliation()}
+                                    isLoading={suggestingReconciliation}
+                                    disabled={!canManageReconciliation}
+                                >
+                                    {t('finance.v2.bank.reconcile.suggest')}
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => void handleConfirmReconciliation()}
+                                    isLoading={confirmingReconciliation}
+                                    disabled={!canManageReconciliation || selectedReconciliationSuggestionCount === 0}
+                                >
+                                    {t('finance.v2.bank.reconcile.confirm')}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </Card>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.bank.reconcile.use')}</span>
+                                <span>{t('finance.v2.bank.reconcile.bankTransaction')}</span>
+                                <span>{t('finance.v2.bank.reconcile.target')}</span>
+                                <span>{t('finance.v2.bank.reconcile.amount')}</span>
+                                <span>{t('finance.v2.bank.reconcile.confidence')}</span>
+                                <span>{t('finance.v2.bank.reconcile.reason')}</span>
+                            </div>
+                            {reconciliationSuggestions.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.bank.reconcile.empty')}</div>
+                            ) : (
+                                reconciliationSuggestions.map((suggestion) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={suggestion.bankTransactionId}>
+                                        <div>
+                                            <Checkbox
+                                                checked={suggestion.selected}
+                                                onChange={() => handleToggleReconciliationSuggestion(suggestion.bankTransactionId)}
+                                                disabled={!suggestion.targetId || !canManageReconciliation}
+                                            />
+                                        </div>
+                                        <span>{suggestion.bankTransactionId}</span>
+                                        <span>{suggestion.targetId ? `${suggestion.targetType}:${suggestion.targetId}` : '-'}</span>
+                                        <span>{formatCurrency(suggestion.amount)}</span>
+                                        <span>{`${Math.round((suggestion.confidence || 0) * 100)}%`}</span>
+                                        <span className="finance-table__notes">{suggestion.rationale || '-'}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+                </div>
             );
         }
 
         if (activeWorkspaceSection === 'tax') {
             return (
-                <Card className="finance-panel finance-panel--expanded">
-                    <div className="finance-panel__header">
-                        <div>
-                            <h3 className="h3">{t('finance.v2.tax.title')}</h3>
-                            <p className="text-muted">{t('finance.v2.tax.subtitle')}</p>
+                <div className="finance-v2-workspace">
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h3">{t('finance.v2.tax.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.tax.subtitle')}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="finance-ai-metrics">
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.tax.reports')}</span>
-                            <strong>{formatInteger(taxReportsV2.length)}</strong>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.tax.reports')}</span>
+                                <strong>{formatInteger(taxReportsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.tax.latestPeriod')}</span>
+                                <strong>{taxReportsV2[0]?.periodKey || '-'}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.tax.latestPayable')}</span>
+                                <strong>{formatCurrency(Number(taxReportsV2[0]?.payableTax) || 0)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.tax.mode')}</span>
+                                <strong>DE / GoBD + DATEV</strong>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.tax.latestPeriod')}</span>
-                            <strong>{taxReportsV2[0]?.periodKey || '-'}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.tax.build.title')}</h3>
+                            <div className="finance-panel__header-actions">
+                                <TextInput
+                                    label={t('finance.v2.common.periodKey')}
+                                    value={taxBuildPeriodKey}
+                                    onChange={(event) => setTaxBuildPeriodKey(event.target.value)}
+                                    disabled={!canManageTax}
+                                />
+                                <Button
+                                    variant="primary"
+                                    onClick={() => void handleBuildTaxReport()}
+                                    isLoading={buildingTaxReport}
+                                    disabled={!canManageTax}
+                                >
+                                    {t('finance.v2.tax.build.action')}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.tax.latestPayable')}</span>
-                            <strong>{formatCurrency(Number(taxReportsV2[0]?.payableTax) || 0)}</strong>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.tax.table.period')}</span>
+                                <span>{t('finance.v2.tax.table.outputTax')}</span>
+                                <span>{t('finance.v2.tax.table.inputTax')}</span>
+                                <span>{t('finance.v2.tax.table.payableTax')}</span>
+                            </div>
+                            {taxReportsV2.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.tax.table.empty')}</div>
+                            ) : (
+                                taxReportsV2.slice(0, 24).map((report) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={report.id}>
+                                        <span>{report.periodKey}</span>
+                                        <span>{formatCurrency(Number(report.outputTax) || 0)}</span>
+                                        <span>{formatCurrency(Number(report.inputTax) || 0)}</span>
+                                        <span>{formatCurrency(Number(report.payableTax) || 0)}</span>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.tax.mode')}</span>
-                            <strong>DE / GoBD + DATEV</strong>
-                        </div>
-                    </div>
-                </Card>
+                    </Card>
+                </div>
             );
         }
 
         if (activeWorkspaceSection === 'reports') {
             return (
-                <Card className="finance-panel finance-panel--expanded">
-                    <div className="finance-panel__header">
-                        <div>
-                            <h3 className="h3">{t('finance.v2.reports.title')}</h3>
-                            <p className="text-muted">{t('finance.v2.reports.subtitle')}</p>
+                <div className="finance-v2-workspace">
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h3">{t('finance.v2.reports.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.reports.subtitle')}</p>
+                            </div>
+                            <div className="finance-panel__header-actions">
+                                <TextInput
+                                    label={t('finance.v2.reports.from')}
+                                    value={reportPeriodFrom}
+                                    onChange={(event) => setReportPeriodFrom(event.target.value)}
+                                    disabled={!canManageReports}
+                                />
+                                <TextInput
+                                    label={t('finance.v2.reports.to')}
+                                    value={reportPeriodTo}
+                                    onChange={(event) => setReportPeriodTo(event.target.value)}
+                                    disabled={!canManageReports}
+                                />
+                                <Button
+                                    variant="primary"
+                                    onClick={() => void handleBuildReports()}
+                                    isLoading={buildingReports}
+                                    disabled={!canManageReports}
+                                >
+                                    {t('finance.v2.reports.build.action')}
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                    <div className="finance-ai-metrics">
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.reports.trialBalance')}</span>
-                            <strong>{formatInteger(journalEntries.length)}</strong>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.reports.trialBalance')}</span>
+                                <strong>{formatInteger(reportTrialBalanceRows.length || journalEntries.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.reports.projectProfitability')}</span>
+                                <strong>{formatInteger(reportProfitabilityRows.length || projectProfitability.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.reports.aiCostVisibility')}</span>
+                                <strong>{formatCurrency(toFiniteNumber(financialUsage?.totals?.aiUsd))}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.reports.periodControl')}</span>
+                                <strong>{generatedReports ? `${reportPeriodFrom} → ${reportPeriodTo}` : t('finance.v2.reports.monthly')}</strong>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.reports.projectProfitability')}</span>
-                            <strong>{formatInteger(projectProfitability.length)}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.reports.projectProfitabilityTable')}</h3>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.reports.aiCostVisibility')}</span>
-                            <strong>{formatCurrency(toFiniteNumber(financialUsage?.totals?.aiUsd))}</strong>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.project.label')}</span>
+                                <span>{t('finance.v2.reports.table.revenue')}</span>
+                                <span>{t('finance.v2.reports.table.directCosts')}</span>
+                                <span>{t('finance.v2.reports.table.aiCosts')}</span>
+                                <span>{t('finance.v2.reports.table.overhead')}</span>
+                                <span>{t('finance.v2.reports.table.netProfit')}</span>
+                                <span>{t('finance.v2.reports.table.margin')}</span>
+                            </div>
+                            {reportProfitabilityRows.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.reports.empty')}</div>
+                            ) : (
+                                reportProfitabilityRows.map((row) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={row.projectId}>
+                                        <span>{row.projectId === '__unassigned__' ? t('finance.project.unassigned') : row.projectName}</span>
+                                        <span>{formatCurrency(row.revenue)}</span>
+                                        <span>{formatCurrency(row.directCosts)}</span>
+                                        <span>{formatCurrency(row.aiCosts)}</span>
+                                        <span>{formatCurrency(row.overheadAllocated)}</span>
+                                        <span>{formatCurrency(row.netProfit)}</span>
+                                        <span>{`${Number.isFinite(row.marginPercent) ? row.marginPercent.toFixed(2) : '0.00'}%`}</span>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.reports.periodControl')}</span>
-                            <strong>{t('finance.v2.reports.monthly')}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.reports.trialBalanceTable')}</h3>
                         </div>
-                    </div>
-                </Card>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.reports.table.account')}</span>
+                                <span>{t('finance.v2.reports.table.debit')}</span>
+                                <span>{t('finance.v2.reports.table.credit')}</span>
+                                <span>{t('finance.v2.reports.table.balance')}</span>
+                            </div>
+                            {reportTrialBalanceRows.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.reports.empty')}</div>
+                            ) : (
+                                reportTrialBalanceRows.slice(0, 50).map((row) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={row.accountId}>
+                                        <span>{row.accountNo ? `${row.accountNo} · ${row.accountName}` : row.accountName}</span>
+                                        <span>{formatCurrency(row.debit)}</span>
+                                        <span>{formatCurrency(row.credit)}</span>
+                                        <span>{formatCurrency(row.balance)}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+                </div>
             );
         }
 
         if (activeWorkspaceSection === 'exports') {
             return (
-                <Card className="finance-panel finance-panel--expanded">
-                    <div className="finance-panel__header">
-                        <div>
-                            <h3 className="h3">{t('finance.v2.exports.title')}</h3>
-                            <p className="text-muted">{t('finance.v2.exports.subtitle')}</p>
+                <div className="finance-v2-workspace">
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h3">{t('finance.v2.exports.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.exports.subtitle')}</p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="finance-ai-metrics">
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.exports.jobs')}</span>
-                            <strong>{formatInteger(exportJobsV2.length)}</strong>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.exports.jobs')}</span>
+                                <strong>{formatInteger(exportJobsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.exports.latestStatus')}</span>
+                                <strong>{exportJobsV2[0]?.status || '-'}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.exports.latestPeriod')}</span>
+                                <strong>{exportJobsV2[0]?.periodKey || '-'}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.exports.closeState')}</span>
+                                <strong>{t('finance.v2.reports.monthly')}</strong>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.exports.latestStatus')}</span>
-                            <strong>{exportJobsV2[0]?.status || '-'}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.exports.datev.title')}</h3>
+                            <div className="finance-panel__header-actions">
+                                <TextInput
+                                    label={t('finance.v2.common.periodKey')}
+                                    value={datevPeriodKey}
+                                    onChange={(event) => setDatevPeriodKey(event.target.value)}
+                                    disabled={!canManageExports}
+                                />
+                                <Button
+                                    variant="primary"
+                                    onClick={() => void handleGenerateDatevExport()}
+                                    isLoading={runningDatevExport}
+                                    disabled={!canManageExports}
+                                >
+                                    {t('finance.v2.exports.datev.action')}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.exports.latestPeriod')}</span>
-                            <strong>{exportJobsV2[0]?.periodKey || '-'}</strong>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.exports.close.title')}</h3>
+                            <div className="finance-panel__header-actions">
+                                <TextInput
+                                    label={t('finance.v2.common.periodKey')}
+                                    value={closePeriodKey}
+                                    onChange={(event) => setClosePeriodKey(event.target.value)}
+                                    disabled={!canManageClose}
+                                />
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => void handleReopenPeriod()}
+                                    isLoading={runningReopenPeriod}
+                                    disabled={!canManageClose}
+                                >
+                                    {t('finance.v2.exports.reopen.action')}
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => void handleRunMonthlyClose()}
+                                    isLoading={runningMonthlyClose}
+                                    disabled={!canManageClose}
+                                >
+                                    {t('finance.v2.exports.close.action')}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="finance-ai-metric">
-                            <span>{t('finance.v2.exports.closeState')}</span>
-                            <strong>{t('finance.v2.reports.monthly')}</strong>
+                        <p className="text-muted">{t('finance.v2.exports.close.hint')}</p>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.exports.jobs')}</h3>
                         </div>
-                    </div>
-                </Card>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.exports.table.period')}</span>
+                                <span>{t('finance.v2.exports.table.status')}</span>
+                                <span>{t('finance.v2.exports.table.file')}</span>
+                                <span>{t('finance.v2.exports.table.warnings')}</span>
+                            </div>
+                            {exportJobsV2.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.exports.table.empty')}</div>
+                            ) : (
+                                exportJobsV2.slice(0, 20).map((job) => {
+                                    const warnings = Array.isArray((job as any).validationWarnings)
+                                        ? ((job as any).validationWarnings as unknown[]).length
+                                        : 0;
+                                    return (
+                                        <div className="finance-table__row finance-table__row--profitability" key={job.id}>
+                                            <span>{job.periodKey}</span>
+                                            <span className="finance-pill">{job.status}</span>
+                                            <span>{job.fileName || '-'}</span>
+                                            <span>{formatInteger(warnings)}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            );
+        }
+
+        if (activeWorkspaceSection === 'sync') {
+            return (
+                <div className="finance-v2-workspace">
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <div>
+                                <h3 className="h3">{t('finance.v2.sync.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.sync.subtitle')}</p>
+                            </div>
+                        </div>
+                        <div className="finance-ai-metrics">
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.sync.connections')}</span>
+                                <strong>{formatInteger(financeSyncConnectionsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.sync.runs')}</span>
+                                <strong>{formatInteger(financeSyncRunsV2.length)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.sync.failures')}</span>
+                                <strong>{formatInteger(v2SyncRunFailures)}</strong>
+                            </div>
+                            <div className="finance-ai-metric">
+                                <span>{t('finance.v2.sync.documents')}</span>
+                                <strong>{formatInteger(v2ActiveDocumentCount)}</strong>
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.sync.newConnection')}</h3>
+                        </div>
+                        <div className="finance-v2-form-grid">
+                            <TextInput
+                                label={t('finance.v2.sync.connectionName')}
+                                value={syncConnectionForm.name}
+                                onChange={(event) => setSyncConnectionForm((prev) => ({ ...prev, name: event.target.value }))}
+                                disabled={!canManage}
+                            />
+                            <Select
+                                label={t('finance.v2.sync.provider')}
+                                value={syncConnectionForm.provider}
+                                options={syncProviderOptions}
+                                onChange={(value) => setSyncConnectionForm((prev) => ({ ...prev, provider: value as SyncConnectionFormState['provider'] }))}
+                                disabled={!canManage}
+                            />
+                            <Select
+                                label={t('finance.v2.sync.direction')}
+                                value={syncConnectionForm.direction}
+                                options={syncDirectionOptions}
+                                onChange={(value) => setSyncConnectionForm((prev) => ({ ...prev, direction: value as SyncConnectionFormState['direction'] }))}
+                                disabled={!canManage}
+                            />
+                            <Button
+                                variant="primary"
+                                onClick={() => void handleCreateSyncConnection()}
+                                disabled={!canManage}
+                            >
+                                {t('finance.v2.sync.saveConnection')}
+                            </Button>
+                        </div>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.sync.connections')}</h3>
+                        </div>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.sync.connectionName')}</span>
+                                <span>{t('finance.v2.sync.provider')}</span>
+                                <span>{t('finance.v2.sync.direction')}</span>
+                                <span>{t('finance.v2.sync.status')}</span>
+                                <span>{t('finance.table.actions')}</span>
+                            </div>
+                            {financeSyncConnectionsV2.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.sync.empty')}</div>
+                            ) : (
+                                financeSyncConnectionsV2.map((connection) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={connection.id}>
+                                        <span>{connection.name}</span>
+                                        <span>{connection.provider}</span>
+                                        <span>{connection.direction}</span>
+                                        <span className="finance-pill">{connection.status}</span>
+                                        <div className="finance-table__actions">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => void handleRunFinanceSync(connection.id)}
+                                                isLoading={runningSyncConnectionId === connection.id}
+                                                disabled={!canManage || connection.status !== 'active'}
+                                            >
+                                                {t('finance.v2.sync.run')}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+                </div>
+            );
+        }
+
+        if (activeWorkspaceSection === 'functions') {
+            return (
+                <FinanceFunctionsWorkspace
+                    tenantId={tenantId}
+                    routeOperationType={financeOperationType}
+                    canViewFunctions={canViewFunctions}
+                    canExecuteFunctions={canExecuteFunctions}
+                    canRetryFunctionRuns={canRetryFunctionRuns}
+                    canManageFunctionTemplates={canManageFunctionTemplates}
+                    canApproveHighRiskFunctions={canApproveHighRiskFunctions}
+                    t={t}
+                    showError={showError}
+                    showSuccess={showSuccess}
+                />
             );
         }
 
@@ -2467,56 +3387,111 @@ export const FinanceTracking = () => {
                     <Card className="finance-panel finance-panel--expanded">
                         <div className="finance-panel__header">
                             <div>
-                                <h3 className="h4">{t('finance.v2.migration.title')}</h3>
-                                <p className="text-muted">{t('finance.v2.migration.subtitle')}</p>
-                            </div>
-                            <div className="finance-panel__header-actions">
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => void handleRunLegacyMigration(true)}
-                                    isLoading={runningMigration}
-                                    disabled={!canManage}
-                                >
-                                    {t('finance.v2.migration.dryRun')}
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    size="sm"
-                                    onClick={() => void handleRunLegacyMigration(false)}
-                                    isLoading={runningMigration}
-                                    disabled={!canManage}
-                                >
-                                    {t('finance.v2.migration.execute')}
-                                </Button>
+                                <h3 className="h4">{t('finance.v2.settings.allocation.title')}</h3>
+                                <p className="text-muted">{t('finance.v2.settings.allocation.subtitle')}</p>
                             </div>
                         </div>
-                        {migrationSummary ? (
-                            <div className="finance-v2-migration-summary">
-                                <div className="finance-v2-migration-summary__row">
-                                    <span>{t('finance.v2.migration.mode')}</span>
-                                    <strong>{migrationSummary.dryRun ? t('finance.v2.migration.modeDryRun') : t('finance.v2.migration.modeExecute')}</strong>
-                                </div>
-                                <div className="finance-v2-migration-summary__row">
-                                    <span>{t('finance.v2.migration.transactions')}</span>
-                                    <strong>{`${migrationSummary.transactions.migrated}/${migrationSummary.transactions.total}`}</strong>
-                                </div>
-                                <div className="finance-v2-migration-summary__row">
-                                    <span>{t('finance.v2.migration.recurring')}</span>
-                                    <strong>{`${migrationSummary.recurring.migrated}/${migrationSummary.recurring.total}`}</strong>
-                                </div>
-                                <div className="finance-v2-migration-summary__row">
-                                    <span>{t('finance.v2.migration.scenarios')}</span>
-                                    <strong>{`${migrationSummary.scenarios.migrated}/${migrationSummary.scenarios.total}`}</strong>
-                                </div>
-                                <div className="finance-v2-migration-summary__row">
-                                    <span>{t('finance.v2.migration.incomeVsExpense')}</span>
-                                    <strong>{`${formatCurrency(migrationSummary.transactions.incomeTotal)} / ${formatCurrency(migrationSummary.transactions.expenseTotal)}`}</strong>
-                                </div>
+                        <div className="finance-v2-form-grid">
+                            <TextInput
+                                label={t('finance.v2.settings.allocation.name')}
+                                value={allocationRuleForm.name}
+                                onChange={(event) => setAllocationRuleForm((prev) => ({ ...prev, name: event.target.value }))}
+                                disabled={!canManage}
+                            />
+                            <Select
+                                label={t('finance.v2.settings.allocation.basis')}
+                                value={allocationRuleForm.basis}
+                                options={allocationBasisOptions}
+                                onChange={(value) => setAllocationRuleForm((prev) => ({ ...prev, basis: value as FinanceAllocationBasis }))}
+                                disabled={!canManage}
+                            />
+                            <Select
+                                label={t('finance.project.field')}
+                                value={allocationRuleForm.projectId}
+                                options={projectFormOptions}
+                                onChange={(value) => setAllocationRuleForm((prev) => ({ ...prev, projectId: String(value || '') }))}
+                                disabled={!canManage}
+                            />
+                            <TextInput
+                                label={t('finance.v2.settings.allocation.percent')}
+                                type="number"
+                                inputMode="decimal"
+                                value={allocationRuleForm.percent}
+                                onChange={(event) => setAllocationRuleForm((prev) => ({ ...prev, percent: event.target.value }))}
+                                disabled={!canManage}
+                            />
+                            <TextInput
+                                label={t('finance.v2.settings.allocation.notes')}
+                                value={allocationRuleForm.notes}
+                                onChange={(event) => setAllocationRuleForm((prev) => ({ ...prev, notes: event.target.value }))}
+                                disabled={!canManage}
+                            />
+                            <Checkbox
+                                label={t('finance.v2.settings.allocation.active')}
+                                checked={allocationRuleForm.isActive}
+                                onChange={(event) => setAllocationRuleForm((prev) => ({ ...prev, isActive: event.target.checked }))}
+                                disabled={!canManage}
+                            />
+                            <Button
+                                variant="primary"
+                                onClick={() => void handleSaveAllocationRule()}
+                                isLoading={savingAllocationRule}
+                                disabled={!canManage}
+                            >
+                                {t('finance.v2.settings.allocation.save')}
+                            </Button>
+                        </div>
+
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.settings.allocation.name')}</span>
+                                <span>{t('finance.v2.settings.allocation.basis')}</span>
+                                <span>{t('finance.project.label')}</span>
+                                <span>{t('finance.v2.settings.allocation.percent')}</span>
+                                <span>{t('finance.v2.settings.allocation.active')}</span>
                             </div>
-                        ) : (
-                            <div className="finance-empty">{t('finance.v2.migration.empty')}</div>
-                        )}
+                            {allocationRulesV2.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.settings.allocation.empty')}</div>
+                            ) : (
+                                allocationRulesV2.slice(0, 20).map((rule) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={rule.id}>
+                                        <span>{rule.name}</span>
+                                        <span>{rule.basis}</span>
+                                        <span>{rule.projectId ? (projectLookup.get(rule.projectId) || t('finance.project.unknown')) : t('finance.project.unassigned')}</span>
+                                        <span>{Number.isFinite(Number(rule.percent)) ? `${Number(rule.percent).toFixed(2)}%` : '-'}</span>
+                                        <span>{rule.isActive ? t('finance.v2.common.yes') : t('finance.v2.common.no')}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </Card>
+
+                    <Card className="finance-panel finance-panel--expanded">
+                        <div className="finance-panel__header">
+                            <h3 className="h4">{t('finance.v2.settings.recurringTemplates.title')}</h3>
+                        </div>
+                        <div className="finance-table">
+                            <div className="finance-table__header finance-table__header--profitability">
+                                <span>{t('finance.v2.settings.recurringTemplates.type')}</span>
+                                <span>{t('finance.v2.settings.recurringTemplates.cadence')}</span>
+                                <span>{t('finance.project.label')}</span>
+                                <span>{t('finance.v2.settings.recurringTemplates.nextRun')}</span>
+                                <span>{t('finance.v2.settings.recurringTemplates.active')}</span>
+                            </div>
+                            {recurringTemplatesV2.length === 0 ? (
+                                <div className="finance-empty">{t('finance.v2.settings.recurringTemplates.empty')}</div>
+                            ) : (
+                                recurringTemplatesV2.slice(0, 20).map((template) => (
+                                    <div className="finance-table__row finance-table__row--profitability" key={template.id}>
+                                        <span>{template.type}</span>
+                                        <span>{template.cadence}</span>
+                                        <span>{template.projectId ? (projectLookup.get(template.projectId) || t('finance.project.unknown')) : t('finance.project.unassigned')}</span>
+                                        <span>{toDate(template.nextRunAt)?.toLocaleDateString(locale, { dateStyle: 'medium' }) || '-'}</span>
+                                        <span>{template.isActive ? t('finance.v2.common.yes') : t('finance.v2.common.no')}</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </Card>
                 </div>
             );

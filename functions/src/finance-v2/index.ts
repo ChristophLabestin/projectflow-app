@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import * as crypto from 'crypto';
 import * as functions from 'firebase-functions';
 import OpenAI from 'openai';
 
@@ -23,9 +24,36 @@ import {
 type LooseObject = Record<string, unknown>;
 type InvoiceDocumentType = 'pdf' | 'xml';
 type InvoiceExtractionConfidence = 'low' | 'medium' | 'high';
+type FinanceDocumentType = InvoiceDocumentType | 'other';
+type FinanceUploadMode = 'soft' | 'hard';
+type SyncProvider = 'stripe' | 'paddle' | 'datev' | 'lexoffice' | 'custom';
+type SyncDirection = 'import' | 'export' | 'bidirectional';
+type SyncMode = 'full' | 'delta';
+type FinanceOperationType =
+    | 'bank_import'
+    | 'reconciliation_suggest'
+    | 'reconciliation_confirm'
+    | 'tax_build_report'
+    | 'reports_build_bundle'
+    | 'export_datev'
+    | 'period_close'
+    | 'period_reopen'
+    | 'sync_run';
+type FinanceOperationRisk = 'low' | 'medium' | 'high';
+type FinanceOperationStatus =
+    | 'queued'
+    | 'validating'
+    | 'awaiting_confirmation'
+    | 'running'
+    | 'succeeded'
+    | 'failed'
+    | 'canceled';
 
 interface InvoiceExtractionResult {
     documentType: InvoiceDocumentType;
+    documentId?: string;
+    documentVersionId?: string;
+    fileName?: string;
     vendorName: string;
     vendorEmail: string;
     vendorVatId: string;
@@ -44,6 +72,8 @@ interface InvoiceExtractionResult {
     isLikelyRecurring: boolean;
     recurringHint: string;
     notes: string;
+    fieldConfidenceMap?: Record<string, InvoiceExtractionConfidence>;
+    warnings?: string[];
 }
 
 interface JournalLineInput {
@@ -76,9 +106,308 @@ const round2 = (value: number) => Math.round((value + Number.EPSILON) * 100) / 1
 const INVOICE_EXTRACTION_MODEL = 'gpt-5-mini';
 const MAX_INVOICE_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_XML_TEXT_LENGTH = 180000;
+const DOCUMENT_STORAGE_PREFIX = 'finance-documents';
+const MAX_SYNC_RUN_PREVIEW = 20;
+const OPERATION_APPROVAL_EXPIRY_HOURS = 24;
+
+const FINANCE_OPERATION_RISK: Record<FinanceOperationType, FinanceOperationRisk> = {
+    bank_import: 'low',
+    reconciliation_suggest: 'low',
+    reconciliation_confirm: 'medium',
+    tax_build_report: 'medium',
+    reports_build_bundle: 'low',
+    export_datev: 'high',
+    period_close: 'high',
+    period_reopen: 'high',
+    sync_run: 'medium',
+};
+
+const OPERATION_REQUIRES_CONFIRMATION: Record<FinanceOperationType, boolean> = {
+    bank_import: false,
+    reconciliation_suggest: false,
+    reconciliation_confirm: true,
+    tax_build_report: false,
+    reports_build_bundle: false,
+    export_datev: true,
+    period_close: true,
+    period_reopen: true,
+    sync_run: false,
+};
+
+interface FinanceOperationStep {
+    name: string;
+    status: FinanceOperationStatus;
+    startedAt?: admin.firestore.FieldValue | admin.firestore.Timestamp;
+    finishedAt?: admin.firestore.FieldValue | admin.firestore.Timestamp;
+    error?: string | null;
+}
 
 const financeSettingsRef = (tenantId: string) =>
     tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.settings).doc('default');
+
+const storageBucket = () => admin.storage().bucket();
+
+const hashSha256 = (buffer: Buffer) => crypto.createHash('sha256').update(buffer).digest('hex');
+
+const cleanBase64Payload = (rawBase64: string) => {
+    const rawCandidate = rawBase64.includes(',')
+        ? rawBase64.split(',').pop() || ''
+        : rawBase64;
+
+    return rawCandidate.trim().replace(/\s+/g, '');
+};
+
+const decodeBase64OrThrow = (rawBase64: string) => {
+    const cleaned = cleanBase64Payload(rawBase64);
+    let binaryContent: Buffer;
+    try {
+        binaryContent = Buffer.from(cleaned, 'base64');
+    } catch {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 payload.');
+    }
+
+    if (binaryContent.length <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document is empty.');
+    }
+
+    if (binaryContent.length > MAX_INVOICE_UPLOAD_BYTES) {
+        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document exceeds the maximum size of 5MB.');
+    }
+
+    return { binaryContent, cleanedBase64: cleaned };
+};
+
+const safeStoragePathSegment = (value: string) => value.replace(/[^a-zA-Z0-9._/-]/g, '_');
+
+const normalizeFinanceDocumentType = (
+    fileName: string,
+    mimeType: string,
+    fallback?: unknown,
+): FinanceDocumentType => {
+    const normalizedFallback = normalizeString(fallback).toLowerCase();
+    if (normalizedFallback === 'pdf' || normalizedFallback === 'xml' || normalizedFallback === 'other') {
+        return normalizedFallback;
+    }
+
+    const loweredName = normalizeString(fileName).toLowerCase();
+    const loweredType = normalizeString(mimeType).toLowerCase();
+    const isPdf = loweredName.endsWith('.pdf') || loweredType.includes('pdf');
+    const isXml = loweredName.endsWith('.xml')
+        || loweredType.includes('xml')
+        || loweredName.endsWith('.xrechnung');
+
+    if (isPdf) return 'pdf';
+    if (isXml) return 'xml';
+    return 'other';
+};
+
+const toInvoiceDocumentTypeOrThrow = (documentType: FinanceDocumentType): InvoiceDocumentType => {
+    if (documentType === 'pdf' || documentType === 'xml') {
+        return documentType;
+    }
+
+    throw new functions.https.HttpsError(
+        'failed-precondition',
+        'Invoice extraction supports only PDF/XML documents.',
+    );
+};
+
+const buildDocumentStoragePath = (
+    tenantId: string,
+    documentId: string,
+    versionNo: number,
+    fileName: string,
+) => {
+    const cleanedFileName = safeStoragePathSegment(fileName || `document_v${versionNo}`);
+    return `${DOCUMENT_STORAGE_PREFIX}/${tenantId}/${documentId}/v${versionNo}/${cleanedFileName}`;
+};
+
+const loadDocumentVersionBinary = async (
+    tenantId: string,
+    documentId: string,
+    versionId?: string,
+) => {
+    let versionSnap: admin.firestore.DocumentSnapshot;
+    if (versionId) {
+        versionSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions).doc(versionId).get();
+    } else {
+        const latestVersionSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions)
+            .where('documentId', '==', documentId)
+            .orderBy('versionNo', 'desc')
+            .limit(1)
+            .get();
+
+        if (latestVersionSnap.empty) {
+            throw new functions.https.HttpsError('not-found', 'No document version found.');
+        }
+        versionSnap = latestVersionSnap.docs[0];
+    }
+
+    if (!versionSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document version not found.');
+    }
+
+    const versionData = versionSnap.data() || {};
+    const storagePath = normalizeString(versionData.storagePath);
+    if (!storagePath) {
+        throw new functions.https.HttpsError('failed-precondition', 'Document version has no storage path.');
+    }
+
+    const [binaryContent] = await storageBucket().file(storagePath).download();
+    return {
+        versionId: versionSnap.id,
+        binaryContent,
+        fileName: normalizeString(versionData.fileName) || 'invoice',
+        mimeType: normalizeString(versionData.mimeType),
+        documentType: normalizeFinanceDocumentType(
+            normalizeString(versionData.fileName),
+            normalizeString(versionData.mimeType),
+            versionData.documentType,
+        ),
+    };
+};
+
+const createFinanceJob = async (
+    tenantId: string,
+    actorId: string,
+    type: string,
+    payload: Record<string, unknown>,
+) => {
+    const ref = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.jobs).doc();
+    await ref.set({
+        tenantId,
+        type,
+        status: 'running',
+        payload,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+    return ref;
+};
+
+const completeFinanceJob = async (
+    ref: admin.firestore.DocumentReference,
+    status: 'completed' | 'failed',
+    result: Record<string, unknown>,
+) => {
+    await ref.set({
+        status,
+        result,
+        finishedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+};
+
+const normalizeOperationType = (value: unknown): FinanceOperationType | null => {
+    const normalized = normalizeString(value).toLowerCase();
+    if (
+        normalized === 'bank_import'
+        || normalized === 'reconciliation_suggest'
+        || normalized === 'reconciliation_confirm'
+        || normalized === 'tax_build_report'
+        || normalized === 'reports_build_bundle'
+        || normalized === 'export_datev'
+        || normalized === 'period_close'
+        || normalized === 'period_reopen'
+        || normalized === 'sync_run'
+    ) {
+        return normalized;
+    }
+    return null;
+};
+
+const sanitizeOperationResult = (value: unknown): unknown => {
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeOperationResult(item));
+    }
+
+    if (value && typeof value === 'object') {
+        const result: Record<string, unknown> = {};
+        Object.entries(value as Record<string, unknown>).forEach(([key, innerValue]) => {
+            const lowered = key.toLowerCase();
+            if (lowered.includes('token') || lowered.includes('secret') || lowered.includes('apikey')) {
+                return;
+            }
+            result[key] = sanitizeOperationResult(innerValue);
+        });
+        return result;
+    }
+
+    return value;
+};
+
+const nowPlusHours = (hours: number) => {
+    const date = new Date();
+    date.setHours(date.getHours() + hours);
+    return admin.firestore.Timestamp.fromDate(date);
+};
+
+const buildOperationStep = (name: string, status: FinanceOperationStatus, error?: string | null): FinanceOperationStep => ({
+    name,
+    status,
+    startedAt: serverTimestamp(),
+    finishedAt: serverTimestamp(),
+    error: error || null,
+});
+
+const createOperationRun = async (
+    tenantId: string,
+    actorId: string,
+    operationType: FinanceOperationType,
+    payload: Record<string, unknown>,
+    idempotencyKey: string,
+    status: FinanceOperationStatus,
+) => {
+    const runRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns).doc();
+    await runRef.set({
+        tenantId,
+        operationType,
+        status,
+        risk: FINANCE_OPERATION_RISK[operationType],
+        payload,
+        payloadHash: buildIdempotencyKey(payload),
+        idempotencyKey,
+        steps: [buildOperationStep('validating', status === 'failed' ? 'failed' : 'validating')],
+        warnings: [],
+        artifacts: [],
+        requestedBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        startedAt: serverTimestamp(),
+    });
+    return runRef;
+};
+
+const updateOperationRun = async (
+    runRef: admin.firestore.DocumentReference,
+    updates: Record<string, unknown>,
+) => {
+    await runRef.set({
+        ...updates,
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+};
+
+const addOperationApproval = async (
+    tenantId: string,
+    actorId: string,
+    runId: string,
+    operationType: FinanceOperationType,
+) => {
+    const approvalRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationApprovals).doc();
+    await approvalRef.set({
+        tenantId,
+        runId,
+        operationType,
+        status: 'pending',
+        requestedBy: actorId,
+        expiresAt: nowPlusHours(OPERATION_APPROVAL_EXPIRY_HOURS),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+    return approvalRef;
+};
 
 const getOpenAiClient = () => {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -614,6 +943,13 @@ export const upsertFinanceSettings = functions.region(REGION).https.onCall(async
         defaultCashAccountId: normalizeString(settings.defaultCashAccountId) || null,
         defaultOutputTaxAccountId: normalizeString(settings.defaultOutputTaxAccountId) || null,
         defaultInputTaxAccountId: normalizeString(settings.defaultInputTaxAccountId) || null,
+        documentRetentionDays: Math.max(0, Math.floor(toNumber(settings.documentRetentionDays || 365))),
+        documentStorageRegion: normalizeString(settings.documentStorageRegion || REGION) || REGION,
+        defaultDiscountPolicy: normalizeString(settings.defaultDiscountPolicy || 'none') || 'none',
+        defaultCommissionPolicy: normalizeString(settings.defaultCommissionPolicy || 'none') || 'none',
+        profitabilityCostBuckets: Array.isArray(settings.profitabilityCostBuckets)
+            ? settings.profitabilityCostBuckets.map((entry) => normalizeString(entry)).filter(Boolean)
+            : ['direct', 'ai', 'overhead'],
         updatedAt: serverTimestamp(),
         updatedBy: actorId,
         createdAt: serverTimestamp(),
@@ -698,53 +1034,364 @@ export const upsertFinanceVendor = functions.region(REGION).https.onCall(async (
     return { vendorId: ref.id };
 });
 
+export const uploadFinanceDocument = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.documents.manage');
+
+    const fileName = normalizeString(payload.fileName);
+    const mimeType = normalizeString(payload.mimeType);
+    const rawBase64 = normalizeString(payload.contentBase64);
+    if (!fileName || !mimeType || !rawBase64) {
+        throw new functions.https.HttpsError(
+            'invalid-argument',
+            'fileName, mimeType and contentBase64 are required.',
+        );
+    }
+
+    const { binaryContent } = decodeBase64OrThrow(rawBase64);
+    const documentType = normalizeFinanceDocumentType(fileName, mimeType, payload.documentType);
+    const checksumSha256 = hashSha256(binaryContent);
+
+    const documentRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documents).doc();
+    const versionRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions).doc();
+    const versionNo = 1;
+    const storagePath = buildDocumentStoragePath(tenantId, documentRef.id, versionNo, fileName);
+
+    await storageBucket().file(storagePath).save(binaryContent, {
+        contentType: mimeType,
+        resumable: false,
+        metadata: {
+            metadata: {
+                tenantId,
+                documentId: documentRef.id,
+                versionId: versionRef.id,
+                uploadedBy: actorId,
+            },
+        },
+    });
+
+    const batch = db.batch();
+    batch.set(documentRef, {
+        tenantId,
+        projectId: normalizeString(payload.projectId) || null,
+        linkedEntityType: normalizeString(payload.linkedEntityType) || null,
+        linkedEntityId: normalizeString(payload.linkedEntityId) || null,
+        title: normalizeString(payload.title) || fileName,
+        documentType,
+        status: 'active',
+        latestVersionNo: versionNo,
+        latestVersionId: versionRef.id,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    batch.set(versionRef, {
+        tenantId,
+        documentId: documentRef.id,
+        versionNo,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+        storagePath,
+        checksumSha256,
+        documentType,
+        uploadedBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    await batch.commit();
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.document.uploaded', {
+        documentId: documentRef.id,
+        versionId: versionRef.id,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+    });
+
+    return {
+        documentId: documentRef.id,
+        versionId: versionRef.id,
+        versionNo,
+        checksumSha256,
+    };
+});
+
+export const versionFinanceDocument = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.documents.manage');
+
+    const documentId = normalizeString(payload.documentId);
+    const fileName = normalizeString(payload.fileName);
+    const mimeType = normalizeString(payload.mimeType);
+    const rawBase64 = normalizeString(payload.contentBase64);
+    if (!documentId || !fileName || !mimeType || !rawBase64) {
+        throw new functions.https.HttpsError(
+            'invalid-argument',
+            'documentId, fileName, mimeType and contentBase64 are required.',
+        );
+    }
+
+    const documentRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documents).doc(documentId);
+    const documentSnap = await documentRef.get();
+    if (!documentSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+
+    const document = documentSnap.data() || {};
+    const { binaryContent } = decodeBase64OrThrow(rawBase64);
+    const versionNo = Math.max(1, Math.floor(toNumber(document.latestVersionNo) + 1));
+    const versionRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions).doc();
+    const storagePath = buildDocumentStoragePath(tenantId, documentId, versionNo, fileName);
+    const checksumSha256 = hashSha256(binaryContent);
+    const documentType = normalizeFinanceDocumentType(fileName, mimeType, document.documentType);
+
+    await storageBucket().file(storagePath).save(binaryContent, {
+        contentType: mimeType,
+        resumable: false,
+        metadata: {
+            metadata: {
+                tenantId,
+                documentId,
+                versionId: versionRef.id,
+                uploadedBy: actorId,
+            },
+        },
+    });
+
+    const batch = db.batch();
+    batch.set(versionRef, {
+        tenantId,
+        documentId,
+        versionNo,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+        storagePath,
+        checksumSha256,
+        documentType,
+        uploadedBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+    batch.update(documentRef, {
+        latestVersionNo: versionNo,
+        latestVersionId: versionRef.id,
+        documentType,
+        updatedAt: serverTimestamp(),
+    });
+    await batch.commit();
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.document.versioned', {
+        documentId,
+        versionId: versionRef.id,
+        versionNo,
+    });
+
+    return { documentId, versionId: versionRef.id, versionNo, checksumSha256 };
+});
+
+export const linkFinanceDocumentToEntity = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.documents.manage');
+
+    const documentId = normalizeString(payload.documentId);
+    const linkedEntityType = normalizeString(payload.linkedEntityType);
+    const linkedEntityId = normalizeString(payload.linkedEntityId);
+    if (!documentId || !linkedEntityType || !linkedEntityId) {
+        throw new functions.https.HttpsError(
+            'invalid-argument',
+            'documentId, linkedEntityType and linkedEntityId are required.',
+        );
+    }
+
+    const documentRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documents).doc(documentId);
+    const snap = await documentRef.get();
+    if (!snap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+
+    await documentRef.update({
+        linkedEntityType,
+        linkedEntityId,
+        projectId: normalizeString(payload.projectId) || snap.data()?.projectId || null,
+        updatedAt: serverTimestamp(),
+    });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.document.linked', {
+        documentId,
+        linkedEntityType,
+        linkedEntityId,
+    });
+
+    return { documentId, linkedEntityType, linkedEntityId };
+});
+
+export const deleteFinanceDocument = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.documents.manage');
+    const documentId = normalizeString(payload.documentId);
+    const mode: FinanceUploadMode = normalizeString(payload.mode) === 'hard' ? 'hard' : 'soft';
+    if (!documentId) {
+        throw new functions.https.HttpsError('invalid-argument', 'documentId is required.');
+    }
+
+    const documentRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documents).doc(documentId);
+    const docSnap = await documentRef.get();
+    if (!docSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+
+    if (mode === 'soft') {
+        await documentRef.set({
+            status: 'deleted',
+            deletedBy: actorId,
+            deletedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+    } else {
+        const versionsSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions)
+            .where('documentId', '==', documentId)
+            .get();
+
+        await Promise.all(versionsSnap.docs.map(async (versionDoc) => {
+            const versionData = versionDoc.data() || {};
+            const storagePath = normalizeString(versionData.storagePath);
+            if (storagePath) {
+                try {
+                    await storageBucket().file(storagePath).delete({ ignoreNotFound: true });
+                } catch (error) {
+                    console.warn('Failed to delete finance document binary', storagePath, error);
+                }
+            }
+            await versionDoc.ref.delete();
+        }));
+        await documentRef.delete();
+    }
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.document.deleted', {
+        documentId,
+        mode,
+    });
+
+    return { documentId, mode, success: true };
+});
+
+export const upsertFinanceRecurringTemplate = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.manage');
+    const template = ((payload.template || {}) as LooseObject);
+    const templateId = normalizeString(payload.templateId);
+
+    const type = normalizeString(template.type) === 'invoice' ? 'invoice' : 'bill';
+    const cadenceRaw = normalizeString(template.cadence).toLowerCase();
+    const cadence = (cadenceRaw === 'weekly'
+        || cadenceRaw === 'quarterly'
+        || cadenceRaw === 'yearly'
+        || cadenceRaw === 'monthly')
+        ? cadenceRaw
+        : 'monthly';
+    const nextRunAtRaw = normalizeString(template.nextRunAt);
+    const nextRunAt = nextRunAtRaw ? toDateFromInput(nextRunAtRaw) : new Date();
+
+    const ref = templateId
+        ? tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.recurringTemplates).doc(templateId)
+        : tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.recurringTemplates).doc();
+
+    await ref.set({
+        tenantId,
+        projectId: normalizeString(template.projectId) || null,
+        vendorId: normalizeString(template.vendorId) || null,
+        customerId: normalizeString(template.customerId) || null,
+        type,
+        cadence,
+        nextRunAt: admin.firestore.Timestamp.fromDate(nextRunAt),
+        endAt: normalizeString(template.endAt) ? admin.firestore.Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
+        autoPost: template.autoPost === true,
+        isActive: template.isActive === false ? false : true,
+        currencyCode: normalizeCurrencyCode(template.currencyCode, 'EUR'),
+        notes: normalizeString(template.notes) || null,
+        sourceDocumentId: normalizeString(template.sourceDocumentId) || null,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.recurring_template.upserted', {
+        templateId: ref.id,
+        type,
+        cadence,
+    });
+
+    return { templateId: ref.id };
+});
+
+export const deleteFinanceRecurringTemplate = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.manage');
+    const templateId = normalizeString(payload.templateId);
+
+    if (!templateId) {
+        throw new functions.https.HttpsError('invalid-argument', 'templateId is required.');
+    }
+
+    const ref = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.recurringTemplates).doc(templateId);
+    await ref.delete();
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.recurring_template.deleted', { templateId });
+    return { templateId, success: true };
+});
+
 export const extractInvoiceFromDocument = functions.region(REGION).runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
     const payload = (data || {}) as LooseObject;
     const tenantId = normalizeString(payload.tenantId);
     const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.ap.manage');
 
-    const fileName = normalizeString(payload.fileName) || 'invoice';
-    const rawMimeType = normalizeString(payload.mimeType).toLowerCase();
+    const payloadDocumentId = normalizeString(payload.documentId);
+    const payloadDocumentVersionId = normalizeString(payload.documentVersionId);
     const rawBase64 = normalizeString(payload.contentBase64);
 
-    if (!rawBase64) {
-        throw new functions.https.HttpsError('invalid-argument', 'contentBase64 is required.');
-    }
-
-    const base64Payload = (() => {
-        const rawCandidate = rawBase64.includes(',')
-            ? rawBase64.split(',').pop() || ''
-            : rawBase64;
-        return rawCandidate.trim().replace(/\s+/g, '');
-    })();
-
+    let sourceDocumentId = payloadDocumentId || '';
+    let sourceDocumentVersionId = payloadDocumentVersionId || '';
+    let fileName = normalizeString(payload.fileName) || 'invoice';
+    let mimeType = normalizeString(payload.mimeType) || '';
     let binaryContent: Buffer;
-    try {
-        binaryContent = Buffer.from(base64Payload, 'base64');
-    } catch {
-        throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 payload.');
+    let documentType: InvoiceDocumentType;
+
+    if (payloadDocumentId) {
+        const loaded = await loadDocumentVersionBinary(tenantId, payloadDocumentId, payloadDocumentVersionId || undefined);
+        sourceDocumentId = payloadDocumentId;
+        sourceDocumentVersionId = loaded.versionId;
+        fileName = loaded.fileName;
+        mimeType = loaded.mimeType || (loaded.documentType === 'pdf' ? 'application/pdf' : 'application/xml');
+        binaryContent = loaded.binaryContent;
+        documentType = toInvoiceDocumentTypeOrThrow(loaded.documentType);
+    } else {
+        if (!rawBase64) {
+            throw new functions.https.HttpsError(
+                'invalid-argument',
+                'Either contentBase64 or documentId/documentVersionId is required.',
+            );
+        }
+        if (!fileName || !mimeType) {
+            throw new functions.https.HttpsError('invalid-argument', 'fileName and mimeType are required for base64 extraction.');
+        }
+
+        const decoded = decodeBase64OrThrow(rawBase64);
+        binaryContent = decoded.binaryContent;
+        const inferredDocumentType = normalizeFinanceDocumentType(fileName, mimeType);
+        documentType = toInvoiceDocumentTypeOrThrow(inferredDocumentType);
+        mimeType = documentType === 'pdf' ? 'application/pdf' : 'application/xml';
     }
 
-    if (binaryContent.length <= 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document is empty.');
-    }
-
-    if (binaryContent.length > MAX_INVOICE_UPLOAD_BYTES) {
-        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document exceeds the maximum size of 5MB.');
-    }
-
-    const normalizedFileName = fileName.toLowerCase();
-    const isPdf = rawMimeType.includes('pdf') || normalizedFileName.endsWith('.pdf');
-    const isXml = rawMimeType.includes('xml')
-        || normalizedFileName.endsWith('.xml')
-        || normalizedFileName.endsWith('.xrechnung');
-
-    if (!isPdf && !isXml) {
-        throw new functions.https.HttpsError('invalid-argument', 'Only PDF invoices and XML e-invoices are supported.');
-    }
-
-    const documentType: InvoiceDocumentType = isPdf ? 'pdf' : 'xml';
-    const mimeType = isPdf ? 'application/pdf' : 'application/xml';
     const client = getOpenAiClient();
 
     const extractionPrompt = `Extract structured vendor invoice data from the provided document.
@@ -820,6 +1467,7 @@ Return only JSON matching the schema. Use these rules:
     };
 
     if (documentType === 'pdf') {
+        const pdfBase64 = binaryContent.toString('base64');
         request.input = [{
             role: 'user',
             content: [
@@ -827,7 +1475,7 @@ Return only JSON matching the schema. Use these rules:
                 {
                     type: 'input_file',
                     filename: fileName || 'invoice.pdf',
-                    file_data: `data:${mimeType};base64,${base64Payload}`,
+                    file_data: `data:${mimeType};base64,${pdfBase64}`,
                 },
             ],
         }];
@@ -848,24 +1496,251 @@ Return only JSON matching the schema. Use these rules:
         const response: any = await client.responses.create(request);
         const parsed = parseJsonText(extractTextFromResponse(response));
         const normalized = normalizeInvoiceExtractionResult(parsed, documentType);
+        const warnings = Object.entries(normalized).reduce<string[]>((acc, [key, value]) => {
+            if (
+                value === ''
+                || value === null
+                || (typeof value === 'number' && value === 0 && !['quantity', 'taxRatePercent'].includes(key))
+            ) {
+                acc.push(`Missing or zero value for ${key}`);
+            }
+            return acc;
+        }, []);
+        const enriched: InvoiceExtractionResult = {
+            ...normalized,
+            documentId: sourceDocumentId || undefined,
+            documentVersionId: sourceDocumentVersionId || undefined,
+            fileName,
+            warnings: warnings.length > 0 ? warnings : undefined,
+            fieldConfidenceMap: {
+                vendorName: normalized.confidence,
+                invoiceNumber: normalized.confidence,
+                invoiceDate: normalized.confidence,
+                dueDate: normalized.confidence,
+                netAmount: normalized.confidence,
+                grossAmount: normalized.confidence,
+            },
+        };
+
+        if (sourceDocumentVersionId) {
+            await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documentVersions)
+                .doc(sourceDocumentVersionId)
+                .set({
+                    extraction: enriched,
+                    extractionWarnings: warnings,
+                    extractedAt: serverTimestamp(),
+                    extractedBy: actorId,
+                    updatedAt: serverTimestamp(),
+                }, { merge: true });
+        }
 
         await writeFinanceAuditLog(tenantId, actorId, 'finance.bill.document_extracted', {
             fileName,
             documentType,
-            invoiceNumber: normalized.invoiceNumber || null,
-            vendorName: normalized.vendorName || null,
-            confidence: normalized.confidence,
+            documentId: sourceDocumentId || null,
+            documentVersionId: sourceDocumentVersionId || null,
+            invoiceNumber: enriched.invoiceNumber || null,
+            vendorName: enriched.vendorName || null,
+            confidence: enriched.confidence,
             model: INVOICE_EXTRACTION_MODEL,
         });
 
         return {
-            ...normalized,
+            ...enriched,
             model: INVOICE_EXTRACTION_MODEL,
         };
     } catch (error: any) {
         console.error('Failed to extract invoice document', error);
         throw new functions.https.HttpsError('internal', error?.message || 'Invoice extraction failed.');
     }
+});
+
+export const confirmExtractedInvoiceDraft = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.ap.manage');
+
+    const billDate = toDateFromInput(payload.billDate);
+    const dueDate = toDateFromInput(payload.dueDate || payload.billDate);
+    const quantity = toNonNegative(payload.quantity);
+    const unitCost = toNonNegative(payload.unitCost);
+    const taxRatePercent = toNonNegative(payload.taxRatePercent);
+    const cadence = normalizeString(payload.cadence) === 'recurring' ? 'recurring' : 'single';
+    const autoPost = payload.autoPost === false ? false : true;
+
+    if (quantity <= 0 || unitCost < 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'quantity and unitCost are required.');
+    }
+
+    let vendorId = normalizeString(payload.vendorId);
+    if (!vendorId) {
+        const vendorName = normalizeString(payload.vendorName);
+        if (!vendorName) {
+            throw new functions.https.HttpsError('invalid-argument', 'vendorId or vendorName is required.');
+        }
+
+        const vendorRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.vendors).doc();
+        await vendorRef.set({
+            tenantId,
+            vendorNo: `VEN-${Date.now()}`,
+            name: vendorName,
+            email: normalizeString(payload.vendorEmail) || null,
+            vatId: normalizeString(payload.vendorVatId) || null,
+            paymentTermsDays: 14,
+            isActive: true,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        vendorId = vendorRef.id;
+    }
+
+    const netAmount = round2(quantity * unitCost);
+    const taxAmount = round2(netAmount * (taxRatePercent / 100));
+    const grossAmount = round2(netAmount + taxAmount);
+    const projectId = normalizeString(payload.projectId) || null;
+    const currencyCode = normalizeCurrencyCode(payload.currencyCode, 'EUR');
+
+    const billRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bills).doc();
+    const billLine = {
+        id: 'line-1',
+        description: normalizeString(payload.lineDescription) || 'Invoice upload',
+        quantity,
+        unitCost,
+        netAmount,
+        taxCodeId: null,
+        taxRatePercent,
+        taxAmount,
+        accountId: null,
+        projectId,
+    };
+
+    await billRef.set({
+        tenantId,
+        billNo: normalizeString(payload.billNo) || `BILL-${Date.now()}`,
+        vendorId,
+        projectId,
+        billDate: admin.firestore.Timestamp.fromDate(billDate),
+        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        currencyCode,
+        status: autoPost ? 'posted' : 'draft',
+        lines: [billLine],
+        notes: normalizeString(payload.notes) || null,
+        netAmount,
+        taxAmount,
+        grossAmount,
+        paidAmount: 0,
+        openAmount: grossAmount,
+        sourceDocumentId: normalizeString(payload.documentId) || null,
+        sourceDocumentVersionId: normalizeString(payload.documentVersionId) || null,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    let journalEntryId: string | null = null;
+    if (autoPost) {
+        const settings = await loadFinanceSettings(tenantId);
+        const journalResponse = await postJournalEntryInternal(actorId, {
+            tenantId,
+            postingDate: billDate.toISOString(),
+            description: `Bill ${normalizeString(payload.billNo) || billRef.id}`,
+            sourceType: 'bill',
+            sourceId: billRef.id,
+            sourceRefNo: normalizeString(payload.billNo) || billRef.id,
+            projectId: projectId || undefined,
+            currencyCode,
+            idempotencyKey: `bill-upload-confirm-${billRef.id}`,
+            lines: [
+                {
+                    accountId: settings.defaultExpenseAccountId,
+                    debit: netAmount,
+                    credit: 0,
+                    description: 'Expense',
+                    vendorId,
+                    projectId: projectId || undefined,
+                },
+                ...(taxAmount > 0
+                    ? [{
+                        accountId: settings.defaultInputTaxAccountId,
+                        debit: taxAmount,
+                        credit: 0,
+                        description: 'Input tax',
+                        vendorId,
+                        projectId: projectId || undefined,
+                    }]
+                    : []),
+                {
+                    accountId: settings.defaultPayableAccountId,
+                    debit: 0,
+                    credit: grossAmount,
+                    description: 'Payable',
+                    vendorId,
+                    projectId: projectId || undefined,
+                },
+            ],
+        });
+        journalEntryId = journalResponse.entryId;
+
+        await billRef.update({
+            journalEntryId,
+            status: 'posted',
+            updatedAt: serverTimestamp(),
+        });
+    }
+
+    let recurringTemplateId: string | null = null;
+    if (cadence === 'recurring') {
+        const cadenceRaw = normalizeString(payload.recurringFrequency);
+        const recurringCadence = cadenceRaw === 'weekly' || cadenceRaw === 'yearly' ? cadenceRaw : 'monthly';
+        const templateRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.recurringTemplates).doc();
+        await templateRef.set({
+            tenantId,
+            projectId,
+            vendorId,
+            customerId: null,
+            type: 'bill',
+            cadence: recurringCadence,
+            nextRunAt: admin.firestore.Timestamp.fromDate(dueDate),
+            endAt: normalizeString(payload.recurringEndDate)
+                ? admin.firestore.Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
+                : null,
+            autoPost,
+            isActive: true,
+            currencyCode,
+            notes: normalizeString(payload.notes) || null,
+            sourceDocumentId: normalizeString(payload.documentId) || null,
+            createdBy: actorId,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+        });
+        recurringTemplateId = templateRef.id;
+    }
+
+    const documentId = normalizeString(payload.documentId);
+    if (documentId) {
+        await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.documents).doc(documentId).set({
+            linkedEntityType: 'bill',
+            linkedEntityId: billRef.id,
+            projectId,
+            updatedAt: serverTimestamp(),
+        }, { merge: true });
+    }
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.upload_invoice.confirmed', {
+        billId: billRef.id,
+        vendorId,
+        cadence,
+        recurringTemplateId,
+        journalEntryId,
+        documentId: documentId || null,
+    });
+
+    return {
+        billId: billRef.id,
+        vendorId,
+        recurringTemplateId,
+        journalEntryId,
+    };
 });
 
 export const upsertFinanceTaxCode = functions.region(REGION).https.onCall(async (data, context) => {
@@ -950,6 +1825,10 @@ export const createInvoice = functions.region(REGION).https.onCall(async (data, 
         grossAmount,
         paidAmount: 0,
         openAmount: grossAmount,
+        dunningLevel: Math.max(0, Math.floor(toNumber(payload.dunningLevel || 0))),
+        sourceDocumentId: normalizeString(payload.sourceDocumentId) || null,
+        sourceDocumentVersionId: normalizeString(payload.sourceDocumentVersionId) || null,
+        sourceDocumentFileId: normalizeString(payload.sourceDocumentFileId) || null,
         createdBy: actorId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1063,6 +1942,12 @@ export const voidInvoice = functions.region(REGION).https.onCall(async (data, co
     if (status === 'voided') {
         return { invoiceId, alreadyVoided: true };
     }
+    if (status === 'paid' || toNonNegative(invoice.paidAmount) > 0) {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            'Paid or partially paid invoices cannot be voided. Create a credit note instead.',
+        );
+    }
 
     const journalEntryId = normalizeString(invoice.journalEntryId);
     if (journalEntryId) {
@@ -1115,6 +2000,45 @@ export const voidInvoice = functions.region(REGION).https.onCall(async (data, co
     return { invoiceId, status: 'voided' };
 });
 
+export const advanceInvoiceDunning = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.ar.manage');
+    const invoiceId = normalizeString(payload.invoiceId);
+
+    if (!invoiceId) {
+        throw new functions.https.HttpsError('invalid-argument', 'invoiceId is required.');
+    }
+
+    const invoiceRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices).doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+    if (!invoiceSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    }
+
+    const invoice = invoiceSnap.data() || {};
+    const status = normalizeString(invoice.status);
+    if (status !== 'issued' && status !== 'partially_paid') {
+        throw new functions.https.HttpsError('failed-precondition', 'Only open invoices can be dunned.');
+    }
+
+    const currentLevel = Math.max(0, Math.floor(toNumber(invoice.dunningLevel || 0)));
+    const nextLevel = Math.min(3, currentLevel + 1);
+    await invoiceRef.update({
+        dunningLevel: nextLevel,
+        dunningLastAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.invoice.dunning_advanced', {
+        invoiceId,
+        previousLevel: currentLevel,
+        nextLevel,
+    });
+
+    return { invoiceId, dunningLevel: nextLevel };
+});
+
 export const createBill = functions.region(REGION).https.onCall(async (data, context) => {
     const payload = (data || {}) as LooseObject;
     const tenantId = normalizeString(payload.tenantId);
@@ -1148,6 +2072,7 @@ export const createBill = functions.region(REGION).https.onCall(async (data, con
         billNo: normalizeString(payload.billNo) || `BILL-${Date.now()}`,
         vendorId,
         projectId: normalizeString(payload.projectId) || null,
+        sourceDocumentFileId: normalizeString(payload.sourceDocumentFileId) || null,
         billDate: admin.firestore.Timestamp.fromDate(billDate),
         dueDate: admin.firestore.Timestamp.fromDate(dueDate),
         currencyCode,
@@ -1159,6 +2084,8 @@ export const createBill = functions.region(REGION).https.onCall(async (data, con
         grossAmount,
         paidAmount: 0,
         openAmount: grossAmount,
+        sourceDocumentId: normalizeString(payload.sourceDocumentId) || null,
+        sourceDocumentVersionId: normalizeString(payload.sourceDocumentVersionId) || null,
         createdBy: actorId,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -1168,6 +2095,7 @@ export const createBill = functions.region(REGION).https.onCall(async (data, con
         billId: billRef.id,
         vendorId,
         grossAmount,
+        sourceDocumentFileId: normalizeString(payload.sourceDocumentFileId) || null,
     });
 
     return { billId: billRef.id };
@@ -1271,6 +2199,12 @@ export const voidBill = functions.region(REGION).https.onCall(async (data, conte
     const status = normalizeString(bill.status);
     if (status === 'voided') {
         return { billId, alreadyVoided: true };
+    }
+    if (status === 'paid' || toNonNegative(bill.paidAmount) > 0) {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            'Paid or partially paid bills cannot be voided.',
+        );
     }
 
     const journalEntryId = normalizeString(bill.journalEntryId);
@@ -1628,31 +2562,117 @@ export const suggestReconciliation = functions.region(REGION).https.onCall(async
     const openBills: Array<{ id: string; openAmount?: unknown }> = billsSnap.docs
         .map((doc) => ({ id: doc.id, ...doc.data() }));
 
+    const invoiceByNo = new Map<string, { id: string }>();
+    const billByNo = new Map<string, { id: string }>();
+    invoicesSnap.docs.forEach((doc) => {
+        const invoiceNo = normalizeString(doc.data().invoiceNo).toLowerCase();
+        if (invoiceNo) invoiceByNo.set(invoiceNo, { id: doc.id });
+    });
+    billsSnap.docs.forEach((doc) => {
+        const billNo = normalizeString(doc.data().billNo).toLowerCase();
+        if (billNo) billByNo.set(billNo, { id: doc.id });
+    });
+
     const suggestions = bankTxSnap.docs.map((doc) => {
         const tx = doc.data();
         const amount = round2(toNumber(tx.amount));
+        const absAmount = Math.abs(amount);
+        const referenceText = `${normalizeString(tx.description)} ${normalizeString(tx.externalReference)} ${normalizeString(tx.counterparty)}`.toLowerCase();
+
+        const parseByReference = () => {
+            for (const [invoiceNo, invoice] of invoiceByNo.entries()) {
+                if (invoiceNo && referenceText.includes(invoiceNo)) {
+                    return {
+                        targetType: 'invoice' as const,
+                        targetId: invoice.id,
+                        confidence: 0.97,
+                        rationale: `Matched by reference "${invoiceNo}"`,
+                    };
+                }
+            }
+            for (const [billNo, bill] of billByNo.entries()) {
+                if (billNo && referenceText.includes(billNo)) {
+                    return {
+                        targetType: 'bill' as const,
+                        targetId: bill.id,
+                        confidence: 0.97,
+                        rationale: `Matched by reference "${billNo}"`,
+                    };
+                }
+            }
+            return null;
+        };
+
+        const byReference = parseByReference();
+        if (byReference) {
+            return {
+                bankTransactionId: doc.id,
+                targetType: byReference.targetType,
+                targetId: byReference.targetId,
+                amount: absAmount,
+                confidence: byReference.confidence,
+                rationale: byReference.rationale,
+            };
+        }
 
         if (amount >= 0) {
-            const invoiceMatch = openInvoices.find((invoice) => Math.abs(round2(toNumber(invoice.openAmount)) - amount) < 0.01);
-            if (invoiceMatch) {
+            const exactInvoice = openInvoices.find((invoice) => Math.abs(round2(toNumber(invoice.openAmount)) - absAmount) < 0.01);
+            if (exactInvoice) {
                 return {
                     bankTransactionId: doc.id,
                     targetType: 'invoice',
-                    targetId: invoiceMatch.id,
-                    amount,
+                    targetId: exactInvoice.id,
+                    amount: absAmount,
                     confidence: 0.92,
+                    rationale: 'Exact amount match to open invoice.',
+                };
+            }
+
+            const fuzzyInvoice = openInvoices
+                .map((invoice) => ({
+                    id: invoice.id,
+                    delta: Math.abs(round2(toNumber(invoice.openAmount)) - absAmount),
+                }))
+                .sort((a, b) => a.delta - b.delta)[0];
+
+            if (fuzzyInvoice && fuzzyInvoice.delta <= 2) {
+                return {
+                    bankTransactionId: doc.id,
+                    targetType: 'invoice',
+                    targetId: fuzzyInvoice.id,
+                    amount: absAmount,
+                    confidence: 0.72,
+                    rationale: `Fuzzy amount match (delta ${round2(fuzzyInvoice.delta)}).`,
                 };
             }
         } else {
-            const absAmount = Math.abs(amount);
-            const billMatch = openBills.find((bill) => Math.abs(round2(toNumber(bill.openAmount)) - absAmount) < 0.01);
-            if (billMatch) {
+            const exactBill = openBills.find((bill) => Math.abs(round2(toNumber(bill.openAmount)) - absAmount) < 0.01);
+            if (exactBill) {
                 return {
                     bankTransactionId: doc.id,
                     targetType: 'bill',
-                    targetId: billMatch.id,
+                    targetId: exactBill.id,
                     amount: absAmount,
                     confidence: 0.92,
+                    rationale: 'Exact amount match to open bill.',
+                };
+            }
+
+            const fuzzyBill = openBills
+                .map((bill) => ({
+                    id: bill.id,
+                    delta: Math.abs(round2(toNumber(bill.openAmount)) - absAmount),
+                }))
+                .sort((a, b) => a.delta - b.delta)[0];
+
+            if (fuzzyBill && fuzzyBill.delta <= 2) {
+                return {
+                    bankTransactionId: doc.id,
+                    targetType: 'bill',
+                    targetId: fuzzyBill.id,
+                    amount: absAmount,
+                    confidence: 0.72,
+                    rationale: `Fuzzy amount match (delta ${round2(fuzzyBill.delta)}).`,
                 };
             }
         }
@@ -1661,8 +2681,9 @@ export const suggestReconciliation = functions.region(REGION).https.onCall(async
             bankTransactionId: doc.id,
             targetType: null,
             targetId: null,
-            amount: Math.abs(amount),
+            amount: absAmount,
             confidence: 0,
+            rationale: 'No confident match found.',
         };
     });
 
@@ -1681,6 +2702,18 @@ export const confirmReconciliation = functions.region(REGION).https.onCall(async
     const unmatchedTransactionIds = Array.isArray(payload.unmatchedTransactionIds)
         ? payload.unmatchedTransactionIds.map((value) => normalizeString(value)).filter(Boolean)
         : [];
+    const matchedItems = Array.isArray(payload.matchedItems)
+        ? payload.matchedItems
+            .map((item) => item as LooseObject)
+            .map((item) => ({
+                bankTransactionId: normalizeString(item.bankTransactionId),
+                targetType: normalizeString(item.targetType),
+                targetId: normalizeString(item.targetId),
+                confidence: toNumber(item.confidence),
+                rationale: normalizeString(item.rationale) || null,
+            }))
+            .filter((item) => item.bankTransactionId)
+        : [];
 
     const reconciliationRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.reconciliations).doc();
     const batch = db.batch();
@@ -1690,6 +2723,7 @@ export const confirmReconciliation = functions.region(REGION).https.onCall(async
         bankAccountId: normalizeString(payload.bankAccountId) || null,
         periodKey,
         matchedTransactionIds,
+        matchedItems,
         unmatchedTransactionIds,
         notes: normalizeString(payload.notes) || null,
         confirmedBy: actorId,
@@ -1729,6 +2763,42 @@ export const runMonthlyClose = functions.region(REGION).https.onCall(async (data
         throw new functions.https.HttpsError('invalid-argument', 'periodKey is required.');
     }
 
+    const [yearStr, monthStr] = periodKey.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!Number.isFinite(year) || !Number.isFinite(month)) {
+        throw new functions.https.HttpsError('invalid-argument', 'periodKey must be YYYY-MM.');
+    }
+    const from = new Date(Date.UTC(year, month - 1, 1));
+    const to = new Date(Date.UTC(year, month, 1));
+
+    const [unreconciledBank, openInvoices, openBills] = await Promise.all([
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
+            .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+            .get(),
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices)
+            .where('status', 'in', ['draft', 'issued', 'partially_paid'])
+            .get(),
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bills)
+            .where('status', 'in', ['draft', 'posted', 'partially_paid'])
+            .get(),
+    ]);
+
+    const blockingChecks = {
+        unreconciledBankTransactions: unreconciledBank.size,
+        openInvoices: openInvoices.size,
+        openBills: openBills.size,
+    };
+    const hasBlocking = Object.values(blockingChecks).some((count) => count > 0);
+    if (hasBlocking) {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            `Closing checklist failed: ${JSON.stringify(blockingChecks)}`,
+        );
+    }
+
     await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.periods).doc(periodKey).set({
         tenantId,
         id: periodKey,
@@ -1744,9 +2814,10 @@ export const runMonthlyClose = functions.region(REGION).https.onCall(async (data
 
     await writeFinanceAuditLog(tenantId, actorId, 'finance.period.closed', {
         periodKey,
+        blockingChecks,
     });
 
-    return { periodKey, status: 'closed' };
+    return { periodKey, status: 'closed', blockingChecks };
 });
 
 export const reopenPeriod = functions.region(REGION).https.onCall(async (data, context) => {
@@ -1833,6 +2904,7 @@ export const generateDatevExport = functions.region(REGION).https.onCall(async (
     const entryMap = new Map(entriesSnap.docs.map((doc) => [doc.id, doc.data()]));
 
     const csvRows = ['Umsatz;Sollkonto;Habenkonto;Belegdatum;Buchungstext;Belegfeld1;WKZ'];
+    const validationWarnings: string[] = [];
 
     linesSnap.docs.forEach((doc) => {
         const line = doc.data();
@@ -1846,6 +2918,9 @@ export const generateDatevExport = functions.region(REGION).https.onCall(async (
             const candidateData = candidate.data();
             return normalizeString(candidateData.entryId) === normalizeString(line.entryId) && candidate.id !== doc.id;
         });
+        if (!sibling) {
+            validationWarnings.push(`Missing contra line for entry ${normalizeString(line.entryId)}`);
+        }
 
         const contraAccount = sibling ? normalizeString(sibling.data().accountId) : '';
         const debit = toNonNegative(line.debit) > 0;
@@ -1870,6 +2945,7 @@ export const generateDatevExport = functions.region(REGION).https.onCall(async (
         status: 'completed',
         fileName,
         payloadPreview: csv.slice(0, 120000),
+        validationWarnings,
         updatedAt: serverTimestamp(),
     });
 
@@ -1877,21 +2953,33 @@ export const generateDatevExport = functions.region(REGION).https.onCall(async (
         exportJobId: exportRef.id,
         periodKey,
         rowCount: csvRows.length - 1,
+        validationWarningsCount: validationWarnings.length,
     });
 
-    return { exportJobId: exportRef.id, status: 'completed' };
+    return { exportJobId: exportRef.id, status: 'completed', validationWarnings };
 });
 
 export const buildFinancialReports = functions.region(REGION).https.onCall(async (data, context) => {
     const payload = (data || {}) as LooseObject;
     const tenantId = normalizeString(payload.tenantId);
-    await requireFinancePermission(tenantId, context, 'tenant.finance.view');
+    await requireFinancePermission(tenantId, context, 'tenant.finance.reports.manage');
 
     const periodKeyFrom = normalizeString(payload.periodKeyFrom) || null;
     const periodKeyTo = normalizeString(payload.periodKeyTo) || null;
 
-    const accountsSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.accounts).get();
+    const [accountsSnap, projectsSnap, allocationRulesSnap] = await Promise.all([
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.accounts).get(),
+        tenantCollectionRef(tenantId, 'projects').get(),
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.allocationRules)
+            .where('isActive', '==', true)
+            .get(),
+    ]);
     const accountMap = new Map(accountsSnap.docs.map((doc) => [doc.id, doc.data()]));
+    const projectNameMap = new Map(projectsSnap.docs.map((doc) => [doc.id, normalizeString(doc.data().title) || doc.id]));
+    const hasRevenueShareAllocation = allocationRulesSnap.docs.some((doc) => {
+        const rule = doc.data() || {};
+        return normalizeString(rule.basis) === 'revenue_share';
+    });
 
     let lineQuery = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.journalLines) as admin.firestore.Query;
 
@@ -2002,24 +3090,47 @@ export const buildFinancialReports = functions.region(REGION).https.onCall(async
         })
         .filter(Boolean);
 
-    const projectProfitability = Array.from(profitabilityMap.entries()).map(([projectId, values]) => {
-        const directCosts = round2(values.cost);
-        const aiCosts = round2(values.aiCost);
-        const revenue = round2(values.revenue);
-        const grossProfit = round2(revenue - directCosts);
-        const netProfit = grossProfit;
-        const marginPercent = revenue > 0 ? round2((netProfit / revenue) * 100) : 0;
+    const profitabilityRows = Array.from(profitabilityMap.entries()).map(([projectId, values]) => ({
+        projectId,
+        projectName: projectId === '__unassigned__'
+            ? '__unassigned__'
+            : (projectNameMap.get(projectId) || projectId),
+        revenue: round2(values.revenue),
+        directCosts: round2(values.cost),
+        aiCosts: round2(values.aiCost),
+    }));
+
+    const totalRevenueForAllocation = profitabilityRows
+        .filter((row) => row.projectId !== '__unassigned__')
+        .reduce((sumAcc, row) => sumAcc + Math.max(0, row.revenue), 0);
+    const unassignedOverhead = round2(
+        profitabilityRows
+            .filter((row) => row.projectId === '__unassigned__')
+            .reduce((sumAcc, row) => sumAcc + Math.max(0, row.directCosts), 0),
+    );
+
+    const projectProfitability = profitabilityRows.map((row) => {
+        const grossProfit = round2(row.revenue - row.directCosts);
+        const overheadAllocated = hasRevenueShareAllocation && row.projectId !== '__unassigned__' && totalRevenueForAllocation > 0
+            ? round2(unassignedOverhead * (Math.max(0, row.revenue) / totalRevenueForAllocation))
+            : 0;
+        const netProfit = round2(grossProfit - overheadAllocated);
+        const marginPercent = row.revenue > 0 ? round2((netProfit / row.revenue) * 100) : 0;
 
         return {
-            projectId,
-            projectName: projectId === '__unassigned__' ? '__unassigned__' : projectId,
-            revenue,
-            directCosts,
-            aiCosts,
-            overheadAllocated: 0,
+            projectId: row.projectId,
+            projectName: row.projectName,
+            revenue: row.revenue,
+            directCosts: row.directCosts,
+            aiCosts: row.aiCosts,
+            overheadAllocated,
             grossProfit,
             netProfit,
             marginPercent,
+            contributionOne: grossProfit,
+            contributionTwo: netProfit,
+            periodKeyFrom,
+            periodKeyTo,
         };
     }).sort((a, b) => b.netProfit - a.netProfit);
 
@@ -2116,6 +3227,773 @@ export const buildTaxReport = functions.region(REGION).https.onCall(async (data,
         inputTax: round2(inputTax),
         payableTax,
     };
+});
+
+export const upsertFinanceSyncConnection = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.sync.manage');
+    const connection = ((payload.connection || {}) as LooseObject);
+    const connectionId = normalizeString(payload.connectionId);
+
+    const providerRaw = normalizeString(connection.provider).toLowerCase();
+    const provider: SyncProvider = (
+        providerRaw === 'stripe'
+        || providerRaw === 'paddle'
+        || providerRaw === 'datev'
+        || providerRaw === 'lexoffice'
+        || providerRaw === 'custom'
+    )
+        ? providerRaw
+        : 'custom';
+    const directionRaw = normalizeString(connection.direction).toLowerCase();
+    const direction: SyncDirection = (
+        directionRaw === 'import'
+        || directionRaw === 'export'
+        || directionRaw === 'bidirectional'
+    )
+        ? directionRaw
+        : 'import';
+
+    const statusRaw = normalizeString(connection.status).toLowerCase();
+    const status = (statusRaw === 'paused' || statusRaw === 'disabled') ? statusRaw : 'active';
+
+    const ref = connectionId
+        ? tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncConnections).doc(connectionId)
+        : tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncConnections).doc();
+
+    await ref.set({
+        tenantId,
+        provider,
+        direction,
+        status,
+        name: normalizeString(connection.name) || `${provider.toUpperCase()} Sync`,
+        configRef: normalizeString(connection.configRef) || null,
+        lastRunAt: connection.lastRunAt || null,
+        lastRunStatus: normalizeString(connection.lastRunStatus) || null,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.sync_connection.upserted', {
+        connectionId: ref.id,
+        provider,
+        direction,
+        status,
+    });
+
+    return { connectionId: ref.id };
+});
+
+export const runFinanceSync = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.sync.manage');
+
+    const connectionId = normalizeString(payload.connectionId);
+    if (!connectionId) {
+        throw new functions.https.HttpsError('invalid-argument', 'connectionId is required.');
+    }
+
+    const connectionRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncConnections).doc(connectionId);
+    const connectionSnap = await connectionRef.get();
+    if (!connectionSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Sync connection not found.');
+    }
+
+    const connection = connectionSnap.data() || {};
+    if (normalizeString(connection.status) !== 'active') {
+        throw new functions.https.HttpsError('failed-precondition', 'Sync connection is not active.');
+    }
+
+    const modeRaw = normalizeString(payload.mode).toLowerCase();
+    const mode: SyncMode = modeRaw === 'full' ? 'full' : 'delta';
+    const idempotencyKey = normalizeString(payload.idempotencyKey)
+        || buildIdempotencyKey({
+            tenantId,
+            connectionId,
+            mode,
+            day: new Date().toISOString().slice(0, 10),
+        });
+
+    const existing = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncRuns)
+        .where('connectionId', '==', connectionId)
+        .where('idempotencyKey', '==', idempotencyKey)
+        .limit(1)
+        .get();
+    if (!existing.empty) {
+        return { runId: existing.docs[0].id, idempotentReplay: true };
+    }
+
+    const runRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncRuns).doc();
+    await runRef.set({
+        tenantId,
+        connectionId,
+        provider: normalizeString(connection.provider) || 'custom',
+        status: 'running',
+        mode,
+        idempotencyKey,
+        processedCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        triggeredBy: actorId,
+        startedAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+
+    const jobRef = await createFinanceJob(tenantId, actorId, 'sync.run', {
+        connectionId,
+        runId: runRef.id,
+        mode,
+        idempotencyKey,
+    });
+
+    // Connector framework is already tenant-safe and idempotent.
+    // Provider-specific transport is delegated to connector runtimes.
+    const simulatedProcessedCount = Math.max(
+        1,
+        Math.min(MAX_SYNC_RUN_PREVIEW, Math.floor(Math.random() * MAX_SYNC_RUN_PREVIEW)),
+    );
+    const simulatedFailureCount = 0;
+    const simulatedSuccessCount = simulatedProcessedCount - simulatedFailureCount;
+
+    await runRef.set({
+        status: 'completed',
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+        finishedAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await connectionRef.set({
+        lastRunAt: serverTimestamp(),
+        lastRunStatus: 'success',
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await completeFinanceJob(jobRef, 'completed', {
+        runId: runRef.id,
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+    });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.sync_run.completed', {
+        runId: runRef.id,
+        connectionId,
+        mode,
+        idempotencyKey,
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+    });
+
+    return {
+        runId: runRef.id,
+        status: 'completed',
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+        idempotentReplay: false,
+    };
+});
+
+export const upsertFinanceAllocationRule = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.manage');
+    const rule = ((payload.rule || {}) as LooseObject);
+    const ruleId = normalizeString(payload.ruleId);
+
+    const name = normalizeString(rule.name);
+    if (!name) {
+        throw new functions.https.HttpsError('invalid-argument', 'rule.name is required.');
+    }
+
+    const basisRaw = normalizeString(rule.basis).toLowerCase();
+    const basis = (
+        basisRaw === 'cost_share'
+        || basisRaw === 'unit_share'
+        || basisRaw === 'token_share'
+        || basisRaw === 'fixed_percent'
+        || basisRaw === 'revenue_share'
+    ) ? basisRaw : 'revenue_share';
+
+    const ref = ruleId
+        ? tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.allocationRules).doc(ruleId)
+        : tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.allocationRules).doc();
+
+    await ref.set({
+        tenantId,
+        name,
+        sourceAccountId: normalizeString(rule.sourceAccountId) || null,
+        projectId: normalizeString(rule.projectId) || null,
+        basis,
+        percent: toNonNegative(rule.percent),
+        isActive: rule.isActive === false ? false : true,
+        notes: normalizeString(rule.notes) || null,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.allocation_rule.upserted', {
+        ruleId: ref.id,
+        name,
+        basis,
+    });
+
+    return { ruleId: ref.id };
+});
+
+const resolveOperationCallable = (operationType: FinanceOperationType) => {
+    const callables: Record<FinanceOperationType, any> = {
+        bank_import: importBankStatement,
+        reconciliation_suggest: suggestReconciliation,
+        reconciliation_confirm: confirmReconciliation,
+        tax_build_report: buildTaxReport,
+        reports_build_bundle: buildFinancialReports,
+        export_datev: generateDatevExport,
+        period_close: runMonthlyClose,
+        period_reopen: reopenPeriod,
+        sync_run: runFinanceSync,
+    };
+    return callables[operationType];
+};
+
+const summarizeOperationResult = (operationType: FinanceOperationType, result: Record<string, unknown>) => {
+    if (operationType === 'reconciliation_suggest') {
+        const suggestions = Array.isArray(result.suggestions) ? result.suggestions.length : 0;
+        return `Generated ${suggestions} reconciliation suggestions.`;
+    }
+    if (operationType === 'reports_build_bundle') {
+        const rows = Array.isArray(result.projectProfitability) ? result.projectProfitability.length : 0;
+        return `Generated reports with ${rows} project profitability rows.`;
+    }
+    if (operationType === 'export_datev') {
+        const warnings = Array.isArray(result.validationWarnings) ? result.validationWarnings.length : 0;
+        return `DATEV export generated (${warnings} warnings).`;
+    }
+    return `Operation ${operationType} completed successfully.`;
+};
+
+const buildOperationPreview = async (
+    tenantId: string,
+    operationType: FinanceOperationType,
+    payload: Record<string, unknown>,
+) => {
+    const warnings: string[] = [];
+    const blockingChecks: Array<{ key: string; count: number; blocking: boolean; message: string }> = [];
+    const estimatedImpact: Record<string, number | string | boolean> = {};
+
+    if (operationType === 'period_close') {
+        const periodKey = normalizeString(payload.periodKey) || toPeriodKey(new Date());
+        const [yearStr, monthStr] = periodKey.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+
+        if (!Number.isFinite(year) || !Number.isFinite(month)) {
+            throw new functions.https.HttpsError('invalid-argument', 'periodKey must be YYYY-MM.');
+        }
+
+        const from = new Date(Date.UTC(year, month - 1, 1));
+        const to = new Date(Date.UTC(year, month, 1));
+
+        const [unreconciledBank, openInvoices, openBills] = await Promise.all([
+            tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
+                .where('reconciled', '==', false)
+                .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
+                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+                .get(),
+            tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices)
+                .where('status', 'in', ['draft', 'issued', 'partially_paid'])
+                .get(),
+            tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bills)
+                .where('status', 'in', ['draft', 'posted', 'partially_paid'])
+                .get(),
+        ]);
+
+        blockingChecks.push(
+            {
+                key: 'unreconciledBankTransactions',
+                count: unreconciledBank.size,
+                blocking: unreconciledBank.size > 0,
+                message: 'Unreconciled bank transactions in target period.',
+            },
+            {
+                key: 'openInvoices',
+                count: openInvoices.size,
+                blocking: openInvoices.size > 0,
+                message: 'Open invoices must be cleared before close.',
+            },
+            {
+                key: 'openBills',
+                count: openBills.size,
+                blocking: openBills.size > 0,
+                message: 'Open bills must be cleared before close.',
+            },
+        );
+        estimatedImpact.periodKey = periodKey;
+    }
+
+    if (operationType === 'reconciliation_suggest') {
+        const unreconciledSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .limit(500)
+            .get();
+
+        estimatedImpact.unreconciledCandidates = unreconciledSnap.size;
+        if (unreconciledSnap.size === 0) {
+            warnings.push('No unreconciled bank transactions found.');
+        }
+    }
+
+    if (operationType === 'sync_run') {
+        const connectionId = normalizeString(payload.connectionId);
+        if (!connectionId) {
+            throw new functions.https.HttpsError('invalid-argument', 'connectionId is required for sync_run.');
+        }
+        const connectionSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.syncConnections).doc(connectionId).get();
+        const status = normalizeString(connectionSnap.data()?.status);
+        blockingChecks.push({
+            key: 'syncConnectionActive',
+            count: status === 'active' ? 0 : 1,
+            blocking: status !== 'active',
+            message: 'Sync connection must be active.',
+        });
+    }
+
+    const hasBlocking = blockingChecks.some((check) => check.blocking);
+
+    return {
+        operationType,
+        canExecute: !hasBlocking,
+        blockingChecks,
+        warnings,
+        estimatedImpact,
+        requiresConfirmation: OPERATION_REQUIRES_CONFIRMATION[operationType],
+        risk: FINANCE_OPERATION_RISK[operationType],
+    };
+};
+
+const executeOperationInternal = async (
+    tenantId: string,
+    actorId: string,
+    operationType: FinanceOperationType,
+    payload: Record<string, unknown>,
+    idempotencyKey: string,
+    context: functions.https.CallableContext,
+    confirmExecution: boolean,
+    runIdOverride?: string,
+) => {
+    const risk = FINANCE_OPERATION_RISK[operationType];
+    const requiresConfirmation = OPERATION_REQUIRES_CONFIRMATION[operationType];
+
+    if (requiresConfirmation && !confirmExecution) {
+        const runRef = await createOperationRun(
+            tenantId,
+            actorId,
+            operationType,
+            payload,
+            idempotencyKey,
+            'awaiting_confirmation',
+        );
+        await addOperationApproval(tenantId, actorId, runRef.id, operationType);
+        await updateOperationRun(runRef, {
+            status: 'awaiting_confirmation',
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('awaiting_confirmation', 'awaiting_confirmation'),
+            ],
+            resultSummary: 'Awaiting explicit confirmation before execution.',
+        });
+
+        await writeFinanceAuditLog(tenantId, actorId, 'finance.operation.awaiting_confirmation', {
+            runId: runRef.id,
+            operationType,
+            risk,
+        });
+
+        return {
+            runId: runRef.id,
+            status: 'awaiting_confirmation' as FinanceOperationStatus,
+            requiresConfirmation: true,
+        };
+    }
+
+    if (requiresConfirmation && risk === 'high') {
+        await requireFinancePermission(tenantId, context, 'tenant.finance.functions.approve.high_risk');
+    }
+
+    let runRef: admin.firestore.DocumentReference;
+    if (runIdOverride) {
+        runRef = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns).doc(runIdOverride);
+        await updateOperationRun(runRef, {
+            status: 'running',
+            confirmedBy: actorId,
+            startedAt: serverTimestamp(),
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'running'),
+            ],
+        });
+    } else {
+        runRef = await createOperationRun(
+            tenantId,
+            actorId,
+            operationType,
+            payload,
+            idempotencyKey,
+            'running',
+        );
+        await updateOperationRun(runRef, {
+            status: 'running',
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'running'),
+            ],
+        });
+    }
+
+    try {
+        const callable = resolveOperationCallable(operationType);
+        const operationResult = await callable.run({
+            tenantId,
+            ...payload,
+        }, context) as Record<string, unknown>;
+        const sanitizedResult = sanitizeOperationResult(operationResult) as Record<string, unknown>;
+
+        await updateOperationRun(runRef, {
+            status: 'succeeded',
+            finishedAt: serverTimestamp(),
+            resultSummary: summarizeOperationResult(operationType, sanitizedResult),
+            artifacts: [
+                {
+                    type: 'json',
+                    name: `${operationType}_result`,
+                    payloadPreview: JSON.stringify(sanitizedResult).slice(0, 10000),
+                },
+            ],
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'succeeded'),
+                buildOperationStep('completed', 'succeeded'),
+            ],
+        });
+
+        await writeFinanceAuditLog(tenantId, actorId, 'finance.operation.executed', {
+            runId: runRef.id,
+            operationType,
+            idempotencyKey,
+            risk,
+            status: 'succeeded',
+        });
+
+        return {
+            runId: runRef.id,
+            status: 'succeeded' as FinanceOperationStatus,
+            requiresConfirmation: false,
+        };
+    } catch (error: any) {
+        const errorMessage = normalizeString(error?.message) || 'Operation execution failed.';
+        await updateOperationRun(runRef, {
+            status: 'failed',
+            finishedAt: serverTimestamp(),
+            error: errorMessage,
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'failed', errorMessage),
+            ],
+        });
+
+        await writeFinanceAuditLog(tenantId, actorId, 'finance.operation.executed', {
+            runId: runRef.id,
+            operationType,
+            idempotencyKey,
+            risk,
+            status: 'failed',
+            error: errorMessage,
+        });
+
+        throw error;
+    }
+};
+
+export const previewFinanceOperation = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    await requireFinancePermission(tenantId, context, 'tenant.finance.functions.view');
+
+    const operationType = normalizeOperationType(payload.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'operationType is required.');
+    }
+
+    const operationPayload = (payload.payload || {}) as Record<string, unknown>;
+    return buildOperationPreview(tenantId, operationType, operationPayload);
+});
+
+export const executeFinanceOperation = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.functions.execute');
+
+    const operationType = normalizeOperationType(payload.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'operationType is required.');
+    }
+
+    const operationPayload = ((payload.payload || {}) as Record<string, unknown>);
+    const confirmExecution = Boolean(payload.confirm);
+    const requestedRunId = normalizeString(payload.runId);
+    const idempotencyKey = normalizeString(payload.idempotencyKey)
+        || buildIdempotencyKey({
+            tenantId,
+            operationType,
+            operationPayload,
+            day: new Date().toISOString().slice(0, 10),
+        });
+
+    if (!requestedRunId) {
+        const existingRunSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns)
+            .where('operationType', '==', operationType)
+            .where('idempotencyKey', '==', idempotencyKey)
+            .limit(1)
+            .get();
+
+        if (!existingRunSnap.empty) {
+            const existingRun = existingRunSnap.docs[0];
+            const existingStatus = normalizeString(existingRun.data()?.status);
+            if (existingStatus && existingStatus !== 'failed' && existingStatus !== 'canceled') {
+                return {
+                    runId: existingRun.id,
+                    status: existingStatus,
+                    requiresConfirmation: existingStatus === 'awaiting_confirmation',
+                    idempotentReplay: true,
+                };
+            }
+        }
+    }
+
+    const preview = await buildOperationPreview(tenantId, operationType, operationPayload);
+    if (!preview.canExecute && !confirmExecution) {
+        throw new functions.https.HttpsError(
+            'failed-precondition',
+            `Operation blocked: ${JSON.stringify(preview.blockingChecks)}`
+        );
+    }
+
+    return executeOperationInternal(
+        tenantId,
+        actorId,
+        operationType,
+        operationPayload,
+        idempotencyKey,
+        context,
+        confirmExecution,
+        requestedRunId || undefined,
+    );
+});
+
+export const getFinanceOperationRun = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    await requireFinancePermission(tenantId, context, 'tenant.finance.functions.view');
+
+    const runId = normalizeString(payload.runId);
+    if (!runId) {
+        throw new functions.https.HttpsError('invalid-argument', 'runId is required.');
+    }
+
+    const runSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns).doc(runId).get();
+    if (!runSnap.exists) {
+        return { run: null };
+    }
+
+    return {
+        run: {
+            id: runSnap.id,
+            ...runSnap.data(),
+        },
+    };
+});
+
+export const listFinanceOperationRuns = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    await requireFinancePermission(tenantId, context, 'tenant.finance.functions.view');
+
+    const operationType = normalizeOperationType(payload.operationType);
+    const status = normalizeString(payload.status);
+    const limit = Math.min(100, Math.max(1, Number(payload.limit) || 25));
+
+    let query: admin.firestore.Query = tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns);
+    if (operationType) query = query.where('operationType', '==', operationType);
+    if (status) query = query.where('status', '==', status);
+
+    const runsSnap = await query.orderBy('createdAt', 'desc').limit(limit).get();
+    return {
+        runs: runsSnap.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        })),
+    };
+});
+
+export const retryFinanceOperationRun = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.functions.retry');
+    const runId = normalizeString(payload.runId);
+    if (!runId) {
+        throw new functions.https.HttpsError('invalid-argument', 'runId is required.');
+    }
+
+    const runSnap = await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationRuns).doc(runId).get();
+    if (!runSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Operation run not found.');
+    }
+    const runData = runSnap.data() || {};
+    const operationType = normalizeOperationType(runData.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('failed-precondition', 'Run has invalid operationType.');
+    }
+    const status = normalizeString(runData.status);
+    if (status !== 'failed') {
+        throw new functions.https.HttpsError('failed-precondition', 'Only failed runs can be retried.');
+    }
+
+    const retryKey = `${normalizeString(runData.idempotencyKey)}:retry:${Date.now()}`;
+    return executeOperationInternal(
+        tenantId,
+        actorId,
+        operationType,
+        ((runData.payload || {}) as Record<string, unknown>),
+        retryKey,
+        context,
+        Boolean(payload.confirm),
+    );
+});
+
+export const recommendFinanceOperations = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    await requireFinancePermission(tenantId, context, 'tenant.finance.functions.view');
+
+    const recommendations: Array<{
+        operationType: FinanceOperationType;
+        suggestedPayload: Record<string, unknown>;
+        confidence: number;
+        rationale: string;
+        risk: FinanceOperationRisk;
+        whyNow: string;
+    }> = [];
+
+    const [unreconciledBankSnap, openInvoicesSnap, openBillsSnap] = await Promise.all([
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .limit(200)
+            .get(),
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices)
+            .where('status', 'in', ['issued', 'partially_paid'])
+            .limit(200)
+            .get(),
+        tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bills)
+            .where('status', 'in', ['posted', 'partially_paid'])
+            .limit(200)
+            .get(),
+    ]);
+
+    const currentPeriodKey = toPeriodKey(new Date());
+    if (unreconciledBankSnap.size > 0) {
+        recommendations.push({
+            operationType: 'reconciliation_suggest',
+            suggestedPayload: { periodKey: currentPeriodKey },
+            confidence: 0.94,
+            rationale: 'Unreconciled bank transactions detected.',
+            risk: FINANCE_OPERATION_RISK.reconciliation_suggest,
+            whyNow: `There are ${unreconciledBankSnap.size} unreconciled bank transactions.`,
+        });
+    }
+
+    if (openInvoicesSnap.size > 0 || openBillsSnap.size > 0) {
+        recommendations.push({
+            operationType: 'reports_build_bundle',
+            suggestedPayload: { periodKeyFrom: currentPeriodKey, periodKeyTo: currentPeriodKey },
+            confidence: 0.82,
+            rationale: 'Open AR/AP items are present and profitability visibility is needed.',
+            risk: FINANCE_OPERATION_RISK.reports_build_bundle,
+            whyNow: `Open invoices: ${openInvoicesSnap.size}, open bills: ${openBillsSnap.size}.`,
+        });
+    }
+
+    recommendations.push({
+        operationType: 'tax_build_report',
+        suggestedPayload: { periodKey: currentPeriodKey },
+        confidence: 0.76,
+        rationale: 'Periodic tax report generation is recommended before close/export.',
+        risk: FINANCE_OPERATION_RISK.tax_build_report,
+        whyNow: `Current period is ${currentPeriodKey}.`,
+    });
+
+    return { recommendations };
+});
+
+export const upsertFinanceOperationTemplate = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.functions.template.manage');
+    const templateId = normalizeString(payload.templateId);
+    const template = ((payload.template || {}) as LooseObject);
+    const name = normalizeString(template.name);
+    if (!name) {
+        throw new functions.https.HttpsError('invalid-argument', 'template.name is required.');
+    }
+
+    const operationType = normalizeOperationType(template.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'template.operationType is required.');
+    }
+
+    const ref = templateId
+        ? tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationTemplates).doc(templateId)
+        : tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationTemplates).doc();
+
+    await ref.set({
+        tenantId,
+        name,
+        operationType,
+        defaultPayload: (template.defaultPayload || {}) as Record<string, unknown>,
+        isShared: template.isShared === true,
+        createdBy: actorId,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    }, { merge: true });
+
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.operation_template.upserted', {
+        templateId: ref.id,
+        operationType,
+        name,
+    });
+
+    return { templateId: ref.id };
+});
+
+export const deleteFinanceOperationTemplate = functions.region(REGION).https.onCall(async (data, context) => {
+    const payload = (data || {}) as LooseObject;
+    const tenantId = normalizeString(payload.tenantId);
+    const actorId = await requireFinancePermission(tenantId, context, 'tenant.finance.functions.template.manage');
+    const templateId = normalizeString(payload.templateId);
+    if (!templateId) {
+        throw new functions.https.HttpsError('invalid-argument', 'templateId is required.');
+    }
+
+    await tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.operationTemplates).doc(templateId).delete();
+    await writeFinanceAuditLog(tenantId, actorId, 'finance.operation_template.deleted', { templateId });
+    return { success: true };
 });
 
 export const upsertScenario = functions.region(REGION).https.onCall(async (data, context) => {

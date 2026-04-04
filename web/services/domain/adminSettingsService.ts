@@ -67,6 +67,45 @@ export type WorkspaceFinancialUsage = {
     months: WorkspaceFinancialUsageMonth[];
 };
 
+export type WorkspaceFileStorageProvider = 'firebase' | 's3' | 'googleDrive';
+
+export type WorkspaceFileStorageConfig = {
+    activeProvider: WorkspaceFileStorageProvider;
+    resolvedProvider: WorkspaceFileStorageProvider;
+    fallbackToFirebase: boolean;
+    fallbackReason: string | null;
+    providers: {
+        firebase: {
+            ready: boolean;
+        };
+        s3: {
+            ready: boolean;
+            endpoint: string;
+            region: string;
+            bucket: string;
+            pathPrefix: string;
+            forcePathStyle: boolean;
+            hasAccessKeyId: boolean;
+            hasSecretAccessKey: boolean;
+            lastTestedAt?: unknown;
+        };
+        googleDrive: {
+            ready: boolean;
+            connected: boolean;
+            folderId: string;
+            folderName: string;
+            email: string;
+            scope: string;
+            hasRefreshToken: boolean;
+            tokenExpiryDate: number | null;
+            lastTestedAt?: unknown;
+            lastError?: string | null;
+        };
+    };
+    updatedAt?: unknown;
+    updatedBy?: string | null;
+};
+
 export const getWorkspaceSmtpConfig = async (tenantId: string): Promise<WorkspaceSmtpConfig | null> => {
     const fn = httpsCallable(functions, 'getWorkspaceSmtpConfig');
     const result = await fn({ tenantId }) as { data: { smtpConfig: WorkspaceSmtpConfig | null } };
@@ -146,4 +185,75 @@ export const fetchWorkspaceFinancialUsage = async (
     }) as { data: WorkspaceFinancialUsage };
 
     return result.data;
+};
+
+export const getWorkspaceFileStorageConfig = async (tenantId: string): Promise<WorkspaceFileStorageConfig | null> => {
+    const fn = httpsCallable(functions, 'getWorkspaceFileStorageConfig');
+    const result = await fn({ tenantId }) as { data: { config: WorkspaceFileStorageConfig | null } };
+    return result.data.config || null;
+};
+
+export const saveWorkspaceFileStorageConfig = async (
+    tenantId: string,
+    config: {
+        activeProvider: WorkspaceFileStorageProvider;
+        s3Config?: {
+            endpoint?: string;
+            region?: string;
+            bucket?: string;
+            pathPrefix?: string;
+            forcePathStyle?: boolean;
+            accessKeyId?: string;
+            secretAccessKey?: string;
+        };
+        googleDriveConfig?: {
+            folderId?: string;
+            folderName?: string;
+        };
+    },
+): Promise<WorkspaceFileStorageConfig> => {
+    const fn = httpsCallable(functions, 'saveWorkspaceFileStorageConfig');
+    const result = await fn({
+        tenantId,
+        activeProvider: config.activeProvider,
+        s3Config: config.s3Config || {},
+        googleDriveConfig: config.googleDriveConfig || {},
+    }) as { data: { config: WorkspaceFileStorageConfig } };
+
+    return result.data.config;
+};
+
+export const testWorkspaceFileStorageConnection = async (
+    tenantId: string,
+    provider: WorkspaceFileStorageProvider,
+    s3Config?: {
+        endpoint?: string;
+        region?: string;
+        bucket?: string;
+        pathPrefix?: string;
+        forcePathStyle?: boolean;
+        accessKeyId?: string;
+        secretAccessKey?: string;
+    },
+): Promise<{ ok: boolean; provider: WorkspaceFileStorageProvider; message: string }> => {
+    const fn = httpsCallable(functions, 'testWorkspaceFileStorageConnection');
+    const result = await fn({
+        tenantId,
+        provider,
+        s3Config: s3Config || {},
+    }) as { data: { ok: boolean; provider: WorkspaceFileStorageProvider; message: string } };
+
+    return result.data;
+};
+
+export const getGoogleDriveStorageAuthUrl = async (tenantId: string): Promise<{ url: string }> => {
+    const fn = httpsCallable(functions, 'getGoogleDriveStorageAuthUrl');
+    const result = await fn({ tenantId }) as { data: { url: string } };
+    return result.data;
+};
+
+export const disconnectGoogleDriveStorage = async (tenantId: string): Promise<WorkspaceFileStorageConfig> => {
+    const fn = httpsCallable(functions, 'disconnectGoogleDriveStorage');
+    const result = await fn({ tenantId }) as { data: { config: WorkspaceFileStorageConfig } };
+    return result.data.config;
 };

@@ -6,10 +6,10 @@ import {
     setDoc,
     updateDoc
 } from 'firebase/firestore';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import { auth, db, storage } from '../firebase';
+import { auth, db } from '../firebase';
 import { getActiveTenantId } from './authService';
+import { getTenantFileDownloadUrl, uploadTenantFile } from '../fileStorageService';
 import type { AIUsage, PrivacySettings, User } from '../../types';
 
 const USERS = 'users';
@@ -18,7 +18,32 @@ const userDocRef = (userId: string) => doc(db, USERS, userId);
 
 export const getUserProfile = async (userId: string, _tenantId?: string) => {
     const snap = await getDoc(userDocRef(userId));
-    return snap.exists() ? snap.data() : null;
+    if (!snap.exists()) {
+        return null;
+    }
+
+    const profile = snap.data() as User;
+    const resolvedTenantId = _tenantId || getActiveTenantId();
+
+    if (resolvedTenantId && profile.photoFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId: resolvedTenantId, fileId: profile.photoFileId });
+            profile.photoURL = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to refresh managed profile photo URL', error);
+        }
+    }
+
+    if (resolvedTenantId && profile.coverFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId: resolvedTenantId, fileId: profile.coverFileId });
+            profile.coverURL = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to refresh managed profile cover URL', error);
+        }
+    }
+
+    return profile;
 };
 
 export const updateUserData = async (userId: string, data: Partial<any>) => {
@@ -44,26 +69,32 @@ export const updateUserProfile = async (data: {
 
     let photoURL = data.photoURL || user.photoURL;
     let coverURL = data.coverURL;
-    const tenantId = getActiveTenantId();
+    const tenantId = getActiveTenantId() || user.uid;
+    let photoFileId = '';
+    let coverFileId = '';
 
     if (data.file) {
-        const path = tenantId
-            ? `tenants/${tenantId}/users/${user.uid}/avatar_${Date.now()}`
-            : `users/${user.uid}/avatar_${Date.now()}`;
-
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, data.file);
-        photoURL = await getDownloadURL(storageRef);
+        const uploaded = await uploadTenantFile({
+            tenantId,
+            module: 'profile',
+            entityType: 'avatar',
+            entityId: user.uid,
+            file: data.file,
+        });
+        photoURL = uploaded.downloadUrl;
+        photoFileId = uploaded.id;
     }
 
     if (data.coverFile) {
-        const path = tenantId
-            ? `tenants/${tenantId}/users/${user.uid}/cover_${Date.now()}`
-            : `users/${user.uid}/cover_${Date.now()}`;
-
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, data.coverFile);
-        coverURL = await getDownloadURL(storageRef);
+        const uploaded = await uploadTenantFile({
+            tenantId,
+            module: 'profile',
+            entityType: 'cover',
+            entityId: user.uid,
+            file: data.coverFile,
+        });
+        coverURL = uploaded.downloadUrl;
+        coverFileId = uploaded.id;
     }
 
     if (data.displayName || photoURL) {
@@ -87,6 +118,12 @@ export const updateUserProfile = async (data: {
 
     if (coverURL) {
         updateData.coverURL = coverURL;
+    }
+    if (photoFileId) {
+        updateData.photoFileId = photoFileId;
+    }
+    if (coverFileId) {
+        updateData.coverFileId = coverFileId;
     }
 
     await setDoc(userDocRef(user.uid), updateData, { merge: true });

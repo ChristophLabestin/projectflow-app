@@ -39,6 +39,18 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
 - [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
+- [x] `/finance/cockpit` — Finance V2 cockpit overview (KPI, period status, warnings)
+- [x] `/finance/bookings` — Journal and booking workflows (postings + drilldown)
+- [x] `/finance/receivables` — Debitoren workflows (customers, invoices, dunning, OPOS)
+- [x] `/finance/payables` — Kreditoren workflows (vendors, bills, payable status)
+- [x] `/finance/bank` — Bank transactions and reconciliation actions
+- [x] `/finance/tax` — Tax code/period/report workflows
+- [x] `/finance/reports` — Financial reporting and project profitability views
+- [x] `/finance/functions` — Finance Functions Workspace (guided operation wizard, run console, approvals, templates, AI insights)
+- [x] `/finance/functions/:financeOperationType` — Deep link into a specific operation flow
+- [x] `/finance/exports` — Export and monthly close workflows (DATEV/jobs)
+- [x] `/finance/sync` — External sync connections and sync run history
+- [x] `/finance/settings` — Finance settings, numbering defaults, and controls
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
 - [x] `/create` — Create Project Wizard (SCSS refactor, common inputs/buttons/selects, preview + assets panels aligned)
 - [x] `/team` — Team / members management

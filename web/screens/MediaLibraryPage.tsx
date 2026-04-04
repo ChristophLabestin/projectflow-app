@@ -11,9 +11,11 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ImageEditor } from '../components/MediaLibrary/ImageEditor';
 import { downloadFile } from '../utils/download';
+import { deleteTenantFile, listTenantFiles, uploadTenantFile } from '../services/fileStorageService';
 
 interface MediaAsset {
     id: string;
+    managedFileId?: string;
     url: string;
     thumbnailUrl?: string;
     name: string;
@@ -85,7 +87,29 @@ export const MediaLibraryPage: React.FC = () => {
                 });
 
                 const fetchedAssets = await Promise.all(assetPromises);
-                setAssets(fetchedAssets);
+                let managedAssets: MediaAsset[] = [];
+                try {
+                    const managed = await listTenantFiles({
+                        tenantId: resolvedTenantId,
+                        module: 'media',
+                        limit: 300,
+                    });
+                    managedAssets = managed.files.map((file) => ({
+                        id: file.id,
+                        managedFileId: file.id,
+                        url: file.downloadUrl,
+                        thumbnailUrl: file.downloadUrl,
+                        name: file.fileName,
+                        projectId: file.projectId || undefined,
+                        type: file.mimeType.startsWith('video/') ? 'video' : 'image',
+                        source: 'upload',
+                        createdAt: file.createdAt || new Date(),
+                    }));
+                } catch (managedError) {
+                    console.error('Failed to load managed media assets', managedError);
+                }
+
+                setAssets([...fetchedAssets, ...managedAssets]);
             } catch (error) {
                 console.error("Failed to fetch media library data:", error);
             } finally {
@@ -104,32 +128,25 @@ export const MediaLibraryPage: React.FC = () => {
             const resolvedTenantId = getActiveTenantId() || currentUser.uid;
 
             const uploadPromises = files.map(async (file) => {
-                const timestamp = Date.now();
-                const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                // Pattern: {timestamp}_media_{projectId}_{filename}
-                const uniqueFileName = `${timestamp}_media_${targetProjectId}_${cleanFileName}`;
-
-                // New logic: Use project subfolder if not uncategorized
-                const folderPath = targetProjectId === 'uncategorized' ? '' : `${targetProjectId}/`;
-                const path = `tenants/${resolvedTenantId}/projects/${folderPath}${uniqueFileName}`;
-
-                const storageRef = ref(storage, path);
-
-                // Upload file
-                await uploadBytes(storageRef, file);
-
-                // Get permanent download URL
-                const downloadURL = await getDownloadURL(storageRef);
+                const uploaded = await uploadTenantFile({
+                    tenantId: resolvedTenantId,
+                    module: 'media',
+                    entityType: 'mediaAsset',
+                    entityId: targetProjectId,
+                    projectId: targetProjectId === 'uncategorized' ? undefined : targetProjectId,
+                    file,
+                });
 
                 return {
-                    id: uniqueFileName,
-                    url: downloadURL,
-                    thumbnailUrl: downloadURL,
-                    name: file.name,
+                    id: uploaded.id,
+                    managedFileId: uploaded.id,
+                    url: uploaded.downloadUrl,
+                    thumbnailUrl: uploaded.downloadUrl,
+                    name: uploaded.fileName,
                     projectId: targetProjectId === 'uncategorized' ? undefined : targetProjectId,
-                    type: file.type.startsWith('image/') ? 'image' : 'video',
+                    type: uploaded.mimeType.startsWith('image/') ? 'image' : 'video',
                     source: 'upload' as const,
-                    createdAt: new Date()
+                    createdAt: uploaded.createdAt || new Date()
                 } as MediaAsset;
             });
 
@@ -183,8 +200,16 @@ export const MediaLibraryPage: React.FC = () => {
 
         try {
             const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
-            const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${asset.id}`);
-            await deleteObject(storageRef);
+            if (!resolvedTenantId) {
+                throw new Error('No tenant context');
+            }
+
+            if (asset.managedFileId) {
+                await deleteTenantFile({ tenantId: resolvedTenantId, fileId: asset.managedFileId });
+            } else {
+                const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${asset.id}`);
+                await deleteObject(storageRef);
+            }
             setAssets(prev => prev.filter(a => a.id !== asset.id));
             showSuccess(`"${asset.name}" has been deleted.`);
         } catch (error) {
@@ -198,24 +223,32 @@ export const MediaLibraryPage: React.FC = () => {
         setLoading(true); // Reuse loading state for overlay effect
         try {
             const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
-            const timestamp = Date.now();
-            const uniqueFileName = `${timestamp}_media_${editingImage.projectId || 'uncategorized'}_edited_${editingImage.name}`;
-            const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${uniqueFileName}`);
+            if (!resolvedTenantId) {
+                throw new Error('No tenant context');
+            }
 
             const response = await fetch(dataUrl);
             const blob = await response.blob();
-            await uploadBytes(storageRef, blob);
-            const downloadURL = await getDownloadURL(storageRef);
+            const file = new File([blob], `edited_${editingImage.name}`, { type: 'image/jpeg' });
+            const uploaded = await uploadTenantFile({
+                tenantId: resolvedTenantId,
+                module: 'media',
+                entityType: 'mediaAsset',
+                entityId: editingImage.projectId || 'uncategorized',
+                projectId: editingImage.projectId || undefined,
+                file,
+            });
 
             const newAsset: MediaAsset = {
-                id: uniqueFileName,
-                url: downloadURL,
-                thumbnailUrl: downloadURL,
-                name: `Edited ${editingImage.name}`,
+                id: uploaded.id,
+                managedFileId: uploaded.id,
+                url: uploaded.downloadUrl,
+                thumbnailUrl: uploaded.downloadUrl,
+                name: uploaded.fileName,
                 projectId: editingImage.projectId,
                 type: 'image',
                 source: 'upload',
-                createdAt: new Date()
+                createdAt: uploaded.createdAt || new Date()
             };
 
             setAssets(prev => [...prev, newAsset]);
@@ -234,10 +267,44 @@ export const MediaLibraryPage: React.FC = () => {
         setLoading(true);
         try {
             const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
-            const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${editingImage.id}`);
+            if (!resolvedTenantId) {
+                throw new Error('No tenant context');
+            }
 
             const response = await fetch(dataUrl);
             const blob = await response.blob();
+            const file = new File([blob], `edited_${editingImage.name}`, { type: 'image/jpeg' });
+
+            if (editingImage.managedFileId) {
+                const uploaded = await uploadTenantFile({
+                    tenantId: resolvedTenantId,
+                    module: 'media',
+                    entityType: 'mediaAsset',
+                    entityId: editingImage.projectId || 'uncategorized',
+                    projectId: editingImage.projectId || undefined,
+                    file,
+                });
+                await deleteTenantFile({ tenantId: resolvedTenantId, fileId: editingImage.managedFileId });
+
+                setAssets(prev => prev.map(a =>
+                    a.id === editingImage.id
+                        ? {
+                            ...a,
+                            id: uploaded.id,
+                            managedFileId: uploaded.id,
+                            url: uploaded.downloadUrl,
+                            thumbnailUrl: uploaded.downloadUrl,
+                            name: uploaded.fileName,
+                        }
+                        : a
+                ));
+
+                showSuccess("Image replaced successfully.");
+                setEditingImage(null);
+                return;
+            }
+
+            const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${editingImage.id}`);
             await uploadBytes(storageRef, blob);
             const downloadURL = await getDownloadURL(storageRef);
 

@@ -38,6 +38,13 @@ export interface ConfirmReconciliationInput {
     bankAccountId?: string;
     periodKey: string;
     matchedTransactionIds: string[];
+    matchedItems?: Array<{
+        bankTransactionId: string;
+        targetType?: 'invoice' | 'bill' | null;
+        targetId?: string | null;
+        confidence?: number;
+        rationale?: string;
+    }>;
     unmatchedTransactionIds?: string[];
     notes?: string;
 }

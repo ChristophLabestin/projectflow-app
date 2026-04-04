@@ -35,6 +35,16 @@ export const FINANCE_COLLECTIONS = {
     exports: 'finance_exports',
     auditLog: 'finance_audit_log',
     settings: 'finance_settings',
+    jobs: 'finance_jobs',
+    documents: 'finance_documents',
+    documentVersions: 'finance_document_versions',
+    recurringTemplates: 'finance_recurring_templates',
+    allocationRules: 'finance_allocation_rules',
+    syncConnections: 'finance_sync_connections',
+    syncRuns: 'finance_sync_runs',
+    operationRuns: 'finance_operation_runs',
+    operationTemplates: 'finance_operation_templates',
+    operationApprovals: 'finance_operation_approvals',
 } as const;
 
 export type FinancePermissionNode =
@@ -48,7 +58,15 @@ export type FinancePermissionNode =
     | 'tenant.finance.close'
     | 'tenant.finance.export.datev'
     | 'tenant.finance.audit.view'
-    | 'tenant.finance.reconciliation.manage';
+    | 'tenant.finance.reconciliation.manage'
+    | 'tenant.finance.documents.manage'
+    | 'tenant.finance.sync.manage'
+    | 'tenant.finance.reports.manage'
+    | 'tenant.finance.functions.view'
+    | 'tenant.finance.functions.execute'
+    | 'tenant.finance.functions.retry'
+    | 'tenant.finance.functions.template.manage'
+    | 'tenant.finance.functions.approve.high_risk';
 
 const ADMIN_GRANTED_PERMISSIONS: FinancePermissionNode[] = [
     'tenant.finance.view',
@@ -62,6 +80,14 @@ const ADMIN_GRANTED_PERMISSIONS: FinancePermissionNode[] = [
     'tenant.finance.export.datev',
     'tenant.finance.audit.view',
     'tenant.finance.reconciliation.manage',
+    'tenant.finance.documents.manage',
+    'tenant.finance.sync.manage',
+    'tenant.finance.reports.manage',
+    'tenant.finance.functions.view',
+    'tenant.finance.functions.execute',
+    'tenant.finance.functions.retry',
+    'tenant.finance.functions.template.manage',
+    'tenant.finance.functions.approve.high_risk',
 ];
 
 const MEMBER_GRANTED_PERMISSIONS: FinancePermissionNode[] = [

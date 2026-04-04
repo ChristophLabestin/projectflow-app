@@ -8,10 +8,10 @@ import {
     updateDoc
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 
-import { auth, db, functions, storage } from '../firebase';
+import { auth, db, functions } from '../firebase';
 import { ensureTenantAndUser, logActivity, projectDocRef, resolveTenantId } from '../internal/workspaceDataCore';
+import { uploadTenantFile } from '../fileStorageService';
 import type { Activity, Project, ProjectRole } from '../../types';
 
 const TENANTS = 'tenants';
@@ -53,17 +53,23 @@ export const createProject = async (
     const projectId = docRef.id;
     let coverImageUrl = typeof coverFile === 'string' ? coverFile : '';
     let squareIconUrl = typeof squareIconFile === 'string' ? squareIconFile : '';
+    let coverImageFileId = '';
+    let squareIconFileId = '';
     const screenshotUrls: string[] = [];
-
-    const timestamp = Date.now();
-    const getStoragePath = (file: File, kind: string) =>
-        `tenants/${resolvedTenant}/projects/${projectId}/${timestamp}_media_${projectId}_${kind}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+    const screenshotFileIds: string[] = [];
 
     try {
         if (coverFile && typeof coverFile !== 'string') {
-            const storageRef = ref(storage, getStoragePath(coverFile, 'cover'));
-            await uploadBytes(storageRef, coverFile);
-            coverImageUrl = await getDownloadURL(storageRef);
+            const uploaded = await uploadTenantFile({
+                tenantId: resolvedTenant,
+                module: 'project',
+                entityType: 'cover',
+                entityId: projectId,
+                projectId,
+                file: coverFile,
+            });
+            coverImageUrl = uploaded.downloadUrl;
+            coverImageFileId = uploaded.id;
         }
     } catch (error) {
         console.warn('Cover upload failed', error);
@@ -71,9 +77,16 @@ export const createProject = async (
 
     try {
         if (squareIconFile && typeof squareIconFile !== 'string') {
-            const storageRef = ref(storage, getStoragePath(squareIconFile, 'icon'));
-            await uploadBytes(storageRef, squareIconFile);
-            squareIconUrl = await getDownloadURL(storageRef);
+            const uploaded = await uploadTenantFile({
+                tenantId: resolvedTenant,
+                module: 'project',
+                entityType: 'icon',
+                entityId: projectId,
+                projectId,
+                file: squareIconFile,
+            });
+            squareIconUrl = uploaded.downloadUrl;
+            squareIconFileId = uploaded.id;
         }
     } catch (error) {
         console.warn('Icon upload failed', error);
@@ -87,9 +100,16 @@ export const createProject = async (
             }
 
             try {
-                const storageRef = ref(storage, getStoragePath(file, 'screenshot'));
-                await uploadBytes(storageRef, file);
-                screenshotUrls.push(await getDownloadURL(storageRef));
+                const uploaded = await uploadTenantFile({
+                    tenantId: resolvedTenant,
+                    module: 'project',
+                    entityType: 'screenshot',
+                    entityId: projectId,
+                    projectId,
+                    file,
+                });
+                screenshotUrls.push(uploaded.downloadUrl);
+                screenshotFileIds.push(uploaded.id);
             } catch (error) {
                 console.warn('Screenshot upload failed', file?.name, error);
             }
@@ -99,7 +119,10 @@ export const createProject = async (
     await updateDoc(docRef, {
         coverImage: coverImageUrl || deleteField(),
         squareIcon: squareIconUrl || deleteField(),
-        screenshots: screenshotUrls
+        screenshots: screenshotUrls,
+        coverImageFileId: coverImageFileId || deleteField(),
+        squareIconFileId: squareIconFileId || deleteField(),
+        screenshotFileIds: screenshotFileIds.length > 0 ? screenshotFileIds : deleteField(),
     });
 
     await logActivity(

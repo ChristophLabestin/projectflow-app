@@ -42,6 +42,16 @@ export const FINANCE_V2_COLLECTIONS = {
     exports: 'finance_exports',
     auditLog: 'finance_audit_log',
     settings: 'finance_settings',
+    jobs: 'finance_jobs',
+    documents: 'finance_documents',
+    documentVersions: 'finance_document_versions',
+    recurringTemplates: 'finance_recurring_templates',
+    allocationRules: 'finance_allocation_rules',
+    syncConnections: 'finance_sync_connections',
+    syncRuns: 'finance_sync_runs',
+    operationRuns: 'finance_operation_runs',
+    operationTemplates: 'finance_operation_templates',
+    operationApprovals: 'finance_operation_approvals',
 } as const;
 
 export type FinanceV2CollectionKey = keyof typeof FINANCE_V2_COLLECTIONS;

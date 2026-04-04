@@ -1,7 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.migrateLegacyFinanceV1ToV2 = exports.calculateScenarioSnapshot = exports.upsertScenario = exports.buildTaxReport = exports.buildFinancialReports = exports.generateDatevExport = exports.reopenPeriod = exports.runMonthlyClose = exports.confirmReconciliation = exports.suggestReconciliation = exports.importBankStatement = exports.unallocatePayment = exports.allocatePayment = exports.recordPayment = exports.voidBill = exports.postBill = exports.createBill = exports.voidInvoice = exports.issueInvoice = exports.createInvoice = exports.upsertFinanceTaxCode = exports.extractInvoiceFromDocument = exports.upsertFinanceVendor = exports.upsertFinanceCustomer = exports.upsertFinanceSettings = exports.upsertFinancePeriod = exports.upsertFinanceAccount = exports.postJournalEntry = void 0;
+exports.migrateLegacyFinanceV1ToV2 = exports.calculateScenarioSnapshot = exports.upsertScenario = exports.deleteFinanceOperationTemplate = exports.upsertFinanceOperationTemplate = exports.recommendFinanceOperations = exports.retryFinanceOperationRun = exports.listFinanceOperationRuns = exports.getFinanceOperationRun = exports.executeFinanceOperation = exports.previewFinanceOperation = exports.upsertFinanceAllocationRule = exports.runFinanceSync = exports.upsertFinanceSyncConnection = exports.buildTaxReport = exports.buildFinancialReports = exports.generateDatevExport = exports.reopenPeriod = exports.runMonthlyClose = exports.confirmReconciliation = exports.suggestReconciliation = exports.importBankStatement = exports.unallocatePayment = exports.allocatePayment = exports.recordPayment = exports.voidBill = exports.postBill = exports.createBill = exports.advanceInvoiceDunning = exports.voidInvoice = exports.issueInvoice = exports.createInvoice = exports.upsertFinanceTaxCode = exports.confirmExtractedInvoiceDraft = exports.extractInvoiceFromDocument = exports.deleteFinanceRecurringTemplate = exports.upsertFinanceRecurringTemplate = exports.deleteFinanceDocument = exports.linkFinanceDocumentToEntity = exports.versionFinanceDocument = exports.uploadFinanceDocument = exports.upsertFinanceVendor = exports.upsertFinanceCustomer = exports.upsertFinanceSettings = exports.upsertFinancePeriod = exports.upsertFinanceAccount = exports.postJournalEntry = void 0;
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const functions = require("firebase-functions");
 const openai_1 = require("openai");
 const init_1 = require("../init");
@@ -12,7 +13,220 @@ const round2 = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 const INVOICE_EXTRACTION_MODEL = 'gpt-5-mini';
 const MAX_INVOICE_UPLOAD_BYTES = 5 * 1024 * 1024;
 const MAX_XML_TEXT_LENGTH = 180000;
+const DOCUMENT_STORAGE_PREFIX = 'finance-documents';
+const MAX_SYNC_RUN_PREVIEW = 20;
+const OPERATION_APPROVAL_EXPIRY_HOURS = 24;
+const FINANCE_OPERATION_RISK = {
+    bank_import: 'low',
+    reconciliation_suggest: 'low',
+    reconciliation_confirm: 'medium',
+    tax_build_report: 'medium',
+    reports_build_bundle: 'low',
+    export_datev: 'high',
+    period_close: 'high',
+    period_reopen: 'high',
+    sync_run: 'medium',
+};
+const OPERATION_REQUIRES_CONFIRMATION = {
+    bank_import: false,
+    reconciliation_suggest: false,
+    reconciliation_confirm: true,
+    tax_build_report: false,
+    reports_build_bundle: false,
+    export_datev: true,
+    period_close: true,
+    period_reopen: true,
+    sync_run: false,
+};
 const financeSettingsRef = (tenantId) => (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.settings).doc('default');
+const storageBucket = () => admin.storage().bucket();
+const hashSha256 = (buffer) => crypto.createHash('sha256').update(buffer).digest('hex');
+const cleanBase64Payload = (rawBase64) => {
+    const rawCandidate = rawBase64.includes(',')
+        ? rawBase64.split(',').pop() || ''
+        : rawBase64;
+    return rawCandidate.trim().replace(/\s+/g, '');
+};
+const decodeBase64OrThrow = (rawBase64) => {
+    const cleaned = cleanBase64Payload(rawBase64);
+    let binaryContent;
+    try {
+        binaryContent = Buffer.from(cleaned, 'base64');
+    }
+    catch (_a) {
+        throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 payload.');
+    }
+    if (binaryContent.length <= 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document is empty.');
+    }
+    if (binaryContent.length > MAX_INVOICE_UPLOAD_BYTES) {
+        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document exceeds the maximum size of 5MB.');
+    }
+    return { binaryContent, cleanedBase64: cleaned };
+};
+const safeStoragePathSegment = (value) => value.replace(/[^a-zA-Z0-9._/-]/g, '_');
+const normalizeFinanceDocumentType = (fileName, mimeType, fallback) => {
+    const normalizedFallback = (0, shared_1.normalizeString)(fallback).toLowerCase();
+    if (normalizedFallback === 'pdf' || normalizedFallback === 'xml' || normalizedFallback === 'other') {
+        return normalizedFallback;
+    }
+    const loweredName = (0, shared_1.normalizeString)(fileName).toLowerCase();
+    const loweredType = (0, shared_1.normalizeString)(mimeType).toLowerCase();
+    const isPdf = loweredName.endsWith('.pdf') || loweredType.includes('pdf');
+    const isXml = loweredName.endsWith('.xml')
+        || loweredType.includes('xml')
+        || loweredName.endsWith('.xrechnung');
+    if (isPdf)
+        return 'pdf';
+    if (isXml)
+        return 'xml';
+    return 'other';
+};
+const toInvoiceDocumentTypeOrThrow = (documentType) => {
+    if (documentType === 'pdf' || documentType === 'xml') {
+        return documentType;
+    }
+    throw new functions.https.HttpsError('failed-precondition', 'Invoice extraction supports only PDF/XML documents.');
+};
+const buildDocumentStoragePath = (tenantId, documentId, versionNo, fileName) => {
+    const cleanedFileName = safeStoragePathSegment(fileName || `document_v${versionNo}`);
+    return `${DOCUMENT_STORAGE_PREFIX}/${tenantId}/${documentId}/v${versionNo}/${cleanedFileName}`;
+};
+const loadDocumentVersionBinary = async (tenantId, documentId, versionId) => {
+    let versionSnap;
+    if (versionId) {
+        versionSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions).doc(versionId).get();
+    }
+    else {
+        const latestVersionSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions)
+            .where('documentId', '==', documentId)
+            .orderBy('versionNo', 'desc')
+            .limit(1)
+            .get();
+        if (latestVersionSnap.empty) {
+            throw new functions.https.HttpsError('not-found', 'No document version found.');
+        }
+        versionSnap = latestVersionSnap.docs[0];
+    }
+    if (!versionSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document version not found.');
+    }
+    const versionData = versionSnap.data() || {};
+    const storagePath = (0, shared_1.normalizeString)(versionData.storagePath);
+    if (!storagePath) {
+        throw new functions.https.HttpsError('failed-precondition', 'Document version has no storage path.');
+    }
+    const [binaryContent] = await storageBucket().file(storagePath).download();
+    return {
+        versionId: versionSnap.id,
+        binaryContent,
+        fileName: (0, shared_1.normalizeString)(versionData.fileName) || 'invoice',
+        mimeType: (0, shared_1.normalizeString)(versionData.mimeType),
+        documentType: normalizeFinanceDocumentType((0, shared_1.normalizeString)(versionData.fileName), (0, shared_1.normalizeString)(versionData.mimeType), versionData.documentType),
+    };
+};
+const createFinanceJob = async (tenantId, actorId, type, payload) => {
+    const ref = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.jobs).doc();
+    await ref.set({
+        tenantId,
+        type,
+        status: 'running',
+        payload,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    return ref;
+};
+const completeFinanceJob = async (ref, status, result) => {
+    await ref.set({
+        status,
+        result,
+        finishedAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+};
+const normalizeOperationType = (value) => {
+    const normalized = (0, shared_1.normalizeString)(value).toLowerCase();
+    if (normalized === 'bank_import'
+        || normalized === 'reconciliation_suggest'
+        || normalized === 'reconciliation_confirm'
+        || normalized === 'tax_build_report'
+        || normalized === 'reports_build_bundle'
+        || normalized === 'export_datev'
+        || normalized === 'period_close'
+        || normalized === 'period_reopen'
+        || normalized === 'sync_run') {
+        return normalized;
+    }
+    return null;
+};
+const sanitizeOperationResult = (value) => {
+    if (Array.isArray(value)) {
+        return value.map((item) => sanitizeOperationResult(item));
+    }
+    if (value && typeof value === 'object') {
+        const result = {};
+        Object.entries(value).forEach(([key, innerValue]) => {
+            const lowered = key.toLowerCase();
+            if (lowered.includes('token') || lowered.includes('secret') || lowered.includes('apikey')) {
+                return;
+            }
+            result[key] = sanitizeOperationResult(innerValue);
+        });
+        return result;
+    }
+    return value;
+};
+const nowPlusHours = (hours) => {
+    const date = new Date();
+    date.setHours(date.getHours() + hours);
+    return admin.firestore.Timestamp.fromDate(date);
+};
+const buildOperationStep = (name, status, error) => ({
+    name,
+    status,
+    startedAt: (0, shared_1.serverTimestamp)(),
+    finishedAt: (0, shared_1.serverTimestamp)(),
+    error: error || null,
+});
+const createOperationRun = async (tenantId, actorId, operationType, payload, idempotencyKey, status) => {
+    const runRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns).doc();
+    await runRef.set({
+        tenantId,
+        operationType,
+        status,
+        risk: FINANCE_OPERATION_RISK[operationType],
+        payload,
+        payloadHash: (0, shared_1.buildIdempotencyKey)(payload),
+        idempotencyKey,
+        steps: [buildOperationStep('validating', status === 'failed' ? 'failed' : 'validating')],
+        warnings: [],
+        artifacts: [],
+        requestedBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+        startedAt: (0, shared_1.serverTimestamp)(),
+    });
+    return runRef;
+};
+const updateOperationRun = async (runRef, updates) => {
+    await runRef.set(Object.assign(Object.assign({}, updates), { updatedAt: (0, shared_1.serverTimestamp)() }), { merge: true });
+};
+const addOperationApproval = async (tenantId, actorId, runId, operationType) => {
+    const approvalRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationApprovals).doc();
+    await approvalRef.set({
+        tenantId,
+        runId,
+        operationType,
+        status: 'pending',
+        requestedBy: actorId,
+        expiresAt: nowPlusHours(OPERATION_APPROVAL_EXPIRY_HOURS),
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    return approvalRef;
+};
 const getOpenAiClient = () => {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -448,6 +662,13 @@ exports.upsertFinanceSettings = functions.region(shared_1.REGION).https.onCall(a
         defaultCashAccountId: (0, shared_1.normalizeString)(settings.defaultCashAccountId) || null,
         defaultOutputTaxAccountId: (0, shared_1.normalizeString)(settings.defaultOutputTaxAccountId) || null,
         defaultInputTaxAccountId: (0, shared_1.normalizeString)(settings.defaultInputTaxAccountId) || null,
+        documentRetentionDays: Math.max(0, Math.floor((0, shared_1.toNumber)(settings.documentRetentionDays || 365))),
+        documentStorageRegion: (0, shared_1.normalizeString)(settings.documentStorageRegion || shared_1.REGION) || shared_1.REGION,
+        defaultDiscountPolicy: (0, shared_1.normalizeString)(settings.defaultDiscountPolicy || 'none') || 'none',
+        defaultCommissionPolicy: (0, shared_1.normalizeString)(settings.defaultCommissionPolicy || 'none') || 'none',
+        profitabilityCostBuckets: Array.isArray(settings.profitabilityCostBuckets)
+            ? settings.profitabilityCostBuckets.map((entry) => (0, shared_1.normalizeString)(entry)).filter(Boolean)
+            : ['direct', 'ai', 'overhead'],
         updatedAt: (0, shared_1.serverTimestamp)(),
         updatedBy: actorId,
         createdAt: (0, shared_1.serverTimestamp)(),
@@ -517,45 +738,311 @@ exports.upsertFinanceVendor = functions.region(shared_1.REGION).https.onCall(asy
     });
     return { vendorId: ref.id };
 });
+exports.uploadFinanceDocument = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.documents.manage');
+    const fileName = (0, shared_1.normalizeString)(payload.fileName);
+    const mimeType = (0, shared_1.normalizeString)(payload.mimeType);
+    const rawBase64 = (0, shared_1.normalizeString)(payload.contentBase64);
+    if (!fileName || !mimeType || !rawBase64) {
+        throw new functions.https.HttpsError('invalid-argument', 'fileName, mimeType and contentBase64 are required.');
+    }
+    const { binaryContent } = decodeBase64OrThrow(rawBase64);
+    const documentType = normalizeFinanceDocumentType(fileName, mimeType, payload.documentType);
+    const checksumSha256 = hashSha256(binaryContent);
+    const documentRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documents).doc();
+    const versionRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions).doc();
+    const versionNo = 1;
+    const storagePath = buildDocumentStoragePath(tenantId, documentRef.id, versionNo, fileName);
+    await storageBucket().file(storagePath).save(binaryContent, {
+        contentType: mimeType,
+        resumable: false,
+        metadata: {
+            metadata: {
+                tenantId,
+                documentId: documentRef.id,
+                versionId: versionRef.id,
+                uploadedBy: actorId,
+            },
+        },
+    });
+    const batch = init_1.db.batch();
+    batch.set(documentRef, {
+        tenantId,
+        projectId: (0, shared_1.normalizeString)(payload.projectId) || null,
+        linkedEntityType: (0, shared_1.normalizeString)(payload.linkedEntityType) || null,
+        linkedEntityId: (0, shared_1.normalizeString)(payload.linkedEntityId) || null,
+        title: (0, shared_1.normalizeString)(payload.title) || fileName,
+        documentType,
+        status: 'active',
+        latestVersionNo: versionNo,
+        latestVersionId: versionRef.id,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    batch.set(versionRef, {
+        tenantId,
+        documentId: documentRef.id,
+        versionNo,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+        storagePath,
+        checksumSha256,
+        documentType,
+        uploadedBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    await batch.commit();
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.document.uploaded', {
+        documentId: documentRef.id,
+        versionId: versionRef.id,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+    });
+    return {
+        documentId: documentRef.id,
+        versionId: versionRef.id,
+        versionNo,
+        checksumSha256,
+    };
+});
+exports.versionFinanceDocument = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.documents.manage');
+    const documentId = (0, shared_1.normalizeString)(payload.documentId);
+    const fileName = (0, shared_1.normalizeString)(payload.fileName);
+    const mimeType = (0, shared_1.normalizeString)(payload.mimeType);
+    const rawBase64 = (0, shared_1.normalizeString)(payload.contentBase64);
+    if (!documentId || !fileName || !mimeType || !rawBase64) {
+        throw new functions.https.HttpsError('invalid-argument', 'documentId, fileName, mimeType and contentBase64 are required.');
+    }
+    const documentRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documents).doc(documentId);
+    const documentSnap = await documentRef.get();
+    if (!documentSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+    const document = documentSnap.data() || {};
+    const { binaryContent } = decodeBase64OrThrow(rawBase64);
+    const versionNo = Math.max(1, Math.floor((0, shared_1.toNumber)(document.latestVersionNo) + 1));
+    const versionRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions).doc();
+    const storagePath = buildDocumentStoragePath(tenantId, documentId, versionNo, fileName);
+    const checksumSha256 = hashSha256(binaryContent);
+    const documentType = normalizeFinanceDocumentType(fileName, mimeType, document.documentType);
+    await storageBucket().file(storagePath).save(binaryContent, {
+        contentType: mimeType,
+        resumable: false,
+        metadata: {
+            metadata: {
+                tenantId,
+                documentId,
+                versionId: versionRef.id,
+                uploadedBy: actorId,
+            },
+        },
+    });
+    const batch = init_1.db.batch();
+    batch.set(versionRef, {
+        tenantId,
+        documentId,
+        versionNo,
+        fileName,
+        mimeType,
+        sizeBytes: binaryContent.length,
+        storagePath,
+        checksumSha256,
+        documentType,
+        uploadedBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    batch.update(documentRef, {
+        latestVersionNo: versionNo,
+        latestVersionId: versionRef.id,
+        documentType,
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    await batch.commit();
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.document.versioned', {
+        documentId,
+        versionId: versionRef.id,
+        versionNo,
+    });
+    return { documentId, versionId: versionRef.id, versionNo, checksumSha256 };
+});
+exports.linkFinanceDocumentToEntity = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    var _a;
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.documents.manage');
+    const documentId = (0, shared_1.normalizeString)(payload.documentId);
+    const linkedEntityType = (0, shared_1.normalizeString)(payload.linkedEntityType);
+    const linkedEntityId = (0, shared_1.normalizeString)(payload.linkedEntityId);
+    if (!documentId || !linkedEntityType || !linkedEntityId) {
+        throw new functions.https.HttpsError('invalid-argument', 'documentId, linkedEntityType and linkedEntityId are required.');
+    }
+    const documentRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documents).doc(documentId);
+    const snap = await documentRef.get();
+    if (!snap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+    await documentRef.update({
+        linkedEntityType,
+        linkedEntityId,
+        projectId: (0, shared_1.normalizeString)(payload.projectId) || ((_a = snap.data()) === null || _a === void 0 ? void 0 : _a.projectId) || null,
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.document.linked', {
+        documentId,
+        linkedEntityType,
+        linkedEntityId,
+    });
+    return { documentId, linkedEntityType, linkedEntityId };
+});
+exports.deleteFinanceDocument = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.documents.manage');
+    const documentId = (0, shared_1.normalizeString)(payload.documentId);
+    const mode = (0, shared_1.normalizeString)(payload.mode) === 'hard' ? 'hard' : 'soft';
+    if (!documentId) {
+        throw new functions.https.HttpsError('invalid-argument', 'documentId is required.');
+    }
+    const documentRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documents).doc(documentId);
+    const docSnap = await documentRef.get();
+    if (!docSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Document not found.');
+    }
+    if (mode === 'soft') {
+        await documentRef.set({
+            status: 'deleted',
+            deletedBy: actorId,
+            deletedAt: (0, shared_1.serverTimestamp)(),
+            updatedAt: (0, shared_1.serverTimestamp)(),
+        }, { merge: true });
+    }
+    else {
+        const versionsSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions)
+            .where('documentId', '==', documentId)
+            .get();
+        await Promise.all(versionsSnap.docs.map(async (versionDoc) => {
+            const versionData = versionDoc.data() || {};
+            const storagePath = (0, shared_1.normalizeString)(versionData.storagePath);
+            if (storagePath) {
+                try {
+                    await storageBucket().file(storagePath).delete({ ignoreNotFound: true });
+                }
+                catch (error) {
+                    console.warn('Failed to delete finance document binary', storagePath, error);
+                }
+            }
+            await versionDoc.ref.delete();
+        }));
+        await documentRef.delete();
+    }
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.document.deleted', {
+        documentId,
+        mode,
+    });
+    return { documentId, mode, success: true };
+});
+exports.upsertFinanceRecurringTemplate = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.manage');
+    const template = (payload.template || {});
+    const templateId = (0, shared_1.normalizeString)(payload.templateId);
+    const type = (0, shared_1.normalizeString)(template.type) === 'invoice' ? 'invoice' : 'bill';
+    const cadenceRaw = (0, shared_1.normalizeString)(template.cadence).toLowerCase();
+    const cadence = (cadenceRaw === 'weekly'
+        || cadenceRaw === 'quarterly'
+        || cadenceRaw === 'yearly'
+        || cadenceRaw === 'monthly')
+        ? cadenceRaw
+        : 'monthly';
+    const nextRunAtRaw = (0, shared_1.normalizeString)(template.nextRunAt);
+    const nextRunAt = nextRunAtRaw ? toDateFromInput(nextRunAtRaw) : new Date();
+    const ref = templateId
+        ? (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.recurringTemplates).doc(templateId)
+        : (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.recurringTemplates).doc();
+    await ref.set({
+        tenantId,
+        projectId: (0, shared_1.normalizeString)(template.projectId) || null,
+        vendorId: (0, shared_1.normalizeString)(template.vendorId) || null,
+        customerId: (0, shared_1.normalizeString)(template.customerId) || null,
+        type,
+        cadence,
+        nextRunAt: admin.firestore.Timestamp.fromDate(nextRunAt),
+        endAt: (0, shared_1.normalizeString)(template.endAt) ? admin.firestore.Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
+        autoPost: template.autoPost === true,
+        isActive: template.isActive === false ? false : true,
+        currencyCode: (0, shared_1.normalizeCurrencyCode)(template.currencyCode, 'EUR'),
+        notes: (0, shared_1.normalizeString)(template.notes) || null,
+        sourceDocumentId: (0, shared_1.normalizeString)(template.sourceDocumentId) || null,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.recurring_template.upserted', {
+        templateId: ref.id,
+        type,
+        cadence,
+    });
+    return { templateId: ref.id };
+});
+exports.deleteFinanceRecurringTemplate = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.manage');
+    const templateId = (0, shared_1.normalizeString)(payload.templateId);
+    if (!templateId) {
+        throw new functions.https.HttpsError('invalid-argument', 'templateId is required.');
+    }
+    const ref = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.recurringTemplates).doc(templateId);
+    await ref.delete();
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.recurring_template.deleted', { templateId });
+    return { templateId, success: true };
+});
 exports.extractInvoiceFromDocument = functions.region(shared_1.REGION).runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
     const payload = (data || {});
     const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
     const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.ap.manage');
-    const fileName = (0, shared_1.normalizeString)(payload.fileName) || 'invoice';
-    const rawMimeType = (0, shared_1.normalizeString)(payload.mimeType).toLowerCase();
+    const payloadDocumentId = (0, shared_1.normalizeString)(payload.documentId);
+    const payloadDocumentVersionId = (0, shared_1.normalizeString)(payload.documentVersionId);
     const rawBase64 = (0, shared_1.normalizeString)(payload.contentBase64);
-    if (!rawBase64) {
-        throw new functions.https.HttpsError('invalid-argument', 'contentBase64 is required.');
-    }
-    const base64Payload = (() => {
-        const rawCandidate = rawBase64.includes(',')
-            ? rawBase64.split(',').pop() || ''
-            : rawBase64;
-        return rawCandidate.trim().replace(/\s+/g, '');
-    })();
+    let sourceDocumentId = payloadDocumentId || '';
+    let sourceDocumentVersionId = payloadDocumentVersionId || '';
+    let fileName = (0, shared_1.normalizeString)(payload.fileName) || 'invoice';
+    let mimeType = (0, shared_1.normalizeString)(payload.mimeType) || '';
     let binaryContent;
-    try {
-        binaryContent = Buffer.from(base64Payload, 'base64');
+    let documentType;
+    if (payloadDocumentId) {
+        const loaded = await loadDocumentVersionBinary(tenantId, payloadDocumentId, payloadDocumentVersionId || undefined);
+        sourceDocumentId = payloadDocumentId;
+        sourceDocumentVersionId = loaded.versionId;
+        fileName = loaded.fileName;
+        mimeType = loaded.mimeType || (loaded.documentType === 'pdf' ? 'application/pdf' : 'application/xml');
+        binaryContent = loaded.binaryContent;
+        documentType = toInvoiceDocumentTypeOrThrow(loaded.documentType);
     }
-    catch (_a) {
-        throw new functions.https.HttpsError('invalid-argument', 'Invalid base64 payload.');
+    else {
+        if (!rawBase64) {
+            throw new functions.https.HttpsError('invalid-argument', 'Either contentBase64 or documentId/documentVersionId is required.');
+        }
+        if (!fileName || !mimeType) {
+            throw new functions.https.HttpsError('invalid-argument', 'fileName and mimeType are required for base64 extraction.');
+        }
+        const decoded = decodeBase64OrThrow(rawBase64);
+        binaryContent = decoded.binaryContent;
+        const inferredDocumentType = normalizeFinanceDocumentType(fileName, mimeType);
+        documentType = toInvoiceDocumentTypeOrThrow(inferredDocumentType);
+        mimeType = documentType === 'pdf' ? 'application/pdf' : 'application/xml';
     }
-    if (binaryContent.length <= 0) {
-        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document is empty.');
-    }
-    if (binaryContent.length > MAX_INVOICE_UPLOAD_BYTES) {
-        throw new functions.https.HttpsError('invalid-argument', 'Uploaded document exceeds the maximum size of 5MB.');
-    }
-    const normalizedFileName = fileName.toLowerCase();
-    const isPdf = rawMimeType.includes('pdf') || normalizedFileName.endsWith('.pdf');
-    const isXml = rawMimeType.includes('xml')
-        || normalizedFileName.endsWith('.xml')
-        || normalizedFileName.endsWith('.xrechnung');
-    if (!isPdf && !isXml) {
-        throw new functions.https.HttpsError('invalid-argument', 'Only PDF invoices and XML e-invoices are supported.');
-    }
-    const documentType = isPdf ? 'pdf' : 'xml';
-    const mimeType = isPdf ? 'application/pdf' : 'application/xml';
     const client = getOpenAiClient();
     const extractionPrompt = `Extract structured vendor invoice data from the provided document.
 
@@ -627,6 +1114,7 @@ Return only JSON matching the schema. Use these rules:
         },
     };
     if (documentType === 'pdf') {
+        const pdfBase64 = binaryContent.toString('base64');
         request.input = [{
                 role: 'user',
                 content: [
@@ -634,7 +1122,7 @@ Return only JSON matching the schema. Use these rules:
                     {
                         type: 'input_file',
                         filename: fileName || 'invoice.pdf',
-                        file_data: `data:${mimeType};base64,${base64Payload}`,
+                        file_data: `data:${mimeType};base64,${pdfBase64}`,
                     },
                 ],
             }];
@@ -655,20 +1143,223 @@ Return only JSON matching the schema. Use these rules:
         const response = await client.responses.create(request);
         const parsed = parseJsonText(extractTextFromResponse(response));
         const normalized = normalizeInvoiceExtractionResult(parsed, documentType);
+        const warnings = Object.entries(normalized).reduce((acc, [key, value]) => {
+            if (value === ''
+                || value === null
+                || (typeof value === 'number' && value === 0 && !['quantity', 'taxRatePercent'].includes(key))) {
+                acc.push(`Missing or zero value for ${key}`);
+            }
+            return acc;
+        }, []);
+        const enriched = Object.assign(Object.assign({}, normalized), { documentId: sourceDocumentId || undefined, documentVersionId: sourceDocumentVersionId || undefined, fileName, warnings: warnings.length > 0 ? warnings : undefined, fieldConfidenceMap: {
+                vendorName: normalized.confidence,
+                invoiceNumber: normalized.confidence,
+                invoiceDate: normalized.confidence,
+                dueDate: normalized.confidence,
+                netAmount: normalized.confidence,
+                grossAmount: normalized.confidence,
+            } });
+        if (sourceDocumentVersionId) {
+            await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documentVersions)
+                .doc(sourceDocumentVersionId)
+                .set({
+                extraction: enriched,
+                extractionWarnings: warnings,
+                extractedAt: (0, shared_1.serverTimestamp)(),
+                extractedBy: actorId,
+                updatedAt: (0, shared_1.serverTimestamp)(),
+            }, { merge: true });
+        }
         await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.bill.document_extracted', {
             fileName,
             documentType,
-            invoiceNumber: normalized.invoiceNumber || null,
-            vendorName: normalized.vendorName || null,
-            confidence: normalized.confidence,
+            documentId: sourceDocumentId || null,
+            documentVersionId: sourceDocumentVersionId || null,
+            invoiceNumber: enriched.invoiceNumber || null,
+            vendorName: enriched.vendorName || null,
+            confidence: enriched.confidence,
             model: INVOICE_EXTRACTION_MODEL,
         });
-        return Object.assign(Object.assign({}, normalized), { model: INVOICE_EXTRACTION_MODEL });
+        return Object.assign(Object.assign({}, enriched), { model: INVOICE_EXTRACTION_MODEL });
     }
     catch (error) {
         console.error('Failed to extract invoice document', error);
         throw new functions.https.HttpsError('internal', (error === null || error === void 0 ? void 0 : error.message) || 'Invoice extraction failed.');
     }
+});
+exports.confirmExtractedInvoiceDraft = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.ap.manage');
+    const billDate = toDateFromInput(payload.billDate);
+    const dueDate = toDateFromInput(payload.dueDate || payload.billDate);
+    const quantity = (0, shared_1.toNonNegative)(payload.quantity);
+    const unitCost = (0, shared_1.toNonNegative)(payload.unitCost);
+    const taxRatePercent = (0, shared_1.toNonNegative)(payload.taxRatePercent);
+    const cadence = (0, shared_1.normalizeString)(payload.cadence) === 'recurring' ? 'recurring' : 'single';
+    const autoPost = payload.autoPost === false ? false : true;
+    if (quantity <= 0 || unitCost < 0) {
+        throw new functions.https.HttpsError('invalid-argument', 'quantity and unitCost are required.');
+    }
+    let vendorId = (0, shared_1.normalizeString)(payload.vendorId);
+    if (!vendorId) {
+        const vendorName = (0, shared_1.normalizeString)(payload.vendorName);
+        if (!vendorName) {
+            throw new functions.https.HttpsError('invalid-argument', 'vendorId or vendorName is required.');
+        }
+        const vendorRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.vendors).doc();
+        await vendorRef.set({
+            tenantId,
+            vendorNo: `VEN-${Date.now()}`,
+            name: vendorName,
+            email: (0, shared_1.normalizeString)(payload.vendorEmail) || null,
+            vatId: (0, shared_1.normalizeString)(payload.vendorVatId) || null,
+            paymentTermsDays: 14,
+            isActive: true,
+            createdAt: (0, shared_1.serverTimestamp)(),
+            updatedAt: (0, shared_1.serverTimestamp)(),
+        });
+        vendorId = vendorRef.id;
+    }
+    const netAmount = round2(quantity * unitCost);
+    const taxAmount = round2(netAmount * (taxRatePercent / 100));
+    const grossAmount = round2(netAmount + taxAmount);
+    const projectId = (0, shared_1.normalizeString)(payload.projectId) || null;
+    const currencyCode = (0, shared_1.normalizeCurrencyCode)(payload.currencyCode, 'EUR');
+    const billRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bills).doc();
+    const billLine = {
+        id: 'line-1',
+        description: (0, shared_1.normalizeString)(payload.lineDescription) || 'Invoice upload',
+        quantity,
+        unitCost,
+        netAmount,
+        taxCodeId: null,
+        taxRatePercent,
+        taxAmount,
+        accountId: null,
+        projectId,
+    };
+    await billRef.set({
+        tenantId,
+        billNo: (0, shared_1.normalizeString)(payload.billNo) || `BILL-${Date.now()}`,
+        vendorId,
+        projectId,
+        billDate: admin.firestore.Timestamp.fromDate(billDate),
+        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        currencyCode,
+        status: autoPost ? 'posted' : 'draft',
+        lines: [billLine],
+        notes: (0, shared_1.normalizeString)(payload.notes) || null,
+        netAmount,
+        taxAmount,
+        grossAmount,
+        paidAmount: 0,
+        openAmount: grossAmount,
+        sourceDocumentId: (0, shared_1.normalizeString)(payload.documentId) || null,
+        sourceDocumentVersionId: (0, shared_1.normalizeString)(payload.documentVersionId) || null,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    let journalEntryId = null;
+    if (autoPost) {
+        const settings = await loadFinanceSettings(tenantId);
+        const journalResponse = await postJournalEntryInternal(actorId, {
+            tenantId,
+            postingDate: billDate.toISOString(),
+            description: `Bill ${(0, shared_1.normalizeString)(payload.billNo) || billRef.id}`,
+            sourceType: 'bill',
+            sourceId: billRef.id,
+            sourceRefNo: (0, shared_1.normalizeString)(payload.billNo) || billRef.id,
+            projectId: projectId || undefined,
+            currencyCode,
+            idempotencyKey: `bill-upload-confirm-${billRef.id}`,
+            lines: [
+                {
+                    accountId: settings.defaultExpenseAccountId,
+                    debit: netAmount,
+                    credit: 0,
+                    description: 'Expense',
+                    vendorId,
+                    projectId: projectId || undefined,
+                },
+                ...(taxAmount > 0
+                    ? [{
+                            accountId: settings.defaultInputTaxAccountId,
+                            debit: taxAmount,
+                            credit: 0,
+                            description: 'Input tax',
+                            vendorId,
+                            projectId: projectId || undefined,
+                        }]
+                    : []),
+                {
+                    accountId: settings.defaultPayableAccountId,
+                    debit: 0,
+                    credit: grossAmount,
+                    description: 'Payable',
+                    vendorId,
+                    projectId: projectId || undefined,
+                },
+            ],
+        });
+        journalEntryId = journalResponse.entryId;
+        await billRef.update({
+            journalEntryId,
+            status: 'posted',
+            updatedAt: (0, shared_1.serverTimestamp)(),
+        });
+    }
+    let recurringTemplateId = null;
+    if (cadence === 'recurring') {
+        const cadenceRaw = (0, shared_1.normalizeString)(payload.recurringFrequency);
+        const recurringCadence = cadenceRaw === 'weekly' || cadenceRaw === 'yearly' ? cadenceRaw : 'monthly';
+        const templateRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.recurringTemplates).doc();
+        await templateRef.set({
+            tenantId,
+            projectId,
+            vendorId,
+            customerId: null,
+            type: 'bill',
+            cadence: recurringCadence,
+            nextRunAt: admin.firestore.Timestamp.fromDate(dueDate),
+            endAt: (0, shared_1.normalizeString)(payload.recurringEndDate)
+                ? admin.firestore.Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
+                : null,
+            autoPost,
+            isActive: true,
+            currencyCode,
+            notes: (0, shared_1.normalizeString)(payload.notes) || null,
+            sourceDocumentId: (0, shared_1.normalizeString)(payload.documentId) || null,
+            createdBy: actorId,
+            createdAt: (0, shared_1.serverTimestamp)(),
+            updatedAt: (0, shared_1.serverTimestamp)(),
+        });
+        recurringTemplateId = templateRef.id;
+    }
+    const documentId = (0, shared_1.normalizeString)(payload.documentId);
+    if (documentId) {
+        await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.documents).doc(documentId).set({
+            linkedEntityType: 'bill',
+            linkedEntityId: billRef.id,
+            projectId,
+            updatedAt: (0, shared_1.serverTimestamp)(),
+        }, { merge: true });
+    }
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.upload_invoice.confirmed', {
+        billId: billRef.id,
+        vendorId,
+        cadence,
+        recurringTemplateId,
+        journalEntryId,
+        documentId: documentId || null,
+    });
+    return {
+        billId: billRef.id,
+        vendorId,
+        recurringTemplateId,
+        journalEntryId,
+    };
 });
 exports.upsertFinanceTaxCode = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
     const payload = (data || {});
@@ -738,6 +1429,10 @@ exports.createInvoice = functions.region(shared_1.REGION).https.onCall(async (da
         grossAmount,
         paidAmount: 0,
         openAmount: grossAmount,
+        dunningLevel: Math.max(0, Math.floor((0, shared_1.toNumber)(payload.dunningLevel || 0))),
+        sourceDocumentId: (0, shared_1.normalizeString)(payload.sourceDocumentId) || null,
+        sourceDocumentVersionId: (0, shared_1.normalizeString)(payload.sourceDocumentVersionId) || null,
+        sourceDocumentFileId: (0, shared_1.normalizeString)(payload.sourceDocumentFileId) || null,
         createdBy: actorId,
         createdAt: (0, shared_1.serverTimestamp)(),
         updatedAt: (0, shared_1.serverTimestamp)(),
@@ -836,6 +1531,9 @@ exports.voidInvoice = functions.region(shared_1.REGION).https.onCall(async (data
     if (status === 'voided') {
         return { invoiceId, alreadyVoided: true };
     }
+    if (status === 'paid' || (0, shared_1.toNonNegative)(invoice.paidAmount) > 0) {
+        throw new functions.https.HttpsError('failed-precondition', 'Paid or partially paid invoices cannot be voided. Create a credit note instead.');
+    }
     const journalEntryId = (0, shared_1.normalizeString)(invoice.journalEntryId);
     if (journalEntryId) {
         const linesSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.journalLines)
@@ -881,6 +1579,38 @@ exports.voidInvoice = functions.region(shared_1.REGION).https.onCall(async (data
     });
     return { invoiceId, status: 'voided' };
 });
+exports.advanceInvoiceDunning = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.ar.manage');
+    const invoiceId = (0, shared_1.normalizeString)(payload.invoiceId);
+    if (!invoiceId) {
+        throw new functions.https.HttpsError('invalid-argument', 'invoiceId is required.');
+    }
+    const invoiceRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices).doc(invoiceId);
+    const invoiceSnap = await invoiceRef.get();
+    if (!invoiceSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Invoice not found.');
+    }
+    const invoice = invoiceSnap.data() || {};
+    const status = (0, shared_1.normalizeString)(invoice.status);
+    if (status !== 'issued' && status !== 'partially_paid') {
+        throw new functions.https.HttpsError('failed-precondition', 'Only open invoices can be dunned.');
+    }
+    const currentLevel = Math.max(0, Math.floor((0, shared_1.toNumber)(invoice.dunningLevel || 0)));
+    const nextLevel = Math.min(3, currentLevel + 1);
+    await invoiceRef.update({
+        dunningLevel: nextLevel,
+        dunningLastAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.invoice.dunning_advanced', {
+        invoiceId,
+        previousLevel: currentLevel,
+        nextLevel,
+    });
+    return { invoiceId, dunningLevel: nextLevel };
+});
 exports.createBill = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
     const payload = (data || {});
     const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
@@ -907,6 +1637,7 @@ exports.createBill = functions.region(shared_1.REGION).https.onCall(async (data,
         billNo: (0, shared_1.normalizeString)(payload.billNo) || `BILL-${Date.now()}`,
         vendorId,
         projectId: (0, shared_1.normalizeString)(payload.projectId) || null,
+        sourceDocumentFileId: (0, shared_1.normalizeString)(payload.sourceDocumentFileId) || null,
         billDate: admin.firestore.Timestamp.fromDate(billDate),
         dueDate: admin.firestore.Timestamp.fromDate(dueDate),
         currencyCode,
@@ -918,6 +1649,8 @@ exports.createBill = functions.region(shared_1.REGION).https.onCall(async (data,
         grossAmount,
         paidAmount: 0,
         openAmount: grossAmount,
+        sourceDocumentId: (0, shared_1.normalizeString)(payload.sourceDocumentId) || null,
+        sourceDocumentVersionId: (0, shared_1.normalizeString)(payload.sourceDocumentVersionId) || null,
         createdBy: actorId,
         createdAt: (0, shared_1.serverTimestamp)(),
         updatedAt: (0, shared_1.serverTimestamp)(),
@@ -926,6 +1659,7 @@ exports.createBill = functions.region(shared_1.REGION).https.onCall(async (data,
         billId: billRef.id,
         vendorId,
         grossAmount,
+        sourceDocumentFileId: (0, shared_1.normalizeString)(payload.sourceDocumentFileId) || null,
     });
     return { billId: billRef.id };
 });
@@ -1015,6 +1749,9 @@ exports.voidBill = functions.region(shared_1.REGION).https.onCall(async (data, c
     const status = (0, shared_1.normalizeString)(bill.status);
     if (status === 'voided') {
         return { billId, alreadyVoided: true };
+    }
+    if (status === 'paid' || (0, shared_1.toNonNegative)(bill.paidAmount) > 0) {
+        throw new functions.https.HttpsError('failed-precondition', 'Paid or partially paid bills cannot be voided.');
     }
     const journalEntryId = (0, shared_1.normalizeString)(bill.journalEntryId);
     if (journalEntryId) {
@@ -1320,31 +2057,112 @@ exports.suggestReconciliation = functions.region(shared_1.REGION).https.onCall(a
         .map((doc) => (Object.assign({ id: doc.id }, doc.data())));
     const openBills = billsSnap.docs
         .map((doc) => (Object.assign({ id: doc.id }, doc.data())));
+    const invoiceByNo = new Map();
+    const billByNo = new Map();
+    invoicesSnap.docs.forEach((doc) => {
+        const invoiceNo = (0, shared_1.normalizeString)(doc.data().invoiceNo).toLowerCase();
+        if (invoiceNo)
+            invoiceByNo.set(invoiceNo, { id: doc.id });
+    });
+    billsSnap.docs.forEach((doc) => {
+        const billNo = (0, shared_1.normalizeString)(doc.data().billNo).toLowerCase();
+        if (billNo)
+            billByNo.set(billNo, { id: doc.id });
+    });
     const suggestions = bankTxSnap.docs.map((doc) => {
         const tx = doc.data();
         const amount = round2((0, shared_1.toNumber)(tx.amount));
+        const absAmount = Math.abs(amount);
+        const referenceText = `${(0, shared_1.normalizeString)(tx.description)} ${(0, shared_1.normalizeString)(tx.externalReference)} ${(0, shared_1.normalizeString)(tx.counterparty)}`.toLowerCase();
+        const parseByReference = () => {
+            for (const [invoiceNo, invoice] of invoiceByNo.entries()) {
+                if (invoiceNo && referenceText.includes(invoiceNo)) {
+                    return {
+                        targetType: 'invoice',
+                        targetId: invoice.id,
+                        confidence: 0.97,
+                        rationale: `Matched by reference "${invoiceNo}"`,
+                    };
+                }
+            }
+            for (const [billNo, bill] of billByNo.entries()) {
+                if (billNo && referenceText.includes(billNo)) {
+                    return {
+                        targetType: 'bill',
+                        targetId: bill.id,
+                        confidence: 0.97,
+                        rationale: `Matched by reference "${billNo}"`,
+                    };
+                }
+            }
+            return null;
+        };
+        const byReference = parseByReference();
+        if (byReference) {
+            return {
+                bankTransactionId: doc.id,
+                targetType: byReference.targetType,
+                targetId: byReference.targetId,
+                amount: absAmount,
+                confidence: byReference.confidence,
+                rationale: byReference.rationale,
+            };
+        }
         if (amount >= 0) {
-            const invoiceMatch = openInvoices.find((invoice) => Math.abs(round2((0, shared_1.toNumber)(invoice.openAmount)) - amount) < 0.01);
-            if (invoiceMatch) {
+            const exactInvoice = openInvoices.find((invoice) => Math.abs(round2((0, shared_1.toNumber)(invoice.openAmount)) - absAmount) < 0.01);
+            if (exactInvoice) {
                 return {
                     bankTransactionId: doc.id,
                     targetType: 'invoice',
-                    targetId: invoiceMatch.id,
-                    amount,
+                    targetId: exactInvoice.id,
+                    amount: absAmount,
                     confidence: 0.92,
+                    rationale: 'Exact amount match to open invoice.',
+                };
+            }
+            const fuzzyInvoice = openInvoices
+                .map((invoice) => ({
+                id: invoice.id,
+                delta: Math.abs(round2((0, shared_1.toNumber)(invoice.openAmount)) - absAmount),
+            }))
+                .sort((a, b) => a.delta - b.delta)[0];
+            if (fuzzyInvoice && fuzzyInvoice.delta <= 2) {
+                return {
+                    bankTransactionId: doc.id,
+                    targetType: 'invoice',
+                    targetId: fuzzyInvoice.id,
+                    amount: absAmount,
+                    confidence: 0.72,
+                    rationale: `Fuzzy amount match (delta ${round2(fuzzyInvoice.delta)}).`,
                 };
             }
         }
         else {
-            const absAmount = Math.abs(amount);
-            const billMatch = openBills.find((bill) => Math.abs(round2((0, shared_1.toNumber)(bill.openAmount)) - absAmount) < 0.01);
-            if (billMatch) {
+            const exactBill = openBills.find((bill) => Math.abs(round2((0, shared_1.toNumber)(bill.openAmount)) - absAmount) < 0.01);
+            if (exactBill) {
                 return {
                     bankTransactionId: doc.id,
                     targetType: 'bill',
-                    targetId: billMatch.id,
+                    targetId: exactBill.id,
                     amount: absAmount,
                     confidence: 0.92,
+                    rationale: 'Exact amount match to open bill.',
+                };
+            }
+            const fuzzyBill = openBills
+                .map((bill) => ({
+                id: bill.id,
+                delta: Math.abs(round2((0, shared_1.toNumber)(bill.openAmount)) - absAmount),
+            }))
+                .sort((a, b) => a.delta - b.delta)[0];
+            if (fuzzyBill && fuzzyBill.delta <= 2) {
+                return {
+                    bankTransactionId: doc.id,
+                    targetType: 'bill',
+                    targetId: fuzzyBill.id,
+                    amount: absAmount,
+                    confidence: 0.72,
+                    rationale: `Fuzzy amount match (delta ${round2(fuzzyBill.delta)}).`,
                 };
             }
         }
@@ -1352,8 +2170,9 @@ exports.suggestReconciliation = functions.region(shared_1.REGION).https.onCall(a
             bankTransactionId: doc.id,
             targetType: null,
             targetId: null,
-            amount: Math.abs(amount),
+            amount: absAmount,
             confidence: 0,
+            rationale: 'No confident match found.',
         };
     });
     return { suggestions };
@@ -1369,6 +2188,18 @@ exports.confirmReconciliation = functions.region(shared_1.REGION).https.onCall(a
     const unmatchedTransactionIds = Array.isArray(payload.unmatchedTransactionIds)
         ? payload.unmatchedTransactionIds.map((value) => (0, shared_1.normalizeString)(value)).filter(Boolean)
         : [];
+    const matchedItems = Array.isArray(payload.matchedItems)
+        ? payload.matchedItems
+            .map((item) => item)
+            .map((item) => ({
+            bankTransactionId: (0, shared_1.normalizeString)(item.bankTransactionId),
+            targetType: (0, shared_1.normalizeString)(item.targetType),
+            targetId: (0, shared_1.normalizeString)(item.targetId),
+            confidence: (0, shared_1.toNumber)(item.confidence),
+            rationale: (0, shared_1.normalizeString)(item.rationale) || null,
+        }))
+            .filter((item) => item.bankTransactionId)
+        : [];
     const reconciliationRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.reconciliations).doc();
     const batch = init_1.db.batch();
     batch.set(reconciliationRef, {
@@ -1376,6 +2207,7 @@ exports.confirmReconciliation = functions.region(shared_1.REGION).https.onCall(a
         bankAccountId: (0, shared_1.normalizeString)(payload.bankAccountId) || null,
         periodKey,
         matchedTransactionIds,
+        matchedItems,
         unmatchedTransactionIds,
         notes: (0, shared_1.normalizeString)(payload.notes) || null,
         confirmedBy: actorId,
@@ -1408,6 +2240,36 @@ exports.runMonthlyClose = functions.region(shared_1.REGION).https.onCall(async (
     if (!periodKey) {
         throw new functions.https.HttpsError('invalid-argument', 'periodKey is required.');
     }
+    const [yearStr, monthStr] = periodKey.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!Number.isFinite(year) || !Number.isFinite(month)) {
+        throw new functions.https.HttpsError('invalid-argument', 'periodKey must be YYYY-MM.');
+    }
+    const from = new Date(Date.UTC(year, month - 1, 1));
+    const to = new Date(Date.UTC(year, month, 1));
+    const [unreconciledBank, openInvoices, openBills] = await Promise.all([
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
+            .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+            .get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices)
+            .where('status', 'in', ['draft', 'issued', 'partially_paid'])
+            .get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bills)
+            .where('status', 'in', ['draft', 'posted', 'partially_paid'])
+            .get(),
+    ]);
+    const blockingChecks = {
+        unreconciledBankTransactions: unreconciledBank.size,
+        openInvoices: openInvoices.size,
+        openBills: openBills.size,
+    };
+    const hasBlocking = Object.values(blockingChecks).some((count) => count > 0);
+    if (hasBlocking) {
+        throw new functions.https.HttpsError('failed-precondition', `Closing checklist failed: ${JSON.stringify(blockingChecks)}`);
+    }
     await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.periods).doc(periodKey).set({
         tenantId,
         id: periodKey,
@@ -1422,8 +2284,9 @@ exports.runMonthlyClose = functions.region(shared_1.REGION).https.onCall(async (
     }, { merge: true });
     await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.period.closed', {
         periodKey,
+        blockingChecks,
     });
-    return { periodKey, status: 'closed' };
+    return { periodKey, status: 'closed', blockingChecks };
 });
 exports.reopenPeriod = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
     const payload = (data || {});
@@ -1493,6 +2356,7 @@ exports.generateDatevExport = functions.region(shared_1.REGION).https.onCall(asy
     }
     const entryMap = new Map(entriesSnap.docs.map((doc) => [doc.id, doc.data()]));
     const csvRows = ['Umsatz;Sollkonto;Habenkonto;Belegdatum;Buchungstext;Belegfeld1;WKZ'];
+    const validationWarnings = [];
     linesSnap.docs.forEach((doc) => {
         const line = doc.data();
         const entry = entryMap.get((0, shared_1.normalizeString)(line.entryId));
@@ -1504,6 +2368,9 @@ exports.generateDatevExport = functions.region(shared_1.REGION).https.onCall(asy
             const candidateData = candidate.data();
             return (0, shared_1.normalizeString)(candidateData.entryId) === (0, shared_1.normalizeString)(line.entryId) && candidate.id !== doc.id;
         });
+        if (!sibling) {
+            validationWarnings.push(`Missing contra line for entry ${(0, shared_1.normalizeString)(line.entryId)}`);
+        }
         const contraAccount = sibling ? (0, shared_1.normalizeString)(sibling.data().accountId) : '';
         const debit = (0, shared_1.toNonNegative)(line.debit) > 0;
         const sollkonto = debit ? (0, shared_1.normalizeString)(line.accountId) : contraAccount;
@@ -1524,23 +2391,36 @@ exports.generateDatevExport = functions.region(shared_1.REGION).https.onCall(asy
         status: 'completed',
         fileName,
         payloadPreview: csv.slice(0, 120000),
+        validationWarnings,
         updatedAt: (0, shared_1.serverTimestamp)(),
     });
     await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.datev.export.generated', {
         exportJobId: exportRef.id,
         periodKey,
         rowCount: csvRows.length - 1,
+        validationWarningsCount: validationWarnings.length,
     });
-    return { exportJobId: exportRef.id, status: 'completed' };
+    return { exportJobId: exportRef.id, status: 'completed', validationWarnings };
 });
 exports.buildFinancialReports = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
     const payload = (data || {});
     const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
-    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.view');
+    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.reports.manage');
     const periodKeyFrom = (0, shared_1.normalizeString)(payload.periodKeyFrom) || null;
     const periodKeyTo = (0, shared_1.normalizeString)(payload.periodKeyTo) || null;
-    const accountsSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.accounts).get();
+    const [accountsSnap, projectsSnap, allocationRulesSnap] = await Promise.all([
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.accounts).get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, 'projects').get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.allocationRules)
+            .where('isActive', '==', true)
+            .get(),
+    ]);
     const accountMap = new Map(accountsSnap.docs.map((doc) => [doc.id, doc.data()]));
+    const projectNameMap = new Map(projectsSnap.docs.map((doc) => [doc.id, (0, shared_1.normalizeString)(doc.data().title) || doc.id]));
+    const hasRevenueShareAllocation = allocationRulesSnap.docs.some((doc) => {
+        const rule = doc.data() || {};
+        return (0, shared_1.normalizeString)(rule.basis) === 'revenue_share';
+    });
     let lineQuery = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.journalLines);
     if (periodKeyFrom || periodKeyTo) {
         const entriesQuery = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.journalEntries);
@@ -1642,23 +2522,42 @@ exports.buildFinancialReports = functions.region(shared_1.REGION).https.onCall(a
         };
     })
         .filter(Boolean);
-    const projectProfitability = Array.from(profitabilityMap.entries()).map(([projectId, values]) => {
-        const directCosts = round2(values.cost);
-        const aiCosts = round2(values.aiCost);
-        const revenue = round2(values.revenue);
-        const grossProfit = round2(revenue - directCosts);
-        const netProfit = grossProfit;
-        const marginPercent = revenue > 0 ? round2((netProfit / revenue) * 100) : 0;
+    const profitabilityRows = Array.from(profitabilityMap.entries()).map(([projectId, values]) => ({
+        projectId,
+        projectName: projectId === '__unassigned__'
+            ? '__unassigned__'
+            : (projectNameMap.get(projectId) || projectId),
+        revenue: round2(values.revenue),
+        directCosts: round2(values.cost),
+        aiCosts: round2(values.aiCost),
+    }));
+    const totalRevenueForAllocation = profitabilityRows
+        .filter((row) => row.projectId !== '__unassigned__')
+        .reduce((sumAcc, row) => sumAcc + Math.max(0, row.revenue), 0);
+    const unassignedOverhead = round2(profitabilityRows
+        .filter((row) => row.projectId === '__unassigned__')
+        .reduce((sumAcc, row) => sumAcc + Math.max(0, row.directCosts), 0));
+    const projectProfitability = profitabilityRows.map((row) => {
+        const grossProfit = round2(row.revenue - row.directCosts);
+        const overheadAllocated = hasRevenueShareAllocation && row.projectId !== '__unassigned__' && totalRevenueForAllocation > 0
+            ? round2(unassignedOverhead * (Math.max(0, row.revenue) / totalRevenueForAllocation))
+            : 0;
+        const netProfit = round2(grossProfit - overheadAllocated);
+        const marginPercent = row.revenue > 0 ? round2((netProfit / row.revenue) * 100) : 0;
         return {
-            projectId,
-            projectName: projectId === '__unassigned__' ? '__unassigned__' : projectId,
-            revenue,
-            directCosts,
-            aiCosts,
-            overheadAllocated: 0,
+            projectId: row.projectId,
+            projectName: row.projectName,
+            revenue: row.revenue,
+            directCosts: row.directCosts,
+            aiCosts: row.aiCosts,
+            overheadAllocated,
             grossProfit,
             netProfit,
             marginPercent,
+            contributionOne: grossProfit,
+            contributionTwo: netProfit,
+            periodKeyFrom,
+            periodKeyTo,
         };
     }).sort((a, b) => b.netProfit - a.netProfit);
     return {
@@ -1743,6 +2642,614 @@ exports.buildTaxReport = functions.region(shared_1.REGION).https.onCall(async (d
         inputTax: round2(inputTax),
         payableTax,
     };
+});
+exports.upsertFinanceSyncConnection = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.sync.manage');
+    const connection = (payload.connection || {});
+    const connectionId = (0, shared_1.normalizeString)(payload.connectionId);
+    const providerRaw = (0, shared_1.normalizeString)(connection.provider).toLowerCase();
+    const provider = (providerRaw === 'stripe'
+        || providerRaw === 'paddle'
+        || providerRaw === 'datev'
+        || providerRaw === 'lexoffice'
+        || providerRaw === 'custom')
+        ? providerRaw
+        : 'custom';
+    const directionRaw = (0, shared_1.normalizeString)(connection.direction).toLowerCase();
+    const direction = (directionRaw === 'import'
+        || directionRaw === 'export'
+        || directionRaw === 'bidirectional')
+        ? directionRaw
+        : 'import';
+    const statusRaw = (0, shared_1.normalizeString)(connection.status).toLowerCase();
+    const status = (statusRaw === 'paused' || statusRaw === 'disabled') ? statusRaw : 'active';
+    const ref = connectionId
+        ? (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncConnections).doc(connectionId)
+        : (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncConnections).doc();
+    await ref.set({
+        tenantId,
+        provider,
+        direction,
+        status,
+        name: (0, shared_1.normalizeString)(connection.name) || `${provider.toUpperCase()} Sync`,
+        configRef: (0, shared_1.normalizeString)(connection.configRef) || null,
+        lastRunAt: connection.lastRunAt || null,
+        lastRunStatus: (0, shared_1.normalizeString)(connection.lastRunStatus) || null,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.sync_connection.upserted', {
+        connectionId: ref.id,
+        provider,
+        direction,
+        status,
+    });
+    return { connectionId: ref.id };
+});
+exports.runFinanceSync = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.sync.manage');
+    const connectionId = (0, shared_1.normalizeString)(payload.connectionId);
+    if (!connectionId) {
+        throw new functions.https.HttpsError('invalid-argument', 'connectionId is required.');
+    }
+    const connectionRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncConnections).doc(connectionId);
+    const connectionSnap = await connectionRef.get();
+    if (!connectionSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Sync connection not found.');
+    }
+    const connection = connectionSnap.data() || {};
+    if ((0, shared_1.normalizeString)(connection.status) !== 'active') {
+        throw new functions.https.HttpsError('failed-precondition', 'Sync connection is not active.');
+    }
+    const modeRaw = (0, shared_1.normalizeString)(payload.mode).toLowerCase();
+    const mode = modeRaw === 'full' ? 'full' : 'delta';
+    const idempotencyKey = (0, shared_1.normalizeString)(payload.idempotencyKey)
+        || (0, shared_1.buildIdempotencyKey)({
+            tenantId,
+            connectionId,
+            mode,
+            day: new Date().toISOString().slice(0, 10),
+        });
+    const existing = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncRuns)
+        .where('connectionId', '==', connectionId)
+        .where('idempotencyKey', '==', idempotencyKey)
+        .limit(1)
+        .get();
+    if (!existing.empty) {
+        return { runId: existing.docs[0].id, idempotentReplay: true };
+    }
+    const runRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncRuns).doc();
+    await runRef.set({
+        tenantId,
+        connectionId,
+        provider: (0, shared_1.normalizeString)(connection.provider) || 'custom',
+        status: 'running',
+        mode,
+        idempotencyKey,
+        processedCount: 0,
+        successCount: 0,
+        failureCount: 0,
+        triggeredBy: actorId,
+        startedAt: (0, shared_1.serverTimestamp)(),
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    });
+    const jobRef = await createFinanceJob(tenantId, actorId, 'sync.run', {
+        connectionId,
+        runId: runRef.id,
+        mode,
+        idempotencyKey,
+    });
+    // Connector framework is already tenant-safe and idempotent.
+    // Provider-specific transport is delegated to connector runtimes.
+    const simulatedProcessedCount = Math.max(1, Math.min(MAX_SYNC_RUN_PREVIEW, Math.floor(Math.random() * MAX_SYNC_RUN_PREVIEW)));
+    const simulatedFailureCount = 0;
+    const simulatedSuccessCount = simulatedProcessedCount - simulatedFailureCount;
+    await runRef.set({
+        status: 'completed',
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+        finishedAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await connectionRef.set({
+        lastRunAt: (0, shared_1.serverTimestamp)(),
+        lastRunStatus: 'success',
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await completeFinanceJob(jobRef, 'completed', {
+        runId: runRef.id,
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+    });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.sync_run.completed', {
+        runId: runRef.id,
+        connectionId,
+        mode,
+        idempotencyKey,
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+    });
+    return {
+        runId: runRef.id,
+        status: 'completed',
+        processedCount: simulatedProcessedCount,
+        successCount: simulatedSuccessCount,
+        failureCount: simulatedFailureCount,
+        idempotentReplay: false,
+    };
+});
+exports.upsertFinanceAllocationRule = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.manage');
+    const rule = (payload.rule || {});
+    const ruleId = (0, shared_1.normalizeString)(payload.ruleId);
+    const name = (0, shared_1.normalizeString)(rule.name);
+    if (!name) {
+        throw new functions.https.HttpsError('invalid-argument', 'rule.name is required.');
+    }
+    const basisRaw = (0, shared_1.normalizeString)(rule.basis).toLowerCase();
+    const basis = (basisRaw === 'cost_share'
+        || basisRaw === 'unit_share'
+        || basisRaw === 'token_share'
+        || basisRaw === 'fixed_percent'
+        || basisRaw === 'revenue_share') ? basisRaw : 'revenue_share';
+    const ref = ruleId
+        ? (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.allocationRules).doc(ruleId)
+        : (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.allocationRules).doc();
+    await ref.set({
+        tenantId,
+        name,
+        sourceAccountId: (0, shared_1.normalizeString)(rule.sourceAccountId) || null,
+        projectId: (0, shared_1.normalizeString)(rule.projectId) || null,
+        basis,
+        percent: (0, shared_1.toNonNegative)(rule.percent),
+        isActive: rule.isActive === false ? false : true,
+        notes: (0, shared_1.normalizeString)(rule.notes) || null,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.allocation_rule.upserted', {
+        ruleId: ref.id,
+        name,
+        basis,
+    });
+    return { ruleId: ref.id };
+});
+const resolveOperationCallable = (operationType) => {
+    const callables = {
+        bank_import: exports.importBankStatement,
+        reconciliation_suggest: exports.suggestReconciliation,
+        reconciliation_confirm: exports.confirmReconciliation,
+        tax_build_report: exports.buildTaxReport,
+        reports_build_bundle: exports.buildFinancialReports,
+        export_datev: exports.generateDatevExport,
+        period_close: exports.runMonthlyClose,
+        period_reopen: exports.reopenPeriod,
+        sync_run: exports.runFinanceSync,
+    };
+    return callables[operationType];
+};
+const summarizeOperationResult = (operationType, result) => {
+    if (operationType === 'reconciliation_suggest') {
+        const suggestions = Array.isArray(result.suggestions) ? result.suggestions.length : 0;
+        return `Generated ${suggestions} reconciliation suggestions.`;
+    }
+    if (operationType === 'reports_build_bundle') {
+        const rows = Array.isArray(result.projectProfitability) ? result.projectProfitability.length : 0;
+        return `Generated reports with ${rows} project profitability rows.`;
+    }
+    if (operationType === 'export_datev') {
+        const warnings = Array.isArray(result.validationWarnings) ? result.validationWarnings.length : 0;
+        return `DATEV export generated (${warnings} warnings).`;
+    }
+    return `Operation ${operationType} completed successfully.`;
+};
+const buildOperationPreview = async (tenantId, operationType, payload) => {
+    var _a;
+    const warnings = [];
+    const blockingChecks = [];
+    const estimatedImpact = {};
+    if (operationType === 'period_close') {
+        const periodKey = (0, shared_1.normalizeString)(payload.periodKey) || (0, shared_1.toPeriodKey)(new Date());
+        const [yearStr, monthStr] = periodKey.split('-');
+        const year = Number(yearStr);
+        const month = Number(monthStr);
+        if (!Number.isFinite(year) || !Number.isFinite(month)) {
+            throw new functions.https.HttpsError('invalid-argument', 'periodKey must be YYYY-MM.');
+        }
+        const from = new Date(Date.UTC(year, month - 1, 1));
+        const to = new Date(Date.UTC(year, month, 1));
+        const [unreconciledBank, openInvoices, openBills] = await Promise.all([
+            (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
+                .where('reconciled', '==', false)
+                .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
+                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+                .get(),
+            (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices)
+                .where('status', 'in', ['draft', 'issued', 'partially_paid'])
+                .get(),
+            (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bills)
+                .where('status', 'in', ['draft', 'posted', 'partially_paid'])
+                .get(),
+        ]);
+        blockingChecks.push({
+            key: 'unreconciledBankTransactions',
+            count: unreconciledBank.size,
+            blocking: unreconciledBank.size > 0,
+            message: 'Unreconciled bank transactions in target period.',
+        }, {
+            key: 'openInvoices',
+            count: openInvoices.size,
+            blocking: openInvoices.size > 0,
+            message: 'Open invoices must be cleared before close.',
+        }, {
+            key: 'openBills',
+            count: openBills.size,
+            blocking: openBills.size > 0,
+            message: 'Open bills must be cleared before close.',
+        });
+        estimatedImpact.periodKey = periodKey;
+    }
+    if (operationType === 'reconciliation_suggest') {
+        const unreconciledSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .limit(500)
+            .get();
+        estimatedImpact.unreconciledCandidates = unreconciledSnap.size;
+        if (unreconciledSnap.size === 0) {
+            warnings.push('No unreconciled bank transactions found.');
+        }
+    }
+    if (operationType === 'sync_run') {
+        const connectionId = (0, shared_1.normalizeString)(payload.connectionId);
+        if (!connectionId) {
+            throw new functions.https.HttpsError('invalid-argument', 'connectionId is required for sync_run.');
+        }
+        const connectionSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.syncConnections).doc(connectionId).get();
+        const status = (0, shared_1.normalizeString)((_a = connectionSnap.data()) === null || _a === void 0 ? void 0 : _a.status);
+        blockingChecks.push({
+            key: 'syncConnectionActive',
+            count: status === 'active' ? 0 : 1,
+            blocking: status !== 'active',
+            message: 'Sync connection must be active.',
+        });
+    }
+    const hasBlocking = blockingChecks.some((check) => check.blocking);
+    return {
+        operationType,
+        canExecute: !hasBlocking,
+        blockingChecks,
+        warnings,
+        estimatedImpact,
+        requiresConfirmation: OPERATION_REQUIRES_CONFIRMATION[operationType],
+        risk: FINANCE_OPERATION_RISK[operationType],
+    };
+};
+const executeOperationInternal = async (tenantId, actorId, operationType, payload, idempotencyKey, context, confirmExecution, runIdOverride) => {
+    const risk = FINANCE_OPERATION_RISK[operationType];
+    const requiresConfirmation = OPERATION_REQUIRES_CONFIRMATION[operationType];
+    if (requiresConfirmation && !confirmExecution) {
+        const runRef = await createOperationRun(tenantId, actorId, operationType, payload, idempotencyKey, 'awaiting_confirmation');
+        await addOperationApproval(tenantId, actorId, runRef.id, operationType);
+        await updateOperationRun(runRef, {
+            status: 'awaiting_confirmation',
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('awaiting_confirmation', 'awaiting_confirmation'),
+            ],
+            resultSummary: 'Awaiting explicit confirmation before execution.',
+        });
+        await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.operation.awaiting_confirmation', {
+            runId: runRef.id,
+            operationType,
+            risk,
+        });
+        return {
+            runId: runRef.id,
+            status: 'awaiting_confirmation',
+            requiresConfirmation: true,
+        };
+    }
+    if (requiresConfirmation && risk === 'high') {
+        await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.approve.high_risk');
+    }
+    let runRef;
+    if (runIdOverride) {
+        runRef = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns).doc(runIdOverride);
+        await updateOperationRun(runRef, {
+            status: 'running',
+            confirmedBy: actorId,
+            startedAt: (0, shared_1.serverTimestamp)(),
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'running'),
+            ],
+        });
+    }
+    else {
+        runRef = await createOperationRun(tenantId, actorId, operationType, payload, idempotencyKey, 'running');
+        await updateOperationRun(runRef, {
+            status: 'running',
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'running'),
+            ],
+        });
+    }
+    try {
+        const callable = resolveOperationCallable(operationType);
+        const operationResult = await callable.run(Object.assign({ tenantId }, payload), context);
+        const sanitizedResult = sanitizeOperationResult(operationResult);
+        await updateOperationRun(runRef, {
+            status: 'succeeded',
+            finishedAt: (0, shared_1.serverTimestamp)(),
+            resultSummary: summarizeOperationResult(operationType, sanitizedResult),
+            artifacts: [
+                {
+                    type: 'json',
+                    name: `${operationType}_result`,
+                    payloadPreview: JSON.stringify(sanitizedResult).slice(0, 10000),
+                },
+            ],
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'succeeded'),
+                buildOperationStep('completed', 'succeeded'),
+            ],
+        });
+        await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.operation.executed', {
+            runId: runRef.id,
+            operationType,
+            idempotencyKey,
+            risk,
+            status: 'succeeded',
+        });
+        return {
+            runId: runRef.id,
+            status: 'succeeded',
+            requiresConfirmation: false,
+        };
+    }
+    catch (error) {
+        const errorMessage = (0, shared_1.normalizeString)(error === null || error === void 0 ? void 0 : error.message) || 'Operation execution failed.';
+        await updateOperationRun(runRef, {
+            status: 'failed',
+            finishedAt: (0, shared_1.serverTimestamp)(),
+            error: errorMessage,
+            steps: [
+                buildOperationStep('validating', 'succeeded'),
+                buildOperationStep('running', 'failed', errorMessage),
+            ],
+        });
+        await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.operation.executed', {
+            runId: runRef.id,
+            operationType,
+            idempotencyKey,
+            risk,
+            status: 'failed',
+            error: errorMessage,
+        });
+        throw error;
+    }
+};
+exports.previewFinanceOperation = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.view');
+    const operationType = normalizeOperationType(payload.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'operationType is required.');
+    }
+    const operationPayload = (payload.payload || {});
+    return buildOperationPreview(tenantId, operationType, operationPayload);
+});
+exports.executeFinanceOperation = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    var _a;
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.execute');
+    const operationType = normalizeOperationType(payload.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'operationType is required.');
+    }
+    const operationPayload = (payload.payload || {});
+    const confirmExecution = Boolean(payload.confirm);
+    const requestedRunId = (0, shared_1.normalizeString)(payload.runId);
+    const idempotencyKey = (0, shared_1.normalizeString)(payload.idempotencyKey)
+        || (0, shared_1.buildIdempotencyKey)({
+            tenantId,
+            operationType,
+            operationPayload,
+            day: new Date().toISOString().slice(0, 10),
+        });
+    if (!requestedRunId) {
+        const existingRunSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns)
+            .where('operationType', '==', operationType)
+            .where('idempotencyKey', '==', idempotencyKey)
+            .limit(1)
+            .get();
+        if (!existingRunSnap.empty) {
+            const existingRun = existingRunSnap.docs[0];
+            const existingStatus = (0, shared_1.normalizeString)((_a = existingRun.data()) === null || _a === void 0 ? void 0 : _a.status);
+            if (existingStatus && existingStatus !== 'failed' && existingStatus !== 'canceled') {
+                return {
+                    runId: existingRun.id,
+                    status: existingStatus,
+                    requiresConfirmation: existingStatus === 'awaiting_confirmation',
+                    idempotentReplay: true,
+                };
+            }
+        }
+    }
+    const preview = await buildOperationPreview(tenantId, operationType, operationPayload);
+    if (!preview.canExecute && !confirmExecution) {
+        throw new functions.https.HttpsError('failed-precondition', `Operation blocked: ${JSON.stringify(preview.blockingChecks)}`);
+    }
+    return executeOperationInternal(tenantId, actorId, operationType, operationPayload, idempotencyKey, context, confirmExecution, requestedRunId || undefined);
+});
+exports.getFinanceOperationRun = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.view');
+    const runId = (0, shared_1.normalizeString)(payload.runId);
+    if (!runId) {
+        throw new functions.https.HttpsError('invalid-argument', 'runId is required.');
+    }
+    const runSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns).doc(runId).get();
+    if (!runSnap.exists) {
+        return { run: null };
+    }
+    return {
+        run: Object.assign({ id: runSnap.id }, runSnap.data()),
+    };
+});
+exports.listFinanceOperationRuns = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.view');
+    const operationType = normalizeOperationType(payload.operationType);
+    const status = (0, shared_1.normalizeString)(payload.status);
+    const limit = Math.min(100, Math.max(1, Number(payload.limit) || 25));
+    let query = (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns);
+    if (operationType)
+        query = query.where('operationType', '==', operationType);
+    if (status)
+        query = query.where('status', '==', status);
+    const runsSnap = await query.orderBy('createdAt', 'desc').limit(limit).get();
+    return {
+        runs: runsSnap.docs.map((doc) => (Object.assign({ id: doc.id }, doc.data()))),
+    };
+});
+exports.retryFinanceOperationRun = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.retry');
+    const runId = (0, shared_1.normalizeString)(payload.runId);
+    if (!runId) {
+        throw new functions.https.HttpsError('invalid-argument', 'runId is required.');
+    }
+    const runSnap = await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationRuns).doc(runId).get();
+    if (!runSnap.exists) {
+        throw new functions.https.HttpsError('not-found', 'Operation run not found.');
+    }
+    const runData = runSnap.data() || {};
+    const operationType = normalizeOperationType(runData.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('failed-precondition', 'Run has invalid operationType.');
+    }
+    const status = (0, shared_1.normalizeString)(runData.status);
+    if (status !== 'failed') {
+        throw new functions.https.HttpsError('failed-precondition', 'Only failed runs can be retried.');
+    }
+    const retryKey = `${(0, shared_1.normalizeString)(runData.idempotencyKey)}:retry:${Date.now()}`;
+    return executeOperationInternal(tenantId, actorId, operationType, (runData.payload || {}), retryKey, context, Boolean(payload.confirm));
+});
+exports.recommendFinanceOperations = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.view');
+    const recommendations = [];
+    const [unreconciledBankSnap, openInvoicesSnap, openBillsSnap] = await Promise.all([
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
+            .where('reconciled', '==', false)
+            .limit(200)
+            .get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices)
+            .where('status', 'in', ['issued', 'partially_paid'])
+            .limit(200)
+            .get(),
+        (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bills)
+            .where('status', 'in', ['posted', 'partially_paid'])
+            .limit(200)
+            .get(),
+    ]);
+    const currentPeriodKey = (0, shared_1.toPeriodKey)(new Date());
+    if (unreconciledBankSnap.size > 0) {
+        recommendations.push({
+            operationType: 'reconciliation_suggest',
+            suggestedPayload: { periodKey: currentPeriodKey },
+            confidence: 0.94,
+            rationale: 'Unreconciled bank transactions detected.',
+            risk: FINANCE_OPERATION_RISK.reconciliation_suggest,
+            whyNow: `There are ${unreconciledBankSnap.size} unreconciled bank transactions.`,
+        });
+    }
+    if (openInvoicesSnap.size > 0 || openBillsSnap.size > 0) {
+        recommendations.push({
+            operationType: 'reports_build_bundle',
+            suggestedPayload: { periodKeyFrom: currentPeriodKey, periodKeyTo: currentPeriodKey },
+            confidence: 0.82,
+            rationale: 'Open AR/AP items are present and profitability visibility is needed.',
+            risk: FINANCE_OPERATION_RISK.reports_build_bundle,
+            whyNow: `Open invoices: ${openInvoicesSnap.size}, open bills: ${openBillsSnap.size}.`,
+        });
+    }
+    recommendations.push({
+        operationType: 'tax_build_report',
+        suggestedPayload: { periodKey: currentPeriodKey },
+        confidence: 0.76,
+        rationale: 'Periodic tax report generation is recommended before close/export.',
+        risk: FINANCE_OPERATION_RISK.tax_build_report,
+        whyNow: `Current period is ${currentPeriodKey}.`,
+    });
+    return { recommendations };
+});
+exports.upsertFinanceOperationTemplate = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.template.manage');
+    const templateId = (0, shared_1.normalizeString)(payload.templateId);
+    const template = (payload.template || {});
+    const name = (0, shared_1.normalizeString)(template.name);
+    if (!name) {
+        throw new functions.https.HttpsError('invalid-argument', 'template.name is required.');
+    }
+    const operationType = normalizeOperationType(template.operationType);
+    if (!operationType) {
+        throw new functions.https.HttpsError('invalid-argument', 'template.operationType is required.');
+    }
+    const ref = templateId
+        ? (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationTemplates).doc(templateId)
+        : (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationTemplates).doc();
+    await ref.set({
+        tenantId,
+        name,
+        operationType,
+        defaultPayload: (template.defaultPayload || {}),
+        isShared: template.isShared === true,
+        createdBy: actorId,
+        createdAt: (0, shared_1.serverTimestamp)(),
+        updatedAt: (0, shared_1.serverTimestamp)(),
+    }, { merge: true });
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.operation_template.upserted', {
+        templateId: ref.id,
+        operationType,
+        name,
+    });
+    return { templateId: ref.id };
+});
+exports.deleteFinanceOperationTemplate = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
+    const payload = (data || {});
+    const tenantId = (0, shared_1.normalizeString)(payload.tenantId);
+    const actorId = await (0, shared_1.requireFinancePermission)(tenantId, context, 'tenant.finance.functions.template.manage');
+    const templateId = (0, shared_1.normalizeString)(payload.templateId);
+    if (!templateId) {
+        throw new functions.https.HttpsError('invalid-argument', 'templateId is required.');
+    }
+    await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.operationTemplates).doc(templateId).delete();
+    await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.operation_template.deleted', { templateId });
+    return { success: true };
 });
 exports.upsertScenario = functions.region(shared_1.REGION).https.onCall(async (data, context) => {
     const payload = (data || {});

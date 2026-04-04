@@ -12,6 +12,7 @@ import { searchStockImages, getCuratedPhotos, triggerDownload, UnsplashImage } f
 import { Button } from '../ui/Button';
 import { downloadFile } from '../../utils/download';
 import { useLanguage } from '../../context/LanguageContext';
+import { deleteTenantFile, listTenantFiles, uploadTenantFile } from '../../services/fileStorageService';
 
 
 interface MediaAsset {
@@ -19,10 +20,12 @@ interface MediaAsset {
     url: string;
     thumbnailUrl?: string;
     name: string;
+    projectId?: string;
     type: 'image' | 'video';
     source: 'upload' | 'stock' | 'local_file';
     createdAt?: any;
     file?: File; // For deferred uploads
+    managedFileId?: string;
 }
 
 interface MediaLibraryProps {
@@ -230,8 +233,35 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     } as MediaAsset;
                 });
 
-                const assets = await Promise.all(assetPromises);
-                setUploadedFiles(assets);
+                const legacyAssets = await Promise.all(assetPromises);
+                let managedAssets: MediaAsset[] = [];
+
+                try {
+                    const managed = await listTenantFiles({
+                        tenantId: resolvedTenantId,
+                        module: 'media',
+                        projectId: collectionType === 'project' && projectId !== 'uncategorized' ? projectId : undefined,
+                        entityType: collectionType === 'user' ? 'userAsset' : undefined,
+                        entityId: collectionType === 'user' ? (resolvedUserId || '') : undefined,
+                        limit: 200,
+                    });
+
+                    managedAssets = managed.files.map((file) => ({
+                        id: file.id,
+                        managedFileId: file.id,
+                        url: file.downloadUrl,
+                        thumbnailUrl: file.downloadUrl,
+                        name: file.fileName,
+                        projectId: file.projectId || undefined,
+                        type: file.mimeType.startsWith('video/') ? 'video' : 'image',
+                        source: 'upload',
+                        createdAt: file.createdAt || new Date(),
+                    }));
+                } catch (managedError) {
+                    console.error('Failed to list managed media files', managedError);
+                }
+
+                setUploadedFiles([...legacyAssets, ...managedAssets]);
             } catch (error) {
                 console.error("Error listing assets:", error);
             } finally {
@@ -315,37 +345,44 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const uploadPromises = files.map(async (file) => {
                 const timestamp = Date.now();
                 const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                // New Pattern: {timestamp}_media_{projectId/userId}_{filename}
-                const contextId = collectionType === 'user' ? (resolvedUserId || 'user') : projectId;
-                const uniqueFileName = `${timestamp}_media_${contextId}_${cleanFileName}`;
-
-                let path = '';
                 if (storagePath) {
-                    path = `${storagePath}/${uniqueFileName}`;
-                } else if (collectionType === 'user' && resolvedUserId) {
-                    path = `tenants/${resolvedTenantId}/users/${resolvedUserId}/${uniqueFileName}`;
-                } else {
-                    const folderPath = projectId && projectId !== 'uncategorized' ? `${projectId}/` : '';
-                    path = `tenants/${resolvedTenantId}/projects/${folderPath}${uniqueFileName}`;
+                    const contextId = collectionType === 'user' ? (resolvedUserId || 'user') : projectId;
+                    const uniqueFileName = `${timestamp}_media_${contextId}_${cleanFileName}`;
+                    const path = `${storagePath}/${uniqueFileName}`;
+                    const storageRef = ref(storage, path);
+                    await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(storageRef);
+                    return {
+                        id: uniqueFileName,
+                        url: downloadURL,
+                        thumbnailUrl: downloadURL,
+                        name: file.name,
+                        projectId: projectId,
+                        type: file.type.startsWith('image/') ? 'image' : 'video',
+                        source: 'upload' as const,
+                        createdAt: new Date()
+                    } as MediaAsset;
                 }
 
-                const storageRef = ref(storage, path);
-
-                // Upload file
-                await uploadBytes(storageRef, file);
-
-                // Get permanent download URL
-                const downloadURL = await getDownloadURL(storageRef);
+                const managed = await uploadTenantFile({
+                    tenantId: resolvedTenantId as string,
+                    module: 'media',
+                    entityType: collectionType === 'user' ? 'userAsset' : 'mediaAsset',
+                    entityId: collectionType === 'user' ? (resolvedUserId || auth.currentUser?.uid || 'user') : (projectId || 'uncategorized'),
+                    projectId: collectionType === 'project' && projectId !== 'uncategorized' ? projectId : undefined,
+                    file,
+                });
 
                 return {
-                    id: uniqueFileName,
-                    url: downloadURL,
-                    thumbnailUrl: downloadURL,
-                    name: file.name,
+                    id: managed.id,
+                    managedFileId: managed.id,
+                    url: managed.downloadUrl,
+                    thumbnailUrl: managed.downloadUrl,
+                    name: managed.fileName,
                     projectId: projectId,
-                    type: file.type.startsWith('image/') ? 'image' : 'video',
+                    type: managed.mimeType.startsWith('video/') ? 'video' : 'image',
                     source: 'upload' as const,
-                    createdAt: new Date()
+                    createdAt: managed.createdAt || new Date()
                 } as MediaAsset;
             });
 
@@ -391,10 +428,48 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         if (!editingImage) return;
         setIsUploading(true);
         try {
-            // Search for the asset in its respective location
-            let storageRef;
+            const resolvedTenantId = tenantId || auth.currentUser?.uid;
             const resolvedUserId = userId || auth.currentUser?.uid;
+            if (!resolvedTenantId) {
+                throw new Error(t('mediaLibrary.upload.authRequired'));
+            }
 
+            const response = await fetch(dataUrl);
+            const blob = await response.blob();
+            const file = new File([blob], `edited_${editingImage.name}`, { type: 'image/jpeg' });
+
+            if (editingImage.managedFileId) {
+                const uploaded = await uploadTenantFile({
+                    tenantId: resolvedTenantId,
+                    module: 'media',
+                    entityType: collectionType === 'user' ? 'userAsset' : 'mediaAsset',
+                    entityId: collectionType === 'user' ? (resolvedUserId || auth.currentUser?.uid || 'user') : (projectId || 'uncategorized'),
+                    projectId: collectionType === 'project' && projectId !== 'uncategorized' ? projectId : undefined,
+                    file,
+                });
+
+                await deleteTenantFile({ tenantId: resolvedTenantId, fileId: editingImage.managedFileId });
+
+                setUploadedFiles(prev => prev.map(f =>
+                    f.id === editingImage.id
+                        ? {
+                            ...f,
+                            id: uploaded.id,
+                            managedFileId: uploaded.id,
+                            url: uploaded.downloadUrl,
+                            thumbnailUrl: uploaded.downloadUrl,
+                            name: uploaded.fileName,
+                        }
+                        : f
+                ));
+
+                showSuccess(t('mediaLibrary.edit.replaceSuccess'));
+                setEditingImage(null);
+                return;
+            }
+
+            // Legacy Firebase object replace.
+            let storageRef;
             if (collectionType === 'user' && resolvedUserId) {
                 storageRef = ref(storage, `tenants/${resolvedTenantId}/users/${resolvedUserId}/${editingImage.id}`);
             } else {
@@ -408,9 +483,6 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     }
                 }
             }
-
-            const response = await fetch(dataUrl);
-            const blob = await response.blob();
 
             await uploadBytes(storageRef, blob);
             const newUrl = await getDownloadURL(storageRef);
@@ -508,6 +580,13 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         if (!resolvedTenantId) return;
 
         try {
+            if (asset.managedFileId) {
+                await deleteTenantFile({ tenantId: resolvedTenantId, fileId: asset.managedFileId });
+                setUploadedFiles(prev => prev.filter(f => f.id !== asset.id));
+                showSuccess(t('mediaLibrary.gallery.delete.success').replace('{name}', asset.name));
+                return;
+            }
+
             // Delete from Storage
             const resolvedUserId = userId || auth.currentUser?.uid;
             let path = '';

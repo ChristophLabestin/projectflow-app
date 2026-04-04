@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';
+import { getTenantFileDownloadUrl } from '../fileStorageService';
 import { toMillis } from '../../utils/time';
 import type { Project, ProjectMember } from '../../types';
 import { resolveActiveTenantId } from './authService';
@@ -42,6 +43,49 @@ const getTenantIdFromRef = (ref: { path: string }) => {
     return tenantIndex >= 0 ? parts[tenantIndex + 1] : '';
 };
 
+const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
+    const tenantId = project.tenantId || '';
+    if (!tenantId) {
+        return project;
+    }
+
+    const next = { ...project };
+
+    if (project.coverImageFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId, fileId: project.coverImageFileId });
+            next.coverImage = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to refresh project cover image URL', error);
+        }
+    }
+
+    if (project.squareIconFileId) {
+        try {
+            const signed = await getTenantFileDownloadUrl({ tenantId, fileId: project.squareIconFileId });
+            next.squareIcon = signed.downloadUrl;
+        } catch (error) {
+            console.warn('Failed to refresh project square icon URL', error);
+        }
+    }
+
+    if (Array.isArray(project.screenshotFileIds) && project.screenshotFileIds.length > 0) {
+        const nextScreenshots = await Promise.all(project.screenshotFileIds.map(async (fileId) => {
+            try {
+                const signed = await getTenantFileDownloadUrl({ tenantId, fileId });
+                return signed.downloadUrl;
+            } catch (error) {
+                console.warn('Failed to refresh project screenshot URL', error);
+                return '';
+            }
+        }));
+
+        next.screenshots = nextScreenshots.filter(Boolean);
+    }
+
+    return next;
+};
+
 export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {
     const user = auth.currentUser;
     const resolvedTenant = resolveActiveTenantId(tenantId);
@@ -51,10 +95,12 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
         query(collection(db, TENANTS, resolvedTenant, PROJECTS), where('ownerId', '==', user.uid))
     );
 
-    return snapshot.docs
-        .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Project))
+    const projects = snapshot.docs
+        .map((docSnap) => ({ id: docSnap.id, tenantId: resolvedTenant, ...docSnap.data() } as Project))
         .filter((project) => !project.isPersonal)
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
 };
 
 export const getSharedProjects = async (): Promise<Project[]> => {
@@ -65,7 +111,7 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         query(collectionGroup(db, PROJECTS), where('memberIds', 'array-contains', user.uid))
     );
 
-    return snapshot.docs
+    const projects = snapshot.docs
         .map((docSnap) => ({
             id: docSnap.id,
             tenantId: getTenantIdFromRef(docSnap.ref),
@@ -73,6 +119,8 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         } as Project))
         .filter((project) => project.ownerId !== user.uid)
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
 };
 
 export const getProjectMembers = async (projectId: string, tenantId?: string): Promise<string[]> => {
@@ -97,11 +145,11 @@ export const getProjectById = async (projectId: string, tenantId?: string): Prom
         return null;
     }
 
-    return {
+    return hydrateProjectAssetUrls({
         id: projectDoc.id,
         tenantId: getTenantIdFromRef(projectDoc.ref),
         ...projectDoc.data()
-    } as Project;
+    } as Project);
 };
 
 export const subscribeTenantProjects = (
@@ -115,12 +163,21 @@ export const subscribeTenantProjects = (
     }
 
     return onSnapshot(collection(db, TENANTS, resolvedTenant, PROJECTS), (snapshot) => {
-        const projects = snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            tenantId: resolvedTenant,
-            ...docSnap.data()
-        } as Project));
-        callback(projects);
+        void Promise.all(snapshot.docs.map(async (docSnap) => (
+            hydrateProjectAssetUrls({
+                id: docSnap.id,
+                tenantId: resolvedTenant,
+                ...docSnap.data()
+            } as Project)
+        ))).then((projects) => callback(projects))
+            .catch((error) => {
+                console.error('Failed to hydrate tenant project asset URLs', error);
+                callback(snapshot.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    tenantId: resolvedTenant,
+                    ...docSnap.data()
+                } as Project)));
+            });
     });
 };
 
@@ -132,7 +189,12 @@ export const subscribeProject = (
     if (tenantId) {
         return onSnapshot(projectDocRef(tenantId, projectId), (snapshot) => {
             if (snapshot.exists()) {
-                callback({ id: snapshot.id, tenantId, ...snapshot.data() } as Project);
+                void hydrateProjectAssetUrls({ id: snapshot.id, tenantId, ...snapshot.data() } as Project)
+                    .then((project) => callback(project))
+                    .catch((error) => {
+                        console.error('Failed to hydrate project asset URLs', error);
+                        callback({ id: snapshot.id, tenantId, ...snapshot.data() } as Project);
+                    });
             } else {
                 callback(null);
             }
@@ -155,7 +217,12 @@ export const subscribeProject = (
 
             unsubscribe = onSnapshot(projectDocRef(project.tenantId, projectId), (snapshot) => {
                 if (snapshot.exists()) {
-                    callback({ id: snapshot.id, tenantId: project.tenantId, ...snapshot.data() } as Project);
+                    void hydrateProjectAssetUrls({ id: snapshot.id, tenantId: project.tenantId, ...snapshot.data() } as Project)
+                        .then((hydrated) => callback(hydrated))
+                        .catch((error) => {
+                            console.error('Failed to hydrate project asset URLs', error);
+                            callback({ id: snapshot.id, tenantId: project.tenantId, ...snapshot.data() } as Project);
+                        });
                 } else {
                     callback(null);
                 }

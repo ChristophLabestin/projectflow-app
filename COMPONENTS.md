@@ -104,6 +104,18 @@ Example usage:
 
 ---
 
+## Finance Feature Components
+
+| Component | Purpose | Typical Usage | Notes |
+|---|---|---|---|
+| `FinanceFunctionsWorkspace` | Dedicated operations control center for Finance V2 | `/finance/functions` | Includes operation catalog, tabs, run tray, and deep-link handling |
+| `FinanceOperationWizard` | Guided operation execution flow | Operate tab in Finance Functions Workspace | Scope -> Preview -> Confirm -> Result, supports idempotent execution path |
+| `FinanceOperationRunTimeline` | Step-level runtime inspection | Runs tab details panel | Shows lifecycle steps, warnings, artifacts, and timestamps |
+| `FinanceOperationTemplatesPanel` | Save/reuse operation payload presets | Templates tab in Finance Functions Workspace | CRUD for tenant-scoped templates |
+| `FinanceOpsAssistantPanel` | Explainable AI recommendations for ops actions | Insights tab in Finance Functions Workspace | Presents confidence/rationale and only suggests (no auto-execute) |
+
+---
+
 ## Permission & Role UI
 
 | Component | Purpose | Typical Usage | Notes |
@@ -153,10 +165,21 @@ No feature should implement an isolated file picker/upload flow outside of this 
 
 #### Output contract
 - Returns one or multiple selected asset references (IDs/URLs + metadata) that calling components store as references.
+- New uploads should persist managed file IDs (for example `fileId` / `*_FileId`) so signed download URLs can be refreshed via backend APIs.
+
+---
+
+## Workspace Settings Integration
+
+### `SettingsModal` (Workspace file storage section)
+
+- Exposes workspace-wide provider selection: `firebase`, `s3`, `googleDrive`.
+- S3 setup includes endpoint/region/bucket/prefix/credentials and connection test.
+- Google Drive setup uses OAuth connect/disconnect and folder binding state.
+- Must show effective provider state (`activeProvider` vs resolved provider) so fallback-to-Firebase is explicit to admins.
 
 ---
 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.
-

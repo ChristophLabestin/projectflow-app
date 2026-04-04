@@ -33,6 +33,10 @@ export interface CreateInvoiceInput {
     dueDate: string;
     currencyCode?: string;
     notes?: string;
+    dunningLevel?: number;
+    sourceDocumentId?: string;
+    sourceDocumentVersionId?: string;
+    sourceDocumentFileId?: string;
     lines: Array<
         Pick<FinanceInvoiceLine, 'description' | 'quantity' | 'unitPrice' | 'accountId' | 'projectId' | 'taxCodeId' | 'taxRatePercent'>
     >;
@@ -82,4 +86,8 @@ export const issueInvoice = async (input: InvoiceActionInput) => {
 
 export const voidInvoice = async (input: InvoiceActionInput) => {
     return callFinanceFunction('voidInvoice', withTenant(input, input.tenantId));
+};
+
+export const advanceInvoiceDunning = async (input: InvoiceActionInput) => {
+    return callFinanceFunction('advanceInvoiceDunning', withTenant(input, input.tenantId));
 };

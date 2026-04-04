@@ -36,9 +36,14 @@ import { getActiveTenantId } from '../services/domain/authService';
 import {
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
+    disconnectGoogleDriveStorage,
+    getGoogleDriveStorageAuthUrl,
+    getWorkspaceFileStorageConfig,
     getWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
+    saveWorkspaceFileStorageConfig,
     saveWorkspaceSmtpConfig,
+    testWorkspaceFileStorageConnection,
     type WorkspaceApiToken
 } from '../services/domain/adminSettingsService';
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
@@ -144,6 +149,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const [savedSmtpConfig, setSavedSmtpConfig] = useState<{
         host: string; port: number; user: string; pass: string; fromEmail: string;
     } | null>(null);
+
+    // File Storage State
+    const [storageActiveProvider, setStorageActiveProvider] = useState<'firebase' | 's3' | 'googleDrive'>('firebase');
+    const [storageResolvedProvider, setStorageResolvedProvider] = useState<'firebase' | 's3' | 'googleDrive'>('firebase');
+    const [storageFallbackReason, setStorageFallbackReason] = useState<string | null>(null);
+    const [storageS3Endpoint, setStorageS3Endpoint] = useState('');
+    const [storageS3Region, setStorageS3Region] = useState('us-east-1');
+    const [storageS3Bucket, setStorageS3Bucket] = useState('');
+    const [storageS3PathPrefix, setStorageS3PathPrefix] = useState('');
+    const [storageS3ForcePathStyle, setStorageS3ForcePathStyle] = useState(false);
+    const [storageS3AccessKeyId, setStorageS3AccessKeyId] = useState('');
+    const [storageS3SecretAccessKey, setStorageS3SecretAccessKey] = useState('');
+    const [storageDriveConnected, setStorageDriveConnected] = useState(false);
+    const [storageDriveFolderId, setStorageDriveFolderId] = useState('');
+    const [storageDriveFolderName, setStorageDriveFolderName] = useState('');
+    const [storageDriveEmail, setStorageDriveEmail] = useState('');
+    const [storageLoading, setStorageLoading] = useState(false);
+    const [storageSaving, setStorageSaving] = useState(false);
+    const [storageTesting, setStorageTesting] = useState(false);
+    const [storageConnectingDrive, setStorageConnectingDrive] = useState(false);
+    const [storageStatusMessage, setStorageStatusMessage] = useState('');
 
     // API Token State
     const [apiTokens, setApiTokens] = useState<WorkspaceApiToken[]>([]);
@@ -397,6 +423,225 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         setSavedSmtpConfig({ host: smtpHost, port: smtpPort, user: smtpUser, pass: smtpPass, fromEmail: smtpFromEmail });
     };
 
+    const applyStorageConfig = (config: Awaited<ReturnType<typeof getWorkspaceFileStorageConfig>>) => {
+        if (!config) {
+            setStorageActiveProvider('firebase');
+            setStorageResolvedProvider('firebase');
+            setStorageFallbackReason(null);
+            setStorageS3Endpoint('');
+            setStorageS3Region('us-east-1');
+            setStorageS3Bucket('');
+            setStorageS3PathPrefix('');
+            setStorageS3ForcePathStyle(false);
+            setStorageS3AccessKeyId('');
+            setStorageS3SecretAccessKey('');
+            setStorageDriveConnected(false);
+            setStorageDriveFolderId('');
+            setStorageDriveFolderName('');
+            setStorageDriveEmail('');
+            return;
+        }
+
+        setStorageActiveProvider(config.activeProvider);
+        setStorageResolvedProvider(config.resolvedProvider);
+        setStorageFallbackReason(config.fallbackReason);
+        setStorageS3Endpoint(config.providers.s3.endpoint || '');
+        setStorageS3Region(config.providers.s3.region || 'us-east-1');
+        setStorageS3Bucket(config.providers.s3.bucket || '');
+        setStorageS3PathPrefix(config.providers.s3.pathPrefix || '');
+        setStorageS3ForcePathStyle(Boolean(config.providers.s3.forcePathStyle));
+        setStorageS3AccessKeyId('');
+        setStorageS3SecretAccessKey('');
+        setStorageDriveConnected(Boolean(config.providers.googleDrive.connected));
+        setStorageDriveFolderId(config.providers.googleDrive.folderId || '');
+        setStorageDriveFolderName(config.providers.googleDrive.folderName || '');
+        setStorageDriveEmail(config.providers.googleDrive.email || '');
+    };
+
+    const loadStorageConfig = async (id: string) => {
+        setStorageLoading(true);
+        try {
+            const config = await getWorkspaceFileStorageConfig(id);
+            applyStorageConfig(config);
+        } catch (error) {
+            console.error('Failed to load workspace file storage config', error);
+            setStorageStatusMessage(t('settings.storage.errors.loadFailed'));
+        } finally {
+            setStorageLoading(false);
+        }
+    };
+
+    const handleSaveStorageConfig = async () => {
+        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        if (!id) return;
+
+        setStorageSaving(true);
+        setStorageStatusMessage('');
+        try {
+            const updated = await saveWorkspaceFileStorageConfig(id, {
+                activeProvider: storageActiveProvider,
+                s3Config: {
+                    endpoint: storageS3Endpoint.trim(),
+                    region: storageS3Region.trim(),
+                    bucket: storageS3Bucket.trim(),
+                    pathPrefix: storageS3PathPrefix.trim(),
+                    forcePathStyle: storageS3ForcePathStyle,
+                    accessKeyId: storageS3AccessKeyId.trim(),
+                    secretAccessKey: storageS3SecretAccessKey.trim(),
+                },
+                googleDriveConfig: {
+                    folderId: storageDriveFolderId.trim(),
+                    folderName: storageDriveFolderName.trim(),
+                },
+            });
+
+            applyStorageConfig(updated);
+            setStorageStatusMessage(t('settings.storage.saved'));
+            showSuccess(t('settings.storage.saved'));
+        } catch (error: any) {
+            console.error('Failed to save workspace file storage config', error);
+            const message = error?.message || t('settings.storage.errors.saveFailed');
+            setStorageStatusMessage(message);
+            showError(message);
+        } finally {
+            setStorageSaving(false);
+        }
+    };
+
+    const handleTestStorageConnection = async () => {
+        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        if (!id) return;
+
+        setStorageTesting(true);
+        setStorageStatusMessage('');
+        try {
+            const response = await testWorkspaceFileStorageConnection(
+                id,
+                storageActiveProvider,
+                storageActiveProvider === 's3'
+                    ? {
+                        endpoint: storageS3Endpoint.trim(),
+                        region: storageS3Region.trim(),
+                        bucket: storageS3Bucket.trim(),
+                        pathPrefix: storageS3PathPrefix.trim(),
+                        forcePathStyle: storageS3ForcePathStyle,
+                        accessKeyId: storageS3AccessKeyId.trim(),
+                        secretAccessKey: storageS3SecretAccessKey.trim(),
+                    }
+                    : undefined,
+            );
+            setStorageStatusMessage(response.message);
+            showSuccess(response.message);
+            await loadStorageConfig(id);
+        } catch (error: any) {
+            console.error('Failed to test storage connection', error);
+            const message = error?.message || t('settings.storage.errors.testFailed');
+            setStorageStatusMessage(message);
+            showError(message);
+        } finally {
+            setStorageTesting(false);
+        }
+    };
+
+    const openCenteredPopup = (url: string, name: string) => {
+        const width = 620;
+        const height = 720;
+        const left = (window.screen.width / 2) - (width / 2);
+        const top = (window.screen.height / 2) - (height / 2);
+        const popup = window.open(url, name, `width=${width},height=${height},top=${top},left=${left}`);
+        if (!popup) {
+            throw new Error(t('settings.storage.errors.popupBlocked'));
+        }
+        return popup;
+    };
+
+    const waitForPopupMessage = (popup: Window, successType: string) => new Promise<void>((resolve, reject) => {
+        let completed = false;
+
+        const cleanup = () => {
+            window.removeEventListener('message', handleMessage);
+            clearInterval(closePoll);
+            clearTimeout(timeout);
+        };
+
+        const fail = (message: string) => {
+            if (completed) return;
+            completed = true;
+            cleanup();
+            reject(new Error(message));
+        };
+
+        const succeed = () => {
+            if (completed) return;
+            completed = true;
+            cleanup();
+            resolve();
+        };
+
+        const handleMessage = (event: MessageEvent) => {
+            if (event.source !== popup) return;
+            if (event.data?.type === successType) {
+                succeed();
+            }
+        };
+
+        const closePoll = window.setInterval(() => {
+            if (popup.closed) {
+                fail(t('settings.storage.errors.popupClosed'));
+            }
+        }, 500);
+
+        const timeout = window.setTimeout(() => {
+            fail(t('settings.storage.errors.popupTimeout'));
+        }, 120_000);
+
+        window.addEventListener('message', handleMessage);
+    });
+
+    const handleConnectGoogleDriveStorage = async () => {
+        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        if (!id) return;
+
+        setStorageConnectingDrive(true);
+        setStorageStatusMessage('');
+        try {
+            const { url } = await getGoogleDriveStorageAuthUrl(id);
+            const popup = openCenteredPopup(url, 'google_drive_storage_auth');
+            await waitForPopupMessage(popup, 'GOOGLE_DRIVE_STORAGE_CONNECTED');
+            await loadStorageConfig(id);
+            setStorageStatusMessage(t('settings.storage.googleDrive.connected'));
+            showSuccess(t('settings.storage.googleDrive.connected'));
+        } catch (error: any) {
+            console.error('Failed to connect Google Drive storage', error);
+            const message = error?.message || t('settings.storage.errors.driveConnectFailed');
+            setStorageStatusMessage(message);
+            showError(message);
+        } finally {
+            setStorageConnectingDrive(false);
+        }
+    };
+
+    const handleDisconnectGoogleDriveStorage = async () => {
+        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        if (!id) return;
+
+        setStorageConnectingDrive(true);
+        setStorageStatusMessage('');
+        try {
+            const updated = await disconnectGoogleDriveStorage(id);
+            applyStorageConfig(updated);
+            setStorageStatusMessage(t('settings.storage.googleDrive.disconnected'));
+            showSuccess(t('settings.storage.googleDrive.disconnected'));
+        } catch (error: any) {
+            console.error('Failed to disconnect Google Drive storage', error);
+            const message = error?.message || t('settings.storage.errors.driveDisconnectFailed');
+            setStorageStatusMessage(message);
+            showError(message);
+        } finally {
+            setStorageConnectingDrive(false);
+        }
+    };
+
     useEffect(() => {
         const loadSettings = async () => {
             try {
@@ -431,6 +676,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             fromEmail: smtpSecret.fromEmail || ''
                         });
                     }
+
+                    await loadStorageConfig(id);
 
                 }
             } catch (error) {
@@ -1018,6 +1265,148 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </AnimatePresence>
                                 </div>
 
+                            </section>
+
+                            <section>
+                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.storage.title')}</h3>
+                                <div className="space-y-4">
+                                    <Select
+                                        label={t('settings.storage.provider.label')}
+                                        value={storageActiveProvider}
+                                        onChange={(e) => setStorageActiveProvider(e.target.value as 'firebase' | 's3' | 'googleDrive')}
+                                    >
+                                        <option value="firebase">{t('settings.storage.provider.firebase')}</option>
+                                        <option value="s3">{t('settings.storage.provider.s3')}</option>
+                                        <option value="googleDrive">{t('settings.storage.provider.googleDrive')}</option>
+                                    </Select>
+
+                                    {(storageResolvedProvider !== storageActiveProvider) && (
+                                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                                            {t('settings.storage.fallbackWarning')
+                                                .replace('{requested}', storageActiveProvider)
+                                                .replace('{resolved}', storageResolvedProvider)}
+                                            {storageFallbackReason ? ` (${storageFallbackReason})` : ''}
+                                        </div>
+                                    )}
+
+                                    {storageActiveProvider === 's3' && (
+                                        <div className="space-y-4 pt-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label={t('settings.storage.s3.endpoint')}
+                                                    value={storageS3Endpoint}
+                                                    onChange={(e) => setStorageS3Endpoint(e.target.value)}
+                                                    placeholder="https://s3.amazonaws.com"
+                                                />
+                                                <Input
+                                                    label={t('settings.storage.s3.region')}
+                                                    value={storageS3Region}
+                                                    onChange={(e) => setStorageS3Region(e.target.value)}
+                                                    placeholder="us-east-1"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label={t('settings.storage.s3.bucket')}
+                                                    value={storageS3Bucket}
+                                                    onChange={(e) => setStorageS3Bucket(e.target.value)}
+                                                    placeholder="my-bucket"
+                                                />
+                                                <Input
+                                                    label={t('settings.storage.s3.pathPrefix')}
+                                                    value={storageS3PathPrefix}
+                                                    onChange={(e) => setStorageS3PathPrefix(e.target.value)}
+                                                    placeholder="projectflow"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label={t('settings.storage.s3.accessKeyId')}
+                                                    value={storageS3AccessKeyId}
+                                                    onChange={(e) => setStorageS3AccessKeyId(e.target.value)}
+                                                    placeholder={t('settings.storage.s3.keepExistingHint')}
+                                                />
+                                                <Input
+                                                    label={t('settings.storage.s3.secretAccessKey')}
+                                                    type="password"
+                                                    value={storageS3SecretAccessKey}
+                                                    onChange={(e) => setStorageS3SecretAccessKey(e.target.value)}
+                                                    placeholder={t('settings.storage.s3.keepExistingHint')}
+                                                />
+                                            </div>
+                                            <div className="flex items-center justify-between">
+                                                <label className="text-sm font-medium text-main">{t('settings.storage.s3.forcePathStyle')}</label>
+                                                <Checkbox
+                                                    checked={storageS3ForcePathStyle}
+                                                    onChange={(checked) => setStorageS3ForcePathStyle(checked)}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {storageActiveProvider === 'googleDrive' && (
+                                        <div className="space-y-3 pt-2">
+                                            <div className="text-xs text-muted">
+                                                {storageDriveConnected
+                                                    ? t('settings.storage.googleDrive.connectedAs').replace('{email}', storageDriveEmail || t('settings.storage.googleDrive.unknownAccount'))
+                                                    : t('settings.storage.googleDrive.notConnected')}
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <Input
+                                                    label={t('settings.storage.googleDrive.folderId')}
+                                                    value={storageDriveFolderId}
+                                                    onChange={(e) => setStorageDriveFolderId(e.target.value)}
+                                                    placeholder={t('settings.storage.googleDrive.autoFolderHint')}
+                                                />
+                                                <Input
+                                                    label={t('settings.storage.googleDrive.folderName')}
+                                                    value={storageDriveFolderName}
+                                                    onChange={(e) => setStorageDriveFolderName(e.target.value)}
+                                                    placeholder="ProjectFlow Workspace"
+                                                />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={handleConnectGoogleDriveStorage}
+                                                    loading={storageConnectingDrive}
+                                                >
+                                                    {t('settings.storage.googleDrive.connect')}
+                                                </Button>
+                                                {storageDriveConnected && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        onClick={handleDisconnectGoogleDriveStorage}
+                                                        loading={storageConnectingDrive}
+                                                    >
+                                                        {t('settings.storage.googleDrive.disconnect')}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3 pt-2">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={handleTestStorageConnection}
+                                            loading={storageTesting}
+                                            disabled={storageLoading}
+                                        >
+                                            {t('settings.storage.test')}
+                                        </Button>
+                                        <Button
+                                            onClick={handleSaveStorageConfig}
+                                            loading={storageSaving}
+                                            disabled={storageLoading}
+                                        >
+                                            {t('settings.storage.save')}
+                                        </Button>
+                                    </div>
+                                    {storageStatusMessage && (
+                                        <p className="text-xs text-muted">{storageStatusMessage}</p>
+                                    )}
+                                </div>
                             </section>
 
                             <section className="flex items-center justify-between p-4 bg-surface-hover rounded-xl border border-surface">

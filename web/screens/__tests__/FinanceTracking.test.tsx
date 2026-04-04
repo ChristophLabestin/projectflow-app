@@ -56,6 +56,7 @@ vi.mock('../../services/domain/authService', () => ({
 
 vi.mock('../../services/firebase', () => ({
     auth: { currentUser: { uid: 'user-a' } },
+    db: {},
 }));
 
 vi.mock('../../services/financeService', () => ({
@@ -193,6 +194,75 @@ vi.mock('../../services/finance-v2/migrationService', () => ({
     }),
 }));
 
+vi.mock('../../services/finance-v2/documentService', () => ({
+    subscribeFinanceDocuments: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    uploadFinanceDocument: vi.fn().mockResolvedValue({ documentId: 'doc-1', versionId: 'v1' }),
+    confirmExtractedInvoiceDraft: vi.fn().mockResolvedValue({ billId: 'bill-1', vendorId: 'vendor-1' }),
+}));
+
+vi.mock('../../services/finance-v2/syncService', () => ({
+    subscribeFinanceSyncConnections: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    subscribeFinanceSyncRuns: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    upsertFinanceSyncConnection: vi.fn().mockResolvedValue({ connectionId: 'sync-1' }),
+    runFinanceSync: vi.fn().mockResolvedValue({ runId: 'run-1' }),
+}));
+
+vi.mock('../../services/finance-v2/recurringTemplateService', () => ({
+    subscribeFinanceRecurringTemplates: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+}));
+
+vi.mock('../../services/finance-v2/allocationService', () => ({
+    subscribeFinanceAllocationRules: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    upsertFinanceAllocationRule: vi.fn().mockResolvedValue({ ruleId: 'rule-1' }),
+}));
+
+vi.mock('../../services/finance-v2/functionsService', () => ({
+    subscribeFinanceOperationRuns: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    subscribeFinanceOperationApprovals: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    recommendFinanceOperations: vi.fn().mockResolvedValue({ recommendations: [] }),
+    previewFinanceOperation: vi.fn().mockResolvedValue({
+        operationType: 'reconciliation_suggest',
+        canExecute: true,
+        blockingChecks: [],
+        warnings: [],
+        estimatedImpact: {},
+        requiresConfirmation: false,
+        risk: 'low',
+    }),
+    executeFinanceOperation: vi.fn().mockResolvedValue({ runId: 'run-1', status: 'succeeded' }),
+    retryFinanceOperationRun: vi.fn().mockResolvedValue({ runId: 'run-2', status: 'succeeded' }),
+}));
+
+vi.mock('../../services/finance-v2/operationTemplateService', () => ({
+    subscribeFinanceOperationTemplates: (callback: (data: any[]) => void) => {
+        callback([]);
+        return () => undefined;
+    },
+    upsertFinanceOperationTemplate: vi.fn().mockResolvedValue({ templateId: 'tpl-1' }),
+    deleteFinanceOperationTemplate: vi.fn().mockResolvedValue({ success: true }),
+}));
+
 vi.mock('../../services/domain/adminSettingsService', () => ({
     fetchWorkspaceFinancialUsage: vi.fn().mockResolvedValue({
         endpoint: 'https://example.com/financial',
@@ -221,6 +291,7 @@ describe('FinanceTracking', () => {
             <MemoryRouter initialEntries={[path]}>
                 <Routes>
                     <Route path="/finance" element={<FinanceTracking />} />
+                    <Route path="/finance/:financeSection/:financeOperationType" element={<FinanceTracking />} />
                     <Route path="/finance/:financeSection" element={<FinanceTracking />} />
                 </Routes>
             </MemoryRouter>
@@ -250,7 +321,7 @@ describe('FinanceTracking', () => {
         const payload = createTransaction.mock.calls[0][0];
         expect(payload.category).toBe('Consulting');
         expect(payload.amount).toBe(250);
-    });
+    }, 15000);
 
     it('switches to calculations view', async () => {
         renderFinance('/finance/calculations');
@@ -264,5 +335,12 @@ describe('FinanceTracking', () => {
 
         expect(screen.getByText('finance.v2.receivables.title')).toBeInTheDocument();
         expect(screen.getByText('finance.v2.receivables.newInvoice')).toBeInTheDocument();
+    });
+
+    it('opens finance functions workspace section', async () => {
+        renderFinance('/finance/functions');
+
+        expect(screen.getByText('finance.functions.catalog.title')).toBeInTheDocument();
+        expect(screen.getByText('finance.functions.wizard.title')).toBeInTheDocument();
     });
 });

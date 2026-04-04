@@ -59,6 +59,7 @@ import {
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
+import { uploadTenantFile } from '../services/fileStorageService';
 import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
 import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
@@ -1001,16 +1002,15 @@ export const ProjectOverview = () => {
     const uploadProjectAsset = async (file: File, kind: 'cover' | 'icon' | 'gallery') => {
         const tenant = project?.tenantId || getActiveTenantId() || project?.ownerId || auth?.currentUser?.uid || 'public';
         const projectId = project?.id || id || 'unknown';
-
-        // Use the same pattern as createProject for consistency and library discovery
-        // Path: tenants/{tid}/projects/{pid}/{timestamp}_media_{pid}_{kind}_{filename}
-        const timestamp = Date.now();
-        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-        const path = `tenants/${tenant}/projects/${projectId}/${timestamp}_media_${projectId}_${kind}_${cleanFileName}`;
-
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        return getDownloadURL(storageRef);
+        const uploaded = await uploadTenantFile({
+            tenantId: tenant,
+            module: 'project',
+            entityType: kind,
+            entityId: projectId,
+            projectId,
+            file,
+        });
+        return uploaded.downloadUrl;
     };
 
     const handleSaveEdit = async (updatedFields: Partial<Project>) => {

@@ -131,6 +131,16 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      match /files/{fileId} {
+        allow read: if canAccessTenant(tenantId);
+        allow write: if false;
+      }
+
+      match /file_upload_drafts/{draftId} {
+        allow read: if false;
+        allow write: if false;
+      }
+
       match /entitlements/{docId} {
         allow read: if canAccessTenant(tenantId);
         allow write: if isOwner(tenantId);
@@ -182,7 +192,9 @@ service cloud.firestore {
               'inviteLinks',
               'projects',
               'users',
-              'api_tokens'
+              'api_tokens',
+              'files',
+              'file_upload_drafts'
             ]
           );
       }

@@ -34,6 +34,9 @@ export interface CreateBillInput {
     dueDate: string;
     currencyCode?: string;
     notes?: string;
+    sourceDocumentId?: string;
+    sourceDocumentVersionId?: string;
+    sourceDocumentFileId?: string;
     lines: Array<
         Pick<FinanceBillLine, 'description' | 'quantity' | 'unitCost' | 'accountId' | 'projectId' | 'taxCodeId' | 'taxRatePercent'>
     >;
@@ -47,9 +50,11 @@ export interface BillActionInput {
 
 export interface ExtractInvoiceFromDocumentInput {
     tenantId?: string;
-    fileName: string;
-    mimeType: string;
-    contentBase64: string;
+    fileName?: string;
+    mimeType?: string;
+    contentBase64?: string;
+    documentId?: string;
+    documentVersionId?: string;
 }
 
 export const subscribeFinanceVendors = (

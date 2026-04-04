@@ -33,6 +33,8 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `email`: string
 - `displayName`: string
 - `photoURL`: string
+- `photoFileId`: string (Optional, points to `tenants/{tenantId}/files/{fileId}`)
+- `coverFileId`: string (Optional, points to `tenants/{tenantId}/files/{fileId}`)
 - `aiUsage`: Object (Token limits and usage)
 - `geminiConfig`: Object (API key, token limit)
 - `privacySettings`: Object
@@ -70,6 +72,46 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorId`: string (Optional)
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
+
+#### ↳ 📂 **`secrets`** *(Functions-only, never client-readable)*
+**Path:** `/tenants/{tenantId}/secrets/{secretId}`
+**Storage integration secret doc:** `/tenants/{tenantId}/secrets/fileStorage`
+- `activeProvider`: `"firebase" | "s3" | "googleDrive"`
+- `s3`: object
+  - `endpoint`, `region`, `bucket`, `pathPrefix`, `forcePathStyle`
+  - `accessKeyId`, `secretAccessKey`
+  - `connectedAt`, `lastTestedAt`
+- `googleDrive`: object
+  - `connected`, `folderId`, `folderName`, `email`, `scope`
+  - `accessToken`, `refreshToken`, `tokenExpiryDate`
+  - `connectedAt`, `lastTestedAt`, `lastError`
+- `updatedAt`, `updatedBy`
+
+**OAuth transient state subcollection:**
+`/tenants/{tenantId}/secrets/fileStorage/file_storage_auth_states/{stateId}`
+- `tenantId`, `userId`, `csrf`, `createdAt`, `expiresAt`
+
+#### ↳ 📂 **`files`** *(Canonical tenant file metadata; writes via Functions only)*
+**Path:** `/tenants/{tenantId}/files/{fileId}`
+**Schema highlights:**
+- `tenantId`, `module`, `projectId`, `entityType`, `entityId`
+- `provider`: `"firebase" | "s3" | "googleDrive"`
+- `requestedProvider`: selected provider at upload time
+- `fallbackToFirebase`: boolean
+- `fileName`, `mimeType`, `sizeBytes`, `status`
+- `providerRef`: object
+  - Firebase: `firebasePath`
+  - S3: `bucket`, `key`, `region`, `endpoint`, `forcePathStyle`
+  - Google Drive: `fileId`, `folderId`
+- `createdBy`, `createdAt`, `updatedAt`
+
+#### ↳ 📂 **`file_upload_drafts`** *(Transient upload sessions; Functions-only)*
+**Path:** `/tenants/{tenantId}/file_upload_drafts/{draftId}`
+**Schema highlights:**
+- Upload request context (`module`, `entityType`, `entityId`, `projectId`)
+- File info (`fileName`, `mimeType`, `sizeBytes`)
+- Provider routing (`requestedProvider`, `resolvedProvider`, `fallbackReason`, `providerRef`)
+- `createdBy`, `createdAt`, `expiresAt`
 
 #### ↳ 📂 **`transactions`** *(Legacy Finance V1, read-only after V2 cutover)*
 **Path:** `/tenants/{tenantId}/transactions/{transactionId}`
@@ -117,8 +159,16 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `finance_assets`, `finance_depreciation_schedules`
 - `finance_budgets`, `finance_forecasts`
 - `finance_scenarios` (BWL/AI/Token Planung)
+- `finance_recurring_templates` (single -> recurring conversion templates)
+- `finance_allocation_rules` (project overhead/profitability allocation logic)
+- `finance_documents`, `finance_document_versions` (uploaded invoice/docs + versioning/hash/meta)
+- `finance_jobs` (async orchestration for long-running finance actions)
+- `finance_operation_runs` (unified runtime run state with steps/warnings/artifacts/idempotency)
+- `finance_operation_templates` (saved payload presets for operation reuse)
+- `finance_operation_approvals` (pending confirmations for high-risk/confirmation-gated runs)
 - `finance_tax_codes`, `finance_tax_periods`, `finance_tax_reports`
 - `finance_exports` (DATEV/CSV jobs + artifacts)
+- `finance_sync_connections`, `finance_sync_runs` (external sync connectors + run history)
 - `finance_audit_log` (immutable audit trail)
 - `finance_settings` (`financeSchemaVersion: 2`, currency, defaults)
 
@@ -131,6 +181,12 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `ownerId`: string
 - `modules`: string[] (Enabled modules like 'tasks', 'ideas')
 - `visibilityGroupIds`: string[]
+- `coverImage`: string (Legacy URL)
+- `coverImageFileId`: string (Optional, managed file reference)
+- `squareIcon`: string (Legacy URL)
+- `squareIconFileId`: string (Optional, managed file reference)
+- `screenshots`: string[] (Legacy URLs)
+- `screenshotFileIds`: string[] (Optional, managed file references)
 
 > **Project Subcollections**
 > These collections exist *within* a project document.

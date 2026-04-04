@@ -1,6 +1,7 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { subscribeProjectTasks } from '../services/dataService';
 import { getProjectCategories } from '../services/domain/projectMetaService';
@@ -38,6 +39,9 @@ export const ProjectTasks = () => {
     const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
+    const [quickDateEditorTaskId, setQuickDateEditorTaskId] = useState<string | null>(null);
+    const [savingQuickDateTaskId, setSavingQuickDateTaskId] = useState<string | null>(null);
+    const [quickDateAnchorEl, setQuickDateAnchorEl] = useState<HTMLElement | null>(null);
     const location = useLocation();
     const confirm = useConfirm();
 
@@ -117,6 +121,19 @@ export const ProjectTasks = () => {
         }
     }, [location.search]);
 
+    useEffect(() => {
+        setQuickDateEditorTaskId((current) => {
+            if (!current) return current;
+            return tasks.some((task) => task.id === current) ? current : null;
+        });
+    }, [tasks]);
+
+    useEffect(() => {
+        if (!quickDateEditorTaskId) {
+            setQuickDateAnchorEl(null);
+        }
+    }, [quickDateEditorTaskId]);
+
     const handleToggle = async (taskId: string, currentStatus: boolean) => {
         if (!can('canManageTasks')) return;
         // Optimistic
@@ -132,6 +149,46 @@ export const ProjectTasks = () => {
         } catch (e) {
             console.error(e);
             setError(t('projectTasks.error.delete'));
+        }
+    };
+
+    const toDateInputValue = (value?: string) => {
+        if (!value) return '';
+        const matched = value.match(/^\d{4}-\d{2}-\d{2}/);
+        return matched ? matched[0] : '';
+    };
+
+    const handleQuickDateChange = async (task: Task, field: 'startDate' | 'dueDate', nextValue: string) => {
+        if (!can('canManageTasks') || !id) return;
+
+        const previousValue = task[field] || '';
+        const previousInputValue = toDateInputValue(previousValue);
+        const normalizedNextValue = nextValue || '';
+        if (previousInputValue === normalizedNextValue) return;
+
+        const updates: Partial<Task> = field === 'startDate'
+            ? { startDate: normalizedNextValue }
+            : { dueDate: normalizedNextValue };
+
+        setSavingQuickDateTaskId(task.id);
+        setTasks((prev) => prev.map((item) => (
+            item.id === task.id
+                ? { ...item, ...updates }
+                : item
+        )));
+
+        try {
+            await updateTaskFields(task.id, updates, id, project?.tenantId);
+        } catch (err) {
+            console.error(err);
+            setTasks((prev) => prev.map((item) => (
+                item.id === task.id
+                    ? { ...item, [field]: previousValue }
+                    : item
+            )));
+            setError(t('projectTasks.error.quickDateUpdate'));
+        } finally {
+            setSavingQuickDateTaskId((current) => (current === task.id ? null : current));
         }
     };
 
@@ -301,6 +358,13 @@ export const ProjectTasks = () => {
     } = useOnboardingTour('project_tasks', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
     const TaskCard = ({ task, isBoard = false }: { task: Task; isBoard?: boolean }) => {
+        const quickDatePopoverRef = useRef<HTMLDivElement | null>(null);
+        const [quickDatePopoverPosition, setQuickDatePopoverPosition] = useState({ top: 0, left: 0 });
+        const isQuickDateEditorOpen = quickDateEditorTaskId === task.id;
+        const isSavingQuickDates = savingQuickDateTaskId === task.id;
+        const startDateInputValue = toDateInputValue(task.startDate);
+        const dueDateInputValue = toDateInputValue(task.dueDate);
+        const canQuickEditDates = can('canManageTasks');
         const isStrategic = Boolean(task.convertedIdeaId);
         const hasStart = Boolean(task.startDate);
         const hasDue = Boolean(task.dueDate);
@@ -308,6 +372,7 @@ export const ProjectTasks = () => {
         const showDueDate = !isStrategic && !hasStart && hasDue && !task.isCompleted;
         const showStrategicTimeline = isStrategic && hasStart && hasDue && !task.isCompleted;
         const showStrategicDue = isStrategic && !hasStart && hasDue && !task.isCompleted;
+        const showDueDateSetter = !hasDue && !task.isCompleted;
         const dueDate = task.dueDate ? new Date(task.dueDate) : null;
         const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
         const priorityLabel = task.priority ? (priorityLabels[task.priority] || task.priority) : '';
@@ -322,6 +387,70 @@ export const ProjectTasks = () => {
         const isBlocked = blockedBy.length > 0;
 
         const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : task.convertedIdeaId ? 'strategic' : 'default';
+        const toggleQuickDateEditor = (e: React.MouseEvent<HTMLElement>) => {
+            e.stopPropagation();
+            if (!canQuickEditDates) return;
+            const triggerElement = e.currentTarget;
+            setQuickDateEditorTaskId((current) => {
+                const next = current === task.id ? null : task.id;
+                setQuickDateAnchorEl(next ? triggerElement : null);
+                return next;
+            });
+        };
+
+        useEffect(() => {
+            if (!isQuickDateEditorOpen) return;
+
+            const handleOutsideClick = (event: MouseEvent) => {
+                const target = event.target as HTMLElement;
+                if (quickDatePopoverRef.current?.contains(target)) return;
+                if (target.closest(`[data-quick-date-trigger="${task.id}"]`)) return;
+                setQuickDateEditorTaskId((current) => (current === task.id ? null : current));
+            };
+
+            document.addEventListener('mousedown', handleOutsideClick);
+            return () => {
+                document.removeEventListener('mousedown', handleOutsideClick);
+            };
+        }, [isQuickDateEditorOpen, task.id]);
+
+        useEffect(() => {
+            if (!isQuickDateEditorOpen || !quickDateAnchorEl) return;
+
+            const POPOVER_WIDTH = 256;
+            const POPOVER_HEIGHT = 168;
+            const OFFSET = 8;
+
+            const updatePopoverPosition = () => {
+                if (!document.body.contains(quickDateAnchorEl)) {
+                    setQuickDateEditorTaskId((current) => (current === task.id ? null : current));
+                    return;
+                }
+
+                const rect = quickDateAnchorEl.getBoundingClientRect();
+                let left = rect.right - POPOVER_WIDTH;
+                let top = rect.bottom + OFFSET;
+
+                if (left < 8) left = 8;
+                if (left + POPOVER_WIDTH > window.innerWidth - 8) {
+                    left = Math.max(8, window.innerWidth - POPOVER_WIDTH - 8);
+                }
+                if (top + POPOVER_HEIGHT > window.innerHeight - 8) {
+                    top = Math.max(8, rect.top - POPOVER_HEIGHT - OFFSET);
+                }
+
+                setQuickDatePopoverPosition({ top, left });
+            };
+
+            updatePopoverPosition();
+            window.addEventListener('resize', updatePopoverPosition);
+            window.addEventListener('scroll', updatePopoverPosition, true);
+
+            return () => {
+                window.removeEventListener('resize', updatePopoverPosition);
+                window.removeEventListener('scroll', updatePopoverPosition, true);
+            };
+        }, [isQuickDateEditorOpen, quickDateAnchorEl, task.id]);
 
         return (
             <div
@@ -496,9 +625,21 @@ export const ProjectTasks = () => {
                             </div>
                             <div className="dates-row">
                                 <span>{t('projectTasks.timeline.start')} {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
-                                    {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                </span>
+                                {canQuickEditDates ? (
+                                    <button
+                                        type="button"
+                                        onClick={toggleQuickDateEditor}
+                                        data-quick-date-trigger={task.id}
+                                        className={`due-date-trigger ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
+                                        title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                    >
+                                        {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    </button>
+                                ) : (
+                                    <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
+                                        {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
@@ -522,34 +663,106 @@ export const ProjectTasks = () => {
                             </div>
                             <div className="dates-row">
                                 <span>{format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
-                                    {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                </span>
+                                {canQuickEditDates ? (
+                                    <button
+                                        type="button"
+                                        onClick={toggleQuickDateEditor}
+                                        data-quick-date-trigger={task.id}
+                                        className={`due-date-trigger due-date-trigger--compact ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
+                                        title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                    >
+                                        {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    </button>
+                                ) : (
+                                    <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
+                                        {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
 
                     {showStrategicDue && dueDate && (
                         <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
-                            <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
-                                <span className="material-symbols-outlined due-date-icon">event</span>
-                                <div className="due-date-info">
-                                    <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
-                                    <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                            {canQuickEditDates ? (
+                                <button
+                                    type="button"
+                                    onClick={toggleQuickDateEditor}
+                                    data-quick-date-trigger={task.id}
+                                    className={`due-date-box due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : 'normal'} ${isQuickDateEditorOpen ? 'active' : ''}`}
+                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                >
+                                    <span className="material-symbols-outlined due-date-icon">event</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
+                                        <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
+                                    <span className="material-symbols-outlined due-date-icon">event</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
+                                        <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
 
                     {showDueDate && dueDate && (
                         <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
-                            <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
-                                <span className="material-symbols-outlined due-date-icon">event</span>
-                                <div className="due-date-info">
-                                    <span className="date-label">{t('projectTasks.timeline.due')}</span>
-                                    <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                            {canQuickEditDates ? (
+                                <button
+                                    type="button"
+                                    onClick={toggleQuickDateEditor}
+                                    data-quick-date-trigger={task.id}
+                                    className={`due-date-box simple due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
+                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                >
+                                    <span className="material-symbols-outlined due-date-icon">event</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
+                                        <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
+                                    <span className="material-symbols-outlined due-date-icon">event</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
+                                        <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
+                        </div>
+                    )}
+
+                    {showDueDateSetter && (
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
+                            {canQuickEditDates ? (
+                                <button
+                                    type="button"
+                                    onClick={toggleQuickDateEditor}
+                                    data-quick-date-trigger={task.id}
+                                    className={`due-date-box simple due-date-trigger due-date-trigger--box due-date-trigger--empty ${isQuickDateEditorOpen ? 'active' : ''}`}
+                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                >
+                                    <span className="material-symbols-outlined due-date-icon">event_upcoming</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
+                                        <span className="date-val small">{t('projectTasks.timeline.setDue')}</span>
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className="due-date-box simple">
+                                    <span className="material-symbols-outlined due-date-icon">event_upcoming</span>
+                                    <div className="due-date-info">
+                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
+                                        <span className="date-val small">{t('projectTasks.timeline.setDue')}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -597,6 +810,72 @@ export const ProjectTasks = () => {
                         </div>
                     </div>
                 </div>
+                {can('canManageTasks') && isQuickDateEditorOpen && quickDateAnchorEl && createPortal(
+                    <div
+                        className="quick-date-popover"
+                        ref={quickDatePopoverRef}
+                        style={{ top: `${quickDatePopoverPosition.top}px`, left: `${quickDatePopoverPosition.left}px` }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        <div className={`quick-date-editor ${isSavingQuickDates ? 'is-saving' : ''}`}>
+                            <div className="quick-date-field">
+                                <label htmlFor={`task-start-date-${task.id}`}>{t('projectTasks.timeline.start')}</label>
+                                <div className="quick-date-field__control">
+                                    <input
+                                        id={`task-start-date-${task.id}`}
+                                        type="date"
+                                        value={startDateInputValue}
+                                        max={dueDateInputValue || undefined}
+                                        aria-label={t('projectTasks.actions.quickStartAria')}
+                                        disabled={isSavingQuickDates}
+                                        onChange={(event) => handleQuickDateChange(task, 'startDate', event.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="quick-date-field__clear"
+                                        disabled={isSavingQuickDates || !startDateInputValue}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleQuickDateChange(task, 'startDate', '');
+                                        }}
+                                        title={t('projectTasks.actions.clearStartDate')}
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="quick-date-field">
+                                <label htmlFor={`task-due-date-${task.id}`}>{t('projectTasks.timeline.due')}</label>
+                                <div className="quick-date-field__control">
+                                    <input
+                                        id={`task-due-date-${task.id}`}
+                                        type="date"
+                                        value={dueDateInputValue}
+                                        min={startDateInputValue || undefined}
+                                        aria-label={t('projectTasks.actions.quickDueAria')}
+                                        disabled={isSavingQuickDates}
+                                        onChange={(event) => handleQuickDateChange(task, 'dueDate', event.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="quick-date-field__clear"
+                                        disabled={isSavingQuickDates || !dueDateInputValue}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            handleQuickDateChange(task, 'dueDate', '');
+                                        }}
+                                        title={t('projectTasks.actions.clearDueDate')}
+                                    >
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
             </div >
         );
     };

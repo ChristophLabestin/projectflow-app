@@ -249,7 +249,9 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     <NavItem to="/finance/bank" icon="account_balance" label={t('finance.v2.nav.bank')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/tax" icon="gavel" label={t('finance.v2.nav.tax')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/reports" icon="analytics" label={t('finance.v2.nav.reports')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/functions" icon="function" label={t('finance.v2.nav.functions')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/exports" icon="file_download" label={t('finance.v2.nav.exports')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/finance/sync" icon="sync" label={t('finance.v2.nav.sync')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/settings" icon="tune" label={t('finance.v2.nav.settings')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/calculations" icon="calculate" label={t('finance.v2.nav.planning')} onClick={isDrawer ? onClose : undefined} />
                                 </>

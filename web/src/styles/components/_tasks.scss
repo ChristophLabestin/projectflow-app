@@ -860,6 +860,59 @@
         }
     }
 
+    .due-date-trigger {
+        border: 0;
+        padding: 0;
+        margin: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: inherit;
+        cursor: pointer;
+        border-radius: var(--radius-sm);
+        transition: color var(--transition-fast), box-shadow var(--transition-fast);
+
+        &:hover {
+            color: var(--color-primary);
+        }
+
+        &.overdue:hover {
+            color: var(--color-error);
+        }
+
+        &.active {
+            color: var(--color-primary);
+        }
+
+        &.due-date-trigger--compact {
+            text-align: right;
+        }
+
+        &.due-date-trigger--box {
+            width: 100%;
+            text-align: left;
+            border: 1px solid transparent;
+
+            &:hover {
+                border-color: rgba(var(--color-primary-rgb), 0.2);
+            }
+
+            &.active {
+                border-color: rgba(var(--color-primary-rgb), 0.42);
+                box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.16);
+            }
+        }
+
+        &.due-date-trigger--empty {
+            background-color: var(--color-surface-bg);
+            color: var(--color-text-subtle);
+
+            &:hover {
+                color: var(--color-primary);
+            }
+        }
+    }
+
     .due-date-box {
         display: flex;
         align-items: center;
@@ -977,6 +1030,99 @@
         &:hover .action-btn--pin.unpinned,
         &:hover .pin.unpinned {
             opacity: 1;
+        }
+    }
+
+    .quick-date-popover {
+        position: fixed;
+        z-index: 1400;
+        width: min(16rem, calc(100vw - 1rem));
+        pointer-events: none;
+    }
+
+    .quick-date-editor {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        border: 1px solid var(--color-surface-border);
+        border-radius: var(--radius-xl);
+        background-color: var(--color-surface-card);
+        box-shadow: var(--shadow-lg);
+        width: 100%;
+        pointer-events: auto;
+
+        &.is-saving {
+            opacity: 0.72;
+        }
+    }
+
+    .quick-date-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+
+        label {
+            font-size: 0.55rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--color-text-subtle);
+        }
+    }
+
+    .quick-date-field__control {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 0.35rem;
+        align-items: center;
+    }
+
+    .quick-date-field input[type='date'] {
+        width: 100%;
+        min-height: 2rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--color-surface-border);
+        background-color: var(--color-surface-hover);
+        color: var(--color-text-main);
+        padding: 0.35rem 0.5rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+
+        &:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px rgba(var(--color-primary-rgb), 0.18);
+        }
+
+        &:disabled {
+            cursor: wait;
+        }
+    }
+
+    .quick-date-field__clear {
+        width: 1.75rem;
+        height: 1.75rem;
+        border-radius: var(--radius-md);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-subtle);
+        background-color: var(--color-surface-hover);
+        transition: background-color var(--transition-fast), color var(--transition-fast);
+
+        &:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        &:not(:disabled):hover {
+            background-color: rgba(var(--color-error-rgb), 0.12);
+            color: var(--color-error);
+        }
+
+        .material-symbols-outlined {
+            font-size: 1rem;
         }
     }
 }
