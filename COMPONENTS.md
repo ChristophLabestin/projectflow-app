@@ -66,6 +66,8 @@ Rules:
 | `Toast` / `Notifications` | Non-blocking feedback | Success/error/info | |
 | `EmptyState` | No data guidance | Empty lists | |
 | `StatusCard` | Status messaging panel | Invite flows, async states | Variants: `info`, `success`, `error`. Optional icon + extra actions. |
+| `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
+| `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Split builder with configurable mapped/custom fields, live public-page preview, and hosted/embed access controls. |
 | `Skeleton` | Loading placeholder | List/table loading | |
 
 ### `StatusCard`

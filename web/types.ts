@@ -301,8 +301,8 @@ export interface ProjectNavPrefs {
 export interface Comment {
     id: string;
     projectId: string;
-    targetId: string; // ID of the Task, Issue, or Idea
-    targetType: 'task' | 'issue' | 'idea';
+    targetId: string; // ID of the Task, Issue, Idea, or Initiative
+    targetType: 'task' | 'issue' | 'idea' | 'initiative';
     userId: string;
     userDisplayName: string;
     userPhotoURL?: string;
@@ -311,7 +311,7 @@ export interface Comment {
     originIdeaId?: string;
 }
 
-export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing' | 'accounting' | 'sprints';
+export type ProjectModule = 'tasks' | 'initiatives' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing' | 'accounting' | 'sprints';
 
 export interface Task {
     id: string;
@@ -335,12 +335,106 @@ export interface Task {
     tenantId?: string; // For path resolution
     linkedIssueId?: string; // Linked issue (if converted from an issue)
     convertedIdeaId?: string; // Linked idea (if converted from an idea)
+    initiativeId?: string;
+    legacyInitiativeRoot?: boolean;
     createdBy?: string;
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
     originIdeaId?: string;
     dependencies?: string[]; // IDs of tasks that this task depends on
     sprintId?: string; // Sprint ID
+    feedbackSubmission?: InitiativeFeedbackSubmission;
+}
+
+export type InitiativeStatus = TaskStatus | 'Planning';
+export type InitiativeHealth = 'On Track' | 'At Risk' | 'Off Track';
+
+export interface InitiativeFeedbackAttachment {
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    downloadUrl: string;
+}
+
+export type InitiativeFeedbackFieldType = 'shortText' | 'longText' | 'email' | 'url' | 'select';
+export type InitiativeFeedbackFieldRole = 'title' | 'description' | 'customerName' | 'customerEmail' | 'company' | 'sourceUrl' | 'general';
+
+export interface InitiativeFeedbackFieldOption {
+    id: string;
+    label: string;
+    value: string;
+}
+
+export interface InitiativeFeedbackField {
+    id: string;
+    type: InitiativeFeedbackFieldType;
+    role?: InitiativeFeedbackFieldRole;
+    label: string;
+    placeholder?: string;
+    helpText?: string;
+    required?: boolean;
+    enabled?: boolean;
+    width?: 'full' | 'half';
+    options?: InitiativeFeedbackFieldOption[];
+    isDefault?: boolean;
+}
+
+export interface InitiativeFeedbackSubmittedField {
+    fieldId: string;
+    label: string;
+    value: string;
+    type: InitiativeFeedbackFieldType;
+    role?: InitiativeFeedbackFieldRole;
+}
+
+export interface InitiativeFeedbackSubmission {
+    source: 'public-form' | 'embedded-endpoint';
+    submittedAt: any;
+    customerName?: string;
+    customerEmail?: string;
+    company?: string;
+    sourceUrl?: string;
+    attachments?: InitiativeFeedbackAttachment[];
+    fields?: InitiativeFeedbackSubmittedField[];
+}
+
+export interface InitiativeFeedbackFormSettings {
+    enabled: boolean;
+    token: string;
+    title?: string;
+    description?: string;
+    submitLabel?: string;
+    successMessage?: string;
+    allowAttachments?: boolean;
+    maxAttachments?: number;
+    fields?: InitiativeFeedbackField[];
+    updatedAt?: any;
+    updatedBy?: string;
+}
+
+export interface Initiative {
+    id: string;
+    projectId: string;
+    tenantId: string;
+    ownerId: string;
+    title: string;
+    description?: string;
+    status: InitiativeStatus;
+    priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+    startDate?: string;
+    dueDate?: string;
+    createdBy?: string;
+    assigneeIds?: string[];
+    assignedGroupIds?: string[];
+    originIdeaId?: string;
+    externalKey?: string;
+    successMetric?: string;
+    outcome?: string;
+    health?: InitiativeHealth;
+    feedbackForm?: InitiativeFeedbackFormSettings;
+    createdAt?: any;
+    updatedAt?: any;
+    completedAt?: any;
 }
 
 export interface Sprint {
@@ -425,6 +519,7 @@ export interface Idea {
     generated?: boolean;
     tenantId?: string; // Optional: ID of the tenant where this project lives
     convertedTaskId?: string;
+    convertedInitiativeId?: string;
     convertedAt?: any;
     createdAt?: any;
     posX?: number;
@@ -572,7 +667,7 @@ export interface Activity {
     target: string;
     details?: string;
     relatedId?: string;
-    type: 'comment' | 'task' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'issue';
+    type: 'comment' | 'task' | 'initiative' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'issue';
     createdAt?: any;
     originIdeaId?: string;
 }
@@ -729,6 +824,7 @@ export interface Notification {
     // Context data for navigation
     projectId?: string;
     taskId?: string;
+    initiativeId?: string;
     issueId?: string;
     commentId?: string;
     inviteId?: string;
@@ -2276,6 +2372,9 @@ export type APITokenPermission =
     | 'projects:read'
     | 'projects:write'
     | 'projects:delete'
+    | 'initiatives:read'
+    | 'initiatives:write'
+    | 'initiatives:delete'
     | 'tasks:read'
     | 'tasks:write'
     | 'tasks:delete';

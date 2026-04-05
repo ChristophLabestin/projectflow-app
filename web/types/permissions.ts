@@ -106,6 +106,12 @@ export type ProjectPermissionNode =
     // Modules
     | 'project.modules.view'
     | 'project.modules.enableDisable'
+    // Initiatives
+    | 'project.initiatives.view'
+    | 'project.initiatives.create'
+    | 'project.initiatives.edit'
+    | 'project.initiatives.delete'
+    | 'project.initiatives.manageTasks'
     // Tasks
     | 'project.tasks.view'
     | 'project.tasks.create'
@@ -134,6 +140,7 @@ export type ProjectPermissionNode =
     | 'project.flows.approve'
     | 'project.flows.reject'
     | 'project.flows.handoffToTasks'
+    | 'project.flows.convertToInitiatives'
     | 'project.flows.handoffToSocial'
     | 'project.flows.handoffToMarketing'
     // Issues
@@ -436,6 +443,11 @@ export const ALL_PROJECT_PERMISSIONS: ProjectPermissionNode[] = [
     'project.members.manageRoles',
     'project.modules.view',
     'project.modules.enableDisable',
+    'project.initiatives.view',
+    'project.initiatives.create',
+    'project.initiatives.edit',
+    'project.initiatives.delete',
+    'project.initiatives.manageTasks',
     'project.tasks.view',
     'project.tasks.create',
     'project.tasks.edit',
@@ -462,6 +474,7 @@ export const ALL_PROJECT_PERMISSIONS: ProjectPermissionNode[] = [
     'project.flows.approve',
     'project.flows.reject',
     'project.flows.handoffToTasks',
+    'project.flows.convertToInitiatives',
     'project.flows.handoffToSocial',
     'project.flows.handoffToMarketing',
     'project.issues.view',

@@ -12,6 +12,7 @@
 @use '../src/styles/components/task-modals';
 @use '../src/styles/components/issue-modals';
 @use '../src/styles/components/pinned-tasks';
+@use '../src/styles/components/initiatives';
 
 * {
   box-sizing: border-box;
@@ -134,18 +135,16 @@ input[type=number] {
 
 input:focus,
 select:focus,
-textarea:focus,
-button:focus {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
+textarea:focus {
+  outline: none;
+  outline-offset: 0;
 }
 
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible,
-button:focus-visible {
-  outline: 2px solid var(--color-primary, #2563eb) !important;
-  outline-offset: 2px;
+textarea:focus-visible {
+  outline: none !important;
+  outline-offset: 0;
 }
 
 /* --- Layout Utilities --- */

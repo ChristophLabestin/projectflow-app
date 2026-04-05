@@ -12,6 +12,7 @@ type ApiContext = {
 
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
+const INITIATIVES = 'initiatives';
 const ACTIVITIES = 'activities';
 const SUBTASKS = 'subtasks';
 const ISSUES = 'issues';
@@ -66,7 +67,26 @@ const TASK_WRITE_FIELDS = [
     'sprintId',
     'linkedIssueId',
     'convertedIdeaId',
+    'initiativeId',
+    'legacyInitiativeRoot',
     'externalKey'
+] as const;
+
+const INITIATIVE_WRITE_FIELDS = [
+    'title',
+    'description',
+    'status',
+    'priority',
+    'dueDate',
+    'startDate',
+    'assigneeIds',
+    'assignedGroupIds',
+    'originIdeaId',
+    'externalKey',
+    'successMetric',
+    'outcome',
+    'health',
+    'completedAt'
 ] as const;
 
 const SUBTASK_WRITE_FIELDS = [
@@ -124,6 +144,9 @@ const projectRef = (tenantId: string, projectId: string) =>
 
 const taskCollectionRef = (tenantId: string, projectId: string) =>
     projectRef(tenantId, projectId).collection(TASKS);
+
+const initiativeCollectionRef = (tenantId: string, projectId: string) =>
+    projectRef(tenantId, projectId).collection(INITIATIVES);
 
 const projectCollectionRef = (tenantId: string, projectId: string, collectionName: string) =>
     projectRef(tenantId, projectId).collection(collectionName);
@@ -544,6 +567,8 @@ const createTask = async (req: any, res: any, projectId: string) => {
         sprintId: getString(body.sprintId),
         linkedIssueId: getString(body.linkedIssueId),
         convertedIdeaId: getString(body.convertedIdeaId),
+        initiativeId: getString(body.initiativeId),
+        legacyInitiativeRoot: Boolean(body.legacyInitiativeRoot),
         externalKey: getString(body.externalKey),
         isCompleted: Boolean(body.isCompleted),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -749,6 +774,8 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
         sprintId: getString(body.sprintId),
         linkedIssueId: getString(body.linkedIssueId),
         convertedIdeaId: getString(body.convertedIdeaId),
+        initiativeId: getString(body.initiativeId),
+        legacyInitiativeRoot: Boolean(body.legacyInitiativeRoot),
         externalKey,
         isCompleted: Boolean(body.isCompleted),
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -823,6 +850,318 @@ const getTask = async (req: any, res: any, projectId: string, taskId: string) =>
         task: {
             id: taskSnapshot.id,
             ...serializeValue(taskSnapshot.data())
+        }
+    });
+};
+
+const listInitiatives = async (req: any, res: any, projectId: string) => {
+    const context = await authRequest(req, res, 'initiatives:read', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const snapshot = await initiativeCollectionRef(context.tenantId, projectId)
+        .orderBy('updatedAt', 'desc')
+        .get();
+
+    const initiatives = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...serializeValue(docSnap.data())
+    }));
+
+    res.status(200).json({ success: true, initiatives });
+};
+
+const createInitiative = async (req: any, res: any, projectId: string) => {
+    const context = await authRequest(req, res, 'initiatives:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+    const title = getString(body.title);
+    if (!title) {
+        badRequest(res, 'title is required.');
+        return;
+    }
+
+    const payload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        ownerId: context.actorId,
+        createdBy: context.actorId,
+        title,
+        description: getString(body.description),
+        status: getString(body.status) || 'Planning',
+        priority: getString(body.priority) || 'Medium',
+        dueDate: getString(body.dueDate),
+        startDate: getString(body.startDate),
+        assigneeIds: getStringArray(body.assigneeIds),
+        assignedGroupIds: getStringArray(body.assignedGroupIds),
+        originIdeaId: getString(body.originIdeaId),
+        externalKey: getString(body.externalKey),
+        successMetric: getString(body.successMetric),
+        outcome: getString(body.outcome),
+        health: getString(body.health),
+        completedAt: body.completedAt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
+    const createdSnapshot = await created.get();
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Created initiative "${title}" via API token ${context.actorLabel}`,
+        'Initiatives',
+        created.id,
+        context.actorId,
+        context.actorLabel
+    );
+
+    res.status(201).json({
+        success: true,
+        initiative: {
+            id: created.id,
+            ...serializeValue(createdSnapshot.data())
+        }
+    });
+};
+
+const getInitiative = async (req: any, res: any, projectId: string, initiativeId: string) => {
+    const context = await authRequest(req, res, 'initiatives:read', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const initiativeSnapshot = await initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId).get();
+    if (!initiativeSnapshot.exists) {
+        notFound(res, 'Initiative not found.');
+        return;
+    }
+
+    res.status(200).json({
+        success: true,
+        initiative: {
+            id: initiativeSnapshot.id,
+            ...serializeValue(initiativeSnapshot.data())
+        }
+    });
+};
+
+const updateInitiative = async (req: any, res: any, projectId: string, initiativeId: string) => {
+    const context = await authRequest(req, res, 'initiatives:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const initiativeRef = initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId);
+    const initiativeSnapshot = await initiativeRef.get();
+    if (!initiativeSnapshot.exists) {
+        notFound(res, 'Initiative not found.');
+        return;
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+    const updates = extractWritableFields(body, INITIATIVE_WRITE_FIELDS);
+    if (Object.keys(updates).length === 0) {
+        badRequest(res, 'No writable fields provided for update.');
+        return;
+    }
+
+    await initiativeRef.update({
+        ...updates,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const latestSnapshot = await initiativeRef.get();
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Updated initiative "${getString(latestSnapshot.data()?.title) || initiativeId}" via API token ${context.actorLabel}`,
+        'Initiatives',
+        initiativeId,
+        context.actorId,
+        context.actorLabel
+    );
+
+    res.status(200).json({
+        success: true,
+        initiative: {
+            id: initiativeId,
+            ...serializeValue(latestSnapshot.data())
+        }
+    });
+};
+
+const deleteInitiative = async (req: any, res: any, projectId: string, initiativeId: string) => {
+    const context = await authRequest(req, res, 'initiatives:delete', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const initiativeRef = initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId);
+    const initiativeSnapshot = await initiativeRef.get();
+    if (!initiativeSnapshot.exists) {
+        notFound(res, 'Initiative not found.');
+        return;
+    }
+
+    const linkedTasks = await taskCollectionRef(context.tenantId, projectId)
+        .where('initiativeId', '==', initiativeId)
+        .get();
+
+    await Promise.all(linkedTasks.docs.map((docSnap) => docSnap.ref.update({
+        initiativeId: admin.firestore.FieldValue.delete(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    })));
+
+    const initiativeTitle = getString(initiativeSnapshot.data()?.title);
+    await initiativeRef.delete();
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Deleted initiative "${initiativeTitle || initiativeId}" via API token ${context.actorLabel}`,
+        'Initiatives',
+        initiativeId,
+        context.actorId,
+        context.actorLabel
+    );
+
+    res.status(200).json({
+        success: true,
+        deletedInitiativeId: initiativeId
+    });
+};
+
+const upsertInitiativeByExternalKey = async (req: any, res: any, projectId: string) => {
+    const context = await authRequest(req, res, 'initiatives:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    const body = (req.body || {}) as Record<string, unknown>;
+    const externalKey = getString(body.externalKey);
+    if (!externalKey) {
+        badRequest(res, 'externalKey is required.');
+        return;
+    }
+
+    const appendSummary = getString(body.appendSummary);
+    const matches = await initiativeCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+
+    if (!matches.empty) {
+        const initiativeSnapshot = matches.docs[0];
+        const updates = extractWritableFields(body, INITIATIVE_WRITE_FIELDS);
+        const existingDescription = getString(initiativeSnapshot.data().description);
+
+        if (appendSummary) {
+            updates.description = existingDescription
+                ? `${existingDescription}\n\n${appendSummary}`
+                : appendSummary;
+        }
+
+        updates.externalKey = externalKey;
+        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+
+        await initiativeSnapshot.ref.update(updates);
+        const refreshed = await initiativeSnapshot.ref.get();
+
+        await writeProjectActivity(
+            context.tenantId,
+            projectId,
+            `Synced initiative "${getString(refreshed.data()?.title) || refreshed.id}" via external key ${externalKey}`,
+            'Initiatives',
+            refreshed.id,
+            context.actorId,
+            context.actorLabel
+        );
+
+        res.status(200).json({
+            success: true,
+            operation: 'updated',
+            initiative: {
+                id: refreshed.id,
+                ...serializeValue(refreshed.data())
+            }
+        });
+        return;
+    }
+
+    const title = getString(body.title) || `Auto Sync ${externalKey.slice(0, 8)}`;
+    const baseDescription = getString(body.description);
+    const description = appendSummary
+        ? (baseDescription ? `${baseDescription}\n\n${appendSummary}` : appendSummary)
+        : baseDescription;
+
+    const payload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        ownerId: context.actorId,
+        createdBy: context.actorId,
+        title,
+        description,
+        status: getString(body.status) || 'Planning',
+        priority: getString(body.priority) || 'Medium',
+        dueDate: getString(body.dueDate),
+        startDate: getString(body.startDate),
+        assigneeIds: getStringArray(body.assigneeIds),
+        assignedGroupIds: getStringArray(body.assignedGroupIds),
+        originIdeaId: getString(body.originIdeaId),
+        externalKey,
+        successMetric: getString(body.successMetric),
+        outcome: getString(body.outcome),
+        health: getString(body.health),
+        completedAt: body.completedAt,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
+    const createdSnapshot = await created.get();
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Upsert-created initiative "${title}" via external key ${externalKey}`,
+        'Initiatives',
+        created.id,
+        context.actorId,
+        context.actorLabel
+    );
+
+    res.status(201).json({
+        success: true,
+        operation: 'created',
+        initiative: {
+            id: created.id,
+            ...serializeValue(createdSnapshot.data())
         }
     });
 };
@@ -1419,6 +1758,12 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects/:projectId',
     'PATCH /api/projectflow/projects/:projectId',
     'DELETE /api/projectflow/projects/:projectId',
+    'GET /api/projectflow/projects/:projectId/initiatives',
+    'POST /api/projectflow/projects/:projectId/initiatives',
+    'GET /api/projectflow/projects/:projectId/initiatives/:initiativeId',
+    'PATCH /api/projectflow/projects/:projectId/initiatives/:initiativeId',
+    'DELETE /api/projectflow/projects/:projectId/initiatives/:initiativeId',
+    'POST /api/projectflow/projects/:projectId/initiatives/upsert-by-external-key',
     'GET /api/projectflow/projects/:projectId/tasks',
     'POST /api/projectflow/projects/:projectId/tasks',
     'GET /api/projectflow/projects/:projectId/tasks/:taskId',
@@ -1512,6 +1857,17 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
 
         if (segments.length === 4) {
             const resource = segments[3];
+
+            if (resource === INITIATIVES) {
+                if (req.method === 'GET') {
+                    await listInitiatives(req, res, projectId);
+                    return true;
+                }
+                if (req.method === 'POST') {
+                    await createInitiative(req, res, projectId);
+                    return true;
+                }
+            }
 
             if (resource === TASKS) {
                 if (req.method === 'GET') {
@@ -1621,6 +1977,26 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
         if (segments.length === 5) {
             const resource = segments[3];
             const resourceId = segments[4];
+
+            if (resource === INITIATIVES) {
+                if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {
+                    await upsertInitiativeByExternalKey(req, res, projectId);
+                    return true;
+                }
+
+                if (req.method === 'GET') {
+                    await getInitiative(req, res, projectId, resourceId);
+                    return true;
+                }
+                if (req.method === 'PATCH') {
+                    await updateInitiative(req, res, projectId, resourceId);
+                    return true;
+                }
+                if (req.method === 'DELETE') {
+                    await deleteInitiative(req, res, projectId, resourceId);
+                    return true;
+                }
+            }
 
             if (resource === TASKS) {
                 if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {

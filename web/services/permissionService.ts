@@ -140,6 +140,13 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'project.modules.view': { scope: 'project', description: 'View enabled/available modules' },
     'project.modules.enableDisable': { scope: 'project', description: 'Enable/disable project modules', dangerLevel: 'medium' },
 
+    // Project - Initiatives
+    'project.initiatives.view': { scope: 'project', description: 'View initiatives and initiative detail pages' },
+    'project.initiatives.create': { scope: 'project', description: 'Create initiatives' },
+    'project.initiatives.edit': { scope: 'project', description: 'Edit initiatives' },
+    'project.initiatives.delete': { scope: 'project', description: 'Delete initiatives', dangerLevel: 'medium' },
+    'project.initiatives.manageTasks': { scope: 'project', description: 'Attach, detach, and create child tasks within initiatives' },
+
     // Project - Tasks
     'project.tasks.view': { scope: 'project', description: 'View tasks and task lists/boards' },
     'project.tasks.create': { scope: 'project', description: 'Create tasks' },
@@ -169,6 +176,7 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'project.flows.approve': { scope: 'project', description: 'Approve a flow review', dangerLevel: 'medium' },
     'project.flows.reject': { scope: 'project', description: 'Reject a flow review' },
     'project.flows.handoffToTasks': { scope: 'project', description: 'Convert/handoff flow to tasks' },
+    'project.flows.convertToInitiatives': { scope: 'project', description: 'Convert approved flows into initiatives' },
     'project.flows.handoffToSocial': { scope: 'project', description: 'Handoff flow to Social module' },
     'project.flows.handoffToMarketing': { scope: 'project', description: 'Handoff flow to Marketing module' },
 
@@ -593,6 +601,11 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.view',
                 'project.settings.view',
                 'project.members.view',
+                'project.initiatives.view',
+                'project.initiatives.create',
+                'project.initiatives.edit',
+                'project.initiatives.delete',
+                'project.initiatives.manageTasks',
                 'project.tasks.view',
                 'project.tasks.create',
                 'project.tasks.edit',
@@ -603,6 +616,7 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.tasks.manageChecklists',
                 'project.tasks.comment',
                 'project.tasks.attachFiles',
+                'project.flows.convertToInitiatives',
                 'project.issues.view',
                 'project.issues.create',
                 'project.issues.edit',
@@ -617,6 +631,7 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
             return [
                 'project.view',
                 'project.members.view',
+                'project.initiatives.view',
                 'project.tasks.view',
                 'project.tasks.comment',
                 'project.issues.view',

@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     CheckSquare,
+    Rocket,
     Bug,
     Lightbulb,
     Flag,
@@ -23,6 +24,7 @@ export interface ModuleItem {
 
 const MODULES: ModuleItem[] = [
     { id: 'tasks', title: 'Tasks', description: 'Track work items', icon: <CheckSquare size={24} /> },
+    { id: 'initiatives', title: 'Initiatives', description: 'Organize larger work streams', icon: <Rocket size={24} /> },
     { id: 'sprints', title: 'Sprints', description: 'Agile iterations', icon: <Zap size={24} /> },
     { id: 'issues', title: 'Issues', description: 'Bug tracking', icon: <Bug size={24} /> },
     { id: 'flows', title: 'Flows', description: 'Brainstorming', icon: <Lightbulb size={24} /> },

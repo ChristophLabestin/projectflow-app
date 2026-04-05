@@ -28,7 +28,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues } from '../services/dataService';
+import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
 import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { getHealthDelta, getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
@@ -42,6 +42,7 @@ import { subscribeProjectSprints } from '../services/sprintService';
 import {
     Activity,
     Idea,
+    Initiative,
     Project,
     Task,
     Issue,
@@ -88,6 +89,7 @@ import { ProjectReportModal } from '../components/project/ProjectReportModal';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { ProjectMindmap } from '../components/mindmap/ProjectMindmap';
+import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 
 const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
     color: `var(${colorVar})`,
@@ -484,6 +486,7 @@ export const ProjectOverview = () => {
     const { pinItem, unpinItem, isPinned } = usePinnedTasks();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [loading, setLoading] = useState(true);
@@ -510,6 +513,7 @@ export const ProjectOverview = () => {
     const [editModalTab, setEditModalTab] = useState<Tab>('general');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [showFlowModal, setShowFlowModal] = useState(false);
     const [showIssueModal, setShowIssueModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -683,6 +687,8 @@ export const ProjectOverview = () => {
     }, [project?.id]);
 
     useEffect(() => {
+        let cleanup: (() => void) | undefined;
+
         const fetchData = async () => {
             setError(null);
             try {
@@ -740,6 +746,7 @@ export const ProjectOverview = () => {
 
                 // Subscribe to real-time data using the correct tenant
                 const unsubTasks = subscribeProjectTasks(id, setTasks, projData.tenantId);
+                const unsubInitiatives = subscribeProjectInitiatives(id, setInitiatives, projData.tenantId);
                 const unsubGroups = subscribeProjectGroups(id, setProjectGroups, projData.tenantId);
                 const unsubActivity = subscribeProjectActivity(id, setActivity, projData.tenantId);
                 const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
@@ -750,8 +757,9 @@ export const ProjectOverview = () => {
                 // Fetch workspace roles
                 getWorkspaceRoles(projData.tenantId).then(setWorkspaceRoles);
 
-                return () => {
+                cleanup = () => {
                     unsubTasks();
+                    unsubInitiatives();
                     unsubGroups();
                     unsubActivity();
                     unsubIdeas();
@@ -767,6 +775,9 @@ export const ProjectOverview = () => {
             }
         };
         fetchData();
+        return () => {
+            cleanup?.();
+        };
     }, [id]);
 
     useEffect(() => {
@@ -826,9 +837,9 @@ export const ProjectOverview = () => {
 
     // Health tracking: Save snapshot daily and load delta
     useEffect(() => {
-        if (!id || !project?.tenantId || !tasks.length) return;
+        if (!id || !project?.tenantId) return;
 
-        const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
+        const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives);
 
         // Save daily health snapshot (uses date as doc ID so won't duplicate)
         saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
@@ -838,7 +849,7 @@ export const ProjectOverview = () => {
         getHealthDelta(id, health.score, project.tenantId)
             .then(delta => setHealthDelta(delta))
             .catch(err => console.warn('Failed to get health delta:', err));
-    }, [id, project, tasks, milestones, issues, activity]);
+    }, [id, project, tasks, milestones, issues, sprints, activity, initiatives]);
 
     useEffect(() => {
         let mounted = true;
@@ -1276,7 +1287,7 @@ export const ProjectOverview = () => {
 
     if (!project) return <div className="project-overview__not-found">{t('projectOverview.error.notFound')}</div>;
 
-    const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
+    const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives);
 
     // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
@@ -1298,7 +1309,7 @@ export const ProjectOverview = () => {
 
 
     const recentTasks = tasks
-        .filter(t => !t.isCompleted && t.status !== 'Done' && !t.convertedIdeaId)
+        .filter(t => !t.isCompleted && t.status !== 'Done' && !t.legacyInitiativeRoot)
         .sort((a, b) => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
@@ -1310,8 +1321,8 @@ export const ProjectOverview = () => {
         .slice(0, 10);
 
     // Initiatives (strategic tasks converted from ideas)
-    const initiatives = tasks
-        .filter(t => !t.isCompleted && t.status !== 'Done' && t.convertedIdeaId)
+    const activeInitiatives = initiatives
+        .filter(initiative => initiative.status !== 'Done')
         .sort((a, b) => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
@@ -1881,7 +1892,7 @@ export const ProjectOverview = () => {
                     <h2>{t('nav.tasks')}</h2>
                     <div className="header-stats">
                         <span>{t('projectOverview.execution.openTasks').replace('{count}', String(openTasks))}</span>
-                        <span>{t('projectOverview.initiatives.title')} {initiatives.length}</span>
+                        <span>{t('projectOverview.initiatives.title')} {activeInitiatives.length}</span>
                     </div>
                 </div>
                 <div className="execution-grid execution-grid--single">
@@ -2052,21 +2063,35 @@ export const ProjectOverview = () => {
                 </div>
 
                 {/* Initiatives Row */}
-                {initiatives.length > 0 && (
+                {activeInitiatives.length > 0 && (
                     <div className="initiatives-section">
                         <div className="initiatives-header">
                             <h3 className="initiatives-title">
                                 <span className="material-symbols-outlined initiatives-title-icon">rocket_launch</span>
                                 {t('projectOverview.initiatives.title')}
-                                <span className="initiatives-count">({initiatives.length})</span>
+                                <span className="initiatives-count">({activeInitiatives.length})</span>
                             </h3>
-                            <Link to={`/project/${id}/tasks`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
+                            <div className="flex items-center gap-2">
+                                {can('canManageTasks') && (
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => setShowInitiativeModal(true)}
+                                        icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                                    >
+                                        {t('initiatives.create.action')}
+                                    </Button>
+                                )}
+                                <Link to={`/project/${id}/initiatives`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
+                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                </Link>
+                            </div>
                         </div>
                         <div className="initiatives-grid">
-                            {initiatives.map(initiative => {
-                                const { done: doneSub, total: totalSub } = subtaskStats[initiative.id] || { done: 0, total: 0 };
+                            {activeInitiatives.map(initiative => {
+                                const initiativeTasks = tasks.filter((task) => task.initiativeId === initiative.id);
+                                const doneSub = initiativeTasks.filter((task) => task.isCompleted || task.status === 'Done').length;
+                                const totalSub = initiativeTasks.length;
                                 const hasStart = !!initiative.startDate;
                                 const hasDue = !!initiative.dueDate;
 
@@ -2106,7 +2131,7 @@ export const ProjectOverview = () => {
                                 return (
                                     <div
                                         key={initiative.id}
-                                        onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                        onClick={() => navigate(`/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
                                         className={`initiative-card ${statusClass}`}
                                     >
                                         {/* Priority indicator */}
@@ -2171,17 +2196,17 @@ export const ProjectOverview = () => {
                                         )}
 
                                         {/* Subtask progress if available */}
-                                        {subtaskStats[initiative.id]?.total > 0 && (
+                                        {totalSub > 0 && (
                                             <div className="initiative-progress">
                                                 <span className="material-symbols-outlined initiative-progress-icon">checklist</span>
                                                 <div className="initiative-progress-bar">
                                                     <div
                                                         className="initiative-progress-fill"
-                                                        style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
+                                                        style={{ width: `${(doneSub / totalSub) * 100}%` }}
                                                     />
                                                 </div>
                                                 <span className="initiative-progress-text">
-                                                    {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
+                                                    {doneSub}/{totalSub}
                                                 </span>
                                             </div>
                                         )}
@@ -3594,6 +3619,20 @@ export const ProjectOverview = () => {
                                             }}
                                         />
                                     </Suspense>
+                                )
+                            }
+                            {
+                                showInitiativeModal && can('canManageTasks') && (
+                                    <InitiativeCreateModal
+                                        isOpen={showInitiativeModal}
+                                        projectId={id!}
+                                        tenantId={project?.tenantId}
+                                        onClose={() => setShowInitiativeModal(false)}
+                                        onCreated={(initiativeId) => {
+                                            setShowInitiativeModal(false);
+                                            navigate(`/project/${id}/initiatives/${initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
+                                        }}
+                                    />
                                 )
                             }
                             {

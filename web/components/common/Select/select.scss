@@ -29,19 +29,31 @@
         font-size: 0.95rem;
         color: var(--color-text-main);
         cursor: pointer;
-        transition: all var(--transition-fast); // Match text-input
+        transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
         height: 40px; // Match standard input height
 
-        &:hover {
-            background-color: rgba(0, 0, 0, 0.05); // Match text-input darken effect
-            // border-color: var(--color-text-muted); // Removed border hover effect to match input
+        &:hover,
+        &:focus,
+        &[aria-expanded='true'] {
+            background-color: var(--color-surface-hover-light);
         }
 
         &:focus {
             outline: none;
-            background-color: var(--color-surface-card); // Match text-input focus state
             border-color: transparent;
             box-shadow: none;
+        }
+
+        @media (prefers-color-scheme: light) {
+            :root:not(.dark) & {
+                background-color: #f4f4f5;
+
+                &:hover,
+                &:focus,
+                &[aria-expanded='true'] {
+                    background-color: #e4e4e7;
+                }
+            }
         }
 
         /* Placeholder style when nothing selected */

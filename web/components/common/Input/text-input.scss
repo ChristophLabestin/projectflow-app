@@ -41,7 +41,7 @@
     color: var(--color-text-main);
     background-color: var(--color-surface-hover); // Filled background
     border-radius: var(--radius-md);
-    transition: all var(--transition-normal);
+    transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
     border: none !important;
 
     &__right-element {
@@ -74,7 +74,6 @@
     &:hover:not(:disabled),
     .text-input-group:hover &:not(:disabled) {
         background-color: var(--color-surface-hover-light);
-        transform: scale(1.01);
     }
 
     // Light Mode Variant (Distinct "Filled" look)
@@ -100,7 +99,6 @@
         border: none !important;
         box-shadow: none;
         background-color: var(--color-surface-hover-light);
-        transform: scale(1.01);
     }
 
     &--error {

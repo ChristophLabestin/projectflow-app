@@ -209,6 +209,10 @@ service cloud.firestore {
       allow read: if canAccessScopedDoc(resource.data);
     }
 
+    match /{path=**}/initiatives/{initiativeId} {
+      allow read: if canAccessScopedDoc(resource.data);
+    }
+
     match /{path=**}/ideas/{ideaId} {
       allow read: if canAccessScopedDoc(resource.data);
     }

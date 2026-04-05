@@ -54,6 +54,8 @@ export const Notifications = () => {
         let path = '';
         if (notification.taskId && notification.projectId) {
             path = `/project/${notification.projectId}/tasks/${notification.taskId}`;
+        } else if (notification.initiativeId && notification.projectId) {
+            path = `/project/${notification.projectId}/initiatives/${notification.initiativeId}`;
         } else if (notification.issueId && notification.projectId) {
             path = `/project/${notification.projectId}/issues/${notification.issueId}`;
         } else if (notification.projectId) {

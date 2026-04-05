@@ -3,6 +3,7 @@ import { collectionGroup, getDocs, query, updateDoc, where } from 'firebase/fire
 import { format } from 'date-fns';
 import { Milestone } from '../../types';
 import { createMilestone, updateMilestone } from '../../services/dataService';
+import { ensureProjectInitiativesMigrated } from '../../services/domain/initiativesService';
 import { db } from '../../services/firebase';
 import { Modal } from '../common/Modal/Modal';
 import { Button } from '../common/Button/Button';
@@ -54,10 +55,21 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 const tasksSnap = await getDocs(qTasks);
                 setAvailableTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data(), ref: d.ref })));
 
-                const ideasRef = collectionGroup(db, 'ideas');
-                const qIdeas = query(ideasRef, where('projectId', '==', projectId));
-                const ideasSnap = await getDocs(qIdeas);
-                setAvailableInitiatives(ideasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                await ensureProjectInitiativesMigrated(projectId).catch(console.error);
+
+                const initiativesRef = collectionGroup(db, 'initiatives');
+                const qInitiatives = query(initiativesRef, where('projectId', '==', projectId));
+                const initiativesSnap = await getDocs(qInitiatives);
+                const nextInitiatives = initiativesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                if (nextInitiatives.length > 0) {
+                    setAvailableInitiatives(nextInitiatives);
+                } else {
+                    const ideasRef = collectionGroup(db, 'ideas');
+                    const qIdeas = query(ideasRef, where('projectId', '==', projectId));
+                    const ideasSnap = await getDocs(qIdeas);
+                    setAvailableInitiatives(ideasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                }
             } catch (e) {
                 console.error('Error fetching dependencies', e);
             }

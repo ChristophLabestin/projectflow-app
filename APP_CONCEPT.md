@@ -415,6 +415,14 @@ No feature is allowed to implement its own standalone upload picker. Any place w
 - Generated images are saved into the tenant media library.
 - Requires AI permissions and respects included quota + overage rules.
 
+## Initiative V2
+
+- Initiatives are now first-class project resources stored under `tenants/{tenantId}/projects/{projectId}/initiatives/{initiativeId}`.
+- An initiative is a mini-project inside a project: it owns outcome context, success metrics, health, dates, and aggregate progress.
+- Regular tasks remain the execution unit and can belong to an initiative through `task.initiativeId`.
+- Flow conversion should create an initiative first and preserve the originating idea reference as `originIdeaId`.
+- Milestones should link to initiative ids directly, with temporary fallback support for legacy idea-linked records during migration.
+
 4) **Free stock images (Unsplash)**
 - Provides a tab to search and select stock images from **Unsplash**.
 - Selected images are imported into the tenant media library (including attribution metadata where required).

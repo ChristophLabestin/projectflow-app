@@ -3,12 +3,13 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useUIState } from '../context/UIContext';
-import { Project, Task, Issue, Milestone, Activity } from '../types';
+import { Project, Task, Issue, Milestone, Activity, Initiative } from '../types';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { subscribeProjectIssues } from '../services/domain/issuesService';
+import { subscribeProjectInitiatives } from '../services/domain/initiativesService';
 import { subscribeProjectMilestones } from '../services/domain/projectMetaService';
 import { subscribeProjectActivity } from '../services/domain/activityService';
 
@@ -25,6 +26,7 @@ export const PinnedProjectPill = () => {
     // Data for Health Calc
     const [tasks, setTasks] = useState<Task[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [activity, setActivity] = useState<Activity[]>([]);
     const [health, setHealth] = useState<ProjectHealth | null>(null);
@@ -72,18 +74,25 @@ export const PinnedProjectPill = () => {
     // Subscribe to project data for health calculation
     useEffect(() => {
         if (!pinnedProject) {
+            setTasks([]);
+            setIssues([]);
+            setInitiatives([]);
+            setMilestones([]);
+            setActivity([]);
             setHealth(null);
             return;
         }
 
         const unsubTasks = subscribeProjectTasks(pinnedProject.id, setTasks, pinnedProject.tenantId);
         const unsubIssues = subscribeProjectIssues(pinnedProject.id, setIssues, pinnedProject.tenantId);
+        const unsubInitiatives = subscribeProjectInitiatives(pinnedProject.id, setInitiatives, pinnedProject.tenantId);
         const unsubMilestones = subscribeProjectMilestones(pinnedProject.id, setMilestones, pinnedProject.tenantId);
         const unsubActivity = subscribeProjectActivity(pinnedProject.id, setActivity, pinnedProject.tenantId);
 
         return () => {
             unsubTasks();
             unsubIssues();
+            unsubInitiatives();
             unsubMilestones();
             unsubActivity();
         };
@@ -92,9 +101,9 @@ export const PinnedProjectPill = () => {
     // Recalculate health when data changes
     useEffect(() => {
         if (!pinnedProject) return;
-        const h = calculateProjectHealth(pinnedProject, tasks, milestones, issues, activity);
+        const h = calculateProjectHealth(pinnedProject, tasks, milestones, issues, [], activity, [], initiatives);
         setHealth(h);
-    }, [pinnedProject, tasks, issues, milestones, activity]);
+    }, [pinnedProject, tasks, issues, initiatives, milestones, activity]);
 
     if (isLoading || !pinnedProject) return null;
 

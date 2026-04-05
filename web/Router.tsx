@@ -38,6 +38,9 @@ const ProjectTasks = React.lazy(() => import('./screens/ProjectTasks').then((mod
 const ProjectSprints = React.lazy(() => import('./screens/ProjectSprints').then((module) => ({ default: module.ProjectSprints })));
 const ProjectDetails = React.lazy(() => import('./screens/ProjectDetails').then((module) => ({ default: module.ProjectDetails })));
 const ProjectTaskDetail = React.lazy(() => import('./screens/ProjectTaskDetail').then((module) => ({ default: module.ProjectTaskDetail })));
+const ProjectInitiatives = React.lazy(() => import('./screens/ProjectInitiatives').then((module) => ({ default: module.ProjectInitiatives })));
+const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitiativeDetail').then((module) => ({ default: module.ProjectInitiativeDetail })));
+const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
 const ProjectIssueDetail = React.lazy(() => import('./screens/ProjectIssueDetail').then((module) => ({ default: module.ProjectIssueDetail })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectFlows = React.lazy(() => import('./screens/ProjectFlows').then((module) => ({ default: module.ProjectFlows })));
@@ -137,7 +140,7 @@ const withRouteSuspense = (children: React.ReactNode) => (
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action|\/legal)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
 
     return (
         <>
@@ -197,6 +200,7 @@ export const AppRouter = () => {
                     <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
                     <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
                     <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
+                    <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
 
                     <Route
                         path="/ui"
@@ -230,6 +234,8 @@ export const AppRouter = () => {
                             <Route index element={withRouteSuspense(<ProjectOverview />)} />
                             <Route path="tasks" element={withRouteSuspense(<ProjectTasks />)} />
                             <Route path="tasks/:taskId" element={withRouteSuspense(<ProjectTaskDetail />)} />
+                            <Route path="initiatives" element={withRouteSuspense(<ProjectInitiatives />)} />
+                            <Route path="initiatives/:initiativeId" element={withRouteSuspense(<ProjectInitiativeDetail />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
                             <Route path="flows" element={withRouteSuspense(<ProjectFlows />)} />

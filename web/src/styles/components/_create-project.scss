@@ -211,7 +211,7 @@
 
     &:focus-within {
         background: var(--color-surface-card);
-        border-color: var(--color-surface-border-hover); // Subtle border on focus
+        border-color: transparent;
         box-shadow: var(--shadow-sm);
     }
 }

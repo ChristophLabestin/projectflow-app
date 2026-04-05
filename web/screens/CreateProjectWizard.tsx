@@ -47,6 +47,7 @@ type ModuleOption = {
 
 const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
+    { id: 'initiatives', labelKey: 'createProjectWizard.modules.initiatives.label', descKey: 'createProjectWizard.modules.initiatives.desc', icon: 'rocket_launch' },
     { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
     { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
     { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
@@ -77,7 +78,7 @@ export const CreateProjectWizard = () => {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [projectType, setProjectType] = useState<'standard' | 'software' | 'creative'>('standard');
-    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'ideas', 'activity']);
+    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
@@ -148,9 +149,9 @@ export const CreateProjectWizard = () => {
     useEffect(() => {
         if (creationMode === 'scratch') {
             const defaults: Record<string, ProjectModule[]> = {
-                standard: ['tasks', 'ideas', 'milestones', 'activity'],
-                software: ['tasks', 'issues', 'activity'],
-                creative: ['ideas', 'tasks', 'activity']
+                standard: ['tasks', 'initiatives', 'ideas', 'milestones', 'activity'],
+                software: ['tasks', 'initiatives', 'issues', 'activity'],
+                creative: ['ideas', 'initiatives', 'tasks', 'activity']
             };
             setModules(defaults[projectType] || defaults.standard);
         }
@@ -195,7 +196,7 @@ export const CreateProjectWizard = () => {
             setBlueprint(result);
             setName(result.title);
             setDescription(result.description);
-            setModules(['tasks', 'milestones', 'activity', 'ideas']);
+            setModules(['tasks', 'initiatives', 'milestones', 'activity', 'ideas']);
             handleNext();
         } catch (e) {
             console.error(e);

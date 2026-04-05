@@ -32,7 +32,7 @@ const timeAgo = (date: any) => {
 interface CommentSectionProps {
     projectId: string;
     targetId: string;
-    targetType: 'task' | 'issue' | 'idea';
+    targetType: 'task' | 'issue' | 'idea' | 'initiative';
     targetTitle?: string; // Descriptive title for notifications
     tenantId?: string;
     isProjectOwner?: boolean;

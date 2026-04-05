@@ -6,11 +6,12 @@ import { getAllWorkspaceProjects } from '../services/dataService';
 import { getUserGlobalActivities } from '../services/domain/activityService';
 import { ensureActiveTenantId } from '../services/domain/authService';
 import { getUserIdeas } from '../services/domain/ideasService';
+import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getUserIssues } from '../services/domain/issuesService';
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProfile, updateUserData } from '../services/domain/usersService';
-import { Project, Task, Idea, Issue, Activity, Member } from '../types';
+import { Project, Task, Idea, Issue, Activity, Member, Initiative } from '../types';
 import { toMillis, toDate } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -120,6 +121,7 @@ export const Dashboard = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [recentProjects, setRecentProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [activities, setActivities] = useState<Activity[]>([]);
@@ -324,6 +326,7 @@ export const Dashboard = () => {
             setProjects([]);
             setRecentProjects([]);
             setTasks([]);
+            setInitiatives([]);
             setIdeas([]);
             setIssues([]);
             setActivities([]);
@@ -361,14 +364,16 @@ export const Dashboard = () => {
 
                 setProjects(allProjects);
 
-                const [tasks, ideas, issues, recentActivities] = await Promise.all([
+                const [tasks, initiatives, ideas, issues, recentActivities] = await Promise.all([
                     getUserTasks().catch(() => []),
+                    getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
                     getUserIdeas().catch(() => []),
                     getUserIssues().catch(() => []),
                     getUserGlobalActivities(resolvedTenantId || authUserId, 6).catch(() => [])
                 ]);
 
                 setTasks(tasks);
+                setInitiatives(initiatives);
                 setIdeas(ideas);
                 setIssues(issues);
                 setActivities(recentActivities);
@@ -511,6 +516,15 @@ export const Dashboard = () => {
         return map;
     }, [issues]);
 
+    const initiativesByProject = useMemo(() => {
+        const map: Record<string, Initiative[]> = {};
+        initiatives.forEach((initiative) => {
+            if (!map[initiative.projectId]) map[initiative.projectId] = [];
+            map[initiative.projectId].push(initiative);
+        });
+        return map;
+    }, [initiatives]);
+
     const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
         projects.forEach(project => {
@@ -518,11 +532,15 @@ export const Dashboard = () => {
                 project,
                 tasksByProject[project.id] || [],
                 [], // Milestones not available in dashboard view currently
-                issuesByProject[project.id] || []
+                issuesByProject[project.id] || [],
+                [],
+                [],
+                [],
+                initiativesByProject[project.id] || []
             );
         });
         return healthMap;
-    }, [projects, tasksByProject, issuesByProject]);
+    }, [projects, tasksByProject, issuesByProject, initiativesByProject]);
 
     const projectsAtRisk = useMemo(() => {
         return projects

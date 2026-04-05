@@ -1,4 +1,4 @@
-﻿// TASK MODAL STYLES
+// TASK MODAL STYLES
 
 .task-modal.modal-overlay {
     position: fixed;
@@ -37,6 +37,11 @@
     &.max-w-2xl {
         max-width: 42rem;
     }
+}
+
+.initiative-modal__content {
+    max-width: 44rem !important;
+    padding: 0;
 }
 
 // Task Create Modal Specifics
@@ -520,6 +525,91 @@
             }
         }
     }
+}
+
+.initiative-create .title-input-section {
+    padding-bottom: 1rem;
+}
+
+.initiative-create .description-section {
+    padding-top: 0;
+}
+
+.initiative-create .task-create__description-input .text-area {
+    min-height: 8.5rem;
+}
+
+.initiative-create__toolbar-row,
+.initiative-create .fields-grid {
+    padding: 0 1.5rem 1rem;
+}
+
+.initiative-create__toolbar-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    padding-top: 0.5rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.initiative-create .fields-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.initiative-create .task-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.initiative-create .section-label {
+    color: var(--color-text-subtle);
+}
+
+.initiative-create__footer {
+    border-top: 1px solid var(--color-surface-border);
+    justify-content: flex-end;
+}
+
+.initiative-settings__header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.initiative-settings__eyebrow {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+}
+
+.initiative-settings__toolbar-row {
+    padding: 0 1.5rem 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+
+    @media (max-width: 900px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.initiative-settings__content-grid {
+    padding: 0 1.5rem 1rem;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
 }
 
 // Edit Task Modal Specifics

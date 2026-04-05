@@ -23,6 +23,7 @@ These routes must remain accessible without being logged in.
 - [x] `/invite-project/:projectId` — Project invite landing (SCSS + i18n pass)
 - [x] `/join/:inviteLinkId` — Join project via invite link (SCSS + i18n pass)
 - [x] `/join-workspace/:inviteLinkId` — Join workspace via invite link (SCSS + i18n pass)
+- [x] `/feedback/initiative/:token` — Public initiative feedback form that creates linked initiative tasks from customer submissions
 - [x] `/ui` — Component Style Guide (Dev only)
 
 ---
@@ -80,7 +81,12 @@ Base:
 ### 3.2 Project Tasks
 
 - [x] `/project/:id/tasks` — Project tasks list/board (SCSS refactor, common controls + badges, tooltip + timeline alignment)
-- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n)
+- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n, initiative badge + legacy initiative redirect)
+
+### 3.2.1 Project Initiatives
+
+- [x] `/project/:id/initiatives` — Initiative list with direct create CTA, status filters, and search
+- [x] `/project/:id/initiatives/:initiativeId` — Initiative detail page with summary, child tasks, milestones, comments, and activity
 
 ### 3.3 Flows & Ideas
 
@@ -185,6 +191,9 @@ These are outside the Social module shell in the old routing.
 - [ ] web/components/modals/TwoFactorChallengeModal.tsx - 2FA challenge modal
 - [ ] web/components/modals/TwoFactorSetupModal.tsx - 2FA setup modal
 - [ ] web/components/flows/InitiativeConversionModal.tsx - Initiative conversion modal
+- [x] web/components/InitiativeCreateModal.tsx - Initiative create modal
+- [x] web/screens/ProjectInitiatives.tsx - Initiative list page
+- [x] web/screens/ProjectInitiativeDetail.tsx - Initiative detail page
 - [ ] web/components/ui/Modal.tsx - Legacy modal base
 - [ ] web/components/ui/GlobalConfirmationModal.tsx - Legacy global confirmation
 - [x] web/components/common/Modal/Modal.tsx - Common modal base (SCSS)

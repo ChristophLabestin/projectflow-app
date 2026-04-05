@@ -21,15 +21,16 @@ type Props = {
     tenantId?: string;
     onClose: () => void;
     onCreated?: (tasks: Task[], categories: TaskCategory[]) => void;
+    initialTaskFields?: Partial<Pick<Task, 'initiativeId' | 'priority' | 'status' | 'description' | 'dueDate'>>;
 };
 
-export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose, onCreated }) => {
+export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose, onCreated, initialTaskFields }) => {
     const [title, setTitle] = useState('');
-    const [priority, setPriority] = useState<Task['priority']>('Medium');
-    const [description, setDescription] = useState('');
-    const [dueDate, setDueDate] = useState<Date | null>(null);
+    const [priority, setPriority] = useState<Task['priority']>(initialTaskFields?.priority || 'Medium');
+    const [description, setDescription] = useState(initialTaskFields?.description || '');
+    const [dueDate, setDueDate] = useState<Date | null>(initialTaskFields?.dueDate ? new Date(initialTaskFields.dueDate) : null);
     const [selectedCategories, setSelectedCategories] = useState<IdeaGroup[]>([]);
-    const [status, setStatus] = useState<TaskStatus>('Open');
+    const [status, setStatus] = useState<TaskStatus>(initialTaskFields?.status || 'Open');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
     const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
@@ -118,6 +119,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                 description,
                 category: categoriesToSave.length ? categoriesToSave : undefined,
                 status,
+                initiativeId: initialTaskFields?.initiativeId,
                 assigneeIds,
                 assignedGroupIds
             }, tenantId);

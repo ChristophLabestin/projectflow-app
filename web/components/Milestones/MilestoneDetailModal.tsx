@@ -14,7 +14,7 @@ interface MilestoneDetailModalProps {
     onEdit: (milestone: Milestone) => void;
     taskStatusLookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }>;
     subtaskLookup: Record<string, { total: number; completed: number }>;
-    ideaLookup: Record<string, string>;
+    initiativeLookup: Record<string, string>;
 }
 
 export const MilestoneDetailModal = ({
@@ -24,7 +24,7 @@ export const MilestoneDetailModal = ({
     onEdit,
     taskStatusLookup,
     subtaskLookup,
-    ideaLookup
+    initiativeLookup
 }: MilestoneDetailModalProps) => {
     type RiskLevel = 'Low' | 'Medium' | 'High';
     const { dateLocale, dateFormat, t } = useLanguage();
@@ -167,7 +167,7 @@ export const MilestoneDetailModal = ({
                             <div className="milestone-detail__summary-value">
                                 <span className="material-symbols-outlined">rocket_launch</span>
                                 <span>
-                                    {ideaLookup[milestone.linkedInitiativeId] || t('projectMilestones.detail.initiativeUnknown')}
+                                    {initiativeLookup[milestone.linkedInitiativeId] || t('projectMilestones.detail.initiativeUnknown')}
                                 </span>
                             </div>
                         ) : (

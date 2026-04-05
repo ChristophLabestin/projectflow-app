@@ -24,6 +24,7 @@ import { TaskStrategicContext } from '../components/tasks/TaskStrategicContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
+import { getInitiativeById } from '../services/dataService';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -75,6 +76,7 @@ export const ProjectTaskDetail = () => {
     const [task, setTask] = useState<Task | null>(null);
     const [subTasks, setSubTasks] = useState<SubTask[]>([]);
     const [idea, setIdea] = useState<any | null>(null); // Store original idea
+    const [initiative, setInitiative] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
     const [newSubTitle, setNewSubTitle] = useState('');
@@ -193,11 +195,20 @@ export const ProjectTaskDetail = () => {
                 const projectTasks = await getProjectTasks(id, tenantId);
                 t = projectTasks.find((task) => task.id === taskId) || null;
             }
+            if (t?.legacyInitiativeRoot && t.initiativeId && id) {
+                navigate(`/project/${id}/initiatives/${t.initiativeId}${tenantId ? `?tenant=${tenantId}` : ''}`, { replace: true });
+                return;
+            }
             setTask(t);
 
             // Fetch linked idea if it exists
             if (t?.convertedIdeaId && id) {
                 getIdeaById(t.convertedIdeaId, id).then(setIdea).catch(e => console.error("Failed to load strategic flow", e));
+            }
+            if (t?.initiativeId && id) {
+                getInitiativeById(t.initiativeId, id, tenantId).then(setInitiative).catch(e => console.error('Failed to load initiative', e));
+            } else {
+                setInitiative(null);
             }
 
             const subs = await getSubTasks(taskId, id, tenantId);
@@ -221,7 +232,7 @@ export const ProjectTaskDetail = () => {
 
     useEffect(() => {
         loadData();
-    }, [taskId, id]);
+    }, [taskId, id, tenantId, navigate]);
 
     useEffect(() => {
         if (!statusMenuOpen && !priorityMenuOpen && !effortMenuOpen) return;
@@ -458,31 +469,22 @@ export const ProjectTaskDetail = () => {
 
     const currentStatus = task?.status || 'Open';
     const currentStatusLabel = statusLabels[currentStatus as keyof typeof statusLabels] || t('tasks.status.unknown');
-    const taskWorkbenchCards = [
+    const taskHeroFacts = [
         {
-            label: t('taskDetail.workbench.execution'),
-            value: currentStatusLabel,
-            meta: task.isCompleted ? t('taskDetail.workbench.executionDone') : t('taskDetail.workbench.executionActive')
+            label: task.startDate && task.dueDate ? t('taskDetail.timeline.label') : t('taskDetail.timeline.dueDate'),
+            value: task.startDate ? (
+                `${format(new Date(task.startDate), dateFormat, { locale: dateLocale })} - ${task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : '...'}`
+            ) : (
+                task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : t('taskDetail.timeline.noDueDate')
+            )
         },
+        ...(totalCount > 0 ? [{
+            label: t('taskDetail.subtasks.label'),
+            value: `${doneCount}/${totalCount} · ${progressPct}%`
+        }] : []),
         {
-            label: t('taskDetail.workbench.progress'),
-            value: totalCount > 0 ? `${doneCount}/${totalCount}` : t('taskDetail.workbench.progressZero'),
-            meta: totalCount > 0
-                ? t('taskDetail.workbench.progressMeta').replace('{percent}', String(progressPct))
-                : t('taskDetail.workbench.progressEmpty')
-        },
-        {
-            label: t('taskDetail.workbench.nextStep'),
-            value: task.linkedIssueId
-                ? t('taskDetail.workbench.linkedIssue')
-                : task.dueDate
-                    ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale })
-                    : t('taskDetail.workbench.unscheduled'),
-            meta: task.linkedIssueId
-                ? t('taskDetail.workbench.followIssue')
-                : task.startDate
-                    ? t('taskDetail.workbench.windowDefined')
-                    : t('taskDetail.workbench.scheduleFollowUp')
+            label: t('taskDetail.assignees.label'),
+            value: taskAssignees.length > 0 ? String(taskAssignees.length) : t('assignees.unassigned')
         }
     ];
 
@@ -578,6 +580,15 @@ export const ProjectTaskDetail = () => {
                                         {t('taskDetail.badges.strategic')}
                                     </span>
                                 )}
+                                {initiative && (
+                                    <Link
+                                        to={`/project/${id}/initiatives/${initiative.id}${tenantId ? `?tenant=${tenantId}` : ''}`}
+                                        className="task-detail__strategic-pill"
+                                    >
+                                        <span className="material-symbols-outlined task-detail__strategic-icon">rocket_launch</span>
+                                        {t('taskDetail.badges.initiative')}
+                                    </Link>
+                                )}
                             </div>
 
                             <h1 className="task-detail__title">
@@ -586,88 +597,13 @@ export const ProjectTaskDetail = () => {
 
 
 
-                            <div className="task-detail__meta-row">
-                                <div className="task-detail__meta-card">
-                                    <span className="material-symbols-outlined task-detail__meta-icon">calendar_today</span>
-                                    <div className="task-detail__meta-body">
-                                        <span className="task-detail__meta-label">
-                                            {task.startDate && task.dueDate ? t('taskDetail.timeline.label') : t('taskDetail.timeline.dueDate')}
-                                        </span>
-                                        <span className="task-detail__meta-value">
-                                            {task.startDate ? (
-                                                <>
-                                                    {format(new Date(task.startDate), dateFormat, { locale: dateLocale })}
-                                                    {' - '}
-                                                    {task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : '...'}
-                                                </>
-                                            ) : (
-                                                task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : t('taskDetail.timeline.noDueDate')
-                                            )}
-                                        </span>
+                            <div className="task-detail__facts">
+                                {taskHeroFacts.map((fact) => (
+                                    <div key={fact.label} className="task-detail__fact">
+                                        <span className="task-detail__fact-label">{fact.label}</span>
+                                        <span className="task-detail__fact-value">{fact.value}</span>
                                     </div>
-                                </div>
-
-                                {totalCount > 0 && (
-                                    <div className="task-detail__meta-card">
-                                        <div className="task-detail__progress">
-                                            <svg className="task-detail__progress-ring" viewBox="0 0 24 24">
-                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" className="task-detail__progress-track" />
-                                                <circle
-                                                    cx="12"
-                                                    cy="12"
-                                                    r="10"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    strokeWidth="2.5"
-                                                    strokeDasharray={2 * Math.PI * 10}
-                                                    strokeDashoffset={2 * Math.PI * 10 * (1 - progressPct / 100)}
-                                                    strokeLinecap="round"
-                                                    className="task-detail__progress-value"
-                                                />
-                                            </svg>
-                                            <span className="task-detail__progress-label">{Math.round(progressPct)}%</span>
-                                        </div>
-                                        <div className="task-detail__meta-body">
-                                            <span className="task-detail__meta-label">{t('taskDetail.subtasks.label')}</span>
-                                            <span className="task-detail__meta-value">{doneCount}/{totalCount}</span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {task.scheduledDate && (
-                                    <div className="task-detail__meta-card">
-                                        <span className="material-symbols-outlined task-detail__meta-icon">event_available</span>
-                                        <div className="task-detail__meta-body">
-                                            <span className="task-detail__meta-label">{t('taskDetail.timeline.smartScheduled')}</span>
-                                            <span className="task-detail__meta-value">
-                                                {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="task-detail__assignees">
-                                    <span className="task-detail__assignees-divider" />
-                                    <div className="task-detail__assignee-stack">
-                                        {(task.assigneeIds || [task.assigneeId]).filter(id => id).map((uid, i) => {
-                                            const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
-                                            return (
-                                                <img
-                                                    key={uid + i}
-                                                    src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                    alt=""
-                                                    className="task-detail__assignee"
-                                                    title={user?.displayName || t('taskDetail.assignees.fallback')}
-                                                />
-                                            );
-                                        })}
-                                        {(!task.assigneeIds && !task.assigneeId) && (
-                                            <div className="task-detail__assignee task-detail__assignee--placeholder">
-                                                <span className="material-symbols-outlined">person</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
@@ -749,56 +685,6 @@ export const ProjectTaskDetail = () => {
                         </div>
                     </div>
 
-                    {/* Timeline Bar (Visual) */}
-                    {task.startDate && task.dueDate && (
-                        <div className="task-detail__timeline">
-                            <div className="task-detail__timeline-labels">
-                                <span>{format(new Date(task.startDate), dateFormat, { locale: dateLocale })}</span>
-                                <span>{format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}</span>
-                            </div>
-                            <div className="task-detail__timeline-track">
-                                {/* Visual calculation for progress based on today vs start/end */}
-                                {(() => {
-                                    const start = new Date(task.startDate).getTime();
-                                    const end = new Date(task.dueDate).getTime();
-                                    const now = new Date().getTime();
-                                    const total = end - start;
-                                    const elapsed = now - start;
-                                    const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return (
-                                        <div
-                                            className="task-detail__timeline-progress"
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    );
-                                })()}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="task-detail__workbench">
-                        {taskWorkbenchCards.map((card) => (
-                            <div key={card.label} className="task-detail__workbench-card">
-                                <span className="task-detail__workbench-label">{card.label}</span>
-                                <span className="task-detail__workbench-value">{card.value}</span>
-                                <span className="task-detail__workbench-meta">{card.meta}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="task-detail__workbench-actions">
-                        <Link to={`/project/${id}/tasks`} className="task-detail__workbench-link">
-                            {t('taskDetail.workbench.actions.board')}
-                        </Link>
-                        <Link to={`/project/${id}`} className="task-detail__workbench-link">
-                            {t('taskDetail.workbench.actions.workspace')}
-                        </Link>
-                        {task.linkedIssueId && (
-                            <Link to={`/project/${id}/issues/${task.linkedIssueId}`} className="task-detail__workbench-link">
-                                {t('taskDetail.workbench.actions.issue')}
-                            </Link>
-                        )}
-                    </div>
                 </div>
             </header>
 
@@ -1439,6 +1325,25 @@ export const ProjectTaskDetail = () => {
                                         <div className="task-detail__detail-link-body">
                                             <span className="task-detail__detail-link-title">{t('taskDetail.details.origin.label')}</span>
                                             <span className="task-detail__detail-link-subtitle">{t('taskDetail.details.origin.action')}</span>
+                                        </div>
+                                        <span className="material-symbols-outlined task-detail__detail-link-arrow">arrow_forward</span>
+                                    </Link>
+                                </div>
+                            )}
+
+                            {initiative && (
+                                <div className="task-detail__detail-section">
+                                    <span className="task-detail__detail-label">{t('taskDetail.details.initiative')}</span>
+                                    <Link
+                                        to={`/project/${id}/initiatives/${initiative.id}${tenantId ? `?tenant=${tenantId}` : ''}`}
+                                        className="task-detail__detail-link"
+                                    >
+                                        <div className="task-detail__detail-link-icon">
+                                            <span className="material-symbols-outlined">rocket_launch</span>
+                                        </div>
+                                        <div className="task-detail__detail-link-body">
+                                            <span className="task-detail__detail-link-title">{initiative.title}</span>
+                                            <span className="task-detail__detail-link-subtitle">{t('taskDetail.details.initiativeAction')}</span>
                                         </div>
                                         <span className="material-symbols-outlined task-detail__detail-link-arrow">arrow_forward</span>
                                     </Link>

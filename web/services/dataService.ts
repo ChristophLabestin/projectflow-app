@@ -29,7 +29,7 @@ import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl } from './fileStorageService';
-import type { Task, Idea, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
+import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -51,6 +51,7 @@ import {
     ensureCategory,
     ensureTenantAndUser,
     findIdeaDoc,
+    findInitiativeDoc,
     findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
@@ -70,6 +71,7 @@ export {
     ensureCategory,
     ensureTenantAndUser,
     findIdeaDoc,
+    findInitiativeDoc,
     findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
@@ -1510,13 +1512,94 @@ export const getProjectCategories = async (projectId: string, tenantId?: string)
     return getProjectCategoriesDomain(projectId, tenantId);
 };
 
+export const createInitiative = async (
+    projectId: string,
+    title: string,
+    payload?: Partial<Initiative>,
+    tenantId?: string
+) => {
+    const { createInitiative: createInitiativeDomain } = await import('./domain/initiativesService');
+    return createInitiativeDomain(projectId, title, payload, tenantId);
+};
+
+export const getInitiativeById = async (
+    initiativeId: string,
+    projectId?: string,
+    tenantId?: string
+): Promise<Initiative | null> => {
+    const { getInitiativeById: getInitiativeByIdDomain } = await import('./domain/initiativesService');
+    return getInitiativeByIdDomain(initiativeId, projectId, tenantId);
+};
+
+export const getProjectInitiatives = async (
+    projectId: string,
+    tenantId?: string
+): Promise<Initiative[]> => {
+    const { getProjectInitiatives: getProjectInitiativesDomain } = await import('./domain/initiativesService');
+    return getProjectInitiativesDomain(projectId, tenantId);
+};
+
+export const updateInitiative = async (
+    initiativeId: string,
+    updates: Partial<Initiative>,
+    projectId?: string,
+    tenantId?: string
+) => {
+    const { updateInitiative: updateInitiativeDomain } = await import('./domain/initiativesService');
+    return updateInitiativeDomain(initiativeId, updates, projectId, tenantId);
+};
+
+export const deleteInitiative = async (
+    initiativeId: string,
+    projectId?: string,
+    tenantId?: string
+) => {
+    const { deleteInitiative: deleteInitiativeDomain } = await import('./domain/initiativesService');
+    return deleteInitiativeDomain(initiativeId, projectId, tenantId);
+};
+
+export const getInitiativeTasks = async (
+    projectId: string,
+    initiativeId: string,
+    tenantId?: string
+): Promise<Task[]> => {
+    const { getInitiativeTasks: getInitiativeTasksDomain } = await import('./domain/initiativesService');
+    return getInitiativeTasksDomain(projectId, initiativeId, tenantId);
+};
+
+export const updateTaskInitiative = async (
+    taskId: string,
+    initiativeId: string | null,
+    projectId?: string,
+    tenantId?: string
+) => {
+    const { updateTaskInitiative: updateTaskInitiativeDomain } = await import('./domain/initiativesService');
+    return updateTaskInitiativeDomain(taskId, initiativeId, projectId, tenantId);
+};
+
+export const createInitiativeTask = async (
+    projectId: string,
+    initiativeId: string,
+    title: string,
+    options?: Partial<Task> & { dueDate?: string },
+    tenantId?: string
+) => {
+    const { createInitiativeTask: createInitiativeTaskDomain } = await import('./domain/initiativesService');
+    return createInitiativeTaskDomain(projectId, initiativeId, title, options, tenantId);
+};
+
+export const ensureProjectInitiativesMigrated = async (projectId: string, tenantId?: string) => {
+    const { ensureProjectInitiativesMigrated: ensureProjectInitiativesMigratedDomain } = await import('./domain/initiativesService');
+    return ensureProjectInitiativesMigratedDomain(projectId, tenantId);
+};
+
 export const addTask = async (
     projectId: string,
     title: string,
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = "Medium",
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'startDate'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
     tenantId?: string
 ) => {
     const { addTask: addTaskDomain } = await import('./domain/tasksService');
@@ -1861,6 +1944,57 @@ export const subscribeProjectTasks = (
     };
 };
 
+export const subscribeProjectInitiatives = (
+    projectId: string,
+    callback: (initiatives: Initiative[]) => void,
+    tenantId?: string
+) => {
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    import('./domain/initiativesService')
+        .then(({ subscribeProjectInitiatives: subscribeProjectInitiativesDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeProjectInitiativesDomain(projectId, callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe project initiatives', error);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
+};
+
+export const subscribeInitiativeTasks = (
+    projectId: string,
+    initiativeId: string,
+    callback: (tasks: Task[]) => void,
+    tenantId?: string
+) => {
+    let unsubscribe: Unsubscribe = () => undefined;
+    let isCancelled = false;
+
+    import('./domain/initiativesService')
+        .then(({ subscribeInitiativeTasks: subscribeInitiativeTasksDomain }) => {
+            if (isCancelled) {
+                return;
+            }
+            unsubscribe = subscribeInitiativeTasksDomain(projectId, initiativeId, callback, tenantId);
+        })
+        .catch((error) => {
+            console.error('Failed to subscribe initiative tasks', error);
+        });
+
+    return () => {
+        isCancelled = true;
+        unsubscribe();
+    };
+};
+
 
 // --- Presence ---
 
@@ -2112,7 +2246,7 @@ export const subscribeTenantUsers = (
 export const addComment = async (
     projectId: string,
     targetId: string,
-    targetType: 'task' | 'issue' | 'idea',
+    targetType: 'task' | 'issue' | 'idea' | 'initiative',
     content: string,
     tenantId?: string
 ) => {
@@ -2195,6 +2329,13 @@ export const addComment = async (
             const idea = ideaSnap.data() as Idea;
             targetTitle = idea.title;
             ownerId = idea.ownerId || '';
+        }
+    } else if (targetType === 'initiative') {
+        const initiativeSnap = await findInitiativeDoc(targetId, projectId, resolvedTenant);
+        if (initiativeSnap) {
+            const initiative = initiativeSnap.data() as Initiative;
+            targetTitle = initiative.title;
+            ownerId = initiative.ownerId || '';
         }
     }
 

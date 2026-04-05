@@ -6,7 +6,7 @@ import { Select } from '../components/common/Select/Select';
 import { deleteField } from 'firebase/firestore';
 import { getSocialCampaign, updateCampaign, deleteSocialCampaign } from '../services/domain/socialService';
 import { subscribeToIdea, updateIdea } from '../services/domain/ideasService';
-import { addTask } from '../services/domain/tasksService';
+import { createInitiative } from '../services/domain/initiativesService';
 import { BrainstormView } from '../components/flows/stages/BrainstormView';
 import { RefinementView } from '../components/flows/stages/RefinementView';
 import { ConceptView } from '../components/flows/stages/ConceptView';
@@ -176,20 +176,21 @@ export const FlowDetail = () => {
                 }
             }
 
-            const taskId = await addTask(projectId, idea.title, undefined, dueDate, "Medium", {
+            const initiativeId = await createInitiative(projectId, idea.title, {
                 description: taskDescription,
-                category: idea.type ? [idea.type] : undefined,
-                status: "Backlog",
-                convertedIdeaId: idea.id,
-                startDate: startDate,
+                status: 'Planning',
+                originIdeaId: idea.id,
+                startDate,
+                dueDate,
+                priority: 'Medium'
             });
             await updateIdea(idea.id, {
-                convertedTaskId: taskId,
+                convertedInitiativeId: initiativeId,
                 convertedAt: new Date().toISOString(),
                 stage: 'Implemented'
             }, projectId);
             setHasUnsavedChanges(false);
-            navigate(`/project/${projectId}/tasks/${taskId}`);
+            navigate(`/project/${projectId}/initiatives/${initiativeId}`);
         } catch (e) { console.error(e); }
         finally { setSaving(false); }
     };

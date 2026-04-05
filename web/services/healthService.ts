@@ -1,4 +1,4 @@
-import { Project, Task, Milestone, Issue, Activity, Comment, Sprint } from '../types';
+import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative } from '../types';
 import { toMillis } from '../utils/time';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
@@ -24,8 +24,286 @@ export interface ProjectHealth {
     lastUpdated: number;
 }
 
+export interface InitiativeHealthSummary {
+    score: number;
+    status: NonNullable<Initiative['health']>;
+    factors: HealthFactor[];
+    trend: 'improving' | 'declining' | 'stable';
+    lastUpdated: number;
+}
+
 const DAY = 24 * 60 * 60 * 1000;
 const WEEK = 7 * DAY;
+
+const isTaskDone = (task: Task) => task.isCompleted || task.status === 'Done';
+
+const getDaysUntil = (value?: string) => {
+    if (!value) return null;
+
+    const targetDate = new Date(value);
+    if (Number.isNaN(targetDate.getTime())) {
+        return null;
+    }
+
+    targetDate.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return (targetDate.getTime() - today.getTime()) / DAY;
+};
+
+export const calculateInitiativeHealth = (
+    initiative: Initiative,
+    tasks: Task[] = [],
+    activities: Activity[] = [],
+    milestones: Milestone[] = []
+): InitiativeHealthSummary => {
+    let score = 72;
+    const factors: HealthFactor[] = [];
+    const now = Date.now();
+    const incompleteTasks = tasks.filter((task) => !isTaskDone(task));
+    const completedTasks = tasks.length - incompleteTasks.length;
+    const blockedTasks = incompleteTasks.filter((task) => task.status === 'Blocked').length;
+    const recentCompletions = tasks.filter((task) => {
+        if (!isTaskDone(task)) return false;
+        const completedAt = toMillis(task.completedAt || task.createdAt);
+        return completedAt > 0 && (now - completedAt) < WEEK;
+    }).length;
+
+    const dueDays = getDaysUntil(initiative.dueDate);
+    if (dueDays !== null) {
+        if (dueDays < 0) {
+            const overdueDays = Math.abs(Math.floor(dueDays));
+            const impact = 24 + Math.min(18, overdueDays * 2);
+            score -= impact;
+            factors.push({
+                id: 'initiative_deadline_overdue',
+                label: 'Initiative Deadline Overdue',
+                description: `The initiative is ${overdueDays} day(s) past its target date.`,
+                impact: -impact,
+                type: 'negative',
+                meta: { days: overdueDays }
+            });
+        } else if (dueDays <= 3) {
+            score -= 18;
+            factors.push({
+                id: 'initiative_deadline_imminent',
+                label: 'Initiative Deadline Imminent',
+                description: 'The initiative is due within the next 72 hours.',
+                impact: -18,
+                type: 'negative'
+            });
+        } else if (dueDays <= 14) {
+            score -= 6;
+            factors.push({
+                id: 'initiative_deadline_approaching',
+                label: 'Initiative Deadline Approaching',
+                description: 'The initiative is due within the next two weeks.',
+                impact: -6,
+                type: 'neutral'
+            });
+        }
+    }
+
+    const overdueTasks = incompleteTasks.filter((task) => {
+        const daysUntil = getDaysUntil(task.dueDate);
+        return daysUntil !== null && daysUntil < 0;
+    }).length;
+    const dueSoonTasks = incompleteTasks.filter((task) => {
+        const daysUntil = getDaysUntil(task.dueDate);
+        return daysUntil !== null && daysUntil >= 0 && daysUntil <= 3;
+    }).length;
+
+    if (blockedTasks > 0) {
+        const impact = Math.min(24, blockedTasks * 6);
+        score -= impact;
+        factors.push({
+            id: 'initiative_blocked_tasks',
+            label: 'Blocked Work',
+            description: `${blockedTasks} linked task(s) are blocked.`,
+            impact: -impact,
+            type: 'negative',
+            meta: { count: blockedTasks }
+        });
+    }
+
+    if (overdueTasks > 0) {
+        const impact = Math.min(26, overdueTasks * 7);
+        score -= impact;
+        factors.push({
+            id: 'initiative_overdue_tasks',
+            label: 'Overdue Tasks',
+            description: `${overdueTasks} linked task(s) are overdue.`,
+            impact: -impact,
+            type: 'negative',
+            meta: { count: overdueTasks }
+        });
+    } else if (dueSoonTasks > 0) {
+        const impact = Math.min(12, dueSoonTasks * 4);
+        score -= impact;
+        factors.push({
+            id: 'initiative_due_soon_tasks',
+            label: 'Tasks Due Soon',
+            description: `${dueSoonTasks} linked task(s) are due soon.`,
+            impact: -impact,
+            type: 'neutral',
+            meta: { count: dueSoonTasks }
+        });
+    }
+
+    if (tasks.length > 0) {
+        const progress = (completedTasks / tasks.length) * 100;
+
+        if (progress >= 80 && blockedTasks === 0) {
+            score += 10;
+            factors.push({
+                id: 'initiative_high_progress',
+                label: 'Strong Progress',
+                description: 'Most linked tasks are already completed.',
+                impact: 10,
+                type: 'positive'
+            });
+        } else if (progress >= 40) {
+            score += 4;
+            factors.push({
+                id: 'initiative_progressing',
+                label: 'Visible Progress',
+                description: 'The initiative is moving forward across linked tasks.',
+                impact: 4,
+                type: 'positive'
+            });
+        } else if (tasks.length >= 3 && recentCompletions === 0 && incompleteTasks.length > 0) {
+            score -= 8;
+            factors.push({
+                id: 'initiative_stalled_progress',
+                label: 'Stalled Progress',
+                description: 'Linked work exists but nothing finished recently.',
+                impact: -8,
+                type: 'negative'
+            });
+        }
+    } else if (initiative.status !== 'Planning') {
+        score -= 10;
+        factors.push({
+            id: 'initiative_missing_work',
+            label: 'No Linked Tasks',
+            description: 'The initiative has no linked execution tasks yet.',
+            impact: -10,
+            type: 'neutral'
+        });
+    }
+
+    const missedMilestones = milestones.filter((milestone) => (
+        milestone.status === 'Missed'
+        || (milestone.status === 'Pending' && milestone.dueDate && new Date(milestone.dueDate).getTime() < now)
+    )).length;
+
+    if (missedMilestones > 0) {
+        const impact = Math.min(18, missedMilestones * 9);
+        score -= impact;
+        factors.push({
+            id: 'initiative_missed_milestones',
+            label: 'Milestone Slippage',
+            description: `${missedMilestones} linked milestone(s) are missed or overdue.`,
+            impact: -impact,
+            type: 'negative',
+            meta: { count: missedMilestones }
+        });
+    }
+
+    const lastActivityAt = Math.max(
+        toMillis(initiative.updatedAt || initiative.createdAt),
+        ...tasks.map((task) => toMillis(task.completedAt || task.createdAt)),
+        ...activities.map((activity) => toMillis(activity.createdAt))
+    );
+    const idleDays = lastActivityAt > 0 ? (now - lastActivityAt) / DAY : 999;
+
+    if (initiative.status !== 'Done') {
+        if (idleDays > 14) {
+            score -= 16;
+            factors.push({
+                id: 'initiative_stale',
+                label: 'Stale Initiative',
+                description: `No meaningful progress was recorded for ${Math.floor(idleDays)} days.`,
+                impact: -16,
+                type: 'negative',
+                meta: { days: Math.floor(idleDays) }
+            });
+        } else if (idleDays > 7) {
+            score -= 7;
+            factors.push({
+                id: 'initiative_recently_idle',
+                label: 'Recent Inactivity',
+                description: 'The initiative has been quiet for over a week.',
+                impact: -7,
+                type: 'neutral'
+            });
+        } else if (tasks.length > 0 || activities.length > 0) {
+            score += 3;
+            factors.push({
+                id: 'initiative_active',
+                label: 'Active Initiative',
+                description: 'There has been recent work or activity on this initiative.',
+                impact: 3,
+                type: 'positive'
+            });
+        }
+    }
+
+    if (initiative.status === 'Blocked') {
+        score -= 14;
+        factors.push({
+            id: 'initiative_blocked_status',
+            label: 'Blocked Status',
+            description: 'The initiative itself is marked as blocked.',
+            impact: -14,
+            type: 'negative'
+        });
+    } else if (initiative.status === 'On Hold') {
+        score -= 8;
+        factors.push({
+            id: 'initiative_on_hold_status',
+            label: 'On Hold',
+            description: 'The initiative is paused for now.',
+            impact: -8,
+            type: 'neutral'
+        });
+    } else if (initiative.status === 'Done') {
+        score = Math.max(score, incompleteTasks.length === 0 ? 90 : 62);
+    }
+
+    score = Math.max(0, Math.min(100, Math.round(score)));
+
+    let status: NonNullable<Initiative['health']> = 'On Track';
+    if (score < 40) status = 'Off Track';
+    else if (score < 68) status = 'At Risk';
+
+    if (status === 'On Track' && (blockedTasks > 0 || overdueTasks > 0 || initiative.status === 'Blocked')) {
+        status = 'At Risk';
+    }
+
+    if (status !== 'Off Track' && (
+        (initiative.status === 'Blocked' && blockedTasks > 0)
+        || overdueTasks >= 2
+        || (dueDays !== null && dueDays < 0 && incompleteTasks.length > 0)
+    )) {
+        status = 'Off Track';
+        score = Math.min(score, 38);
+    }
+
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+    if (recentCompletions > 0 && status === 'On Track') trend = 'improving';
+    if (status !== 'On Track' && (blockedTasks > 0 || overdueTasks > 0 || idleDays > 14)) trend = 'declining';
+
+    factors.sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact));
+
+    return {
+        score,
+        status,
+        factors,
+        trend,
+        lastUpdated: now
+    };
+};
 
 export const calculateProjectHealth = (
     project: Project,
@@ -34,7 +312,8 @@ export const calculateProjectHealth = (
     issues: Issue[] = [],
     sprints: Sprint[] = [],
     activities: Activity[] = [],
-    comments: Comment[] = []
+    comments: Comment[] = [],
+    initiatives: Initiative[] = []
 ): ProjectHealth => {
     let score = 70; // Start with a base neutral-positive score
     const factors: HealthFactor[] = [];
@@ -336,7 +615,56 @@ export const calculateProjectHealth = (
         });
     }
 
-    // 5. MILESTONE HEALTH
+    // 5. INITIATIVE HEALTH
+    if (initiatives.length > 0) {
+        const initiativeHealth = initiatives.map((initiative) => {
+            const linkedTasks = tasks.filter((task) => task.initiativeId === initiative.id);
+            const linkedMilestones = milestones.filter((milestone) => (
+                milestone.linkedInitiativeId === initiative.id
+                || (initiative.originIdeaId && milestone.linkedInitiativeId === initiative.originIdeaId)
+            ));
+
+            return calculateInitiativeHealth(initiative, linkedTasks, [], linkedMilestones);
+        });
+
+        const offTrackCount = initiativeHealth.filter((item) => item.status === 'Off Track').length;
+        const atRiskCount = initiativeHealth.filter((item) => item.status === 'At Risk').length;
+        const onTrackCount = initiativeHealth.filter((item) => item.status === 'On Track').length;
+
+        if (offTrackCount > 0 || atRiskCount > 0) {
+            const impact = Math.min(26, (offTrackCount * 12) + (atRiskCount * 5));
+            score -= impact;
+            factors.push({
+                id: 'initiative_health_risk',
+                label: 'Initiatives Under Pressure',
+                description: `${offTrackCount + atRiskCount} initiative(s) need attention.`,
+                impact: -impact,
+                type: 'negative',
+                meta: {
+                    count: offTrackCount + atRiskCount,
+                    offTrack: offTrackCount,
+                    atRisk: atRiskCount
+                }
+            });
+            addRecommendation(
+                'health.recommendations.reviewInitiatives',
+                'Review at-risk initiatives and unblock their linked work before project health slips further.'
+            );
+        } else if (onTrackCount > 0) {
+            const impact = Math.min(8, onTrackCount * 2);
+            score += impact;
+            factors.push({
+                id: 'initiative_health_strength',
+                label: 'Initiatives On Track',
+                description: `${onTrackCount} initiative(s) are progressing well.`,
+                impact,
+                type: 'positive',
+                meta: { count: onTrackCount }
+            });
+        }
+    }
+
+    // 6. MILESTONE HEALTH
     const missedMilestones = milestones.filter(m => m.status === 'Missed' || (m.status === 'Pending' && m.dueDate && new Date(m.dueDate).getTime() < now)).length;
     if (missedMilestones > 0) {
         const impact = Math.min(30, missedMilestones * 12);

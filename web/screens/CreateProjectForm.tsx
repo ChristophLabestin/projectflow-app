@@ -29,7 +29,7 @@ export const CreateProjectForm = () => {
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [status, setStatus] = useState('Planning');
-    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'ideas', 'activity']);
+    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
     const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
 
     // File & Cropping State
@@ -187,9 +187,9 @@ export const CreateProjectForm = () => {
                 <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { id: 'default', title: 'Standard', desc: 'Tasks, Flows & Activity', modules: ['tasks', 'ideas', 'activity'] },
-                            { id: 'software', title: 'Software', desc: 'Tasks, Issues & Activity', modules: ['tasks', 'issues', 'activity'] },
-                            { id: 'creative', title: 'Creative', desc: 'Flows, Tasks & Activity', modules: ['ideas', 'tasks', 'activity'] },
+                            { id: 'default', title: 'Standard', desc: 'Initiatives, Tasks, Flows & Activity', modules: ['tasks', 'initiatives', 'ideas', 'activity'] },
+                            { id: 'software', title: 'Software', desc: 'Initiatives, Tasks, Issues & Activity', modules: ['tasks', 'initiatives', 'issues', 'activity'] },
+                            { id: 'creative', title: 'Creative', desc: 'Flows, Initiatives, Tasks & Activity', modules: ['ideas', 'initiatives', 'tasks', 'activity'] },
                         ].map((tmpl) => (
                             <div
                                 key={tmpl.id}
@@ -227,6 +227,7 @@ export const CreateProjectForm = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[
                                 { id: 'tasks', label: 'Tasks', desc: 'Manage todos and milestones' },
+                                { id: 'initiatives', label: 'Initiatives', desc: 'Organize major work streams' },
                                 { id: 'ideas', label: 'Flows', desc: 'Brainstorming and concepts' },
                                 { id: 'activity', label: 'Activity', desc: 'Track project history' },
                                 { id: 'issues', label: 'Issues', desc: 'Bug tracking and tickets' },

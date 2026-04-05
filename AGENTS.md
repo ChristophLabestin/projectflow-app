@@ -47,3 +47,5 @@
 - Always log new pitfalls, edge cases, or workflow surprises in `GOTCHAS.md`.
 - For every substantial implementation or bugfix session, create or update a task in the **ProjectFlow** ProjectFlow project (`projectId: ogZ8Pyz8pwEQtv8I64nu`) with a concise scope summary, touched areas, validation status, and pending deployment/follow-up items.
 - Whenever a **new** follow-up item is discovered (bug, TODO, enhancement, missing test), create a ProjectFlow task for it in the linked project and document it in the relevant project docs (`SITEMAP.md`, `COMPONENTS.md`, `STYLING.md`, `APP_CONCEPT.md`, `PERMISSIONS.md`, or `GOTCHAS.md` with task id if no better fit).
+- For major feature work, migrations, new routes/screens/resources, or plan-mode sessions, create or upsert a **ProjectFlow initiative** first and attach follow-on execution tasks to it with `initiativeId`.
+- Keep small bug fixes and narrow edits on task tracking only; initiatives are for mini-project scope inside a project.

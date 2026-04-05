@@ -89,7 +89,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = 'Medium',
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'startDate'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
     tenantId?: string
 ) => {
     const user = auth.currentUser;
@@ -114,6 +114,7 @@ export const addTask = async (
         assigneeId: extra?.assigneeId || (user.uid === assignee ? user.uid : null),
         assigneeIds: extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []),
         assignedGroupIds: extra?.assignedGroupIds || [],
+        legacyInitiativeRoot: extra?.legacyInitiativeRoot === true,
         createdBy: user.uid,
         createdAt: serverTimestamp()
     };
@@ -126,9 +127,22 @@ export const addTask = async (
         taskData.convertedIdeaId = extra.convertedIdeaId;
     }
 
+    if (extra?.initiativeId) {
+        taskData.initiativeId = extra.initiativeId;
+    }
+
     const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), taskData);
     await ensureCategory(projectId, extra?.category, resolvedTenant);
-    await logActivity(projectId, { action: `Added task "${title}"`, target: 'Tasks', type: 'task', relatedId: docRef.id }, resolvedTenant);
+    await logActivity(
+        projectId,
+        {
+            action: `Added task "${title}"${extra?.initiativeId ? ' to initiative' : ''}`,
+            target: extra?.initiativeId ? 'Initiatives' : 'Tasks',
+            type: extra?.initiativeId ? 'initiative' : 'task',
+            relatedId: extra?.initiativeId || docRef.id
+        },
+        resolvedTenant
+    );
     await syncProjectProgress(projectId, resolvedTenant);
 
     const assigneeIds = extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []);

@@ -17,6 +17,7 @@ const TENANTS = 'tenants';
 const USERS = 'users';
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
+const INITIATIVES = 'initiatives';
 const SUBTASKS = 'subtasks';
 const ISSUES = 'issues';
 const IDEAS = 'ideas';
@@ -126,6 +127,18 @@ export const findTaskDoc = async (taskId: string, projectId?: string, tenantId?:
 
     const snapshot = await getDocs(collectionGroup(db, TASKS));
     return snapshot.docs.find((docSnap) => docSnap.id === taskId) || null;
+};
+
+export const findInitiativeDoc = async (initiativeId: string, projectId?: string, tenantId?: string) => {
+    const preferredTenant = tenantId || getCachedTenantId();
+    if (projectId && preferredTenant) {
+        const directRef = doc(projectSubCollection(preferredTenant, projectId, INITIATIVES), initiativeId);
+        const snap = await getDoc(directRef);
+        if (snap.exists()) return snap;
+    }
+
+    const snapshot = await getDocs(collectionGroup(db, INITIATIVES));
+    return snapshot.docs.find((docSnap) => docSnap.id === initiativeId) || null;
 };
 
 export const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?: string) => {

@@ -91,6 +91,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     // Default nav items
     const defaultNavItems = [
         { id: 'overview', icon: 'grid_view', label: t('nav.overview'), canHide: false },
+        { id: 'initiatives', icon: 'rocket_launch', label: t('nav.initiatives'), moduleKey: 'initiatives' },
         { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
         { id: 'sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
         { id: 'issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues' },
@@ -252,6 +253,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     const moduleLabels: Record<string, string> = {
         tasks: t('nav.tasks'),
+        initiatives: t('nav.initiatives'),
         milestones: t('nav.milestones'),
         issues: t('nav.issues'),
         ideas: t('nav.flows'),
@@ -573,7 +575,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="project-edit-modal__panel project-edit-modal__panel--modules animate-fade-in">
                         <p className="project-edit-modal__hint">{t('projectSettings.modules.description')}</p>
                         <div className="project-edit-modal__modules-grid">
-                            {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
+                            {['tasks', 'initiatives', 'sprints', 'issues', 'ideas', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
                                 if (mod === 'social' && !isSocialAllowed) return null;
                                 if (mod === 'marketing' && !isMarketingAllowed) return null;
                                 if (mod === 'accounting' && !isAccountingAllowed) return null;
@@ -597,6 +599,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         <div className="project-edit-modal__module-icon" data-active={isEnabled ? 'true' : 'false'}>
                                             <span className="material-symbols-outlined">
                                                 {mod === 'tasks' ? 'check_circle' :
+                                                    mod === 'initiatives' ? 'rocket_launch' :
                                                     mod === 'ideas' ? 'lightbulb' :
                                                         mod === 'milestones' ? 'flag' :
                                                             mod === 'social' ? 'campaign' :

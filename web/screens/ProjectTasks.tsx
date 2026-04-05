@@ -3,16 +3,17 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { subscribeProjectTasks } from '../services/dataService';
+import { subscribeProjectInitiatives, subscribeProjectTasks } from '../services/dataService';
 import { getProjectCategories } from '../services/domain/projectMetaService';
 import { deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getProjectById } from '../services/domain/projectsService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
-import { Task, Project, TaskCategory, ProjectGroup } from '../types';
+import { Initiative, Task, Project, TaskCategory, ProjectGroup } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Badge } from '../components/common/Badge/Badge';
 import { TextInput } from '../components/common/Input/TextInput';
 import { Select, type SelectOption } from '../components/common/Select/Select';
+import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
@@ -23,27 +24,35 @@ import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
+type TaskPillEditorType = 'priority' | 'status' | 'dates' | 'initiative' | 'category';
+
+const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
+const TASK_PRIORITY_OPTIONS = ['Urgent', 'High', 'Medium', 'Low'] as const;
+
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('active');
     const [search, setSearch] = useState('');
     const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [view, setView] = useState<'list' | 'board'>('list');
     const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
-    const [quickDateEditorTaskId, setQuickDateEditorTaskId] = useState<string | null>(null);
-    const [savingQuickDateTaskId, setSavingQuickDateTaskId] = useState<string | null>(null);
-    const [quickDateAnchorEl, setQuickDateAnchorEl] = useState<HTMLElement | null>(null);
+    const [taskPillEditor, setTaskPillEditor] = useState<{ taskId: string; type: TaskPillEditorType; anchorEl: HTMLElement } | null>(null);
+    const [taskPillEditorPosition, setTaskPillEditorPosition] = useState({ top: 0, left: 0, width: 304 });
+    const [savingInlineTaskId, setSavingInlineTaskId] = useState<string | null>(null);
     const location = useLocation();
     const confirm = useConfirm();
+    const taskPillEditorRef = useRef<HTMLDivElement | null>(null);
 
     // Permissions
     const { can } = useProjectPermissions(project);
@@ -74,6 +83,7 @@ export const ProjectTasks = () => {
                 setTasks(taskData);
                 setLoading(false);
             }, p.tenantId);
+            const unsubInitiatives = subscribeProjectInitiatives(id, setInitiatives, p.tenantId);
 
             // Subscribe to project groups
             const unsubGroups = subscribeProjectGroups(id, setProjectGroups, p.tenantId);
@@ -82,6 +92,7 @@ export const ProjectTasks = () => {
             const oldUnsub = unsub;
             unsub = () => {
                 if (oldUnsub) oldUnsub();
+                unsubInitiatives();
                 unsubGroups();
             };
         }).catch(err => {
@@ -122,17 +133,11 @@ export const ProjectTasks = () => {
     }, [location.search]);
 
     useEffect(() => {
-        setQuickDateEditorTaskId((current) => {
+        setTaskPillEditor((current) => {
             if (!current) return current;
-            return tasks.some((task) => task.id === current) ? current : null;
+            return tasks.some((task) => task.id === current.taskId) ? current : null;
         });
     }, [tasks]);
-
-    useEffect(() => {
-        if (!quickDateEditorTaskId) {
-            setQuickDateAnchorEl(null);
-        }
-    }, [quickDateEditorTaskId]);
 
     const handleToggle = async (taskId: string, currentStatus: boolean) => {
         if (!can('canManageTasks')) return;
@@ -158,11 +163,28 @@ export const ProjectTasks = () => {
         return matched ? matched[0] : '';
     };
 
+    const updateTaskInline = async (task: Task, updates: Partial<Task>) => {
+        if (!id || !can('canManageTasks')) return;
+
+        const previousTask = { ...task };
+        setSavingInlineTaskId(task.id);
+        setTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, ...updates } : item)));
+
+        try {
+            await updateTaskFields(task.id, updates, id, project?.tenantId);
+        } catch (err) {
+            console.error(err);
+            setTasks((prev) => prev.map((item) => (item.id === task.id ? previousTask : item)));
+            setError(t('projectTasks.error.inlineUpdate'));
+        } finally {
+            setSavingInlineTaskId((current) => (current === task.id ? null : current));
+        }
+    };
+
     const handleQuickDateChange = async (task: Task, field: 'startDate' | 'dueDate', nextValue: string) => {
         if (!can('canManageTasks') || !id) return;
 
-        const previousValue = task[field] || '';
-        const previousInputValue = toDateInputValue(previousValue);
+        const previousInputValue = toDateInputValue(task[field]);
         const normalizedNextValue = nextValue || '';
         if (previousInputValue === normalizedNextValue) return;
 
@@ -170,26 +192,15 @@ export const ProjectTasks = () => {
             ? { startDate: normalizedNextValue }
             : { dueDate: normalizedNextValue };
 
-        setSavingQuickDateTaskId(task.id);
-        setTasks((prev) => prev.map((item) => (
-            item.id === task.id
-                ? { ...item, ...updates }
-                : item
-        )));
+        await updateTaskInline(task, updates);
+    };
 
-        try {
-            await updateTaskFields(task.id, updates, id, project?.tenantId);
-        } catch (err) {
-            console.error(err);
-            setTasks((prev) => prev.map((item) => (
-                item.id === task.id
-                    ? { ...item, [field]: previousValue }
-                    : item
-            )));
-            setError(t('projectTasks.error.quickDateUpdate'));
-        } finally {
-            setSavingQuickDateTaskId((current) => (current === task.id ? null : current));
-        }
+    const openTaskPillEditor = (taskId: string, type: TaskPillEditorType, anchorEl: HTMLElement) => {
+        setTaskPillEditor((current) => (
+            current && current.taskId === taskId && current.type === type
+                ? null
+                : { taskId, type, anchorEl }
+        ));
     };
 
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
@@ -225,11 +236,87 @@ export const ProjectTasks = () => {
         { value: 'createdAt', label: t('projectTasks.sort.created') },
     ]), [t]);
 
+    useEffect(() => {
+        if (!taskPillEditor) return;
+
+        const handleOutsideClick = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (taskPillEditorRef.current?.contains(target)) return;
+            if (target.closest(`[data-task-pill-trigger="${taskPillEditor.taskId}-${taskPillEditor.type}"]`)) return;
+            setTaskPillEditor(null);
+        };
+
+        document.addEventListener('mousedown', handleOutsideClick);
+        return () => {
+            document.removeEventListener('mousedown', handleOutsideClick);
+        };
+    }, [taskPillEditor]);
+
+    const editingTask = useMemo(
+        () => (taskPillEditor ? tasks.find((task) => task.id === taskPillEditor.taskId) || null : null),
+        [taskPillEditor, tasks]
+    );
+
+    const initiativeLookup = useMemo(
+        () => Object.fromEntries(initiatives.map((initiative) => [initiative.id, initiative])),
+        [initiatives]
+    );
+
+    useEffect(() => {
+        if (!taskPillEditor) return;
+
+        const updatePosition = () => {
+            const { anchorEl, type } = taskPillEditor;
+            if (!document.body.contains(anchorEl)) {
+                setTaskPillEditor(null);
+                return;
+            }
+
+            const width = type === 'dates' || type === 'category' || type === 'initiative' ? 320 : 280;
+            const rect = anchorEl.getBoundingClientRect();
+            const editorHeight = taskPillEditorRef.current?.getBoundingClientRect().height || 280;
+            let left = rect.left;
+            let top = rect.bottom + 10;
+
+            if (left + width > window.innerWidth - 12) {
+                left = Math.max(12, window.innerWidth - width - 12);
+            }
+
+            if (top + editorHeight > window.innerHeight - 12) {
+                top = Math.max(12, rect.top - editorHeight - 10);
+            }
+
+            setTaskPillEditorPosition({ top, left, width });
+        };
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [taskPillEditor]);
+
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(t => {
             if (filter === 'active' && t.isCompleted) return false;
             if (filter === 'completed' && !t.isCompleted) return false;
-            if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+            if (search) {
+                const normalizedSearch = search.toLowerCase();
+                const initiativeTitle = t.initiativeId ? initiativeLookup[t.initiativeId]?.title || '' : '';
+                const categories = Array.isArray(t.category) ? t.category : [t.category].filter(Boolean);
+                const haystack = [
+                    t.title,
+                    t.description || '',
+                    t.status || '',
+                    t.priority || '',
+                    initiativeTitle,
+                    ...categories
+                ].join(' ').toLowerCase();
+                if (!haystack.includes(normalizedSearch)) return false;
+            }
             return true;
         });
 
@@ -261,7 +348,7 @@ export const ProjectTasks = () => {
                     return 0;
             }
         });
-    }, [tasks, filter, search, sortBy]);
+    }, [tasks, filter, search, sortBy, initiativeLookup]);
 
     const openCount = tasks.filter(t => !t.isCompleted).length;
     const completedCount = tasks.filter(t => t.isCompleted).length;
@@ -358,14 +445,11 @@ export const ProjectTasks = () => {
     } = useOnboardingTour('project_tasks', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
     const TaskCard = ({ task, isBoard = false }: { task: Task; isBoard?: boolean }) => {
-        const quickDatePopoverRef = useRef<HTMLDivElement | null>(null);
-        const [quickDatePopoverPosition, setQuickDatePopoverPosition] = useState({ top: 0, left: 0 });
-        const isQuickDateEditorOpen = quickDateEditorTaskId === task.id;
-        const isSavingQuickDates = savingQuickDateTaskId === task.id;
-        const startDateInputValue = toDateInputValue(task.startDate);
-        const dueDateInputValue = toDateInputValue(task.dueDate);
+        const isActiveEditor = (type: TaskPillEditorType) => taskPillEditor?.taskId === task.id && taskPillEditor.type === type;
+        const isSavingInline = savingInlineTaskId === task.id;
         const canQuickEditDates = can('canManageTasks');
-        const isStrategic = Boolean(task.convertedIdeaId);
+        const isStrategic = Boolean(task.convertedIdeaId || task.legacyInitiativeRoot);
+        const isInitiativeTask = Boolean(task.initiativeId && !task.legacyInitiativeRoot);
         const hasStart = Boolean(task.startDate);
         const hasDue = Boolean(task.dueDate);
         const showTimeline = !isStrategic && hasStart && hasDue && !task.isCompleted;
@@ -377,6 +461,8 @@ export const ProjectTasks = () => {
         const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
         const priorityLabel = task.priority ? (priorityLabels[task.priority] || task.priority) : '';
         const statusLabel = task.status ? (statusLabels[task.status] || task.status) : '';
+        const initiative = task.initiativeId ? initiativeLookup[task.initiativeId] : null;
+        const initiativeLabel = initiative?.title || t('projectTasks.pill.initiativeNone');
         const dependencyCount = task.dependencies?.length || 0;
         const dependencyLabel = dependencyCount === 1
             ? t('projectTasks.badge.dependency')
@@ -386,71 +472,12 @@ export const ProjectTasks = () => {
         const blockedBy = dependentTasks.filter(t => !t.isCompleted);
         const isBlocked = blockedBy.length > 0;
 
-        const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : task.convertedIdeaId ? 'strategic' : 'default';
-        const toggleQuickDateEditor = (e: React.MouseEvent<HTMLElement>) => {
+        const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : isStrategic || isInitiativeTask ? 'strategic' : 'default';
+        const togglePillEditor = (type: TaskPillEditorType) => (e: React.MouseEvent<HTMLElement>) => {
             e.stopPropagation();
             if (!canQuickEditDates) return;
-            const triggerElement = e.currentTarget;
-            setQuickDateEditorTaskId((current) => {
-                const next = current === task.id ? null : task.id;
-                setQuickDateAnchorEl(next ? triggerElement : null);
-                return next;
-            });
+            openTaskPillEditor(task.id, type, e.currentTarget);
         };
-
-        useEffect(() => {
-            if (!isQuickDateEditorOpen) return;
-
-            const handleOutsideClick = (event: MouseEvent) => {
-                const target = event.target as HTMLElement;
-                if (quickDatePopoverRef.current?.contains(target)) return;
-                if (target.closest(`[data-quick-date-trigger="${task.id}"]`)) return;
-                setQuickDateEditorTaskId((current) => (current === task.id ? null : current));
-            };
-
-            document.addEventListener('mousedown', handleOutsideClick);
-            return () => {
-                document.removeEventListener('mousedown', handleOutsideClick);
-            };
-        }, [isQuickDateEditorOpen, task.id]);
-
-        useEffect(() => {
-            if (!isQuickDateEditorOpen || !quickDateAnchorEl) return;
-
-            const POPOVER_WIDTH = 256;
-            const POPOVER_HEIGHT = 168;
-            const OFFSET = 8;
-
-            const updatePopoverPosition = () => {
-                if (!document.body.contains(quickDateAnchorEl)) {
-                    setQuickDateEditorTaskId((current) => (current === task.id ? null : current));
-                    return;
-                }
-
-                const rect = quickDateAnchorEl.getBoundingClientRect();
-                let left = rect.right - POPOVER_WIDTH;
-                let top = rect.bottom + OFFSET;
-
-                if (left < 8) left = 8;
-                if (left + POPOVER_WIDTH > window.innerWidth - 8) {
-                    left = Math.max(8, window.innerWidth - POPOVER_WIDTH - 8);
-                }
-                if (top + POPOVER_HEIGHT > window.innerHeight - 8) {
-                    top = Math.max(8, rect.top - POPOVER_HEIGHT - OFFSET);
-                }
-
-                setQuickDatePopoverPosition({ top, left });
-            };
-
-            updatePopoverPosition();
-            window.addEventListener('resize', updatePopoverPosition);
-            window.addEventListener('scroll', updatePopoverPosition, true);
-
-            return () => {
-                window.removeEventListener('resize', updatePopoverPosition);
-                window.removeEventListener('scroll', updatePopoverPosition, true);
-            };
-        }, [isQuickDateEditorOpen, quickDateAnchorEl, task.id]);
 
         return (
             <div
@@ -474,23 +501,67 @@ export const ProjectTasks = () => {
                                 {task.title}
                             </h4>
                             <div className="meta-row">
-                                {task.convertedIdeaId && (
+                                {isStrategic && (
                                     <Badge variant="neutral" className="badge strategic">
                                         <span className="material-symbols-outlined">auto_awesome</span>
                                         {t('projectTasks.badge.strategic')}
                                     </Badge>
                                 )}
-                                {task.priority && (
-                                    <Badge variant="neutral" className={`badge priority-${task.priority.toLowerCase()}`}>
-                                        <span className="material-symbols-outlined">
-                                            {task.priority === 'Urgent' ? 'error' :
-                                                task.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                    task.priority === 'Medium' ? 'drag_handle' :
-                                                        'keyboard_arrow_down'}
-                                        </span>
-                                        {priorityLabel}
-                                    </Badge>
+                                {!task.legacyInitiativeRoot && isInitiativeTask && (
+                                    <button
+                                        type="button"
+                                        className={`badge badge--interactive badge--initiative-link strategic ${can('canManageTasks') && isActiveEditor('initiative') ? 'badge--active' : ''}`}
+                                        onClick={can('canManageTasks')
+                                            ? togglePillEditor('initiative')
+                                            : (event) => {
+                                                event.stopPropagation();
+                                                navigate(`/project/${id}/initiatives/${task.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
+                                            }}
+                                        data-task-pill-trigger={can('canManageTasks') ? `${task.id}-initiative` : undefined}
+                                    >
+                                        <span className="material-symbols-outlined">rocket_launch</span>
+                                        <span>{initiativeLabel}</span>
+                                    </button>
                                 )}
+                                {!task.legacyInitiativeRoot && !isInitiativeTask && can('canManageTasks') && (
+                                    <button
+                                        type="button"
+                                        className={`badge badge--interactive badge--initiative-link strategic ${isActiveEditor('initiative') ? 'badge--active' : ''}`}
+                                        onClick={togglePillEditor('initiative')}
+                                        data-task-pill-trigger={`${task.id}-initiative`}
+                                    >
+                                        <span className="material-symbols-outlined">rocket_launch</span>
+                                        <span>{t('projectTasks.pill.linkInitiative')}</span>
+                                    </button>
+                                )}
+                                {task.legacyInitiativeRoot && task.initiativeId && (
+                                    <button
+                                        type="button"
+                                        className="badge badge--interactive badge--initiative-link strategic"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            navigate(`/project/${id}/initiatives/${task.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined">rocket_launch</span>
+                                        <span>{t('projectTasks.pill.openInitiative')}</span>
+                                    </button>
+                                )}
+                                <button
+                                    type="button"
+                                    className={`badge badge--interactive priority-${(task.priority || 'medium').toLowerCase()} ${isActiveEditor('priority') ? 'badge--active' : ''}`}
+                                    onClick={togglePillEditor('priority')}
+                                    data-task-pill-trigger={`${task.id}-priority`}
+                                    disabled={!can('canManageTasks')}
+                                >
+                                    <span className="material-symbols-outlined">
+                                        {task.priority === 'Urgent' ? 'error' :
+                                            task.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                task.priority === 'Medium' ? 'drag_handle' :
+                                                    'keyboard_arrow_down'}
+                                    </span>
+                                    {priorityLabel || t('tasks.priority.medium')}
+                                </button>
 
                                 {/* Blocked Indicator */}
                                 {isBlocked && (
@@ -522,21 +593,25 @@ export const ProjectTasks = () => {
                         </div>
 
                         <div className="meta-row">
-                            {task.status && (
-                                <Badge variant="neutral" className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
-                                    <span className="material-symbols-outlined">
-                                        {task.status === 'Done' ? 'check_circle' :
-                                            task.status === 'In Progress' ? 'sync' :
-                                                task.status === 'Review' ? 'visibility' :
-                                                    task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
-                                                        task.status === 'Backlog' ? 'inventory_2' :
-                                                            task.status === 'On Hold' ? 'pause_circle' :
-                                                                task.status === 'Blocked' ? 'dangerous' :
-                                                                    'circle'}
-                                    </span>
-                                    {statusLabel || t('tasks.status.unknown')}
-                                </Badge>
-                            )}
+                            <button
+                                type="button"
+                                className={`badge badge--interactive status ${(task.status || 'open').toLowerCase().replace(' ', '-')} ${isActiveEditor('status') ? 'badge--active' : ''}`}
+                                onClick={togglePillEditor('status')}
+                                data-task-pill-trigger={`${task.id}-status`}
+                                disabled={!can('canManageTasks')}
+                            >
+                                <span className="material-symbols-outlined">
+                                    {task.status === 'Done' ? 'check_circle' :
+                                        task.status === 'In Progress' ? 'sync' :
+                                            task.status === 'Review' ? 'visibility' :
+                                                task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
+                                                    task.status === 'Backlog' ? 'inventory_2' :
+                                                        task.status === 'On Hold' ? 'pause_circle' :
+                                                            task.status === 'Blocked' ? 'dangerous' :
+                                                                'circle'}
+                                </span>
+                                {statusLabel || t('tasks.status.unknown')}
+                            </button>
                             {subtaskStats[task.id]?.total > 0 && (
                                 <Badge variant="neutral" className="badge subtasks">
                                     <span className="material-symbols-outlined">checklist</span>
@@ -548,7 +623,21 @@ export const ProjectTasks = () => {
                                 return cats.map(catName => {
                                     const catData = allCategories.find(c => c.name === catName);
                                     const color = catData?.color || '#64748b';
-                                    return (
+                                    return can('canManageTasks') ? (
+                                        <button
+                                            key={catName as string}
+                                            type="button"
+                                            className={`badge badge--interactive category ${isActiveEditor('category') ? 'badge--active' : ''}`}
+                                            style={{
+                                                backgroundColor: `${color}10`,
+                                                color: color
+                                            }}
+                                            onClick={togglePillEditor('category')}
+                                            data-task-pill-trigger={`${task.id}-category`}
+                                        >
+                                            {catName as string}
+                                        </button>
+                                    ) : (
                                         <Badge
                                             key={catName as string}
                                             variant="neutral"
@@ -563,6 +652,17 @@ export const ProjectTasks = () => {
                                     );
                                 });
                             })()}
+                            {can('canManageTasks') && (!task.category || (Array.isArray(task.category) && task.category.length === 0)) && (
+                                <button
+                                    type="button"
+                                    className={`badge badge--interactive category ${isActiveEditor('category') ? 'badge--active' : ''}`}
+                                    onClick={togglePillEditor('category')}
+                                    data-task-pill-trigger={`${task.id}-category`}
+                                >
+                                    <span className="material-symbols-outlined">label</span>
+                                    {t('projectTasks.pill.addCategory')}
+                                </button>
+                            )}
                         </div>
 
                         {/* Assignees Row */}
@@ -628,10 +728,10 @@ export const ProjectTasks = () => {
                                 {canQuickEditDates ? (
                                     <button
                                         type="button"
-                                        onClick={toggleQuickDateEditor}
-                                        data-quick-date-trigger={task.id}
-                                        className={`due-date-trigger ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
-                                        title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                        onClick={togglePillEditor('dates')}
+                                        data-task-pill-trigger={`${task.id}-dates`}
+                                        className={`due-date-trigger ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                        title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                     >
                                         {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </button>
@@ -666,10 +766,10 @@ export const ProjectTasks = () => {
                                 {canQuickEditDates ? (
                                     <button
                                         type="button"
-                                        onClick={toggleQuickDateEditor}
-                                        data-quick-date-trigger={task.id}
-                                        className={`due-date-trigger due-date-trigger--compact ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
-                                        title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                        onClick={togglePillEditor('dates')}
+                                        data-task-pill-trigger={`${task.id}-dates`}
+                                        className={`due-date-trigger due-date-trigger--compact ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                        title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                     >
                                         {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </button>
@@ -687,10 +787,10 @@ export const ProjectTasks = () => {
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
-                                    onClick={toggleQuickDateEditor}
-                                    data-quick-date-trigger={task.id}
-                                    className={`due-date-box due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : 'normal'} ${isQuickDateEditorOpen ? 'active' : ''}`}
-                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                    onClick={togglePillEditor('dates')}
+                                    data-task-pill-trigger={`${task.id}-dates`}
+                                    className={`due-date-box due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : 'normal'} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                 >
                                     <span className="material-symbols-outlined due-date-icon">event</span>
                                     <div className="due-date-info">
@@ -715,10 +815,10 @@ export const ProjectTasks = () => {
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
-                                    onClick={toggleQuickDateEditor}
-                                    data-quick-date-trigger={task.id}
-                                    className={`due-date-box simple due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : ''} ${isQuickDateEditorOpen ? 'active' : ''}`}
-                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                    onClick={togglePillEditor('dates')}
+                                    data-task-pill-trigger={`${task.id}-dates`}
+                                    className={`due-date-box simple due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                 >
                                     <span className="material-symbols-outlined due-date-icon">event</span>
                                     <div className="due-date-info">
@@ -743,10 +843,10 @@ export const ProjectTasks = () => {
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
-                                    onClick={toggleQuickDateEditor}
-                                    data-quick-date-trigger={task.id}
-                                    className={`due-date-box simple due-date-trigger due-date-trigger--box due-date-trigger--empty ${isQuickDateEditorOpen ? 'active' : ''}`}
-                                    title={isQuickDateEditorOpen ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
+                                    onClick={togglePillEditor('dates')}
+                                    data-task-pill-trigger={`${task.id}-dates`}
+                                    className={`due-date-box simple due-date-trigger due-date-trigger--box due-date-trigger--empty ${isActiveEditor('dates') ? 'active' : ''}`}
+                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                 >
                                     <span className="material-symbols-outlined due-date-icon">event_upcoming</span>
                                     <div className="due-date-info">
@@ -810,75 +910,15 @@ export const ProjectTasks = () => {
                         </div>
                     </div>
                 </div>
-                {can('canManageTasks') && isQuickDateEditorOpen && quickDateAnchorEl && createPortal(
-                    <div
-                        className="quick-date-popover"
-                        ref={quickDatePopoverRef}
-                        style={{ top: `${quickDatePopoverPosition.top}px`, left: `${quickDatePopoverPosition.left}px` }}
-                        onClick={(e) => e.stopPropagation()}
-                        onMouseDown={(e) => e.stopPropagation()}
-                    >
-                        <div className={`quick-date-editor ${isSavingQuickDates ? 'is-saving' : ''}`}>
-                            <div className="quick-date-field">
-                                <label htmlFor={`task-start-date-${task.id}`}>{t('projectTasks.timeline.start')}</label>
-                                <div className="quick-date-field__control">
-                                    <input
-                                        id={`task-start-date-${task.id}`}
-                                        type="date"
-                                        value={startDateInputValue}
-                                        max={dueDateInputValue || undefined}
-                                        aria-label={t('projectTasks.actions.quickStartAria')}
-                                        disabled={isSavingQuickDates}
-                                        onChange={(event) => handleQuickDateChange(task, 'startDate', event.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="quick-date-field__clear"
-                                        disabled={isSavingQuickDates || !startDateInputValue}
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            handleQuickDateChange(task, 'startDate', '');
-                                        }}
-                                        title={t('projectTasks.actions.clearStartDate')}
-                                    >
-                                        <span className="material-symbols-outlined">close</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="quick-date-field">
-                                <label htmlFor={`task-due-date-${task.id}`}>{t('projectTasks.timeline.due')}</label>
-                                <div className="quick-date-field__control">
-                                    <input
-                                        id={`task-due-date-${task.id}`}
-                                        type="date"
-                                        value={dueDateInputValue}
-                                        min={startDateInputValue || undefined}
-                                        aria-label={t('projectTasks.actions.quickDueAria')}
-                                        disabled={isSavingQuickDates}
-                                        onChange={(event) => handleQuickDateChange(task, 'dueDate', event.target.value)}
-                                    />
-                                    <button
-                                        type="button"
-                                        className="quick-date-field__clear"
-                                        disabled={isSavingQuickDates || !dueDateInputValue}
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            handleQuickDateChange(task, 'dueDate', '');
-                                        }}
-                                        title={t('projectTasks.actions.clearDueDate')}
-                                    >
-                                        <span className="material-symbols-outlined">close</span>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>,
-                    document.body
-                )}
             </div >
         );
     };
+
+    const editingTaskStartDate = toDateInputValue(editingTask?.startDate);
+    const editingTaskDueDate = toDateInputValue(editingTask?.dueDate);
+    const editingTaskCategories = editingTask
+        ? (Array.isArray(editingTask.category) ? editingTask.category : [editingTask.category].filter(Boolean))
+        : [];
 
     if (loading) return (
         <div className="tasks-loading">
@@ -897,21 +937,31 @@ export const ProjectTasks = () => {
                             {t('projectTasks.header.title')} <span>{t('projectTasks.header.titleEmphasis')}</span>
                         </h1>
                         <p className="subtitle">
-                            {project?.name
-                                ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.name)
+                            {project?.title
+                                ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.title)
                                 : t('projectTasks.header.subtitleFallback')}
                         </p>
                     </div>
                     {can('canManageTasks') && (
-                        <Button
-                            onClick={() => setShowCreateModal(true)}
-                            icon={<span className="material-symbols-outlined">add</span>}
-                            variant="primary"
-                            size="lg"
-                            className="new-task-btn"
-                        >
-                            {t('projectTasks.actions.newTask')}
-                        </Button>
+                        <div className="tasks-header__actions">
+                            <Button
+                                onClick={() => setShowInitiativeModal(true)}
+                                icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                                variant="secondary"
+                                size="lg"
+                            >
+                                {t('initiatives.create.action')}
+                            </Button>
+                            <Button
+                                onClick={() => setShowCreateModal(true)}
+                                icon={<span className="material-symbols-outlined">add</span>}
+                                variant="primary"
+                                size="lg"
+                                className="new-task-btn"
+                            >
+                                {t('projectTasks.actions.newTask')}
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -1052,6 +1102,218 @@ export const ProjectTasks = () => {
                             }}
                         />
                     </Suspense>
+                )}
+
+                {showInitiativeModal && id && can('canManageTasks') && (
+                    <InitiativeCreateModal
+                        isOpen={showInitiativeModal}
+                        projectId={id}
+                        tenantId={project?.tenantId}
+                        onClose={() => setShowInitiativeModal(false)}
+                        onCreated={(initiativeId) => {
+                            setShowInitiativeModal(false);
+                            navigate(`/project/${id}/initiatives/${initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
+                        }}
+                    />
+                )}
+
+                {can('canManageTasks') && taskPillEditor && editingTask && createPortal(
+                    <div
+                        className="task-pill-editor-popover"
+                        ref={taskPillEditorRef}
+                        style={{
+                            top: `${taskPillEditorPosition.top}px`,
+                            left: `${taskPillEditorPosition.left}px`,
+                            width: `${taskPillEditorPosition.width}px`
+                        }}
+                        onClick={(event) => event.stopPropagation()}
+                        onMouseDown={(event) => event.stopPropagation()}
+                    >
+                        <div className={`task-pill-editor ${savingInlineTaskId === editingTask.id ? 'is-saving' : ''}`}>
+                            <div className="task-pill-editor__header">
+                                <div>
+                                    <div className="task-pill-editor__eyebrow">{t(`projectTasks.editor.${taskPillEditor.type}.eyebrow`)}</div>
+                                    <strong className="task-pill-editor__title">{editingTask.title}</strong>
+                                </div>
+                                <button type="button" className="task-pill-editor__close" onClick={() => setTaskPillEditor(null)}>
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </div>
+
+                            {taskPillEditor.type === 'priority' && (
+                                <div className="task-pill-editor__options">
+                                    {TASK_PRIORITY_OPTIONS.map((priority) => (
+                                        <button
+                                            key={priority}
+                                            type="button"
+                                            className={`task-pill-editor__option ${editingTask.priority === priority ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                const updates: Partial<Task> = { priority };
+                                                void updateTaskInline(editingTask, updates);
+                                                setTaskPillEditor(null);
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined">
+                                                {priority === 'Urgent' ? 'error' :
+                                                    priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                        priority === 'Medium' ? 'drag_handle' :
+                                                            'keyboard_arrow_down'}
+                                            </span>
+                                            {priorityLabels[priority]}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {taskPillEditor.type === 'status' && (
+                                <div className="task-pill-editor__options">
+                                    {TASK_STATUS_OPTIONS.map((status) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            className={`task-pill-editor__option ${editingTask.status === status ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                const updates: Partial<Task> = { status, isCompleted: status === 'Done' };
+                                                void updateTaskInline(editingTask, updates);
+                                                setTaskPillEditor(null);
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined">
+                                                {status === 'Done' ? 'check_circle' :
+                                                    status === 'In Progress' ? 'sync' :
+                                                        status === 'Review' ? 'visibility' :
+                                                            status === 'Open' ? 'play_circle' :
+                                                                status === 'Backlog' ? 'inventory_2' :
+                                                                    status === 'On Hold' ? 'pause_circle' :
+                                                                        status === 'Blocked' ? 'dangerous' :
+                                                                            'circle'}
+                                            </span>
+                                            {statusLabels[status] || status}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+
+                            {taskPillEditor.type === 'initiative' && (
+                                <div className="task-pill-editor__options">
+                                    <button
+                                            type="button"
+                                            className={`task-pill-editor__option ${!editingTask.initiativeId ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                void updateTaskInline(editingTask, { initiativeId: '' });
+                                                setTaskPillEditor(null);
+                                            }}
+                                        >
+                                        <span className="material-symbols-outlined">remove_circle</span>
+                                        {t('projectTasks.pill.initiativeNone')}
+                                    </button>
+                                    {initiatives.map((initiative) => (
+                                        <button
+                                            key={initiative.id}
+                                            type="button"
+                                            className={`task-pill-editor__option ${editingTask.initiativeId === initiative.id ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                void updateTaskInline(editingTask, { initiativeId: initiative.id });
+                                                setTaskPillEditor(null);
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined">rocket_launch</span>
+                                            <span>{initiative.title}</span>
+                                        </button>
+                                    ))}
+                                    {initiatives.length === 0 && (
+                                        <div className="task-pill-editor__empty">{t('projectTasks.editor.initiative.empty')}</div>
+                                    )}
+                                    {editingTask.initiativeId && (
+                                        <button
+                                            type="button"
+                                            className="task-pill-editor__link"
+                                            onClick={() => navigate(`/project/${id}/initiatives/${editingTask.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                        >
+                                            <span className="material-symbols-outlined">arrow_outward</span>
+                                            {t('projectTasks.pill.openInitiative')}
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {taskPillEditor.type === 'category' && (
+                                <div className="task-pill-editor__options">
+                                    {allCategories.map((category) => (
+                                        <button
+                                            key={category.id}
+                                            type="button"
+                                            className={`task-pill-editor__option ${editingTaskCategories.includes(category.name) ? 'is-selected' : ''}`}
+                                            onClick={() => {
+                                                const nextCategories = editingTaskCategories.includes(category.name)
+                                                    ? editingTaskCategories.filter((name) => name !== category.name)
+                                                    : [...editingTaskCategories, category.name];
+                                                void updateTaskInline(editingTask, { category: nextCategories });
+                                            }}
+                                        >
+                                            <span className="task-pill-editor__swatch" style={{ backgroundColor: category.color || '#64748b' }} />
+                                            <span>{category.name}</span>
+                                        </button>
+                                    ))}
+                                    {allCategories.length === 0 && (
+                                        <div className="task-pill-editor__empty">{t('projectTasks.editor.category.empty')}</div>
+                                    )}
+                                </div>
+                            )}
+
+                            {taskPillEditor.type === 'dates' && (
+                                <div className="task-pill-editor__dates">
+                                    <div className="quick-date-field">
+                                        <label htmlFor={`task-start-date-${editingTask.id}`}>{t('projectTasks.timeline.start')}</label>
+                                        <div className="quick-date-field__control">
+                                            <input
+                                                id={`task-start-date-${editingTask.id}`}
+                                                type="date"
+                                                value={editingTaskStartDate}
+                                                max={editingTaskDueDate || undefined}
+                                                aria-label={t('projectTasks.actions.quickStartAria')}
+                                                disabled={savingInlineTaskId === editingTask.id}
+                                                onChange={(event) => handleQuickDateChange(editingTask, 'startDate', event.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="quick-date-field__clear"
+                                                disabled={savingInlineTaskId === editingTask.id || !editingTaskStartDate}
+                                                onClick={() => handleQuickDateChange(editingTask, 'startDate', '')}
+                                                title={t('projectTasks.actions.clearStartDate')}
+                                            >
+                                                <span className="material-symbols-outlined">close</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="quick-date-field">
+                                        <label htmlFor={`task-due-date-${editingTask.id}`}>{t('projectTasks.timeline.due')}</label>
+                                        <div className="quick-date-field__control">
+                                            <input
+                                                id={`task-due-date-${editingTask.id}`}
+                                                type="date"
+                                                value={editingTaskDueDate}
+                                                min={editingTaskStartDate || undefined}
+                                                aria-label={t('projectTasks.actions.quickDueAria')}
+                                                disabled={savingInlineTaskId === editingTask.id}
+                                                onChange={(event) => handleQuickDateChange(editingTask, 'dueDate', event.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="quick-date-field__clear"
+                                                disabled={savingInlineTaskId === editingTask.id || !editingTaskDueDate}
+                                                onClick={() => handleQuickDateChange(editingTask, 'dueDate', '')}
+                                                title={t('projectTasks.actions.clearDueDate')}
+                                            >
+                                                <span className="material-symbols-outlined">close</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>,
+                    document.body
                 )}
             </div>
             <OnboardingOverlay

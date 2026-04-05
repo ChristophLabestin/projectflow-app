@@ -11,6 +11,7 @@ import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
+import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
 import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
@@ -111,6 +112,9 @@ export {
     generateImage,
     editImage,
     callGemini,
+    saveInitiativeFeedbackConfig,
+    getInitiativeFeedbackForm,
+    submitInitiativeFeedback,
     getTikTokAuthUrl,
     tiktokCallback,
     getYouTubeAuthUrl,

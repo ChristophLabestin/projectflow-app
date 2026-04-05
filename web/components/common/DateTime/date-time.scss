@@ -131,16 +131,16 @@
         font-size: 1.1rem; // Larger text
         font-weight: 500;
         color: var(--color-text-main);
-        background: var(--color-surface-bg); // Slight contrast bg
-        transition: all 0.2s;
+        background: var(--color-surface-hover);
+        transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
 
         &:hover {
-            background: var(--color-surface-hover);
+            background: var(--color-surface-hover-light);
         }
 
         &:focus {
             outline: none;
-            background: var(--color-surface-card);
+            background: var(--color-surface-hover-light);
             box-shadow: none;
             color: var(--color-primary);
         }

@@ -50,6 +50,7 @@ export const createNotification = async (data: {
     message: string;
     projectId?: string;
     taskId?: string;
+    initiativeId?: string;
     issueId?: string;
     commentId?: string;
     inviteId?: string;
@@ -274,7 +275,7 @@ export const notifyIssueAssignment = async (
 export const notifyComment = async (
     userId: string,
     targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea',
+    targetType: 'task' | 'issue' | 'idea' | 'initiative',
     projectId: string,
     targetId: string,
     commentId: string,
@@ -287,6 +288,7 @@ export const notifyComment = async (
         message: `New comment on ${targetType} "${targetTitle}"`,
         projectId,
         taskId: targetType === 'task' ? targetId : undefined,
+        initiativeId: targetType === 'initiative' ? targetId : undefined,
         issueId: targetType === 'issue' ? targetId : undefined,
         commentId,
         tenantId
@@ -340,7 +342,7 @@ export const notifySubtaskAssignment = async (
 export const notifyMention = async (
     userId: string,
     targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea',
+    targetType: 'task' | 'issue' | 'idea' | 'initiative',
     projectId: string,
     targetId: string,
     commentId: string,
@@ -353,6 +355,7 @@ export const notifyMention = async (
         message: `You were mentioned in a comment on ${targetType} "${targetTitle}"`,
         projectId,
         taskId: targetType === 'task' ? targetId : undefined,
+        initiativeId: targetType === 'initiative' ? targetId : undefined,
         issueId: targetType === 'issue' ? targetId : undefined,
         commentId,
         tenantId

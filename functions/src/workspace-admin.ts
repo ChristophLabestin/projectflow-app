@@ -18,6 +18,9 @@ const ALLOWED_API_PERMISSIONS: ApiPermission[] = [
     'projects:read',
     'projects:write',
     'projects:delete',
+    'initiatives:read',
+    'initiatives:write',
+    'initiatives:delete',
     'tasks:read',
     'tasks:write',
     'tasks:delete'

@@ -287,6 +287,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                 // Default nav item definitions
                                 const defaultNavItems = [
                                     { id: 'overview', path: '', icon: 'grid_view', label: t('nav.overview'), exact: true },
+                                    { id: 'initiatives', path: '/initiatives', icon: 'rocket_launch', label: t('nav.initiatives'), moduleKey: 'initiatives' },
                                     { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
                                     { id: 'sprints', path: '/sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
                                     { id: 'issues', path: '/issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues', badge: workspace.issuesCount },

@@ -43,6 +43,11 @@ const seedData = async (testEnv) => {
             tenantId: 'tenantA',
             projectId: 'projectA'
         });
+        await db.doc('tenants/tenantA/projects/projectA/initiatives/initiativeA').set({
+            title: 'Initiative A',
+            tenantId: 'tenantA',
+            projectId: 'projectA'
+        });
         await db.doc('tenants/tenantA/users/memberA/personalTasks/personalA').set({
             title: 'Personal Task A'
         });
@@ -90,7 +95,9 @@ const run = async () => {
 
         await assertSucceeds(externalProjectDb.doc('tenants/tenantA/projects/projectA').get());
         await assertSucceeds(externalProjectDb.doc('tenants/tenantA/projects/projectA/tasks/taskA').get());
+        await assertSucceeds(externalProjectDb.doc('tenants/tenantA/projects/projectA/initiatives/initiativeA').get());
         await assertFails(outsiderDb.doc('tenants/tenantA/projects/projectA/tasks/taskA').get());
+        await assertFails(outsiderDb.doc('tenants/tenantA/projects/projectA/initiatives/initiativeA').get());
 
         await assertFails(ownerDb.doc('tenants/tenantA/secrets/smtp').get());
         await assertFails(ownerDb.doc('tenants/tenantA/secrets/smtp').set({ username: 'updated-user' }, { merge: true }));

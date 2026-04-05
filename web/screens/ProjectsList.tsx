@@ -17,7 +17,7 @@ import {
 import { subscribeProjectSprints } from '../services/sprintService';
 import { collection, collectionGroup, onSnapshot, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule } from '../types';
+import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/common/Badge/Badge';
@@ -33,6 +33,7 @@ import { useConfirm, useToast } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
 import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
 import { getUserIdeas } from '../services/domain/ideasService';
+import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getUserIssues } from '../services/domain/issuesService';
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
@@ -601,6 +602,7 @@ const PROJECT_IMPORT_EXAMPLE_URL = new URL('../assets/project-import-example.jso
 
 const PROJECT_MODULE_OPTIONS: ProjectModule[] = [
     'tasks',
+    'initiatives',
     'ideas',
     'mindmap',
     'activity',
@@ -682,6 +684,7 @@ export const ProjectsList: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [sprints, setSprints] = useState<Sprint[]>([]);
@@ -1431,6 +1434,7 @@ export const ProjectsList: React.FC = () => {
             setProjects([]);
             setTasks([]);
             setIdeas([]);
+            setInitiatives([]);
             setIssues([]);
             setMilestones([]);
             setSprints([]);
@@ -1462,9 +1466,10 @@ export const ProjectsList: React.FC = () => {
                     }
                 }
 
-                const [allTasks, allIdeas, allIssues] = await Promise.all([
+                const [allTasks, allIdeas, allInitiatives, allIssues] = await Promise.all([
                     getUserTasks().catch(() => []),
                     getUserIdeas().catch(() => []),
+                    getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
                     getUserIssues().catch(() => [])
                 ]);
 
@@ -1472,6 +1477,7 @@ export const ProjectsList: React.FC = () => {
                     setProjects(allProjects);
                     setTasks(allTasks);
                     setIdeas(allIdeas);
+                    setInitiatives(allInitiatives);
                     setIssues(allIssues);
                 }
             } catch (e) {
@@ -1546,6 +1552,17 @@ export const ProjectsList: React.FC = () => {
         manualFocusProject ? sprints.filter(s => s.projectId === manualFocusProject.id) : [],
         [manualFocusProject, sprints]);
 
+    const initiativesByProject = useMemo(() => {
+        const map: Record<string, Initiative[]> = {};
+        initiatives.forEach((initiative) => {
+            if (!map[initiative.projectId]) {
+                map[initiative.projectId] = [];
+            }
+            map[initiative.projectId].push(initiative);
+        });
+        return map;
+    }, [initiatives]);
+
     const nextFocusMilestone = useMemo(() => {
         const pending = focusMilestones.filter(m => m.status === 'Pending');
         if (pending.length === 0) return undefined;
@@ -1565,10 +1582,19 @@ export const ProjectsList: React.FC = () => {
             const projectIssues = issues.filter(i => i.projectId === project.id);
             const projectMilestones = milestones.filter(m => m.projectId === project.id);
             const projectSprints = sprints.filter(s => s.projectId === project.id);
-            healthMap[project.id] = calculateProjectHealth(project, projectTasks, projectMilestones, projectIssues, projectSprints);
+            healthMap[project.id] = calculateProjectHealth(
+                project,
+                projectTasks,
+                projectMilestones,
+                projectIssues,
+                projectSprints,
+                [],
+                [],
+                initiativesByProject[project.id] || []
+            );
         });
         return healthMap;
-    }, [activeList, tasks, issues, milestones, sprints]);
+    }, [activeList, tasks, issues, milestones, sprints, initiativesByProject]);
 
     // Calculate spotlight data for the manually focused project
     const manualFocusSpotlightData = useMemo(() => {
@@ -1577,15 +1603,25 @@ export const ProjectsList: React.FC = () => {
         const projectIssues = issues.filter(i => i.projectId === manualFocusProject.id);
         const projectMilestones = milestones.filter(m => m.projectId === manualFocusProject.id);
         const projectSprints = sprints.filter(s => s.projectId === manualFocusProject.id);
+        const projectInitiatives = initiativesByProject[manualFocusProject.id] || [];
 
         const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
-        const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
+        const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(
+            manualFocusProject,
+            projectTasks,
+            projectMilestones,
+            projectIssues,
+            projectSprints,
+            [],
+            [],
+            projectInitiatives
+        );
         return {
             reasons: score.reasons,
             score: score.score,
             health: health
         };
-    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints]);
+    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, initiativesByProject]);
 
     // Count critical/warning projects
     const { criticalCount, warningCount } = useMemo(() => {

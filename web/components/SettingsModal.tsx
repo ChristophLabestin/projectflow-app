@@ -66,17 +66,23 @@ const TOKEN_PERMISSION_PRESETS: Record<TokenPreset, APITokenPermission[]> = {
         'projects:delete',
         'tasks:read',
         'tasks:write',
-        'tasks:delete'
+        'tasks:delete',
+        'initiatives:read',
+        'initiatives:write',
+        'initiatives:delete'
     ],
     'read-only': [
         'projects:read',
-        'tasks:read'
+        'tasks:read',
+        'initiatives:read'
     ],
     'write-no-delete': [
         'projects:read',
         'projects:write',
         'tasks:read',
-        'tasks:write'
+        'tasks:write',
+        'initiatives:read',
+        'initiatives:write'
     ]
 };
 
@@ -107,11 +113,14 @@ const TOKEN_PERMISSION_LABEL_KEYS: Record<APITokenPermission, string> = {
     'projects:delete': 'settings.api.permissions.projectsDelete',
     'tasks:read': 'settings.api.permissions.tasksRead',
     'tasks:write': 'settings.api.permissions.tasksWrite',
-    'tasks:delete': 'settings.api.permissions.tasksDelete'
+    'tasks:delete': 'settings.api.permissions.tasksDelete',
+    'initiatives:read': 'settings.api.permissions.initiativesRead',
+    'initiatives:write': 'settings.api.permissions.initiativesWrite',
+    'initiatives:delete': 'settings.api.permissions.initiativesDelete'
 };
 
 const hasDestructiveScope = (permissions: APITokenPermission[]) =>
-    permissions.includes('projects:delete') || permissions.includes('tasks:delete');
+    permissions.includes('projects:delete') || permissions.includes('tasks:delete') || permissions.includes('initiatives:delete');
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab = 'account' }) => {
     const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);

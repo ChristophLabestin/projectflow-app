@@ -97,6 +97,13 @@ This ensures future AI assistants and developers know what components exist and 
 
 - Do not leave new work only in chat output; it must be tracked in ProjectFlow and reflected in docs.
 
+## 9) Initiative Tracking for Major Work (Mandatory)
+
+- For major new features, migrations, multi-file architecture changes, new routes/screens/resources, or work spanning multiple subsystems, create or upsert a **ProjectFlow initiative** before or at the start of implementation.
+- In plan-mode sessions, default to initiative tracking unless the request is clearly a narrow fix.
+- Attach implementation tasks to that initiative using `initiativeId` rather than using subtasks as the primary planning structure.
+- Legacy “strategic tasks” created from flows should redirect or migrate to initiative records instead of being extended further.
+
 ---
 
 ## Required Project Docs (Minimum Set)

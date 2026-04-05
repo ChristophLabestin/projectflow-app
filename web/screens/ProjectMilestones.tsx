@@ -26,7 +26,7 @@ export const ProjectMilestones = () => {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [editingMilestone, setEditingMilestone] = useState<Milestone | undefined>(undefined);
     const [viewingMilestone, setViewingMilestone] = useState<Milestone | undefined>(undefined);
-    const [ideaLookup, setIdeaLookup] = useState<Record<string, string>>({});
+    const [initiativeLookup, setInitiativeLookup] = useState<Record<string, string>>({});
     const [taskStatusLookup, setTaskStatusLookup] = useState<Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }>>({});
     const [subtaskLookup, setSubtaskLookup] = useState<Record<string, { total: number; completed: number }>>({});
     const confirm = useConfirm();
@@ -56,19 +56,23 @@ export const ProjectMilestones = () => {
             setLoading(false);
         });
 
-        const fetchIdeas = async () => {
+        const fetchInitiatives = async () => {
             try {
-                const snapshot = await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
+                const snapshot = await getDocs(query(collectionGroup(db, 'initiatives'), where('projectId', '==', projectId)));
                 const lookup: Record<string, string> = {};
                 snapshot.forEach(doc => {
                     lookup[doc.id] = doc.data().title;
                 });
-                setIdeaLookup(lookup);
+                const legacyIdeaSnapshot = await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
+                legacyIdeaSnapshot.forEach(doc => {
+                    lookup[doc.id] = doc.data().title;
+                });
+                setInitiativeLookup(lookup);
             } catch (e) {
-                console.error('Failed to fetch flow lookup', e);
+                console.error('Failed to fetch initiative lookup', e);
             }
         };
-        fetchIdeas();
+        fetchInitiatives();
 
         const tasksQ = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
         const unsubTasks = onSnapshot(tasksQ, (snap) => {
@@ -397,7 +401,7 @@ export const ProjectMilestones = () => {
                                                             <span className="project-milestones__tag-pill project-milestones__tag-pill--initiative">
                                                                 <span className="material-symbols-outlined">rocket_launch</span>
                                                                 <span className="project-milestones__tag-text">
-                                                                    {ideaLookup[milestone.linkedInitiativeId] || t('projectMilestones.timeline.initiativeFallback')}
+                                                                    {initiativeLookup[milestone.linkedInitiativeId] || t('projectMilestones.timeline.initiativeFallback')}
                                                                 </span>
                                                             </span>
                                                         )}
@@ -491,7 +495,7 @@ export const ProjectMilestones = () => {
                 }}
                 taskStatusLookup={taskStatusLookup}
                 subtaskLookup={subtaskLookup}
-                ideaLookup={ideaLookup}
+                initiativeLookup={initiativeLookup}
             />
         </div>
     );

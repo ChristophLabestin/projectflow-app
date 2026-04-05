@@ -377,6 +377,15 @@ Important:
 - `project.flows.handoffToSocial` — Handoff flow to Social module (campaign/post pipeline)
 - `project.flows.handoffToMarketing` — Handoff flow to Marketing module (email/blog/ads)
 
+### Initiatives
+
+- `project.initiatives.view` — View initiative list and initiative detail pages
+- `project.initiatives.create` — Create initiatives directly or from flow conversion
+- `project.initiatives.edit` — Edit initiative fields and summary context
+- `project.initiatives.delete` — Delete initiatives
+- `project.initiatives.manageTasks` — Attach, detach, or create child tasks within an initiative
+- `project.flows.convertToInitiatives` — Convert approved flow ideas into initiative records
+
 ---
 
 ## 8.14 Project — Issues (Module: Issues)

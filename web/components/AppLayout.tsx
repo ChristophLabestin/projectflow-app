@@ -215,6 +215,10 @@ export const AppLayout = () => {
                         rawItems.push({ label: t('breadcrumbs.tasks'), to: `/project/${parts[1]}/tasks` });
                         if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.taskDetails') });
                         break;
+                    case 'initiatives':
+                        rawItems.push({ label: t('breadcrumbs.initiatives'), to: `/project/${parts[1]}/initiatives` });
+                        if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.initiativeDetails') });
+                        break;
                     case 'flows':
                     case 'ideas':
                         rawItems.push({ label: t('breadcrumbs.flows'), to: `/project/${parts[1]}/flows` });
