@@ -11,7 +11,7 @@ import {
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';
-import { getTenantFileDownloadUrl } from '../fileStorageService';
+import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from '../fileStorageService';
 import { toMillis } from '../../utils/time';
 import type { Project, ProjectMember } from '../../types';
 import { resolveActiveTenantId } from './authService';
@@ -58,6 +58,12 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
         } catch (error) {
             console.warn('Failed to refresh project cover image URL', error);
         }
+    } else if (project.coverImage) {
+        try {
+            next.coverImage = await refreshFirebaseStorageUrl(tenantId, project.coverImage);
+        } catch (error) {
+            console.warn('Failed to recover project cover image URL', error);
+        }
     }
 
     if (project.squareIconFileId) {
@@ -66,6 +72,12 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
             next.squareIcon = signed.downloadUrl;
         } catch (error) {
             console.warn('Failed to refresh project square icon URL', error);
+        }
+    } else if (project.squareIcon) {
+        try {
+            next.squareIcon = await refreshFirebaseStorageUrl(tenantId, project.squareIcon);
+        } catch (error) {
+            console.warn('Failed to recover project square icon URL', error);
         }
     }
 
@@ -77,6 +89,17 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
             } catch (error) {
                 console.warn('Failed to refresh project screenshot URL', error);
                 return '';
+            }
+        }));
+
+        next.screenshots = nextScreenshots.filter(Boolean);
+    } else if (Array.isArray(project.screenshots) && project.screenshots.length > 0) {
+        const nextScreenshots = await Promise.all(project.screenshots.map(async (url) => {
+            try {
+                return await refreshFirebaseStorageUrl(tenantId, url);
+            } catch (error) {
+                console.warn('Failed to recover project screenshot URL', error);
+                return url;
             }
         }));
 

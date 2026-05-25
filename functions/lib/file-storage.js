@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.googleDriveStorageCallback = exports.deleteTenantFile = exports.getTenantFileDownloadUrl = exports.listTenantFiles = exports.finalizeTenantFileUpload = exports.createTenantFileUploadSession = exports.disconnectGoogleDriveStorage = exports.getGoogleDriveStorageAuthUrl = exports.testWorkspaceFileStorageConnection = exports.saveWorkspaceFileStorageConfig = exports.getWorkspaceFileStorageConfig = void 0;
+exports.googleDriveStorageCallback = exports.deleteTenantFile = exports.getTenantFirebaseStorageDownloadUrl = exports.getTenantFileDownloadUrl = exports.listTenantFiles = exports.finalizeTenantFileUpload = exports.createTenantFileUploadSession = exports.disconnectGoogleDriveStorage = exports.getGoogleDriveStorageAuthUrl = exports.testWorkspaceFileStorageConnection = exports.saveWorkspaceFileStorageConfig = exports.getWorkspaceFileStorageConfig = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const functions = require("firebase-functions");
@@ -16,6 +16,7 @@ const UPLOAD_DRAFT_TTL_MS = 60 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const DEFAULT_S3_REGION = 'us-east-1';
 const DEFAULT_S3_ENDPOINT = 'https://s3.amazonaws.com';
+const FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY = 'firebaseStorageDownloadTokens';
 const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID || '';
 const GOOGLE_DRIVE_CLIENT_SECRET = process.env.GOOGLE_DRIVE_CLIENT_SECRET || '';
 const GOOGLE_DRIVE_SCOPES = [
@@ -260,6 +261,24 @@ const fileBucket = () => {
         throw new functions.https.HttpsError('failed-precondition', 'Firebase storage bucket is not configured.');
     }
     return bucket;
+};
+const firstDownloadToken = (value) => normalizeString(value)
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)[0] || '';
+const firebaseDownloadUrl = (bucketName, objectPath, token) => (`https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${encodeURIComponent(token)}`);
+const ensureFirebaseDownloadToken = async (file) => {
+    const [metadata] = await file.getMetadata();
+    const customMetadata = (metadata.metadata || {});
+    const existingToken = firstDownloadToken(customMetadata[FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY]);
+    if (existingToken) {
+        return existingToken;
+    }
+    const token = crypto.randomUUID();
+    await file.setMetadata({
+        metadata: Object.assign(Object.assign({}, customMetadata), { [FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY]: token }),
+    });
+    return token;
 };
 const sanitizeSecretForClient = (secret) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
@@ -592,12 +611,9 @@ const generateDownloadUrlFromRecord = async (tenantId, secret, record) => {
     if (record.provider === 'firebase') {
         const objectPath = normalizeString(record.providerRef.firebasePath);
         const bucket = fileBucket();
-        const [downloadUrl] = await bucket.file(objectPath).getSignedUrl({
-            version: 'v4',
-            action: 'read',
-            expires: Date.now() + STORAGE_SIGNED_URL_TTL_MS,
-        });
-        return downloadUrl;
+        const file = bucket.file(objectPath);
+        const token = await ensureFirebaseDownloadToken(file);
+        return firebaseDownloadUrl(bucket.name, objectPath, token);
     }
     if (record.provider === 's3') {
         const s3Ref = record.providerRef.s3;
@@ -990,6 +1006,28 @@ exports.getTenantFileDownloadUrl = functions.region(REGION).https.onCall(async (
         fileId,
         downloadUrl,
         expiresInSeconds: Math.floor(STORAGE_SIGNED_URL_TTL_MS / 1000),
+    };
+});
+exports.getTenantFirebaseStorageDownloadUrl = functions.region(REGION).https.onCall(async (data, context) => {
+    const tenantId = normalizeString(data === null || data === void 0 ? void 0 : data.tenantId);
+    const storagePath = normalizeString(data === null || data === void 0 ? void 0 : data.storagePath);
+    if (!tenantId || !storagePath) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and storagePath are required.');
+    }
+    if (!storagePath.startsWith(`tenants/${tenantId}/`)) {
+        throw new functions.https.HttpsError('permission-denied', 'Storage path is outside this tenant.');
+    }
+    await requireTenantAccess(tenantId, context);
+    const bucket = fileBucket();
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+    if (!exists) {
+        throw new functions.https.HttpsError('not-found', 'File not found.');
+    }
+    const token = await ensureFirebaseDownloadToken(file);
+    return {
+        storagePath,
+        downloadUrl: firebaseDownloadUrl(bucket.name, storagePath, token),
     };
 });
 exports.deleteTenantFile = functions.region(REGION).https.onCall(async (data, context) => {

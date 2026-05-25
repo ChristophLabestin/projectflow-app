@@ -3,26 +3,16 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { auth } from '../services/firebase';
 import { getAllWorkspaceProjects } from '../services/dataService';
-import { getUserGlobalActivities } from '../services/domain/activityService';
 import { ensureActiveTenantId } from '../services/domain/authService';
 import { getUserIdeas } from '../services/domain/ideasService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getUserIssues } from '../services/domain/issuesService';
-import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
+import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getUserTasks } from '../services/domain/tasksService';
-import { getUserProfile, updateUserData } from '../services/domain/usersService';
-import { Project, Task, Idea, Issue, Activity, Member, Initiative } from '../types';
-import { toMillis, toDate } from '../utils/time';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/common/Badge/Badge';
-import { Sparkline } from '../components/charts/Sparkline';
-import { DonutChart } from '../components/charts/DonutChart';
-import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
-import { LatestMilestoneCard } from '../components/dashboard/LatestMilestoneCard';
-import { calculateProjectHealth, calculateWorkspaceHealth, ProjectHealth } from '../services/healthService';
-import { WorkspaceHealthCard } from '../components/dashboard/WorkspaceHealthCard';
-import { HealthIndicator } from '../components/project/HealthIndicator';
+import { getUserProfile } from '../services/domain/usersService';
+import { Project, Task, Idea, Issue, Initiative } from '../types';
+import { toDate, toMillis } from '../utils/time';
+import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -31,109 +21,122 @@ import { useAuth } from '../context/AuthContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 
+type DashboardCommandTone = 'danger' | 'warning' | 'info' | 'neutral';
 
-const formatShortDate = (date: any, dateFormat: string, dateLocale: any) => {
-    const d = toDate(date);
-    if (!d) return '';
-    return format(d, dateFormat, { locale: dateLocale });
-};
+interface DashboardCommandItem {
+    id: string;
+    href: string;
+    icon: string;
+    label: string;
+    meta: string;
+    priority: number;
+    title: string;
+    tone: DashboardCommandTone;
+}
+
+type DashboardStepTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
 
 const REVIEW_STAGES = new Set(['Review', 'Submit']);
-const TASK_STATUS_ORDER = ['In Progress', 'Review', 'Blocked', 'Todo', 'Open', 'Backlog', 'On Hold'];
-const TASK_STATUS_COLORS: Record<string, string> = {
-    'In Progress': '#6366f1',
-    'Review': '#f59e0b',
-    'Blocked': '#ef4444',
-    'Todo': '#0ea5e9',
-    'Open': '#3b82f6',
-    'Backlog': '#94a3b8',
-    'On Hold': '#64748b',
-    'Done': '#10b981'
+
+const cssVars = (vars: Record<string, string>) => vars as React.CSSProperties;
+
+const clampDashboardProgress = (value: number) => Math.max(0, Math.min(1, value));
+
+const smoothDashboardProgress = (value: number, start: number, end: number) => {
+    const x = clampDashboardProgress((value - start) / (end - start));
+    return x * x * (3 - (2 * x));
 };
 
-const projectStatusTone = (status?: string): 'neutral' | 'success' | 'warning' | 'error' => {
-    if (status === 'Completed') return 'success';
-    if (status === 'On Hold' || status === 'Planning' || status === 'Brainstorming') return 'warning';
-    return 'neutral';
+const getScrollContainer = (node: HTMLElement): HTMLElement | Window => {
+    let parent = node.parentElement;
+
+    while (parent) {
+        const style = window.getComputedStyle(parent);
+        const overflow = `${style.overflow} ${style.overflowY} ${style.overflowX}`;
+        if (/(auto|scroll|overlay)/.test(overflow) && parent.scrollHeight > parent.clientHeight) {
+            return parent;
+        }
+        parent = parent.parentElement;
+    }
+
+    return window;
 };
 
+const getScrollTop = (container: HTMLElement | Window) => {
+    if (container instanceof Window) {
+        return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    }
 
+    return container.scrollTop;
+};
 
-const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
-    const { t } = useLanguage();
-    const [members, setMembers] = useState<Member[]>([]);
+const getScrollViewportHeight = (container: HTMLElement | Window) => (
+    container instanceof Window ? window.innerHeight : container.clientHeight
+);
 
-    useEffect(() => {
-        const fetchMembers = async () => {
-            try {
-                const memberIds = await getProjectMembers(projectId);
-                const memberPromises = memberIds.map(id => getUserProfile(id));
-                const memberProfiles = await Promise.all(memberPromises);
-                setMembers(memberProfiles.filter((m): m is Member => !!m));
-            } catch (err) {
-                console.error("Failed to fetch project members", err);
-            }
-        };
-        fetchMembers();
-    }, [projectId]);
+const startOfToday = () => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
 
-    if (members.length === 0) return null;
+const isToday = (value?: any) => {
+    const date = toDate(value);
+    if (!date) return false;
 
-    return (
-        <div className="member-avatars">
-            {members.slice(0, 3).map((member, i) => (
-                <div
-                    key={member.uid || i}
-                    className="member-avatar"
-                    title={member.displayName || t('dashboard.members.member')}
-                >
-                    {member.photoURL ? (
-                        <img src={member.photoURL} alt="" className="member-avatar__image" />
-                    ) : (
-                        <div className="member-avatar__fallback">
-                            {((member.displayName || member.email || t('dashboard.members.unknown')).charAt(0)).toUpperCase()}
-                        </div>
-                    )}
-                </div>
-            ))}
-            {members.length > 3 && (
-                <div className="member-avatar member-avatar--more">
-                    +{members.length - 3}
-                </div>
-            )}
-        </div>
-    );
+    const start = startOfToday();
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    const time = date.getTime();
+
+    return time >= start.getTime() && time < end.getTime();
+};
+
+const isPastDue = (value?: any) => {
+    const date = toDate(value);
+    return date ? date.getTime() < startOfToday().getTime() : false;
+};
+
+const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
+    const buckets = Array.from({ length: days }, (_, index) => {
+        const date = new Date();
+        date.setDate(date.getDate() - (days - index - 1));
+        date.setHours(0, 0, 0, 0);
+        return { date, value: 0 };
+    });
+    const firstDay = buckets[0]?.date.getTime() ?? Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+
+    items.forEach((item) => {
+        const createdAt = toDate(item.createdAt);
+        if (!createdAt) return;
+        const normalized = new Date(createdAt);
+        normalized.setHours(0, 0, 0, 0);
+        const index = Math.floor((normalized.getTime() - firstDay) / dayMs);
+        if (index >= 0 && index < buckets.length) {
+            buckets[index].value += 1;
+        }
+    });
+
+    return buckets;
 };
 
 export const Dashboard = () => {
     const { isAuthReady, user } = useAuth();
     const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
-    const locale = language === 'de' ? 'de-DE' : 'en-US';
     const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
     const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
-    const [stats, setStats] = useState({
-        activeProjects: 0,
-        completedProjects: 0,
-        openTasks: 0,
-        ideas: 0
-    });
     const [projects, setProjects] = useState<Project[]>([]);
-    const [recentProjects, setRecentProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
-    const [activities, setActivities] = useState<Activity[]>([]);
-    const [calendarView, setCalendarView] = useState<'month' | 'week'>(() => {
-        // Init from localStorage if available
-        const saved = localStorage.getItem('dashboard_calendar_view');
-        return (saved === 'week' || saved === 'month') ? saved : 'month';
-    });
-    const [currentDate, setCurrentDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
-    const [hoverTrendIndex, setHoverTrendIndex] = useState<number | null>(null);
-    const trendRef = useRef<SVGSVGElement | null>(null);
+    const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
+    const [dashboardScrollProgress, setDashboardScrollProgress] = useState(0);
+    const dashboardStageRef = useRef<HTMLDivElement | null>(null);
+    const dashboardTouchYRef = useRef<number | null>(null);
 
     useEffect(() => {
         void loadDashboardTranslations();
@@ -146,144 +149,6 @@ export const Dashboard = () => {
         return () => unsubscribe();
     }, []);
 
-    const hasIssuesModule = useMemo(() => projects.some(p => p.modules?.includes('issues')), [projects]);
-    const hasMilestonesModule = useMemo(() => projects.some(p => p.modules?.includes('milestones')), [projects]);
-
-    const onboardingSteps = useMemo<OnboardingStep[]>(() => {
-        const steps: OnboardingStep[] = [
-            {
-                id: 'header',
-                targetId: 'dashboard-header',
-                title: t('onboarding.dashboard.steps.header.title'),
-                description: t('onboarding.dashboard.steps.header.description')
-            },
-            {
-                id: 'kpis',
-                targetId: 'dashboard-kpis',
-                title: t('onboarding.dashboard.steps.kpis.title'),
-                description: t('onboarding.dashboard.steps.kpis.description')
-            },
-            {
-                id: 'trends',
-                targetId: 'dashboard-trends',
-                title: t('onboarding.dashboard.steps.trends.title'),
-                description: t('onboarding.dashboard.steps.trends.description'),
-                placement: 'top'
-            },
-            {
-                id: 'health',
-                targetId: 'dashboard-health',
-                title: t('onboarding.dashboard.steps.health.title'),
-                description: t('onboarding.dashboard.steps.health.description'),
-                placement: 'top'
-            },
-            {
-                id: 'status',
-                targetId: 'dashboard-status',
-                title: t('onboarding.dashboard.steps.status.title'),
-                description: t('onboarding.dashboard.steps.status.description'),
-                placement: 'left'
-            },
-            {
-                id: 'workload',
-                targetId: 'dashboard-workload',
-                title: t('onboarding.dashboard.steps.workload.title'),
-                description: t('onboarding.dashboard.steps.workload.description'),
-                placement: 'top'
-            },
-            {
-                id: 'deadlines',
-                targetId: 'dashboard-deadlines',
-                title: t('onboarding.dashboard.steps.deadlines.title'),
-                description: t('onboarding.dashboard.steps.deadlines.description'),
-                placement: 'top'
-            },
-            {
-                id: 'projects',
-                targetId: 'dashboard-active-projects',
-                title: t('onboarding.dashboard.steps.projects.title'),
-                description: t('onboarding.dashboard.steps.projects.description')
-            },
-            {
-                id: 'calendar',
-                targetId: 'dashboard-calendar',
-                title: t('onboarding.dashboard.steps.calendar.title'),
-                description: t('onboarding.dashboard.steps.calendar.description'),
-                placement: 'left'
-            },
-            {
-                id: 'scheduled',
-                targetId: 'dashboard-scheduled',
-                title: t('onboarding.dashboard.steps.scheduled.title'),
-                description: t('onboarding.dashboard.steps.scheduled.description'),
-                placement: 'left'
-            }
-        ];
-
-        if (hasMilestonesModule) {
-            steps.push({
-                id: 'milestones',
-                targetId: 'dashboard-milestones',
-                title: t('onboarding.dashboard.steps.milestones.title'),
-                description: t('onboarding.dashboard.steps.milestones.description'),
-                placement: 'left'
-            });
-        }
-
-        steps.push(
-            {
-                id: 'activity',
-                targetId: 'dashboard-live-activity',
-                title: t('onboarding.dashboard.steps.activity.title'),
-                description: t('onboarding.dashboard.steps.activity.description'),
-                placement: 'left'
-            },
-            {
-                id: 'attention',
-                targetId: 'dashboard-attention',
-                title: t('onboarding.dashboard.steps.attention.title'),
-                description: t('onboarding.dashboard.steps.attention.description'),
-                placement: 'left'
-            },
-            {
-                id: 'recent',
-                targetId: 'dashboard-recent-tasks',
-                title: t('onboarding.dashboard.steps.recent.title'),
-                description: t('onboarding.dashboard.steps.recent.description'),
-                placement: 'left'
-            }
-        );
-
-        if (hasIssuesModule && issues.length > 0) {
-            steps.push({
-                id: 'issues',
-                targetId: 'dashboard-recent-issues',
-                title: t('onboarding.dashboard.steps.issues.title'),
-                description: t('onboarding.dashboard.steps.issues.description'),
-                placement: 'left'
-            });
-        }
-
-        return steps;
-    }, [hasIssuesModule, hasMilestonesModule, issues.length, t]);
-
-    const {
-        showWelcome: showOnboardingWelcome,
-        onboardingActive,
-        stepIndex: onboardingStepIndex,
-        setStepIndex: setOnboardingStepIndex,
-        start: handleStartOnboarding,
-        skip: handleSkipOnboarding,
-        finish: handleFinishOnboarding
-    } = useOnboardingTour('dashboard', {
-        stepCount: onboardingSteps.length,
-        enabled: !loading // Only init tour when data is loaded
-    });
-
-    // Quick Add State
-    const [quickIdeaText, setQuickIdeaText] = useState('');
-    const [addingIdea, setAddingIdea] = useState(false);
-
     useEffect(() => {
         const hour = new Date().getHours();
         if (hour < 12) {
@@ -295,26 +160,34 @@ export const Dashboard = () => {
         }
     }, [t]);
 
-    const getWeekNumber = (d: Date) => {
-        d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-        d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
-        const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-        return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-    };
+    const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
+        {
+            id: 'header',
+            targetId: 'dashboard-header',
+            title: t('onboarding.dashboard.steps.header.title'),
+            description: t('onboarding.dashboard.steps.header.description')
+        },
+        {
+            id: 'focus',
+            targetId: 'dashboard-kpis',
+            title: t('onboarding.dashboard.steps.kpis.title'),
+            description: t('onboarding.dashboard.steps.kpis.description'),
+            placement: 'top'
+        }
+    ]), [t]);
 
-    const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
-        const buckets = Array.from({ length: days }, (_, i) => ({ label: i, value: 0 }));
-        const now = Date.now();
-        const dayMs = 24 * 60 * 60 * 1000;
-        items.forEach((item) => {
-            const ts = toMillis(item.createdAt) || now;
-            const diff = Math.floor((now - ts) / dayMs);
-            if (diff >= 0 && diff < days) {
-                buckets[days - diff - 1].value += 1;
-            }
-        });
-        return buckets;
-    };
+    const {
+        showWelcome: showOnboardingWelcome,
+        onboardingActive,
+        stepIndex: onboardingStepIndex,
+        setStepIndex: setOnboardingStepIndex,
+        start: handleStartOnboarding,
+        skip: handleSkipOnboarding,
+        finish: handleFinishOnboarding
+    } = useOnboardingTour('dashboard', {
+        stepCount: onboardingSteps.length,
+        enabled: !loading
+    });
 
     useEffect(() => {
         if (!isAuthReady) {
@@ -324,18 +197,11 @@ export const Dashboard = () => {
 
         if (!authUserId) {
             setProjects([]);
-            setRecentProjects([]);
             setTasks([]);
             setInitiatives([]);
             setIdeas([]);
             setIssues([]);
-            setActivities([]);
-            setStats({
-                activeProjects: 0,
-                completedProjects: 0,
-                openTasks: 0,
-                ideas: 0
-            });
+            setUserName('');
             setLoading(false);
             return;
         }
@@ -353,154 +219,127 @@ export const Dashboard = () => {
                     dedupedProjects.set(`${project.tenantId || 'none'}:${project.id}`, project);
                 });
 
-                let allProjects = Array.from(dedupedProjects.values());
-                if (allProjects.length === 0) {
+                let workspaceProjects = Array.from(dedupedProjects.values());
+                if (workspaceProjects.length === 0) {
                     try {
-                        allProjects = await getAllWorkspaceProjects(resolvedTenantId);
+                        workspaceProjects = await getAllWorkspaceProjects(resolvedTenantId);
                     } catch (error) {
                         console.warn('Dashboard workspace project query failed', error);
                     }
                 }
 
-                setProjects(allProjects);
-
-                const [tasks, initiatives, ideas, issues, recentActivities] = await Promise.all([
+                const [workspaceTasks, workspaceInitiatives, workspaceIdeas, workspaceIssues] = await Promise.all([
                     getUserTasks().catch(() => []),
                     getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
                     getUserIdeas().catch(() => []),
-                    getUserIssues().catch(() => []),
-                    getUserGlobalActivities(resolvedTenantId || authUserId, 6).catch(() => [])
+                    getUserIssues().catch(() => [])
                 ]);
 
-                setTasks(tasks);
-                setInitiatives(initiatives);
-                setIdeas(ideas);
-                setIssues(issues);
-                setActivities(recentActivities);
+                setProjects(workspaceProjects);
+                setTasks(workspaceTasks);
+                setInitiatives(workspaceInitiatives);
+                setIdeas(workspaceIdeas);
+                setIssues(workspaceIssues);
 
-                // Fetch user preference for calendar view
-                if (authUserId) {
-                    const profile = await getUserProfile(authUserId);
-                    if (profile?.preferences?.dashboard?.calendarView) {
-                        const view = profile.preferences.dashboard.calendarView;
-                        setCalendarView(view);
-                        localStorage.setItem('dashboard_calendar_view', view);
-                    }
-
-                    const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
-                    if (displayName) {
-                        setUserName(displayName.split(' ')[0]);
-                    }
-                }
-                setStats({
-                    activeProjects: allProjects.filter(p => p.status === 'Active').length,
-                    completedProjects: allProjects.filter(p => p.status === 'Completed').length,
-                    openTasks: tasks.filter(t => !t.isCompleted).length,
-                    ideas: ideas.length
-                });
-
-                const sortedProjects = [...allProjects]
-                    .filter(p => p.status !== 'On Hold' && p.status !== 'Planning')
-                    .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-                setRecentProjects(sortedProjects.slice(0, 4));
+                const profile = await getUserProfile(authUserId);
+                const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
+                setUserName(displayName ? displayName.split(' ')[0] : '');
             } catch (err) {
                 console.error(err);
             } finally {
                 setLoading(false);
             }
         };
-        loadDashboard();
+
+        void loadDashboard();
     }, [authUserId, isAuthReady, user?.displayName]);
 
-    const taskTrend = useMemo(() => bucketByDay(tasks), [tasks]);
-    const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);
-    const issueTrend = useMemo(() => bucketByDay(issues), [issues]);
+    useEffect(() => {
+        const checkPasskeyStatus = async () => {
+            if (!auth.currentUser) return;
 
+            const snoozeUntil = localStorage.getItem('projectflow_passkey_reminder_snooze');
+            if (snoozeUntil && parseInt(snoozeUntil, 10) > Date.now()) return;
 
-    const weekdays = useMemo(() => t('dashboard.calendar.weekdays').split(','), [t]);
-    const projectStatusLabels = useMemo(() => ({
-        Active: t('dashboard.projectStatus.active'),
-        Completed: t('dashboard.projectStatus.completed'),
-        Planning: t('dashboard.projectStatus.planning'),
-        'On Hold': t('dashboard.projectStatus.onHold'),
-        Brainstorming: t('dashboard.projectStatus.brainstorming')
-    }), [t]);
-    const taskStatusLabels = useMemo(() => ({
-        Backlog: t('tasks.status.backlog'),
-        Todo: t('tasks.status.todo'),
-        Open: t('tasks.status.open'),
-        'In Progress': t('tasks.status.inProgress'),
-        Review: t('tasks.status.review'),
-        'On Hold': t('tasks.status.onHold'),
-        Blocked: t('tasks.status.blocked'),
-        Done: t('tasks.status.done')
-    }), [t]);
-    const taskPriorityLabels = useMemo(() => ({
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low')
-    }), [t]);
-
-    // New Metrics for distribution
-    const projectStatusDistribution = useMemo(() => {
-        const active = projects.filter(p => p.status === 'Active').length;
-        const completed = projects.filter(p => p.status === 'Completed').length;
-        const planning = projects.filter(p => p.status === 'Planning').length;
-        const onHold = projects.filter(p => p.status === 'On Hold').length;
-
-        // Return structured for Donut
-        return [
-            { name: projectStatusLabels.Active, value: active, color: '#6366f1' }, // Indigo
-            { name: projectStatusLabels.Completed, value: completed, color: '#10b981' }, // Emerald
-            { name: projectStatusLabels.Planning, value: planning, color: '#f59e0b' }, // Amber
-            { name: projectStatusLabels['On Hold'], value: onHold, color: '#94a3b8' } // Slate
-        ].filter(d => d.value > 0);
-    }, [projects, projectStatusLabels]);
-
-    const taskPriorityDistribution = useMemo(() => {
-        const urgent = tasks.filter(t => !t.isCompleted && t.priority === 'Urgent').length;
-        const high = tasks.filter(t => !t.isCompleted && t.priority === 'High').length;
-        const medium = tasks.filter(t => !t.isCompleted && t.priority === 'Medium').length;
-        const low = tasks.filter(t => !t.isCompleted && t.priority === 'Low').length;
-
-        return [
-            { name: taskPriorityLabels.Urgent, value: urgent, color: '#ef4444' },
-            { name: taskPriorityLabels.High, value: high, color: '#f97316' },
-            { name: taskPriorityLabels.Medium, value: medium, color: '#3b82f6' },
-            { name: taskPriorityLabels.Low, value: low, color: '#94a3b8' }
-        ].filter(d => d.value > 0);
-    }, [tasks, taskPriorityLabels]);
-
-    const taskStatusSummary = useMemo(() => {
-        const openTasks = tasks.filter(task => !task.isCompleted && task.status !== 'Done');
-        const counts: Record<string, number> = {};
-        openTasks.forEach(task => {
-            const status = task.status || 'Open';
-            counts[status] = (counts[status] || 0) + 1;
-        });
-        const remaining = Object.keys(counts).filter(status => !TASK_STATUS_ORDER.includes(status));
-        const items = [...TASK_STATUS_ORDER, ...remaining]
-            .map(status => ({ status, count: counts[status] || 0 }))
-            .filter(item => item.count > 0);
-        return { items, total: openTasks.length };
-    }, [tasks]);
-
-    const statusBreakdown = useMemo(() => {
-        const active = stats.activeProjects;
-        const completed = stats.completedProjects;
-        const other = Math.max(0, projects.length - active - completed);
-        const total = active + completed + other || 1;
-        return {
-            activePct: Math.round((active / total) * 100),
-            completedPct: Math.round((completed / total) * 100),
-            otherPct: Math.max(0, 100 - Math.round((active / total) * 100) - Math.round((completed / total) * 100))
+            const hasPasskeys = await checkPasskeyExists(auth.currentUser.uid);
+            if (!hasPasskeys) {
+                window.setTimeout(() => setShowPasskeyUpsell(true), 1000);
+            }
         };
-    }, [stats, projects.length]);
+
+        void checkPasskeyStatus().catch((error) => {
+            console.warn('Passkey reminder check failed', error);
+        });
+    }, []);
+
+    useEffect(() => {
+        if (loading || !dashboardTranslationsReady) return;
+
+        const stage = dashboardStageRef.current;
+        if (!stage) return;
+
+        let frame = 0;
+        const scrollContainer = getScrollContainer(stage);
+        const scrollStart = getScrollTop(scrollContainer);
+
+        const updateProgress = () => {
+            const range = Math.max(getScrollViewportHeight(scrollContainer) * 1.75, 1120);
+            const nextProgress = clampDashboardProgress((getScrollTop(scrollContainer) - scrollStart) / range);
+
+            setDashboardScrollProgress((current) => (
+                Math.abs(current - nextProgress) < 0.01 ? current : nextProgress
+            ));
+        };
+
+        const scheduleUpdate = () => {
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(updateProgress);
+        };
+
+        updateProgress();
+        scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
+        window.addEventListener('resize', scheduleUpdate);
+
+        return () => {
+            window.cancelAnimationFrame(frame);
+            scrollContainer?.removeEventListener('scroll', scheduleUpdate);
+            window.removeEventListener('resize', scheduleUpdate);
+        };
+    }, [dashboardTranslationsReady, loading]);
+
+    const handleDashboardWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+        const delta = event.deltaY / 1500;
+        if (!Number.isFinite(delta) || Math.abs(delta) < 0.002) return;
+
+        setDashboardScrollProgress((current) => clampDashboardProgress(current + delta));
+    };
+
+    const handleDashboardTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+        dashboardTouchYRef.current = event.touches[0]?.clientY ?? null;
+    };
+
+    const handleDashboardTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
+        const nextY = event.touches[0]?.clientY;
+        const previousY = dashboardTouchYRef.current;
+        if (nextY === undefined || previousY === null) return;
+
+        dashboardTouchYRef.current = nextY;
+        setDashboardScrollProgress((current) => clampDashboardProgress(current + (previousY - nextY) / 1120));
+    };
+
+    const handleDashboardTouchEnd = () => {
+        dashboardTouchYRef.current = null;
+    };
+
+    const projectById = useMemo(() => {
+        const map = new Map<string, string>();
+        projects.forEach((project) => map.set(project.id, project.title));
+        return map;
+    }, [projects]);
 
     const tasksByProject = useMemo(() => {
         const map: Record<string, Task[]> = {};
-        tasks.forEach(task => {
+        tasks.forEach((task) => {
             if (!map[task.projectId]) map[task.projectId] = [];
             map[task.projectId].push(task);
         });
@@ -509,7 +348,7 @@ export const Dashboard = () => {
 
     const issuesByProject = useMemo(() => {
         const map: Record<string, Issue[]> = {};
-        issues.forEach(issue => {
+        issues.forEach((issue) => {
             if (!map[issue.projectId]) map[issue.projectId] = [];
             map[issue.projectId].push(issue);
         });
@@ -525,463 +364,507 @@ export const Dashboard = () => {
         return map;
     }, [initiatives]);
 
+    const ideasByProject = useMemo(() => {
+        const map: Record<string, Idea[]> = {};
+        ideas.forEach((idea) => {
+            if (!idea.projectId) return;
+            if (!map[idea.projectId]) map[idea.projectId] = [];
+            map[idea.projectId].push(idea);
+        });
+        return map;
+    }, [ideas]);
+
     const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
-        projects.forEach(project => {
+        projects.forEach((project) => {
             healthMap[project.id] = calculateProjectHealth(
                 project,
                 tasksByProject[project.id] || [],
-                [], // Milestones not available in dashboard view currently
+                [],
                 issuesByProject[project.id] || [],
                 [],
                 [],
                 [],
-                initiativesByProject[project.id] || []
+                initiativesByProject[project.id] || [],
+                ideasByProject[project.id] || []
             );
         });
         return healthMap;
-    }, [projects, tasksByProject, issuesByProject, initiativesByProject]);
+    }, [ideasByProject, initiativesByProject, issuesByProject, projects, tasksByProject]);
 
-    const projectsAtRisk = useMemo(() => {
+    const allProjectsAtRisk = useMemo(() => {
         return projects
-            .filter(project => project.status !== 'Completed')
-            .map(project => ({ project, health: projectHealthMap[project.id] }))
-            .filter(entry => entry.health.status === 'warning' || entry.health.status === 'critical')
-            .sort((a, b) => a.health.score - b.health.score)
-            .slice(0, 3);
-    }, [projects, projectHealthMap]);
+            .filter((project) => project.status !== 'Completed')
+            .map((project) => ({ project, health: projectHealthMap[project.id] }))
+            .filter((entry) => entry.health?.status === 'warning' || entry.health?.status === 'critical')
+            .sort((a, b) => a.health.score - b.health.score);
+    }, [projectHealthMap, projects]);
 
-    // Calculate Workspace Health
-    const workspaceHealth = useMemo(() => {
-        return calculateWorkspaceHealth(projects.filter(p => p.status !== 'Completed'), projectHealthMap);
-    }, [projects, projectHealthMap]);
+    const projectsAtRisk = useMemo(() => allProjectsAtRisk.slice(0, 2), [allProjectsAtRisk]);
 
-    // Hybrid Activity Feed: Combine real activities with synthetic ones from tasks/flows
-    const displayActivities = useMemo(() => {
-        const synthetic: Activity[] = [];
+    const overdueTasks = useMemo(
+        () => tasks.filter((task) => !task.isCompleted && isPastDue(task.dueDate)),
+        [tasks]
+    );
 
-        // Generate synthetic activities from recent tasks/flows for immediate feedback
-        tasks.slice(0, 10).forEach(task => {
-            if (task.createdAt) {
-                synthetic.push({
-                    id: `syn-task-c-${task.id}`,
-                    type: 'task',
-                    action: t('dashboard.activity.actions.createdTask'),
-                    target: task.title,
-                    user: t('dashboard.activity.you'),
-                    userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: task.createdAt,
-                    projectId: task.projectId
-                } as any);
-            }
-            if (task.isCompleted) {
-                synthetic.push({
-                    id: `syn-task-d-${task.id}`,
-                    type: 'task',
-                    action: t('dashboard.activity.actions.completedTask'),
-                    target: task.title,
-                    user: t('dashboard.activity.you'),
-                    userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: task.createdAt, // Ideally we'd have completedAt, but using createdAt as fallback or Date.now() if recently loaded... 
-                    // Let's use createdAt for consistency or maybe just omit if old. For now, pushing.
-                    projectId: task.projectId
-                } as any);
-            }
-        });
+    const dueTodayTasks = useMemo(
+        () => tasks.filter((task) => !task.isCompleted && isToday(task.dueDate)),
+        [tasks]
+    );
 
-        ideas.slice(0, 10).forEach(idea => {
-            if (idea.createdAt) {
-                synthetic.push({
-                    id: `syn-idea-${idea.id}`,
-                    type: 'idea',
-                    action: t('dashboard.activity.actions.capturedFlow'),
-                    target: idea.title,
-                    user: t('dashboard.activity.you'),
-                    userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: idea.createdAt,
-                    projectId: idea.projectId
-                } as any);
-            }
-        });
-
-        // Merge and Sort
-        const all = [...activities, ...synthetic];
-        // Dedupe by vaguely matching content if needed, but IDs differ so it's okay. 
-        // Real logic would filter out duplicates if 'activities' already captured the event.
-        // For now, simple merge.
-        return all
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
-            .slice(0, 6);
-    }, [activities, tasks, ideas, t]);
-
-    const sparkPath = (data: { value: number }[], width = 120, height = 36) => {
-        if (!data.length) return '';
-        const max = Math.max(...data.map(d => d.value), 1);
-        const step = width / (data.length - 1 || 1);
-        return data
-            .map((d, i) => {
-                const x = i * step;
-                const y = height - (d.value / max) * height;
-                return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
-            })
-            .join(' ');
-    };
-
-    const projectById = useMemo(() => {
-        const map = new Map<string, string>();
-        projects.forEach((project) => map.set(project.id, project.title));
-        return map;
-    }, [projects]);
-
-    const currentUserId = auth.currentUser?.uid;
-
-    const overdueTasks = useMemo(() => {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        return tasks.filter(task => {
-            if (task.isCompleted) return false;
-            const due = toDate(task.dueDate);
-            return due ? due.getTime() < startOfToday.getTime() : false;
-        });
-    }, [tasks]);
-
-    const dueTodayTasks = useMemo(() => {
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const endOfToday = new Date(startOfToday);
-        endOfToday.setDate(startOfToday.getDate() + 1);
-        return tasks.filter(task => {
-            if (task.isCompleted) return false;
-            const due = toDate(task.dueDate);
-            if (!due) return false;
-            const dueTime = due.getTime();
-            return dueTime >= startOfToday.getTime() && dueTime < endOfToday.getTime();
-        });
-    }, [tasks]);
+    const scheduledTodayTasks = useMemo(
+        () => tasks.filter((task) => !task.isCompleted && isToday(task.scheduledDate)),
+        [tasks]
+    );
 
     const blockedTasks = useMemo(
-        () => tasks.filter(task => !task.isCompleted && task.status === 'Blocked'),
+        () => tasks.filter((task) => !task.isCompleted && task.status === 'Blocked'),
         [tasks]
     );
-
-    const urgentTasks = useMemo(
-        () => tasks.filter(task => !task.isCompleted && task.priority === 'Urgent'),
-        [tasks]
-    );
-
-    const myOpenTasks = useMemo(() => {
-        if (!currentUserId) return [];
-        return tasks.filter(task => !task.isCompleted && (
-            task.assigneeId === currentUserId || (task.assigneeIds && task.assigneeIds.includes(currentUserId))
-        ));
-    }, [tasks, currentUserId]);
 
     const urgentIssues = useMemo(
-        () => issues.filter(issue => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
+        () => issues.filter((issue) => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
         [issues]
     );
 
     const reviewIdeas = useMemo(
-        () => ideas.filter(idea => REVIEW_STAGES.has(idea.stage)),
+        () => ideas.filter((idea) => REVIEW_STAGES.has(idea.stage || '')),
         [ideas]
     );
 
-    const focusTasks = useMemo(() => {
-        const open = tasks.filter(task => !task.isCompleted);
-        return open
-            .sort((a, b) => {
-                const aDue = toDate(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-                const bDue = toDate(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-                if (aDue !== bDue) return aDue - bDue;
-                return toMillis(b.createdAt) - toMillis(a.createdAt);
-            })
-            .slice(0, 5);
-    }, [tasks]);
-
-    const dueSoonCount = useMemo(() => {
-        const now = Date.now();
-        const soonWindow = 3 * 24 * 60 * 60 * 1000;
-        return tasks.filter(task => !task.isCompleted).filter((task) => {
-            const due = toDate(task.dueDate);
-            if (!due) return false;
-            return due.getTime() <= now + soonWindow;
-        }).length;
-    }, [tasks]);
-
-    const ideasThisWeek = useMemo(
-        () => ideaTrend.reduce((sum, day) => sum + day.value, 0),
-        [ideaTrend]
+    const openTasksCount = useMemo(
+        () => tasks.filter((task) => !task.isCompleted).length,
+        [tasks]
     );
 
-    const ideaSpotlight = useMemo(() => {
-        const sorted = [...ideas].sort((a, b) => {
-            const voteDiff = (b.votes || 0) - (a.votes || 0);
-            if (voteDiff !== 0) return voteDiff;
-            return toMillis(b.createdAt) - toMillis(a.createdAt);
-        });
-        const reviewFirst = sorted.filter(idea => REVIEW_STAGES.has(idea.stage));
-        return (reviewFirst.length > 0 ? reviewFirst : sorted).slice(0, 3);
-    }, [ideas]);
-
-    const focusMetrics = useMemo(() => {
-        const items = [
-            {
-                key: 'overdue',
-                label: t('dashboard.focus.overdue'),
-                value: overdueTasks.length,
-                icon: 'event_busy',
-                color: '#f43f5e' // rose-500
-            },
-            {
-                key: 'dueToday',
-                label: t('dashboard.focus.dueToday'),
-                value: dueTodayTasks.length,
-                icon: 'today',
-                color: '#f59e0b' // amber-500
-            },
-            {
-                key: 'blocked',
-                label: t('dashboard.focus.blocked'),
-                value: blockedTasks.length,
-                icon: 'block',
-                color: '#f97316' // orange-500
-            },
-            {
-                key: 'assigned',
-                label: t('dashboard.focus.assignedToMe'),
-                value: myOpenTasks.length,
-                icon: 'person',
-                color: '#6366f1' // indigo-500
-            },
-            {
-                key: 'review',
-                label: t('dashboard.focus.reviewFlows'),
-                value: reviewIdeas.length,
-                icon: 'rate_review',
-                color: '#3b82f6' // blue-500
-            }
-        ];
-
-        if (hasIssuesModule) {
-            items.push({
-                key: 'urgentIssues',
-                label: t('dashboard.focus.urgentIssues'),
-                value: urgentIssues.length,
-                icon: 'report',
-                color: '#f43f5e' // rose-500
-            });
-        } else {
-            items.push({
-                key: 'urgentTasks',
-                label: t('dashboard.focus.urgentTasks'),
-                value: urgentTasks.length,
-                icon: 'priority_high',
-                color: '#f43f5e' // rose-500
-            });
-        }
-
-        return items;
-    }, [
-        blockedTasks.length,
-        dueTodayTasks.length,
-        hasIssuesModule,
-        myOpenTasks.length,
-        overdueTasks.length,
-        reviewIdeas.length,
-        t,
-        urgentIssues.length,
-        urgentTasks.length
-    ]);
-
-    const chartOuterWidth = 720;
-    const chartOuterHeight = 240;
-    const margin = { top: 20, right: 20, bottom: 30, left: 40 };
-    const innerWidth = chartOuterWidth - margin.left - margin.right;
-    const innerHeight = chartOuterHeight - margin.top - margin.bottom;
-    const trendDays = Math.max(taskTrend.length, ideaTrend.length, hasIssuesModule ? issueTrend.length : 0);
-    const maxTrendValue = useMemo(
-        () => Math.max(...taskTrend.map(v => v.value), ...ideaTrend.map(v => v.value), hasIssuesModule ? Math.max(...issueTrend.map(v => v.value)) : 0, 1),
-        [taskTrend, ideaTrend, issueTrend, hasIssuesModule]
+    const activeProjectsCount = useMemo(
+        () => projects.filter((project) => project.status === 'Active').length,
+        [projects]
     );
 
-    const getSmoothPath = (data: { value: number }[]) => {
-        if (!data.length) return '';
-        const max = maxTrendValue || 1;
-        const step = innerWidth / (Math.max(data.length, trendDays) - 1 || 1);
+    const taskTrend = useMemo(() => bucketByDay(tasks), [tasks]);
+    const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);
+    const issueTrend = useMemo(() => bucketByDay(issues), [issues]);
 
-        const points = data.map((d, i) => ({
-            x: margin.left + i * step,
-            y: margin.top + innerHeight - (d.value / max) * innerHeight
-        }));
+    const maxVelocityValue = useMemo(
+        () => Math.max(
+            ...taskTrend.map((item) => item.value),
+            ...ideaTrend.map((item) => item.value),
+            ...issueTrend.map((item) => item.value),
+            1
+        ),
+        [ideaTrend, issueTrend, taskTrend]
+    );
 
-        if (points.length < 2) return '';
-
-        let d = `M ${points[0].x} ${points[0].y}`;
-
-        for (let i = 0; i < points.length - 1; i++) {
-            const p0 = points[i];
-            const p1 = points[i + 1];
-            const cp1x = p0.x + (p1.x - p0.x) * 0.5;
-            const cp1y = p0.y;
-            const cp2x = p0.x + (p1.x - p0.x) * 0.5;
-            const cp2y = p1.y;
-            d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p1.x} ${p1.y}`;
-        }
-
-        return d;
-    };
-
-    const toggleCalendarView = async () => {
-        const newView = calendarView === 'month' ? 'week' : 'month';
-        setCalendarView(newView);
-        localStorage.setItem('dashboard_calendar_view', newView);
-        setCurrentDate(new Date()); // Reset to today when switching views
-        if (auth.currentUser?.uid) {
-            await updateUserData(auth.currentUser.uid, {
-                'preferences.dashboard.calendarView': newView
-            });
-        }
-    };
-
-    const handlePrevDate = () => {
-        const newDate = new Date(currentDate);
-        if (calendarView === 'month') {
-            newDate.setMonth(newDate.getMonth() - 1);
-        } else {
-            newDate.setDate(newDate.getDate() - 7);
-        }
-        setCurrentDate(newDate);
-    };
-
-    const handleNextDate = () => {
-        const newDate = new Date(currentDate);
-        if (calendarView === 'month') {
-            newDate.setMonth(newDate.getMonth() + 1);
-        } else {
-            newDate.setDate(newDate.getDate() + 7);
-        }
-        setCurrentDate(newDate);
-    };
-
-    const handleTrendMove = (e: React.MouseEvent<SVGSVGElement>) => {
-        if (!trendRef.current || trendDays <= 1) return;
-        const rect = trendRef.current.getBoundingClientRect();
-        const scaleX = rect.width / chartOuterWidth;
-        const x = (e.clientX - rect.left) / scaleX - margin.left;
-        if (x < 0 || x > innerWidth) return;
-        const step = innerWidth / (trendDays - 1);
-        const idx = Math.max(0, Math.min(trendDays - 1, Math.round(x / step)));
-        setHoverTrendIndex(idx);
-    };
-
-    const trendLabel = (idx: number) => {
-        const daysAgo = trendDays - idx - 1;
-        const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
-        return format(d, dateFormat, { locale: dateLocale });
-    };
-
-    const kpiCards = [
+    const dashboardMetrics = useMemo(() => ([
         {
-            key: 'active',
-            label: t('dashboard.kpi.activeProjects'),
-            value: stats.activeProjects,
+            key: 'openTasks',
+            href: '/tasks',
+            icon: 'checklist',
+            label: t('dashboard.expanded.metric.openTasks'),
+            value: openTasksCount
+        },
+        {
+            key: 'activeProjects',
+            href: '/projects',
             icon: 'folder_open',
-            series: taskTrend,
-            color: '#6366f1', // Indigo
-            caption: t('dashboard.kpi.caption.totalTracked').replace('{count}', String(projects.length))
+            label: t('dashboard.expanded.metric.activeProjects'),
+            value: activeProjectsCount
         },
         {
-            key: 'completed',
-            label: t('dashboard.kpi.completed'),
-            value: stats.completedProjects,
-            icon: 'check_circle',
-            series: ideaTrend,
-            color: '#10b981', // Emerald
-            caption: t('dashboard.kpi.caption.completionRate').replace('{rate}', String(statusBreakdown.completedPct))
-        },
-        {
-            key: 'tasks',
-            label: t('dashboard.kpi.openTasks'),
-            value: stats.openTasks,
-            icon: 'check_box',
-            series: taskTrend,
-            color: '#f59e0b', // Amber
-            caption: t('dashboard.kpi.caption.dueSoon').replace('{count}', String(dueSoonCount))
-        },
-        {
-            key: 'ideas',
-            label: t('dashboard.kpi.flowsCaptured'),
-            value: stats.ideas,
-            icon: 'lightbulb',
-            series: ideaTrend,
-            color: '#3b82f6', // Blue
-            caption: t('dashboard.kpi.caption.thisWeek').replace('{count}', String(ideasThisWeek))
-        }
-    ];
-
-    const workbenchCards = [
-        {
-            key: 'today',
-            icon: 'today',
-            label: t('dashboard.workbench.today.label'),
-            value: dueTodayTasks.length + overdueTasks.length,
-            detail: overdueTasks.length > 0
-                ? t('dashboard.workbench.today.overdue').replace('{count}', String(overdueTasks.length))
-                : t('dashboard.workbench.today.clear'),
-            link: '/tasks',
-            action: t('dashboard.workbench.today.action')
+            key: 'reviewQueue',
+            href: '/projects',
+            icon: 'rate_review',
+            label: t('dashboard.expanded.metric.reviewQueue'),
+            value: reviewIdeas.length
         },
         {
             key: 'risk',
+            href: '/projects',
             icon: 'warning',
-            label: t('dashboard.workbench.risk.label'),
-            value: projectsAtRisk.length,
-            detail: projectsAtRisk[0]
-                ? t('dashboard.workbench.risk.detail').replace('{project}', projectsAtRisk[0].project.title)
-                : t('dashboard.workbench.risk.clear'),
-            link: '/projects',
-            action: t('dashboard.workbench.risk.action')
+            label: t('dashboard.expanded.metric.risk'),
+            value: allProjectsAtRisk.length
+        }
+    ]), [activeProjectsCount, allProjectsAtRisk.length, openTasksCount, reviewIdeas.length, t]);
+
+    const projectHealthSummary = useMemo(() => {
+        return projects.reduce((summary, project) => {
+            const health = projectHealthMap[project.id];
+            if (health?.status === 'critical') {
+                summary.risk += 1;
+            } else if (health?.status === 'warning') {
+                summary.watch += 1;
+            } else {
+                summary.healthy += 1;
+            }
+            return summary;
+        }, { healthy: 0, watch: 0, risk: 0 });
+    }, [projectHealthMap, projects]);
+
+    const totalVelocity = useMemo(
+        () => taskTrend.reduce((sum, item) => sum + item.value, 0)
+            + ideaTrend.reduce((sum, item) => sum + item.value, 0)
+            + issueTrend.reduce((sum, item) => sum + item.value, 0),
+        [ideaTrend, issueTrend, taskTrend]
+    );
+
+    const focusTasks = useMemo(() => {
+        return [...tasks]
+            .filter((task) => !task.isCompleted)
+            .sort((a, b) => {
+                const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+                const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+                if (aDue !== bDue) return aDue - bDue;
+                return toMillis(b.createdAt) - toMillis(a.createdAt);
+            })
+            .slice(0, 3);
+    }, [tasks]);
+
+    const todayLongLabel = useMemo(
+        () => format(new Date(), 'PPPP', { locale: dateLocale }),
+        [dateLocale, language]
+    );
+
+    const taskPriorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
+
+    const formatShortDate = (value?: any) => {
+        const date = toDate(value);
+        return date ? format(date, dateFormat, { locale: dateLocale }) : '';
+    };
+
+    const formatCommandDueLabel = (value?: any) => {
+        const date = toDate(value);
+        if (!date) return t('dashboard.command.noDate');
+
+        const todayStart = startOfToday();
+        const tomorrowStart = new Date(todayStart);
+        tomorrowStart.setDate(todayStart.getDate() + 1);
+        const nextDayStart = new Date(tomorrowStart);
+        nextDayStart.setDate(tomorrowStart.getDate() + 1);
+
+        if (date.getTime() < todayStart.getTime()) {
+            return t('dashboard.command.dueDate').replace('{date}', formatShortDate(date));
+        }
+        if (date.getTime() < tomorrowStart.getTime()) {
+            return t('dashboard.command.dueToday');
+        }
+        if (date.getTime() < nextDayStart.getTime()) {
+            return t('dashboard.command.dueTomorrow');
+        }
+        return t('dashboard.command.dueDate').replace('{date}', formatShortDate(date));
+    };
+
+    const commandItems = useMemo<DashboardCommandItem[]>(() => {
+        const items: DashboardCommandItem[] = [];
+        const seen = new Set<string>();
+        const projectLabel = (projectId?: string) => (
+            projectId ? (projectById.get(projectId) || t('dashboard.issues.unknownProject')) : t('dashboard.issues.unknownProject')
+        );
+        const taskHref = (task: Task) => task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks';
+        const taskMeta = (task: Task) => `${projectLabel(task.projectId)} - ${formatCommandDueLabel(task.dueDate || task.scheduledDate)}`;
+        const sortedByDue = (items: Task[]) => [...items].sort((a, b) => {
+            const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+            const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
+            if (aDue !== bDue) return aDue - bDue;
+            return toMillis(b.createdAt) - toMillis(a.createdAt);
+        });
+
+        const addTask = (task: Task, label: string, tone: DashboardCommandTone, icon: string, priority: number, meta?: string) => {
+            const key = `task:${task.id}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            items.push({
+                id: key,
+                href: taskHref(task),
+                icon,
+                label,
+                meta: meta || taskMeta(task),
+                priority,
+                title: task.title,
+                tone
+            });
+        };
+
+        sortedByDue(overdueTasks).slice(0, 2).forEach((task) => {
+            addTask(task, t('dashboard.command.tag.overdue'), 'danger', 'event_busy', 10);
+        });
+
+        sortedByDue(dueTodayTasks).slice(0, 3).forEach((task) => {
+            addTask(task, t('dashboard.command.tag.dueToday'), 'warning', 'today', 20);
+        });
+
+        sortedByDue(scheduledTodayTasks).slice(0, 2).forEach((task) => {
+            addTask(
+                task,
+                t('dashboard.command.tag.scheduledToday'),
+                'info',
+                'event_available',
+                24,
+                `${projectLabel(task.projectId)} - ${t('dashboard.command.scheduledToday')}`
+            );
+        });
+
+        sortedByDue(blockedTasks).slice(0, 2).forEach((task) => {
+            addTask(task, t('dashboard.command.tag.blocked'), 'danger', 'block', 30);
+        });
+
+        urgentIssues.slice(0, 2).forEach((issue) => {
+            const key = `issue:${issue.id}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const priorityLabel = (issue.priority && taskPriorityLabels[issue.priority as keyof typeof taskPriorityLabels]) || issue.priority || '';
+            items.push({
+                id: key,
+                href: issue.projectId ? `/project/${issue.projectId}/issues/${issue.id}` : '/projects',
+                icon: 'report',
+                label: t('dashboard.command.tag.urgentIssue'),
+                meta: `${projectLabel(issue.projectId)}${priorityLabel ? ` - ${priorityLabel}` : ''}`,
+                priority: 35,
+                title: issue.title,
+                tone: 'danger'
+            });
+        });
+
+        projectsAtRisk.forEach(({ project, health }) => {
+            const key = `project:${project.id}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            const openTasks = (tasksByProject[project.id] || []).filter((task) => !task.isCompleted).length;
+            items.push({
+                id: key,
+                href: `/project/${project.id}`,
+                icon: health.status === 'critical' ? 'release_alert' : 'warning',
+                label: t('dashboard.command.tag.projectRisk'),
+                meta: t('dashboard.command.projectRiskMeta')
+                    .replace('{score}', String(health.score))
+                    .replace('{count}', String(openTasks)),
+                priority: 45,
+                title: project.title,
+                tone: health.status === 'critical' ? 'danger' : 'warning'
+            });
+        });
+
+        reviewIdeas.slice(0, 2).forEach((idea) => {
+            if (!idea.projectId) return;
+            const key = `flow:${idea.id}`;
+            if (seen.has(key)) return;
+            seen.add(key);
+            items.push({
+                id: key,
+                href: `/project/${idea.projectId}/flows/${idea.id}`,
+                icon: 'rate_review',
+                label: t('dashboard.command.tag.flowReview'),
+                meta: `${projectLabel(idea.projectId)} - ${idea.stage}`,
+                priority: 55,
+                title: idea.title,
+                tone: 'info'
+            });
+        });
+
+        focusTasks.forEach((task) => {
+            addTask(task, t('dashboard.command.tag.upcoming'), 'neutral', 'radio_button_unchecked', 80);
+        });
+
+        return items.sort((a, b) => a.priority - b.priority).slice(0, 4);
+    }, [
+        blockedTasks,
+        dueTodayTasks,
+        focusTasks,
+        overdueTasks,
+        projectById,
+        projectsAtRisk,
+        reviewIdeas,
+        scheduledTodayTasks,
+        t,
+        taskPriorityLabels,
+        tasksByProject,
+        urgentIssues
+    ]);
+
+    const primaryCommandItems = useMemo(() => commandItems.slice(0, 3), [commandItems]);
+
+    const dueNowCount = overdueTasks.length + dueTodayTasks.length + scheduledTodayTasks.length;
+    const blockersCount = blockedTasks.length + urgentIssues.length;
+
+    const commandSummaryItems = useMemo(() => ([
+        {
+            key: 'dueNow',
+            icon: dueNowCount > 0 ? 'event_busy' : 'event_available',
+            label: t('dashboard.step.now.summary.dueNow'),
+            tone: overdueTasks.length > 0 ? 'danger' : 'warning',
+            value: dueNowCount
+        },
+        {
+            key: 'blockers',
+            icon: blockersCount > 0 ? 'block' : 'check_circle',
+            label: t('dashboard.step.now.summary.blockers'),
+            tone: blockersCount > 0 ? 'danger' : 'success',
+            value: blockersCount
         },
         {
             key: 'review',
             icon: 'rate_review',
-            label: t('dashboard.workbench.review.label'),
-            value: reviewIdeas.length,
-            detail: reviewIdeas.length > 0
-                ? t('dashboard.workbench.review.detail').replace('{count}', String(reviewIdeas.length))
-                : t('dashboard.workbench.review.clear'),
-            link: '/projects',
-            action: t('dashboard.workbench.review.action')
+            label: t('dashboard.step.now.summary.review'),
+            tone: reviewIdeas.length > 0 ? 'info' : 'neutral',
+            value: reviewIdeas.length
+        },
+        {
+            key: 'risk',
+            icon: allProjectsAtRisk.length > 0 ? 'warning' : 'shield',
+            label: t('dashboard.step.now.summary.risk'),
+            tone: allProjectsAtRisk.length > 0 ? 'warning' : 'success',
+            value: allProjectsAtRisk.length
         }
-    ];
+    ] as Array<{
+        key: string;
+        icon: string;
+        label: string;
+        tone: DashboardStepTone;
+        value: number;
+    }>), [
+        allProjectsAtRisk.length,
+        blockersCount,
+        dueNowCount,
+        overdueTasks.length,
+        reviewIdeas.length,
+        t
+    ]);
 
+    const todayWorkloadItems = useMemo(() => ([
+        {
+            key: 'dueNow',
+            label: t('dashboard.step.today.workload.dueNow'),
+            tone: overdueTasks.length > 0 ? 'danger' : 'warning',
+            value: dueNowCount
+        },
+        {
+            key: 'open',
+            label: t('dashboard.step.today.workload.open'),
+            tone: 'neutral',
+            value: openTasksCount
+        },
+        {
+            key: 'blockers',
+            label: t('dashboard.step.today.workload.blockers'),
+            tone: blockersCount > 0 ? 'danger' : 'success',
+            value: blockersCount
+        },
+        {
+            key: 'review',
+            label: t('dashboard.step.today.workload.review'),
+            tone: reviewIdeas.length > 0 ? 'info' : 'neutral',
+            value: reviewIdeas.length
+        }
+    ] as Array<{
+        key: string;
+        label: string;
+        tone: DashboardStepTone;
+        value: number;
+    }>), [
+        blockersCount,
+        dueNowCount,
+        openTasksCount,
+        overdueTasks.length,
+        reviewIdeas.length,
+        t
+    ]);
 
+    const todayPlanLabels = useMemo(() => [
+        t('dashboard.step.today.route.start'),
+        t('dashboard.step.today.route.next'),
+        t('dashboard.step.today.route.after')
+    ], [t]);
 
+    const todayPlanItems = useMemo(() => (
+        primaryCommandItems.map((item, index) => ({
+            ...item,
+            stepLabel: todayPlanLabels[index] || t('dashboard.command.tag.upcoming')
+        }))
+    ), [primaryCommandItems, t, todayPlanLabels]);
 
+    const maxTodayWorkloadValue = useMemo(
+        () => Math.max(...todayWorkloadItems.map((item) => item.value), 1),
+        [todayWorkloadItems]
+    );
 
-    const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
+    const workloadProjectItems = useMemo(() => {
+        return projects
+            .map((project) => ({
+                health: projectHealthMap[project.id],
+                openTasks: (tasksByProject[project.id] || []).filter((task) => !task.isCompleted).length,
+                project
+            }))
+            .filter((item) => item.openTasks > 0)
+            .sort((a, b) => {
+                const scoreA = a.health?.score ?? 100;
+                const scoreB = b.health?.score ?? 100;
+                if (scoreA !== scoreB) return scoreA - scoreB;
+                return b.openTasks - a.openTasks;
+            })
+            .slice(0, 3);
+    }, [projectHealthMap, projects, tasksByProject]);
 
-    useEffect(() => {
-        const checkPasskeyStatus = async () => {
-            // Check if user is logged in
-            if (!auth.currentUser) return;
+    const todayWatchProject = workloadProjectItems[0];
 
-            // Check if snoozed
-            const snoozeUntil = localStorage.getItem('projectflow_passkey_reminder_snooze');
-            if (snoozeUntil && parseInt(snoozeUntil) > Date.now()) {
-                return;
-            }
+    const healthTotal = Math.max(projectHealthSummary.healthy + projectHealthSummary.watch + projectHealthSummary.risk, 1);
+    const portfolioHealthSegments = useMemo(() => ([
+        {
+            key: 'healthy',
+            label: t('dashboard.expanded.health.healthy'),
+            tone: 'success',
+            value: projectHealthSummary.healthy
+        },
+        {
+            key: 'watch',
+            label: t('dashboard.expanded.health.watch'),
+            tone: 'warning',
+            value: projectHealthSummary.watch
+        },
+        {
+            key: 'risk',
+            label: t('dashboard.expanded.health.risk'),
+            tone: 'danger',
+            value: projectHealthSummary.risk
+        }
+    ] as Array<{
+        key: string;
+        label: string;
+        tone: DashboardStepTone;
+        value: number;
+    }>), [projectHealthSummary.healthy, projectHealthSummary.risk, projectHealthSummary.watch, t]);
 
-            // Check if user already has passkeys
-            const hasPasskeys = await checkPasskeyExists(auth.currentUser.uid);
-            if (!hasPasskeys) {
-                // Short delay so it doesn't pop up INSTANTLY on load
-                setTimeout(() => setShowPasskeyUpsell(true), 1000);
-            }
-        };
+    const dashboardScrollStyle = useMemo(() => {
+        const greetingExit = smoothDashboardProgress(dashboardScrollProgress, 0.12, 0.30);
+        const todayEnter = smoothDashboardProgress(dashboardScrollProgress, 0.24, 0.42);
+        const todayExit = smoothDashboardProgress(dashboardScrollProgress, 0.58, 0.74);
+        const portfolioEnter = smoothDashboardProgress(dashboardScrollProgress, 0.66, 0.84);
 
-        checkPasskeyStatus();
-    }, []);
+        const greetingOpacity = 1 - greetingExit;
+        const todayOpacity = todayEnter * (1 - todayExit);
+        const portfolioOpacity = portfolioEnter;
+
+        return cssVars({
+            '--dashboard-greeting-opacity': greetingOpacity.toFixed(3),
+            '--dashboard-greeting-transform': `translate3d(0, ${(-70 * greetingExit).toFixed(1)}px, 0) scale(${(1 - (greetingExit * 0.035)).toFixed(3)})`,
+            '--dashboard-today-opacity': todayOpacity.toFixed(3),
+            '--dashboard-today-transform': `translate3d(0, ${(54 * (1 - todayEnter) - (42 * todayExit)).toFixed(1)}px, 0) scale(${(0.985 + (0.015 * todayEnter) - (0.012 * todayExit)).toFixed(3)})`,
+            '--dashboard-portfolio-opacity': portfolioOpacity.toFixed(3),
+            '--dashboard-portfolio-transform': `translate3d(0, ${(54 * (1 - portfolioEnter)).toFixed(1)}px, 0) scale(${(0.985 + (0.015 * portfolioEnter)).toFixed(3)})`
+        });
+    }, [dashboardScrollProgress]);
+
+    const activeDashboardStep = dashboardScrollProgress < 0.34
+        ? 0
+        : dashboardScrollProgress < 0.68
+            ? 1
+            : 2;
+
+    const getStepTabIndex = (step: number) => activeDashboardStep === step ? undefined : -1;
 
     if (loading || !dashboardTranslationsReady) {
         return (
@@ -998,988 +881,276 @@ export const Dashboard = () => {
                 onClose={() => setShowPasskeyUpsell(false)}
                 onSetupComplete={() => setShowPasskeyUpsell(false)}
             />
-            <div className="dashboard-container">
-                {/* Header - Greeting & Quick Stats */}
-                <div data-onboarding-id="dashboard-header" className="dashboard-header">
-                    <div className="space-y-2">
-                        <div className="dashboard-date-label">
-                            <span className="material-symbols-outlined text-sm">calendar_today</span>
-                            {format(new Date(), dateFormat, { locale: dateLocale })}
-                        </div>
-                        <h1 className="dashboard-title">
-                            {greeting}, {userName || t('dashboard.userFallback')}.
-                        </h1>
-                        <p className="dashboard-subtitle">
-                            {t('dashboard.header.subtitle')}
-                        </p>
-                    </div>
-
-                    <div className="dashboard-header-stats">
-                        <div className="header-stat-card">
-                            <div className="stat-value">{stats.activeProjects}</div>
-                            <div className="stat-label">{t('dashboard.header.stats.activeProjects')}</div>
-                        </div>
-                        <div className="header-stat-card">
-                            <div className="stat-value amber">{dueSoonCount}</div>
-                            <div className="stat-label">{t('dashboard.header.stats.dueSoon')}</div>
-                        </div>
-                        <div className="header-stat-card">
-                            <div className="stat-value emerald">{stats.completedProjects}</div>
-                            <div className="stat-label">{t('dashboard.header.stats.completed')}</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="dashboard-workbench">
-                    {workbenchCards.map((card) => (
-                        <Card key={card.key} padding="md" className="dashboard-workbench-card">
-                            <div className="dashboard-workbench-card__header">
-                                <span className="material-symbols-outlined dashboard-workbench-card__icon">{card.icon}</span>
-                                <span className="dashboard-workbench-card__label">{card.label}</span>
-                            </div>
-                            <div className="dashboard-workbench-card__value">{card.value}</div>
-                            <p className="dashboard-workbench-card__detail">{card.detail}</p>
-                            <Link to={card.link} className="dashboard-workbench-card__link">
-                                {card.action}
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
-                        </Card>
-                    ))}
-                </div>
-
-                {/* Main Dashboard Grid */}
-                <div className="dashboard-grid">
-
-                    {/* Left Column: Metrics & Charts (3 cols wide on large screens) */}
-                    <div className="dashboard-main-col">
-
-                        {/* New Widget Cards Row */}
-                        <div data-onboarding-id="dashboard-kpis" className="kpi-grid">
-                            {kpiCards.map((stat) => (
-                                <Card key={stat.key} padding="md" className="kpi-card" style={{ borderLeftColor: stat.color }}>
-                                    <div className="kpi-content">
-                                        <div className="kpi-header">
-                                            <div>
-                                                <p className="kpi-label">{stat.label}</p>
-                                                <h3 className="kpi-value">{stat.value}</h3>
-                                            </div>
-                                            <div className="kpi-icon-wrapper" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-                                                <span className="material-symbols-outlined">{stat.icon}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="kpi-sparkline-area">
-                                            <Sparkline
-                                                data={stat.series.map(s => s.value)}
-                                                width={140}
-                                                height={30}
-                                                color={stat.color}
-                                                fill={true}
-                                            />
-                                            <p className="kpi-caption">{stat.caption}</p>
-                                        </div>
-                                    </div>
-                                </Card>
+            <div className="dashboard-page">
+                <div
+                    ref={dashboardStageRef}
+                    className="dashboard-scroll-stage"
+                    onTouchCancel={handleDashboardTouchEnd}
+                    onTouchEnd={handleDashboardTouchEnd}
+                    onTouchMove={handleDashboardTouchMove}
+                    onTouchStart={handleDashboardTouchStart}
+                    onWheel={handleDashboardWheel}
+                    style={dashboardScrollStyle}
+                >
+                    <div className="dashboard-scroll-viewport">
+                        <div className="dashboard-step-rail" aria-hidden="true">
+                            {[0, 1, 2].map((step) => (
+                                <span key={step} className={activeDashboardStep === step ? 'is-active' : ''} />
                             ))}
                         </div>
 
-                        {/* Priority Snapshot & Risk Section (Explicit 50/50) */}
-                        <div className="section-grid-equal">
-                            <Card padding="md" className="grid-col-span-1">
-                                <div className="section-header-row">
-                                    <div className="title-group">
-                                        <h3 className="h4">{t('dashboard.focus.title')}</h3>
-                                        <p className="subtitle">{t('dashboard.focus.subtitle')}</p>
-                                    </div>
-                                </div>
-                                <div className="focus-grid">
-                                    {focusMetrics.map(metric => (
-                                        <div
-                                            key={metric.key}
-                                            className="focus-metric-card"
-                                        >
-                                            <div className="header">
-                                                <span className="label">
-                                                    {metric.label}
-                                                </span>
-                                                <span className="material-symbols-outlined text-sm" style={{ color: metric.color }}>{metric.icon}</span>
-                                            </div>
-                                            <div className={`value ${metric.value === 0 ? 'zero' : ''}`}>
-                                                {metric.value}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </Card>
+                        <section
+                            className={`dashboard-step-layer dashboard-greeting-layer ${activeDashboardStep === 0 ? 'is-active' : ''}`}
+                            aria-hidden={activeDashboardStep !== 0}
+                        >
+                            <div data-onboarding-id="dashboard-header" className="dashboard-command-hero">
+                                <p className="dashboard-command-hero__date">{todayLongLabel}</p>
+                                <h1 className="dashboard-command-hero__title">
+                                    {greeting}, {userName || t('dashboard.userFallback')}.
+                                </h1>
 
-                            <Card padding="md" className="attention-card grid-col-span-1">
-                                <div className="section-header-row">
-                                    <div className="title-group">
-                                        <h3 className="h4">{t('dashboard.risk.title')}</h3>
-                                        <p className="subtitle">{t('dashboard.risk.subtitle')}</p>
+                                <div data-onboarding-id="dashboard-kpis" className="dashboard-hero-priority" aria-label={t('dashboard.step.now.title')}>
+                                    <div className="dashboard-hero-priority__header">
+                                        <h2>{t('dashboard.step.now.title')}</h2>
+                                        <Link to="/tasks" className="dashboard-step-link" tabIndex={getStepTabIndex(0)}>
+                                            {t('dashboard.command.openTasks')}
+                                            <span className="material-symbols-outlined">arrow_forward</span>
+                                        </Link>
                                     </div>
-                                    <Link to="/projects" className="action-link">
-                                        {t('dashboard.risk.viewAll')}
+
+                                    <div className="dashboard-hero-priority__body">
+                                        <div className="dashboard-hero-command-list">
+                                            {primaryCommandItems.length === 0 ? (
+                                                <div className="dashboard-command-empty">
+                                                    <span className="material-symbols-outlined">check_circle</span>
+                                                    <div>
+                                                        <h3>{t('dashboard.command.empty.title')}</h3>
+                                                        <p>{t('dashboard.command.empty.body')}</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                primaryCommandItems.map((item) => (
+                                                    <Link
+                                                        key={item.id}
+                                                        to={item.href}
+                                                        className={`dashboard-command-item dashboard-command-item--hero dashboard-command-item--${item.tone}`}
+                                                        tabIndex={getStepTabIndex(0)}
+                                                    >
+                                                        <span className="material-symbols-outlined dashboard-command-item__icon">{item.icon}</span>
+                                                        <div className="dashboard-command-item__content">
+                                                            <div className="dashboard-command-item__header">
+                                                                <span className="dashboard-command-item__label">{item.label}</span>
+                                                                <span className="dashboard-command-item__meta">{item.meta}</span>
+                                                            </div>
+                                                            <p>{item.title}</p>
+                                                        </div>
+                                                        <span className="material-symbols-outlined dashboard-command-item__arrow">chevron_right</span>
+                                                    </Link>
+                                                ))
+                                            )}
+                                        </div>
+
+                                        <div className="dashboard-hero-signals">
+                                            {commandSummaryItems.map((item) => (
+                                                <div key={item.key} className={`dashboard-signal dashboard-signal--compact dashboard-signal--${item.tone}`}>
+                                                    <span className="material-symbols-outlined">{item.icon}</span>
+                                                    <strong>{item.value}</strong>
+                                                    <p>{item.label}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section
+                            className={`dashboard-step-layer dashboard-today-layer ${activeDashboardStep === 1 ? 'is-active' : ''}`}
+                            aria-label={t('dashboard.step.today.title')}
+                            aria-hidden={activeDashboardStep !== 1}
+                        >
+                            <div className="dashboard-step-panel dashboard-step-panel--today">
+                                <div className="dashboard-step-header dashboard-step-header--split">
+                                    <div>
+                                        <p>{t('dashboard.step.today.subtitle')}</p>
+                                        <h2>{t('dashboard.step.today.title')}</h2>
+                                    </div>
+                                    <Link to="/tasks" className="dashboard-step-link" tabIndex={getStepTabIndex(1)}>
+                                        {t('dashboard.step.today.viewTasks')}
+                                        <span className="material-symbols-outlined">arrow_forward</span>
                                     </Link>
                                 </div>
-                                <div className="risk-list">
-                                    {projectsAtRisk.length === 0 ? (
-                                        <div className="empty-state-simple">
-                                            {t('dashboard.risk.empty')}
+
+                                <div className="dashboard-today-plan">
+                                    <section className="dashboard-today-route" aria-label={t('dashboard.step.today.route.title')}>
+                                        <div className="dashboard-today-route__header">
+                                            <p>{t('dashboard.step.today.route.subtitle')}</p>
+                                            <h3>{t('dashboard.step.today.route.title')}</h3>
                                         </div>
-                                    ) : (
-                                        projectsAtRisk.map(({ project, health }) => {
-                                            const openTasks = (tasksByProject[project.id] || []).filter(task => !task.isCompleted).length;
-                                            const dueLabel = project.dueDate ? formatShortDate(project.dueDate, dateFormat, dateLocale) : '';
-                                            const dueText = dueLabel
-                                                ? t('dashboard.risk.due').replace('{date}', dueLabel)
-                                                : t('dashboard.risk.noDeadline');
 
-                                            return (
-                                                <Link
-                                                    key={project.id}
-                                                    to={`/project/${project.id}`}
-                                                    className="risk-item"
-                                                >
-                                                    <HealthIndicator health={health} size="sm" showLabel={false} />
-                                                    <div className="risk-content">
-                                                        <div className="title-row">
-                                                            <p>
-                                                                {project.title}
-                                                            </p>
-                                                        <Badge variant={projectStatusTone(project.status)} className="dashboard-badge dashboard-badge--compact">
-                                                            {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
-                                                        </Badge>
-                                                        </div>
-                                                        <div className="meta-row">
-                                                            <span>{t('dashboard.risk.openTasks').replace('{count}', String(openTasks))}</span>
-                                                            <span>•</span>
-                                                            <span>{dueText}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="material-symbols-outlined risk-item__chevron">chevron_right</span>
-                                                </Link>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </Card>
-                        </div>
-
-                        {/* Consolidated Metrics Area: Trends/Tasks (2/3) vs Health/Donut/Spotlight (1/3) */}
-                        <div className="section-grid-2-1">
-                            {/* Left Column: Metrics & Velocity (2/3) */}
-                            <div className="grid-col-span-2 card-stack-gap">
-                                <Card data-onboarding-id="dashboard-trends" padding="none" className="chart-card">
-                                    {/* Card Header Section */}
-                                    <div className="chart-header">
-                                        <div className="chart-title-group">
-                                            <div className="chart-title-row">
-                                                <div className="icon-box">
-                                                    <span className="material-symbols-outlined text-sm">trending_up</span>
-                                                </div>
-                                                <h3>{t('dashboard.trends.title')}</h3>
+                                        {todayPlanItems.length === 0 ? (
+                                            <div className="dashboard-today-route__empty">
+                                                <span className="material-symbols-outlined">check_circle</span>
+                                                <p>{t('dashboard.step.today.route.empty')}</p>
                                             </div>
-                                            <p className="subtitle">{t('dashboard.trends.subtitle')}</p>
-                                        </div>
-                                        <div className="chart-controls">
-                                            <div className="control-btn active">{t('dashboard.trends.range.sevenDays')}</div>
-                                            <div className="control-btn disabled">{t('dashboard.trends.range.thirtyDays')}</div>
-                                            <div className="control-btn disabled">{t('dashboard.trends.range.all')}</div>
-                                        </div>
-                                    </div>
-
-                                    {/* Chart Body Section */}
-                                    <div className="chart-body">
-                                        {/* Decorative Mesh Background */}
-                                        <div className="chart-mesh-bg">
-                                            <div className="blob-1"></div>
-                                            <div className="blob-2"></div>
-                                        </div>
-
-                                        {/* Legend Row */}
-                                        <div className="chart-legend">
-                                            <div className="legend-group">
-                                                <div className="legend-item">
-                                                    <div className="dot" style={{ backgroundColor: '#f59e0b' }}></div>
-                                                    <span>{t('nav.tasks')}</span>
-                                                </div>
-                                                <div className="legend-item">
-                                                    <div className="dot" style={{ backgroundColor: '#3b82f6' }}></div>
-                                                    <span>{t('nav.flows')}</span>
-                                                </div>
-                                                {hasIssuesModule && (
-                                                    <div className="legend-item">
-                                                        <div className="dot" style={{ backgroundColor: '#f43f5e' }}></div>
-                                                        <span>{t('nav.issues')}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="chart-peak">
-                                                <span className="label">{t('dashboard.trends.peakLabel')}</span>
-                                                <span className="value">{maxTrendValue}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="chart-plot">
-                                            <svg
-                                                ref={trendRef}
-                                                viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
-                                                className="chart-svg"
-                                                onMouseMove={handleTrendMove}
-                                                onMouseLeave={() => setHoverTrendIndex(null)}
-                                                preserveAspectRatio="xMidYMid meet"
-                                            >
-                                                <defs>
-                                                    <linearGradient id="area-tasks" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
-                                                        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-                                                    </linearGradient>
-                                                    <linearGradient id="area-ideas" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                                                    </linearGradient>
-                                                    <linearGradient id="area-issues" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
-                                                        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
-                                                    </linearGradient>
-                                                </defs>
-
-                                                {/* Subtle Radial Polka Grid */}
-                                                <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                                    <circle cx="2" cy="2" r="0.8" fill="var(--color-surface-border)" opacity="0.4" />
-                                                </pattern>
-                                                <rect width="100%" height="100%" fill="url(#dot-pattern)" />
-
-                                                {/* Light Horizontal Grid */}
-                                                {[0, 0.25, 0.5, 0.75, 1].map((p) => {
-                                                    const y = margin.top + innerHeight * p;
-                                                    return (
-                                                        <line
-                                                            key={p}
-                                                            x1={margin.left}
-                                                            x2={margin.left + innerWidth}
-                                                            y1={y}
-                                                            y2={y}
-                                                            stroke="var(--color-surface-border)"
-                                                            strokeWidth="0.5"
-                                                            strokeDasharray="4 4"
-                                                            opacity="0.5"
-                                                        />
-                                                    );
-                                                })}
-
-                                                {/* Axis Lines */}
-                                                <line x1={margin.left} x2={margin.left + innerWidth} y1={margin.top + innerHeight} y2={margin.top + innerHeight} stroke="var(--color-surface-border)" strokeWidth="1" />
-
-                                                {/* Area Fills */}
-                                                <path d={`${getSmoothPath(taskTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-tasks)" />
-                                                <path d={`${getSmoothPath(ideaTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-ideas)" />
-                                                {hasIssuesModule && <path d={`${getSmoothPath(issueTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-issues)" />}
-
-                                                {/* Main Trend Lines */}
-                                                <path d={getSmoothPath(ideaTrend)} stroke="#3b82f6" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                                                {hasIssuesModule && <path d={getSmoothPath(issueTrend)} stroke="#f43f5e" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
-                                                <path d={getSmoothPath(taskTrend)} stroke="#f59e0b" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-                                                {/* Interaction Elements */}
-                                                {hoverTrendIndex !== null && (() => {
-                                                    const step = innerWidth / (trendDays - 1 || 1);
-                                                    const x = margin.left + hoverTrendIndex * step;
-                                                    const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
-                                                    const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
-                                                    const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
-
-                                                    const yTask = margin.top + innerHeight - (taskVal / maxTrendValue) * innerHeight;
-                                                    const yIdea = margin.top + innerHeight - (ideaVal / maxTrendValue) * innerHeight;
-                                                    const yIssue = margin.top + innerHeight - (issueVal / maxTrendValue) * innerHeight;
-
-                                                    return (
-                                                        <g>
-                                                            <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="var(--color-primary)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
-                                                            <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="var(--color-absolute-white)" strokeWidth="2" />
-                                                            <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="var(--color-absolute-white)" strokeWidth="2" />
-                                                            {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="var(--color-absolute-white)" strokeWidth={2} />}
-                                                        </g>
-                                                    );
-                                                })()}
-                                            </svg>
-
-                                            {/* HTML Tooltip - positioned outside SVG for proper rendering */}
-                                            {hoverTrendIndex !== null && (() => {
-                                                const step = innerWidth / (trendDays - 1 || 1);
-                                                const xPct = (hoverTrendIndex / (trendDays - 1)) * 100;
-                                                const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
-                                                const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
-                                                const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
-                                                const isRight = xPct > 65;
-
-                                                return (
-                                                    <div
-                                                        className="trend-tooltip"
-                                                        style={{ left: isRight ? 'auto' : `calc(${xPct}% + 20px)`, right: isRight ? `calc(${100 - xPct}% + 20px)` : 'auto' }}
+                                        ) : (
+                                            <div className="dashboard-today-route__items">
+                                                {todayPlanItems.map((item, index) => (
+                                                    <Link
+                                                        key={item.id}
+                                                        to={item.href}
+                                                        className={`dashboard-today-route-item dashboard-today-route-item--${item.tone}`}
+                                                        tabIndex={getStepTabIndex(1)}
                                                     >
-                                                        <div className="trend-tooltip__label">
-                                                            {trendLabel(hoverTrendIndex)}
+                                                        <span className="dashboard-today-route-item__index">
+                                                            {String(index + 1).padStart(2, '0')}
+                                                        </span>
+                                                        <div className="dashboard-today-route-item__content">
+                                                            <span>{item.stepLabel} · {item.label}</span>
+                                                            <strong>{item.title}</strong>
+                                                            <small>{item.meta}</small>
                                                         </div>
-                                                        <div className="trend-tooltip__rows">
-                                                            <div className="trend-tooltip__row">
-                                                                <div className="trend-tooltip__key">
-                                                                    <span className="trend-dot trend-dot--tasks" />
-                                                                    <span>{t('nav.tasks')}</span>
-                                                                </div>
-                                                                <span className="trend-tooltip__value">{taskVal}</span>
-                                                            </div>
-                                                            <div className="trend-tooltip__row">
-                                                                <div className="trend-tooltip__key">
-                                                                    <span className="trend-dot trend-dot--ideas" />
-                                                                    <span>{t('nav.flows')}</span>
-                                                                </div>
-                                                                <span className="trend-tooltip__value">{ideaVal}</span>
-                                                            </div>
-                                                            {hasIssuesModule && (
-                                                                <div className="trend-tooltip__row">
-                                                                    <div className="trend-tooltip__key">
-                                                                        <span className="trend-dot trend-dot--issues" />
-                                                                        <span>{t('nav.issues')}</span>
-                                                                    </div>
-                                                                    <span className="trend-tooltip__value">{issueVal}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-
-                                    {/* Card Footer Section: Integrated Stats */}
-                                    <div className="chart-footer">
-                                        <div className="footer-stat">
-                                            <div className="stat-header">
-                                                <span className="stat-label">{t('nav.tasks')}</span>
-                                                <span className="material-symbols-outlined trend-icon trend-icon--tasks">check_circle</span>
-                                            </div>
-                                            <div className="stat-main">
-                                                <span className="val">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="delta trend-delta trend-delta--positive">+12%</span>
-                                            </div>
-                                        </div>
-                                        <div className="footer-stat">
-                                            <div className="stat-header">
-                                                <span className="stat-label">{t('nav.flows')}</span>
-                                                <span className="material-symbols-outlined trend-icon trend-icon--ideas">lightbulb</span>
-                                            </div>
-                                            <div className="stat-main">
-                                                <span className="val">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="delta trend-delta trend-delta--positive">+5%</span>
-                                            </div>
-                                        </div>
-                                        {hasIssuesModule && (
-                                            <div className="footer-stat">
-                                                <div className="stat-header">
-                                                    <span className="stat-label">{t('nav.issues')}</span>
-                                                    <span className="material-symbols-outlined trend-icon trend-icon--issues">bug_report</span>
-                                                </div>
-                                                <div className="stat-main">
-                                                    <span className="val">{issueTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                    <span className="delta trend-delta trend-delta--neutral">0%</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
-
-                                <Card padding="md" className="card-stack">
-                                    <div className="section-header-row">
-                                        <div className="title-group">
-                                            <h3 className="h4">{t('dashboard.taskStatus.title')}</h3>
-                                            <p className="subtitle">{t('dashboard.taskStatus.subtitle')}</p>
-                                        </div>
-                                        <div className="meta-text">
-                                            {t('dashboard.taskStatus.total').replace('{count}', String(taskStatusSummary.total))}
-                                        </div>
-                                    </div>
-                                    <div className="status-list">
-                                        {taskStatusSummary.items.length === 0 ? (
-                                            <div className="empty-state-simple">
-                                                {t('dashboard.taskStatus.empty')}
-                                            </div>
-                                        ) : (
-                                            taskStatusSummary.items.map(item => {
-                                                const color = TASK_STATUS_COLORS[item.status] || 'var(--color-primary)';
-                                                const label = taskStatusLabels[item.status as keyof typeof taskStatusLabels] || item.status;
-                                                const total = taskStatusSummary.total || 1;
-                                                return (
-                                                    <div key={item.status} className="status-item">
-                                                        <div className="header">
-                                                            <span style={{ color }}>{label}</span>
-                                                            <span className="count">{item.count}</span>
-                                                        </div>
-                                                        <div className="bar-bg">
-                                                            <div
-                                                                className="bar-fill"
-                                                                style={{ width: `${(item.count / total) * 100}%`, backgroundColor: color }}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                    <div className="card-bottom-action">
-                                        <Link to="/tasks" className="view-all-link">
-                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined dashboard-link-icon">arrow_forward</span>
-                                        </Link>
-                                    </div>
-                                </Card>
-                            </div>
-
-                            {/* Right Column: Health & Spotlight (1/3) */}
-                            <div className="grid-col-span-1 card-stack-gap">
-                                <div data-onboarding-id="dashboard-health">
-                                    <WorkspaceHealthCard health={workspaceHealth} projectCount={projects.length} />
-                                </div>
-
-                                <Card data-onboarding-id="dashboard-status" padding="md" className="donut-container">
-                                    <div className="donut-wrapper">
-                                        <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
-                                        <div className="center-text">
-                                            <span className="val">{projects.length}</span>
-                                            <span className="lbl">{t('nav.projects')}</span>
-                                        </div>
-                                    </div>
-                                    <div className="donut-legend">
-                                        <h3 className="h4 donut-legend-header">{t('dashboard.status.title')}</h3>
-                                        {projectStatusDistribution.map((item) => (
-                                            <div key={item.name} className="legend-row">
-                                                <div className="info">
-                                                    <span className="dot" style={{ backgroundColor: item.color }} />
-                                                    <span className="name">{item.name}</span>
-                                                </div>
-                                                <span className="val">{item.value}</span>
-                                            </div>
-                                        ))}
-                                        {projectStatusDistribution.length === 0 && <p className="empty-state-simple">{t('dashboard.status.empty')}</p>}
-                                    </div>
-                                </Card>
-
-                                <Card padding="md" className="card-stack">
-                                    <div className="section-header-row">
-                                        <div className="title-group">
-                                            <h3 className="h4">{t('dashboard.flowSpotlight.title')}</h3>
-                                            <p className="subtitle">{t('dashboard.flowSpotlight.subtitle')}</p>
-                                        </div>
-                                        <Badge variant="neutral" className="dashboard-badge dashboard-badge--compact">
-                                            {t('nav.flows')}
-                                        </Badge>
-                                    </div>
-                                    <div className="flow-list">
-                                        {ideaSpotlight.length === 0 ? (
-                                            <div className="empty-state-simple">
-                                                {t('dashboard.flowSpotlight.empty')}
-                                            </div>
-                                        ) : (
-                                            ideaSpotlight.map((idea) => {
-                                                const projectTitle = idea.projectId ? projectById.get(idea.projectId) : undefined;
-                                                const projectLabel = projectTitle || t('dashboard.issues.unknownProject');
-                                                const content = (
-                                                    <div className="flow-item">
-                                                        <div className="content">
-                                                            <p className="title">
-                                                                {idea.title}
-                                                            </p>
-                                                            <div className="meta">
-                                                                <span className="stage">{idea.stage}</span>
-                                                                <span className="project">{projectLabel}</span>
-                                                            </div>
-                                                        </div>
-                                                        <div className="votes">
-                                                            <span className="material-symbols-outlined flow-spotlight__icon">star</span>
-                                                            <span className="count">{idea.votes || 0}</span>
-                                                        </div>
-                                                    </div>
-                                                );
-
-                                                return idea.projectId ? (
-                                                    <Link key={idea.id} to={`/project/${idea.projectId}/flows/${idea.id}`} className="flow-item">
-                                                        {content}
+                                                        <span className="material-symbols-outlined dashboard-today-route-item__arrow">arrow_forward</span>
                                                     </Link>
-                                                ) : (
-                                                    <div key={idea.id}>{content}</div>
-                                                );
-                                            })
-                                        )}
-                                    </div>
-                                </Card>
-                            </div>
-                        </div>
-
-
-                        {/* 3. Row 3: Workload, Deadlines (2 Columns) - Attention moved to Sidebar */}
-                        <div className="grid-col-span-full">
-                            <div className="grid-cols-responsive">
-
-                                {/* 3a. Workload (1 Col) */}
-                                <Card data-onboarding-id="dashboard-workload" padding="md" className="card-stack">
-                                    <div className="section-header-row">
-                                        <h3 className="h4">{t('dashboard.workload.title')}</h3>
-                                        <span className="meta-text">
-                                            {t('dashboard.workload.pending').replace('{count}', String(tasks.filter(t => !t.isCompleted).length))}
-                                        </span>
-                                    </div>
-                                    <div className="status-list">
-                                        {taskPriorityDistribution.map(item => (
-                                            <div key={item.name} className="status-item">
-                                                <div className="header">
-                                                    <span style={{ color: item.color }}>{item.name}</span>
-                                                    <span className="count">{item.value}</span>
-                                                </div>
-                                                <div className="bar-bg">
-                                                    <div
-                                                        className="bar-fill"
-                                                        style={{ width: `${(item.value / (tasks.filter(t => !t.isCompleted).length || 1)) * 100}%`, backgroundColor: item.color }}
-                                                    />
-                                                </div>
+                                                ))}
                                             </div>
-                                        ))}
-                                        {taskPriorityDistribution.length === 0 && <p className="empty-state-simple">{t('dashboard.workload.empty')}</p>}
-                                    </div>
-                                    <div className="card-bottom-action mt-auto">
-                                        <Link to="/tasks" className="view-all-link">
-                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined dashboard-link-icon">arrow_forward</span>
-                                        </Link>
-                                    </div>
-                                </Card>
+                                        )}
+                                    </section>
 
-                                {/* 3b. Upcoming Deadlines (1 Col) */}
-                                <Card data-onboarding-id="dashboard-deadlines" padding="md" className="card-stack">
-                                    <h3 className="h4 mb-4">{t('dashboard.deadlines.title')}</h3>
-                                    <div className="recent-tasks-list-nested">
-                                            {focusTasks.slice(0, 4).map(task => { // Showing top 4
-                                                const priorityClass = task.priority === 'Urgent'
-                                                    ? 'priority-tag--urgent'
-                                                    : task.priority === 'High'
-                                                        ? 'priority-tag--high'
-                                                        : task.priority === 'Medium'
-                                                            ? 'priority-tag--medium'
-                                                            : 'priority-tag--low';
-                                                const due = toDate(task.dueDate);
-                                                const isOverdue = due && due.getTime() < Date.now();
+                                    <aside className="dashboard-today-context">
+                                        <section className="dashboard-today-watch" aria-label={t('dashboard.step.today.watch.title')}>
+                                            <div className="dashboard-today-watch__header">
+                                                <span className="material-symbols-outlined">visibility</span>
+                                                <h3>{t('dashboard.step.today.watch.title')}</h3>
+                                            </div>
 
-                                            return (
-                                                <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
-                                                    <div className="content">
-                                                        <div className="flex-between-center">
-                                                            <div>
-                                                                <p className="title">{task.title}</p>
-                                                                <div className="task-item-meta">
-                                                                    <span className={`priority-tag ${priorityClass}`}>
-                                                                        {(task.priority && taskPriorityLabels[task.priority]) || task.priority || t('tasks.priority.medium')}
-                                                                    </span>
-                                                                    {due && (
-                                                                        <span className={`date-tag ${isOverdue ? 'overdue' : ''}`}>
-                                                                            {format(due, 'MMM d', { locale: dateLocale })}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <span className="material-symbols-outlined deadline-item__chevron">chevron_right</span>
-                                                        </div>
-                                                    </div>
+                                            {todayWatchProject ? (
+                                                <Link to={`/project/${todayWatchProject.project.id}`} className="dashboard-today-watch__project" tabIndex={getStepTabIndex(1)}>
+                                                    <strong>{todayWatchProject.project.title}</strong>
+                                                    <span>
+                                                        {t('dashboard.step.today.watch.score').replace('{score}', String(todayWatchProject.health?.score ?? 100))}
+                                                        {' · '}
+                                                        {t('dashboard.step.today.watch.openTasks').replace('{count}', String(todayWatchProject.openTasks))}
+                                                    </span>
+                                                    <i style={cssVars({ '--dashboard-watch-width': `${todayWatchProject.health?.score ?? 100}%` })} />
                                                 </Link>
-                                            );
-                                        })}
-                                        {focusTasks.length === 0 && (
-                                            <div className="empty-state-simple">
-                                                {t('dashboard.deadlines.empty')}
-                                            </div>
-                                        )}
-                                    </div>
-                                </Card>
-
-                            </div>
-                        </div>
-
-                        {/* 4. Recent Projects (Full Row) */}
-                        <div data-onboarding-id="dashboard-active-projects" className="grid-col-span-full">
-                            <div className="title-group flex-center-gap">
-                                <div className="project-header-icon">
-                                    <span className="material-symbols-outlined">folder_open</span>
-                                </div>
-                                <h3 className="h3">{t('dashboard.projects.title')}</h3>
-                            </div>
-                            <div className="flex-center-gap">
-                                <Link to="/projects" className="view-all-link">
-                                    {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined dashboard-link-icon dashboard-link-icon--lg">arrow_forward</span>
-                                </Link>
-                                <Link to="/create">
-                                    <Button
-                                        size="md"
-                                        icon={<span className="material-symbols-outlined">add</span>}
-                                    >
-                                        {t('dashboard.projects.newProject')}
-                                    </Button>
-                                </Link>
-                            </div>
-                        </div>
-                        <div className="grid-cols-3">
-                            {recentProjects.length === 0 ? (
-                                <div className="project-empty-state grid-col-span-full">
-                                    <div className="project-empty-icon">
-                                        <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
-                                    </div>
-                                    <p className="text-lg font-medium">{t('dashboard.projects.empty.title')}</p>
-                                    <p className="text-sm mt-1">{t('dashboard.projects.empty.description')}</p>
-                                </div>
-                            ) : (
-                                recentProjects.slice(0, 3).map((proj) => {
-                                    const projTasks = tasks.filter((t) => t.projectId === proj.id);
-                                    const completed = projTasks.filter((t) => t.isCompleted).length;
-                                    const total = projTasks.length;
-                                    const pct = total > 0 ? Math.round((completed / total) * 100) : (proj.progress || 0);
-
-                                    const isBrainstorming = proj.status === 'Brainstorming' || proj.status === 'Planning';
-                                    const isCompleted = proj.status === 'Completed';
-
-                                    let icon = 'folder';
-                                    let accentClass = 'project-accent--default';
-                                    let progressClass = 'progress-fill--default';
-
-                                    if (isBrainstorming) {
-                                        icon = 'lightbulb';
-                                        accentClass = 'project-accent--brainstorm';
-                                        progressClass = 'progress-fill--brainstorm';
-                                    } else if (isCompleted) {
-                                        icon = 'check_circle';
-                                        accentClass = 'project-accent--complete';
-                                        progressClass = 'progress-fill--complete';
-                                    }
-
-                                    return (
-                                        <Link key={proj.id} to={`/project/${proj.id}`} className="project-card-link">
-                                            <Card padding="none" hoverable className="project-card">
-
-                                                {/* Cover Image Area */}
-                                                <div className="cover-area">
-                                                    {proj.coverImage ? (
-                                                        <>
-                                                            <div className="overlay" />
-                                                            <img src={proj.coverImage} className="cover-image" alt="" />
-                                                        </>
-                                                    ) : (
-                                                        <div className="cover-fallback" />
-                                                    )}
-
-                                                    <div className="status-badge">
-                                                        <Badge variant={projectStatusTone(proj.status)} className="dashboard-badge dashboard-badge--project">
-                                                            {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
-                                                        </Badge>
-                                                    </div>
-                                                </div>
-
-                                                <div className="content-area">
-                                                    {/* Floating Icon */}
-                                                    <div className="icon-wrapper">
-                                                        {proj.squareIcon ? (
-                                                            <div className="icon-box">
-                                                                <img src={proj.squareIcon} alt="" />
-                                                            </div>
-                                                        ) : (
-                                                            <div className={`icon-box ${accentClass}`}>
-                                                                <span className="material-symbols-outlined text-2xl">{icon}</span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="project-info">
-                                                        <h3 className="project-title">
-                                                            {proj.title}
-                                                        </h3>
-                                                        {proj.description && (
-                                                            <p className="project-desc">
-                                                                {proj.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Progress */}
-                                                    <div className="progress-section">
-                                                        <div className="progress-header">
-                                                            <span>{t('dashboard.projects.progress')}</span>
-                                                            <span>{pct}%</span>
-                                                        </div>
-                                                        <div className="progress-bar">
-                                                            <div
-                                                                className={`fill ${progressClass}`}
-                                                                style={{ width: `${pct}%` }}
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Footer members */}
-                                                    <div className="card-footer">
-                                                        <MemberAvatars projectId={proj.id} />
-                                                        <span className="material-symbols-outlined project-card__arrow">arrow_forward</span>
-                                                    </div>
-                                                </div>
-                                            </Card>
-                                        </Link>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Right Column: Sidebar Widgets */}
-                    <div className="dashboard-sidebar-col">
-
-                        <Card data-onboarding-id="dashboard-calendar" padding="md" className="calendar-widget">
-                            <div className="calendar-header">
-                                <div className="top-row">
-                                    <h3>
-                                        {format(currentDate, 'MMMM yyyy', { locale: dateLocale })}
-                                        <span className="badge">
-                                            {calendarView === 'month' ? (
-                                                <>
-                                                    W{getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))}
-                                                    -
-                                                    {getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0))}
-                                                </>
                                             ) : (
-                                                <>W{getWeekNumber(currentDate)}</>
+                                                <p className="dashboard-today-watch__empty">{t('dashboard.step.today.watch.empty')}</p>
                                             )}
-                                        </span>
-                                    </h3>
-                                    <div className="nav-controls">
-                                        <button onClick={handlePrevDate}>
-                                            <span className="material-symbols-outlined calendar-nav-icon">chevron_left</span>
-                                        </button>
-                                        <button onClick={handleNextDate}>
-                                            <span className="material-symbols-outlined calendar-nav-icon">chevron_right</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                        </section>
 
-                            <div className="calendar-grid-header">
-                                {weekdays.map((d, i) => (
-                                    <div key={`${d}-${i}`} className="day-label">{d}</div>
-                                ))}
-                            </div>
-                            <div className="calendar-grid-days">
-                                {(() => {
-                                    const todayFull = new Date();
-                                    const currentDay = currentDate.getDate();
-
-                                    let days = [];
-
-                                    if (calendarView === 'month') {
-                                        const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-                                        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() || 7; // Mon=1
-                                        const emptyDays = firstDay - 1;
-
-                                        for (let i = 0; i < emptyDays; i++) days.push(<div key={`empty-${i}`} />);
-                                        for (let i = 1; i <= daysInMonth; i++) {
-                                            // Check if this specific day is *actually* today
-                                            const thisDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-                                            const isToday = thisDate.toDateString() === todayFull.toDateString();
-
-                                            days.push(
-                                                <div key={i} className={`day-cell ${isToday ? 'today' : ''}`}>
-                                                    {i}
-                                                </div>
-                                            );
-                                        }
-                                    } else {
-                                        // Week view: Show week surrounding currentDate
-                                        const currentDayOfWeek = currentDate.getDay() || 7; // Mon=1
-                                        const mondayDate = new Date(currentDate);
-                                        mondayDate.setDate(currentDate.getDate() - currentDayOfWeek + 1);
-
-                                        for (let i = 0; i < 7; i++) {
-                                            const d = new Date(mondayDate);
-                                            d.setDate(mondayDate.getDate() + i);
-                                            const dayNum = d.getDate();
-                                            const isToday = d.toDateString() === todayFull.toDateString();
-
-                                            days.push(
-                                                <div key={`week-${i}`} className={`day-cell ${isToday ? 'today' : ''}`}>
-                                                    {dayNum}
-                                                </div>
-                                            );
-                                        }
-                                    }
-                                    return days;
-                                })()}
-                            </div>
-
-                            {/* Segmented Control for View Switch */}
-                            <div className="view-toggle">
-                                <button
-                                    onClick={() => calendarView !== 'month' && toggleCalendarView()}
-                                    className={calendarView === 'month' ? 'active' : ''}
-                                >
-                                    {t('dashboard.calendar.month')}
-                                </button>
-                                <button
-                                    onClick={() => calendarView !== 'week' && toggleCalendarView()}
-                                    className={calendarView === 'week' ? 'active' : ''}
-                                >
-                                    {t('dashboard.calendar.week')}
-                                </button>
-                            </div>
-                        </Card>
-
-                        <div data-onboarding-id="dashboard-scheduled">
-                            <ScheduledTasksCard tasks={tasks} issues={issues} />
-                        </div>
-
-                        {/* Latest Milestone (if any project has milestones module) */}
-                        {hasMilestonesModule && (
-                            <div data-onboarding-id="dashboard-milestones">
-                                <LatestMilestoneCard projects={projects} />
-                            </div>
-                        )}
-
-                        {/* 2. Enhanced Live Activity (Hybrid Data) */}
-                        <Card data-onboarding-id="dashboard-live-activity" padding="none" className="activity-feed-card">
-                            <div className="header">
-                                <h3 className="h5">{t('dashboard.activity.title')}</h3>
-                                <div className="status-ping">
-                                    <div className="ping-circle" />
-                                    <div className="status-dot" />
-                                </div>
-                            </div>
-                            <div className="feed-container">
-                                {displayActivities.length === 0 ? (
-                                    <div className="empty-state-simple">{t('dashboard.activity.empty')}</div>
-                                ) : (
-                                    displayActivities.map(item => (
-                                        <div key={item.id} className="activity-item">
-                                            <div className="avatar">
-                                                {item.userAvatar ? (
-                                                    <img src={item.userAvatar} alt="" />
-                                                ) : (
-                                            <div className="placeholder">
-                                                        {(item.user || t('dashboard.activity.userFallback')).charAt(0)}
+                                        <section className="dashboard-today-load" aria-label={t('dashboard.step.today.load.title')}>
+                                            <h3>{t('dashboard.step.today.load.title')}</h3>
+                                            <div className="dashboard-today-load__items">
+                                                {todayWorkloadItems.map((item) => (
+                                                    <div key={item.key} className={`dashboard-today-load-item dashboard-today-load-item--${item.tone}`}>
+                                                        <span>{item.label}</span>
+                                                        <strong>{item.value}</strong>
+                                                        <i style={cssVars({ '--dashboard-load-width': `${(item.value / maxTodayWorkloadValue) * 100}%` })} />
                                                     </div>
-                                                )}
+                                                ))}
                                             </div>
-                                            <div className="content">
-                                                <p>
-                                                    <span className="user">{item.user}</span> <span className="action">
-                                                        {item.action || t('dashboard.activity.fallbackAction')}
-                                                    </span> <br />
-                                                    <span className="target">{item.target}</span>
-                                                </p>
-                                                <p className="time">
-                                                    {item.createdAt
-                                                        ? format(new Date(toMillis(item.createdAt)), 'p', { locale: dateLocale })
-                                                        : t('dashboard.activity.justNow')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                                        </section>
+                                    </aside>
+                                </div>
                             </div>
-                        </Card>
+                        </section>
 
-                        {/* 3. Attention Needed (Moved Here) */}
-                        <Card data-onboarding-id="dashboard-attention" padding="md" className="attention-card">
-                            <div className="section-header-row">
-                                <h3 className="h5 attention-title">{t('dashboard.attention.title')}</h3>
-                                <span className="material-symbols-outlined attention-icon">warning</span>
-                            </div>
-                            <div className="attention-list">
-                                {(() => {
-                                    const blockedTasks = tasks.filter(t => t.status === 'Blocked');
-                                    const urgentTasks = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted);
-                                    const attentionItems = [...blockedTasks, ...urgentTasks].slice(0, 5);
+                        <section
+                            className={`dashboard-step-layer dashboard-portfolio-layer ${activeDashboardStep === 2 ? 'is-active' : ''}`}
+                            aria-label={t('dashboard.step.portfolio.title')}
+                            aria-hidden={activeDashboardStep !== 2}
+                        >
+                            <div className="dashboard-step-panel dashboard-step-panel--portfolio">
+                                <div className="dashboard-step-header dashboard-step-header--split">
+                                    <div>
+                                        <p>{t('dashboard.step.portfolio.subtitle')}</p>
+                                        <h2>{t('dashboard.step.portfolio.title')}</h2>
+                                    </div>
+                                    <Link to="/projects" className="dashboard-step-link" tabIndex={getStepTabIndex(2)}>
+                                        {t('dashboard.projects.viewAll')}
+                                        <span className="material-symbols-outlined">arrow_forward</span>
+                                    </Link>
+                                </div>
 
-                                    if (attentionItems.length === 0) {
-                                        return (
-                                            <div className="empty-state-simple">
-                                                <span className="material-symbols-outlined attention-empty-icon">check_circle</span>
-                                                <p>{t('dashboard.attention.allClear')}</p>
-                                            </div>
-                                        );
-                                    }
-
-                                    return attentionItems.map(item => (
-                                        <Link key={item.id} to={`/project/${item.projectId}/tasks/${item.id}`} className="attention-item">
-                                            <p className="type">
-                                                {item.status === 'Blocked' ? t('dashboard.attention.blocked') : t('dashboard.attention.urgent')}
-                                            </p>
-                                            <p className="title">{item.title}</p>
-                                        </Link>
-                                    ));
-                                })()}
-                            </div>
-                        </Card>
-
-                        {/* 4. Recently Added Tasks (Restored) */}
-                        <Card data-onboarding-id="dashboard-recent-tasks" padding="md">
-                            <div className="section-header-row">
-                                <h3 className="h5">{t('dashboard.recent.title')}</h3>
-                                <Link to="/tasks" className="view-all-link">{t('dashboard.recent.viewAll')}</Link>
-                            </div>
-                            <div className="recent-tasks-list">
-                                {tasks
-                                    .sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0))
-                                    .slice(0, 5)
-                                    .map(task => {
-                                        const priorityDotClass = task.priority === 'Urgent'
-                                            ? 'priority-dot--urgent'
-                                            : task.priority === 'High'
-                                                ? 'priority-dot--high'
-                                                : task.priority === 'Medium'
-                                                    ? 'priority-dot--medium'
-                                                    : 'priority-dot--low';
-
-                                        return (
-                                            <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
-                                                <div className={`priority-dot ${priorityDotClass}`}></div>
-                                                <div className="content">
-                                                    <p className="title">{task.title}</p>
-                                                    <p className="date">
-                                                        {formatShortDate(new Date(toMillis(task.createdAt)), dateFormat, dateLocale)}
-                                                    </p>
-                                                </div>
+                                <div className="dashboard-portfolio-grid">
+                                    <section className="dashboard-metric-strip">
+                                        {dashboardMetrics.map((metric) => (
+                                            <Link key={metric.key} to={metric.href} className="dashboard-metric-link" tabIndex={getStepTabIndex(2)}>
+                                                <span className="material-symbols-outlined">{metric.icon}</span>
+                                                <strong>{metric.value}</strong>
+                                                <p>{metric.label}</p>
                                             </Link>
-                                        );
-                                    })}
-                                {tasks.length === 0 && <p className="empty-state-simple">{t('dashboard.recent.empty')}</p>}
-                            </div>
-                        </Card>
+                                        ))}
+                                    </section>
 
-                        {/* Recent Issues (Conditional) */}
-                        {hasIssuesModule && issues.length > 0 && (
-                            <Card data-onboarding-id="dashboard-recent-issues" padding="none">
-                                <div className="section-header-row">
-                                    <h3 className="h5">{t('dashboard.issues.title')}</h3>
-                                </div>
-                                <div className="status-list">
-                                    {issues.slice(0, 4).map((issue) => (
-                                        <div key={issue.id} className="status-item">
-                                            <div className="flex-center-gap">
-                                                <span className={`material-symbols-outlined issue-status-icon ${issue.status === 'Resolved' ? 'issue-status-icon--resolved' : 'issue-status-icon--open'}`}>
-                                                    {issue.status === 'Resolved' ? 'check_circle' : 'error'}
-                                                </span>
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="title">{issue.title}</p>
-                                                    <p className="subtitle">{projectById.get(issue.projectId) || t('dashboard.issues.unknownProject')}</p>
-                                                </div>
+                                    <section className="dashboard-velocity-panel">
+                                        <div className="dashboard-velocity-panel__header">
+                                            <div>
+                                                <h3>{t('dashboard.expanded.velocity.title')}</h3>
+                                                <p>{t('dashboard.expanded.velocity.subtitle')}</p>
                                             </div>
+                                            <strong>{totalVelocity}</strong>
                                         </div>
-                                    ))}
-                                </div>
-                            </Card>
-                        )}
 
+                                        <div className="dashboard-velocity-chart" aria-hidden="true">
+                                            {taskTrend.map((day, index) => (
+                                                <div key={day.date.toISOString()} className="dashboard-velocity-day">
+                                                    <div className="dashboard-velocity-bars">
+                                                        <span
+                                                            className="dashboard-velocity-bar dashboard-velocity-bar--tasks"
+                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (day.value / maxVelocityValue) * 100)}%` })}
+                                                        />
+                                                        <span
+                                                            className="dashboard-velocity-bar dashboard-velocity-bar--flows"
+                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (ideaTrend[index]?.value || 0) / maxVelocityValue * 100)}%` })}
+                                                        />
+                                                        <span
+                                                            className="dashboard-velocity-bar dashboard-velocity-bar--issues"
+                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (issueTrend[index]?.value || 0) / maxVelocityValue * 100)}%` })}
+                                                        />
+                                                    </div>
+                                                    <span>{format(day.date, 'EEE', { locale: dateLocale })}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="dashboard-chart-legend">
+                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--tasks" />{t('nav.tasks')}</span>
+                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--flows" />{t('nav.flows')}</span>
+                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--issues" />{t('nav.issues')}</span>
+                                        </div>
+                                    </section>
+
+                                    <section className="dashboard-health-panel">
+                                        <div className="dashboard-health-panel__header">
+                                            <h3>{t('dashboard.expanded.health.title')}</h3>
+                                            <span>{projects.length}</span>
+                                        </div>
+                                        <div className="dashboard-health-meter" aria-hidden="true">
+                                            {portfolioHealthSegments.map((item) => (
+                                                <span
+                                                    key={item.key}
+                                                    className={`dashboard-health-meter__segment dashboard-health-meter__segment--${item.tone}`}
+                                                    style={cssVars({ '--dashboard-health-width': `${(item.value / healthTotal) * 100}%` })}
+                                                />
+                                            ))}
+                                        </div>
+                                        <div className="dashboard-health-list">
+                                            {portfolioHealthSegments.map((item) => (
+                                                <div key={item.key} className={`dashboard-health-chip dashboard-health-chip--${item.tone}`}>
+                                                    <span>{item.label}</span>
+                                                    <strong>{item.value}</strong>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                </div>
+                            </div>
+                        </section>
                     </div>
                 </div>
-            </div >
+            </div>
             <OnboardingWelcomeModal
                 isOpen={showOnboardingWelcome}
                 title={t('onboarding.dashboard.welcome.title')}

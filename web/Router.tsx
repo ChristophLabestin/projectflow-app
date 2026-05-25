@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal';
@@ -7,7 +7,6 @@ import { Dashboard } from './screens/Dashboard';
 import { ProjectsList } from './screens/ProjectsList';
 import { Tasks } from './screens/Tasks';
 import { Brainstorming } from './screens/Brainstorming';
-import { CreateProjectWizard } from './screens/CreateProjectWizard';
 import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
@@ -32,6 +31,7 @@ import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
+import { useUIState } from './context/UIContext';
 
 const ProjectOverview = React.lazy(() => import('./screens/ProjectOverview').then((module) => ({ default: module.ProjectOverview })));
 const ProjectTasks = React.lazy(() => import('./screens/ProjectTasks').then((module) => ({ default: module.ProjectTasks })));
@@ -137,6 +137,18 @@ const withRouteSuspense = (children: React.ReactNode) => (
     </Suspense>
 );
 
+const CreateProjectModalRoute = () => {
+    const navigate = useNavigate();
+    const { openProjectCreateModal } = useUIState();
+
+    useEffect(() => {
+        openProjectCreateModal();
+        navigate('/projects', { replace: true });
+    }, [navigate, openProjectCreateModal]);
+
+    return null;
+};
+
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
@@ -222,7 +234,7 @@ export const AppRouter = () => {
                         <Route path="/finance/:financeSection/:financeOperationType" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/finance/:financeSection" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/brainstorm" element={<Brainstorming />} />
-                        <Route path="/create" element={<CreateProjectWizard />} />
+                        <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
                         <Route path="/media" element={<MediaLibraryPage />} />
                         <Route path="/profile" element={<Profile />} />

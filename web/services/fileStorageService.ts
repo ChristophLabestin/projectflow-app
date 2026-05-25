@@ -259,6 +259,61 @@ export const getTenantFileDownloadUrl = async (input: { tenantId: string; fileId
     return call<typeof input, { fileId: string; downloadUrl: string; expiresInSeconds: number }>('getTenantFileDownloadUrl', input);
 };
 
+export const getTenantFirebaseStorageDownloadUrl = async (input: { tenantId: string; storagePath: string }) => {
+    return call<typeof input, { storagePath: string; downloadUrl: string }>('getTenantFirebaseStorageDownloadUrl', input);
+};
+
+export const extractFirebaseStoragePath = (url: string): string | null => {
+    try {
+        const parsed = new URL(url);
+
+        if (parsed.hostname === 'firebasestorage.googleapis.com') {
+            const marker = '/o/';
+            const markerIndex = parsed.pathname.indexOf(marker);
+            if (markerIndex >= 0) {
+                return decodeURIComponent(parsed.pathname.slice(markerIndex + marker.length));
+            }
+        }
+
+        if (parsed.hostname === 'storage.googleapis.com') {
+            const pathParts = parsed.pathname.split('/').filter(Boolean);
+            if (pathParts.length >= 2) {
+                return decodeURIComponent(pathParts.slice(1).join('/'));
+            }
+        }
+
+        if (parsed.hostname.endsWith('.storage.googleapis.com')) {
+            const objectPath = parsed.pathname.replace(/^\/+/, '');
+            return objectPath ? decodeURIComponent(objectPath) : null;
+        }
+    } catch {
+        return null;
+    }
+
+    return null;
+};
+
+export const extractTenantIdFromStoragePath = (storagePath: string): string | null => {
+    const match = /^tenants\/([^/]+)\//.exec(storagePath);
+    return match?.[1] || null;
+};
+
+export const isExpiringFirebaseStorageUrl = (url: string) => (
+    /[?&]X-Goog-/i.test(url) || (
+        Boolean(extractFirebaseStoragePath(url)) && !/[?&]token=/i.test(url)
+    )
+);
+
+export const refreshFirebaseStorageUrl = async (tenantId: string, url: string): Promise<string> => {
+    const storagePath = extractFirebaseStoragePath(url);
+    if (!storagePath || !isExpiringFirebaseStorageUrl(url)) {
+        return url;
+    }
+
+    const signed = await getTenantFirebaseStorageDownloadUrl({ tenantId, storagePath });
+    return signed.downloadUrl;
+};
+
 export const deleteTenantFile = async (input: { tenantId: string; fileId: string }) => {
     return call<typeof input, { success: boolean }>('deleteTenantFile', input);
 };

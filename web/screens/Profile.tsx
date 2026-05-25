@@ -18,7 +18,11 @@ export const Profile = () => {
     const [address, setAddress] = useState('');
     const [skills, setSkills] = useState<string[]>([]);
     const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
+    const [photoFileId, setPhotoFileId] = useState('');
+    const [photoFileTenantId, setPhotoFileTenantId] = useState('');
     const [coverURL, setCoverURL] = useState('');
+    const [coverFileId, setCoverFileId] = useState('');
+    const [coverFileTenantId, setCoverFileTenantId] = useState('');
     const [privacySettings, setPrivacySettings] = useState<PrivacySettings | undefined>(undefined);
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'activity' | 'about'>('overview');
@@ -49,6 +53,10 @@ export const Profile = () => {
                     if (me.photoURL) setPhotoURL(me.photoURL);
                     if (me.coverURL) setCoverURL(me.coverURL);
                     if (me.photoURL) setPhotoURL(me.photoURL);
+                    setPhotoFileId(me.photoFileId || '');
+                    setPhotoFileTenantId(me.photoFileTenantId || '');
+                    setCoverFileId(me.coverFileId || '');
+                    setCoverFileTenantId(me.coverFileTenantId || '');
                     if (me.displayName) setDisplayName(me.displayName);
                     if (me.privacySettings) setPrivacySettings(me.privacySettings);
                 }
@@ -451,7 +459,11 @@ export const Profile = () => {
                     address,
                     skills,
                     photoURL,
+                    photoFileId,
+                    photoFileTenantId,
                     coverURL,
+                    coverFileId,
+                    coverFileTenantId,
                     privacySettings
                 }}
                 onUpdate={(newData) => {
@@ -461,7 +473,11 @@ export const Profile = () => {
                     if (newData.address) setAddress(newData.address);
                     if (newData.skills) setSkills(newData.skills);
                     if (newData.photoURL) setPhotoURL(newData.photoURL);
+                    if (newData.photoFileId !== undefined) setPhotoFileId(newData.photoFileId);
+                    if (newData.photoFileTenantId !== undefined) setPhotoFileTenantId(newData.photoFileTenantId);
                     if (newData.coverURL) setCoverURL(newData.coverURL);
+                    if (newData.coverFileId !== undefined) setCoverFileId(newData.coverFileId);
+                    if (newData.coverFileTenantId !== undefined) setCoverFileTenantId(newData.coverFileTenantId);
                     if (newData.privacySettings) setPrivacySettings(newData.privacySettings);
 
                     if (user) getUserProfileStats(user.uid).then(setStatsData);

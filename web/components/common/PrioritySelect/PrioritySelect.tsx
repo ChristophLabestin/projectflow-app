@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, AlertCircle, AlertTriangle, ArrowDown, ArrowRight, Minus, ChevronUp, Check } from 'lucide-react';
+import { ChevronDown, AlertCircle, Minus, ChevronUp, Check } from 'lucide-react';
+import { useLanguage } from '../../../context/LanguageContext';
 import './priority-select.scss';
 
 export type Priority = 'low' | 'medium' | 'high' | 'urgent';
@@ -12,11 +13,11 @@ export interface PrioritySelectProps {
     variant?: 'dropdown' | 'group';
 }
 
-const priorities: { value: Priority; label: string; icon: React.ReactNode }[] = [
-    { value: 'low', label: 'Low', icon: <ChevronDown size={18} /> },
-    { value: 'medium', label: 'Medium', icon: <Minus size={18} /> },
-    { value: 'high', label: 'High', icon: <ChevronUp size={18} /> },
-    { value: 'urgent', label: 'Urgent', icon: <AlertCircle size={18} /> },
+const priorityOptions: { value: Priority; labelKey: string; icon: React.ReactNode }[] = [
+    { value: 'low', labelKey: 'tasks.priority.low', icon: <ChevronDown size={18} /> },
+    { value: 'medium', labelKey: 'tasks.priority.medium', icon: <Minus size={18} /> },
+    { value: 'high', labelKey: 'tasks.priority.high', icon: <ChevronUp size={18} /> },
+    { value: 'urgent', labelKey: 'tasks.priority.urgent', icon: <AlertCircle size={18} /> },
 ];
 
 export const PrioritySelect: React.FC<PrioritySelectProps> = ({
@@ -28,7 +29,12 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
+    const priorities = priorityOptions.map((priority) => ({
+        ...priority,
+        label: t(priority.labelKey),
+    }));
     const selectedPriority = priorities.find(p => p.value === value) || priorities[0];
 
     useEffect(() => {
@@ -55,17 +61,24 @@ export const PrioritySelect: React.FC<PrioritySelectProps> = ({
         return (
             <div className={`priority-select priority-select--group ${className}`}>
                 {priorities.map((p) => (
-                    <div
+                    <button
+                        type="button"
                         key={p.value}
                         className={`priority-select__option priority-select__option--${p.value} ${value === p.value ? 'priority-select__option--selected' : ''} ${disabled ? 'priority-select__option--disabled' : ''}`}
                         onClick={() => !disabled && handleSelect(p.value)}
-                        style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
+                        disabled={disabled}
+                        aria-pressed={value === p.value}
                     >
                         <div className="priority-select__option-content">
                             {p.icon}
                             <span>{p.label}</span>
                         </div>
-                    </div>
+                        {value === p.value && (
+                            <span className="priority-select__check" aria-hidden="true">
+                                <Check size={16} />
+                            </span>
+                        )}
+                    </button>
                 ))}
             </div>
         );

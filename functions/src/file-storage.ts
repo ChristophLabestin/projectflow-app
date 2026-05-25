@@ -87,6 +87,7 @@ const UPLOAD_DRAFT_TTL_MS = 60 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const DEFAULT_S3_REGION = 'us-east-1';
 const DEFAULT_S3_ENDPOINT = 'https://s3.amazonaws.com';
+const FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY = 'firebaseStorageDownloadTokens';
 
 const GOOGLE_DRIVE_CLIENT_ID = process.env.GOOGLE_DRIVE_CLIENT_ID || '';
 const GOOGLE_DRIVE_CLIENT_SECRET = process.env.GOOGLE_DRIVE_CLIENT_SECRET || '';
@@ -400,6 +401,35 @@ const fileBucket = () => {
         throw new functions.https.HttpsError('failed-precondition', 'Firebase storage bucket is not configured.');
     }
     return bucket;
+};
+
+const firstDownloadToken = (value: unknown) => normalizeString(value)
+    .split(',')
+    .map((token) => token.trim())
+    .filter(Boolean)[0] || '';
+
+const firebaseDownloadUrl = (bucketName: string, objectPath: string, token: string) => (
+    `https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucketName)}/o/${encodeURIComponent(objectPath)}?alt=media&token=${encodeURIComponent(token)}`
+);
+
+const ensureFirebaseDownloadToken = async (file: any) => {
+    const [metadata] = await file.getMetadata();
+    const customMetadata = (metadata.metadata || {}) as Record<string, string>;
+    const existingToken = firstDownloadToken(customMetadata[FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY]);
+
+    if (existingToken) {
+        return existingToken;
+    }
+
+    const token = crypto.randomUUID();
+    await file.setMetadata({
+        metadata: {
+            ...customMetadata,
+            [FIREBASE_DOWNLOAD_TOKEN_METADATA_KEY]: token,
+        },
+    });
+
+    return token;
 };
 
 const sanitizeSecretForClient = (secret: FileStorageSecret) => {
@@ -845,13 +875,10 @@ const generateDownloadUrlFromRecord = async (tenantId: string, secret: FileStora
     if (record.provider === 'firebase') {
         const objectPath = normalizeString(record.providerRef.firebasePath);
         const bucket = fileBucket();
-        const [downloadUrl] = await bucket.file(objectPath).getSignedUrl({
-            version: 'v4',
-            action: 'read',
-            expires: Date.now() + STORAGE_SIGNED_URL_TTL_MS,
-        });
+        const file = bucket.file(objectPath);
+        const token = await ensureFirebaseDownloadToken(file);
 
-        return downloadUrl;
+        return firebaseDownloadUrl(bucket.name, objectPath, token);
     }
 
     if (record.provider === 's3') {
@@ -1347,6 +1374,36 @@ export const getTenantFileDownloadUrl = functions.region(REGION).https.onCall(as
         fileId,
         downloadUrl,
         expiresInSeconds: Math.floor(STORAGE_SIGNED_URL_TTL_MS / 1000),
+    };
+});
+
+export const getTenantFirebaseStorageDownloadUrl = functions.region(REGION).https.onCall(async (data, context) => {
+    const tenantId = normalizeString(data?.tenantId);
+    const storagePath = normalizeString(data?.storagePath);
+
+    if (!tenantId || !storagePath) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and storagePath are required.');
+    }
+
+    if (!storagePath.startsWith(`tenants/${tenantId}/`)) {
+        throw new functions.https.HttpsError('permission-denied', 'Storage path is outside this tenant.');
+    }
+
+    await requireTenantAccess(tenantId, context);
+
+    const bucket = fileBucket();
+    const file = bucket.file(storagePath);
+    const [exists] = await file.exists();
+
+    if (!exists) {
+        throw new functions.https.HttpsError('not-found', 'File not found.');
+    }
+
+    const token = await ensureFirebaseDownloadToken(file);
+
+    return {
+        storagePath,
+        downloadUrl: firebaseDownloadUrl(bucket.name, storagePath, token),
     };
 });
 

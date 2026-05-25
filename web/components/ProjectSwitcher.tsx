@@ -4,6 +4,7 @@ import { Project } from '../types';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useUIState } from '../context/UIContext';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
 import logo from '../assets/logo.svg';
 
@@ -23,6 +24,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated } = useAuth();
+    const { openProjectCreateModal } = useUIState();
 
     // Fetch projects on mount - only when auth is ready
     useEffect(() => {
@@ -242,7 +244,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
-                                    navigate('/create');
+                                    openProjectCreateModal();
                                     if (onClose) onClose();
                                 }}
                                 className="w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"

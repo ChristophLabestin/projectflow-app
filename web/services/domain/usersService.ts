@@ -9,7 +9,13 @@ import {
 
 import { auth, db } from '../firebase';
 import { getActiveTenantId } from './authService';
-import { getTenantFileDownloadUrl, uploadTenantFile } from '../fileStorageService';
+import {
+    extractFirebaseStoragePath,
+    extractTenantIdFromStoragePath,
+    getTenantFileDownloadUrl,
+    refreshFirebaseStorageUrl,
+    uploadTenantFile
+} from '../fileStorageService';
 import type { AIUsage, PrivacySettings, User } from '../../types';
 
 const USERS = 'users';
@@ -25,21 +31,44 @@ export const getUserProfile = async (userId: string, _tenantId?: string) => {
     const profile = snap.data() as User;
     const resolvedTenantId = _tenantId || getActiveTenantId();
 
-    if (resolvedTenantId && profile.photoFileId) {
+    const photoFileTenantId = profile.photoFileTenantId || resolvedTenantId;
+    const coverFileTenantId = profile.coverFileTenantId || resolvedTenantId;
+
+    if (photoFileTenantId && profile.photoFileId) {
         try {
-            const signed = await getTenantFileDownloadUrl({ tenantId: resolvedTenantId, fileId: profile.photoFileId });
+            const signed = await getTenantFileDownloadUrl({ tenantId: photoFileTenantId, fileId: profile.photoFileId });
             profile.photoURL = signed.downloadUrl;
         } catch (error) {
             console.warn('Failed to refresh managed profile photo URL', error);
         }
+    } else if (profile.photoURL) {
+        try {
+            const storagePath = extractFirebaseStoragePath(profile.photoURL);
+            const tenantId = storagePath ? extractTenantIdFromStoragePath(storagePath) : resolvedTenantId;
+            if (tenantId) {
+                profile.photoURL = await refreshFirebaseStorageUrl(tenantId, profile.photoURL);
+            }
+        } catch (error) {
+            console.warn('Failed to recover profile photo URL', error);
+        }
     }
 
-    if (resolvedTenantId && profile.coverFileId) {
+    if (coverFileTenantId && profile.coverFileId) {
         try {
-            const signed = await getTenantFileDownloadUrl({ tenantId: resolvedTenantId, fileId: profile.coverFileId });
+            const signed = await getTenantFileDownloadUrl({ tenantId: coverFileTenantId, fileId: profile.coverFileId });
             profile.coverURL = signed.downloadUrl;
         } catch (error) {
             console.warn('Failed to refresh managed profile cover URL', error);
+        }
+    } else if (profile.coverURL) {
+        try {
+            const storagePath = extractFirebaseStoragePath(profile.coverURL);
+            const tenantId = storagePath ? extractTenantIdFromStoragePath(storagePath) : resolvedTenantId;
+            if (tenantId) {
+                profile.coverURL = await refreshFirebaseStorageUrl(tenantId, profile.coverURL);
+            }
+        } catch (error) {
+            console.warn('Failed to recover profile cover URL', error);
         }
     }
 
@@ -54,6 +83,10 @@ export const updateUserProfile = async (data: {
     displayName?: string;
     photoURL?: string;
     coverURL?: string;
+    photoFileId?: string;
+    photoFileTenantId?: string;
+    coverFileId?: string;
+    coverFileTenantId?: string;
     title?: string;
     bio?: string;
     address?: string;
@@ -70,8 +103,10 @@ export const updateUserProfile = async (data: {
     let photoURL = data.photoURL || user.photoURL;
     let coverURL = data.coverURL;
     const tenantId = getActiveTenantId() || user.uid;
-    let photoFileId = '';
-    let coverFileId = '';
+    let photoFileId = data.photoFileId || '';
+    let coverFileId = data.coverFileId || '';
+    let photoFileTenantId = data.photoFileTenantId || '';
+    let coverFileTenantId = data.coverFileTenantId || '';
 
     if (data.file) {
         const uploaded = await uploadTenantFile({
@@ -83,6 +118,7 @@ export const updateUserProfile = async (data: {
         });
         photoURL = uploaded.downloadUrl;
         photoFileId = uploaded.id;
+        photoFileTenantId = uploaded.tenantId;
     }
 
     if (data.coverFile) {
@@ -95,6 +131,7 @@ export const updateUserProfile = async (data: {
         });
         coverURL = uploaded.downloadUrl;
         coverFileId = uploaded.id;
+        coverFileTenantId = uploaded.tenantId;
     }
 
     if (data.displayName || photoURL) {
@@ -122,8 +159,14 @@ export const updateUserProfile = async (data: {
     if (photoFileId) {
         updateData.photoFileId = photoFileId;
     }
+    if (photoFileTenantId) {
+        updateData.photoFileTenantId = photoFileTenantId;
+    }
     if (coverFileId) {
         updateData.coverFileId = coverFileId;
+    }
+    if (coverFileTenantId) {
+        updateData.coverFileTenantId = coverFileTenantId;
     }
 
     await setDoc(userDocRef(user.uid), updateData, { merge: true });

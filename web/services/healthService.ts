@@ -1,4 +1,4 @@
-import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative } from '../types';
+import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative, Idea } from '../types';
 import { toMillis } from '../utils/time';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
@@ -49,6 +49,38 @@ const getDaysUntil = (value?: string) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return (targetDate.getTime() - today.getTime()) / DAY;
+};
+
+const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
+
+const isIssueOpen = (issue: Issue) => issue.status !== 'Resolved' && issue.status !== 'Closed';
+
+const isProjectActivelyManaged = (project: Project) => (
+    project.status === 'Active' || project.status === 'Review'
+);
+
+const priorityWeight = (priority?: string) => {
+    if (priority === 'Urgent') return 2.2;
+    if (priority === 'High') return 1.6;
+    if (priority === 'Medium') return 1.15;
+    return 1;
+};
+
+const hasAssignee = (item: {
+    assigneeId?: string;
+    assigneeIds?: string[];
+    assignedGroupIds?: string[];
+    assignee?: string;
+}) => Boolean(
+    item.assigneeId
+    || (item.assigneeIds && item.assigneeIds.length > 0)
+    || (item.assignedGroupIds && item.assignedGroupIds.length > 0)
+    || item.assignee
+);
+
+const createdRecently = (value: any, now: number, windowMs = WEEK) => {
+    const millis = toMillis(value);
+    return millis > 0 && (now - millis) <= windowMs;
 };
 
 export const calculateInitiativeHealth = (
@@ -313,57 +345,145 @@ export const calculateProjectHealth = (
     sprints: Sprint[] = [],
     activities: Activity[] = [],
     comments: Comment[] = [],
-    initiatives: Initiative[] = []
+    initiatives: Initiative[] = [],
+    ideas: Idea[] = []
 ): ProjectHealth => {
-    let score = 70; // Start with a base neutral-positive score
+    let score = project.status === 'Completed'
+        ? 82
+        : project.status === 'On Hold'
+            ? 54
+            : project.status === 'Planning' || project.status === 'Brainstorming'
+                ? 60
+                : 70;
     const factors: HealthFactor[] = [];
     const recommendationEntries: { key: string; text: string }[] = [];
     const now = Date.now();
     const addRecommendation = (key: string, text: string) => {
         recommendationEntries.push({ key, text });
     };
+    const addFactor = (factor: HealthFactor) => {
+        score += factor.impact;
+        factors.push(factor);
+    };
 
-    // 1. DEADLINE URGENCY
-    if (project.dueDate) {
-        const dueTime = new Date(project.dueDate).getTime();
-        const daysUntilDue = (dueTime - now) / DAY;
+    const modules = project.modules || [];
+    const moduleEnabled = (moduleId: string) => modules.length === 0 || modules.includes(moduleId as any);
+    const activelyManaged = isProjectActivelyManaged(project);
+    const incompleteTasks = tasks.filter((task) => !isTaskDone(task));
+    const completedTasks = tasks.length - incompleteTasks.length;
+    const taskProgress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : (project.progress || 0);
+    const openIssues = issues.filter(isIssueOpen);
+    const pendingMilestones = milestones.filter((milestone) => milestone.status !== 'Achieved');
+    const activeInitiatives = initiatives.filter((initiative) => initiative.status !== 'Done');
+    const activeIdeas = ideas.filter((idea) => (
+        !idea.convertedTaskId
+        && !idea.convertedInitiativeId
+        && !idea.convertedCampaignId
+    ));
+    const openWorkCount = incompleteTasks.length + openIssues.length + pendingMilestones.length + activeInitiatives.length;
+    const hasTrackedWork = (
+        tasks.length
+        + issues.length
+        + milestones.length
+        + sprints.length
+        + initiatives.length
+        + ideas.length
+        + activities.length
+        + comments.length
+    ) > 0;
 
-        if (daysUntilDue < 0) {
-            const overdueDays = Math.abs(Math.floor(daysUntilDue));
-            const urgency = Math.min(40, Math.abs(Math.floor(daysUntilDue)) * 3);
-            score -= (30 + urgency);
-            factors.push({
+    let recentCompletions = tasks.filter((task) => {
+        if (!isTaskDone(task)) return false;
+        const completedAt = toMillis(task.completedAt) || toMillis(task.createdAt);
+        return completedAt > 0 && (now - completedAt) <= WEEK;
+    }).length;
+    let overdueTaskCount = 0;
+    let urgentOverdueTaskCount = 0;
+    let dueSoonTaskCount = 0;
+    let urgentDueSoonTaskCount = 0;
+    let overdueIssueCount = 0;
+    let missedMilestones = 0;
+    let blockedTasks = 0;
+    let urgentIssues = 0;
+    let idleDays = 0;
+
+    if (project.status === 'Completed') {
+        if (openWorkCount === 0) {
+            addFactor({
+                id: 'project_completed_clean',
+                label: 'Completed Cleanly',
+                labelKey: 'health.factors.project_completed_clean.label',
+                description: 'The project is completed without visible open work.',
+                descriptionKey: 'health.factors.project_completed_clean.description',
+                impact: 8,
+                type: 'positive'
+            });
+        } else {
+            addFactor({
+                id: 'project_completed_with_open_work',
+                label: 'Completed With Open Work',
+                labelKey: 'health.factors.project_completed_with_open_work.label',
+                description: 'The project is marked completed while work is still open.',
+                descriptionKey: 'health.factors.project_completed_with_open_work.description',
+                meta: { count: openWorkCount },
+                impact: -18,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.closeOpenWork',
+                'Close, move, or re-scope the open work before treating the project as fully complete.'
+            );
+        }
+    } else if (project.status === 'On Hold') {
+        addFactor({
+            id: 'project_on_hold',
+            label: 'Project On Hold',
+            labelKey: 'health.factors.project_on_hold.label',
+            description: 'Paused projects are treated as lower momentum until they are reactivated.',
+            descriptionKey: 'health.factors.project_on_hold.description',
+            impact: -6,
+            type: 'neutral'
+        });
+    }
+
+    // 1. DELIVERY TIMELINE
+    const dueDays = getDaysUntil(project.dueDate);
+    if (dueDays !== null && project.status !== 'Completed') {
+        if (dueDays < 0) {
+            const overdueDays = Math.abs(Math.floor(dueDays));
+            const urgency = Math.min(24, overdueDays * 2);
+            const impact = -(18 + urgency + Math.min(8, openWorkCount));
+            addFactor({
                 id: 'deadline_overdue',
                 label: 'Deadline Overdue',
                 labelKey: 'health.factors.deadline_overdue.label',
                 description: `The project passed its deadline ${overdueDays} days ago.`,
                 descriptionKey: 'health.factors.deadline_overdue.description',
                 meta: { days: overdueDays },
-                impact: -(30 + urgency),
+                impact,
                 type: 'negative'
             });
             addRecommendation(
                 'health.recommendations.updateDeadline',
                 'Update project deadline or complete outstanding core milestones.'
             );
-        } else if (daysUntilDue <= 3) {
-            score -= 25;
-            factors.push({
+        } else if (dueDays <= 3 && openWorkCount > 0) {
+            const impact = -(18 + Math.round((priorityWeight(project.priority) - 1) * 6));
+            addFactor({
                 id: 'deadline_imminent',
                 label: 'Deadline Imminent',
                 labelKey: 'health.factors.deadline_imminent.label',
                 description: 'The project deadline is less than 3 days away.',
                 descriptionKey: 'health.factors.deadline_imminent.description',
-                impact: -25,
+                impact,
                 type: 'negative'
             });
             addRecommendation(
                 'health.recommendations.prioritizeTasks',
                 'Prioritize remaining high-priority tasks to meet the deadline.'
             );
-        } else if (daysUntilDue <= 14) {
-            score -= 5;
-            factors.push({
+        } else if (dueDays <= 14 && openWorkCount > 0) {
+            addFactor({
                 id: 'deadline_approaching',
                 label: 'Deadline Approaching',
                 labelKey: 'health.factors.deadline_approaching.label',
@@ -375,36 +495,124 @@ export const calculateProjectHealth = (
         }
     }
 
-    // 2. TASK VELOCITY & PROGRESS
-    const totalTasks = tasks.length;
-    const completedTasks = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
-    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : project.progress || 0;
-    let recentCompletions = 0;
+    if (project.startDate && project.dueDate && project.status !== 'Completed') {
+        const startTime = new Date(project.startDate).getTime();
+        const dueTime = new Date(project.dueDate).getTime();
+        const totalDuration = dueTime - startTime;
+        const elapsed = now - startTime;
 
-    if (totalTasks > 0) {
-        // Momentum: Tasks completed in last 7 days
-        recentCompletions = tasks.filter(t => {
-            if (!(t.isCompleted || t.status === 'Done')) return false;
-            const created = t.createdAt ? (typeof t.createdAt === 'object' && 'toMillis' in t.createdAt ? t.createdAt.toMillis() : toMillis(t.createdAt)) : 0;
-            // Note: Ideally we'd have a 'completedAt' timestamp. Falling back to createdAt is suboptimal but works for new work.
-            return (now - created) < WEEK;
-        }).length;
+        if (Number.isFinite(totalDuration) && totalDuration > 0 && elapsed > 0) {
+            const expectedProgress = Math.min(100, (elapsed / totalDuration) * 100);
+            const progressGap = expectedProgress - taskProgress;
 
-        if (recentCompletions >= 5) {
-            score += 15;
-            factors.push({
+            if (progressGap > 25 && activelyManaged) {
+                const impact = -Math.min(20, Math.round(6 + (progressGap / 3)));
+                addFactor({
+                    id: 'schedule_behind',
+                    label: 'Behind Expected Progress',
+                    labelKey: 'health.factors.schedule_behind.label',
+                    description: `Progress is ${Math.round(progressGap)} points behind the timeline.`,
+                    descriptionKey: 'health.factors.schedule_behind.description',
+                    meta: {
+                        gap: Math.round(progressGap),
+                        expected: Math.round(expectedProgress),
+                        actual: Math.round(taskProgress)
+                    },
+                    impact,
+                    type: 'negative'
+                });
+                addRecommendation(
+                    'health.recommendations.updateProgress',
+                    'Update progress, reduce scope, or pull the next milestone forward so the timeline reflects reality.'
+                );
+            } else if (progressGap < -20 && taskProgress >= 40) {
+                addFactor({
+                    id: 'schedule_ahead',
+                    label: 'Ahead of Schedule',
+                    labelKey: 'health.factors.schedule_ahead.label',
+                    description: 'Progress is ahead of the expected timeline.',
+                    descriptionKey: 'health.factors.schedule_ahead.description',
+                    impact: 5,
+                    type: 'positive',
+                    meta: {
+                        expected: Math.round(expectedProgress),
+                        actual: Math.round(taskProgress)
+                    }
+                });
+            }
+        }
+    }
+
+    // 2. TASK EXECUTION
+    if (tasks.length > 0) {
+        const completionRate = completedTasks / tasks.length;
+        const activeTasks = incompleteTasks.filter((task) => task.status !== 'Backlog' && task.status !== 'On Hold');
+        const recentNewTasks = tasks.filter((task) => createdRecently(task.createdAt, now)).length;
+        const taskById = new Map(tasks.map((task) => [task.id, task]));
+        let overduePressure = 0;
+        let dueSoonPressure = 0;
+
+        incompleteTasks.forEach((task) => {
+            if (task.status === 'Blocked') {
+                blockedTasks += 1;
+            }
+
+            const daysUntilTask = getDaysUntil(task.dueDate);
+            if (daysUntilTask === null) return;
+
+            const weight = priorityWeight(task.priority);
+            if (daysUntilTask < 0) {
+                overdueTaskCount += 1;
+                overduePressure += weight;
+                if (task.priority === 'Urgent' || task.priority === 'High') {
+                    urgentOverdueTaskCount += 1;
+                }
+            } else if (daysUntilTask <= 3) {
+                dueSoonTaskCount += 1;
+                dueSoonPressure += weight;
+                if (task.priority === 'Urgent' || task.priority === 'High') {
+                    urgentDueSoonTaskCount += 1;
+                }
+            }
+        });
+
+        if (completionRate >= 0.8 && blockedTasks === 0 && overdueTaskCount === 0) {
+            addFactor({
+                id: 'strong_task_completion',
+                label: 'Strong Task Completion',
+                labelKey: 'health.factors.strong_task_completion.label',
+                description: 'Most planned tasks are complete without visible blockers.',
+                descriptionKey: 'health.factors.strong_task_completion.description',
+                impact: 9,
+                type: 'positive',
+                meta: { percent: Math.round(completionRate * 100) }
+            });
+        } else if (completionRate < 0.25 && tasks.length >= 4 && activelyManaged) {
+            addFactor({
+                id: 'low_task_completion',
+                label: 'Low Task Completion',
+                labelKey: 'health.factors.low_task_completion.label',
+                description: 'The project has a substantial task list but little completed work.',
+                descriptionKey: 'health.factors.low_task_completion.description',
+                impact: -8,
+                type: 'negative',
+                meta: { percent: Math.round(completionRate * 100) }
+            });
+        }
+
+        if (recentCompletions >= Math.max(3, Math.ceil(tasks.length * 0.15))) {
+            addFactor({
                 id: 'high_velocity',
                 label: 'High Velocity',
                 labelKey: 'health.factors.high_velocity.label',
                 description: `${recentCompletions} tasks completed in the last week. Great momentum!`,
                 descriptionKey: 'health.factors.high_velocity.description',
                 meta: { count: recentCompletions },
-                impact: 15,
+                impact: 10,
                 type: 'positive'
             });
         } else if (recentCompletions > 0) {
-            score += 5;
-            factors.push({
+            addFactor({
                 id: 'steady_progress',
                 label: 'Steady Progress',
                 labelKey: 'health.factors.steady_progress.label',
@@ -413,15 +621,14 @@ export const calculateProjectHealth = (
                 impact: 5,
                 type: 'positive'
             });
-        } else if (totalTasks > 5 && progress < 90) {
-            score -= 10;
-            factors.push({
+        } else if (tasks.length > 5 && taskProgress < 90 && activelyManaged) {
+            addFactor({
                 id: 'stalled_velocity',
                 label: 'Stalled Velocity',
                 labelKey: 'health.factors.stalled_velocity.label',
                 description: 'No tasks completed in the last 7 days.',
                 descriptionKey: 'health.factors.stalled_velocity.description',
-                impact: -10,
+                impact: -9,
                 type: 'negative'
             });
             addRecommendation(
@@ -430,20 +637,17 @@ export const calculateProjectHealth = (
             );
         }
 
-        // Scope Creep: New tasks added in last 7 days vs completions
-        const newTasks = tasks.filter(t => {
-            const created = t.createdAt ? (typeof t.createdAt === 'object' && 'toMillis' in t.createdAt ? t.createdAt.toMillis() : toMillis(t.createdAt)) : 0;
-            return (now - created) < WEEK;
-        }).length;
-
-        if (newTasks > recentCompletions + 5 && totalTasks > 10) {
-            score -= 10;
-            factors.push({
+        if (recentNewTasks > recentCompletions + Math.max(4, Math.ceil(tasks.length * 0.2)) && tasks.length > 10) {
+            addFactor({
                 id: 'scope_creep',
                 label: 'Scope Creep',
                 labelKey: 'health.factors.scope_creep.label',
                 description: 'Tasks are being added faster than they are being completed.',
                 descriptionKey: 'health.factors.scope_creep.description',
+                meta: {
+                    added: recentNewTasks,
+                    completed: recentCompletions
+                },
                 impact: -10,
                 type: 'negative'
             });
@@ -453,169 +657,206 @@ export const calculateProjectHealth = (
             );
         }
 
-        // --- NEW: TASK-LEVEL DEADLINES ---
-        const incompleteTasks = tasks.filter(t => !t.isCompleted && t.status !== 'Done');
-        const tasksWithDueDate = incompleteTasks.filter(t => t.dueDate);
-
-        let taskDeadlineImpact = 0;
-        let overdueCount = 0;
-        let dueSoonCount = 0;
-        let hasUrgentDeadline = false;
-
-        tasksWithDueDate.forEach(t => {
-            const taskDate = new Date(t.dueDate!);
-            // Normalize to midnight for calendar comparison
-            taskDate.setHours(0, 0, 0, 0);
-
-            const todayMidnight = new Date();
-            todayMidnight.setHours(0, 0, 0, 0);
-
-            const diffTime = taskDate.getTime() - todayMidnight.getTime();
-            const diffDays = diffTime / (24 * 60 * 60 * 1000);
-
-            if (diffDays < 0) {
-                // OVERDUE (Yesterday or earlier)
-                overdueCount++;
-                // Penalty based on priority
-                const pBase = t.priority === 'Urgent' ? 12 : t.priority === 'High' ? 8 : 4;
-                taskDeadlineImpact -= pBase;
-            } else if (diffDays === 0 || diffDays === 1) { // TODAY OR TOMORROW
-                hasUrgentDeadline = true;
-                dueSoonCount++;
-                // Strong impact for orange state
-                const pBase = t.priority === 'Urgent' ? 35 : t.priority === 'High' ? 25 : 15;
-                taskDeadlineImpact -= pBase;
-            } else if (diffDays <= 3 && diffDays >= 0) {
-                dueSoonCount++;
-                const pBase = t.priority === 'Urgent' ? 10 : t.priority === 'High' ? 8 : 4;
-                taskDeadlineImpact -= pBase;
-            }
-        });
-
-        if (overdueCount > 0) {
-            const impact = Math.min(60, Math.abs(taskDeadlineImpact * 2)); // Double impact
-            score -= impact;
-            factors.push({
+        if (overdueTaskCount > 0) {
+            const impact = -Math.min(38, Math.round(6 + (overduePressure * 5)));
+            addFactor({
                 id: 'tasks_overdue',
                 label: 'Overdue Tasks',
                 labelKey: 'health.factors.tasks_overdue.label',
-                description: `${overdueCount} tasks are past their deadline.`,
+                description: `${overdueTaskCount} tasks are past their deadline.`,
                 descriptionKey: 'health.factors.tasks_overdue.description',
-                meta: { count: overdueCount },
-                impact: -impact,
+                meta: { count: overdueTaskCount, urgent: urgentOverdueTaskCount },
+                impact,
                 type: 'negative'
             });
             addRecommendation(
                 'health.recommendations.rescheduleOverdue',
                 'Complete or reschedule overdue tasks immediately.'
             );
-        } else if (dueSoonCount > 0) {
-            // Cap the impact to ensure we land in "Warning" (30-49) and not "Critical" (<30)
-            // Base 70 - 25 = 45 (Solid Orange)
-            const impact = Math.min(25, Math.abs(taskDeadlineImpact * 1.5));
-            score -= impact;
-            factors.push({
+        } else if (dueSoonTaskCount > 0) {
+            const impact = -Math.min(20, Math.round(4 + (dueSoonPressure * 3.5)));
+            addFactor({
                 id: 'tasks_due_soon',
                 label: 'Tasks Due Soon',
                 labelKey: 'health.factors.tasks_due_soon.label',
-                description: `${dueSoonCount} tasks are due within 72 hours.`,
+                description: `${dueSoonTaskCount} tasks are due within 72 hours.`,
                 descriptionKey: 'health.factors.tasks_due_soon.description',
-                meta: { count: dueSoonCount },
-                impact: -impact,
+                meta: { count: dueSoonTaskCount, urgent: urgentDueSoonTaskCount },
+                impact,
                 type: 'negative'
             });
         }
-    }
 
-    // 3. BLOCKERS & ISSUES
-    const blockedTasks = tasks.filter(t => t.status === 'Blocked').length;
-    if (blockedTasks > 0) {
-        const impact = Math.min(25, blockedTasks * 5);
-        score -= impact;
-        factors.push({
-            id: 'blocked_tasks',
-            label: 'Task Blockers',
-            labelKey: 'health.factors.blocked_tasks.label',
-            description: `${blockedTasks} task(s) are currently blocked.`,
-            descriptionKey: 'health.factors.blocked_tasks.description',
-            meta: { count: blockedTasks },
-            impact: -impact,
-            type: 'negative'
-        });
-        addRecommendation(
-            'health.recommendations.resolveBlockers',
-            'Resolve dependencies or clear blockers for the restricted tasks.'
-        );
-    }
+        if (blockedTasks > 0) {
+            const impact = -Math.min(32, 8 + (blockedTasks * 6));
+            addFactor({
+                id: 'blocked_tasks',
+                label: 'Task Blockers',
+                labelKey: 'health.factors.blocked_tasks.label',
+                description: `${blockedTasks} task(s) are currently blocked.`,
+                descriptionKey: 'health.factors.blocked_tasks.description',
+                meta: { count: blockedTasks },
+                impact,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.resolveBlockers',
+                'Resolve dependencies or clear blockers for the restricted tasks.'
+            );
+        }
 
-    const urgentIssues = issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Resolved' && i.status !== 'Closed').length;
-    if (urgentIssues > 0) {
-        const impact = Math.min(20, urgentIssues * 4);
-        score -= impact;
-        factors.push({
-            id: 'unresolved_issues',
-            label: 'Critical Issues',
-            labelKey: 'health.factors.unresolved_issues.label',
-            description: `${urgentIssues} high-priority issue(s) remain unresolved.`,
-            descriptionKey: 'health.factors.unresolved_issues.description',
-            meta: { count: urgentIssues },
-            impact: -impact,
-            type: 'negative'
-        });
-        addRecommendation(
-            'health.recommendations.addressIssues',
-            'Address critical issues to stabilize project health.'
-        );
-    }
+        const dependencyBlockedTasks = incompleteTasks.filter((task) => (
+            (task.dependencies || []).some((dependencyId) => {
+                const dependency = taskById.get(dependencyId);
+                return dependency && !isTaskDone(dependency);
+            })
+        )).length;
 
-    // 4. ENGAGEMENT & STALENESS
-    const lastActivity = activities.length > 0
-        ? Math.max(...activities.map(a => a.createdAt ? (typeof a.createdAt === 'object' && 'toMillis' in a.createdAt ? a.createdAt.toMillis() : toMillis(a.createdAt)) : 0))
-        : (project.updatedAt ? (typeof project.updatedAt === 'object' && 'toMillis' in project.updatedAt ? project.updatedAt.toMillis() : toMillis(project.updatedAt)) : toMillis(project.createdAt));
+        if (dependencyBlockedTasks > 0) {
+            const impact = -Math.min(16, 4 + (dependencyBlockedTasks * 4));
+            addFactor({
+                id: 'dependency_pressure',
+                label: 'Dependency Pressure',
+                labelKey: 'health.factors.dependency_pressure.label',
+                description: `${dependencyBlockedTasks} task(s) are waiting on unfinished dependencies.`,
+                descriptionKey: 'health.factors.dependency_pressure.description',
+                meta: { count: dependencyBlockedTasks },
+                impact,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.clearDependencies',
+                'Clear blocking dependencies before starting dependent work.'
+            );
+        }
 
-    const idleDays = (now - lastActivity) / DAY;
+        const unassignedPriorityTasks = activeTasks.filter((task) => (
+            (task.priority === 'Urgent' || task.priority === 'High')
+            && !hasAssignee(task)
+        )).length;
 
-    if (idleDays > 14) {
-        score -= 25;
-        factors.push({
-            id: 'stale_project',
-            label: 'Stale Project',
-            labelKey: 'health.factors.stale_project.label',
-            description: `No activity recorded for over ${Math.floor(idleDays)} days.`,
-            descriptionKey: 'health.factors.stale_project.description',
-            meta: { days: Math.floor(idleDays) },
-            impact: -25,
-            type: 'negative'
-        });
-        addRecommendation(
-            'health.recommendations.reactivateProject',
-            'Reactivate the project with a status update or team meeting.'
-        );
-    } else if (idleDays > 7) {
-        score -= 10;
-        factors.push({
-            id: 'inactive_recent',
-            label: 'Recent Inactivity',
-            labelKey: 'health.factors.inactive_recent.label',
-            description: 'No activity in the last 7 days.',
-            descriptionKey: 'health.factors.inactive_recent.description',
+        if (unassignedPriorityTasks > 0) {
+            addFactor({
+                id: 'tasks_without_owner',
+                label: 'High-Priority Work Unowned',
+                labelKey: 'health.factors.tasks_without_owner.label',
+                description: `${unassignedPriorityTasks} high-priority task(s) have no clear owner.`,
+                descriptionKey: 'health.factors.tasks_without_owner.description',
+                meta: { count: unassignedPriorityTasks },
+                impact: -Math.min(12, unassignedPriorityTasks * 4),
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.reassignOwners',
+                'Assign owners to the highest-priority open work.'
+            );
+        }
+
+        const unscheduledPriorityTasks = activeTasks.filter((task) => (
+            !task.dueDate
+            && (task.priority === 'Urgent' || task.priority === 'High')
+            && dueDays !== null
+            && dueDays <= 30
+        )).length;
+
+        if (unscheduledPriorityTasks > 0) {
+            addFactor({
+                id: 'tasks_without_due_dates',
+                label: 'Priority Work Unscheduled',
+                labelKey: 'health.factors.tasks_without_due_dates.label',
+                description: `${unscheduledPriorityTasks} high-priority task(s) need a due date.`,
+                descriptionKey: 'health.factors.tasks_without_due_dates.description',
+                meta: { count: unscheduledPriorityTasks },
+                impact: -Math.min(10, unscheduledPriorityTasks * 3),
+                type: 'neutral'
+            });
+            addRecommendation(
+                'health.recommendations.scheduleHighPriorityWork',
+                'Schedule the highest-priority open work against the project deadline.'
+            );
+        }
+    } else if (moduleEnabled('tasks') && activelyManaged) {
+        addFactor({
+            id: 'empty_execution_plan',
+            label: 'No Execution Tasks',
+            labelKey: 'health.factors.empty_execution_plan.label',
+            description: 'An active project needs at least a lightweight execution task list.',
+            descriptionKey: 'health.factors.empty_execution_plan.description',
             impact: -10,
-            type: 'neutral'
+            type: 'negative'
         });
-    } else {
-        score += 2;
-        factors.push({
-            id: 'active_engagement',
-            label: 'Highly Engaged',
-            labelKey: 'health.factors.active_engagement.label',
-            description: 'The project has seen recent activity and team engagement.',
-            descriptionKey: 'health.factors.active_engagement.description',
-            impact: 2,
+        addRecommendation(
+            'health.recommendations.addExecutionPlan',
+            'Add a short task list so project health can track actual execution.'
+        );
+    }
+
+    // 3. ISSUES AND BLOCKERS
+    if (openIssues.length > 0) {
+        urgentIssues = openIssues.filter((issue) => issue.priority === 'Urgent' || issue.priority === 'High').length;
+        const issuePressure = openIssues.reduce((total, issue) => total + priorityWeight(issue.priority), 0);
+
+        openIssues.forEach((issue) => {
+            const daysUntilIssue = getDaysUntil(issue.dueDate || issue.scheduledDate);
+            if (daysUntilIssue !== null && daysUntilIssue < 0) {
+                overdueIssueCount += 1;
+            }
+        });
+
+        if (urgentIssues > 0) {
+            const impact = -Math.min(30, Math.round(6 + (issuePressure * 4)));
+            addFactor({
+                id: 'unresolved_issues',
+                label: 'Critical Issues',
+                labelKey: 'health.factors.unresolved_issues.label',
+                description: `${urgentIssues} high-priority issue(s) remain unresolved.`,
+                descriptionKey: 'health.factors.unresolved_issues.description',
+                meta: { count: urgentIssues },
+                impact,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.addressIssues',
+                'Address critical issues to stabilize project health.'
+            );
+        } else {
+            addFactor({
+                id: 'issue_backlog',
+                label: 'Open Issue Backlog',
+                labelKey: 'health.factors.issue_backlog.label',
+                description: `${openIssues.length} issue(s) are still open.`,
+                descriptionKey: 'health.factors.issue_backlog.description',
+                meta: { count: openIssues.length },
+                impact: -Math.min(14, openIssues.length * 2),
+                type: 'neutral'
+            });
+        }
+
+        if (overdueIssueCount > 0) {
+            addFactor({
+                id: 'issue_deadlines',
+                label: 'Overdue Issues',
+                labelKey: 'health.factors.issue_deadlines.label',
+                description: `${overdueIssueCount} issue(s) are past their due date.`,
+                descriptionKey: 'health.factors.issue_deadlines.description',
+                meta: { count: overdueIssueCount },
+                impact: -Math.min(22, 6 + (overdueIssueCount * 5)),
+                type: 'negative'
+            });
+        }
+    } else if (issues.length > 0) {
+        addFactor({
+            id: 'no_open_issues',
+            label: 'Issue Backlog Clear',
+            labelKey: 'health.factors.no_open_issues.label',
+            description: 'All tracked issues are resolved or closed.',
+            descriptionKey: 'health.factors.no_open_issues.description',
+            impact: 4,
             type: 'positive'
         });
     }
 
-    // 5. INITIATIVE HEALTH
+    // 4. INITIATIVE HEALTH
     if (initiatives.length > 0) {
         const initiativeHealth = initiatives.map((initiative) => {
             const linkedTasks = tasks.filter((task) => task.initiativeId === initiative.id);
@@ -623,8 +864,12 @@ export const calculateProjectHealth = (
                 milestone.linkedInitiativeId === initiative.id
                 || (initiative.originIdeaId && milestone.linkedInitiativeId === initiative.originIdeaId)
             ));
+            const linkedActivities = activities.filter((activity) => (
+                activity.relatedId === initiative.id
+                || activity.target === initiative.title
+            ));
 
-            return calculateInitiativeHealth(initiative, linkedTasks, [], linkedMilestones);
+            return calculateInitiativeHealth(initiative, linkedTasks, linkedActivities, linkedMilestones);
         });
 
         const offTrackCount = initiativeHealth.filter((item) => item.status === 'Off Track').length;
@@ -633,11 +878,12 @@ export const calculateProjectHealth = (
 
         if (offTrackCount > 0 || atRiskCount > 0) {
             const impact = Math.min(26, (offTrackCount * 12) + (atRiskCount * 5));
-            score -= impact;
-            factors.push({
+            addFactor({
                 id: 'initiative_health_risk',
                 label: 'Initiatives Under Pressure',
+                labelKey: 'health.factors.initiative_health_risk.label',
                 description: `${offTrackCount + atRiskCount} initiative(s) need attention.`,
+                descriptionKey: 'health.factors.initiative_health_risk.description',
                 impact: -impact,
                 type: 'negative',
                 meta: {
@@ -652,11 +898,12 @@ export const calculateProjectHealth = (
             );
         } else if (onTrackCount > 0) {
             const impact = Math.min(8, onTrackCount * 2);
-            score += impact;
-            factors.push({
+            addFactor({
                 id: 'initiative_health_strength',
                 label: 'Initiatives On Track',
+                labelKey: 'health.factors.initiative_health_strength.label',
                 description: `${onTrackCount} initiative(s) are progressing well.`,
+                descriptionKey: 'health.factors.initiative_health_strength.description',
                 impact,
                 type: 'positive',
                 meta: { count: onTrackCount }
@@ -664,12 +911,15 @@ export const calculateProjectHealth = (
         }
     }
 
-    // 6. MILESTONE HEALTH
-    const missedMilestones = milestones.filter(m => m.status === 'Missed' || (m.status === 'Pending' && m.dueDate && new Date(m.dueDate).getTime() < now)).length;
+    // 5. MILESTONES
+    missedMilestones = milestones.filter((milestone) => {
+        const daysUntilMilestone = getDaysUntil(milestone.dueDate);
+        return milestone.status === 'Missed' || (milestone.status === 'Pending' && daysUntilMilestone !== null && daysUntilMilestone < 0);
+    }).length;
+
     if (missedMilestones > 0) {
         const impact = Math.min(30, missedMilestones * 12);
-        score -= impact;
-        factors.push({
+        addFactor({
             id: 'missed_milestones',
             label: 'Milestone Delays',
             labelKey: 'health.factors.missed_milestones.label',
@@ -685,39 +935,389 @@ export const calculateProjectHealth = (
         );
     }
 
-    // Normalize score
-    score = Math.max(0, Math.min(100, score));
+    if (milestones.length > 0) {
+        const achievedMilestones = milestones.filter((milestone) => milestone.status === 'Achieved').length;
+        const highRiskMilestones = milestones.filter((milestone) => (
+            milestone.status === 'Pending' && milestone.riskRating === 'High'
+        )).length;
+        const dueSoonMilestones = milestones.filter((milestone) => {
+            if (milestone.status !== 'Pending') return false;
+            const days = getDaysUntil(milestone.dueDate);
+            return days !== null && days >= 0 && days <= 7;
+        }).length;
 
-    // Determine status
-    let status: HealthStatus = 'normal';
-    if (score >= 90) status = 'excellent';
-    else if (score >= 75) status = 'healthy';
-    else if (score >= 50) status = 'normal';
-    else if (score >= 30) status = 'warning';
-    else status = 'critical';
+        if (highRiskMilestones > 0) {
+            addFactor({
+                id: 'high_risk_milestones',
+                label: 'High-Risk Milestones',
+                labelKey: 'health.factors.high_risk_milestones.label',
+                description: `${highRiskMilestones} pending milestone(s) are marked high risk.`,
+                descriptionKey: 'health.factors.high_risk_milestones.description',
+                meta: { count: highRiskMilestones },
+                impact: -Math.min(16, highRiskMilestones * 6),
+                type: 'negative'
+            });
+        } else if (dueSoonMilestones > 0 && missedMilestones === 0) {
+            addFactor({
+                id: 'milestones_due_soon',
+                label: 'Milestones Due Soon',
+                labelKey: 'health.factors.milestones_due_soon.label',
+                description: `${dueSoonMilestones} milestone(s) are due this week.`,
+                descriptionKey: 'health.factors.milestones_due_soon.description',
+                meta: { count: dueSoonMilestones },
+                impact: -Math.min(10, dueSoonMilestones * 4),
+                type: 'neutral'
+            });
+        }
 
-    // Edge Case: Empty projects shouldn't be "Excellent" or "Healthy"
-    if (totalTasks === 0 && (status === 'excellent' || status === 'healthy')) {
-        status = 'normal';
-        score = Math.min(score, 74);
+        if (achievedMilestones > 0 && achievedMilestones / milestones.length >= 0.75 && missedMilestones === 0) {
+            addFactor({
+                id: 'milestone_progress',
+                label: 'Milestones Progressing',
+                labelKey: 'health.factors.milestone_progress.label',
+                description: 'Most project milestones are already achieved.',
+                descriptionKey: 'health.factors.milestone_progress.description',
+                meta: { percent: Math.round((achievedMilestones / milestones.length) * 100) },
+                impact: 5,
+                type: 'positive'
+            });
+        }
+    } else if (moduleEnabled('milestones') && activelyManaged && project.dueDate) {
+        addFactor({
+            id: 'milestone_plan_missing',
+            label: 'No Milestone Plan',
+            labelKey: 'health.factors.milestone_plan_missing.label',
+            description: 'The project has a delivery deadline but no tracked milestones.',
+            descriptionKey: 'health.factors.milestone_plan_missing.description',
+            impact: -5,
+            type: 'neutral'
+        });
     }
 
-    // Check for "Stalemate" (Active but no progress for long time)
-    if (progress < 100 && idleDays > 30 && status !== 'critical') {
+    // 6. SPRINTS
+    if (sprints.length > 0) {
+        const activeSprints = sprints.filter((sprint) => sprint.status === 'Active');
+        const overdueSprints = activeSprints.filter((sprint) => {
+            const days = getDaysUntil(sprint.endDate);
+            return days !== null && days < 0;
+        });
+        const stalePlanningSprints = sprints.filter((sprint) => {
+            const days = getDaysUntil(sprint.startDate);
+            return sprint.status === 'Planning' && days !== null && days < 0;
+        });
+
+        if (overdueSprints.length > 0) {
+            addFactor({
+                id: 'sprint_overdue',
+                label: 'Overdue Sprint',
+                labelKey: 'health.factors.sprint_overdue.label',
+                description: `${overdueSprints.length} active sprint(s) passed their end date.`,
+                descriptionKey: 'health.factors.sprint_overdue.description',
+                meta: { count: overdueSprints.length },
+                impact: -Math.min(24, 10 + (overdueSprints.length * 7)),
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.reviewSprint',
+                'Close, extend, or re-plan the active sprint.'
+            );
+        }
+
+        if (stalePlanningSprints.length > 0) {
+            addFactor({
+                id: 'sprint_not_started',
+                label: 'Sprint Not Started',
+                labelKey: 'health.factors.sprint_not_started.label',
+                description: `${stalePlanningSprints.length} sprint(s) should have started already.`,
+                descriptionKey: 'health.factors.sprint_not_started.description',
+                meta: { count: stalePlanningSprints.length },
+                impact: -Math.min(12, stalePlanningSprints.length * 4),
+                type: 'neutral'
+            });
+        }
+
+        activeSprints.forEach((sprint) => {
+            const sprintTasks = tasks.filter((task) => task.sprintId === sprint.id);
+            if (sprintTasks.length === 0) {
+                addFactor({
+                    id: 'sprint_without_work',
+                    label: 'Active Sprint Without Work',
+                    labelKey: 'health.factors.sprint_without_work.label',
+                    description: 'An active sprint has no linked tasks.',
+                    descriptionKey: 'health.factors.sprint_without_work.description',
+                    impact: -6,
+                    type: 'neutral'
+                });
+                return;
+            }
+
+            const sprintDone = sprintTasks.filter(isTaskDone).length;
+            const sprintProgress = sprintDone / sprintTasks.length;
+            const sprintStart = new Date(sprint.startDate).getTime();
+            const sprintEnd = new Date(sprint.endDate).getTime();
+            const sprintDuration = sprintEnd - sprintStart;
+            const sprintElapsed = sprintDuration > 0 ? (now - sprintStart) / sprintDuration : 0;
+
+            if (sprintElapsed > 0.7 && sprintProgress < 0.5 && overdueSprints.length === 0) {
+                addFactor({
+                    id: 'sprint_at_risk',
+                    label: 'Sprint At Risk',
+                    labelKey: 'health.factors.sprint_at_risk.label',
+                    description: 'The active sprint is late in its window with less than half the work complete.',
+                    descriptionKey: 'health.factors.sprint_at_risk.description',
+                    meta: { percent: Math.round(sprintProgress * 100) },
+                    impact: -12,
+                    type: 'negative'
+                });
+            } else if (sprintProgress >= 0.5) {
+                addFactor({
+                    id: 'active_sprint_progress',
+                    label: 'Active Sprint Progress',
+                    labelKey: 'health.factors.active_sprint_progress.label',
+                    description: 'The active sprint has visible linked task progress.',
+                    descriptionKey: 'health.factors.active_sprint_progress.description',
+                    meta: { percent: Math.round(sprintProgress * 100) },
+                    impact: 3,
+                    type: 'positive'
+                });
+            }
+        });
+    }
+
+    // 7. FLOWS / IDEAS
+    if (ideas.length > 0) {
+        const reviewQueue = activeIdeas.filter((idea) => idea.stage === 'Review' || idea.stage === 'Submit');
+        const approvedUnconverted = ideas.filter((idea) => (
+            (idea.stage === 'Approved' || idea.approvedAt)
+            && !idea.convertedTaskId
+            && !idea.convertedInitiativeId
+            && !idea.convertedCampaignId
+        ));
+        const convertedIdeas = ideas.filter((idea) => (
+            idea.convertedTaskId || idea.convertedInitiativeId || idea.convertedCampaignId
+        ));
+        const highRiskIdeas = activeIdeas.filter((idea) => {
+            const analysis = idea.riskWinAnalysis;
+            if (!analysis) return false;
+            return analysis.successProbability < 45 || analysis.risks.some((risk) => risk.severity === 'High');
+        });
+        const recentIdeas = ideas.filter((idea) => createdRecently(idea.createdAt || idea.approvedAt, now));
+
+        if (highRiskIdeas.length > 0) {
+            addFactor({
+                id: 'flow_risk',
+                label: 'Flow Risk Detected',
+                labelKey: 'health.factors.flow_risk.label',
+                description: `${highRiskIdeas.length} active flow(s) carry high risk or low success probability.`,
+                descriptionKey: 'health.factors.flow_risk.description',
+                meta: { count: highRiskIdeas.length },
+                impact: -Math.min(16, 5 + (highRiskIdeas.length * 4)),
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.triageFlowRisks',
+                'Triage high-risk flows before converting them into execution work.'
+            );
+        }
+
+        if (reviewQueue.length > 3) {
+            addFactor({
+                id: 'flow_review_queue',
+                label: 'Flow Review Queue',
+                labelKey: 'health.factors.flow_review_queue.label',
+                description: `${reviewQueue.length} flows are waiting in review or submit stages.`,
+                descriptionKey: 'health.factors.flow_review_queue.description',
+                meta: { count: reviewQueue.length },
+                impact: -Math.min(12, (reviewQueue.length - 2) * 3),
+                type: 'neutral'
+            });
+            addRecommendation(
+                'health.recommendations.focusReviewQueue',
+                'Reduce the flow review queue before adding more exploratory work.'
+            );
+        }
+
+        if (approvedUnconverted.length > 2) {
+            addFactor({
+                id: 'flow_conversion_gap',
+                label: 'Approved Flows Not Executed',
+                labelKey: 'health.factors.flow_conversion_gap.label',
+                description: `${approvedUnconverted.length} approved flow(s) have not been converted into execution yet.`,
+                descriptionKey: 'health.factors.flow_conversion_gap.description',
+                meta: { count: approvedUnconverted.length },
+                impact: -Math.min(12, approvedUnconverted.length * 3),
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.convertApprovedFlows',
+                'Convert approved flows into initiatives, tasks, or campaigns.'
+            );
+        }
+
+        if (convertedIdeas.length > 0) {
+            addFactor({
+                id: 'flow_conversion_strength',
+                label: 'Flows Reaching Execution',
+                labelKey: 'health.factors.flow_conversion_strength.label',
+                description: 'Some flows have been converted into executable work.',
+                descriptionKey: 'health.factors.flow_conversion_strength.description',
+                meta: { count: convertedIdeas.length },
+                impact: Math.min(6, convertedIdeas.length * 2),
+                type: 'positive'
+            });
+        }
+
+        if (recentIdeas.length > 0 && activeIdeas.length > 0) {
+            addFactor({
+                id: 'flow_momentum',
+                label: 'Recent Flow Momentum',
+                labelKey: 'health.factors.flow_momentum.label',
+                description: 'New or recently approved flows show active planning momentum.',
+                descriptionKey: 'health.factors.flow_momentum.description',
+                meta: { count: recentIdeas.length },
+                impact: Math.min(4, recentIdeas.length),
+                type: 'positive'
+            });
+        }
+    }
+
+    // 8. ENGAGEMENT AND RECENCY
+    const activityMillis = [
+        toMillis(project.updatedAt),
+        toMillis(project.createdAt),
+        ...tasks.flatMap((task) => [toMillis(task.createdAt), toMillis(task.completedAt)]),
+        ...issues.flatMap((issue) => [toMillis(issue.createdAt), toMillis(issue.completedAt)]),
+        ...milestones.map((milestone) => toMillis(milestone.createdAt)),
+        ...sprints.map((sprint) => toMillis(sprint.updatedAt || sprint.createdAt)),
+        ...initiatives.flatMap((initiative) => [toMillis(initiative.updatedAt), toMillis(initiative.completedAt), toMillis(initiative.createdAt)]),
+        ...ideas.flatMap((idea) => [toMillis(idea.approvedAt), toMillis(idea.convertedAt), toMillis(idea.createdAt)]),
+        ...activities.map((activity) => toMillis(activity.createdAt)),
+        ...comments.map((comment) => toMillis(comment.createdAt))
+    ].filter((millis) => millis > 0);
+    const lastActivity = activityMillis.length > 0 ? Math.max(...activityMillis) : 0;
+    idleDays = lastActivity > 0 ? (now - lastActivity) / DAY : 999;
+
+    if (project.status !== 'Completed' && project.status !== 'On Hold') {
+        if (idleDays > 30) {
+            addFactor({
+                id: 'stale_project',
+                label: 'Stale Project',
+                labelKey: 'health.factors.stale_project.label',
+                description: `No activity recorded for over ${Math.floor(idleDays)} days.`,
+                descriptionKey: 'health.factors.stale_project.description',
+                meta: { days: Math.floor(idleDays) },
+                impact: -24,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.reactivateProject',
+                'Reactivate the project with a status update or team meeting.'
+            );
+        } else if (idleDays > 10) {
+            addFactor({
+                id: 'inactive_recent',
+                label: 'Recent Inactivity',
+                labelKey: 'health.factors.inactive_recent.label',
+                description: 'No activity in the last 7 days.',
+                descriptionKey: 'health.factors.inactive_recent.description',
+                impact: -8,
+                type: 'neutral'
+            });
+        } else if (hasTrackedWork) {
+            addFactor({
+                id: 'active_engagement',
+                label: 'Highly Engaged',
+                labelKey: 'health.factors.active_engagement.label',
+                description: 'The project has seen recent activity and team engagement.',
+                descriptionKey: 'health.factors.active_engagement.description',
+                impact: 3,
+                type: 'positive'
+            });
+        }
+    }
+
+    const recentComments = comments.filter((comment) => createdRecently(comment.createdAt, now)).length
+        + activities.filter((activity) => activity.type === 'comment' && createdRecently(activity.createdAt, now)).length;
+    const recentCollaborators = new Set(
+        activities
+            .filter((activity) => createdRecently(activity.createdAt, now) && activity.user)
+            .map((activity) => activity.user)
+    ).size;
+
+    if (recentComments >= 3 || recentCollaborators >= 2) {
+        addFactor({
+            id: 'comment_engagement',
+            label: 'Team Engagement',
+            labelKey: 'health.factors.comment_engagement.label',
+            description: 'Recent comments or multiple contributors show active collaboration.',
+            descriptionKey: 'health.factors.comment_engagement.description',
+            meta: {
+                comments: recentComments,
+                collaborators: recentCollaborators
+            },
+            impact: 4,
+            type: 'positive'
+        });
+    }
+
+    if (!hasTrackedWork && activelyManaged) {
+        addFactor({
+            id: 'project_setup_gap',
+            label: 'Project Setup Gap',
+            labelKey: 'health.factors.project_setup_gap.label',
+            description: 'No tracked work, milestones, flows, activity, or issues are available yet.',
+            descriptionKey: 'health.factors.project_setup_gap.description',
+            impact: -8,
+            type: 'negative'
+        });
+    }
+
+    // Guardrails keep severe live risks from being hidden by unrelated positives.
+    score = clampScore(score);
+    if (dueDays !== null && dueDays < 0 && openWorkCount > 0) score = Math.min(score, 34);
+    if (urgentOverdueTaskCount > 0 || overdueIssueCount > 0) score = Math.min(score, 42);
+    if (blockedTasks >= 3 || urgentIssues >= 3) score = Math.min(score, 50);
+    if (urgentDueSoonTaskCount > 0 && score > 58) score = 58;
+    if (!hasTrackedWork && activelyManaged) score = Math.min(score, 62);
+    if (project.status === 'Completed' && openWorkCount === 0 && missedMilestones === 0) score = Math.max(score, 88);
+    score = clampScore(score);
+
+    let status: HealthStatus = 'normal';
+    if (score >= 88) status = 'excellent';
+    else if (score >= 74) status = 'healthy';
+    else if (score >= 55) status = 'normal';
+    else if (score >= 35) status = 'warning';
+    else status = 'critical';
+
+    if (taskProgress < 100 && idleDays > 30 && status !== 'critical' && project.status !== 'Completed') {
         status = 'stalemate';
     }
 
-    // Simple trend detection (would be better with historical data)
-    let trend: 'improving' | 'declining' | 'stable' = 'stable';
-    if (score > 80 && recentCompletions > 2) trend = 'improving';
-    if (score < 50 && (blockedTasks > 0 || urgentIssues > 0)) trend = 'declining';
+    const negativeImpact = factors
+        .filter((factor) => factor.type === 'negative')
+        .reduce((total, factor) => total + Math.abs(factor.impact), 0);
+    const positiveImpact = factors
+        .filter((factor) => factor.type === 'positive')
+        .reduce((total, factor) => total + factor.impact, 0);
 
-    // Force "Warning" (Orange) state if there are urgent deadlines (Today/Tomorrow)
-    const hasUrgentDeadline = factors.some(f => f.id === 'tasks_due_soon' || f.id === 'deadline_imminent');
-    if (hasUrgentDeadline && status !== 'critical') {
-        status = 'warning';
-        // Visually sync the score if it's too high for 'warning'
-        if (score > 48) score = 48;
+    let trend: 'improving' | 'declining' | 'stable' = 'stable';
+    if (
+        recentCompletions > 0
+        && score >= 60
+        && positiveImpact >= Math.max(4, negativeImpact * 0.65)
+        && blockedTasks === 0
+        && overdueTaskCount === 0
+    ) {
+        trend = 'improving';
+    }
+    if (
+        score < 55
+        || overdueTaskCount > 0
+        || blockedTasks > 0
+        || urgentIssues > 0
+        || idleDays > 21
+    ) {
+        trend = 'declining';
     }
 
     // Sort factors by impact magnitude logic:

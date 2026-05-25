@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import {
     getAllWorkspaceProjects,
-    subscribeProjectMilestones,
     getProjectActivity,
+    getProjectIdeas,
+    getProjectIssues,
     getProjectOverviewTemplates,
+    getProjectTasks,
     saveProjectOverviewTemplate,
     deleteProjectOverviewTemplate,
     updateProjectFields,
@@ -14,8 +16,7 @@ import {
     createProject,
     setWorkspaceFocusProject,
 } from '../services/dataService';
-import { subscribeProjectSprints } from '../services/sprintService';
-import { collection, collectionGroup, onSnapshot, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
 import { Button } from '../components/common/Button/Button';
@@ -29,15 +30,12 @@ import { useAuth } from '../context/AuthContext';
 import { Tenant } from '../types';
 import { Modal } from '../components/common/Modal/Modal';
 import { Select, type SelectOption } from '../components/common/Select/Select';
-import { useConfirm, useToast } from '../context/UIContext';
+import { useConfirm, useToast, useUIState } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
 import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
-import { getUserIdeas } from '../services/domain/ideasService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
-import { getUserIssues } from '../services/domain/issuesService';
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
-import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import './projects-list.scss';
 
@@ -47,6 +45,16 @@ export type ProjectMetrics = {
     taskCompleted: number;
     flowCount: number;
     issueCount: number;
+};
+
+const getProjectMilestonesForHealth = async (tenantId: string, projectId: string): Promise<Milestone[]> => {
+    const snapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'milestones'));
+    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Milestone));
+};
+
+const getProjectSprintsForHealth = async (tenantId: string, projectId: string): Promise<Sprint[]> => {
+    const snapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'sprints'));
+    return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Sprint));
 };
 
 // --- Health Helpers (using healthService) ---
@@ -686,6 +694,7 @@ export const ProjectsList: React.FC = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
+    const [activities, setActivities] = useState<Activity[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [loading, setLoading] = useState(true);
@@ -725,6 +734,7 @@ export const ProjectsList: React.FC = () => {
     const { can, hasPermission, isOwner } = useWorkspacePermissions();
     const { showSuccess, showError, showInfo } = useToast();
     const confirm = useConfirm();
+    const { openProjectCreateModal } = useUIState();
     const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
     const canManageTemplates = hasPermission('tenant.settings.edit') || can('canManageWorkspace') || isOwner;
     const [overviewLayoutResetComplete, setOverviewLayoutResetComplete] = useState(false);
@@ -1436,6 +1446,7 @@ export const ProjectsList: React.FC = () => {
             setIdeas([]);
             setInitiatives([]);
             setIssues([]);
+            setActivities([]);
             setMilestones([]);
             setSprints([]);
             setLoading(false);
@@ -1466,19 +1477,39 @@ export const ProjectsList: React.FC = () => {
                     }
                 }
 
-                const [allTasks, allIdeas, allInitiatives, allIssues] = await Promise.all([
-                    getUserTasks().catch(() => []),
-                    getUserIdeas().catch(() => []),
+                const [allInitiatives, projectInputs] = await Promise.all([
                     getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
-                    getUserIssues().catch(() => [])
+                    Promise.all(allProjects.map(async (project) => {
+                        const tenantId = project.tenantId || resolvedTenantId;
+                        const [projectTasks, projectIdeas, projectIssues, projectActivity, projectMilestones, projectSprints] = await Promise.all([
+                            getProjectTasks(project.id, tenantId).catch(() => []),
+                            getProjectIdeas(project.id, tenantId).catch(() => []),
+                            getProjectIssues(project.id, tenantId).catch(() => []),
+                            getProjectActivity(project.id, tenantId).catch(() => []),
+                            getProjectMilestonesForHealth(tenantId, project.id).catch(() => []),
+                            getProjectSprintsForHealth(tenantId, project.id).catch(() => [])
+                        ]);
+
+                        return {
+                            tasks: projectTasks,
+                            ideas: projectIdeas,
+                            issues: projectIssues,
+                            activity: projectActivity,
+                            milestones: projectMilestones,
+                            sprints: projectSprints
+                        };
+                    }))
                 ]);
 
                 if (mounted) {
                     setProjects(allProjects);
-                    setTasks(allTasks);
-                    setIdeas(allIdeas);
+                    setTasks(projectInputs.flatMap((entry) => entry.tasks));
+                    setIdeas(projectInputs.flatMap((entry) => entry.ideas));
                     setInitiatives(allInitiatives);
-                    setIssues(allIssues);
+                    setIssues(projectInputs.flatMap((entry) => entry.issues));
+                    setActivities(projectInputs.flatMap((entry) => entry.activity));
+                    setMilestones(projectInputs.flatMap((entry) => entry.milestones));
+                    setSprints(projectInputs.flatMap((entry) => entry.sprints));
                 }
             } catch (e) {
                 console.error(e);
@@ -1487,26 +1518,6 @@ export const ProjectsList: React.FC = () => {
             }
         };
         load();
-
-        // Subscribe to all milestones and sprints in the workspace for current tenant
-        const activeTenantId = getActiveTenantId() || authUserId;
-        if (activeTenantId) {
-            const milestonesQuery = query(collectionGroup(db, 'milestones'), where('tenantId', '==', activeTenantId));
-            const sprintsQuery = query(collectionGroup(db, 'sprints'), where('tenantId', '==', activeTenantId));
-
-            const unsubMilestones = onSnapshot(milestonesQuery, (snap) => {
-                if (mounted) setMilestones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Milestone)));
-            });
-            const unsubSprints = onSnapshot(sprintsQuery, (snap) => {
-                if (mounted) setSprints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Sprint)));
-            });
-
-            return () => {
-                mounted = false;
-                unsubMilestones();
-                unsubSprints();
-            };
-        }
 
         return () => { mounted = false; };
     }, [authUserId, isAuthReady]);
@@ -1563,6 +1574,30 @@ export const ProjectsList: React.FC = () => {
         return map;
     }, [initiatives]);
 
+    const ideasByProject = useMemo(() => {
+        const map: Record<string, Idea[]> = {};
+        ideas.forEach((idea) => {
+            if (!idea.projectId) return;
+            if (!map[idea.projectId]) {
+                map[idea.projectId] = [];
+            }
+            map[idea.projectId].push(idea);
+        });
+        return map;
+    }, [ideas]);
+
+    const activitiesByProject = useMemo(() => {
+        const map: Record<string, Activity[]> = {};
+        activities.forEach((activity) => {
+            if (!activity.projectId) return;
+            if (!map[activity.projectId]) {
+                map[activity.projectId] = [];
+            }
+            map[activity.projectId].push(activity);
+        });
+        return map;
+    }, [activities]);
+
     const nextFocusMilestone = useMemo(() => {
         const pending = focusMilestones.filter(m => m.status === 'Pending');
         if (pending.length === 0) return undefined;
@@ -1588,13 +1623,14 @@ export const ProjectsList: React.FC = () => {
                 projectMilestones,
                 projectIssues,
                 projectSprints,
+                activitiesByProject[project.id] || [],
                 [],
-                [],
-                initiativesByProject[project.id] || []
+                initiativesByProject[project.id] || [],
+                ideasByProject[project.id] || []
             );
         });
         return healthMap;
-    }, [activeList, tasks, issues, milestones, sprints, initiativesByProject]);
+    }, [activeList, tasks, issues, milestones, sprints, activitiesByProject, initiativesByProject, ideasByProject]);
 
     // Calculate spotlight data for the manually focused project
     const manualFocusSpotlightData = useMemo(() => {
@@ -1612,16 +1648,17 @@ export const ProjectsList: React.FC = () => {
             projectMilestones,
             projectIssues,
             projectSprints,
+            activitiesByProject[manualFocusProject.id] || [],
             [],
-            [],
-            projectInitiatives
+            projectInitiatives,
+            ideasByProject[manualFocusProject.id] || []
         );
         return {
             reasons: score.reasons,
             score: score.score,
             health: health
         };
-    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, initiativesByProject]);
+    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, activitiesByProject, initiativesByProject, ideasByProject]);
 
     // Count critical/warning projects
     const { criticalCount, warningCount } = useMemo(() => {
@@ -1727,7 +1764,13 @@ export const ProjectsList: React.FC = () => {
             detail: spotlightProject
                 ? t('projects.workbench.focus.detail')
                 : t('projects.workbench.focus.emptyDetail'),
-            link: spotlightProject ? `/project/${spotlightProject.id}` : '/create',
+            onClick: () => {
+                if (spotlightProject) {
+                    navigate(`/project/${spotlightProject.id}`);
+                    return;
+                }
+                openProjectCreateModal();
+            },
             action: t('projects.workbench.focus.action')
         },
         {
@@ -1737,7 +1780,7 @@ export const ProjectsList: React.FC = () => {
             detail: criticalCount > 0
                 ? t('projects.workbench.risk.detail').replace('{count}', String(criticalCount))
                 : t('projects.workbench.risk.clear'),
-            link: '/tasks',
+            onClick: () => navigate('/tasks'),
             action: t('projects.workbench.risk.action')
         },
         {
@@ -1747,10 +1790,10 @@ export const ProjectsList: React.FC = () => {
             detail: inactiveList.length > 0
                 ? t('projects.workbench.backlog.detail').replace('{count}', String(inactiveList.length))
                 : t('projects.workbench.backlog.clear'),
-            link: '/team',
+            onClick: () => navigate('/team'),
             action: t('projects.workbench.backlog.action')
         }
-    ], [criticalCount, inactiveList.length, spotlightProject, t, warningCount]);
+    ], [criticalCount, inactiveList.length, navigate, openProjectCreateModal, spotlightProject, t, warningCount]);
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
 
@@ -1788,10 +1831,10 @@ export const ProjectsList: React.FC = () => {
                         <div className="projects-workbench-card__label">{card.label}</div>
                         <div className="projects-workbench-card__value">{card.value}</div>
                         <p className="projects-workbench-card__detail">{card.detail}</p>
-                        <Link to={card.link} className="projects-workbench-card__link">
+                        <button type="button" onClick={card.onClick} className="projects-workbench-card__link">
                             {card.action}
                             <span className="material-symbols-outlined">arrow_forward</span>
-                        </Link>
+                        </button>
                     </Card>
                 ))}
             </div>
@@ -1827,9 +1870,13 @@ export const ProjectsList: React.FC = () => {
                         </Button>
                     )}
                     {can('canCreateProjects') && (
-                        <Link to="/create">
-                            <Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button>
-                        </Link>
+                        <Button
+                            variant="primary"
+                            icon={<span className="material-symbols-outlined">add</span>}
+                            onClick={openProjectCreateModal}
+                        >
+                            {t('projectsList.actions.createProject')}
+                        </Button>
                     )}
                 </div>
             </div>

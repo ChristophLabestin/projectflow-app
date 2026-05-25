@@ -11,6 +11,7 @@ import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
+import { useUIState } from '../context/UIContext';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -113,6 +114,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated } = useAuth();
     const { hasPermission } = usePermissions();
+    const { openProjectCreateModal } = useUIState();
     const canViewFinance = hasPermission('tenant.finance.view');
     const isFinanceContext = location.pathname === '/finance' || location.pathname.startsWith('/finance/');
     const [useRegularNavInFinance, setUseRegularNavInFinance] = React.useState(false);
@@ -186,20 +188,23 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 </div>
 
                 {/* New Project Button - Premium Design */}
-                <Link
-                    to="/create"
-                    onClick={isDrawer ? onClose : undefined}
+                <button
+                    type="button"
+                    onClick={() => {
+                        if (isDrawer) onClose?.();
+                        openProjectCreateModal();
+                    }}
                     className="
                         group relative w-full flex items-center justify-center gap-3 px-4 py-2.5 
                         bg-primary text-on-primary font-bold text-[13px]
-                        rounded-xl shadow-xl shadow-[var(--color-primary)]/15
+                        rounded-xl border-none shadow-xl shadow-[var(--color-primary)]/15
                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden
                     "
                 >
                     <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="material-symbols-outlined text-[20px]">add</span>
                     <span className="tracking-tight">{t('nav.newProject')}</span>
-                </Link>
+                </button>
             </div>
 
             {/* 2. Scrollable Navigation Area */}

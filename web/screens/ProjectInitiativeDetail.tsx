@@ -216,6 +216,11 @@ export const ProjectInitiativeDetail = () => {
         [feedbackTasks]
     );
 
+    const feedbackVisibleFieldCount = useMemo(
+        () => initiative?.feedbackForm?.fields?.filter((field) => field.enabled !== false).length || 0,
+        [initiative?.feedbackForm?.fields]
+    );
+
     const availableTasks = useMemo(
         () => allTasks.filter((task) => !task.initiativeId || task.initiativeId === initiativeId),
         [allTasks, initiativeId]
@@ -591,50 +596,70 @@ export const ProjectInitiativeDetail = () => {
                         </div>
                     </div>
 
-                    <Card className="initiative-detail__panel initiative-detail__panel--feedback">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.feedback.title')}</span>
-                                <h2>{t('initiatives.feedback.sectionTitle')}</h2>
-                            </div>
-                        </div>
-
-                        <div className="initiative-detail__feedback-layout">
-                            <div className="initiative-detail__feedback-copy">
-                                <p className="initiative-detail__summary-copy">
-                                    {initiative.feedbackForm?.enabled
-                                        ? t('initiatives.feedback.enabledDescription')
-                                        : t('initiatives.feedback.disabledDescription')}
-                                </p>
-                                {initiative.feedbackForm?.enabled && (
-                                    <div className="initiative-detail__feedback-stats">
-                                        <div className="initiative-detail__feedback-stat">
-                                            <span className="initiative-detail__feedback-stat-label">{t('initiatives.feedback.stats.entries')}</span>
-                                            <span className="initiative-detail__feedback-stat-value">{feedbackTasks.length}</span>
-                                        </div>
-                                        <div className="initiative-detail__feedback-stat">
-                                            <span className="initiative-detail__feedback-stat-label">{t('initiatives.feedback.stats.images')}</span>
-                                            <span className="initiative-detail__feedback-stat-value">{feedbackAttachmentCount}</span>
-                                        </div>
+                    <Card className={`initiative-detail__panel initiative-detail__panel--feedback ${initiative.feedbackForm?.enabled ? 'is-enabled' : 'is-disabled'}`}>
+                        <div className="initiative-detail__feedback-header">
+                            <div className="initiative-detail__feedback-route">
+                                <span className="material-symbols-outlined">
+                                    {initiative.feedbackForm?.enabled ? 'campaign' : 'forum'}
+                                </span>
+                                <div>
+                                    <div className="initiative-detail__feedback-title-row">
+                                        <h2>{t('initiatives.feedback.sectionTitle')}</h2>
+                                        <span className={`initiative-detail__feedback-status ${initiative.feedbackForm?.enabled ? 'is-enabled' : 'is-disabled'}`}>
+                                            {initiative.feedbackForm?.enabled
+                                                ? t('initiatives.feedback.status.enabled')
+                                                : t('initiatives.feedback.status.disabled')}
+                                        </span>
                                     </div>
-                                )}
+                                    <strong>
+                                        {initiative.feedbackForm?.enabled
+                                            ? t('initiatives.feedback.route.enabledTitle')
+                                            : t('initiatives.feedback.route.disabledTitle')}
+                                    </strong>
+                                </div>
                             </div>
 
+                            <div className="initiative-detail__feedback-metrics" aria-label={t('initiatives.feedback.title')}>
+                                <div className="initiative-detail__feedback-metric">
+                                    <span className="initiative-detail__feedback-metric-value">{feedbackTasks.length}</span>
+                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.entries')}</span>
+                                </div>
+                                <div className="initiative-detail__feedback-metric">
+                                    <span className="initiative-detail__feedback-metric-value">{feedbackAttachmentCount}</span>
+                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.images')}</span>
+                                </div>
+                                <div className="initiative-detail__feedback-metric">
+                                    <span className="initiative-detail__feedback-metric-value">{feedbackVisibleFieldCount}</span>
+                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.fields')}</span>
+                                </div>
+                            </div>
                             <div className="initiative-detail__feedback-actions">
                                 {initiative.feedbackForm?.enabled ? (
                                     <>
                                         <Button
                                             variant="secondary"
+                                            size="sm"
+                                            icon={<span className="material-symbols-outlined">forum</span>}
                                             onClick={() => document.getElementById('initiative-work-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
                                         >
                                             {t('initiatives.feedback.entriesAction').replace('{count}', String(feedbackTasks.length))}
                                         </Button>
-                                        <Button variant="ghost" onClick={() => setShowFeedbackModal(true)}>
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            icon={<span className="material-symbols-outlined">tune</span>}
+                                            onClick={() => setShowFeedbackModal(true)}
+                                        >
                                             {t('initiatives.feedback.editAction')}
                                         </Button>
                                     </>
                                 ) : (
-                                    <Button variant="primary" onClick={() => setShowFeedbackModal(true)}>
+                                    <Button
+                                        variant="primary"
+                                        size="sm"
+                                        icon={<span className="material-symbols-outlined">add_link</span>}
+                                        onClick={() => setShowFeedbackModal(true)}
+                                    >
                                         {t('initiatives.feedback.enableAction')}
                                     </Button>
                                 )}

@@ -231,10 +231,16 @@
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
+    width: fit-content;
+    border: 0;
+    padding: 0;
+    background: transparent;
     text-decoration: none;
     color: var(--color-primary);
     font-size: 0.875rem;
     font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
 }
 
 .projects-workbench-card__link:hover {

@@ -23,7 +23,7 @@ These routes must remain accessible without being logged in.
 - [x] `/invite-project/:projectId` — Project invite landing (SCSS + i18n pass)
 - [x] `/join/:inviteLinkId` — Join project via invite link (SCSS + i18n pass)
 - [x] `/join-workspace/:inviteLinkId` — Join workspace via invite link (SCSS + i18n pass)
-- [x] `/feedback/initiative/:token` — Public initiative feedback form that creates linked initiative tasks from customer submissions
+- [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
 - [x] `/ui` — Component Style Guide (Dev only)
 
 ---
@@ -34,7 +34,7 @@ These routes are rendered inside the authenticated app shell/layout.
 
 ### 2.1 Global / Workspace-level Pages
 
-- [x] Refactored SCSS | `/` | Main dashboard (Dashboard.tsx + dashboard cards aligned to SCSS; ui Card uses SCSS)
+- [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with right-now work visible immediately, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal)
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
@@ -53,7 +53,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/finance/sync` — External sync connections and sync run history
 - [x] `/finance/settings` — Finance settings, numbering defaults, and controls
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
-- [x] `/create` — Create Project Wizard (SCSS refactor, common inputs/buttons/selects, preview + assets panels aligned)
+- [x] `/create` — Legacy create-project deep link that opens the global Create Project modal and returns to `/projects`
 - [x] `/team` — Team / members management
 - [x] `/media` — Media library
 - [x] `/profile` — User profile
@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components)
+- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components, explicit pause/resume catch-up modal)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 
@@ -210,6 +210,7 @@ These are outside the Social module shell in the old routing.
 - [x] web/components/ProjectLabelsModal.tsx - Project labels modal (SCSS)
 - [x] web/components/flows/CreateFlowModal.tsx - Flow create modal (SCSS)
 - [x] web/components/flows/stages/ReviewTimelineModal.tsx - Review timeline modal (SCSS)
+- [x] web/components/CreateProjectModal.tsx - Project create wizard modal wrapper (SCSS, preserves existing wizard scale)
 
 ---
 

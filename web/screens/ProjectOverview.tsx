@@ -34,7 +34,7 @@ import { getActiveTenantId } from '../services/domain/authService';
 import { getHealthDelta, getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
 import { subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
 import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
-import { getSubTasks, toggleTaskStatus } from '../services/domain/tasksService';
+import { getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import { CreateFlowModal } from '../components/flows/CreateFlowModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
@@ -55,14 +55,15 @@ import {
     ProjectOverviewLayout,
     ProjectOverviewCardId,
     ProjectOverviewCardConfig,
-    ProjectOverviewCardPlacement
+    ProjectOverviewCardPlacement,
+    ProjectStatus
 } from '../types';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
 import { uploadTenantFile } from '../services/fileStorageService';
 import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
-import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO } from 'date-fns';
+import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
 import confetti from 'canvas-confetti';
@@ -123,6 +124,59 @@ const activityIcon = (type?: Activity['type'], actionText?: string) => {
     if (type === 'commit') return { icon: 'code', ...primaryTone };
     if (type === 'priority') return { icon: 'priority_high', ...errorTone };
     return { icon: 'more_horiz', ...neutralTone };
+};
+
+const PROJECT_PAUSED_STATUS: ProjectStatus = 'On Hold';
+const DEFAULT_RESUME_STATUS: Exclude<ProjectStatus, 'On Hold'> = 'Active';
+const RESUMABLE_PROJECT_STATUSES: Exclude<ProjectStatus, 'On Hold'>[] = [
+    'Active',
+    'Planning',
+    'Completed',
+    'Brainstorming',
+    'Review'
+];
+
+const toDateKey = (value?: string) => {
+    if (!value) return '';
+    const dateOnlyMatch = value.match(/^\d{4}-\d{2}-\d{2}/);
+    if (dateOnlyMatch) return dateOnlyMatch[0];
+
+    const parsed = parseISO(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return format(parsed, 'yyyy-MM-dd');
+};
+
+const dateKeyToDate = (value?: string) => {
+    const key = toDateKey(value);
+    return key ? parseISO(key) : null;
+};
+
+const getProjectPauseStartDateKey = (project?: Project | null) => {
+    if (!project || project.status !== PROJECT_PAUSED_STATUS) return '';
+    const explicitPauseDate = toDateKey(project.pausedAt);
+    if (explicitPauseDate) return explicitPauseDate;
+
+    const updatedAtMillis = toMillis(project.updatedAt);
+    if (updatedAtMillis) return format(new Date(updatedAtMillis), 'yyyy-MM-dd');
+
+    return format(new Date(), 'yyyy-MM-dd');
+};
+
+const isCatchUpTask = (task: Task, pauseStartDateKey: string, resumeDateKey: string) => {
+    if (!pauseStartDateKey || !resumeDateKey || task.isCompleted || task.status === 'Done') return false;
+
+    const dueDateKey = toDateKey(task.dueDate);
+    if (!dueDateKey) return false;
+
+    return dueDateKey >= pauseStartDateKey && dueDateKey <= resumeDateKey;
+};
+
+const resolveResumeStatus = (status?: ProjectStatus): Exclude<ProjectStatus, 'On Hold'> => {
+    if (status && status !== PROJECT_PAUSED_STATUS && RESUMABLE_PROJECT_STATUSES.includes(status)) {
+        return status;
+    }
+
+    return DEFAULT_RESUME_STATUS;
 };
 
 const getTypeBadgeClass = (type?: string) => {
@@ -518,6 +572,8 @@ export const ProjectOverview = () => {
     const [showIssueModal, setShowIssueModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showHealthModal, setShowHealthModal] = useState(false);
+    const [showResumeModal, setShowResumeModal] = useState(false);
+    const [resumeDueDates, setResumeDueDates] = useState<Record<string, string>>({});
 
     // Permission system
     const { can, isOwner } = useProjectPermissions(project);
@@ -535,6 +591,8 @@ export const ProjectOverview = () => {
     const [coverRemoved, setCoverRemoved] = useState(false);
     const [iconRemoved, setIconRemoved] = useState(false);
     const [savingEdit, setSavingEdit] = useState(false);
+    const [pausingProject, setPausingProject] = useState(false);
+    const [resumingProject, setResumingProject] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
     const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
@@ -839,7 +897,7 @@ export const ProjectOverview = () => {
     useEffect(() => {
         if (!id || !project?.tenantId) return;
 
-        const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives);
+        const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
 
         // Save daily health snapshot (uses date as doc ID so won't duplicate)
         saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
@@ -849,7 +907,7 @@ export const ProjectOverview = () => {
         getHealthDelta(id, health.score, project.tenantId)
             .then(delta => setHealthDelta(delta))
             .catch(err => console.warn('Failed to get health delta:', err));
-    }, [id, project, tasks, milestones, issues, sprints, activity, initiatives]);
+    }, [id, project, tasks, milestones, issues, sprints, activity, initiatives, ideas]);
 
     useEffect(() => {
         let mounted = true;
@@ -1078,7 +1136,150 @@ export const ProjectOverview = () => {
         }
     };
 
-    const toDateValue = (value?: string) => (value ? parseISO(value) : null);
+    const handlePauseProject = async () => {
+        if (!project || !id || project.status === PROJECT_PAUSED_STATUS) return;
+
+        const pausedAt = new Date().toISOString();
+        const updates: Partial<Project> = {
+            status: PROJECT_PAUSED_STATUS,
+            pausedAt,
+            pausedBy: auth.currentUser?.uid || '',
+            pausedFromStatus: project.status,
+            lastPauseStartedAt: pausedAt
+        };
+
+        setPausingProject(true);
+        try {
+            await updateProjectFields(
+                id,
+                updates,
+                {
+                    action: `Paused project "${project.title}"`,
+                    target: 'Project',
+                    type: 'status'
+                },
+                project.tenantId
+            );
+
+            setProject(prev => prev ? { ...prev, ...updates } : prev);
+        } catch (error) {
+            console.error('Error pausing project:', error);
+            setError(t('projectOverview.pause.error'));
+        } finally {
+            setPausingProject(false);
+        }
+    };
+
+    const handleResumeDateChange = (taskId: string, date: Date | null) => {
+        setResumeDueDates(prev => ({
+            ...prev,
+            [taskId]: date ? format(date, 'yyyy-MM-dd') : ''
+        }));
+    };
+
+    const handleShiftCatchUpDates = () => {
+        setResumeDueDates(Object.fromEntries(
+            catchUpTasks.map((task) => {
+                const dueDate = dateKeyToDate(task.dueDate);
+                const shiftedDate = dueDate ? format(addDays(dueDate, pauseDayCount), 'yyyy-MM-dd') : '';
+                return [task.id, shiftedDate];
+            })
+        ));
+    };
+
+    const handleResumeProject = async () => {
+        if (!project || !id || project.status !== PROJECT_PAUSED_STATUS) return;
+
+        setResumingProject(true);
+        try {
+            const changedTasks = catchUpTasks.filter((task) => {
+                const currentDate = toDateKey(task.dueDate);
+                const nextDate = resumeDueDates[task.id] || '';
+                return currentDate !== nextDate;
+            });
+
+            await Promise.all(changedTasks.map((task) => (
+                updateTaskFields(
+                    task.id,
+                    { dueDate: resumeDueDates[task.id] || '' },
+                    id,
+                    project.tenantId
+                )
+            )));
+
+            const resumedAt = new Date().toISOString();
+            const updates: Partial<Project> = {
+                status: resumeTargetStatus,
+                pausedAt: '',
+                pausedBy: '',
+                lastPauseStartedAt: project.pausedAt || project.lastPauseStartedAt || pauseStartDateKey,
+                lastResumedAt: resumedAt
+            };
+
+            await updateProjectFields(
+                id,
+                updates,
+                {
+                    action: `Resumed project "${project.title}"`,
+                    target: 'Project',
+                    type: 'status'
+                },
+                project.tenantId
+            );
+
+            if (changedTasks.length > 0) {
+                setTasks(prev => prev.map((task) => {
+                    const nextDueDate = resumeDueDates[task.id];
+                    return nextDueDate === undefined ? task : { ...task, dueDate: nextDueDate };
+                }));
+            }
+
+            setProject(prev => prev ? { ...prev, ...updates } : prev);
+            setShowResumeModal(false);
+        } catch (error) {
+            console.error('Error resuming project:', error);
+            setError(t('projectOverview.resume.error'));
+        } finally {
+            setResumingProject(false);
+        }
+    };
+
+    const handleUpdateManagedImageField = async (
+        imageField: 'coverImage' | 'squareIcon',
+        fileIdField: 'coverImageFileId' | 'squareIconFileId',
+        asset: { url: string; managedFileId?: string }
+    ) => {
+        if (!project || !id) return;
+        if (project[imageField] === asset.url && project[fileIdField] === asset.managedFileId) return;
+
+        try {
+            const updates = {
+                [imageField]: asset.url,
+                [fileIdField]: asset.managedFileId || '',
+            } as Partial<Project>;
+
+            await updateProjectFields(id, updates);
+
+            await addActivityEntry(id, {
+                type: 'status',
+                user: (auth.currentUser?.displayName || t('projectOverview.activity.unknownUser')),
+                action: 'updated project settings',
+                targetId: id,
+                targetName: project.title,
+                target: 'Project Settings',
+                metadata: {
+                    changes: [imageField, fileIdField]
+                }
+            });
+
+            setProject(prev => prev ? ({ ...prev, ...updates } as Project) : prev);
+        } catch (error) {
+            console.error("Error updating project:", error);
+            setError(t('projectOverview.error.update'));
+        }
+    };
+
+    const toDateValue = (value?: string) => dateKeyToDate(value);
     const toDateString = (value: Date | null) => (value ? format(value, 'yyyy-MM-dd') : '');
 
     const handleCopyProjectId = async () => {
@@ -1211,7 +1412,6 @@ export const ProjectOverview = () => {
     const statusOptions = useMemo<SelectOption[]>(() => ([
         { value: 'Active', label: projectStatusLabels.Active },
         { value: 'Planning', label: projectStatusLabels.Planning },
-        { value: 'On Hold', label: projectStatusLabels['On Hold'] },
         { value: 'Completed', label: projectStatusLabels.Completed },
         { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
         { value: 'Review', label: projectStatusLabels.Review }
@@ -1251,6 +1451,41 @@ export const ProjectOverview = () => {
         normal: t('status.normal'),
         stalemate: t('status.stalemate')
     }), [t]);
+    const isProjectPaused = project?.status === PROJECT_PAUSED_STATUS;
+    const pauseStartDateKey = useMemo(() => getProjectPauseStartDateKey(project), [
+        project?.pausedAt,
+        project?.status,
+        project?.updatedAt
+    ]);
+    const resumeDateKey = useMemo(() => format(new Date(), 'yyyy-MM-dd'), [showResumeModal]);
+    const resumeTargetStatus = useMemo(() => resolveResumeStatus(project?.pausedFromStatus), [project?.pausedFromStatus]);
+    const catchUpTasks = useMemo(() => {
+        if (!isProjectPaused) return [];
+        return tasks
+            .filter((task) => isCatchUpTask(task, pauseStartDateKey, resumeDateKey))
+            .sort((a, b) => toDateKey(a.dueDate).localeCompare(toDateKey(b.dueDate)));
+    }, [isProjectPaused, pauseStartDateKey, resumeDateKey, tasks]);
+    const pauseDayCount = useMemo(() => {
+        const pauseStart = dateKeyToDate(pauseStartDateKey);
+        const resumeDate = dateKeyToDate(resumeDateKey);
+        if (!pauseStart || !resumeDate) return 1;
+        return Math.max(1, differenceInCalendarDays(resumeDate, pauseStart));
+    }, [pauseStartDateKey, resumeDateKey]);
+    const pauseStartLabel = useMemo(() => {
+        const pauseStart = dateKeyToDate(pauseStartDateKey);
+        return pauseStart ? format(pauseStart, dateFormat, { locale: dateLocale }) : t('projectOverview.resume.unknownDate');
+    }, [dateFormat, dateLocale, pauseStartDateKey, t]);
+    const resumeDateLabel = useMemo(() => {
+        const resumeDate = dateKeyToDate(resumeDateKey);
+        return resumeDate ? format(resumeDate, dateFormat, { locale: dateLocale }) : t('projectOverview.resume.unknownDate');
+    }, [dateFormat, dateLocale, resumeDateKey, t]);
+
+    useEffect(() => {
+        if (!showResumeModal) return;
+        setResumeDueDates(Object.fromEntries(
+            catchUpTasks.map((task) => [task.id, toDateKey(task.dueDate)])
+        ));
+    }, [catchUpTasks, showResumeModal]);
 
     const nextSprint = useMemo(() => {
         const active = sprints.find(s => s.status === 'Active');
@@ -1287,7 +1522,7 @@ export const ProjectOverview = () => {
 
     if (!project) return <div className="project-overview__not-found">{t('projectOverview.error.notFound')}</div>;
 
-    const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives);
+    const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
 
     // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
@@ -2955,13 +3190,20 @@ export const ProjectOverview = () => {
                 </div>
                 <div className="controls-form">
                     <div className="form-group-row">
-                        <Select
-                            label={t('projectOverview.controls.status')}
-                            value={project.status}
-                            options={statusOptions}
-                            onChange={(value) => handleUpdateField('status', value)}
-                            className="project-overview__select"
-                        />
+                        {isProjectPaused ? (
+                            <div className="project-overview__paused-status">
+                                <span className="project-overview__paused-status-label">{t('projectOverview.controls.status')}</span>
+                                <span className="project-overview__paused-status-value">{projectStatusLabels[PROJECT_PAUSED_STATUS]}</span>
+                            </div>
+                        ) : (
+                            <Select
+                                label={t('projectOverview.controls.status')}
+                                value={project.status}
+                                options={statusOptions}
+                                onChange={(value) => handleUpdateField('status', value)}
+                                className="project-overview__select"
+                            />
+                        )}
 
                         <Select
                             label={t('projectOverview.controls.priority')}
@@ -2970,6 +3212,35 @@ export const ProjectOverview = () => {
                             onChange={(value) => handleUpdateField('priority', value)}
                             className="project-overview__select"
                         />
+                    </div>
+
+                    <div className={`project-overview__pause-row ${isProjectPaused ? 'project-overview__pause-row--paused' : ''}`}>
+                        <div className="project-overview__pause-row-copy">
+                            <span className="material-symbols-outlined">{isProjectPaused ? 'pause_circle' : 'pause'}</span>
+                            <span className="project-overview__pause-row-text">
+                                <strong>
+                                    {isProjectPaused
+                                        ? t('projectOverview.pause.pausedSince').replace('{date}', pauseStartLabel)
+                                        : t('projectOverview.pause.currentStatus').replace('{status}', projectStatusLabels[project.status])}
+                                </strong>
+                                {isProjectPaused && (
+                                    <span>
+                                        {t('projectOverview.pause.catchUpCount').replace('{count}', catchUpTasks.length.toString())}
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                        <Button
+                            type="button"
+                            variant={isProjectPaused ? 'primary' : 'secondary'}
+                            onClick={isProjectPaused ? () => setShowResumeModal(true) : handlePauseProject}
+                            isLoading={pausingProject}
+                            size="sm"
+                            className="project-overview__pause-row-action"
+                            icon={<span className="material-symbols-outlined">{isProjectPaused ? 'play_arrow' : 'pause'}</span>}
+                        >
+                            {isProjectPaused ? t('projectOverview.resume.action') : t('projectOverview.pause.action')}
+                        </Button>
                     </div>
 
                     <div>
@@ -3562,12 +3833,12 @@ export const ProjectOverview = () => {
                                         tenantId={project.tenantId}
                                         onSelect={(asset) => {
                                             if (mediaPickerTarget === 'cover') {
-                                                void handleUpdateField('coverImage', asset.url);
+                                                void handleUpdateManagedImageField('coverImage', 'coverImageFileId', asset);
                                                 setCoverRemoved(false);
                                                 setShowMediaLibrary(false);
                                                 setMediaPickerTarget('gallery');
                                             } else if (mediaPickerTarget === 'icon') {
-                                                void handleUpdateField('squareIcon', asset.url);
+                                                void handleUpdateManagedImageField('squareIcon', 'squareIconFileId', asset);
                                                 setIconRemoved(false);
                                                 setShowMediaLibrary(false);
                                                 setMediaPickerTarget('gallery');
@@ -3591,6 +3862,135 @@ export const ProjectOverview = () => {
                                     />
                                 )
                             }
+
+                            <Modal
+                                isOpen={showResumeModal}
+                                onClose={() => setShowResumeModal(false)}
+                                title={t('projectOverview.resume.title')}
+                                size="lg"
+                                closeOnOutsideClick={!resumingProject}
+                                footer={
+                                    <>
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setShowResumeModal(false)}
+                                            disabled={resumingProject}
+                                        >
+                                            {t('projectOverview.resume.cancel')}
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleResumeProject}
+                                            isLoading={resumingProject}
+                                            icon={<span className="material-symbols-outlined">play_arrow</span>}
+                                        >
+                                            {t('projectOverview.resume.confirm')}
+                                        </Button>
+                                    </>
+                                }
+                            >
+                                <div className="project-resume-modal">
+                                    <div className="project-resume-modal__hero">
+                                        <div className="project-resume-modal__hero-main">
+                                            <span className="material-symbols-outlined project-resume-modal__hero-icon">event_repeat</span>
+                                            <div>
+                                                <span className="project-resume-modal__eyebrow">{t('projectOverview.resume.eyebrow')}</span>
+                                                <p className="project-resume-modal__hero-title">
+                                                    {t('projectOverview.resume.summaryTitle')
+                                                        .replace('{count}', catchUpTasks.length.toString())}
+                                                </p>
+                                                <p className="project-resume-modal__hero-text">
+                                                    {t('projectOverview.resume.summaryText')
+                                                        .replace('{start}', pauseStartLabel)
+                                                        .replace('{end}', resumeDateLabel)
+                                                        .replace('{status}', projectStatusLabels[resumeTargetStatus])}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="project-resume-modal__stats">
+                                            <div className="project-resume-modal__stat">
+                                                <span>{t('projectOverview.resume.statWindow')}</span>
+                                                <strong>{pauseStartLabel} - {resumeDateLabel}</strong>
+                                            </div>
+                                            <div className="project-resume-modal__stat">
+                                                <span>{t('projectOverview.resume.statTasks')}</span>
+                                                <strong>{catchUpTasks.length}</strong>
+                                            </div>
+                                            <div className="project-resume-modal__stat">
+                                                <span>{t('projectOverview.resume.statStatus')}</span>
+                                                <strong>{projectStatusLabels[resumeTargetStatus]}</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {catchUpTasks.length > 0 ? (
+                                        <>
+                                            <div className="project-resume-modal__toolbar">
+                                                <div>
+                                                    <span className="project-resume-modal__toolbar-title">
+                                                        {t('projectOverview.resume.reviewTitle')}
+                                                    </span>
+                                                    <span className="project-resume-modal__toolbar-subtitle">
+                                                        {t('projectOverview.resume.windowLabel')
+                                                            .replace('{start}', pauseStartLabel)
+                                                            .replace('{end}', resumeDateLabel)}
+                                                    </span>
+                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={handleShiftCatchUpDates}
+                                                    icon={<span className="material-symbols-outlined">update</span>}
+                                                >
+                                                    {t('projectOverview.resume.shiftByPause')
+                                                        .replace('{count}', pauseDayCount.toString())}
+                                                </Button>
+                                            </div>
+
+                                            <div className="project-resume-modal__task-list">
+                                                {catchUpTasks.map((task) => (
+                                                    <div key={task.id} className="project-resume-modal__task-row">
+                                                        <div className="project-resume-modal__task-main">
+                                                            <span className="project-resume-modal__task-title">{task.title}</span>
+                                                            <span className="project-resume-modal__task-meta">
+                                                                {task.priority ? priorityLabels[task.priority] || task.priority : t('projectOverview.metrics.priority')}
+                                                            </span>
+                                                        </div>
+                                                        <div className="project-resume-modal__date-flow">
+                                                            <span className="project-resume-modal__old-date">
+                                                                <span>{t('projectOverview.resume.originalDueLabel')}</span>
+                                                                <strong>
+                                                                    {format(dateKeyToDate(task.dueDate) || new Date(), dateFormat, { locale: dateLocale })}
+                                                                </strong>
+                                                            </span>
+                                                            <span className="material-symbols-outlined project-resume-modal__date-arrow">arrow_forward</span>
+                                                            <div className="project-resume-modal__task-date">
+                                                                <DatePicker
+                                                                    label={t('projectOverview.resume.newDue')}
+                                                                    value={dateKeyToDate(resumeDueDates[task.id])}
+                                                                    onChange={(date) => handleResumeDateChange(task.id, date)}
+                                                                    placeholder={t('projectOverview.controls.duePlaceholder')}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="project-resume-modal__empty">
+                                            <span className="material-symbols-outlined">task_alt</span>
+                                            <div>
+                                                <p className="project-resume-modal__empty-title">
+                                                    {t('projectOverview.resume.emptyTitle')}
+                                                </p>
+                                                <p>{t('projectOverview.resume.empty')}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Modal>
 
                             {/* Delete Modal */}
                             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title={t('projectOverview.delete.title')}

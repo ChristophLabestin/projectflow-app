@@ -188,6 +188,28 @@ These tokens define key layout constants used across the app shell.
 
 ---
 
+## 6.1) Dashboard Command Center Pattern
+
+- The dashboard first screen starts quiet but actionable: long localized date, centered greeting, the top right-now work items, and compact signal counts.
+- Scroll-driven dashboard stages should increase density in relevance order: today's operating plan, then wider workspace health/momentum.
+- Prioritize due today, scheduled today, overdue, blocked, urgent issue, project-risk, and review-queue signals before general metrics.
+- Keep each stage to one job and avoid nested cards. The today step should read as an ordered route with a small context rail, not a generic chart board.
+
+## 6.2) Builder / Configuration Modal Pattern
+
+- Complex builders should expose a short step rail for setup, structure, and publishing instead of showing every setting with equal weight.
+- Keep validation visible near the editable structure and expose direct review actions for field-specific issues.
+- Keep previews sticky and scoped to the real customer-facing surface, with compact counters for visible fields, custom fields, and blocking issues.
+- Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
+
+## 6.3) Project Pause Recovery Pattern
+
+- Project pause/resume must be an explicit action in the project overview controls, not a normal status select option.
+- Resume flows should use the common `Modal`, show only open tasks whose due dates fell inside the paused window, and use `DatePicker` controls for inline due-date correction before the project is restored.
+- Use warning tone only for the paused state indicator; recovery rows should stay on normal surface tokens so the modal remains scannable.
+
+---
+
 ## 7) Implementation Rules (Mandatory)
 
 - Do not hardcode colors, radii, shadows, transitions, or layout constants when a token exists.

@@ -1,5 +1,38 @@
 @use '../mixins';
 
+.create-project-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(4px);
+}
+
+.create-project-modal__content {
+    min-height: 100%;
+    width: 100%;
+    display: flex;
+    pointer-events: none;
+}
+
+.create-project-modal__content > .create-project {
+    pointer-events: auto;
+}
+
+.create-project-modal__close {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1001;
+    box-shadow: var(--shadow-md);
+
+    @media (max-width: 767px) {
+        top: 12px;
+        right: 12px;
+    }
+}
+
 .create-project {
     min-height: 100%;
     width: 100%;
@@ -586,18 +619,74 @@
 
 .create-project__timeline-grid {
     display: grid;
-    gap: 32px; // Increased gap for better separation
-    padding: 8px 0; // consistent vertical spacing
+    gap: 18px;
+    padding: 4px 0;
 
     @media (min-width: 768px) {
-        grid-template-columns: repeat(2, 1fr); // 2 columns
-        align-items: flex-start; // Ensure top alignment
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: stretch;
     }
 
-    // Ensure all children match height visually
     >* {
         width: 100%;
     }
+}
+
+.create-project__timeline-control {
+    position: relative;
+    min-width: 0;
+    padding: 18px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-surface-bg);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    .dt-picker,
+    .select-input,
+    .text-input-group {
+        width: 100%;
+    }
+
+    .text-input-group__label,
+    .select-input__label,
+    > label {
+        padding-left: 34px;
+        min-height: 24px;
+        display: inline-flex;
+        align-items: center;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    .text-input,
+    .select-input__trigger {
+        height: 48px;
+        border-radius: var(--radius-lg);
+        font-size: 1rem;
+        background: var(--color-surface-hover);
+    }
+}
+
+.create-project__timeline-control--priority {
+    @media (min-width: 768px) {
+        grid-column: 1 / 2;
+    }
+}
+
+.create-project__timeline-icon {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-muted);
+    font-size: 1.25rem;
 }
 
 .create-project__assets {

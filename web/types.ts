@@ -193,15 +193,22 @@ export interface ProjectOverviewTemplate {
     tenantId?: string;
 }
 
+export type ProjectStatus = 'Active' | 'Brainstorming' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+
 export interface Project {
     id: string;
     title: string;
     description: string;
     progress: number;
-    status: 'Active' | 'Brainstorming' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+    status: ProjectStatus;
     projectState?: 'pre-release' | 'released' | 'not specified';
     dueDate?: string;
     startDate?: string;
+    pausedAt?: string;
+    pausedBy?: string;
+    pausedFromStatus?: ProjectStatus;
+    lastPauseStartedAt?: string;
+    lastResumedAt?: string;
     ownerId: string;
     coverImage?: string;
     coverImageFileId?: string;
@@ -240,8 +247,10 @@ export interface User {
     displayName: string;
     photoURL?: string;
     photoFileId?: string;
+    photoFileTenantId?: string;
     coverURL?: string;
     coverFileId?: string;
+    coverFileTenantId?: string;
     title?: string;
     bio?: string;
     address?: string;
@@ -937,6 +946,8 @@ export interface SocialAsset {
     projectId: string;
     campaignId?: string;
     url: string;
+    managedFileId?: string;
+    managedTenantId?: string;
     storagePath: string; // Firebase Storage path
     type: 'image' | 'video';
     filename: string;

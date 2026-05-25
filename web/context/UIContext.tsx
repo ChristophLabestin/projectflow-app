@@ -48,6 +48,11 @@ interface UIContextType {
     issueCreateProjectId: string | null;
     openIssueCreateModal: (projectId?: string) => void;
     closeIssueCreateModal: () => void;
+
+    // Global Project Create Modal
+    isProjectCreateModalOpen: boolean;
+    openProjectCreateModal: () => void;
+    closeProjectCreateModal: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -81,6 +86,9 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     const [isIssueCreateModalOpen, setIssueCreateModalOpen] = useState(false);
     const [issueCreateProjectId, setIssueCreateProjectId] = useState<string | null>(null);
 
+    // Project Modal State
+    const [isProjectCreateModalOpen, setProjectCreateModalOpen] = useState(false);
+
     // Task Modal Functions
     const openTaskCreateModal = useCallback((projectId?: string) => {
         const resolvedProjectId = projectId || pinnedProject?.id || null;
@@ -113,6 +121,15 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     const closeIssueCreateModal = useCallback(() => {
         setIssueCreateModalOpen(false);
         setIssueCreateProjectId(null);
+    }, []);
+
+    // Project Modal Functions
+    const openProjectCreateModal = useCallback(() => {
+        setProjectCreateModalOpen(true);
+    }, []);
+
+    const closeProjectCreateModal = useCallback(() => {
+        setProjectCreateModalOpen(false);
     }, []);
 
     // Global Keyboard Shortcuts
@@ -222,7 +239,10 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             isIssueCreateModalOpen,
             issueCreateProjectId,
             openIssueCreateModal,
-            closeIssueCreateModal
+            closeIssueCreateModal,
+            isProjectCreateModalOpen,
+            openProjectCreateModal,
+            closeProjectCreateModal
         }}>
             {children}
         </UIContext.Provider>

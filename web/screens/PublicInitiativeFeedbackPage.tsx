@@ -161,12 +161,14 @@ export const PublicInitiativeFeedbackPage = () => {
                                                     },
                                                 }))}
                                                 placeholder={field.placeholder || field.label}
+                                                required={field.required === true}
                                                 rows={6}
                                             />
                                         ) : feedbackFieldNeedsOptions(field.type) ? (
                                             <select
                                                 className="public-initiative-feedback__native-select"
                                                 value={state.fieldValues[field.id] || ''}
+                                                required={field.required === true}
                                                 onChange={(event) => setState((current) => ({
                                                     ...current,
                                                     fieldValues: {
@@ -194,6 +196,7 @@ export const PublicInitiativeFeedbackPage = () => {
                                                 }))}
                                                 placeholder={field.placeholder || field.label}
                                                 type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+                                                required={field.required === true}
                                             />
                                         )}
 

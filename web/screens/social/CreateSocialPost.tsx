@@ -871,6 +871,8 @@ export const CreateSocialPost = () => {
                             id: asset.id,
                             projectId: projectId || '',
                             url: asset.url,
+                            managedFileId: asset.managedFileId,
+                            managedTenantId: asset.managedTenantId,
                             storagePath: '', // Unknown from MediaAsset, but URL works for display
                             type: asset.type,
                             filename: asset.name,

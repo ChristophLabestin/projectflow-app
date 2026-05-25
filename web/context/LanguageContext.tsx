@@ -691,7 +691,7 @@ export function LanguageProvider({
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [calendarTranslations, dashboardTranslations, financeTranslations, flowStageTranslations, joinLinkTranslations, language, legalTranslations, profileTranslations, projectInviteTranslations, projectOverviewTranslations, settingsTranslations, socialTranslations, taskPageTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, flowStageTranslations, joinLinkTranslations, language, legalTranslations, profileTranslations, projectInviteTranslations, projectOverviewTranslations, settingsTranslations, socialTranslations, taskPageTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);

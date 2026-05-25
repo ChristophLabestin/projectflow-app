@@ -28,7 +28,7 @@ import { httpsCallable } from "firebase/functions";
 import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
-import { getTenantFileDownloadUrl } from './fileStorageService';
+import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
 import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
 import { toMillis } from "../utils/time";
 import {
@@ -745,6 +745,12 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
         } catch (error) {
             console.warn('Failed to hydrate project cover image URL', error);
         }
+    } else if (project.coverImage) {
+        try {
+            next.coverImage = await refreshFirebaseStorageUrl(tenantId, project.coverImage);
+        } catch (error) {
+            console.warn('Failed to recover project cover image URL', error);
+        }
     }
 
     if (project.squareIconFileId) {
@@ -753,6 +759,12 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
             next.squareIcon = signed.downloadUrl;
         } catch (error) {
             console.warn('Failed to hydrate project square icon URL', error);
+        }
+    } else if (project.squareIcon) {
+        try {
+            next.squareIcon = await refreshFirebaseStorageUrl(tenantId, project.squareIcon);
+        } catch (error) {
+            console.warn('Failed to recover project square icon URL', error);
         }
     }
 
@@ -764,6 +776,16 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
             } catch (error) {
                 console.warn('Failed to hydrate project screenshot URL', error);
                 return '';
+            }
+        }));
+        next.screenshots = screenshotUrls.filter(Boolean);
+    } else if (Array.isArray(project.screenshots) && project.screenshots.length > 0) {
+        const screenshotUrls = await Promise.all(project.screenshots.map(async (url) => {
+            try {
+                return await refreshFirebaseStorageUrl(tenantId, url);
+            } catch (error) {
+                console.warn('Failed to recover project screenshot URL', error);
+                return url;
             }
         }));
         next.screenshots = screenshotUrls.filter(Boolean);

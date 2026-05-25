@@ -19,6 +19,7 @@ const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module
 const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateFlowModal = lazy(() => import('./flows/CreateFlowModal').then((module) => ({ default: module.CreateFlowModal })));
 const CreateIssueModal = lazy(() => import('./CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
+const CreateProjectModal = lazy(() => import('./CreateProjectModal').then((module) => ({ default: module.CreateProjectModal })));
 
 export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
@@ -26,7 +27,8 @@ export const AppLayout = () => {
     const {
         isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId,
         isIdeaCreateModalOpen, closeIdeaCreateModal, ideaCreateProjectId,
-        isIssueCreateModalOpen, closeIssueCreateModal, issueCreateProjectId
+        isIssueCreateModalOpen, closeIssueCreateModal, issueCreateProjectId,
+        isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
     const location = useLocation();
 
@@ -282,8 +284,6 @@ export const AppLayout = () => {
             rawItems.push({ label: t('breadcrumbs.finance') });
         } else if (parts[0] === 'settings') {
             rawItems.push({ label: t('breadcrumbs.settings') });
-        } else if (parts[0] === 'create') {
-            rawItems.push({ label: t('breadcrumbs.newProject') });
         } else if (parts[0] === 'profile') {
             rawItems.push({ label: t('breadcrumbs.profile') });
         }
@@ -361,8 +361,8 @@ export const AppLayout = () => {
                 </Suspense>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>
@@ -397,6 +397,16 @@ export const AppLayout = () => {
                         isOpen={isIssueCreateModalOpen}
                         onClose={closeIssueCreateModal}
                         projectId={resolvedIssueCreateProjectId}
+                    />
+                </Suspense>
+            )}
+
+            {/* Global Project Create Modal */}
+            {isProjectCreateModalOpen && (
+                <Suspense fallback={null}>
+                    <CreateProjectModal
+                        isOpen={isProjectCreateModalOpen}
+                        onClose={closeProjectCreateModal}
                     />
                 </Suspense>
             )}

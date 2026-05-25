@@ -59,7 +59,11 @@ const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
 ];
 
-export const CreateProjectWizard = () => {
+type CreateProjectWizardProps = {
+    onClose?: () => void;
+};
+
+export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClose }) => {
     const navigate = useNavigate();
     const user = auth.currentUser;
     const { can } = useWorkspacePermissions();
@@ -276,6 +280,7 @@ export const CreateProjectWizard = () => {
                 }
             }
 
+            onClose?.();
             navigate('/projects');
             showToast(t('createProjectWizard.toast.created').replace('{name}', name), 'success');
         } catch (e) {
@@ -724,26 +729,36 @@ export const CreateProjectWizard = () => {
                                 </div>
 
                                 <div className="create-project__timeline-grid">
-                                    <DatePicker
-                                        label={t('createProjectWizard.timeline.startDate')}
-                                        value={startDate}
-                                        onChange={setStartDate}
-                                    />
-                                    <DatePicker
-                                        label={t('createProjectWizard.timeline.dueDate')}
-                                        value={dueDate}
-                                        onChange={setDueDate}
-                                    />
-                                    <div className="create-project__field">
+                                    <div className="create-project__timeline-control">
+                                        <span className="material-symbols-outlined create-project__timeline-icon">event</span>
+                                        <DatePicker
+                                            label={t('createProjectWizard.timeline.startDate')}
+                                            value={startDate}
+                                            onChange={setStartDate}
+                                        />
+                                    </div>
+                                    <div className="create-project__timeline-control">
+                                        <span className="material-symbols-outlined create-project__timeline-icon">event_upcoming</span>
+                                        <DatePicker
+                                            label={t('createProjectWizard.timeline.dueDate')}
+                                            value={dueDate}
+                                            onChange={setDueDate}
+                                        />
+                                    </div>
+                                    <div className="create-project__field create-project__timeline-control create-project__timeline-control--priority">
+                                        <span className="material-symbols-outlined create-project__timeline-icon">flag</span>
                                         <label>{t('createProjectWizard.timeline.priority')}</label>
                                         <PrioritySelect value={priority} onChange={setPriority} variant="group" />
                                     </div>
-                                    <Select
-                                        label={t('createProjectWizard.timeline.status')}
-                                        value={status}
-                                        onChange={(value) => setStatus(String(value))}
-                                        options={statusOptions}
-                                    />
+                                    <div className="create-project__timeline-control">
+                                        <span className="material-symbols-outlined create-project__timeline-icon">progress_activity</span>
+                                        <Select
+                                            label={t('createProjectWizard.timeline.status')}
+                                            value={status}
+                                            onChange={(value) => setStatus(String(value))}
+                                            options={statusOptions}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}

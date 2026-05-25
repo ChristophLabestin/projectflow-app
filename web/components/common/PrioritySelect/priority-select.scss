@@ -230,36 +230,89 @@
 
     // --- Group Variant (Horizontal Radio Buttons) ---
     &--group {
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 8px;
         width: 100%;
 
+        @media (max-width: 640px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
         .priority-select__option {
-            flex: 1 1 0px; // Ensure truly equal width regardless of content
+            width: 100%;
+            min-width: 0;
             justify-content: center;
-            padding: 10px 16px;
+            min-height: 48px;
+            padding: 10px 14px;
+            border: none;
+            appearance: none;
+            font: inherit;
+            position: relative;
 
             // In group mode, unselected options are transparent background + subtle transparent border to avoid layout shift
             background-color: var(--color-surface-hover); // Match text-input field background
-            border: 1px solid transparent;
+            box-shadow: none;
+            color: var(--color-text-muted);
 
             &:hover {
-                background-color: var(--color-surface-hover);
-                border-color: var(--color-text-muted);
+                background-color: var(--color-surface-card);
+                box-shadow: var(--shadow-sm);
                 transform: none; // Disable the default lift effect for group items
             }
 
-            // Selected state is handled by the shared &--selected styles above!
+            &--selected {
+                background-color: var(--color-surface-card);
+                box-shadow: inset 0 0 0 2px currentColor, var(--shadow-md);
+                color: var(--color-text-main);
+            }
+
+            &--selected.priority-select__option--medium {
+                background: rgba(59, 130, 246, 0.16);
+                color: var(--color-blue-500);
+            }
+
+            &--selected.priority-select__option--high {
+                background: rgba(var(--color-warning-rgb), 0.16);
+                color: var(--color-warning);
+            }
+
+            &--selected.priority-select__option--urgent {
+                background: rgba(var(--color-error-rgb), 0.16);
+                color: var(--color-error);
+            }
+
+            &--disabled {
+                cursor: not-allowed;
+                opacity: 0.6;
+            }
         }
 
         .priority-select__option-content {
             gap: 8px;
             font-size: 0.8rem;
             justify-content: center;
+            white-space: nowrap;
         }
 
         .priority-select__check {
-            display: none;
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 18px;
+            height: 18px;
+            border-radius: var(--radius-full);
+            background: currentColor;
+            color: var(--color-surface-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            svg {
+                width: 12px;
+                height: 12px;
+                stroke-width: 3;
+            }
         }
     }
 }

@@ -36,6 +36,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     disabled
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [horizontalPosition, setHorizontalPosition] = useState<'left' | 'right'>('left');
     const triggerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
     const position = usePopoverPosition(triggerRef, contentRef, isOpen);
@@ -50,6 +51,30 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             setViewDate(value);
         }
     }, [value]);
+
+    useEffect(() => {
+        if (!isOpen || !triggerRef.current) return;
+
+        const updateHorizontalPosition = () => {
+            const triggerRect = triggerRef.current?.getBoundingClientRect();
+            if (!triggerRect) return;
+
+            const contentWidth = contentRef.current?.offsetWidth || 280;
+            const buffer = 16;
+            const wouldClipRight = triggerRect.left + contentWidth > window.innerWidth - buffer;
+
+            setHorizontalPosition(wouldClipRight ? 'right' : 'left');
+        };
+
+        updateHorizontalPosition();
+        window.addEventListener('resize', updateHorizontalPosition);
+        window.addEventListener('scroll', updateHorizontalPosition, true);
+
+        return () => {
+            window.removeEventListener('resize', updateHorizontalPosition);
+            window.removeEventListener('scroll', updateHorizontalPosition, true);
+        };
+    }, [isOpen]);
 
     const handlePrevMonth = () => {
         if (viewMode === 'day') {
@@ -206,7 +231,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
                     <div className="dt-picker__backdrop" onClick={() => setIsOpen(false)} />
                     <div
                         ref={contentRef}
-                        className={`dt-picker__popover dt-picker__popover--visible dt-picker__popover--${position}`}
+                        className={`dt-picker__popover dt-picker__popover--visible dt-picker__popover--${position} dt-picker__popover--align-${horizontalPosition}`}
                     >
                         <div className="dt-picker__header">
                             {viewMode !== 'year' && (

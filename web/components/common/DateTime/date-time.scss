@@ -13,6 +13,7 @@
         box-shadow: var(--shadow-lg);
         padding: 12px; // Reduced from 16px
         min-width: 280px; // Reduced from 300px
+        max-width: calc(100vw - 32px);
         border: 1px solid transparent; // Removed visible border, keep for box model if needed or set to none.
         // Or better yet, just generic border removal if that's what they want.
         border: none;
@@ -38,6 +39,19 @@
             transform-origin: bottom left;
             animation: slideUp 0.15s ease-out forwards;
             box-shadow: 0 -10px 25px -5px rgba(0, 0, 0, 0.1); // Stronger shadow since no border
+        }
+
+        &--align-right {
+            left: auto;
+            right: 0;
+        }
+
+        &--align-right.dt-picker__popover--bottom {
+            transform-origin: top right;
+        }
+
+        &--align-right.dt-picker__popover--top {
+            transform-origin: bottom right;
         }
 
         &--time-only {

@@ -14,11 +14,47 @@ import {
 
 import { auth } from '../firebase';
 import { logActivity, projectSubCollection, resolveTenantId } from '../internal/workspaceDataCore';
+import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from '../fileStorageService';
 import type { SocialAsset, SocialCampaign, SocialPost } from '../../types';
 
 const SOCIAL_CAMPAIGNS = 'socialCampaigns';
 const SOCIAL_POSTS = 'socialPosts';
 const SOCIAL_ASSETS = 'socialAssets';
+
+const hydrateSocialAssets = async (tenantId: string, assets?: SocialAsset[]): Promise<SocialAsset[]> => {
+    if (!assets?.length) {
+        return assets || [];
+    }
+
+    return Promise.all(assets.map(async (asset) => {
+        try {
+            if (asset.managedFileId) {
+                const signed = await getTenantFileDownloadUrl({
+                    tenantId: asset.managedTenantId || tenantId,
+                    fileId: asset.managedFileId,
+                });
+
+                return {
+                    ...asset,
+                    url: signed.downloadUrl,
+                };
+            }
+
+            return {
+                ...asset,
+                url: await refreshFirebaseStorageUrl(tenantId, asset.url),
+            };
+        } catch (error) {
+            console.warn('Failed to refresh managed social asset URL', error);
+            return asset;
+        }
+    }));
+};
+
+const hydrateSocialPost = async (tenantId: string, post: SocialPost): Promise<SocialPost> => ({
+    ...post,
+    assets: await hydrateSocialAssets(tenantId, post.assets),
+});
 
 export const getSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string): Promise<SocialCampaign | null> => {
     const resolvedTenant = resolveTenantId(tenantId);
@@ -139,7 +175,8 @@ export const subscribeSocialPosts = (
         );
 
     return onSnapshot(postsQuery, (snapshot) => {
-        onUpdate(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as SocialPost)));
+        const posts = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as SocialPost));
+        void Promise.all(posts.map((post) => hydrateSocialPost(resolvedTenant, post))).then(onUpdate);
     });
 };
 
@@ -177,7 +214,7 @@ export const getSocialPostById = async (
         return null;
     }
 
-    return { id: snap.id, ...snap.data() } as SocialPost;
+    return hydrateSocialPost(resolvedTenant, { id: snap.id, ...snap.data() } as SocialPost);
 };
 
 export const createSocialAsset = async (
@@ -212,7 +249,8 @@ export const subscribeSocialAssets = (
     );
 
     return onSnapshot(assetsQuery, (snapshot) => {
-        onUpdate(snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as SocialAsset)));
+        const assets = snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as SocialAsset));
+        void hydrateSocialAssets(resolvedTenant, assets).then(onUpdate);
     });
 };
 

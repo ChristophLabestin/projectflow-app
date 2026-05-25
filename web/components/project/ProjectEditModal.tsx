@@ -55,7 +55,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [priority, setPriority] = useState(project.priority);
     const [projectState, setProjectState] = useState(project.projectState || 'not specified');
     const [coverImage, setCoverImage] = useState(project.coverImage);
+    const [coverImageFileId, setCoverImageFileId] = useState(project.coverImageFileId || '');
     const [squareIcon, setSquareIcon] = useState(project.squareIcon);
+    const [squareIconFileId, setSquareIconFileId] = useState(project.squareIconFileId || '');
     const [modules, setModules] = useState(project.modules || []);
     const [githubRepo, setGithubRepo] = useState(project.githubRepo || '');
     const [githubIssueSync, setGithubIssueSync] = useState(project.githubIssueSync || false);
@@ -111,7 +113,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setPriority(project.priority);
             setProjectState(project.projectState || 'not specified');
             setCoverImage(project.coverImage);
+            setCoverImageFileId(project.coverImageFileId || '');
             setSquareIcon(project.squareIcon);
+            setSquareIconFileId(project.squareIconFileId || '');
             setModules(project.modules || []);
             setGithubRepo(project.githubRepo || '');
             setGithubIssueSync(project.githubIssueSync || false);
@@ -209,7 +213,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 priority,
                 projectState,
                 coverImage,
+                coverImageFileId,
                 squareIcon,
+                squareIconFileId,
                 modules,
                 githubRepo,
                 githubIssueSync,
@@ -280,10 +286,11 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         released: t('projectSettings.state.released')
     };
 
+    const isProjectPaused = project.status === 'On Hold';
     const projectStatusOptions = [
         { value: 'Active', label: projectStatusLabels.Active },
         { value: 'Planning', label: projectStatusLabels.Planning },
-        { value: 'On Hold', label: projectStatusLabels['On Hold'] },
+        ...(isProjectPaused ? [{ value: 'On Hold', label: projectStatusLabels['On Hold'], disabled: true }] : []),
         { value: 'Completed', label: projectStatusLabels.Completed },
         { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
         { value: 'Review', label: projectStatusLabels.Review },
@@ -329,6 +336,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 value={status || 'Active'}
                                 onChange={(value) => setStatus(value as any)}
                                 options={projectStatusOptions}
+                                disabled={isProjectPaused}
                             />
                             <Select
                                 label={t('projectSettings.general.fields.priority')}
@@ -955,8 +963,10 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     onSelect={(asset) => {
                         if (mediaTarget === 'cover') {
                             setCoverImage(asset.url);
+                            setCoverImageFileId(asset.managedFileId || '');
                         } else if (mediaTarget === 'icon') {
                             setSquareIcon(asset.url);
+                            setSquareIconFileId(asset.managedFileId || '');
                         }
                         setShowMediaLibrary(false);
                     }}

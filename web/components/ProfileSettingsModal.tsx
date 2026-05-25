@@ -19,7 +19,11 @@ interface ProfileSettingsModalProps {
         bio: string;
         address: string;
         photoURL: string;
+        photoFileId?: string;
+        photoFileTenantId?: string;
         coverURL: string;
+        coverFileId?: string;
+        coverFileTenantId?: string;
         skills: string[];
         privacySettings?: PrivacySettings;
     };
@@ -59,7 +63,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
     // Media State
     const [photoURL, setPhotoURL] = useState(initialData.photoURL);
+    const [photoFileId, setPhotoFileId] = useState(initialData.photoFileId || '');
+    const [photoFileTenantId, setPhotoFileTenantId] = useState(initialData.photoFileTenantId || '');
     const [coverURL, setCoverURL] = useState(initialData.coverURL);
+    const [coverFileId, setCoverFileId] = useState(initialData.coverFileId || '');
+    const [coverFileTenantId, setCoverFileTenantId] = useState(initialData.coverFileTenantId || '');
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [mediaTarget, setMediaTarget] = useState<'avatar' | 'cover' | null>(null);
 
@@ -72,7 +80,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
             setAddress(initialData.address);
             setSkills(initialData.skills);
             setPhotoURL(initialData.photoURL);
+            setPhotoFileId(initialData.photoFileId || '');
+            setPhotoFileTenantId(initialData.photoFileTenantId || '');
             setCoverURL(initialData.coverURL);
+            setCoverFileId(initialData.coverFileId || '');
+            setCoverFileTenantId(initialData.coverFileTenantId || '');
             if (initialData.privacySettings) {
                 setPrivacySettings(initialData.privacySettings);
             }
@@ -91,7 +103,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 skills,
                 privacySettings,
                 photoURL: photoURL !== initialData.photoURL ? photoURL : undefined,
+                photoFileId: photoFileId !== initialData.photoFileId ? photoFileId : undefined,
+                photoFileTenantId: photoFileTenantId !== initialData.photoFileTenantId ? photoFileTenantId : undefined,
                 coverURL: coverURL !== initialData.coverURL ? coverURL : undefined,
+                coverFileId: coverFileId !== initialData.coverFileId ? coverFileId : undefined,
+                coverFileTenantId: coverFileTenantId !== initialData.coverFileTenantId ? coverFileTenantId : undefined,
             });
 
             onUpdate({
@@ -102,7 +118,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 skills,
                 privacySettings,
                 photoURL: result.photoURL || photoURL,
-                coverURL: result.coverURL || coverURL
+                photoFileId,
+                photoFileTenantId,
+                coverURL: result.coverURL || coverURL,
+                coverFileId,
+                coverFileTenantId
             });
 
             showSuccess("Profile updated successfully!");
@@ -371,8 +391,12 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 onSelect={(asset) => {
                     if (mediaTarget === 'avatar') {
                         setPhotoURL(asset.url);
+                        setPhotoFileId(asset.managedFileId || '');
+                        setPhotoFileTenantId(asset.managedTenantId || auth.currentUser?.uid || '');
                     } else if (mediaTarget === 'cover') {
                         setCoverURL(asset.url);
+                        setCoverFileId(asset.managedFileId || '');
+                        setCoverFileTenantId(asset.managedTenantId || auth.currentUser?.uid || '');
                     }
                     setShowMediaLibrary(false);
                 }}

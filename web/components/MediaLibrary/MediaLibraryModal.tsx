@@ -26,6 +26,7 @@ interface MediaAsset {
     createdAt?: any;
     file?: File; // For deferred uploads
     managedFileId?: string;
+    managedTenantId?: string;
 }
 
 interface MediaLibraryProps {
@@ -249,6 +250,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     managedAssets = managed.files.map((file) => ({
                         id: file.id,
                         managedFileId: file.id,
+                        managedTenantId: file.tenantId,
                         url: file.downloadUrl,
                         thumbnailUrl: file.downloadUrl,
                         name: file.fileName,
@@ -376,6 +378,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 return {
                     id: managed.id,
                     managedFileId: managed.id,
+                    managedTenantId: managed.tenantId,
                     url: managed.downloadUrl,
                     thumbnailUrl: managed.downloadUrl,
                     name: managed.fileName,
@@ -456,6 +459,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             ...f,
                             id: uploaded.id,
                             managedFileId: uploaded.id,
+                            managedTenantId: uploaded.tenantId,
                             url: uploaded.downloadUrl,
                             thumbnailUrl: uploaded.downloadUrl,
                             name: uploaded.fileName,
