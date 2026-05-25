@@ -18,6 +18,8 @@ import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelco
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
+import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 
@@ -29,6 +31,7 @@ interface DashboardCommandItem {
     icon: string;
     label: string;
     meta: string;
+    focus?: PinnedItem;
     priority: number;
     title: string;
     tone: DashboardCommandTone;
@@ -124,6 +127,7 @@ const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
 export const Dashboard = () => {
     const { isAuthReady, user } = useAuth();
     const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
+    const { pinItem, setFocusItem, toggleModal, focusItemId, isModalOpen } = usePinnedTasks();
     const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
     const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
@@ -567,6 +571,32 @@ export const Dashboard = () => {
         );
         const taskHref = (task: Task) => task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks';
         const taskMeta = (task: Task) => `${projectLabel(task.projectId)} - ${formatCommandDueLabel(task.dueDate || task.scheduledDate)}`;
+        const taskFocus = (task: Task): PinnedItem | undefined => (
+            task.projectId
+                ? {
+                    id: task.id,
+                    type: 'task',
+                    title: task.title,
+                    projectId: task.projectId,
+                    tenantId: task.tenantId,
+                    priority: task.priority,
+                    isCompleted: task.isCompleted
+                }
+                : undefined
+        );
+        const issueFocus = (issue: Issue): PinnedItem | undefined => (
+            issue.projectId
+                ? {
+                    id: issue.id,
+                    type: 'issue',
+                    title: issue.title,
+                    projectId: issue.projectId,
+                    tenantId: issue.tenantId,
+                    priority: issue.priority as Task['priority'],
+                    isCompleted: issue.status === 'Resolved' || issue.status === 'Closed'
+                }
+                : undefined
+        );
         const sortedByDue = (items: Task[]) => [...items].sort((a, b) => {
             const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
             const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -584,6 +614,7 @@ export const Dashboard = () => {
                 icon,
                 label,
                 meta: meta || taskMeta(task),
+                focus: taskFocus(task),
                 priority,
                 title: task.title,
                 tone
@@ -624,6 +655,7 @@ export const Dashboard = () => {
                 icon: 'report',
                 label: t('dashboard.command.tag.urgentIssue'),
                 meta: `${projectLabel(issue.projectId)}${priorityLabel ? ` - ${priorityLabel}` : ''}`,
+                focus: issueFocus(issue),
                 priority: 35,
                 title: issue.title,
                 tone: 'danger'
@@ -687,6 +719,7 @@ export const Dashboard = () => {
     ]);
 
     const primaryCommandItems = useMemo(() => commandItems.slice(0, 3), [commandItems]);
+    const primaryResumeItem = primaryCommandItems[0];
 
     const dueNowCount = overdueTasks.length + dueTodayTasks.length + scheduledTodayTasks.length;
     const blockersCount = blockedTasks.length + urgentIssues.length;
@@ -866,6 +899,17 @@ export const Dashboard = () => {
 
     const getStepTabIndex = (step: number) => activeDashboardStep === step ? undefined : -1;
 
+    const handleStartDashboardFocus = (item: DashboardCommandItem) => {
+        if (!item.focus) return;
+
+        pinItem(item.focus);
+        setFocusItem(item.focus.id);
+
+        if (!isModalOpen) {
+            toggleModal();
+        }
+    };
+
     if (loading || !dashboardTranslationsReady) {
         return (
             <div className="flex items-center justify-center p-12">
@@ -908,6 +952,48 @@ export const Dashboard = () => {
                                 <h1 className="dashboard-command-hero__title">
                                     {greeting}, {userName || t('dashboard.userFallback')}.
                                 </h1>
+
+                                <div className={`dashboard-resume-card ${primaryResumeItem ? `dashboard-resume-card--${primaryResumeItem.tone}` : 'dashboard-resume-card--empty'}`}>
+                                    <span className="material-symbols-outlined dashboard-resume-card__icon">
+                                        {primaryResumeItem?.icon || 'check_circle'}
+                                    </span>
+                                    <div className="dashboard-resume-card__content">
+                                        <p>{t('dashboard.resume.eyebrow')}</p>
+                                        <h2>{primaryResumeItem?.title || t('dashboard.resume.emptyTitle')}</h2>
+                                        <span>
+                                            {primaryResumeItem
+                                                ? t('dashboard.resume.meta')
+                                                    .replace('{label}', primaryResumeItem.label)
+                                                    .replace('{meta}', primaryResumeItem.meta)
+                                                : t('dashboard.resume.emptyBody')}
+                                        </span>
+                                    </div>
+                                    <div className="dashboard-resume-card__actions">
+                                        {primaryResumeItem?.focus && (
+                                            <button
+                                                type="button"
+                                                className="dashboard-resume-action dashboard-resume-action--primary"
+                                                onClick={() => handleStartDashboardFocus(primaryResumeItem)}
+                                                tabIndex={getStepTabIndex(0)}
+                                            >
+                                                <span className="material-symbols-outlined">target</span>
+                                                {focusItemId === primaryResumeItem.focus.id
+                                                    ? t('dashboard.resume.alreadyFocus')
+                                                    : t('dashboard.resume.focusAction')}
+                                            </button>
+                                        )}
+                                        {primaryResumeItem && (
+                                            <Link
+                                                to={primaryResumeItem.href}
+                                                className="dashboard-resume-action"
+                                                tabIndex={getStepTabIndex(0)}
+                                            >
+                                                {t('dashboard.resume.openAction')}
+                                                <span className="material-symbols-outlined">arrow_forward</span>
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
 
                                 <div data-onboarding-id="dashboard-kpis" className="dashboard-hero-priority" aria-label={t('dashboard.step.now.title')}>
                                     <div className="dashboard-hero-priority__header">

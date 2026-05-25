@@ -26,6 +26,12 @@ Before making architectural decisions or implementing features, read the documen
 - **Purpose:** Defines the complete role hierarchy, system roles (Owner/Member/Guest), project role (Project Owner), role stacking, deny-overrides, and ownership transfer rules.
 - **Must-do:** All feature actions must be guarded by permissions. Respect role hierarchy rules in UI and backend.
 
+### 2.3 Retention and Codex integration planning
+- **File:** `docs/projectflow-retention-and-codex-integration-report.md`
+- **Purpose:** Product analysis for improving daily ProjectFlow usage, notification reliability, mobile ambient surfaces, and Codex/project context integration.
+- **File:** `docs/projectflow-retention-implementation-plan.md`
+- **Purpose:** Executable implementation plan derived from the retention report.
+
 ---
 
 ## 3) Routing & Navigation

@@ -40,6 +40,10 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `privacySettings`: Object
 - `fcmTokens`: string[] (Push notification device tokens)
 - `fcmUpdatedAt`: Timestamp
+- `webPush`: Object (web push state)
+  - `enabled`: boolean
+  - `lastTokenSyncAt`: Timestamp
+  - `permission`: string (`granted`, `denied`, `default`)
 
 ### 📂 **`tenants`** (Workspaces)
 **Path:** `/tenants/{tenantId}`
@@ -72,6 +76,17 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorId`: string (Optional)
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
+
+#### ↳ 📂 **`notificationDeliveryLogs`**
+**Path:** `/tenants/{tenantId}/notificationDeliveryLogs/{logId}`
+**Schema:** Delivery status emitted by `functions/src/notifications.ts`
+- `notificationId`: string
+- `userId`: string
+- `channel`: `"email" | "fcm"`
+- `status`: `"sent" | "failed" | "skipped"`
+- `reason`: string
+- `details`: Object (attempt counts, invalid token counts, or error details)
+- `createdAt`: Timestamp
 
 #### ↳ 📂 **`secrets`** *(Functions-only, never client-readable)*
 **Path:** `/tenants/{tenantId}/secrets/{secretId}`

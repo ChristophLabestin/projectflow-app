@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import {
@@ -6,8 +6,11 @@ import {
     markNotificationAsRead,
     markAllNotificationsAsRead,
     deleteNotification,
-    deleteAllNotifications
+    deleteAllNotifications,
+    getWebNotificationDiagnostics,
+    registerWebPushToken
 } from '../services/notificationService';
+import type { WebNotificationDiagnostics } from '../services/notificationService';
 import { respondToJoinRequest } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -22,6 +25,9 @@ export const Notifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [showClearConfirm, setShowClearConfirm] = useState(false);
+    const [diagnostics, setDiagnostics] = useState<WebNotificationDiagnostics | null>(null);
+    const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
+    const [registeringPush, setRegisteringPush] = useState(false);
     const navigate = useNavigate();
     const { showToast } = useToast();
     const { t, dateFormat, dateLocale } = useLanguage();
@@ -43,6 +49,36 @@ export const Notifications = () => {
 
         return () => unsubscribe();
     }, [user]);
+
+    const loadDiagnostics = useCallback(async () => {
+        setDiagnosticsLoading(true);
+        try {
+            setDiagnostics(await getWebNotificationDiagnostics());
+        } catch (error) {
+            console.warn('Failed to load web notification diagnostics', error);
+        } finally {
+            setDiagnosticsLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        void loadDiagnostics();
+    }, [loadDiagnostics]);
+
+    const handleRegisterWebPush = async () => {
+        setRegisteringPush(true);
+        try {
+            const nextDiagnostics = await registerWebPushToken();
+            setDiagnostics(nextDiagnostics);
+            showToast(t('notifications.toast.webPushEnabled'), 'success');
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
+            showToast(t('notifications.toast.webPushError').replace('{error}', errorMessage), 'error');
+            await loadDiagnostics();
+        } finally {
+            setRegisteringPush(false);
+        }
+    };
 
     const handleNotificationClick = async (notification: Notification) => {
         // Mark as read
@@ -110,6 +146,30 @@ export const Notifications = () => {
                 return 'notifications';
         }
     };
+
+    const getPermissionLabel = (permission?: WebNotificationDiagnostics['permission']) => {
+        switch (permission) {
+            case 'granted':
+                return t('notifications.diagnostics.permission.granted');
+            case 'denied':
+                return t('notifications.diagnostics.permission.denied');
+            case 'default':
+                return t('notifications.diagnostics.permission.default');
+            case 'unsupported':
+                return t('notifications.diagnostics.permission.unsupported');
+            default:
+                return t('notifications.diagnostics.status.unknown');
+        }
+    };
+
+    const renderDiagnosticStatus = (isReady?: boolean) => (
+        <span className={`notifications-diagnostic-status ${isReady ? 'is-ready' : 'is-blocked'}`}>
+            <span className="material-symbols-outlined">
+                {isReady ? 'check_circle' : 'error'}
+            </span>
+            {isReady ? t('notifications.diagnostics.status.ready') : t('notifications.diagnostics.status.needsSetup')}
+        </span>
+    );
 
     const handleJoinResponse = async (e: React.MouseEvent, notification: Notification, accept: boolean) => {
         e.stopPropagation();
@@ -188,6 +248,80 @@ export const Notifications = () => {
                 </div>
             </div>
 
+            <Card padding="none" className="notifications-diagnostics-card">
+                <div className="notifications-diagnostics">
+                    <div className="notifications-diagnostics__header">
+                        <div>
+                            <p className="notifications-diagnostics__eyebrow">{t('notifications.diagnostics.eyebrow')}</p>
+                            <h2>{t('notifications.diagnostics.title')}</h2>
+                            <p>{t('notifications.diagnostics.subtitle')}</p>
+                        </div>
+                        <div className="notifications-diagnostics__actions">
+                            <Button
+                                variant="secondary"
+                                onClick={loadDiagnostics}
+                                disabled={diagnosticsLoading || registeringPush}
+                                className="notifications-action"
+                            >
+                                <span className="material-symbols-outlined notifications-action__icon">refresh</span>
+                                {t('notifications.diagnostics.refresh')}
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleRegisterWebPush}
+                                loading={registeringPush}
+                                disabled={registeringPush}
+                                className="notifications-action"
+                            >
+                                <span className="material-symbols-outlined notifications-action__icon">notifications_active</span>
+                                {t('notifications.diagnostics.enableWebPush')}
+                            </Button>
+                        </div>
+                    </div>
+
+                    <div className="notifications-diagnostics__grid" aria-busy={diagnosticsLoading}>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.browser')}</span>
+                            {renderDiagnosticStatus(diagnostics?.browserNotificationsSupported)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.serviceWorker')}</span>
+                            {renderDiagnosticStatus(diagnostics?.serviceWorkerSupported)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.pushManager')}</span>
+                            {renderDiagnosticStatus(diagnostics?.pushManagerSupported)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.firebaseMessaging')}</span>
+                            {renderDiagnosticStatus(diagnostics?.firebaseMessagingSupported)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.permission')}</span>
+                            <strong>{getPermissionLabel(diagnostics?.permission)}</strong>
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.vapid')}</span>
+                            {renderDiagnosticStatus(diagnostics?.vapidKeyConfigured)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.token')}</span>
+                            {renderDiagnosticStatus(diagnostics?.tokenRegistered)}
+                        </div>
+                        <div className="notifications-diagnostic-row">
+                            <span>{t('notifications.diagnostics.lastSync')}</span>
+                            <strong>{diagnostics?.lastTokenSyncAt || t('notifications.diagnostics.never')}</strong>
+                        </div>
+                    </div>
+
+                    {diagnostics?.lastTokenError && (
+                        <p className="notifications-diagnostics__error">
+                            {t('notifications.diagnostics.lastError').replace('{error}', diagnostics.lastTokenError)}
+                        </p>
+                    )}
+                </div>
+            </Card>
+
             <ConfirmModal
                 isOpen={showClearConfirm}
                 onClose={() => setShowClearConfirm(false)}
@@ -225,7 +359,6 @@ export const Notifications = () => {
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleNotificationClick(notification)}
-                                onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
                                 className={`notification-item ${!notification.read ? 'notification-item--unread' : ''}`}
                             >
                                 <div className="notification-item__main">

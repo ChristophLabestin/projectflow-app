@@ -81,6 +81,21 @@ struct MainTabView: View {
             CustomTabBar(selection: $selection)
         }
         .ignoresSafeArea(edges: .bottom)
+        .onAppear {
+            consumePendingNotificationDeepLink()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .projectflowNotificationTapped)) { _ in
+            consumePendingNotificationDeepLink()
+        }
+    }
+
+    private func consumePendingNotificationDeepLink() {
+        guard UserDefaults.standard.dictionary(forKey: NotificationDeepLinkStorage.userDefaultsKey) != nil else {
+            return
+        }
+
+        selection = .notifications
+        UserDefaults.standard.removeObject(forKey: NotificationDeepLinkStorage.userDefaultsKey)
     }
 }
 

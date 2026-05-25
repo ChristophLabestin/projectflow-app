@@ -1,11 +1,20 @@
 import SwiftUI
 import FirebaseAuth
 
+#if os(iOS)
+import UserNotifications
+#endif
+
 struct NotificationsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
     @StateObject private var store = NotificationStore()
     @State private var showingClearAllConfirm = false
+#if os(iOS)
+    @State private var authorizationStatus: UNAuthorizationStatus = .notDetermined
+#endif
+    @State private var pushToken: String?
+    @State private var lastTokenSyncDate: Date?
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -15,6 +24,8 @@ struct NotificationsView: View {
                 AppBackground()
                 ScrollView {
                     VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                        deliveryStatusCard
+
                         if store.isLoading {
                             PFCard {
                                 HStack(spacing: PFSpacing.sm) {
@@ -86,19 +97,124 @@ struct NotificationsView: View {
             if session.user != nil {
                 store.start()
             }
+            refreshDeliveryDiagnostics()
         }
         .onDisappear {
             store.stop()
         }
         .onChange(of: session.user?.uid) { _, _ in
             store.start()
+            refreshDeliveryDiagnostics()
         }
+    }
+
+    private var deliveryStatusCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    Image(systemName: "bell.badge")
+                        .foregroundStyle(colors.primary)
+                        .font(.title3)
+                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                        Text("Delivery status")
+                            .font(.headline)
+                            .foregroundStyle(colors.textMain)
+                        Text("Push readiness for this device.")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                    }
+                    Spacer()
+                    Button {
+                        refreshDeliveryDiagnostics()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(colors.textMuted)
+                }
+
+                VStack(spacing: PFSpacing.sm) {
+                    diagnosticRow(label: "Permission", value: authorizationStatusLabel)
+                    Divider()
+                    diagnosticRow(label: "FCM token", value: pushTokenLabel)
+                    Divider()
+                    diagnosticRow(label: "Last sync", value: lastTokenSyncLabel)
+                }
+            }
+            .padding(PFSpacing.md)
+        }
+    }
+
+    private func diagnosticRow(label: String, value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .font(.subheadline)
+                .foregroundStyle(colors.textMuted)
+            Spacer(minLength: PFSpacing.md)
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(colors.textMain)
+                .multilineTextAlignment(.trailing)
+        }
+    }
+
+    private var authorizationStatusLabel: String {
+#if os(iOS)
+        switch authorizationStatus {
+        case .authorized:
+            return "Allowed"
+        case .denied:
+            return "Blocked"
+        case .notDetermined:
+            return "Not requested"
+        case .provisional:
+            return "Provisional"
+        case .ephemeral:
+            return "Ephemeral"
+        @unknown default:
+            return "Unknown"
+        }
+#else
+        return "Unsupported"
+#endif
+    }
+
+    private var pushTokenLabel: String {
+        guard let pushToken, !pushToken.isEmpty else {
+            return "Not synced"
+        }
+        return "\(pushToken.prefix(10))..."
+    }
+
+    private var lastTokenSyncLabel: String {
+        guard let lastTokenSyncDate else {
+            return "Never"
+        }
+        return lastTokenSyncDate.formatted(date: .abbreviated, time: .shortened)
+    }
+
+    private func refreshDeliveryDiagnostics() {
+        pushToken = PushTokenManager.shared.currentToken
+        lastTokenSyncDate = PushTokenManager.shared.lastSyncDate
+#if os(iOS)
+        UNUserNotificationCenter.current().getNotificationSettings { settings in
+            DispatchQueue.main.async {
+                authorizationStatus = settings.authorizationStatus
+            }
+        }
+#endif
     }
 
     @ViewBuilder
     private func notificationLink(for notification: AppNotification) -> some View {
         if let projectId = notification.projectId {
-            NavigationLink(destination: ProjectDeepLinkView(tenantId: notification.tenantId, projectId: projectId)) {
+            NavigationLink(destination: ProjectDeepLinkView(
+                tenantId: notification.tenantId,
+                projectId: projectId,
+                taskId: notification.taskId,
+                issueId: notification.issueId,
+                flowId: notification.flowId
+            )) {
                 NotificationRow(notification: notification, store: store)
             }
             .buttonStyle(.plain)

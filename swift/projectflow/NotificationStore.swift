@@ -3,6 +3,10 @@ import Combine
 import FirebaseAuth
 import FirebaseFirestore
 
+#if os(iOS)
+import UIKit
+#endif
+
 struct AppNotification: Identifiable {
     let id: String
     let type: String
@@ -95,6 +99,9 @@ final class NotificationStore: ObservableObject {
                 let right = rhs.createdAt ?? Date.distantPast
                 return left > right
             }
+#if os(iOS)
+            UIApplication.shared.applicationIconBadgeNumber = notifications.filter { !$0.read }.count
+#endif
             self.isLoading = false
         }
     }

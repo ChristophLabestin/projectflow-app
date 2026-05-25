@@ -34,8 +34,8 @@ These routes are rendered inside the authenticated app shell/layout.
 
 ### 2.1 Global / Workspace-level Pages
 
-- [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with right-now work visible immediately, then scroll-driven stages for today plan and workspace health/momentum)
-- [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal)
+- [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with right-now work visible immediately, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
+- [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
@@ -222,7 +222,7 @@ These are outside the Social module shell in the old routing.
 - [x] Tasks CRUD (project-scoped)
 - [x] Flows CRUD (project-scoped)
 - [x] Issues CRUD (project-scoped)
-- [x] Notifications list + push registration
+- [x] Notifications list + push registration, delivery diagnostics, badge count, and linked item deep links
 - [x] Pinned project + pinned tasks/issue support
 - [x] Settings (sign out, basic account state)
 

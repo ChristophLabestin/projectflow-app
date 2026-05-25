@@ -1,5 +1,13 @@
 import Foundation
 
+enum NotificationDeepLinkStorage {
+    static let userDefaultsKey = "projectflow.pendingNotificationDeepLink"
+}
+
+extension Notification.Name {
+    static let projectflowNotificationTapped = Notification.Name("projectflowNotificationTapped")
+}
+
 #if os(iOS)
 import UIKit
 import FirebaseCore
@@ -18,6 +26,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         requestPushAuthorization(application)
+
+        if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
+            persistNotificationPayload(remoteNotification)
+        }
+
         return true
     }
 
@@ -45,6 +58,41 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .badge, .sound])
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        persistNotificationPayload(response.notification.request.content.userInfo)
+        completionHandler()
+    }
+
+    private func persistNotificationPayload(_ userInfo: [AnyHashable: Any]) {
+        let keys = [
+            "notificationId",
+            "tenantId",
+            "projectId",
+            "taskId",
+            "issueId",
+            "initiativeId",
+            "flowId",
+            "deepLink",
+            "type"
+        ]
+        let payload = keys.reduce(into: [String: String]()) { result, key in
+            if let value = userInfo[key] as? String, !value.isEmpty {
+                result[key] = value
+            }
+        }
+
+        guard !payload.isEmpty else { return }
+
+        UserDefaults.standard.set(payload, forKey: NotificationDeepLinkStorage.userDefaultsKey)
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .projectflowNotificationTapped, object: nil)
+        }
     }
 }
 #endif

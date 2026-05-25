@@ -9,10 +9,124 @@ import {
     serverTimestamp,
     writeBatch,
     getDocs,
-    deleteDoc
+    deleteDoc,
+    setDoc,
+    arrayUnion
 } from 'firebase/firestore';
-import { db, auth } from './firebase';
-import { Notification, NotificationType } from '../types';
+import { db, auth, app, firebaseConfig } from './firebase';
+import type { Notification, NotificationType } from '../types';
+
+export interface WebNotificationDiagnostics {
+    browserNotificationsSupported: boolean;
+    serviceWorkerSupported: boolean;
+    pushManagerSupported: boolean;
+    firebaseMessagingSupported: boolean;
+    permission: NotificationPermission | 'unsupported';
+    vapidKeyConfigured: boolean;
+    tokenRegistered: boolean;
+    lastTokenSyncAt?: string;
+    lastTokenError?: string;
+}
+
+const WEB_PUSH_TOKEN_SYNC_KEY = 'projectflow.webPush.lastTokenSyncAt';
+const WEB_PUSH_TOKEN_ERROR_KEY = 'projectflow.webPush.lastTokenError';
+
+const getMessagingWorkerUrl = () => {
+    const params = new URLSearchParams();
+    Object.entries(firebaseConfig).forEach(([key, value]) => {
+        if (typeof value === 'string' && value.trim()) {
+            params.set(key, value);
+        }
+    });
+    return `/firebase-messaging-sw.js?${params.toString()}`;
+};
+
+export const getWebNotificationDiagnostics = async (): Promise<WebNotificationDiagnostics> => {
+    const browserNotificationsSupported = typeof window !== 'undefined' && 'Notification' in window;
+    const serviceWorkerSupported = typeof navigator !== 'undefined' && 'serviceWorker' in navigator;
+    const pushManagerSupported = typeof window !== 'undefined' && 'PushManager' in window;
+    const vapidKeyConfigured = Boolean(import.meta.env.VITE_FIREBASE_VAPID_KEY);
+    let firebaseMessagingSupported = false;
+
+    if (browserNotificationsSupported && serviceWorkerSupported && pushManagerSupported) {
+        try {
+            const messaging = await import('firebase/messaging');
+            firebaseMessagingSupported = await messaging.isSupported();
+        } catch (error) {
+            console.warn('Firebase messaging support check failed', error);
+        }
+    }
+
+    return {
+        browserNotificationsSupported,
+        serviceWorkerSupported,
+        pushManagerSupported,
+        firebaseMessagingSupported,
+        permission: browserNotificationsSupported ? window.Notification.permission : 'unsupported',
+        vapidKeyConfigured,
+        tokenRegistered: Boolean(localStorage.getItem(WEB_PUSH_TOKEN_SYNC_KEY)),
+        lastTokenSyncAt: localStorage.getItem(WEB_PUSH_TOKEN_SYNC_KEY) || undefined,
+        lastTokenError: localStorage.getItem(WEB_PUSH_TOKEN_ERROR_KEY) || undefined
+    };
+};
+
+export const registerWebPushToken = async (): Promise<WebNotificationDiagnostics> => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('No signed-in user.');
+    }
+
+    const diagnostics = await getWebNotificationDiagnostics();
+    if (!diagnostics.browserNotificationsSupported || !diagnostics.serviceWorkerSupported || !diagnostics.pushManagerSupported) {
+        throw new Error('This browser does not support web push notifications.');
+    }
+
+    if (!diagnostics.firebaseMessagingSupported) {
+        throw new Error('Firebase Messaging is not supported in this browser.');
+    }
+
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    if (!vapidKey) {
+        throw new Error('VITE_FIREBASE_VAPID_KEY is not configured.');
+    }
+
+    const permission = await window.Notification.requestPermission();
+    if (permission !== 'granted') {
+        throw new Error(`Notification permission is ${permission}.`);
+    }
+
+    try {
+        const registration = await navigator.serviceWorker.register(getMessagingWorkerUrl());
+        const { getMessaging, getToken } = await import('firebase/messaging');
+        const token = await getToken(getMessaging(app), {
+            vapidKey,
+            serviceWorkerRegistration: registration
+        });
+
+        if (!token) {
+            throw new Error('Firebase Messaging did not return a token.');
+        }
+
+        const now = new Date().toISOString();
+        await setDoc(doc(db, 'users', user.uid), {
+            fcmTokens: arrayUnion(token),
+            fcmUpdatedAt: serverTimestamp(),
+            webPush: {
+                enabled: true,
+                lastTokenSyncAt: serverTimestamp(),
+                permission
+            }
+        }, { merge: true });
+
+        localStorage.setItem(WEB_PUSH_TOKEN_SYNC_KEY, now);
+        localStorage.removeItem(WEB_PUSH_TOKEN_ERROR_KEY);
+        return getWebNotificationDiagnostics();
+    } catch (error: any) {
+        const message = error?.message || 'Failed to register web push token.';
+        localStorage.setItem(WEB_PUSH_TOKEN_ERROR_KEY, message);
+        throw error;
+    }
+};
 
 // Helper to get tenant ID without importing from dataService (circular dependency)
 const getCachedTenantId = () => {

@@ -43,3 +43,4 @@ try {
 import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
 export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };
+export { app, firebaseConfig };

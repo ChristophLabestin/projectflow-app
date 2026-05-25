@@ -256,7 +256,6 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                         role="button"
                                         tabIndex={0}
                                         onClick={() => handleNotificationClick(notification)}
-                                        onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
                                         className={`
                                             group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
                                             ${!notification.read
