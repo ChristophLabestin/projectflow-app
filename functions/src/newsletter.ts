@@ -681,7 +681,15 @@ export const api = functions.region(REGION).https.onRequest((req, res) => {
                 'GET|PATCH|DELETE /api/projectflow/projects/:projectId/project-groups/:groupId',
                 'GET|POST /api/projectflow/projects/:projectId/comments',
                 'GET|PATCH|DELETE /api/projectflow/projects/:projectId/comments/:commentId',
-                'GET /api/projectflow/projects/:projectId/activities'
+                'GET /api/projectflow/projects/:projectId/activities',
+                'GET /api/projectflow/projects/:projectId/codex/sessions',
+                'POST /api/projectflow/projects/:projectId/codex/sessions/start',
+                'POST /api/projectflow/projects/:projectId/codex/sessions/checkpoint',
+                'POST /api/projectflow/projects/:projectId/codex/sessions/finish',
+                'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/checkpoint',
+                'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/finish',
+                'GET /api/projectflow/projects/:projectId/codex/followups',
+                'POST /api/projectflow/projects/:projectId/codex/followups/bulk-create'
             ]
         });
     });

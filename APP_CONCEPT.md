@@ -57,6 +57,7 @@ Projects contain their own operational data such as:
 - Social/marketing artifacts (optional modules)
 - Project membership (including externals)
 - Project Brief contract: objective, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. This gives ProjectFlow and Codex a durable source of truth for judging whether work is moving the project toward the intended outcome.
+- Codex session records and follow-ups that keep coding work truthful across repositories.
 
 ### 2.5 Modules (Project-Configurable)
 Each project can be configured with **modules** that can be enabled/disabled at project creation (and changeable later if allowed by permission rules).
@@ -65,6 +66,7 @@ Example modules:
 - Tasks (core)
 - Issues (optional)
 - Flows (core signature feature)
+- Codex (core automation surface; not stored as a disableable project module)
 - Social (optional)
 - Marketing (optional)
 - Sprints (optional)
@@ -268,6 +270,16 @@ Standard project tasks with:
 ### 6.2 Issues (Optional)
 Issues behave similarly to tasks, but represent engineering issues/bugs/blockers with optional GitHub linkage.
 If the Issues module is disabled, issues must not appear in navigation or creation flows.
+
+### 6.2.1 Codex Automation (Core)
+Codex sessions represent implementation work performed by Codex outside the web app. Sessions can start, checkpoint, finish, and create follow-up tasks through the ProjectFlow API.
+
+Core capabilities:
+- project-scoped session feed
+- linked task or initiative status sync
+- checkpoint history with files touched and validation status
+- Codex follow-up inbox backed by normal project tasks
+- API-token based repo/plugin integration
 
 ### 6.3 Social Module (Optional)
 Purpose: plan, schedule, and (optionally) automatically publish social media content (especially Instagram).

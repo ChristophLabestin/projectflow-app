@@ -116,6 +116,7 @@ Example usage:
 | `DataTable` | Tabular display | Members, tasks, campaigns | Sorting/paging optional |
 | `ListRow` | Consistent list item | Tasks, projects | |
 | `KeyValue` | Small metadata block | Details pages | |
+| `ProjectCodex` | Project-level Codex session and follow-up surface | `/project/:id/codex` | Subscribes to `codex_sessions` and `codex_followups`, uses shared `Button`, tokenized SCSS, and i18n strings. |
 
 ---
 

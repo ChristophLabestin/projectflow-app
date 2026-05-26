@@ -145,11 +145,19 @@ This pass intentionally implements a narrow end-to-end slice:
 - Share Sheet: added a native share extension that captures text/URLs into the App Group queue; the app imports queued captures as tenant-scoped personal tasks on launch/activation.
 - Backend push metadata: FCM payloads now include title/message data and APNs category metadata so iOS can show the ProjectFlow action set.
 
+## Phase 4 Implemented In Continuation Pass
+
+- Backend API: added Codex session start/checkpoint/finish endpoints, JSON error hardening, activity logging, linked task/initiative updates, and bulk follow-up creation.
+- Firestore model: added project-scoped `codex_sessions`, `codex_sessions/{sessionId}/checkpoints`, and `codex_followups`.
+- Web app: added `/project/:id/codex` with session status, latest validation, touched files, and Codex Inbox follow-ups; also added Codex activity filtering.
+- Navigation: added Codex to project context navigation, breadcrumbs, and project nav customization.
+- Plugin package: added `plugins/projectflow-codex` with plugin manifest, skill instructions, and a `projectflow_session.py` session client.
+- Docs: added `docs/projectflow-codex-api.md` plus Firestore, permissions, sitemap, component, styling, and gotcha updates.
+
 ## Deferred Items
 
 Deferred because they require additional product design, production provisioning, or deployment:
 
-- Codex MCP/plugin packaging.
 - Production App Group/APNs provisioning and release-profile entitlement verification.
 - Web push production VAPID key provisioning.
 - Live deployment of functions.
@@ -162,6 +170,13 @@ Deferred because they require additional product design, production provisioning
 - [x] `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild-retention build`
 - [x] Phase 3: `cd functions && npm run build`
 - [x] Phase 3: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`
+- [x] Phase 4: `cd functions && npm run build`
+- [x] Phase 4: `cd web && npm run build`
+- [x] Phase 4: `cd web && npm run lint:theme`
+- [x] Phase 4: `python3 -m py_compile plugins/projectflow-codex/scripts/projectflow_session.py`
+- [x] Phase 4: `PYTHONPATH=/tmp/projectflow-plugin-validate-pyyaml python3 /Users/christophlabestin/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/projectflow-codex`
+- [x] Phase 4: `git diff --check`
+- [x] Phase 4: Playwright smoke at `http://127.0.0.1:3002/project/ogZ8Pyz8pwEQtv8I64nu/codex`: protected route redirected to `/login` without console/page errors. Authenticated Codex feed rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
@@ -170,3 +185,5 @@ Deferred because they require additional product design, production provisioning
 ProjectFlow initiative sync was attempted at the start and completion of the first implementation session and returned HTTP 500 HTML responses both times. The follow-up implementation session attempted `projectflow_cli.py sync checkpoint --entity initiative --phase start` and received HTTP 403 `Insufficient permissions`.
 
 Phase 3 task sync succeeded on 2026-05-26. Task `kCvs5jcVE7Yc1YaaoYQ3` in project `ogZ8Pyz8pwEQtv8I64nu` was marked Done and a checkpoint comment was created with validation and provisioning follow-up notes.
+
+Phase 4 task sync started successfully on 2026-05-26 by reusing task `kCvs5jcVE7Yc1YaaoYQ3` and moving it back to In Progress for the Codex integration phase.

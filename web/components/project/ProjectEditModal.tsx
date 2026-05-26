@@ -112,6 +112,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
         { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
         { id: 'activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
+        { id: 'codex', icon: 'terminal', label: t('nav.codex') },
     ];
 
     // Reset state when modal opens & Load GitHub & Nav Prefs & Roles

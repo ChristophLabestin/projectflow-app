@@ -301,6 +301,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
                                     { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
                                     { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
+                                    { id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') },
                                 ];
 
                                 // Get the order (custom or default)

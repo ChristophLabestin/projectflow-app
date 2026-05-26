@@ -546,6 +546,19 @@ Quotas/limits are enforced separately via entitlements.
 
 ---
 
+## 8.24 ProjectFlow API / Codex Automation
+
+ProjectFlow API tokens use coarse API permission strings rather than the in-app role nodes.
+
+- Codex session listing and inbox reads require `tasks:read`.
+- Codex task sessions, checkpoints, finish calls, and follow-up creation require `tasks:write`.
+- Starting a Codex session with `entity: "initiative"` requires `initiatives:write`.
+- The Settings API token preset "Codex Full Access" includes project, task, and initiative read/write/delete permissions and is the recommended token for the Codex plugin.
+
+Codex follow-up tasks remain normal project tasks, so in-app visibility follows existing project membership and task visibility rules.
+
+---
+
 ## 9) Storage Model (Firestore) — Explicit Role Storage Rules
 
 Decision: Store system roles explicitly except Member.

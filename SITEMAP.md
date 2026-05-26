@@ -77,6 +77,7 @@ Base:
 - [x] `/project/:id` (index) — Project overview (SCSS refactor + common components, Project Contract card, explicit pause/resume catch-up modal)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
+- [x] `/project/:id/codex` — Codex session feed and Codex follow-up inbox
 
 ### 3.2 Project Tasks
 

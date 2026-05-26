@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleProjectflowApiRoute = void 0;
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
 const PROJECTS = 'projects';
@@ -17,6 +18,10 @@ const CATEGORIES = 'categories';
 const MINDMAPS = 'mindmaps';
 const PROJECT_GROUPS = 'project_groups';
 const COMMENTS = 'comments';
+const CODEX = 'codex';
+const CODEX_SESSIONS = 'codex_sessions';
+const CODEX_CHECKPOINTS = 'checkpoints';
+const CODEX_FOLLOWUPS = 'codex_followups';
 const PROJECT_WRITE_FIELDS = [
     'title',
     'description',
@@ -100,6 +105,28 @@ const getStringArray = (value) => {
     }
     return value.filter((item) => typeof item === 'string' && item.trim().length > 0);
 };
+const getRecord = (value) => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+    return value;
+};
+const getCommandList = (value) => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+    return value
+        .map((item) => {
+        if (typeof item === 'string') {
+            return item.trim();
+        }
+        if (item && typeof item === 'object' && !Array.isArray(item)) {
+            return item;
+        }
+        return '';
+    })
+        .filter((item) => (typeof item === 'string' ? item.length > 0 : true));
+};
 const compactObject = (payload) => Object.entries(payload).reduce((acc, [key, value]) => {
     if (value !== undefined) {
         acc[key] = value;
@@ -132,19 +159,22 @@ const taskCollectionRef = (tenantId, projectId) => projectRef(tenantId, projectI
 const initiativeCollectionRef = (tenantId, projectId) => projectRef(tenantId, projectId).collection(INITIATIVES);
 const projectCollectionRef = (tenantId, projectId, collectionName) => projectRef(tenantId, projectId).collection(collectionName);
 const projectActivityRef = (tenantId, projectId) => projectRef(tenantId, projectId).collection(ACTIVITIES);
-const writeProjectActivity = async (tenantId, projectId, action, target, relatedId, actorId, actorLabel) => {
-    await projectActivityRef(tenantId, projectId).add({
+const codexSessionCollectionRef = (tenantId, projectId) => projectRef(tenantId, projectId).collection(CODEX_SESSIONS);
+const codexFollowupCollectionRef = (tenantId, projectId) => projectRef(tenantId, projectId).collection(CODEX_FOLLOWUPS);
+const writeProjectActivity = async (tenantId, projectId, action, target, relatedId, actorId, actorLabel, type = 'status', details) => {
+    await projectActivityRef(tenantId, projectId).add(compactObject({
         projectId,
         tenantId,
         ownerId: actorId,
         user: actorLabel,
         action,
         target,
-        type: 'status',
+        type,
         relatedId,
+        details,
         actorType: 'api-token',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    }));
 };
 const syncProjectProgress = async (tenantId, projectId) => {
     const tasksSnapshot = await taskCollectionRef(tenantId, projectId).get();
@@ -1150,6 +1180,488 @@ const getComment = async (req, res, projectId, commentId) => getProjectCollectio
 const updateComment = async (req, res, projectId, commentId) => updateProjectCollectionItem(req, res, projectId, commentId, COMMENTS, 'comment', 'Comment', 'Comments');
 const deleteComment = async (req, res, projectId, commentId) => deleteProjectCollectionItem(req, res, projectId, commentId, COMMENTS, 'Comment', 'deletedCommentId', 'Comments');
 const listActivities = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, ACTIVITIES, 'activities');
+const normalizeCodexEntity = (value) => (getString(value).toLowerCase() === 'initiative' ? 'initiative' : 'task');
+const normalizeCodexSessionStatus = (value) => {
+    const status = getString(value).toLowerCase();
+    if (['done', 'success', 'complete', 'completed'].includes(status)) {
+        return 'completed';
+    }
+    if (['blocked', 'failure', 'failed'].includes(status)) {
+        return 'blocked';
+    }
+    if (['partial', 'incomplete'].includes(status)) {
+        return 'partial';
+    }
+    return 'running';
+};
+const codexExternalKeyForBody = (body, projectId) => {
+    const explicit = getString(body.externalKey) ||
+        getString(body.sessionKey) ||
+        getString(body.codexExternalKey);
+    if (explicit) {
+        return explicit;
+    }
+    const source = [
+        projectId,
+        getString(body.repoPath),
+        getString(body.branch),
+        getString(body.request) || getString(body.title) || getString(body.summary)
+    ].join('|');
+    return `codex:${crypto.createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
+};
+const summarizeCodexCheckpoint = (body) => getString(body.summary) ||
+    getString(body.checkpointSummary) ||
+    getString(body.appendSummary) ||
+    getString(body.notes);
+const upsertCodexLinkedEntity = async (context, projectId, body, externalKey, entity) => {
+    const title = getString(body.title) ||
+        getString(body.request) ||
+        `Codex session ${externalKey.slice(0, 8)}`;
+    const description = getString(body.description) || getString(body.summary) || getString(body.request);
+    const priority = getString(body.priority) || 'Medium';
+    if (entity === 'initiative') {
+        const matches = await initiativeCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+        const updates = compactObject({
+            title,
+            description: description || undefined,
+            status: getString(body.status) || 'In Progress',
+            priority,
+            dueDate: getString(body.dueDate),
+            startDate: getString(body.startDate),
+            externalKey,
+            codexManaged: true,
+            codexSessionExternalKey: externalKey,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        if (!matches.empty) {
+            const match = matches.docs[0];
+            await match.ref.update(updates);
+            const snapshot = await match.ref.get();
+            return {
+                type: entity,
+                operation: 'updated',
+                id: snapshot.id,
+                data: serializeValue(snapshot.data())
+            };
+        }
+        const created = await initiativeCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        const snapshot = await created.get();
+        return {
+            type: entity,
+            operation: 'created',
+            id: created.id,
+            data: serializeValue(snapshot.data())
+        };
+    }
+    const matches = await taskCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+    const updates = compactObject({
+        title,
+        description: description || undefined,
+        status: getString(body.status) || 'In Progress',
+        priority,
+        dueDate: getString(body.dueDate),
+        startDate: getString(body.startDate),
+        assigneeId: getString(body.assigneeId) || null,
+        assigneeIds: getStringArray(body.assigneeIds),
+        assignedGroupIds: getStringArray(body.assignedGroupIds),
+        initiativeId: getString(body.initiativeId),
+        externalKey,
+        isCompleted: Boolean(body.isCompleted),
+        codexManaged: true,
+        codexSessionExternalKey: externalKey,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    if (!matches.empty) {
+        const match = matches.docs[0];
+        await match.ref.update(updates);
+        const snapshot = await match.ref.get();
+        await syncProjectProgress(context.tenantId, projectId);
+        return {
+            type: entity,
+            operation: 'updated',
+            id: snapshot.id,
+            data: serializeValue(snapshot.data())
+        };
+    }
+    const created = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'], createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+    const snapshot = await created.get();
+    await syncProjectProgress(context.tenantId, projectId);
+    return {
+        type: entity,
+        operation: 'created',
+        id: created.id,
+        data: serializeValue(snapshot.data())
+    };
+};
+const writeCodexCheckpoint = async (context, projectId, sessionRef, phase, body) => {
+    const filesTouched = getStringArray(body.filesTouched);
+    const validationStatus = getString(body.validationStatus);
+    const summary = summarizeCodexCheckpoint(body);
+    const status = getString(body.status);
+    const commands = getCommandList(body.commands);
+    const checkpointPayload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        phase,
+        summary,
+        status,
+        validationStatus,
+        filesTouched,
+        commands,
+        metadata: getRecord(body.metadata),
+        createdBy: context.actorId,
+        actorLabel: context.actorLabel,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    const checkpointRef = await sessionRef.collection(CODEX_CHECKPOINTS).add(checkpointPayload);
+    const sessionUpdates = compactObject({
+        phase,
+        status: normalizeCodexSessionStatus(status),
+        lastCheckpointId: checkpointRef.id,
+        lastCheckpointSummary: summary,
+        lastValidationStatus: validationStatus,
+        lastCheckpointAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    if (filesTouched.length > 0) {
+        sessionUpdates.filesTouched = admin.firestore.FieldValue.arrayUnion(...filesTouched);
+    }
+    await sessionRef.set(sessionUpdates, { merge: true });
+    return Object.assign({ id: checkpointRef.id }, serializeValue(checkpointPayload));
+};
+const resolveCodexSession = async (context, projectId, body, explicitSessionId) => {
+    const requestedSessionId = explicitSessionId || getString(body.sessionId);
+    if (requestedSessionId) {
+        const sessionRef = codexSessionCollectionRef(context.tenantId, projectId).doc(requestedSessionId);
+        const snapshot = await sessionRef.get();
+        if (snapshot.exists) {
+            return { ref: sessionRef, snapshot };
+        }
+    }
+    const externalKey = codexExternalKeyForBody(body, projectId);
+    const matches = await codexSessionCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+    if (matches.empty) {
+        return null;
+    }
+    return {
+        ref: matches.docs[0].ref,
+        snapshot: matches.docs[0]
+    };
+};
+const createCodexFollowups = async (context, projectId, followUpsValue, sessionId, sessionExternalKey, inheritedInitiativeId) => {
+    if (!Array.isArray(followUpsValue)) {
+        return [];
+    }
+    const followUps = followUpsValue.slice(0, 50);
+    const results = [];
+    for (let index = 0; index < followUps.length; index += 1) {
+        const followUp = getRecord(followUps[index]);
+        if (!followUp) {
+            continue;
+        }
+        const title = getString(followUp.title);
+        if (!title) {
+            continue;
+        }
+        const externalKey = getString(followUp.externalKey) || [
+            sessionExternalKey || `codex:${projectId}`,
+            'followup',
+            index,
+            crypto.createHash('sha256').update(title).digest('hex').slice(0, 12)
+        ].join(':');
+        const taskMatches = await taskCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+        const taskPayload = compactObject({
+            projectId,
+            tenantId: context.tenantId,
+            ownerId: context.actorId,
+            createdBy: context.actorId,
+            title,
+            description: getString(followUp.description),
+            status: getString(followUp.status) || 'Open',
+            priority: getString(followUp.priority) || 'Medium',
+            dueDate: getString(followUp.dueDate),
+            startDate: getString(followUp.startDate),
+            assigneeId: getString(followUp.assigneeId) || null,
+            assigneeIds: getStringArray(followUp.assigneeIds),
+            assignedGroupIds: getStringArray(followUp.assignedGroupIds),
+            initiativeId: getString(followUp.initiativeId) || inheritedInitiativeId,
+            category: getStringArray(followUp.category).length > 0 ? getStringArray(followUp.category) : ['Codex'],
+            externalKey,
+            isCompleted: Boolean(followUp.isCompleted),
+            source: 'codex_followup',
+            codexSessionId: sessionId,
+            codexSessionExternalKey: sessionExternalKey,
+            filesTouched: getStringArray(followUp.filesTouched),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        let taskId;
+        let taskOperation;
+        if (!taskMatches.empty) {
+            const taskSnapshot = taskMatches.docs[0];
+            await taskSnapshot.ref.update(taskPayload);
+            taskId = taskSnapshot.id;
+            taskOperation = 'updated';
+        }
+        else {
+            const createdTask = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, taskPayload), { createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+            taskId = createdTask.id;
+            taskOperation = 'created';
+        }
+        const followupPayload = compactObject({
+            projectId,
+            tenantId: context.tenantId,
+            title,
+            description: getString(followUp.description),
+            status: getString(followUp.inboxStatus) || 'open',
+            priority: getString(followUp.priority) || 'Medium',
+            taskId,
+            sessionId,
+            sessionExternalKey,
+            externalKey,
+            source: 'codex',
+            filesTouched: getStringArray(followUp.filesTouched),
+            createdBy: context.actorId,
+            actorLabel: context.actorLabel,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        const followupMatches = await codexFollowupCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+        let followupId;
+        if (!followupMatches.empty) {
+            const followupSnapshot = followupMatches.docs[0];
+            await followupSnapshot.ref.update(followupPayload);
+            followupId = followupSnapshot.id;
+        }
+        else {
+            const createdFollowup = await codexFollowupCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, followupPayload), { createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+            followupId = createdFollowup.id;
+        }
+        results.push({
+            id: followupId,
+            taskId,
+            taskOperation,
+            title,
+            externalKey
+        });
+    }
+    if (results.length > 0) {
+        await syncProjectProgress(context.tenantId, projectId);
+    }
+    return results;
+};
+const listCodexSessions = async (req, res, projectId) => {
+    const context = await authRequest(req, res, 'tasks:read', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const snapshot = await codexSessionCollectionRef(context.tenantId, projectId)
+        .orderBy('updatedAt', 'desc')
+        .limit(100)
+        .get();
+    const sessions = snapshot.docs.map((docSnap) => (Object.assign({ id: docSnap.id }, serializeValue(docSnap.data()))));
+    res.status(200).json({ success: true, sessions });
+};
+const listCodexFollowups = async (req, res, projectId) => {
+    const context = await authRequest(req, res, 'tasks:read', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const snapshot = await codexFollowupCollectionRef(context.tenantId, projectId)
+        .orderBy('updatedAt', 'desc')
+        .limit(100)
+        .get();
+    const followups = snapshot.docs.map((docSnap) => (Object.assign({ id: docSnap.id }, serializeValue(docSnap.data()))));
+    res.status(200).json({ success: true, followups });
+};
+const startCodexSession = async (req, res, projectId) => {
+    const body = (req.body || {});
+    const entity = normalizeCodexEntity(body.entity);
+    const context = await authRequest(req, res, entity === 'initiative' ? 'initiatives:write' : 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const externalKey = codexExternalKeyForBody(body, projectId);
+    const linkedEntity = await upsertCodexLinkedEntity(context, projectId, body, externalKey, entity);
+    const title = getString(body.title) || getString(body.request) || `Codex session ${externalKey.slice(0, 8)}`;
+    const summary = getString(body.summary) || getString(body.request) || getString(body.description);
+    const existing = await codexSessionCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+    const linkedTaskId = linkedEntity.type === 'task' ? linkedEntity.id : getString(body.taskId);
+    const linkedInitiativeId = linkedEntity.type === 'initiative' ? linkedEntity.id : getString(body.initiativeId);
+    const payload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        externalKey,
+        title,
+        summary,
+        status: 'running',
+        phase: getString(body.phase) || 'start',
+        entity,
+        linkedEntityType: linkedEntity.type,
+        linkedEntityId: linkedEntity.id,
+        taskId: linkedTaskId,
+        initiativeId: linkedInitiativeId,
+        repoPath: getString(body.repoPath),
+        repoName: getString(body.repoName),
+        branch: getString(body.branch),
+        commitSha: getString(body.commitSha) || getString(body.commit),
+        filesTouched: getStringArray(body.filesTouched),
+        validationStatus: getString(body.validationStatus),
+        actorLabel: context.actorLabel,
+        createdBy: context.actorId,
+        ownerId: context.actorId,
+        metadata: getRecord(body.metadata),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    let sessionRef;
+    let operation;
+    if (!existing.empty) {
+        sessionRef = existing.docs[0].ref;
+        await sessionRef.update(payload);
+        operation = 'updated';
+    }
+    else {
+        sessionRef = await codexSessionCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, payload), { startedAt: admin.firestore.FieldValue.serverTimestamp(), createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        operation = 'created';
+    }
+    const checkpoint = await writeCodexCheckpoint(context, projectId, sessionRef, getString(body.phase) || 'start', Object.assign(Object.assign({}, body), { status: 'running', summary: summary || `Started ${title}` }));
+    await writeProjectActivity(context.tenantId, projectId, `Started Codex session "${title}"`, 'Codex', sessionRef.id, context.actorId, context.actorLabel, CODEX, summary);
+    const sessionSnapshot = await sessionRef.get();
+    res.status(operation === 'created' ? 201 : 200).json({
+        success: true,
+        operation,
+        linkedEntity,
+        checkpoint,
+        session: Object.assign({ id: sessionRef.id }, serializeValue(sessionSnapshot.data()))
+    });
+};
+const checkpointCodexSession = async (req, res, projectId, sessionId) => {
+    var _a;
+    const body = (req.body || {});
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const resolvedSession = await resolveCodexSession(context, projectId, body, sessionId);
+    if (!resolvedSession) {
+        notFound(res, 'Codex session not found.');
+        return;
+    }
+    const phase = getString(body.phase) || 'checkpoint';
+    const checkpoint = await writeCodexCheckpoint(context, projectId, resolvedSession.ref, phase, body);
+    const sessionTitle = getString((_a = resolvedSession.snapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || resolvedSession.ref.id;
+    await writeProjectActivity(context.tenantId, projectId, `Recorded Codex checkpoint "${phase}"`, 'Codex', resolvedSession.ref.id, context.actorId, context.actorLabel, CODEX, summarizeCodexCheckpoint(body) || sessionTitle);
+    const sessionSnapshot = await resolvedSession.ref.get();
+    res.status(200).json({
+        success: true,
+        checkpoint,
+        session: Object.assign({ id: resolvedSession.ref.id }, serializeValue(sessionSnapshot.data()))
+    });
+};
+const finishCodexSession = async (req, res, projectId, sessionId) => {
+    const body = (req.body || {});
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const resolvedSession = await resolveCodexSession(context, projectId, body, sessionId);
+    if (!resolvedSession) {
+        notFound(res, 'Codex session not found.');
+        return;
+    }
+    const sessionData = resolvedSession.snapshot.data() || {};
+    const finalStatus = normalizeCodexSessionStatus(body.status || 'completed');
+    const phase = getString(body.phase) || 'finish';
+    const checkpoint = await writeCodexCheckpoint(context, projectId, resolvedSession.ref, phase, Object.assign(Object.assign({}, body), { status: finalStatus }));
+    const sessionUpdates = {
+        status: finalStatus,
+        phase,
+        finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    if (getString(body.commitSha) || getString(body.commit)) {
+        sessionUpdates.commitSha = getString(body.commitSha) || getString(body.commit);
+    }
+    await resolvedSession.ref.set(sessionUpdates, { merge: true });
+    const taskId = getString(sessionData.taskId);
+    const initiativeId = getString(sessionData.initiativeId);
+    if (taskId) {
+        const taskUpdates = {
+            status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'Review',
+            isCompleted: finalStatus === 'completed',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        if (finalStatus === 'completed') {
+            taskUpdates.completedAt = admin.firestore.FieldValue.serverTimestamp();
+            taskUpdates.completedBy = context.actorId;
+        }
+        await taskCollectionRef(context.tenantId, projectId).doc(taskId).set(taskUpdates, { merge: true });
+        await syncProjectProgress(context.tenantId, projectId);
+    }
+    if (initiativeId) {
+        await initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId).set({
+            status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'In Progress',
+            completedAt: finalStatus === 'completed' ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.delete(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+    const followups = await createCodexFollowups(context, projectId, body.followUps, resolvedSession.ref.id, getString(sessionData.externalKey), initiativeId);
+    await writeProjectActivity(context.tenantId, projectId, `Finished Codex session as ${finalStatus}`, 'Codex', resolvedSession.ref.id, context.actorId, context.actorLabel, CODEX, summarizeCodexCheckpoint(body));
+    const sessionSnapshot = await resolvedSession.ref.get();
+    res.status(200).json({
+        success: true,
+        checkpoint,
+        followups,
+        session: Object.assign({ id: resolvedSession.ref.id }, serializeValue(sessionSnapshot.data()))
+    });
+};
+const bulkCreateCodexFollowups = async (req, res, projectId) => {
+    const body = (req.body || {});
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+    const followups = await createCodexFollowups(context, projectId, body.followUps, getString(body.sessionId), getString(body.sessionExternalKey) || getString(body.externalKey), getString(body.initiativeId));
+    await writeProjectActivity(context.tenantId, projectId, `Created ${followups.length} Codex follow-up${followups.length === 1 ? '' : 's'}`, 'Codex', getString(body.sessionId) || null, context.actorId, context.actorLabel, CODEX, getString(body.summary));
+    res.status(201).json({
+        success: true,
+        followups
+    });
+};
 const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects',
     'POST /api/projectflow/projects',
@@ -1213,334 +1725,409 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects/:projectId/comments/:commentId',
     'PATCH /api/projectflow/projects/:projectId/comments/:commentId',
     'DELETE /api/projectflow/projects/:projectId/comments/:commentId',
-    'GET /api/projectflow/projects/:projectId/activities'
+    'GET /api/projectflow/projects/:projectId/activities',
+    'GET /api/projectflow/projects/:projectId/codex/sessions',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/start',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/checkpoint',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/finish',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/checkpoint',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/finish',
+    'GET /api/projectflow/projects/:projectId/codex/followups',
+    'POST /api/projectflow/projects/:projectId/codex/followups/bulk-create'
 ];
 const handleProjectflowApiRoute = async (req, res, path) => {
-    const normalized = path.startsWith('/') ? path.slice(1) : path;
-    const segments = normalized.split('/').filter(Boolean);
-    if (segments[0] !== 'projectflow') {
-        return false;
-    }
-    if (segments.length === 2 && segments[1] === PROJECTS) {
-        if (req.method === 'GET') {
-            await listProjects(req, res);
-            return true;
+    try {
+        const normalized = path.startsWith('/') ? path.slice(1) : path;
+        const segments = normalized.split('/').filter(Boolean);
+        if (segments[0] !== 'projectflow') {
+            return false;
         }
-        if (req.method === 'POST') {
-            await createProject(req, res);
-            return true;
-        }
-    }
-    if (segments.length >= 3 && segments[1] === PROJECTS) {
-        const projectId = segments[2];
-        if (segments.length === 3) {
+        if (segments.length === 2 && segments[1] === PROJECTS) {
             if (req.method === 'GET') {
-                await getProject(req, res, projectId);
-                return true;
-            }
-            if (req.method === 'PATCH') {
-                await updateProject(req, res, projectId);
-                return true;
-            }
-            if (req.method === 'DELETE') {
-                await deleteProject(req, res, projectId);
-                return true;
-            }
-        }
-        if (segments.length === 4) {
-            const resource = segments[3];
-            if (resource === INITIATIVES) {
-                if (req.method === 'GET') {
-                    await listInitiatives(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createInitiative(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === TASKS) {
-                if (req.method === 'GET') {
-                    await listTasks(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createTask(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === ISSUES) {
-                if (req.method === 'GET') {
-                    await listIssues(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createIssue(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === IDEAS) {
-                if (req.method === 'GET') {
-                    await listIdeas(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createIdea(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === MILESTONES) {
-                if (req.method === 'GET') {
-                    await listMilestones(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createMilestone(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === SPRINTS) {
-                if (req.method === 'GET') {
-                    await listSprints(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createSprint(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === CATEGORIES) {
-                if (req.method === 'GET') {
-                    await listCategories(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createCategory(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === MINDMAPS) {
-                if (req.method === 'GET') {
-                    await listMindmaps(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createMindmap(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === 'project-groups') {
-                if (req.method === 'GET') {
-                    await listProjectGroups(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createProjectGroup(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === COMMENTS) {
-                if (req.method === 'GET') {
-                    await listComments(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createComment(req, res, projectId);
-                    return true;
-                }
-            }
-            if (resource === ACTIVITIES && req.method === 'GET') {
-                await listActivities(req, res, projectId);
-                return true;
-            }
-        }
-        if (segments.length === 5) {
-            const resource = segments[3];
-            const resourceId = segments[4];
-            if (resource === INITIATIVES) {
-                if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {
-                    await upsertInitiativeByExternalKey(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'GET') {
-                    await getInitiative(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateInitiative(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteInitiative(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === TASKS) {
-                if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {
-                    await upsertTaskByExternalKey(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'GET') {
-                    await getTask(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateTask(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteTask(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === ISSUES) {
-                if (req.method === 'GET') {
-                    await getIssue(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateIssue(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteIssue(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === IDEAS) {
-                if (req.method === 'GET') {
-                    await getIdea(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateIdea(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteIdea(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === MILESTONES) {
-                if (req.method === 'GET') {
-                    await getMilestone(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateMilestone(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteMilestone(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === SPRINTS) {
-                if (req.method === 'GET') {
-                    await getSprint(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateSprint(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteSprint(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === CATEGORIES) {
-                if (req.method === 'GET') {
-                    await getCategory(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateCategory(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteCategory(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === MINDMAPS) {
-                if (req.method === 'GET') {
-                    await getMindmap(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateMindmap(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteMindmap(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === 'project-groups') {
-                if (req.method === 'GET') {
-                    await getProjectGroup(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateProjectGroup(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteProjectGroup(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-            if (resource === COMMENTS) {
-                if (req.method === 'GET') {
-                    await getComment(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateComment(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteComment(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-        }
-        if (segments.length === 6 && segments[3] === TASKS && segments[5] === SUBTASKS) {
-            const taskId = segments[4];
-            if (req.method === 'GET') {
-                await listSubtasks(req, res, projectId, taskId);
+                await listProjects(req, res);
                 return true;
             }
             if (req.method === 'POST') {
-                await createSubtask(req, res, projectId, taskId);
+                await createProject(req, res);
                 return true;
             }
         }
-        if (segments.length === 7 && segments[3] === TASKS && segments[5] === SUBTASKS) {
-            const taskId = segments[4];
-            const subtaskId = segments[6];
-            if (req.method === 'GET') {
-                await getSubtask(req, res, projectId, taskId, subtaskId);
-                return true;
+        if (segments.length >= 3 && segments[1] === PROJECTS) {
+            const projectId = segments[2];
+            if (segments.length === 3) {
+                if (req.method === 'GET') {
+                    await getProject(req, res, projectId);
+                    return true;
+                }
+                if (req.method === 'PATCH') {
+                    await updateProject(req, res, projectId);
+                    return true;
+                }
+                if (req.method === 'DELETE') {
+                    await deleteProject(req, res, projectId);
+                    return true;
+                }
             }
-            if (req.method === 'PATCH') {
-                await updateSubtask(req, res, projectId, taskId, subtaskId);
-                return true;
+            if (segments.length >= 5 && segments[3] === CODEX) {
+                const codexResource = segments[4];
+                if (codexResource === 'sessions') {
+                    if (segments.length === 5 && req.method === 'GET') {
+                        await listCodexSessions(req, res, projectId);
+                        return true;
+                    }
+                    if (segments.length === 6) {
+                        const action = segments[5];
+                        if (action === 'start' && req.method === 'POST') {
+                            await startCodexSession(req, res, projectId);
+                            return true;
+                        }
+                        if (action === 'checkpoint' && req.method === 'POST') {
+                            await checkpointCodexSession(req, res, projectId);
+                            return true;
+                        }
+                        if (action === 'finish' && req.method === 'POST') {
+                            await finishCodexSession(req, res, projectId);
+                            return true;
+                        }
+                    }
+                    if (segments.length === 7) {
+                        const sessionId = segments[5];
+                        const action = segments[6];
+                        if (action === 'checkpoint' && req.method === 'POST') {
+                            await checkpointCodexSession(req, res, projectId, sessionId);
+                            return true;
+                        }
+                        if (action === 'finish' && req.method === 'POST') {
+                            await finishCodexSession(req, res, projectId, sessionId);
+                            return true;
+                        }
+                    }
+                }
+                if (codexResource === 'followups') {
+                    if (segments.length === 5 && req.method === 'GET') {
+                        await listCodexFollowups(req, res, projectId);
+                        return true;
+                    }
+                    if (segments.length === 6 && segments[5] === 'bulk-create' && req.method === 'POST') {
+                        await bulkCreateCodexFollowups(req, res, projectId);
+                        return true;
+                    }
+                }
             }
-            if (req.method === 'DELETE') {
-                await deleteSubtask(req, res, projectId, taskId, subtaskId);
-                return true;
+            if (segments.length === 4) {
+                const resource = segments[3];
+                if (resource === INITIATIVES) {
+                    if (req.method === 'GET') {
+                        await listInitiatives(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createInitiative(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === TASKS) {
+                    if (req.method === 'GET') {
+                        await listTasks(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createTask(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === ISSUES) {
+                    if (req.method === 'GET') {
+                        await listIssues(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createIssue(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === IDEAS) {
+                    if (req.method === 'GET') {
+                        await listIdeas(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createIdea(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === MILESTONES) {
+                    if (req.method === 'GET') {
+                        await listMilestones(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createMilestone(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === SPRINTS) {
+                    if (req.method === 'GET') {
+                        await listSprints(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createSprint(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === CATEGORIES) {
+                    if (req.method === 'GET') {
+                        await listCategories(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createCategory(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === MINDMAPS) {
+                    if (req.method === 'GET') {
+                        await listMindmaps(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createMindmap(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === 'project-groups') {
+                    if (req.method === 'GET') {
+                        await listProjectGroups(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createProjectGroup(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === COMMENTS) {
+                    if (req.method === 'GET') {
+                        await listComments(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'POST') {
+                        await createComment(req, res, projectId);
+                        return true;
+                    }
+                }
+                if (resource === ACTIVITIES && req.method === 'GET') {
+                    await listActivities(req, res, projectId);
+                    return true;
+                }
+            }
+            if (segments.length === 5) {
+                const resource = segments[3];
+                const resourceId = segments[4];
+                if (resource === INITIATIVES) {
+                    if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {
+                        await upsertInitiativeByExternalKey(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'GET') {
+                        await getInitiative(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateInitiative(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteInitiative(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === TASKS) {
+                    if (resourceId === 'upsert-by-external-key' && req.method === 'POST') {
+                        await upsertTaskByExternalKey(req, res, projectId);
+                        return true;
+                    }
+                    if (req.method === 'GET') {
+                        await getTask(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateTask(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteTask(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === ISSUES) {
+                    if (req.method === 'GET') {
+                        await getIssue(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateIssue(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteIssue(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === IDEAS) {
+                    if (req.method === 'GET') {
+                        await getIdea(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateIdea(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteIdea(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === MILESTONES) {
+                    if (req.method === 'GET') {
+                        await getMilestone(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateMilestone(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteMilestone(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === SPRINTS) {
+                    if (req.method === 'GET') {
+                        await getSprint(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateSprint(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteSprint(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === CATEGORIES) {
+                    if (req.method === 'GET') {
+                        await getCategory(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateCategory(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteCategory(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === MINDMAPS) {
+                    if (req.method === 'GET') {
+                        await getMindmap(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateMindmap(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteMindmap(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === 'project-groups') {
+                    if (req.method === 'GET') {
+                        await getProjectGroup(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateProjectGroup(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteProjectGroup(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+                if (resource === COMMENTS) {
+                    if (req.method === 'GET') {
+                        await getComment(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'PATCH') {
+                        await updateComment(req, res, projectId, resourceId);
+                        return true;
+                    }
+                    if (req.method === 'DELETE') {
+                        await deleteComment(req, res, projectId, resourceId);
+                        return true;
+                    }
+                }
+            }
+            if (segments.length === 6 && segments[3] === TASKS && segments[5] === SUBTASKS) {
+                const taskId = segments[4];
+                if (req.method === 'GET') {
+                    await listSubtasks(req, res, projectId, taskId);
+                    return true;
+                }
+                if (req.method === 'POST') {
+                    await createSubtask(req, res, projectId, taskId);
+                    return true;
+                }
+            }
+            if (segments.length === 7 && segments[3] === TASKS && segments[5] === SUBTASKS) {
+                const taskId = segments[4];
+                const subtaskId = segments[6];
+                if (req.method === 'GET') {
+                    await getSubtask(req, res, projectId, taskId, subtaskId);
+                    return true;
+                }
+                if (req.method === 'PATCH') {
+                    await updateSubtask(req, res, projectId, taskId, subtaskId);
+                    return true;
+                }
+                if (req.method === 'DELETE') {
+                    await deleteSubtask(req, res, projectId, taskId, subtaskId);
+                    return true;
+                }
             }
         }
+        res.status(404).json({
+            success: false,
+            error: 'ProjectFlow endpoint not found.',
+            path,
+            supported: PROJECTFLOW_SUPPORTED_ENDPOINTS
+        });
+        return true;
     }
-    res.status(404).json({
-        success: false,
-        error: 'ProjectFlow endpoint not found.',
-        path,
-        supported: PROJECTFLOW_SUPPORTED_ENDPOINTS
-    });
-    return true;
+    catch (error) {
+        console.error('ProjectFlow API route error:', {
+            path,
+            method: req.method,
+            message: error === null || error === void 0 ? void 0 : error.message,
+            stack: error === null || error === void 0 ? void 0 : error.stack
+        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                error: 'ProjectFlow API request failed.',
+                code: 'projectflow_internal_error',
+                message: (error === null || error === void 0 ? void 0 : error.message) || 'Unknown error',
+                path,
+                method: req.method
+            });
+        }
+        return true;
+    }
 };
 exports.handleProjectflowApiRoute = handleProjectflowApiRoute;
 //# sourceMappingURL=projectflow-api.js.map

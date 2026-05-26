@@ -43,6 +43,7 @@ const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitia
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
 const ProjectIssueDetail = React.lazy(() => import('./screens/ProjectIssueDetail').then((module) => ({ default: module.ProjectIssueDetail })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
+const ProjectCodex = React.lazy(() => import('./screens/ProjectCodex').then((module) => ({ default: module.ProjectCodex })));
 const ProjectFlows = React.lazy(() => import('./screens/ProjectFlows').then((module) => ({ default: module.ProjectFlows })));
 const FlowDetail = React.lazy(() => import('./screens/FlowDetail').then((module) => ({ default: module.FlowDetail })));
 const ProjectIssues = React.lazy(() => import('./screens/ProjectIssues').then((module) => ({ default: module.ProjectIssues })));
@@ -250,6 +251,7 @@ export const AppRouter = () => {
                             <Route path="initiatives/:initiativeId" element={withRouteSuspense(<ProjectInitiativeDetail />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
+                            <Route path="codex" element={withRouteSuspense(<ProjectCodex />)} />
                             <Route path="flows" element={withRouteSuspense(<ProjectFlows />)} />
                             <Route path="flows/:flowId" element={withRouteSuspense(<FlowDetail />)} />
                             <Route path="ideas" element={withRouteSuspense(<ProjectFlows />)} />

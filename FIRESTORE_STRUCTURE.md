@@ -248,17 +248,22 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 > These collections exist *within* a project document.
 
 *   **`tasks`**
-    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, ... }`
+    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, externalKey, codexSessionId, source, ... }`
 *   **`issues`**
     *   📄 `Issue`: `{ title, status, severity, reporterId, ... }`
 *   **`ideas`**
     *   📄 `Idea`: `{ title, stage, impact, effort, ... }`
 *   **`sprints`**
     *   📄 `Sprint`: `{ name, goal, startDate, endDate, status }`
-*   **`activity`**
-    *   📄 `Activity`: `{ action, target, user, details, ... }` (Audit log)
+*   **`activities`**
+    *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Audit log; Codex activity uses `type: "codex"`)
 *   **`comments`** _(Implied)_
     *   📄 `Comment`: `{ content, targetId, userId, ... }`
+*   **`codex_sessions`**
+    *   📄 `CodexSession`: `{ title, status, phase, externalKey, taskId, initiativeId, repoPath, branch, filesTouched, lastValidationStatus, ... }`
+    *   ↳ 📂 `checkpoints/{checkpointId}`: `{ phase, summary, validationStatus, filesTouched, commands, createdAt }`
+*   **`codex_followups`**
+    *   📄 `CodexFollowUp`: `{ title, status, priority, taskId, sessionId, externalKey, filesTouched, ... }`
 
 #### ↳ 📂 **`invite_links`**
 **Path:** `/tenants/{tenantId}/invite_links/{linkId}`

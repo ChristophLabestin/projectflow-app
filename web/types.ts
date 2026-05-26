@@ -425,6 +425,11 @@ export interface Task {
     dependencies?: string[]; // IDs of tasks that this task depends on
     sprintId?: string; // Sprint ID
     feedbackSubmission?: InitiativeFeedbackSubmission;
+    externalKey?: string;
+    source?: string;
+    codexSessionId?: string;
+    codexSessionExternalKey?: string;
+    filesTouched?: string[];
 }
 
 export type InitiativeStatus = TaskStatus | 'Planning';
@@ -748,9 +753,62 @@ export interface Activity {
     target: string;
     details?: string;
     relatedId?: string;
-    type: 'comment' | 'task' | 'initiative' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'issue';
+    type: 'comment' | 'task' | 'initiative' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'issue' | 'codex';
     createdAt?: any;
     originIdeaId?: string;
+}
+
+export type CodexSessionStatus = 'running' | 'completed' | 'blocked' | 'partial';
+
+export interface CodexSession {
+    id: string;
+    projectId: string;
+    tenantId?: string;
+    externalKey?: string;
+    title: string;
+    summary?: string;
+    status: CodexSessionStatus;
+    phase?: string;
+    entity?: 'task' | 'initiative';
+    linkedEntityType?: 'task' | 'initiative';
+    linkedEntityId?: string;
+    taskId?: string;
+    initiativeId?: string;
+    repoPath?: string;
+    repoName?: string;
+    branch?: string;
+    commitSha?: string;
+    filesTouched?: string[];
+    validationStatus?: string;
+    lastValidationStatus?: string;
+    lastCheckpointSummary?: string;
+    lastCheckpointAt?: any;
+    actorLabel?: string;
+    createdBy?: string;
+    createdAt?: any;
+    startedAt?: any;
+    finishedAt?: any;
+    updatedAt?: any;
+}
+
+export interface CodexFollowUp {
+    id: string;
+    projectId: string;
+    tenantId?: string;
+    title: string;
+    description?: string;
+    status?: 'open' | 'done' | 'dismissed' | string;
+    priority?: 'Low' | 'Medium' | 'High' | 'Urgent' | string;
+    taskId?: string;
+    sessionId?: string;
+    sessionExternalKey?: string;
+    externalKey?: string;
+    source?: string;
+    filesTouched?: string[];
+    actorLabel?: string;
+    createdBy?: string;
+    createdAt?: any;
+    updatedAt?: any;
 }
 
 export type IdeaGroup =

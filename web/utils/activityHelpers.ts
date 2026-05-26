@@ -37,6 +37,7 @@ export const activityIcon = (type?: Activity['type'], actionText?: string) => {
     if (type === 'file') return { icon: 'attach_file', ...neutralTone };
     if (type === 'member') return { icon: 'person_add', ...successTone };
     if (type === 'commit') return { icon: 'code', ...primaryTone };
+    if (type === 'codex') return { icon: 'terminal', ...primaryTone };
     if (type === 'priority') return { icon: 'priority_high', ...errorTone };
     return { icon: 'more_horiz', ...neutralTone };
 };

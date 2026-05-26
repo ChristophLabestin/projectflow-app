@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import * as crypto from 'crypto';
 
 import { getAuthToken, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
@@ -23,6 +24,10 @@ const CATEGORIES = 'categories';
 const MINDMAPS = 'mindmaps';
 const PROJECT_GROUPS = 'project_groups';
 const COMMENTS = 'comments';
+const CODEX = 'codex';
+const CODEX_SESSIONS = 'codex_sessions';
+const CODEX_CHECKPOINTS = 'checkpoints';
+const CODEX_FOLLOWUPS = 'codex_followups';
 
 const PROJECT_WRITE_FIELDS = [
     'title',
@@ -113,6 +118,34 @@ const getStringArray = (value: unknown): string[] => {
     return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
 };
 
+const getRecord = (value: unknown): Record<string, unknown> | undefined => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return undefined;
+    }
+
+    return value as Record<string, unknown>;
+};
+
+const getCommandList = (value: unknown): Array<string | Record<string, unknown>> => {
+    if (!Array.isArray(value)) {
+        return [];
+    }
+
+    return value
+        .map((item) => {
+            if (typeof item === 'string') {
+                return item.trim();
+            }
+            if (item && typeof item === 'object' && !Array.isArray(item)) {
+                return item as Record<string, unknown>;
+            }
+            return '';
+        })
+        .filter((item): item is string | Record<string, unknown> => (
+            typeof item === 'string' ? item.length > 0 : true
+        ));
+};
+
 const compactObject = <T extends Record<string, unknown>>(payload: T): Partial<T> =>
     Object.entries(payload).reduce((acc, [key, value]) => {
         if (value !== undefined) {
@@ -161,6 +194,12 @@ const projectCollectionRef = (tenantId: string, projectId: string, collectionNam
 const projectActivityRef = (tenantId: string, projectId: string) =>
     projectRef(tenantId, projectId).collection(ACTIVITIES);
 
+const codexSessionCollectionRef = (tenantId: string, projectId: string) =>
+    projectRef(tenantId, projectId).collection(CODEX_SESSIONS);
+
+const codexFollowupCollectionRef = (tenantId: string, projectId: string) =>
+    projectRef(tenantId, projectId).collection(CODEX_FOLLOWUPS);
+
 const writeProjectActivity = async (
     tenantId: string,
     projectId: string,
@@ -168,20 +207,23 @@ const writeProjectActivity = async (
     target: string,
     relatedId: string | null,
     actorId: string,
-    actorLabel: string
+    actorLabel: string,
+    type = 'status',
+    details?: string
 ) => {
-    await projectActivityRef(tenantId, projectId).add({
+    await projectActivityRef(tenantId, projectId).add(compactObject({
         projectId,
         tenantId,
         ownerId: actorId,
         user: actorLabel,
         action,
         target,
-        type: 'status',
+        type,
         relatedId,
+        details,
         actorType: 'api-token',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
-    });
+    }));
 };
 
 const syncProjectProgress = async (tenantId: string, projectId: string) => {
@@ -1766,6 +1808,706 @@ const deleteComment = async (req: any, res: any, projectId: string, commentId: s
 const listActivities = async (req: any, res: any, projectId: string) =>
     listProjectCollectionItems(req, res, projectId, ACTIVITIES, 'activities');
 
+const normalizeCodexEntity = (value: unknown): 'task' | 'initiative' => (
+    getString(value).toLowerCase() === 'initiative' ? 'initiative' : 'task'
+);
+
+const normalizeCodexSessionStatus = (value: unknown): 'running' | 'completed' | 'blocked' | 'partial' => {
+    const status = getString(value).toLowerCase();
+    if (['done', 'success', 'complete', 'completed'].includes(status)) {
+        return 'completed';
+    }
+    if (['blocked', 'failure', 'failed'].includes(status)) {
+        return 'blocked';
+    }
+    if (['partial', 'incomplete'].includes(status)) {
+        return 'partial';
+    }
+    return 'running';
+};
+
+const codexExternalKeyForBody = (body: Record<string, unknown>, projectId: string): string => {
+    const explicit =
+        getString(body.externalKey) ||
+        getString(body.sessionKey) ||
+        getString(body.codexExternalKey);
+
+    if (explicit) {
+        return explicit;
+    }
+
+    const source = [
+        projectId,
+        getString(body.repoPath),
+        getString(body.branch),
+        getString(body.request) || getString(body.title) || getString(body.summary)
+    ].join('|');
+
+    return `codex:${crypto.createHash('sha256').update(source).digest('hex').slice(0, 24)}`;
+};
+
+const summarizeCodexCheckpoint = (body: Record<string, unknown>) =>
+    getString(body.summary) ||
+    getString(body.checkpointSummary) ||
+    getString(body.appendSummary) ||
+    getString(body.notes);
+
+const upsertCodexLinkedEntity = async (
+    context: ApiContext,
+    projectId: string,
+    body: Record<string, unknown>,
+    externalKey: string,
+    entity: 'task' | 'initiative'
+) => {
+    const title =
+        getString(body.title) ||
+        getString(body.request) ||
+        `Codex session ${externalKey.slice(0, 8)}`;
+    const description = getString(body.description) || getString(body.summary) || getString(body.request);
+    const priority = getString(body.priority) || 'Medium';
+
+    if (entity === 'initiative') {
+        const matches = await initiativeCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+
+        const updates = compactObject({
+            title,
+            description: description || undefined,
+            status: getString(body.status) || 'In Progress',
+            priority,
+            dueDate: getString(body.dueDate),
+            startDate: getString(body.startDate),
+            externalKey,
+            codexManaged: true,
+            codexSessionExternalKey: externalKey,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        if (!matches.empty) {
+            const match = matches.docs[0];
+            await match.ref.update(updates);
+            const snapshot = await match.ref.get();
+            return {
+                type: entity,
+                operation: 'updated',
+                id: snapshot.id,
+                data: serializeValue(snapshot.data())
+            };
+        }
+
+        const created = await initiativeCollectionRef(context.tenantId, projectId).add({
+            ...updates,
+            projectId,
+            tenantId: context.tenantId,
+            ownerId: context.actorId,
+            createdBy: context.actorId,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        const snapshot = await created.get();
+        return {
+            type: entity,
+            operation: 'created',
+            id: created.id,
+            data: serializeValue(snapshot.data())
+        };
+    }
+
+    const matches = await taskCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+
+    const updates = compactObject({
+        title,
+        description: description || undefined,
+        status: getString(body.status) || 'In Progress',
+        priority,
+        dueDate: getString(body.dueDate),
+        startDate: getString(body.startDate),
+        assigneeId: getString(body.assigneeId) || null,
+        assigneeIds: getStringArray(body.assigneeIds),
+        assignedGroupIds: getStringArray(body.assignedGroupIds),
+        initiativeId: getString(body.initiativeId),
+        externalKey,
+        isCompleted: Boolean(body.isCompleted),
+        codexManaged: true,
+        codexSessionExternalKey: externalKey,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (!matches.empty) {
+        const match = matches.docs[0];
+        await match.ref.update(updates);
+        const snapshot = await match.ref.get();
+        await syncProjectProgress(context.tenantId, projectId);
+        return {
+            type: entity,
+            operation: 'updated',
+            id: snapshot.id,
+            data: serializeValue(snapshot.data())
+        };
+    }
+
+    const created = await taskCollectionRef(context.tenantId, projectId).add({
+        ...updates,
+        projectId,
+        tenantId: context.tenantId,
+        ownerId: context.actorId,
+        createdBy: context.actorId,
+        category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'],
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+    const snapshot = await created.get();
+    await syncProjectProgress(context.tenantId, projectId);
+
+    return {
+        type: entity,
+        operation: 'created',
+        id: created.id,
+        data: serializeValue(snapshot.data())
+    };
+};
+
+const writeCodexCheckpoint = async (
+    context: ApiContext,
+    projectId: string,
+    sessionRef: admin.firestore.DocumentReference,
+    phase: string,
+    body: Record<string, unknown>
+) => {
+    const filesTouched = getStringArray(body.filesTouched);
+    const validationStatus = getString(body.validationStatus);
+    const summary = summarizeCodexCheckpoint(body);
+    const status = getString(body.status);
+    const commands = getCommandList(body.commands);
+
+    const checkpointPayload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        phase,
+        summary,
+        status,
+        validationStatus,
+        filesTouched,
+        commands,
+        metadata: getRecord(body.metadata),
+        createdBy: context.actorId,
+        actorLabel: context.actorLabel,
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    const checkpointRef = await sessionRef.collection(CODEX_CHECKPOINTS).add(checkpointPayload);
+
+    const sessionUpdates: Record<string, unknown> = compactObject({
+        phase,
+        status: normalizeCodexSessionStatus(status),
+        lastCheckpointId: checkpointRef.id,
+        lastCheckpointSummary: summary,
+        lastValidationStatus: validationStatus,
+        lastCheckpointAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (filesTouched.length > 0) {
+        sessionUpdates.filesTouched = admin.firestore.FieldValue.arrayUnion(...filesTouched);
+    }
+
+    await sessionRef.set(sessionUpdates, { merge: true });
+
+    return {
+        id: checkpointRef.id,
+        ...serializeValue(checkpointPayload)
+    };
+};
+
+const resolveCodexSession = async (
+    context: ApiContext,
+    projectId: string,
+    body: Record<string, unknown>,
+    explicitSessionId?: string
+) => {
+    const requestedSessionId = explicitSessionId || getString(body.sessionId);
+    if (requestedSessionId) {
+        const sessionRef = codexSessionCollectionRef(context.tenantId, projectId).doc(requestedSessionId);
+        const snapshot = await sessionRef.get();
+        if (snapshot.exists) {
+            return { ref: sessionRef, snapshot };
+        }
+    }
+
+    const externalKey = codexExternalKeyForBody(body, projectId);
+    const matches = await codexSessionCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+
+    if (matches.empty) {
+        return null;
+    }
+
+    return {
+        ref: matches.docs[0].ref,
+        snapshot: matches.docs[0]
+    };
+};
+
+const createCodexFollowups = async (
+    context: ApiContext,
+    projectId: string,
+    followUpsValue: unknown,
+    sessionId?: string,
+    sessionExternalKey?: string,
+    inheritedInitiativeId?: string
+) => {
+    if (!Array.isArray(followUpsValue)) {
+        return [];
+    }
+
+    const followUps = followUpsValue.slice(0, 50);
+    const results = [];
+
+    for (let index = 0; index < followUps.length; index += 1) {
+        const followUp = getRecord(followUps[index]);
+        if (!followUp) {
+            continue;
+        }
+
+        const title = getString(followUp.title);
+        if (!title) {
+            continue;
+        }
+
+        const externalKey = getString(followUp.externalKey) || [
+            sessionExternalKey || `codex:${projectId}`,
+            'followup',
+            index,
+            crypto.createHash('sha256').update(title).digest('hex').slice(0, 12)
+        ].join(':');
+
+        const taskMatches = await taskCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+
+        const taskPayload = compactObject({
+            projectId,
+            tenantId: context.tenantId,
+            ownerId: context.actorId,
+            createdBy: context.actorId,
+            title,
+            description: getString(followUp.description),
+            status: getString(followUp.status) || 'Open',
+            priority: getString(followUp.priority) || 'Medium',
+            dueDate: getString(followUp.dueDate),
+            startDate: getString(followUp.startDate),
+            assigneeId: getString(followUp.assigneeId) || null,
+            assigneeIds: getStringArray(followUp.assigneeIds),
+            assignedGroupIds: getStringArray(followUp.assignedGroupIds),
+            initiativeId: getString(followUp.initiativeId) || inheritedInitiativeId,
+            category: getStringArray(followUp.category).length > 0 ? getStringArray(followUp.category) : ['Codex'],
+            externalKey,
+            isCompleted: Boolean(followUp.isCompleted),
+            source: 'codex_followup',
+            codexSessionId: sessionId,
+            codexSessionExternalKey: sessionExternalKey,
+            filesTouched: getStringArray(followUp.filesTouched),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        let taskId: string;
+        let taskOperation: 'created' | 'updated';
+        if (!taskMatches.empty) {
+            const taskSnapshot = taskMatches.docs[0];
+            await taskSnapshot.ref.update(taskPayload);
+            taskId = taskSnapshot.id;
+            taskOperation = 'updated';
+        } else {
+            const createdTask = await taskCollectionRef(context.tenantId, projectId).add({
+                ...taskPayload,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            taskId = createdTask.id;
+            taskOperation = 'created';
+        }
+
+        const followupPayload = compactObject({
+            projectId,
+            tenantId: context.tenantId,
+            title,
+            description: getString(followUp.description),
+            status: getString(followUp.inboxStatus) || 'open',
+            priority: getString(followUp.priority) || 'Medium',
+            taskId,
+            sessionId,
+            sessionExternalKey,
+            externalKey,
+            source: 'codex',
+            filesTouched: getStringArray(followUp.filesTouched),
+            createdBy: context.actorId,
+            actorLabel: context.actorLabel,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+
+        const followupMatches = await codexFollowupCollectionRef(context.tenantId, projectId)
+            .where('externalKey', '==', externalKey)
+            .limit(1)
+            .get();
+
+        let followupId: string;
+        if (!followupMatches.empty) {
+            const followupSnapshot = followupMatches.docs[0];
+            await followupSnapshot.ref.update(followupPayload);
+            followupId = followupSnapshot.id;
+        } else {
+            const createdFollowup = await codexFollowupCollectionRef(context.tenantId, projectId).add({
+                ...followupPayload,
+                createdAt: admin.firestore.FieldValue.serverTimestamp()
+            });
+            followupId = createdFollowup.id;
+        }
+
+        results.push({
+            id: followupId,
+            taskId,
+            taskOperation,
+            title,
+            externalKey
+        });
+    }
+
+    if (results.length > 0) {
+        await syncProjectProgress(context.tenantId, projectId);
+    }
+
+    return results;
+};
+
+const listCodexSessions = async (req: any, res: any, projectId: string) => {
+    const context = await authRequest(req, res, 'tasks:read', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const snapshot = await codexSessionCollectionRef(context.tenantId, projectId)
+        .orderBy('updatedAt', 'desc')
+        .limit(100)
+        .get();
+
+    const sessions = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...serializeValue(docSnap.data())
+    }));
+
+    res.status(200).json({ success: true, sessions });
+};
+
+const listCodexFollowups = async (req: any, res: any, projectId: string) => {
+    const context = await authRequest(req, res, 'tasks:read', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const snapshot = await codexFollowupCollectionRef(context.tenantId, projectId)
+        .orderBy('updatedAt', 'desc')
+        .limit(100)
+        .get();
+
+    const followups = snapshot.docs.map((docSnap) => ({
+        id: docSnap.id,
+        ...serializeValue(docSnap.data())
+    }));
+
+    res.status(200).json({ success: true, followups });
+};
+
+const startCodexSession = async (req: any, res: any, projectId: string) => {
+    const body = (req.body || {}) as Record<string, unknown>;
+    const entity = normalizeCodexEntity(body.entity);
+    const context = await authRequest(req, res, entity === 'initiative' ? 'initiatives:write' : 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const externalKey = codexExternalKeyForBody(body, projectId);
+    const linkedEntity = await upsertCodexLinkedEntity(context, projectId, body, externalKey, entity);
+    const title = getString(body.title) || getString(body.request) || `Codex session ${externalKey.slice(0, 8)}`;
+    const summary = getString(body.summary) || getString(body.request) || getString(body.description);
+    const existing = await codexSessionCollectionRef(context.tenantId, projectId)
+        .where('externalKey', '==', externalKey)
+        .limit(1)
+        .get();
+
+    const linkedTaskId = linkedEntity.type === 'task' ? linkedEntity.id : getString(body.taskId);
+    const linkedInitiativeId = linkedEntity.type === 'initiative' ? linkedEntity.id : getString(body.initiativeId);
+    const payload = compactObject({
+        projectId,
+        tenantId: context.tenantId,
+        externalKey,
+        title,
+        summary,
+        status: 'running',
+        phase: getString(body.phase) || 'start',
+        entity,
+        linkedEntityType: linkedEntity.type,
+        linkedEntityId: linkedEntity.id,
+        taskId: linkedTaskId,
+        initiativeId: linkedInitiativeId,
+        repoPath: getString(body.repoPath),
+        repoName: getString(body.repoName),
+        branch: getString(body.branch),
+        commitSha: getString(body.commitSha) || getString(body.commit),
+        filesTouched: getStringArray(body.filesTouched),
+        validationStatus: getString(body.validationStatus),
+        actorLabel: context.actorLabel,
+        createdBy: context.actorId,
+        ownerId: context.actorId,
+        metadata: getRecord(body.metadata),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    });
+
+    let sessionRef: admin.firestore.DocumentReference;
+    let operation: 'created' | 'updated';
+    if (!existing.empty) {
+        sessionRef = existing.docs[0].ref;
+        await sessionRef.update(payload);
+        operation = 'updated';
+    } else {
+        sessionRef = await codexSessionCollectionRef(context.tenantId, projectId).add({
+            ...payload,
+            startedAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        operation = 'created';
+    }
+
+    const checkpoint = await writeCodexCheckpoint(
+        context,
+        projectId,
+        sessionRef,
+        getString(body.phase) || 'start',
+        {
+            ...body,
+            status: 'running',
+            summary: summary || `Started ${title}`
+        }
+    );
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Started Codex session "${title}"`,
+        'Codex',
+        sessionRef.id,
+        context.actorId,
+        context.actorLabel,
+        CODEX,
+        summary
+    );
+
+    const sessionSnapshot = await sessionRef.get();
+    res.status(operation === 'created' ? 201 : 200).json({
+        success: true,
+        operation,
+        linkedEntity,
+        checkpoint,
+        session: {
+            id: sessionRef.id,
+            ...serializeValue(sessionSnapshot.data())
+        }
+    });
+};
+
+const checkpointCodexSession = async (req: any, res: any, projectId: string, sessionId?: string) => {
+    const body = (req.body || {}) as Record<string, unknown>;
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const resolvedSession = await resolveCodexSession(context, projectId, body, sessionId);
+    if (!resolvedSession) {
+        notFound(res, 'Codex session not found.');
+        return;
+    }
+
+    const phase = getString(body.phase) || 'checkpoint';
+    const checkpoint = await writeCodexCheckpoint(context, projectId, resolvedSession.ref, phase, body);
+    const sessionTitle = getString(resolvedSession.snapshot.data()?.title) || resolvedSession.ref.id;
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Recorded Codex checkpoint "${phase}"`,
+        'Codex',
+        resolvedSession.ref.id,
+        context.actorId,
+        context.actorLabel,
+        CODEX,
+        summarizeCodexCheckpoint(body) || sessionTitle
+    );
+
+    const sessionSnapshot = await resolvedSession.ref.get();
+    res.status(200).json({
+        success: true,
+        checkpoint,
+        session: {
+            id: resolvedSession.ref.id,
+            ...serializeValue(sessionSnapshot.data())
+        }
+    });
+};
+
+const finishCodexSession = async (req: any, res: any, projectId: string, sessionId?: string) => {
+    const body = (req.body || {}) as Record<string, unknown>;
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const resolvedSession = await resolveCodexSession(context, projectId, body, sessionId);
+    if (!resolvedSession) {
+        notFound(res, 'Codex session not found.');
+        return;
+    }
+
+    const sessionData = resolvedSession.snapshot.data() || {};
+    const finalStatus = normalizeCodexSessionStatus(body.status || 'completed');
+    const phase = getString(body.phase) || 'finish';
+    const checkpoint = await writeCodexCheckpoint(context, projectId, resolvedSession.ref, phase, {
+        ...body,
+        status: finalStatus
+    });
+
+    const sessionUpdates: Record<string, unknown> = {
+        status: finalStatus,
+        phase,
+        finishedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (getString(body.commitSha) || getString(body.commit)) {
+        sessionUpdates.commitSha = getString(body.commitSha) || getString(body.commit);
+    }
+
+    await resolvedSession.ref.set(sessionUpdates, { merge: true });
+
+    const taskId = getString(sessionData.taskId);
+    const initiativeId = getString(sessionData.initiativeId);
+    if (taskId) {
+        const taskUpdates: Record<string, unknown> = {
+            status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'Review',
+            isCompleted: finalStatus === 'completed',
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        };
+        if (finalStatus === 'completed') {
+            taskUpdates.completedAt = admin.firestore.FieldValue.serverTimestamp();
+            taskUpdates.completedBy = context.actorId;
+        }
+        await taskCollectionRef(context.tenantId, projectId).doc(taskId).set(taskUpdates, { merge: true });
+        await syncProjectProgress(context.tenantId, projectId);
+    }
+
+    if (initiativeId) {
+        await initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId).set({
+            status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'In Progress',
+            completedAt: finalStatus === 'completed' ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.delete(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+    }
+
+    const followups = await createCodexFollowups(
+        context,
+        projectId,
+        body.followUps,
+        resolvedSession.ref.id,
+        getString(sessionData.externalKey),
+        initiativeId
+    );
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Finished Codex session as ${finalStatus}`,
+        'Codex',
+        resolvedSession.ref.id,
+        context.actorId,
+        context.actorLabel,
+        CODEX,
+        summarizeCodexCheckpoint(body)
+    );
+
+    const sessionSnapshot = await resolvedSession.ref.get();
+    res.status(200).json({
+        success: true,
+        checkpoint,
+        followups,
+        session: {
+            id: resolvedSession.ref.id,
+            ...serializeValue(sessionSnapshot.data())
+        }
+    });
+};
+
+const bulkCreateCodexFollowups = async (req: any, res: any, projectId: string) => {
+    const body = (req.body || {}) as Record<string, unknown>;
+    const context = await authRequest(req, res, 'tasks:write', projectId);
+    if (!context) {
+        return;
+    }
+
+    if (!(await ensureProjectExists(context.tenantId, projectId, res))) {
+        return;
+    }
+
+    const followups = await createCodexFollowups(
+        context,
+        projectId,
+        body.followUps,
+        getString(body.sessionId),
+        getString(body.sessionExternalKey) || getString(body.externalKey),
+        getString(body.initiativeId)
+    );
+
+    await writeProjectActivity(
+        context.tenantId,
+        projectId,
+        `Created ${followups.length} Codex follow-up${followups.length === 1 ? '' : 's'}`,
+        'Codex',
+        getString(body.sessionId) || null,
+        context.actorId,
+        context.actorLabel,
+        CODEX,
+        getString(body.summary)
+    );
+
+    res.status(201).json({
+        success: true,
+        followups
+    });
+};
+
 const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects',
     'POST /api/projectflow/projects',
@@ -1829,10 +2571,19 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects/:projectId/comments/:commentId',
     'PATCH /api/projectflow/projects/:projectId/comments/:commentId',
     'DELETE /api/projectflow/projects/:projectId/comments/:commentId',
-    'GET /api/projectflow/projects/:projectId/activities'
+    'GET /api/projectflow/projects/:projectId/activities',
+    'GET /api/projectflow/projects/:projectId/codex/sessions',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/start',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/checkpoint',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/finish',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/checkpoint',
+    'POST /api/projectflow/projects/:projectId/codex/sessions/:sessionId/finish',
+    'GET /api/projectflow/projects/:projectId/codex/followups',
+    'POST /api/projectflow/projects/:projectId/codex/followups/bulk-create'
 ];
 
 export const handleProjectflowApiRoute = async (req: any, res: any, path: string): Promise<boolean> => {
+    try {
     const normalized = path.startsWith('/') ? path.slice(1) : path;
     const segments = normalized.split('/').filter(Boolean);
 
@@ -1866,6 +2617,58 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
             if (req.method === 'DELETE') {
                 await deleteProject(req, res, projectId);
                 return true;
+            }
+        }
+
+        if (segments.length >= 5 && segments[3] === CODEX) {
+            const codexResource = segments[4];
+
+            if (codexResource === 'sessions') {
+                if (segments.length === 5 && req.method === 'GET') {
+                    await listCodexSessions(req, res, projectId);
+                    return true;
+                }
+
+                if (segments.length === 6) {
+                    const action = segments[5];
+                    if (action === 'start' && req.method === 'POST') {
+                        await startCodexSession(req, res, projectId);
+                        return true;
+                    }
+                    if (action === 'checkpoint' && req.method === 'POST') {
+                        await checkpointCodexSession(req, res, projectId);
+                        return true;
+                    }
+                    if (action === 'finish' && req.method === 'POST') {
+                        await finishCodexSession(req, res, projectId);
+                        return true;
+                    }
+                }
+
+                if (segments.length === 7) {
+                    const sessionId = segments[5];
+                    const action = segments[6];
+                    if (action === 'checkpoint' && req.method === 'POST') {
+                        await checkpointCodexSession(req, res, projectId, sessionId);
+                        return true;
+                    }
+                    if (action === 'finish' && req.method === 'POST') {
+                        await finishCodexSession(req, res, projectId, sessionId);
+                        return true;
+                    }
+                }
+            }
+
+            if (codexResource === 'followups') {
+                if (segments.length === 5 && req.method === 'GET') {
+                    await listCodexFollowups(req, res, projectId);
+                    return true;
+                }
+
+                if (segments.length === 6 && segments[5] === 'bulk-create' && req.method === 'POST') {
+                    await bulkCreateCodexFollowups(req, res, projectId);
+                    return true;
+                }
             }
         }
 
@@ -2193,4 +2996,25 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
     });
 
     return true;
+    } catch (error: any) {
+        console.error('ProjectFlow API route error:', {
+            path,
+            method: req.method,
+            message: error?.message,
+            stack: error?.stack
+        });
+
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                error: 'ProjectFlow API request failed.',
+                code: 'projectflow_internal_error',
+                message: error?.message || 'Unknown error',
+                path,
+                method: req.method
+            });
+        }
+
+        return true;
+    }
 };

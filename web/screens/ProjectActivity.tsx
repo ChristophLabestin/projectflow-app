@@ -59,6 +59,7 @@ export const ProjectActivity = () => {
         { value: 'issue', label: t('projectActivity.filters.issues', 'Issues'), icon: 'bug_report' },
         { value: 'comment', label: t('projectActivity.filters.comments', 'Comments'), icon: 'chat_bubble' },
         { value: 'report', label: t('projectActivity.filters.reports', 'Reports'), icon: 'auto_awesome' },
+        { value: 'codex', label: t('projectActivity.filters.codex', 'Codex'), icon: 'terminal' },
         { value: 'member', label: t('projectActivity.filters.members', 'Members'), icon: 'group' },
     ]), [t]);
 

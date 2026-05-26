@@ -167,6 +167,12 @@ Transitions should feel responsive but not abrupt. Use the tokens below consiste
 - Focus controls should stay compact and action-oriented: start/resume, snooze, block, complete. Avoid explanatory cards around them.
 - Keep the current focus visible in the first dashboard viewport and top bar without relying on hover text.
 
+### Codex Session Surface
+
+- `web/src/styles/components/_project-codex.scss` uses existing surface, radius, status, and shadow tokens only.
+- Codex statuses map to semantic colors: primary for running, warning for partial, error for blocked, success for completed.
+- Touched-file chips use monospace text inside tokenized hover surfaces and must wrap long paths instead of overflowing.
+
 ---
 
 ## 5) Layout Metrics

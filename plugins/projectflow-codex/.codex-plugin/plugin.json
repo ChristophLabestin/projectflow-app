@@ -1,0 +1,22 @@
+{
+  "name": "projectflow-codex",
+  "version": "0.1.0",
+  "description": "Codex session tracking for ProjectFlow projects",
+  "author": {
+    "name": "ProjectFlow"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ProjectFlow Codex",
+    "shortDescription": "Sync Codex work sessions into ProjectFlow.",
+    "longDescription": "ProjectFlow Codex links local repositories to ProjectFlow projects, starts sessions, records checkpoints with touched files and validation status, and creates follow-up tasks when Codex discovers additional work.",
+    "developerName": "ProjectFlow",
+    "category": "Productivity",
+    "capabilities": [
+      "repo-linking",
+      "session-checkpoints",
+      "follow-up-task-creation"
+    ],
+    "defaultPrompt": "Use ProjectFlow Codex to sync this coding session."
+  }
+}

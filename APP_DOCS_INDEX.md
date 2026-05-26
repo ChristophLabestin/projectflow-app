@@ -31,6 +31,8 @@ Before making architectural decisions or implementing features, read the documen
 - **Purpose:** Product analysis for improving daily ProjectFlow usage, notification reliability, mobile ambient surfaces, and Codex/project context integration.
 - **File:** `docs/projectflow-retention-implementation-plan.md`
 - **Purpose:** Executable implementation plan derived from the retention report.
+- **File:** `docs/projectflow-codex-api.md`
+- **Purpose:** Codex session API, Firestore model, and repo-local plugin usage.
 
 ---
 

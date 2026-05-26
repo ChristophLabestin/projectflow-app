@@ -231,6 +231,9 @@ export const AppLayout = () => {
                     case 'activity':
                         rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
                         break;
+                    case 'codex':
+                        rawItems.push({ label: t('breadcrumbs.codex'), to: `/project/${parts[1]}/codex` });
+                        break;
                     case 'social':
                         rawItems.push({ label: t('breadcrumbs.socialStudio'), to: `/project/${parts[1]}/social` });
                         // Handle social sub-menus
@@ -361,8 +364,8 @@ export const AppLayout = () => {
                 </Suspense>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/codex') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/codex') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>
