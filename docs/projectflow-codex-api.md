@@ -14,6 +14,14 @@ Use a ProjectFlow API token with the Codex Full Access preset. The current imple
 - `tasks:write` for task sessions, checkpoints, finish calls, and follow-up creation.
 - `initiatives:write` when starting a session with `entity: "initiative"`.
 
+Production API base URL:
+
+`https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`
+
+Production web route:
+
+`https://project-manager-9d0ad.web.app/project/{projectId}/codex`
+
 ## Endpoints
 
 All endpoints are hosted under `/api/projectflow`.

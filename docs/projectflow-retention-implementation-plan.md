@@ -154,13 +154,21 @@ This pass intentionally implements a narrow end-to-end slice:
 - Plugin package: added `plugins/projectflow-codex` with plugin manifest, skill instructions, and a `projectflow_session.py` session client.
 - Docs: added `docs/projectflow-codex-api.md` plus Firestore, permissions, sitemap, component, styling, and gotcha updates.
 
+## Phase 5 Production Rollout
+
+- Deployed `functions:api` to `project-manager-9d0ad` in `europe-west3`.
+- Deployed Firebase Hosting for `project-manager-9d0ad`.
+- Verified production ProjectFlow API Codex routes return JSON for missing auth and unknown endpoints.
+- Verified hosted `/project/:id/codex` resolves to the SPA with HTTP 200.
+- Created ProjectFlow follow-up task `fOa0q1dGYfexIdGCO25C` for `functions.config()` migration before March 2026.
+- Created ProjectFlow follow-up task `qJdKkyiHALJYNwyMxz8w` for the invalid `googleDriveStorageCallback` hosting rewrite.
+
 ## Deferred Items
 
 Deferred because they require additional product design, production provisioning, or deployment:
 
 - Production App Group/APNs provisioning and release-profile entitlement verification.
 - Web push production VAPID key provisioning.
-- Live deployment of functions.
 
 ## Validation Plan
 
@@ -177,6 +185,11 @@ Deferred because they require additional product design, production provisioning
 - [x] Phase 4: `PYTHONPATH=/tmp/projectflow-plugin-validate-pyyaml python3 /Users/christophlabestin/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/projectflow-codex`
 - [x] Phase 4: `git diff --check`
 - [x] Phase 4: Playwright smoke at `http://127.0.0.1:3002/project/ogZ8Pyz8pwEQtv8I64nu/codex`: protected route redirected to `/login` without console/page errors. Authenticated Codex feed rendering was not exercised because no logged-in local browser session was available.
+- [x] Phase 5: `firebase deploy --only functions:api --project project-manager-9d0ad`
+- [x] Phase 5: `firebase deploy --only hosting --project project-manager-9d0ad`
+- [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.
+- [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/not-a-real-endpoint` returned JSON HTTP 404 with supported endpoints.
+- [x] Phase 5: `curl -I https://project-manager-9d0ad.web.app/project/ogZ8Pyz8pwEQtv8I64nu/codex` returned HTTP 200.
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
@@ -187,3 +200,5 @@ ProjectFlow initiative sync was attempted at the start and completion of the fir
 Phase 3 task sync succeeded on 2026-05-26. Task `kCvs5jcVE7Yc1YaaoYQ3` in project `ogZ8Pyz8pwEQtv8I64nu` was marked Done and a checkpoint comment was created with validation and provisioning follow-up notes.
 
 Phase 4 task sync started successfully on 2026-05-26 by reusing task `kCvs5jcVE7Yc1YaaoYQ3` and moving it back to In Progress for the Codex integration phase.
+
+Phase 5 production rollout task `SLzYFAwq5uOF2Lzr5aUT` was created on 2026-05-26 and moved to In Progress before deployment.
