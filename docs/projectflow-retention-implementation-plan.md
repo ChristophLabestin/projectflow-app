@@ -199,12 +199,23 @@ This pass intentionally implements a narrow end-to-end slice:
 - Verified a targeted deploy of `functions:testSMTPConnection` completes without the deploy-time `functions.config()` deprecation warning.
 - Closed ProjectFlow follow-up task `fOa0q1dGYfexIdGCO25C`.
 
+## Phase 10 Provisioning Verification
+
+- Verified the Firebase CLI help, `gcloud firebase` surface, and Firebase web app SDK config do not expose `VITE_FIREBASE_VAPID_KEY`.
+- Verified `web/.env.local` still lacks `VITE_FIREBASE_VAPID_KEY`, while `web/.env.example` documents the required key.
+- Verified Firebase's current FCM web setup docs route Web Push certificate generation/import through Firebase Console Cloud Messaging settings.
+- Ran `scripts/check-retention-provisioning.sh`; repo-side web push, iOS App Group, and APNs source wiring still pass with the expected external provisioning warnings.
+- Attempted a Release iOS archive with automatic provisioning: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -configuration Release -destination 'generic/platform=iOS' -archivePath .xcodebuild-release/projectflow.xcarchive -derivedDataPath .xcodebuild-release -allowProvisioningUpdates archive`.
+- The archive succeeded, but Xcode used an Apple Development signing identity and Xcode-managed development provisioning profile.
+- Strict signed-app inspection confirmed the signed app includes the shared App Group, but `aps-environment` is `development`, not `production`.
+- Marked VAPID and APNs provisioning tasks as blocked with the exact external prerequisites.
+
 ## Deferred Items
 
 Deferred because they require external console/provisioning access or a signed release artifact:
 
 - Add `VITE_FIREBASE_VAPID_KEY` to local/production web build environments and redeploy hosting. ProjectFlow task: `u7rRtb9TrHuLWxHKgYhl`.
-- Enable/verify Apple Developer App Group and Push capabilities, upload/verify Firebase APNs credentials, archive with a distribution profile, then run the signed `.app` entitlement check. ProjectFlow task: `YYawDDhIJguHIFkKqrZD`.
+- Enable/verify Apple Developer production Push capability and Firebase APNs credentials, archive with an Apple Distribution profile, then run the signed `.app` entitlement check until `aps-environment=production`. ProjectFlow task: `YYawDDhIJguHIFkKqrZD`.
 - Upgrade `firebase-functions` in a deliberate compatibility pass; deploys still warn that the SDK is outdated even though the legacy Runtime Config blocker is resolved. ProjectFlow task: `IumAQAnwI3iph8Ps2gnN`.
 
 ## Validation Plan
@@ -229,6 +240,11 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 9: `rg -n "functions\\.config|\\.config\\(\\)" functions/src functions/lib`
 - [x] Phase 9: `gcloud beta runtime-config configs list --project project-manager-9d0ad --format='table(name)'`
 - [x] Phase 9: `firebase deploy --only functions:testSMTPConnection --project project-manager-9d0ad --non-interactive`
+- [x] Phase 10: `firebase --help | rg -i "messag|vapid|webpush|cloud messaging|setup:web|apps:sdkconfig"`
+- [x] Phase 10: `firebase apps:sdkconfig WEB 1:156746866932:web:48cc57f5ae6509dcc9bea1 --project project-manager-9d0ad --json`
+- [x] Phase 10: `scripts/check-retention-provisioning.sh`
+- [x] Phase 10: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -configuration Release -destination 'generic/platform=iOS' -archivePath .xcodebuild-release/projectflow.xcarchive -derivedDataPath .xcodebuild-release -allowProvisioningUpdates archive`
+- [x] Phase 10: `scripts/check-retention-provisioning.sh --strict --signed-app .xcodebuild-release/projectflow.xcarchive/Products/Applications/projectflow.app` failed as expected because the archive was development-signed and reported `aps-environment=development`.
 - [x] Phase 5: `firebase deploy --only functions:api --project project-manager-9d0ad`
 - [x] Phase 5: `firebase deploy --only hosting --project project-manager-9d0ad`
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.
