@@ -181,6 +181,14 @@ This pass intentionally implements a narrow end-to-end slice:
 - Added a recent delivery attempts feed on `/notifications` backed by `notificationDeliveryLogs` so FCM/email sent, skipped, and failed states are visible in the app.
 - Extended the notification type model, locales, styles, Firestore docs, production checklist, and component/sitemap docs for the diagnostic path.
 
+## Phase 8 Google Drive Callback Production Fix
+
+- Deployed `functions:googleDriveStorageCallback` to `project-manager-9d0ad` in `europe-west3`.
+- Verified Firebase now lists `googleDriveStorageCallback` as a deployed HTTPS function.
+- Verified the function endpoint responds at `https://europe-west3-project-manager-9d0ad.cloudfunctions.net/googleDriveStorageCallback`; the unauthenticated probe returns HTTP 400 because the OAuth callback request is missing required parameters.
+- Redeployed Firebase Hosting for `project-manager-9d0ad` and confirmed the previous missing-function rewrite warning no longer appears.
+- Closed ProjectFlow follow-up task `qJdKkyiHALJYNwyMxz8w`.
+
 ## Deferred Items
 
 Deferred because they require external console/provisioning access or a signed release artifact:
@@ -203,6 +211,10 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 4: `PYTHONPATH=/tmp/projectflow-plugin-validate-pyyaml python3 /Users/christophlabestin/.codex/skills/.system/plugin-creator/scripts/validate_plugin.py plugins/projectflow-codex`
 - [x] Phase 4: `git diff --check`
 - [x] Phase 4: Playwright smoke at `http://127.0.0.1:3002/project/ogZ8Pyz8pwEQtv8I64nu/codex`: protected route redirected to `/login` without console/page errors. Authenticated Codex feed rendering was not exercised because no logged-in local browser session was available.
+- [x] Phase 8: `firebase deploy --only functions:googleDriveStorageCallback --project project-manager-9d0ad --non-interactive`
+- [x] Phase 8: `firebase functions:list --project project-manager-9d0ad | rg "googleDriveStorageCallback"`
+- [x] Phase 8: `curl -I https://europe-west3-project-manager-9d0ad.cloudfunctions.net/googleDriveStorageCallback`
+- [x] Phase 8: `firebase deploy --only hosting --project project-manager-9d0ad --non-interactive`
 - [x] Phase 5: `firebase deploy --only functions:api --project project-manager-9d0ad`
 - [x] Phase 5: `firebase deploy --only hosting --project project-manager-9d0ad`
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.
