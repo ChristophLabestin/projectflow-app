@@ -98,6 +98,7 @@ const de = {
     'notifications.diagnostics.subtitle': 'Prüfe, ob dieser Browser ProjectFlow-Push-Benachrichtigungen empfangen kann.',
     'notifications.diagnostics.refresh': 'Aktualisieren',
     'notifications.diagnostics.enableWebPush': 'Web-Push aktivieren',
+    'notifications.diagnostics.sendTest': 'Test senden',
     'notifications.diagnostics.browser': 'Browser-Benachrichtigungen',
     'notifications.diagnostics.serviceWorker': 'Service Worker',
     'notifications.diagnostics.pushManager': 'Push API',
@@ -115,6 +116,13 @@ const de = {
     'notifications.diagnostics.permission.denied': 'Blockiert',
     'notifications.diagnostics.permission.default': 'Nicht angefragt',
     'notifications.diagnostics.permission.unsupported': 'Nicht unterstützt',
+    'notifications.diagnostics.deliveryLog.title': 'Letzte Zustellversuche',
+    'notifications.diagnostics.deliveryLog.empty': 'Es wurden noch keine Zustellversuche protokolliert.',
+    'notifications.diagnostics.deliveryLog.channel.email': 'E-Mail',
+    'notifications.diagnostics.deliveryLog.channel.fcm': 'Push',
+    'notifications.diagnostics.deliveryLog.status.sent': 'Gesendet',
+    'notifications.diagnostics.deliveryLog.status.failed': 'Fehlgeschlagen',
+    'notifications.diagnostics.deliveryLog.status.skipped': 'Übersprungen',
     'notifications.clearConfirm.title': 'Alle Benachrichtigungen löschen?',
     'notifications.clearConfirm.message': 'Diese Aktion kann nicht rückgängig gemacht werden. Alle Benachrichtigungen werden dauerhaft gelöscht.',
     'notifications.clearConfirm.cancel': 'Abbrechen',
@@ -128,6 +136,8 @@ const de = {
     'notifications.toast.clearError': 'Benachrichtigungen konnten nicht gelöscht werden',
     'notifications.toast.webPushEnabled': 'Web-Push-Benachrichtigungen sind für diesen Browser aktiviert.',
     'notifications.toast.webPushError': 'Web-Push-Einrichtung fehlgeschlagen: {error}',
+    'notifications.toast.testQueued': 'Testbenachrichtigung wurde angestoßen. {count} Push-Token für dein Konto gefunden.',
+    'notifications.toast.testError': 'Testbenachrichtigung fehlgeschlagen: {error}',
 
 
 

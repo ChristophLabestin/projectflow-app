@@ -5,7 +5,7 @@ import { newsletterSubscribe, newsletterUnsubscribe, api } from './newsletter';
 
 import { createBlogPost, getBlogPosts, onBlogPostWrite } from './blog';
 import { getCategories, manageCategories } from './categories';
-import { onNotificationCreated } from './notifications';
+import { onNotificationCreated, sendTestNotification } from './notifications';
 import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
@@ -103,6 +103,7 @@ export {
     getCategories,
     manageCategories,
     onNotificationCreated,
+    sendTestNotification,
     sendInvitation,
     requestWaitlist,
     confirmWaitlist,

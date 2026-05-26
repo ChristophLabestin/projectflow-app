@@ -223,7 +223,7 @@ These are outside the Social module shell in the old routing.
 - [x] Tasks CRUD (project-scoped)
 - [x] Flows CRUD (project-scoped)
 - [x] Issues CRUD (project-scoped)
-- [x] Notifications list + push registration, delivery diagnostics, badge count, and linked item deep links
+- [x] Notifications list + push registration, self-test delivery diagnostics, badge count, and linked item deep links
 - [x] Pinned project + pinned tasks/issue support
 - [x] Settings (sign out, basic account state)
 

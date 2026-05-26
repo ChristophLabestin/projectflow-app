@@ -173,6 +173,14 @@ This pass intentionally implements a narrow end-to-end slice:
 - Confirmed local `web/.env.local` does not currently include `VITE_FIREBASE_VAPID_KEY`; web push token registration remains externally blocked until that public Firebase Web Push certificate key is provided in the build environment.
 - Release-profile APNs production status remains externally blocked until a signed distribution `.app` can be inspected with `scripts/check-retention-provisioning.sh --signed-app`.
 
+## Phase 7 Test Notification Diagnostics
+
+- Added callable `sendTestNotification` to create a self-addressed `diagnostic_test` notification through the same tenant notification collection and downstream delivery trigger.
+- Added per-user diagnostic throttle state under `tenants/{tenantId}/notificationDiagnostics/{userId}` so the test action cannot be spammed.
+- Added a Send test action to `/notifications` delivery diagnostics.
+- Added a recent delivery attempts feed on `/notifications` backed by `notificationDeliveryLogs` so FCM/email sent, skipped, and failed states are visible in the app.
+- Extended the notification type model, locales, styles, Firestore docs, production checklist, and component/sitemap docs for the diagnostic path.
+
 ## Deferred Items
 
 Deferred because they require external console/provisioning access or a signed release artifact:
@@ -204,6 +212,15 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 6: `scripts/check-retention-provisioning.sh` passed with expected external provisioning warnings for missing local VAPID key and absent signed `.app` artifact.
 - [x] Phase 6: `cd web && npm run build`
 - [x] Phase 6: `git diff --check`
+- [x] Phase 7: `cd functions && npm run build`
+- [x] Phase 7: `cd web && npm run build`
+- [x] Phase 7: `cd web && npm run lint:theme`
+- [x] Phase 7: `firebase deploy --only functions:sendTestNotification,functions:onNotificationCreated --project project-manager-9d0ad --non-interactive`
+- [x] Phase 7: `firebase deploy --only hosting --project project-manager-9d0ad --non-interactive`
+- [x] Phase 7: `curl -i -X POST https://europe-west3-project-manager-9d0ad.cloudfunctions.net/sendTestNotification` returned JSON HTTP 401 for missing auth.
+- [x] Phase 7: `curl -I https://project-manager-9d0ad.web.app/notifications` returned HTTP 200.
+- [x] Phase 7: Playwright smoke at `http://127.0.0.1:3004/notifications`: protected route redirected to `/login`; no page errors. Existing Tailwind CDN warning remains documented in `SITEMAP.md`.
+- [x] Phase 7: `git diff --check`
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
@@ -218,3 +235,5 @@ Phase 4 task sync started successfully on 2026-05-26 by reusing task `kCvs5jcVE7
 Phase 5 production rollout task `SLzYFAwq5uOF2Lzr5aUT` was created on 2026-05-26 and moved to In Progress before deployment.
 
 Phase 6 production provisioning readiness task `j1lLmvFhPKf6TUYUXGLC` was created on 2026-05-26 and moved to In Progress before adding the readiness checker and provisioning docs.
+
+Phase 7 test notification diagnostics task `lmwbiojy4nXONLYQoiG7` was created on 2026-05-26 and moved to In Progress before adding the self-test callable and delivery-log UI.

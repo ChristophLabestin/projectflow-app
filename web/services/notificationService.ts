@@ -13,7 +13,8 @@ import {
     setDoc,
     arrayUnion
 } from 'firebase/firestore';
-import { db, auth, app, firebaseConfig } from './firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, auth, app, firebaseConfig, functions as cloudFunctions } from './firebase';
 import type { Notification, NotificationType } from '../types';
 
 export interface WebNotificationDiagnostics {
@@ -26,6 +27,24 @@ export interface WebNotificationDiagnostics {
     tokenRegistered: boolean;
     lastTokenSyncAt?: string;
     lastTokenError?: string;
+}
+
+export interface NotificationDeliveryLog {
+    id: string;
+    notificationId: string;
+    userId: string;
+    channel: 'email' | 'fcm';
+    status: 'sent' | 'failed' | 'skipped';
+    reason: string;
+    details?: Record<string, unknown>;
+    createdAt?: any;
+}
+
+export interface SendTestNotificationResult {
+    success: boolean;
+    tenantId: string;
+    notificationId: string;
+    fcmTokenCount: number;
 }
 
 const WEB_PUSH_TOKEN_SYNC_KEY = 'projectflow.webPush.lastTokenSyncAt';
@@ -154,6 +173,22 @@ const getNotificationsCollection = (tenantId?: string) => {
     return collection(db, 'tenants', tid, 'notifications');
 };
 
+const getNotificationDeliveryLogsCollection = (tenantId?: string) => {
+    const tid = resolveTenantId(tenantId);
+    return collection(db, 'tenants', tid, 'notificationDeliveryLogs');
+};
+
+export const sendTestNotification = async (tenantId?: string): Promise<SendTestNotificationResult> => {
+    const user = auth.currentUser;
+    if (!user) {
+        throw new Error('No signed-in user.');
+    }
+
+    const callable = httpsCallable<{ tenantId: string }, SendTestNotificationResult>(cloudFunctions, 'sendTestNotification');
+    const result = await callable({ tenantId: resolveTenantId(tenantId) });
+    return result.data;
+};
+
 /**
  * Create a new notification
  */
@@ -239,6 +274,40 @@ export const subscribeToNotifications = (
     } catch (error) {
         console.error("Failed to subscribe to notifications:", error);
         // Return a dummy unsubscribe
+        return () => { };
+    }
+};
+
+export const subscribeToNotificationDeliveryLogs = (
+    userId: string,
+    callback: (logs: NotificationDeliveryLog[]) => void,
+    tenantId?: string
+) => {
+    try {
+        const q = query(
+            getNotificationDeliveryLogsCollection(tenantId),
+            where('userId', '==', userId)
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const logs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as NotificationDeliveryLog[];
+
+            logs.sort((a, b) => {
+                const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+                const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+                return timeB - timeA;
+            });
+
+            callback(logs.slice(0, 8));
+        }, (error) => {
+            console.error('Error subscribing to notification delivery logs:', error);
+            callback([]);
+        });
+    } catch (error) {
+        console.error('Failed to subscribe to notification delivery logs:', error);
         return () => { };
     }
 };

@@ -8,9 +8,11 @@ import {
     deleteNotification,
     deleteAllNotifications,
     getWebNotificationDiagnostics,
-    registerWebPushToken
+    registerWebPushToken,
+    sendTestNotification,
+    subscribeToNotificationDeliveryLogs
 } from '../services/notificationService';
-import type { WebNotificationDiagnostics } from '../services/notificationService';
+import type { NotificationDeliveryLog, WebNotificationDiagnostics } from '../services/notificationService';
 import { respondToJoinRequest } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
@@ -28,6 +30,8 @@ export const Notifications = () => {
     const [diagnostics, setDiagnostics] = useState<WebNotificationDiagnostics | null>(null);
     const [diagnosticsLoading, setDiagnosticsLoading] = useState(true);
     const [registeringPush, setRegisteringPush] = useState(false);
+    const [sendingTest, setSendingTest] = useState(false);
+    const [deliveryLogs, setDeliveryLogs] = useState<NotificationDeliveryLog[]>([]);
     const navigate = useNavigate();
     const { showToast } = useToast();
     const { t, dateFormat, dateLocale } = useLanguage();
@@ -65,6 +69,15 @@ export const Notifications = () => {
         void loadDiagnostics();
     }, [loadDiagnostics]);
 
+    useEffect(() => {
+        if (!user) {
+            setDeliveryLogs([]);
+            return;
+        }
+
+        return subscribeToNotificationDeliveryLogs(user.uid, setDeliveryLogs);
+    }, [user]);
+
     const handleRegisterWebPush = async () => {
         setRegisteringPush(true);
         try {
@@ -77,6 +90,23 @@ export const Notifications = () => {
             await loadDiagnostics();
         } finally {
             setRegisteringPush(false);
+        }
+    };
+
+    const handleSendTestNotification = async () => {
+        setSendingTest(true);
+        try {
+            const result = await sendTestNotification();
+            showToast(
+                t('notifications.toast.testQueued').replace('{count}', String(result.fcmTokenCount)),
+                'success'
+            );
+            await loadDiagnostics();
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
+            showToast(t('notifications.toast.testError').replace('{error}', errorMessage), 'error');
+        } finally {
+            setSendingTest(false);
         }
     };
 
@@ -171,6 +201,30 @@ export const Notifications = () => {
         </span>
     );
 
+    const getDeliveryChannelLabel = (channel: NotificationDeliveryLog['channel']) => {
+        switch (channel) {
+            case 'email':
+                return t('notifications.diagnostics.deliveryLog.channel.email');
+            case 'fcm':
+                return t('notifications.diagnostics.deliveryLog.channel.fcm');
+            default:
+                return channel;
+        }
+    };
+
+    const getDeliveryStatusLabel = (status: NotificationDeliveryLog['status']) => {
+        switch (status) {
+            case 'sent':
+                return t('notifications.diagnostics.deliveryLog.status.sent');
+            case 'failed':
+                return t('notifications.diagnostics.deliveryLog.status.failed');
+            case 'skipped':
+                return t('notifications.diagnostics.deliveryLog.status.skipped');
+            default:
+                return status;
+        }
+    };
+
     const handleJoinResponse = async (e: React.MouseEvent, notification: Notification, accept: boolean) => {
         e.stopPropagation();
         if (!notification.projectId || !notification.actorId) return;
@@ -260,7 +314,7 @@ export const Notifications = () => {
                             <Button
                                 variant="secondary"
                                 onClick={loadDiagnostics}
-                                disabled={diagnosticsLoading || registeringPush}
+                                disabled={diagnosticsLoading || registeringPush || sendingTest}
                                 className="notifications-action"
                             >
                                 <span className="material-symbols-outlined notifications-action__icon">refresh</span>
@@ -270,11 +324,21 @@ export const Notifications = () => {
                                 variant="primary"
                                 onClick={handleRegisterWebPush}
                                 loading={registeringPush}
-                                disabled={registeringPush}
+                                disabled={registeringPush || sendingTest}
                                 className="notifications-action"
                             >
                                 <span className="material-symbols-outlined notifications-action__icon">notifications_active</span>
                                 {t('notifications.diagnostics.enableWebPush')}
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                onClick={handleSendTestNotification}
+                                loading={sendingTest}
+                                disabled={sendingTest || registeringPush}
+                                className="notifications-action"
+                            >
+                                <span className="material-symbols-outlined notifications-action__icon">send</span>
+                                {t('notifications.diagnostics.sendTest')}
                             </Button>
                         </div>
                     </div>
@@ -319,6 +383,33 @@ export const Notifications = () => {
                             {t('notifications.diagnostics.lastError').replace('{error}', diagnostics.lastTokenError)}
                         </p>
                     )}
+
+                    <div className="notifications-delivery-log">
+                        <div className="notifications-delivery-log__header">
+                            <h3>{t('notifications.diagnostics.deliveryLog.title')}</h3>
+                            <span>{deliveryLogs.length}</span>
+                        </div>
+                        {deliveryLogs.length === 0 ? (
+                            <p className="notifications-delivery-log__empty">
+                                {t('notifications.diagnostics.deliveryLog.empty')}
+                            </p>
+                        ) : (
+                            <div className="notifications-delivery-log__list">
+                                {deliveryLogs.map((log) => (
+                                    <div className="notifications-delivery-log__item" key={log.id}>
+                                        <div className="notifications-delivery-log__meta">
+                                            <span className={`notifications-delivery-log__status is-${log.status}`}>
+                                                {getDeliveryStatusLabel(log.status)}
+                                            </span>
+                                            <strong>{getDeliveryChannelLabel(log.channel)}</strong>
+                                            <span>{formatTime(log.createdAt)}</span>
+                                        </div>
+                                        <p>{log.reason}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </Card>
 

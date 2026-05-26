@@ -51,6 +51,7 @@ Rules:
 | `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior |
 | `Breadcrumbs` | Context path | Project/module navigation | Optional on smaller screens |
 | `PinnedTasksModal` | Quick-access focus workspace | Top bar focus pill, dashboard resume action, pinned task shortcut | Uses persisted `focusState` with start, snooze, block, and complete controls. |
+| `Notifications` diagnostics card | Notification delivery verification | `/notifications` delivery health panel | Registers web push, sends a self-test notification, and shows recent `notificationDeliveryLogs`. |
 | `Tabs` | Section switching | Settings, modal tabs | Keyboard-accessible |
 | `DropdownMenu` | Menus | Action menus, user menu | |
 | `CommandPalette` (optional) | Quick navigation/actions | Power user flows | |

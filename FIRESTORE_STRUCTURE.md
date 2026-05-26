@@ -104,6 +104,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorId`: string (Optional)
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
+- `diagnostic`: Object (Optional, present for `diagnostic_test` notifications)
 - Mobile push data includes `title`, `message`, route ids, and APNs category `PROJECTFLOW_NOTIFICATION` so the iOS app can expose action buttons.
 
 #### ↳ 📂 **`notificationDeliveryLogs`**
@@ -116,6 +117,15 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `reason`: string
 - `details`: Object (attempt counts, invalid token counts, or error details)
 - `createdAt`: Timestamp
+
+#### ↳ 📂 **`notificationDiagnostics`**
+**Path:** `/tenants/{tenantId}/notificationDiagnostics/{userId}`
+**Schema:** Per-user diagnostic throttle and state written by the `sendTestNotification` callable.
+- `userId`: string
+- `tenantId`: string
+- `lastTestNotificationAt`: Timestamp
+- `lastTokenCount`: number
+- `updatedAt`: Timestamp
 
 #### ↳ 📂 **`secrets`** *(Functions-only, never client-readable)*
 **Path:** `/tenants/{tenantId}/secrets/{secretId}`

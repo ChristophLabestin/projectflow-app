@@ -950,7 +950,8 @@ export type NotificationType =
     | 'subtask_assigned'
     | 'project_join_request'
     | 'project_join_request_accepted'
-    | 'project_join_request_denied';
+    | 'project_join_request_denied'
+    | 'diagnostic_test';
 
 export interface Notification {
     id: string;

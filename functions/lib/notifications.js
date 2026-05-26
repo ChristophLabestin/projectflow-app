@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.onNotificationCreated = void 0;
+exports.onNotificationCreated = exports.sendTestNotification = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const email_1 = require("./email");
@@ -59,6 +59,24 @@ const logDelivery = async (tenantId, notificationId, userId, channel, status, re
         details,
         createdAt: admin.firestore.FieldValue.serverTimestamp()
     });
+};
+const requireTenantAccess = async (tenantId, context) => {
+    var _a;
+    const uid = (_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid;
+    if (!uid) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in before testing notifications.');
+    }
+    if (!tenantId) {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
+    }
+    if (uid === tenantId) {
+        return uid;
+    }
+    const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
+    if (!membership.exists) {
+        throw new functions.https.HttpsError('permission-denied', 'You do not have access to this workspace.');
+    }
+    return uid;
 };
 const removeInvalidTokens = async (userId, tokens) => {
     if (tokens.length === 0) {
@@ -143,6 +161,56 @@ const sendPushNotification = async (tenantId, notificationId, notification, user
         await logDelivery(tenantId, notificationId, userId, 'fcm', 'failed', (error === null || error === void 0 ? void 0 : error.message) || 'FCM send failed.');
     }
 };
+exports.sendTestNotification = functions.region(REGION).https.onCall(async (data, context) => {
+    var _a, _b;
+    const tenantId = getString(data === null || data === void 0 ? void 0 : data.tenantId, ((_a = context.auth) === null || _a === void 0 ? void 0 : _a.uid) || '');
+    const userId = await requireTenantAccess(tenantId, context);
+    const stateRef = db.collection('tenants').doc(tenantId).collection('notificationDiagnostics').doc(userId);
+    const notificationRef = db.collection('tenants').doc(tenantId).collection('notifications').doc();
+    const now = Date.now();
+    const userDoc = await db.collection('users').doc(userId).get();
+    const fcmTokens = (_b = userDoc.data()) === null || _b === void 0 ? void 0 : _b.fcmTokens;
+    const tokenCount = Array.isArray(fcmTokens)
+        ? Array.from(new Set(fcmTokens.filter((token) => typeof token === 'string' && token.trim().length > 0))).length
+        : 0;
+    await db.runTransaction(async (transaction) => {
+        var _a;
+        const stateSnap = await transaction.get(stateRef);
+        const lastTestAt = (_a = stateSnap.data()) === null || _a === void 0 ? void 0 : _a.lastTestNotificationAt;
+        const lastTestMillis = typeof (lastTestAt === null || lastTestAt === void 0 ? void 0 : lastTestAt.toMillis) === 'function' ? lastTestAt.toMillis() : 0;
+        if (lastTestMillis && now - lastTestMillis < 30000) {
+            throw new functions.https.HttpsError('resource-exhausted', 'Wait a moment before sending another test notification.');
+        }
+        transaction.set(stateRef, {
+            userId,
+            tenantId,
+            lastTestNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastTokenCount: tokenCount,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+        transaction.set(notificationRef, {
+            userId,
+            tenantId,
+            type: 'diagnostic_test',
+            title: 'ProjectFlow test notification',
+            message: 'If this appears in ProjectFlow and on your device, notification delivery is working for this account.',
+            read: false,
+            actorId: userId,
+            actorName: 'ProjectFlow Diagnostics',
+            diagnostic: {
+                requestedBy: userId,
+                tokenCount
+            },
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+    });
+    return {
+        success: true,
+        tenantId,
+        notificationId: notificationRef.id,
+        fcmTokenCount: tokenCount
+    };
+});
 exports.onNotificationCreated = functions.region(REGION).firestore
     .document('tenants/{tenantId}/notifications/{notificationId}')
     .onCreate(async (snapshot, context) => {

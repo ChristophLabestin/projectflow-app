@@ -70,6 +70,6 @@ The source entitlement file currently declares `aps-environment` as `development
 - `scripts/check-retention-provisioning.sh` reports only expected external warnings during development.
 - `scripts/check-retention-provisioning.sh --strict --signed-app /path/to/projectflow.app` passes for the signed release build.
 - `/notifications` diagnostics in production show browser support, permission granted, VAPID configured, Firebase Messaging supported, and token registered.
-- A production notification document creates a `notificationDeliveryLogs` record with an FCM success for the target user.
+- The `/notifications` Send test action creates a `diagnostic_test` notification and recent delivery logs show the FCM/email outcome.
 - A production iOS push opens the notification/action surface and exposes the ProjectFlow notification actions.
 - A Focus Keeper widget and Live Activity can read the current App Group focus snapshot on a TestFlight or App Store signed build.

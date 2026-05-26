@@ -98,6 +98,7 @@ const en = {
     'notifications.diagnostics.subtitle': 'Check whether this browser can receive ProjectFlow push notifications.',
     'notifications.diagnostics.refresh': 'Refresh',
     'notifications.diagnostics.enableWebPush': 'Enable web push',
+    'notifications.diagnostics.sendTest': 'Send test',
     'notifications.diagnostics.browser': 'Browser notifications',
     'notifications.diagnostics.serviceWorker': 'Service worker',
     'notifications.diagnostics.pushManager': 'Push API',
@@ -115,6 +116,13 @@ const en = {
     'notifications.diagnostics.permission.denied': 'Denied',
     'notifications.diagnostics.permission.default': 'Not requested',
     'notifications.diagnostics.permission.unsupported': 'Unsupported',
+    'notifications.diagnostics.deliveryLog.title': 'Recent delivery attempts',
+    'notifications.diagnostics.deliveryLog.empty': 'No delivery attempts have been logged yet.',
+    'notifications.diagnostics.deliveryLog.channel.email': 'Email',
+    'notifications.diagnostics.deliveryLog.channel.fcm': 'Push',
+    'notifications.diagnostics.deliveryLog.status.sent': 'Sent',
+    'notifications.diagnostics.deliveryLog.status.failed': 'Failed',
+    'notifications.diagnostics.deliveryLog.status.skipped': 'Skipped',
     'notifications.clearConfirm.title': 'Clear all notifications?',
     'notifications.clearConfirm.message': 'This action cannot be undone. All your notifications will be permanently deleted.',
     'notifications.clearConfirm.cancel': 'Cancel',
@@ -128,6 +136,8 @@ const en = {
     'notifications.toast.clearError': 'Failed to clear notifications',
     'notifications.toast.webPushEnabled': 'Web push notifications are enabled for this browser.',
     'notifications.toast.webPushError': 'Web push setup failed: {error}',
+    'notifications.toast.testQueued': 'Test notification queued. {count} push token(s) found for your account.',
+    'notifications.toast.testError': 'Test notification failed: {error}',
 
 
 
