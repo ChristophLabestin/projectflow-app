@@ -1,4 +1,4 @@
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import * as nodemailer from 'nodemailer';
 import { db } from './init';
 const REGION = 'europe-west3'; // Frankfurt

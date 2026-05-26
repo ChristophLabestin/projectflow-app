@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.submitInitiativeFeedback = exports.getInitiativeFeedbackForm = exports.saveInitiativeFeedbackConfig = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const corsConfig_1 = require("./corsConfig");
 const init_1 = require("./init");
 const REGION = 'europe-west3';

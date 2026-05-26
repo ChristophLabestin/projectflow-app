@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const init_1 = require("./init");

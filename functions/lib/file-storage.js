@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.googleDriveStorageCallback = exports.deleteTenantFile = exports.getTenantFirebaseStorageDownloadUrl = exports.getTenantFileDownloadUrl = exports.listTenantFiles = exports.finalizeTenantFileUpload = exports.createTenantFileUploadSession = exports.disconnectGoogleDriveStorage = exports.getGoogleDriveStorageAuthUrl = exports.testWorkspaceFileStorageConnection = exports.saveWorkspaceFileStorageConfig = exports.getWorkspaceFileStorageConfig = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const google_auth_library_1 = require("google-auth-library");
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");

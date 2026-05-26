@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyPasskeyAuthentication = exports.generatePasskeyAuthenticationOptions = exports.verifyPasskeyRegistration = exports.generatePasskeyRegistrationOptions = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const server_1 = require("@simplewebauthn/server");
 const init_1 = require("./init");

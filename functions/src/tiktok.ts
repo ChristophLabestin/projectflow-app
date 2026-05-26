@@ -1,5 +1,5 @@
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import { db } from './init';
 
 const CLIENT_KEY = 'sbaw900ci7fk07ygnz';

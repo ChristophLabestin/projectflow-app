@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeFinanceAuditLog = exports.assertPeriodWritable = exports.requireFinancePermission = exports.buildIdempotencyKey = exports.tenantCollectionRef = exports.tenantDocRef = exports.normalizeCurrencyCode = exports.toPeriodKey = exports.toNonNegative = exports.toNumber = exports.normalizeString = exports.serverTimestamp = exports.FINANCE_COLLECTIONS = exports.REGION = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const init_1 = require("../init");
 exports.REGION = 'europe-west3';
 exports.FINANCE_COLLECTIONS = {

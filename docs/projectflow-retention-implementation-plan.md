@@ -210,13 +210,24 @@ This pass intentionally implements a narrow end-to-end slice:
 - Strict signed-app inspection confirmed the signed app includes the shared App Group, but `aps-environment` is `development`, not `production`.
 - Marked VAPID and APNs provisioning tasks as blocked with the exact external prerequisites.
 
+## Phase 11 Firebase Functions SDK Upgrade
+
+- Upgraded `firebase-functions` to `7.2.5` and `firebase-functions-test` to `3.5.0`.
+- Converted first-gen function modules from the package root import to `firebase-functions/v1` so existing `functions.region(...)`, HTTPS callable, HTTPS request, and Firestore trigger exports keep their current runtime shape.
+- Kept scheduled functions on the existing `firebase-functions/v2` imports.
+- Rebuilt `functions/lib` from the upgraded TypeScript sources.
+- Verified `cd functions && npm run build` passes.
+- Verified `cd functions && npm list firebase-functions firebase-functions-test --depth=0` reports `firebase-functions@7.2.5` and `firebase-functions-test@3.5.0`.
+- Verified `cd functions && npm outdated firebase-functions firebase-functions-test --json` returns an empty object.
+- Deployed all 108 currently deployed functions to `project-manager-9d0ad` in batches of 15 or fewer; each batch completed without the old outdated-SDK warning.
+- Closed ProjectFlow follow-up task `IumAQAnwI3iph8Ps2gnN`.
+
 ## Deferred Items
 
 Deferred because they require external console/provisioning access or a signed release artifact:
 
 - Add `VITE_FIREBASE_VAPID_KEY` to local/production web build environments and redeploy hosting. ProjectFlow task: `u7rRtb9TrHuLWxHKgYhl`.
 - Enable/verify Apple Developer production Push capability and Firebase APNs credentials, archive with an Apple Distribution profile, then run the signed `.app` entitlement check until `aps-environment=production`. ProjectFlow task: `YYawDDhIJguHIFkKqrZD`.
-- Upgrade `firebase-functions` in a deliberate compatibility pass; deploys still warn that the SDK is outdated even though the legacy Runtime Config blocker is resolved. ProjectFlow task: `IumAQAnwI3iph8Ps2gnN`.
 
 ## Validation Plan
 
@@ -245,6 +256,10 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 10: `scripts/check-retention-provisioning.sh`
 - [x] Phase 10: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -configuration Release -destination 'generic/platform=iOS' -archivePath .xcodebuild-release/projectflow.xcarchive -derivedDataPath .xcodebuild-release -allowProvisioningUpdates archive`
 - [x] Phase 10: `scripts/check-retention-provisioning.sh --strict --signed-app .xcodebuild-release/projectflow.xcarchive/Products/Applications/projectflow.app` failed as expected because the archive was development-signed and reported `aps-environment=development`.
+- [x] Phase 11: `cd functions && npm run build`
+- [x] Phase 11: `cd functions && npm list firebase-functions firebase-functions-test --depth=0`
+- [x] Phase 11: `cd functions && npm outdated firebase-functions firebase-functions-test --json`
+- [x] Phase 11: deployed all currently deployed functions to `project-manager-9d0ad` in eight targeted batches.
 - [x] Phase 5: `firebase deploy --only functions:api --project project-manager-9d0ad`
 - [x] Phase 5: `firebase deploy --only hosting --project project-manager-9d0ad`
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.facebookCallback = exports.getFacebookAuthUrl = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const init_1 = require("./init");
 const getFunctionUrl = (name) => {
     const projectId = process.env.GCLOUD_PROJECT || 'project-manager-9d0ad';

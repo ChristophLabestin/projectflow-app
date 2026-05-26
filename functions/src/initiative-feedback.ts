@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 
 import { corsMiddleware } from './corsConfig';
 import { db } from './init';

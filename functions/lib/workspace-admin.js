@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchWorkspaceFinancialUsage = exports.saveWorkspaceFinancialConfig = exports.getWorkspaceFinancialConfig = exports.deleteWorkspaceApiToken = exports.createWorkspaceApiToken = exports.listWorkspaceApiTokens = exports.saveWorkspaceSmtpConfig = exports.getWorkspaceSmtpConfig = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
 const REGION = 'europe-west3';

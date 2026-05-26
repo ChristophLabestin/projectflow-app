@@ -1,5 +1,5 @@
 
-import * as functions from 'firebase-functions';
+import * as functions from 'firebase-functions/v1';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './init';
 

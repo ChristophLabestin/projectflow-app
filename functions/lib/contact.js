@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendContactFormEmail = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const email_1 = require("./email");
 const corsConfig_1 = require("./corsConfig");
 const REGION = 'europe-west3';

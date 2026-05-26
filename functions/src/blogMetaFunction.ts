@@ -11,7 +11,7 @@
  * 4. Update your firebase.json hosting rewrites (see instructions below)
  */
 
-import * as functions from "firebase-functions";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import * as fs from "fs";
 import * as path from "path";

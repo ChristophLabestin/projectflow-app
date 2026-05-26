@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const openai_1 = require("openai");
 const init_1 = require("./init");

@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.tiktokCallback = exports.getTikTokAuthUrl = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const init_1 = require("./init");
 const CLIENT_KEY = 'sbaw900ci7fk07ygnz';
 const CLIENT_SECRET = 'shqFCCdjvbIgkeSPxBP0ZhKLtaDEOChJ';

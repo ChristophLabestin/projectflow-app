@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.youtubeCallback = exports.getYouTubeAuthUrl = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const google_auth_library_1 = require("google-auth-library");
 const init_1 = require("./init");
 // TODO: User to provide these

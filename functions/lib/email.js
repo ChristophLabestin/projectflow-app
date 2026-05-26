@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getSystemEmailTemplate = exports.sendEmail = exports.testSMTPConnection = void 0;
-const functions = require("firebase-functions");
+const functions = require("firebase-functions/v1");
 const nodemailer = require("nodemailer");
 const init_1 = require("./init");
 const REGION = 'europe-west3'; // Frankfurt
