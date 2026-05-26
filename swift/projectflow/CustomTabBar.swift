@@ -10,44 +10,50 @@ struct CustomTabBar: View {
     ]
 
     var body: some View {
-        HStack(spacing: 0) {
+        HStack(spacing: 4) {
             ForEach(tabs, id: \.self) { tab in
                 Button {
                     withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                         selection = tab
                     }
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Image(systemName: iconName(for: tab))
-                            .font(.system(size: 20, weight: selection == tab ? .bold : .medium))
+                            .font(.system(size: 17, weight: selection == tab ? .semibold : .medium))
                             .symbolVariant(selection == tab ? .fill : .none)
                             
                         Text(title(for: tab))
-                            .font(.system(size: 10, weight: selection == tab ? .semibold : .medium))
+                            .font(.system(size: 9, weight: selection == tab ? .semibold : .medium))
                     }
                     .foregroundColor(selection == tab ? colors.primary : colors.textMuted)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .frame(height: 44)
+                    .background(selection == tab ? colors.primaryFade : Color.clear)
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
                     .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.bottom, 20) // Internal padding for content
+        .padding(.horizontal, PFSpacing.sm)
+        .padding(.vertical, 4)
         .background(
             ZStack {
-                // Glassmorphism background
                 if colorScheme == .dark {
-                    Color.black.opacity(0.8)
+                    Color.black.opacity(0.76)
                 } else {
-                    Color.white.opacity(0.9)
+                    Color.white.opacity(0.92)
                 }
             }
             .background(.ultraThinMaterial)
-            .shadow(color: Color.black.opacity(0.1), radius: 10, x: 0, y: -5)
+            .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: -3)
+            .ignoresSafeArea(edges: .bottom)
         )
-        // Ensure it ignores safe area bottom so the background extends fully
-        .ignoresSafeArea(edges: .bottom)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(colors.surfaceBorder)
+                .frame(height: 0.5)
+        }
     }
 
     private func iconName(for tab: MainTab) -> String {
@@ -55,7 +61,7 @@ struct CustomTabBar: View {
         case .dashboard: return "rectangle.grid.2x2"
         case .projects: return "square.stack.3d.down.forward"
         case .tasks: return "checklist"
-        case .flows: return "sparkles"
+        case .flows: return "point.3.connected.trianglepath.dotted"
         case .issues: return "exclamationmark.bubble"
         case .notifications: return "bell"
         case .settings: return "gearshape"

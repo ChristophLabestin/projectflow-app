@@ -103,7 +103,7 @@ struct DashboardView: View {
             highlightsSection
             recentSection
         }
-        .padding(PFSpacing.lg)
+        .pfScreenPadding()
     }
 
     private var heroCard: some View {

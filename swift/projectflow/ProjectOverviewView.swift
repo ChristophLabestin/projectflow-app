@@ -54,8 +54,8 @@ struct ProjectOverviewView: View {
                     CoverImageHeader(project: project, coverImageURL: store.coverImageURL)
                     
                     content
-                        .padding(PFSpacing.lg)
-                        .padding(.bottom, 100) // Extra padding for scrolling
+                        .pfScreenPadding()
+                        .padding(.bottom, PFSpacing.xl)
                 }
             }
             .edgesIgnoringSafeArea(.top)
@@ -313,7 +313,7 @@ struct CoverImageHeader: View {
                     }
                     .padding(.bottom, 6)
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
                 .offset(y: 32) 
             }
             .zIndex(1)

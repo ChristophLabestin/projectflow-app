@@ -60,7 +60,7 @@ struct NotificationsView: View {
                             }
                         }
                     }
-                    .padding(PFSpacing.lg)
+                    .pfScreenPadding()
                 }
             }
             .navigationTitle("Notifications")

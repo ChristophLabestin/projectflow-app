@@ -57,7 +57,7 @@ struct ProjectTaskDetailView: View {
                         .padding(.top, PFSpacing.lg)
                     }
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
             }
         }
         .navigationTitle("Task Details")

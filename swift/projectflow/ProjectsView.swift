@@ -180,7 +180,7 @@ struct ProjectsView: View {
                 healthHighlightsSection
                 listSection
             }
-            .padding(PFSpacing.lg)
+            .pfScreenPadding()
             .frame(maxWidth: .infinity, alignment: .leading)
         )
     }

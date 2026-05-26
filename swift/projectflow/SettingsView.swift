@@ -196,7 +196,7 @@ struct SettingsView: View {
                         PFPrimaryButton(title: "Sign Out", action: { session.signOut() })
                             .padding(.top, PFSpacing.lg)
                     }
-                    .padding(PFSpacing.lg)
+                    .pfScreenPadding()
                 }
             }
         .navigationBarTitleDisplayMode(.inline)

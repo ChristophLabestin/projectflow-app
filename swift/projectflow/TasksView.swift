@@ -258,7 +258,7 @@ struct TasksView: View {
             errorSection
             listSection
         }
-        .padding(PFSpacing.lg)
+        .pfScreenPadding()
     }
 
     @ViewBuilder
@@ -652,7 +652,7 @@ struct TaskBoardView: View {
                     .background(colors.surfaceHover)
                     .clipShape(Capsule())
             }
-            .padding(.horizontal, PFSpacing.lg)
+            .pfScreenHorizontalPadding()
             .padding(.top, PFSpacing.md)
             
             ScrollView {
@@ -675,7 +675,7 @@ struct TaskBoardView: View {
                         }
                     }
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
             }
         }
     }

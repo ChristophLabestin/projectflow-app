@@ -54,7 +54,7 @@ struct FlowDetailView: View {
                         advanceButton
                     }
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
             }
         }
         .navigationTitle("Flow Details")

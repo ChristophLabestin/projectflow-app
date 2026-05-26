@@ -132,7 +132,7 @@ struct IssuesView: View {
             errorSection
             listSection
         }
-        .padding(PFSpacing.lg)
+        .pfScreenPadding()
     }
     
     private var headerStatsSection: some View {

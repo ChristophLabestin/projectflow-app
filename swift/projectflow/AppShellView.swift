@@ -46,42 +46,39 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            TabView(selection: $selection) {
-                DashboardView(selectedTab: $selection)
-                    .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
-                    .tag(MainTab.dashboard)
+        TabView(selection: $selection) {
+            DashboardView(selectedTab: $selection)
+                .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
+                .tag(MainTab.dashboard)
 
-                ProjectsView()
-                    .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
-                    .tag(MainTab.projects)
+            ProjectsView()
+                .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
+                .tag(MainTab.projects)
 
-                TasksView()
-                    .tabItem { Label("Tasks", systemImage: "checklist") }
-                    .tag(MainTab.tasks)
+            TasksView()
+                .tabItem { Label("Tasks", systemImage: "checklist") }
+                .tag(MainTab.tasks)
 
-                FlowsView()
-                    .tabItem { Label("Flows", systemImage: "sparkles") }
-                    .tag(MainTab.flows)
+            FlowsView()
+                .tabItem { Label("Flows", systemImage: "point.3.connected.trianglepath.dotted") }
+                .tag(MainTab.flows)
 
-                IssuesView()
-                    .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
-                    .tag(MainTab.issues)
+            IssuesView()
+                .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
+                .tag(MainTab.issues)
 
-                NotificationsView()
-                    .tabItem { Label("Notifications", systemImage: "bell") }
-                    .tag(MainTab.notifications)
+            NotificationsView()
+                .tabItem { Label("Notifications", systemImage: "bell") }
+                .tag(MainTab.notifications)
 
-                SettingsView()
-                    .tabItem { Label("Settings", systemImage: "gearshape") }
-                    .tag(MainTab.settings)
-            }
-            .toolbar(.hidden, for: .tabBar)
-            .padding(.bottom, 100)
-
+            SettingsView()
+                .tabItem { Label("Settings", systemImage: "gearshape") }
+                .tag(MainTab.settings)
+        }
+        .toolbar(.hidden, for: .tabBar)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             CustomTabBar(selection: $selection)
         }
-        .ignoresSafeArea(edges: .bottom)
         .onAppear {
             consumePendingNotificationDeepLink()
             ShareCaptureImportService.shared.importPendingCaptures()

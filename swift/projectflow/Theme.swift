@@ -82,6 +82,43 @@ enum PFSpacing {
     static let xl: CGFloat = 32
 }
 
+struct PFScreenPadding: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    var vertical: CGFloat = PFSpacing.lg
+
+    private var horizontal: CGFloat {
+        horizontalSizeClass == .compact ? PFSpacing.md : PFSpacing.lg
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .padding(.horizontal, horizontal)
+            .padding(.vertical, vertical)
+    }
+}
+
+struct PFScreenHorizontalPadding: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    private var horizontal: CGFloat {
+        horizontalSizeClass == .compact ? PFSpacing.md : PFSpacing.lg
+    }
+
+    func body(content: Content) -> some View {
+        content.padding(.horizontal, horizontal)
+    }
+}
+
+extension View {
+    func pfScreenPadding(vertical: CGFloat = PFSpacing.lg) -> some View {
+        modifier(PFScreenPadding(vertical: vertical))
+    }
+
+    func pfScreenHorizontalPadding() -> some View {
+        modifier(PFScreenHorizontalPadding())
+    }
+}
+
 enum PFRadius {
     static let sm: CGFloat = 6
     static let md: CGFloat = 10

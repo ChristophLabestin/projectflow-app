@@ -48,7 +48,7 @@ struct ProjectIssueDetailView: View {
                         .padding(.top, PFSpacing.lg)
                     }
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
             }
         }
         .navigationTitle("Issue Details")

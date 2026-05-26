@@ -227,7 +227,7 @@ struct FlowsView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.horizontal, PFSpacing.lg)
+            .pfScreenHorizontalPadding()
             .padding(.vertical, PFSpacing.md)
         }
         .background(colors.surfaceBg)
@@ -240,7 +240,7 @@ struct FlowsView: View {
             errorSection
             listSection
         }
-        .padding(PFSpacing.lg)
+        .pfScreenPadding()
     }
 
     @ViewBuilder
@@ -454,7 +454,7 @@ struct FlowBoardView: View {
                     .background(colors.surfaceHover)
                     .clipShape(Capsule())
             }
-            .padding(.horizontal, PFSpacing.lg)
+            .pfScreenHorizontalPadding()
             .padding(.top, PFSpacing.md)
             
             ScrollView {
@@ -480,7 +480,7 @@ struct FlowBoardView: View {
                         }
                     }
                 }
-                .padding(PFSpacing.lg)
+                .pfScreenPadding()
             }
         }
     }
