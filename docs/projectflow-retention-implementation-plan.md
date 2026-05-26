@@ -163,12 +163,22 @@ This pass intentionally implements a narrow end-to-end slice:
 - Created ProjectFlow follow-up task `fOa0q1dGYfexIdGCO25C` for `functions.config()` migration before March 2026.
 - Created ProjectFlow follow-up task `qJdKkyiHALJYNwyMxz8w` for the invalid `googleDriveStorageCallback` hosting rewrite.
 
+## Phase 6 Production Provisioning Readiness
+
+- Added `scripts/check-retention-provisioning.sh` to verify web push wiring, local VAPID configuration, iOS entitlement files, App Group membership, APNs entitlement presence, Xcode entitlement references, and optional signed `.app` release entitlements.
+- Added `web/.env.example` so Firebase web config and `VITE_FIREBASE_VAPID_KEY` are explicit without committing secrets.
+- Added `docs/projectflow-production-provisioning.md` with the concrete Firebase VAPID, Apple App Group, APNs, Firebase APNs, and signed-release verification checklist.
+- Verified the repo-side App Group entitlement is present for the main app, ambient extension, and share extension.
+- Verified the main app declares APNs entitlement locally, with the expected development value in the source entitlements file.
+- Confirmed local `web/.env.local` does not currently include `VITE_FIREBASE_VAPID_KEY`; web push token registration remains externally blocked until that public Firebase Web Push certificate key is provided in the build environment.
+- Release-profile APNs production status remains externally blocked until a signed distribution `.app` can be inspected with `scripts/check-retention-provisioning.sh --signed-app`.
+
 ## Deferred Items
 
-Deferred because they require additional product design, production provisioning, or deployment:
+Deferred because they require external console/provisioning access or a signed release artifact:
 
-- Production App Group/APNs provisioning and release-profile entitlement verification.
-- Web push production VAPID key provisioning.
+- Add `VITE_FIREBASE_VAPID_KEY` to local/production web build environments and redeploy hosting. ProjectFlow task: `u7rRtb9TrHuLWxHKgYhl`.
+- Enable/verify Apple Developer App Group and Push capabilities, upload/verify Firebase APNs credentials, archive with a distribution profile, then run the signed `.app` entitlement check. ProjectFlow task: `YYawDDhIJguHIFkKqrZD`.
 
 ## Validation Plan
 
@@ -190,6 +200,10 @@ Deferred because they require additional product design, production provisioning
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/not-a-real-endpoint` returned JSON HTTP 404 with supported endpoints.
 - [x] Phase 5: `curl -I https://project-manager-9d0ad.web.app/project/ogZ8Pyz8pwEQtv8I64nu/codex` returned HTTP 200.
+- [x] Phase 6: `bash -n scripts/check-retention-provisioning.sh`
+- [x] Phase 6: `scripts/check-retention-provisioning.sh` passed with expected external provisioning warnings for missing local VAPID key and absent signed `.app` artifact.
+- [x] Phase 6: `cd web && npm run build`
+- [x] Phase 6: `git diff --check`
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
@@ -202,3 +216,5 @@ Phase 3 task sync succeeded on 2026-05-26. Task `kCvs5jcVE7Yc1YaaoYQ3` in projec
 Phase 4 task sync started successfully on 2026-05-26 by reusing task `kCvs5jcVE7Yc1YaaoYQ3` and moving it back to In Progress for the Codex integration phase.
 
 Phase 5 production rollout task `SLzYFAwq5uOF2Lzr5aUT` was created on 2026-05-26 and moved to In Progress before deployment.
+
+Phase 6 production provisioning readiness task `j1lLmvFhPKf6TUYUXGLC` was created on 2026-05-26 and moved to In Progress before adding the readiness checker and provisioning docs.

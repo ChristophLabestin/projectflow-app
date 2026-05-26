@@ -33,6 +33,8 @@ Before making architectural decisions or implementing features, read the documen
 - **Purpose:** Executable implementation plan derived from the retention report.
 - **File:** `docs/projectflow-codex-api.md`
 - **Purpose:** Codex session API, Firestore model, and repo-local plugin usage.
+- **File:** `docs/projectflow-production-provisioning.md`
+- **Purpose:** Production push provisioning checklist for web VAPID, iOS App Group, APNs, and signed-release verification.
 
 ---
 
