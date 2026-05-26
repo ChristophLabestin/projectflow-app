@@ -161,6 +161,12 @@ Transitions should feel responsive but not abrupt. Use the tokens below consiste
 - Use `--transition-fast` for hover/focus states.
 - Use `--transition-normal` for component open/close animations (dropdowns, modals).
 
+### Focus Loop Controls
+
+- The top-bar focus pill and pinned-task focus controls use semantic status color, not a new palette: primary for active, muted surface for snoozed, error for blocked, success for completion.
+- Focus controls should stay compact and action-oriented: start/resume, snooze, block, complete. Avoid explanatory cards around them.
+- Keep the current focus visible in the first dashboard viewport and top bar without relying on hover text.
+
 ---
 
 ## 5) Layout Metrics

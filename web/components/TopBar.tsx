@@ -14,7 +14,7 @@ const UserProfileDropdown = lazy(() => import('./UserProfileDropdown').then((mod
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
-    const { toggleModal, pinnedItems, focusItemId } = usePinnedTasks();
+    const { toggleModal, pinnedItems, focusItemId, focusState } = usePinnedTasks();
     const { t } = useLanguage();
     const hasItems = pinnedItems.length > 0;
     const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null;
@@ -55,19 +55,30 @@ const PinnedTasksToggle = () => {
         );
     }
 
+    const isSnoozed = focusState?.status === 'snoozed'
+        && Boolean(focusState.snoozedUntil)
+        && new Date(focusState.snoozedUntil || '').getTime() > Date.now();
+    const status = isSnoozed ? 'snoozed' : focusState?.status || 'active';
+    const statusLabel = status === 'blocked'
+        ? t('topbar.focusStatus.blocked')
+        : status === 'snoozed'
+            ? t('topbar.focusStatus.snoozed')
+            : t('topbar.focusStatus.active');
+
     return (
         <button
             onClick={toggleModal}
-            className="flex items-center gap-2 h-8 pl-2 pr-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all group"
+            className={`topbar-focus-pill topbar-focus-pill--${status}`}
             title={t('topbar.focusTask')}
         >
             <div className="relative shrink-0 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">center_focus_strong</span>
-                <span className="absolute -top-0.5 -right-0.5 size-1.5 bg-amber-500 rounded-full animate-pulse" />
+                <span className="material-symbols-outlined topbar-focus-pill__icon">
+                    {status === 'blocked' ? 'block' : status === 'snoozed' ? 'snooze' : 'center_focus_strong'}
+                </span>
+                {status === 'active' && <span className="topbar-focus-pill__pulse" />}
             </div>
-            <span className="text-[10px] font-semibold text-main truncate max-w-[100px]">
-                {focusItem.title}
-            </span>
+            <span className="topbar-focus-pill__text">{focusItem.title}</span>
+            <span className="topbar-focus-pill__status">{statusLabel}</span>
         </button>
     );
 };

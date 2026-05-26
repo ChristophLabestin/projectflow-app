@@ -749,7 +749,20 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 };
 
 export const PinnedTasksModal = () => {
-    const { isModalOpen, toggleModal, pinnedItems, focusItemId, unpinItem, setFocusItem, pinItem } = usePinnedTasks();
+    const {
+        isModalOpen,
+        toggleModal,
+        pinnedItems,
+        focusItemId,
+        focusState,
+        unpinItem,
+        setFocusItem,
+        pinItem,
+        startFocusItem,
+        snoozeFocusItem,
+        blockFocusItem,
+        completeFocusItem
+    } = usePinnedTasks();
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [isCompactMode, setIsCompactMode] = useState(false);
     const [completingItems, setCompletingItems] = useState<string[]>([]);
@@ -1042,6 +1055,51 @@ export const PinnedTasksModal = () => {
         : focusItemId && pinnedItems.some(i => i.id === focusItemId)
             ? focusItemId
             : pinnedItems[0]?.id ?? null;
+    const activeItem = activeItemId ? pinnedItems.find(i => i.id === activeItemId) || null : null;
+    const activeItemIsFocus = Boolean(activeItem && focusItemId === activeItem.id);
+    const activeFocusIsSnoozed = activeItemIsFocus
+        && focusState?.status === 'snoozed'
+        && Boolean(focusState.snoozedUntil)
+        && new Date(focusState.snoozedUntil || '').getTime() > Date.now();
+    const activeFocusStatus = activeItemIsFocus
+        ? activeFocusIsSnoozed ? 'snoozed' : focusState?.status || 'active'
+        : 'inactive';
+
+    const handleStartFocus = (item?: PinnedItem | null) => {
+        if (!item) return;
+        startFocusItem(item);
+        setSelectedItemId(item.id);
+    };
+
+    const handleSnoozeFocus = () => {
+        snoozeFocusItem(60);
+    };
+
+    const handleBlockFocus = async (item?: PinnedItem | null) => {
+        if (!item) return;
+        blockFocusItem();
+
+        if (item.type === 'task') {
+            await updateTaskFields(item.id, { status: 'Blocked', isCompleted: false }, item.projectId, item.tenantId);
+        }
+    };
+
+    const handleCompleteFocus = async (item?: PinnedItem | null) => {
+        if (!item) return;
+
+        if (item.type === 'task') {
+            await updateTaskFields(item.id, { status: 'Done', isCompleted: true }, item.projectId, item.tenantId);
+        } else if (item.type === 'personal-task') {
+            await togglePersonalTaskStatus(item.id, false, item.tenantId);
+        } else if (item.type === 'issue') {
+            await updateIssue(item.id, { status: 'Resolved' }, item.projectId, item.tenantId);
+        }
+
+        completeFocusItem(item.id);
+        if (selectedItemId === item.id) {
+            setSelectedItemId(null);
+        }
+    };
 
     // Compact floating mode - draggable and resizable
     if (isCompactMode) {
@@ -1120,6 +1178,47 @@ export const PinnedTasksModal = () => {
                         </button>
                     </div>
                 </div>
+
+                {activeItem && (
+                    <div className={`pinned-focus-controls pinned-focus-controls--compact pinned-focus-controls--${activeFocusStatus}`}>
+                        <div className="pinned-focus-controls__state">
+                            <span className="material-symbols-outlined">
+                                {activeFocusStatus === 'blocked' ? 'block' : activeFocusStatus === 'snoozed' ? 'snooze' : activeItemIsFocus ? 'center_focus_strong' : 'center_focus_weak'}
+                            </span>
+                            <strong>
+                                {activeItemIsFocus
+                                    ? activeFocusStatus === 'blocked'
+                                        ? t('pinnedTasks.focus.status.blocked')
+                                        : activeFocusStatus === 'snoozed'
+                                            ? t('pinnedTasks.focus.status.snoozed')
+                                            : t('pinnedTasks.focus.status.active')
+                                    : t('pinnedTasks.focus.status.inactive')}
+                            </strong>
+                        </div>
+                        <div className="pinned-focus-controls__actions">
+                            <button type="button" onClick={() => handleStartFocus(activeItem)}>
+                                <span className="material-symbols-outlined">play_arrow</span>
+                                {activeItemIsFocus && activeFocusStatus !== 'active' ? t('pinnedTasks.focus.resume') : t('pinnedTasks.focus.start')}
+                            </button>
+                            {activeItemIsFocus && (
+                                <>
+                                    <button type="button" onClick={handleSnoozeFocus}>
+                                        <span className="material-symbols-outlined">snooze</span>
+                                        {t('pinnedTasks.focus.snooze')}
+                                    </button>
+                                    <button type="button" onClick={() => handleBlockFocus(activeItem)}>
+                                        <span className="material-symbols-outlined">block</span>
+                                        {t('pinnedTasks.focus.block')}
+                                    </button>
+                                </>
+                            )}
+                            <button type="button" onClick={() => handleCompleteFocus(activeItem)} className="pinned-focus-controls__complete">
+                                <span className="material-symbols-outlined">check</span>
+                                {t('pinnedTasks.focus.complete')}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Compact Content */}
                 <div className="pinned-tasks-compact__body">
@@ -1370,6 +1469,49 @@ export const PinnedTasksModal = () => {
 
                 {/* Main Content (Clipboard) */}
                 <div className="main-content-area">
+                    {activeItem && (
+                        <div className={`pinned-focus-controls pinned-focus-controls--${activeFocusStatus}`}>
+                            <div className="pinned-focus-controls__state">
+                                <span className="material-symbols-outlined">
+                                    {activeFocusStatus === 'blocked' ? 'block' : activeFocusStatus === 'snoozed' ? 'snooze' : activeItemIsFocus ? 'center_focus_strong' : 'center_focus_weak'}
+                                </span>
+                                <div>
+                                    <strong>
+                                        {activeItemIsFocus
+                                            ? activeFocusStatus === 'blocked'
+                                                ? t('pinnedTasks.focus.status.blocked')
+                                                : activeFocusStatus === 'snoozed'
+                                                    ? t('pinnedTasks.focus.status.snoozed')
+                                                    : t('pinnedTasks.focus.status.active')
+                                            : t('pinnedTasks.focus.status.inactive')}
+                                    </strong>
+                                    <p>{t('pinnedTasks.focus.summary')}</p>
+                                </div>
+                            </div>
+                            <div className="pinned-focus-controls__actions">
+                                <button type="button" onClick={() => handleStartFocus(activeItem)}>
+                                    <span className="material-symbols-outlined">play_arrow</span>
+                                    {activeItemIsFocus && activeFocusStatus !== 'active' ? t('pinnedTasks.focus.resume') : t('pinnedTasks.focus.start')}
+                                </button>
+                                {activeItemIsFocus && (
+                                    <>
+                                        <button type="button" onClick={handleSnoozeFocus}>
+                                            <span className="material-symbols-outlined">snooze</span>
+                                            {t('pinnedTasks.focus.snooze')}
+                                        </button>
+                                        <button type="button" onClick={() => handleBlockFocus(activeItem)}>
+                                            <span className="material-symbols-outlined">block</span>
+                                            {t('pinnedTasks.focus.block')}
+                                        </button>
+                                    </>
+                                )}
+                                <button type="button" onClick={() => handleCompleteFocus(activeItem)} className="pinned-focus-controls__complete">
+                                    <span className="material-symbols-outlined">check</span>
+                                    {t('pinnedTasks.focus.complete')}
+                                </button>
+                            </div>
+                        </div>
+                    )}
                     {activeItemId && !completingItems.includes(activeItemId) ? (
                         <TaskDetailView
                             itemId={activeItemId}

@@ -34,7 +34,7 @@ These routes are rendered inside the authenticated app shell/layout.
 
 ### 2.1 Global / Workspace-level Pages
 
-- [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with right-now work visible immediately, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
+- [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)

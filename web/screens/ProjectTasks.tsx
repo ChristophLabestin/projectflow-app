@@ -56,7 +56,7 @@ export const ProjectTasks = () => {
 
     // Permissions
     const { can } = useProjectPermissions(project);
-    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
+    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem, startFocusItem } = usePinnedTasks();
     const { dateFormat, dateLocale, t } = useLanguage();
 
     const handleSearchChange = useArrowReplacement((e) => setSearch(e.target.value));
@@ -896,7 +896,19 @@ export const ProjectTasks = () => {
                             }}
                             onContextMenu={(e) => {
                                 e.preventDefault();
-                                setFocusItem(focusItemId === task.id ? null : task.id);
+                                if (focusItemId === task.id) {
+                                    setFocusItem(null);
+                                } else {
+                                    startFocusItem({
+                                        id: task.id,
+                                        type: 'task',
+                                        title: task.title,
+                                        projectId: id!,
+                                        tenantId: task.tenantId,
+                                        priority: task.priority,
+                                        isCompleted: task.isCompleted
+                                    });
+                                }
                             }}
                             className={`action-btn action-btn--pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
                             title={isPinned(task.id) ? t('projectTasks.actions.unpinTitle') : t('projectTasks.actions.pinTitle')}

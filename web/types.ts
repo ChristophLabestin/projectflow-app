@@ -280,6 +280,24 @@ export interface Project {
     overviewLayout?: ProjectOverviewLayout;
 }
 
+export type FocusItemType = 'task' | 'issue' | 'personal-task';
+export type UserFocusStatus = 'active' | 'snoozed' | 'blocked';
+export type UserFocusLastAction = 'started' | 'resumed' | 'snoozed' | 'blocked' | 'completed' | 'cleared';
+
+export interface UserFocusState {
+    itemId: string;
+    itemType: FocusItemType;
+    title: string;
+    projectId?: string;
+    tenantId?: string;
+    status: UserFocusStatus;
+    startedAt?: string;
+    snoozedUntil?: string;
+    blockedAt?: string;
+    updatedAt?: string;
+    lastAction?: UserFocusLastAction;
+}
+
 /**
  * Top-level user profile stored at users/{userId}
  * Contains global user data that is shared across all workspaces
@@ -304,6 +322,17 @@ export interface User {
         tokenLimit: number;
     };
     privacySettings?: PrivacySettings;
+    pinnedItems?: Array<{
+        id: string;
+        type: FocusItemType;
+        title: string;
+        projectId?: string;
+        tenantId?: string;
+        priority?: string;
+        isCompleted?: boolean;
+    }>;
+    focusItemId?: string | null;
+    focusState?: UserFocusState | null;
     createdAt?: any;
     updatedAt?: any;
 }

@@ -111,17 +111,17 @@ struct DashboardView: View {
             Text(Self.dateFormatter.string(from: Date()).uppercased())
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(colors.textMuted)
-            
+
             VStack(alignment: .leading, spacing: 0) {
                 Text("\(greeting),")
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(colors.textMain)
-                
+
                 Text(greetingName)
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(colors.textMain)
             }
-            
+
             if store.dueTodayTaskCount > 0 {
                 Text("You have \(store.dueTodayTaskCount) tasks due today.")
                     .font(.body)
@@ -134,12 +134,12 @@ struct DashboardView: View {
         }
         .padding(.vertical, PFSpacing.sm)
     }
-    
+
     private var activeProjectsCarousel: some View {
         let active = projectsStore.projects.filter { $0.status == "Active" }
         return VStack(alignment: .leading, spacing: PFSpacing.sm) {
             PFSectionHeader(title: "Active Projects", subtitle: "Jump back into your work")
-            
+
             if active.isEmpty && !projectsStore.isLoading {
                 PFCard {
                     Text("No active projects found.")
@@ -236,6 +236,10 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
                 PFSectionHeader(title: "Focus Snapshot")
 
+                if let focusItem = pinnedTasksStore.focusItem {
+                    currentFocusCard(focusItem)
+                }
+
                 LazyVGrid(columns: columns, spacing: PFSpacing.sm) {
                     DashboardFocusCard(
                         title: "Tasks Done",
@@ -277,6 +281,79 @@ struct DashboardView: View {
         }
     }
 
+    private var currentFocusStatus: String {
+        pinnedTasksStore.focusState?.status ?? "active"
+    }
+
+    private var currentFocusIcon: String {
+        switch currentFocusStatus {
+        case "blocked":
+            return "xmark.octagon.fill"
+        case "snoozed":
+            return "zzz"
+        default:
+            return "scope"
+        }
+    }
+
+    private var currentFocusTint: Color {
+        switch currentFocusStatus {
+        case "blocked":
+            return colors.error
+        case "snoozed":
+            return colors.textMuted
+        default:
+            return colors.primary
+        }
+    }
+
+    private var currentFocusLabel: String {
+        switch currentFocusStatus {
+        case "blocked":
+            return "Blocked Focus"
+        case "snoozed":
+            return "Snoozed Focus"
+        default:
+            return "Current Focus"
+        }
+    }
+
+    private func currentFocusCard(_ item: PinnedItem) -> some View {
+        Button {
+            showPinnedTasks = true
+        } label: {
+            HStack(spacing: PFSpacing.md) {
+                Image(systemName: currentFocusIcon)
+                    .font(.headline)
+                    .foregroundStyle(currentFocusTint)
+                    .frame(width: 34, height: 34)
+                    .background(currentFocusTint.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm))
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(currentFocusLabel)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(currentFocusTint)
+
+                    Text(item.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(colors.textMain)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(colors.textMuted)
+            }
+            .padding(PFSpacing.md)
+            .background(colors.surfaceHover.opacity(0.5))
+            .clipShape(RoundedRectangle(cornerRadius: PFRadius.md))
+        }
+        .buttonStyle(.plain)
+    }
+
     private var chartsSection: some View {
         VStack(spacing: PFSpacing.md) {
             // Trend Chart
@@ -290,7 +367,7 @@ struct DashboardView: View {
                             .foregroundStyle(colors.textMuted)
                     }
                     .onTapGesture { selectedTab = .tasks }
-                    
+
                     if store.trendData.isEmpty {
                         Text("No activity data available yet.")
                             .font(.subheadline)
@@ -307,7 +384,7 @@ struct DashboardView: View {
                                 .foregroundStyle(by: .value("Type", item.type))
                                 .opacity(0.1)
                                 .interpolationMethod(.catmullRom)
-                                
+
                                 LineMark(
                                     x: .value("Date", item.date, unit: .day),
                                     y: .value("Count", item.value)
@@ -352,7 +429,7 @@ struct DashboardView: View {
                             .foregroundStyle(colors.textMuted)
                     }
                     .onTapGesture { selectedTab = .projects }
-                    
+
                     if store.projectStatusDistribution.isEmpty {
                         Text("No projects available.")
                             .font(.subheadline)
@@ -371,9 +448,9 @@ struct DashboardView: View {
                                 .foregroundStyle(item.color)
                             }
                             .frame(height: 150)
-                            
+
                             Spacer()
-                            
+
                             VStack(alignment: .leading, spacing: 8) {
                                 ForEach(store.projectStatusDistribution) { item in
                                     HStack {
@@ -429,7 +506,7 @@ struct DashboardView: View {
                     CalendarWidget()
                 }
             }
-            
+
             PFCard {
                 VStack(alignment: .leading, spacing: PFSpacing.md) {
                     PFSectionHeader(title: "Scheduled", subtitle: "Upcoming deadlines")
@@ -517,7 +594,7 @@ struct DashboardView: View {
             )
         }
     }
-    
+
     // Pinned Cards Removed
 
     private var greeting: String {
@@ -628,7 +705,7 @@ struct DashboardView: View {
             return leftDate > rightDate
         }.prefix(6).map { $0 }
     }
-    
+
     private func handleStatTap(_ stat: DashboardStat) {
         switch stat.title {
         case "Projects": selectedTab = .projects
@@ -644,14 +721,14 @@ private struct DashboardProjectCard: View {
     @Environment(\.colorScheme) private var colorScheme
     let project: Project
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpacing.sm) {
             ZStack(alignment: .topTrailing) {
                 RoundedRectangle(cornerRadius: PFRadius.lg)
                     .fill(colors.primary.opacity(0.1))
                     .frame(height: 100)
-                
+
                 Text(project.status)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(colors.primary)
@@ -661,22 +738,22 @@ private struct DashboardProjectCard: View {
                     .clipShape(Capsule())
                     .padding(8)
             }
-            
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(project.title)
                     .font(.headline)
                     .foregroundStyle(colors.textMain)
                     .lineLimit(1)
-                
+
                 Text(project.description.isEmpty ? "No description" : project.description)
                     .font(.caption)
                     .foregroundStyle(colors.textMuted)
                     .lineLimit(2)
             }
-            
+
             ProgressView(value: project.progress, total: 100)
                 .tint(colors.primary)
-            
+
             HStack {
                 Text("\(Int(project.progress))%")
                     .font(.caption2.weight(.bold))
@@ -909,7 +986,7 @@ struct CalendarWidget: View {
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     private let calendar = Calendar.current
     private let days = ["M", "T", "W", "T", "F", "S", "S"]
-    
+
     var body: some View {
         VStack(spacing: 12) {
             HStack {
@@ -920,10 +997,10 @@ struct CalendarWidget: View {
                         .frame(maxWidth: .infinity)
                 }
             }
-            
+
             let today = calendar.startOfDay(for: Date())
             let week = currentWeek(for: today)
-            
+
             HStack {
                 ForEach(week, id: \.self) { date in
                     VStack(spacing: 4) {
@@ -940,12 +1017,12 @@ struct CalendarWidget: View {
         }
         .padding(.vertical, 8)
     }
-    
+
     private func currentWeek(for date: Date) -> [Date] {
         var days: [Date] = []
         let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: date)
         guard let monday = calendar.date(from: components) else { return [] }
-        
+
         for i in 0..<7 {
             if let day = calendar.date(byAdding: .day, value: i, to: monday) {
                 days.append(day)
@@ -960,7 +1037,7 @@ struct ScheduledTasksCard: View {
     @ObservedObject var tenantStore: TenantStore
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
+
     private var upcomingDays: [Date] {
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
@@ -972,7 +1049,7 @@ struct ScheduledTasksCard: View {
             let filteredDays = upcomingDays.filter { day in
                 !(scheduledTasks[day]?.isEmpty ?? true)
             }
-            
+
             if filteredDays.isEmpty {
                 Text("No tasks scheduled for this week.")
                     .font(.subheadline)
@@ -985,7 +1062,7 @@ struct ScheduledTasksCard: View {
                         Text(dayTitle(for: day))
                             .font(.caption.weight(.bold))
                             .foregroundStyle(colors.primary)
-                        
+
                         ForEach(scheduledTasks[day] ?? []) { task in
                             NavigationLink(destination: ProjectTaskDetailView(
                                 task: task,
@@ -1019,7 +1096,7 @@ struct ScheduledTasksCard: View {
             }
         }
     }
-    
+
     private func dayTitle(for date: Date) -> String {
         if Calendar.current.isDateInToday(date) { return "TODAY" }
         if Calendar.current.isDateInTomorrow(date) { return "TOMORROW" }

@@ -44,6 +44,17 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `enabled`: boolean
   - `lastTokenSyncAt`: Timestamp
   - `permission`: string (`granted`, `denied`, `default`)
+- `pinnedItems`: Object[] (quick-access task/issue/personal-task cache)
+- `focusItemId`: string | null (currently selected focus item)
+- `focusState`: Object | null (persisted cross-device focus loop)
+  - `itemId`: string
+  - `itemType`: `"task" | "issue" | "personal-task"`
+  - `title`: string
+  - `projectId`: string (optional for personal tasks)
+  - `tenantId`: string (optional)
+  - `status`: `"active" | "snoozed" | "blocked"`
+  - `startedAt`, `snoozedUntil`, `blockedAt`, `updatedAt`: ISO date strings
+  - `lastAction`: `"started" | "resumed" | "snoozed" | "blocked" | "completed" | "cleared"`
 
 ### 📂 **`tenants`** (Workspaces)
 **Path:** `/tenants/{tenantId}`

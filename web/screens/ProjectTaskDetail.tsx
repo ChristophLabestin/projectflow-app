@@ -104,7 +104,7 @@ export const ProjectTaskDetail = () => {
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
     const [effortMenuOpen, setEffortMenuOpen] = useState(false);
     const effortMenuRef = useRef<HTMLDivElement | null>(null);
-    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
+    const { unpinItem, isPinned, focusItemId, startFocusItem } = usePinnedTasks();
 
     const statusLabels = useMemo(() => ({
         Backlog: t('tasks.status.backlog'),
@@ -629,19 +629,27 @@ export const ProjectTaskDetail = () => {
                                                 unpinItem(task.id);
                                             } else {
                                                 // If pinned but not focused, set it as focus
-                                                setFocusItem(task.id);
+                                                startFocusItem({
+                                                    id: task.id,
+                                                    type: 'task',
+                                                    title: task.title,
+                                                    projectId: id!,
+                                                    tenantId: task.tenantId,
+                                                    priority: task.priority,
+                                                    isCompleted: task.isCompleted
+                                                });
                                             }
                                         } else {
                                             // Pin and set as focus
-                                            pinItem({
+                                            startFocusItem({
                                                 id: task.id,
                                                 type: 'task',
                                                 title: task.title,
                                                 projectId: id!,
+                                                tenantId: task.tenantId,
                                                 priority: task.priority,
                                                 isCompleted: task.isCompleted
                                             });
-                                            setFocusItem(task.id);
                                         }
                                     }}
                                     onContextMenu={(e) => {

@@ -195,6 +195,7 @@ Purpose: global user identity and personal settings.
 User document stores:
 - profile data (name, etc.)
 - personal app settings (theme, language, UI preferences)
+- pinned items and `focusState` so one current focus can follow the user across web, iOS, and future ambient surfaces
 - optional references for memberships and invitations
 
 #### `tenants` (root collection)

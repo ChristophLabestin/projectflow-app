@@ -127,7 +127,7 @@ const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
 export const Dashboard = () => {
     const { isAuthReady, user } = useAuth();
     const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
-    const { pinItem, setFocusItem, toggleModal, focusItemId, isModalOpen } = usePinnedTasks();
+    const { startFocusItem, toggleModal, focusItemId, focusItem, focusState, isModalOpen } = usePinnedTasks();
     const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
     const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
@@ -718,7 +718,39 @@ export const Dashboard = () => {
         urgentIssues
     ]);
 
-    const primaryCommandItems = useMemo(() => commandItems.slice(0, 3), [commandItems]);
+    const isFocusSnoozed = useMemo(() => (
+        focusState?.status === 'snoozed'
+            && Boolean(focusState.snoozedUntil)
+            && new Date(focusState.snoozedUntil || '').getTime() > Date.now()
+    ), [focusState?.snoozedUntil, focusState?.status]);
+
+    const focusResumeItem = useMemo<DashboardCommandItem | null>(() => {
+        if (!focusItem || !focusItem.projectId) return null;
+
+        const status = isFocusSnoozed ? 'snoozed' : focusState?.status || 'active';
+        return {
+            id: `focus:${focusItem.id}`,
+            href: `/project/${focusItem.projectId}/${focusItem.type === 'issue' ? 'issues' : 'tasks'}/${focusItem.id}`,
+            icon: status === 'blocked' ? 'block' : status === 'snoozed' ? 'snooze' : 'center_focus_strong',
+            label: status === 'blocked'
+                ? t('dashboard.command.tag.blockedFocus')
+                : status === 'snoozed'
+                    ? t('dashboard.command.tag.snoozedFocus')
+                    : t('dashboard.command.tag.currentFocus'),
+            meta: projectById.get(focusItem.projectId) || t('dashboard.issues.unknownProject'),
+            focus: focusItem,
+            priority: status === 'blocked' ? 5 : 0,
+            title: focusItem.title,
+            tone: status === 'blocked' ? 'danger' : status === 'snoozed' ? 'neutral' : 'info'
+        };
+    }, [focusItem, focusState?.status, isFocusSnoozed, projectById, t]);
+
+    const primaryCommandItems = useMemo(() => {
+        const merged = focusResumeItem
+            ? [focusResumeItem, ...commandItems.filter((item) => item.focus?.id !== focusResumeItem.focus?.id)]
+            : commandItems;
+        return merged.slice(0, 3);
+    }, [commandItems, focusResumeItem]);
     const primaryResumeItem = primaryCommandItems[0];
 
     const dueNowCount = overdueTasks.length + dueTodayTasks.length + scheduledTodayTasks.length;
@@ -902,8 +934,7 @@ export const Dashboard = () => {
     const handleStartDashboardFocus = (item: DashboardCommandItem) => {
         if (!item.focus) return;
 
-        pinItem(item.focus);
-        setFocusItem(item.focus.id);
+        startFocusItem(item.focus);
 
         if (!isModalOpen) {
             toggleModal();

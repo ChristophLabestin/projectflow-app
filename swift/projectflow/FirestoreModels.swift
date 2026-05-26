@@ -57,6 +57,79 @@ struct Tenant: FirestoreConvertible {
     }
 }
 
+struct ProjectFlowFocusState {
+    let itemId: String
+    let itemType: String
+    let title: String
+    let projectId: String?
+    let tenantId: String?
+    let status: String
+    let startedAt: String?
+    let snoozedUntil: String?
+    let blockedAt: String?
+    let updatedAt: String?
+    let lastAction: String?
+
+    init(data: [String: Any]) {
+        itemId = data["itemId"] as? String ?? ""
+        itemType = data["itemType"] as? String ?? "task"
+        title = data["title"] as? String ?? ""
+        projectId = data["projectId"] as? String
+        tenantId = data["tenantId"] as? String
+        status = data["status"] as? String ?? "active"
+        startedAt = data["startedAt"] as? String
+        snoozedUntil = data["snoozedUntil"] as? String
+        blockedAt = data["blockedAt"] as? String
+        updatedAt = data["updatedAt"] as? String
+        lastAction = data["lastAction"] as? String
+    }
+
+    init(item: PinnedItem, status: String, lastAction: String) {
+        itemId = item.id
+        itemType = item.type
+        title = item.title
+        projectId = item.projectId.isEmpty ? nil : item.projectId
+        tenantId = item.tenantId
+        self.status = status
+        startedAt = ISO8601DateFormatter().string(from: Date())
+        snoozedUntil = nil
+        blockedAt = status == "blocked" ? ISO8601DateFormatter().string(from: Date()) : nil
+        updatedAt = ISO8601DateFormatter().string(from: Date())
+        self.lastAction = lastAction
+    }
+
+    var data: [String: Any] {
+        var payload: [String: Any] = [
+            "itemId": itemId,
+            "itemType": itemType,
+            "title": title,
+            "status": status
+        ]
+        if let projectId {
+            payload["projectId"] = projectId
+        }
+        if let tenantId {
+            payload["tenantId"] = tenantId
+        }
+        if let startedAt {
+            payload["startedAt"] = startedAt
+        }
+        if let snoozedUntil {
+            payload["snoozedUntil"] = snoozedUntil
+        }
+        if let blockedAt {
+            payload["blockedAt"] = blockedAt
+        }
+        if let updatedAt {
+            payload["updatedAt"] = updatedAt
+        }
+        if let lastAction {
+            payload["lastAction"] = lastAction
+        }
+        return payload
+    }
+}
+
 struct UserProfile: FirestoreConvertible {
     let id: String
     var email: String
@@ -67,6 +140,7 @@ struct UserProfile: FirestoreConvertible {
     var fcmUpdatedAt: Timestamp?
     var pinnedItems: [PinnedItem]
     var focusItemId: String?
+    var focusState: ProjectFlowFocusState?
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -78,6 +152,11 @@ struct UserProfile: FirestoreConvertible {
         fcmUpdatedAt = data["fcmUpdatedAt"] as? Timestamp
         pinnedItems = (data["pinnedItems"] as? [[String: Any]] ?? []).map { PinnedItem(data: $0) }
         focusItemId = data["focusItemId"] as? String
+        if let rawFocusState = data["focusState"] as? [String: Any] {
+            focusState = ProjectFlowFocusState(data: rawFocusState)
+        } else {
+            focusState = nil
+        }
     }
 
     var data: [String: Any] {
@@ -101,6 +180,9 @@ struct UserProfile: FirestoreConvertible {
         }
         if let focusItemId {
             payload["focusItemId"] = focusItemId
+        }
+        if let focusState {
+            payload["focusState"] = focusState.data
         }
         return payload
     }

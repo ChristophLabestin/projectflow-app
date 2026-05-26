@@ -32,7 +32,7 @@ export const ProjectIssues = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [allUsers, setAllUsers] = useState<Member[]>([]);
-    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
+    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem, startFocusItem } = usePinnedTasks();
     const confirm = useConfirm();
     const priorityLabels = useMemo(() => ({
         Low: t('tasks.priority.low'),
@@ -318,7 +318,19 @@ export const ProjectIssues = () => {
                         }}
                         onContextMenu={(e) => {
                             e.preventDefault();
-                            setFocusItem(focusItemId === issue.id ? null : issue.id);
+                            if (focusItemId === issue.id) {
+                                setFocusItem(null);
+                            } else {
+                                startFocusItem({
+                                    id: issue.id,
+                                    type: 'issue',
+                                    title: issue.title,
+                                    projectId: id!,
+                                    tenantId: issue.tenantId,
+                                    priority: issue.priority,
+                                    isCompleted: issue.status === 'Resolved' || issue.status === 'Closed'
+                                });
+                            }
                         }}
                         className={`issue-card__action issue-card__action--pin ${isPinned(issue.id) ? 'is-pinned' : 'is-unpinned'}`}
                         title={isPinned(issue.id) ? t('projectIssues.actions.unpinTitle') : t('projectIssues.actions.pinTitle')}

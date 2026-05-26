@@ -126,6 +126,15 @@ This pass intentionally implements a narrow end-to-end slice:
 - Health: added `project_brief_gap` and `project_brief_ready` health factors plus a focused recommendation for missing brief fields.
 - API: allowed Project Brief fields through the ProjectFlow API project create/update field allowlist.
 
+## Phase 2 Implemented In Continuation Pass
+
+- Shared focus state: added `users/{userId}.focusState` alongside `focusItemId` and `pinnedItems`.
+- Web dashboard: prioritizes an active, snoozed, or blocked focus item in the first resume card before generic command items.
+- Web top bar: shows the current focus status directly as active, snoozed, or blocked.
+- Pinned task workspace: added start/resume, snooze, block, and complete controls in full and compact quick-access modes.
+- iOS dashboard: mirrors the current focus item and status from the shared profile document.
+- iOS pinned sheet: can start, snooze, or block focus from pinned items.
+
 ## Deferred Items
 
 Deferred because they require additional product design, entitlement work, or new app targets:
