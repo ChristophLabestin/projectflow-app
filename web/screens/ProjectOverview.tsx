@@ -194,6 +194,7 @@ const getTypeBadgeClass = (type?: string) => {
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
+    'contract',
     'snapshot',
     'executionTasks',
     'executionFlows',
@@ -213,6 +214,7 @@ type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
 type ExecutionCardVariant = 'wide' | 'balanced' | 'compact';
 
 const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: OverviewCardSpan; defaultEnabled: boolean; defaultPlacement: ProjectOverviewCardPlacement }> = {
+    contract: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
     snapshot: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
     executionTasks: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
     executionFlows: { defaultSpan: 6, defaultEnabled: true, defaultPlacement: 'primary' },
@@ -304,6 +306,17 @@ const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOvervie
             placement: normalizeOverviewPlacement(card.placement, def.defaultPlacement)
         });
         seen.add(card.id);
+    }
+
+    if (!seen.has('contract')) {
+        const def = OVERVIEW_CARD_DEFINITIONS.contract;
+        normalized.unshift({
+            id: 'contract',
+            enabled: def.defaultEnabled,
+            span: def.defaultSpan,
+            placement: def.defaultPlacement
+        });
+        seen.add('contract');
     }
 
     for (const id of OVERVIEW_CARD_ORDER) {
@@ -1427,6 +1440,30 @@ export const ProjectOverview = () => {
         { value: 'pre-release', label: t('projectOverview.controls.state.preRelease') },
         { value: 'released', label: t('projectOverview.controls.state.released') }
     ]), [t]);
+    const projectTypeLabels = useMemo(() => ({
+        standard: t('projectOverview.contract.type.standard'),
+        software: t('projectOverview.contract.type.software'),
+        creative: t('projectOverview.contract.type.creative')
+    }), [t]);
+    const operatingModeLabels = useMemo(() => ({
+        explore: t('projectOverview.contract.mode.explore'),
+        build: t('projectOverview.contract.mode.build'),
+        ship: t('projectOverview.contract.mode.ship'),
+        maintain: t('projectOverview.contract.mode.maintain')
+    }), [t]);
+    const cadenceLabels = useMemo(() => ({
+        daily: t('projectOverview.contract.cadence.daily'),
+        weekly: t('projectOverview.contract.cadence.weekly'),
+        biweekly: t('projectOverview.contract.cadence.biweekly'),
+        monthly: t('projectOverview.contract.cadence.monthly'),
+        'ad-hoc': t('projectOverview.contract.cadence.adHoc')
+    }), [t]);
+    const dateConfidenceLabels = useMemo(() => ({
+        fixed: t('projectOverview.contract.dateConfidence.fixed'),
+        target: t('projectOverview.contract.dateConfidence.target'),
+        rough: t('projectOverview.contract.dateConfidence.rough'),
+        unknown: t('projectOverview.contract.dateConfidence.unknown')
+    }), [t]);
     const issueStatusLabels = useMemo(() => ({
         Open: t('projectIssues.status.open'),
         'In Progress': t('projectIssues.status.inProgress'),
@@ -1622,6 +1659,35 @@ export const ProjectOverview = () => {
     const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
     const workloadMetric = { label: t('tasks.status.inProgress'), value: inProgressCount, icon: 'pending_actions' };
     const projectPriorityKey = (project.priority || 'Medium').toLowerCase();
+    const projectBrief = project.brief || {};
+    const projectSuccessCriteria = (projectBrief.successCriteria || []).filter(Boolean);
+    const projectCadence = projectBrief.cadence || project.operatingModel?.cadence;
+    const projectOperatingMode = project.operatingMode || project.operatingModel?.mode;
+    const projectDateConfidence = project.dateConfidence || project.operatingModel?.dateConfidence;
+    const unresolvedRisk = project.riskRegister?.find((risk) => risk.status !== 'resolved') || project.riskRegister?.[0];
+    const missingContractValue = t('projectOverview.contract.missing');
+    const contractStateItems = [
+        {
+            icon: 'category',
+            label: t('projectOverview.contract.type'),
+            value: project.projectType ? projectTypeLabels[project.projectType] : missingContractValue
+        },
+        {
+            icon: 'route',
+            label: t('projectOverview.contract.mode'),
+            value: projectOperatingMode ? operatingModeLabels[projectOperatingMode] : missingContractValue
+        },
+        {
+            icon: 'event_repeat',
+            label: t('projectOverview.contract.cadence'),
+            value: projectCadence ? cadenceLabels[projectCadence] : missingContractValue
+        },
+        {
+            icon: 'event_available',
+            label: t('projectOverview.contract.dateConfidence'),
+            value: projectDateConfidence ? dateConfidenceLabels[projectDateConfidence] : missingContractValue
+        }
+    ];
     const canCustomizeLayout = can('canEdit') || isOwner;
     const templateLabel = overviewLayout.templateId === 'custom'
         ? t('projectOverview.layout.template.custom')
@@ -1644,6 +1710,10 @@ export const ProjectOverview = () => {
         { value: 'secondary' as ProjectOverviewCardPlacement, label: t('projectOverview.layout.placement.secondary') }
     ];
     const overviewCardMeta: Record<ProjectOverviewCardId, { title: string; description: string }> = {
+        contract: {
+            title: t('projectOverview.layout.cards.contract.title'),
+            description: t('projectOverview.layout.cards.contract.description')
+        },
         snapshot: {
             title: t('projectOverview.layout.cards.snapshot.title'),
             description: t('projectOverview.layout.cards.snapshot.description')
@@ -1954,6 +2024,99 @@ export const ProjectOverview = () => {
     };
 
     const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
+        contract: (
+            <Card className="project-contract-card">
+                <div className="project-contract-card__header">
+                    <div className="project-contract-card__title-wrap">
+                        <div className="project-contract-card__icon">
+                            <span className="material-symbols-outlined">assignment</span>
+                        </div>
+                        <div>
+                            <h2 className="project-contract-card__title">{t('projectOverview.contract.title')}</h2>
+                            <p className="project-contract-card__subtitle">{t('projectOverview.contract.subtitle')}</p>
+                        </div>
+                    </div>
+                    {isOwner && (
+                        <button
+                            type="button"
+                            className="icon-btn"
+                            onClick={() => {
+                                setEditModalTab('general');
+                                setShowEditModal(true);
+                            }}
+                            title={t('projectOverview.contract.edit')}
+                            aria-label={t('projectOverview.contract.edit')}
+                        >
+                            <span className="material-symbols-outlined">edit</span>
+                        </button>
+                    )}
+                </div>
+
+                <div className="project-contract-card__body">
+                    <div className="project-contract-card__main">
+                        <div className="project-contract-card__field">
+                            <span className="project-contract-card__label">{t('projectOverview.contract.objective')}</span>
+                            <p className={`project-contract-card__value ${projectBrief.objective ? '' : 'is-empty'}`.trim()}>
+                                {projectBrief.objective || t('projectOverview.contract.emptyObjective')}
+                            </p>
+                        </div>
+
+                        <div className="project-contract-card__field">
+                            <span className="project-contract-card__label">{t('projectOverview.contract.scope')}</span>
+                            <p className={`project-contract-card__value ${projectBrief.scope ? '' : 'is-empty'}`.trim()}>
+                                {projectBrief.scope || t('projectOverview.contract.emptyScope')}
+                            </p>
+                        </div>
+
+                        <div className="project-contract-card__field">
+                            <span className="project-contract-card__label">{t('projectOverview.contract.successCriteria')}</span>
+                            {projectSuccessCriteria.length > 0 ? (
+                                <div className="project-contract-card__criteria">
+                                    {projectSuccessCriteria.slice(0, 4).map((criterion, index) => (
+                                        <span key={`${criterion}-${index}`} className="project-contract-card__criterion">
+                                            <span className="material-symbols-outlined">check_circle</span>
+                                            {criterion}
+                                        </span>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="project-contract-card__value is-empty">{t('projectOverview.contract.emptySuccessCriteria')}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="project-contract-card__side">
+                        <div className="project-contract-card__state-grid">
+                            {contractStateItems.map((item) => (
+                                <div key={item.label} className="project-contract-card__state-item">
+                                    <span className="material-symbols-outlined">{item.icon}</span>
+                                    <div>
+                                        <span className="project-contract-card__state-label">{item.label}</span>
+                                        <strong className="project-contract-card__state-value">{item.value}</strong>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="project-contract-card__owner">
+                            <span className="project-contract-card__label">{t('projectOverview.contract.decisionOwner')}</span>
+                            <strong>{projectBrief.decisionOwner || t('projectOverview.contract.emptyDecisionOwner')}</strong>
+                        </div>
+
+                        <div className={`project-contract-card__risk ${unresolvedRisk ? '' : 'is-empty'}`.trim()}>
+                            <span className="material-symbols-outlined">{unresolvedRisk ? 'warning' : 'verified'}</span>
+                            <div>
+                                <span className="project-contract-card__label">{t('projectOverview.contract.primaryRisk')}</span>
+                                <strong>{unresolvedRisk?.title || t('projectOverview.contract.emptyRisk')}</strong>
+                                {unresolvedRisk?.mitigation && (
+                                    <p>{unresolvedRisk.mitigation}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Card>
+        ),
         snapshot: (
             <section data-onboarding-id="project-overview-snapshot" className="section-group">
                 <div className="section-header">

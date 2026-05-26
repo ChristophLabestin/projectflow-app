@@ -1260,6 +1260,43 @@ export const calculateProjectHealth = (
         });
     }
 
+    const brief = project.brief || {};
+    const missingBriefFields = [
+        typeof brief.objective === 'string' && brief.objective.trim() ? null : 'objective',
+        Array.isArray(brief.successCriteria) && brief.successCriteria.some((item) => typeof item === 'string' && item.trim()) ? null : 'successCriteria',
+        typeof brief.scope === 'string' && brief.scope.trim() ? null : 'scope',
+        typeof brief.decisionOwner === 'string' && brief.decisionOwner.trim() ? null : 'decisionOwner',
+        brief.cadence ? null : 'cadence'
+    ].filter(Boolean);
+    const needsProjectBrief = project.status !== 'Completed' && project.status !== 'On Hold';
+
+    if (needsProjectBrief && missingBriefFields.length > 0) {
+        addFactor({
+            id: 'project_brief_gap',
+            label: 'Project Brief Incomplete',
+            labelKey: 'health.factors.project_brief_gap.label',
+            description: 'The project is missing objective, success criteria, scope, owner, or cadence.',
+            descriptionKey: 'health.factors.project_brief_gap.description',
+            meta: { count: missingBriefFields.length },
+            impact: -Math.min(7, 2 + missingBriefFields.length),
+            type: 'neutral'
+        });
+        addRecommendation(
+            'health.recommendations.completeProjectBrief',
+            'Complete the Project Brief so ProjectFlow can judge health against the real project contract.'
+        );
+    } else if (needsProjectBrief) {
+        addFactor({
+            id: 'project_brief_ready',
+            label: 'Project Brief Ready',
+            labelKey: 'health.factors.project_brief_ready.label',
+            description: 'The project has a clear objective, success criteria, scope, owner, and cadence.',
+            descriptionKey: 'health.factors.project_brief_ready.description',
+            impact: 4,
+            type: 'positive'
+        });
+    }
+
     if (!hasTrackedWork && activelyManaged) {
         addFactor({
             id: 'project_setup_gap',

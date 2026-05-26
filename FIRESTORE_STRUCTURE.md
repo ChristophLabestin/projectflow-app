@@ -193,6 +193,18 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `title`: string
 - `description`: string
 - `status`: "Active" | "Completed" | ...
+- `projectType`: `"standard" | "software" | "creative"` (Project Brief classification)
+- `operatingMode`: `"explore" | "build" | "ship" | "maintain"` (current execution mode)
+- `dateConfidence`: `"fixed" | "target" | "rough" | "unknown"` (how firm the project dates are)
+- `brief`: Object (lightweight project contract)
+  - `objective`: string
+  - `successCriteria`: string[]
+  - `scope`: string
+  - `decisionOwner`: string
+  - `cadence`: `"daily" | "weekly" | "biweekly" | "monthly" | "ad-hoc"`
+- `operatingModel`: Object (`mode`, `cadence`, `dateConfidence`) used by overview and future automation
+- `riskRegister`: Array of `{ id, title, mitigation, severity, status, createdAt }`
+- `healthSnapshot`: Object (optional durable score/status/trend snapshot)
 - `ownerId`: string
 - `modules`: string[] (Enabled modules like 'tasks', 'ideas')
 - `visibilityGroupIds`: string[]

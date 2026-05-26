@@ -56,6 +56,7 @@ Projects contain their own operational data such as:
 - Milestones, sprints (optional module)
 - Social/marketing artifacts (optional modules)
 - Project membership (including externals)
+- Project Brief contract: objective, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. This gives ProjectFlow and Codex a durable source of truth for judging whether work is moving the project toward the intended outcome.
 
 ### 2.5 Modules (Project-Configurable)
 Each project can be configured with **modules** that can be enabled/disabled at project creation (and changeable later if allowed by permission rules).

@@ -106,6 +106,7 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
     layoutVersion: 3,
     templateId: 'core',
     cards: [
+        { id: 'contract', enabled: true, span: 12, placement: 'primary' },
         { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
         { id: 'executionTasks', enabled: true, span: 12, placement: 'primary' },
         { id: 'executionFlows', enabled: true, span: 6, placement: 'primary' },

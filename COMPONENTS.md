@@ -68,7 +68,7 @@ Rules:
 | `StatusCard` | Status messaging panel | Invite flows, async states | Variants: `info`, `success`, `error`. Optional icon + extra actions. |
 | `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
 | `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Guided setup/fields/publish builder with schema validation, compact field editing, live public-page preview, and hosted/embed access controls. |
-| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. |
+| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard now includes progressive Project Brief capture for objective, success criteria, scope, owner, cadence, and risk. |
 | `Skeleton` | Loading placeholder | List/table loading | |
 
 ### `StatusCard`

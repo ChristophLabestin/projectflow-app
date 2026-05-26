@@ -53,7 +53,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/finance/sync` — External sync connections and sync run history
 - [x] `/finance/settings` — Finance settings, numbering defaults, and controls
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
-- [x] `/create` — Legacy create-project deep link that opens the global Create Project modal and returns to `/projects`
+- [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with Project Brief capture and returns to `/projects`
 - [x] `/team` — Team / members management
 - [x] `/media` — Media library
 - [x] `/profile` — User profile
@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components, explicit pause/resume catch-up modal)
+- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components, Project Contract card, explicit pause/resume catch-up modal)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 

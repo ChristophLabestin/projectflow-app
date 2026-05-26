@@ -220,4 +220,19 @@ describe('calculateProjectHealth', () => {
             'comment_engagement'
         ]));
     });
+
+    it('calls out missing project brief fields as setup gaps', () => {
+        const health = calculateProjectHealth(
+            baseProject({
+                status: 'Planning',
+                brief: {
+                    objective: '',
+                    successCriteria: []
+                }
+            })
+        );
+
+        expect(health.factors.map((factor) => factor.id)).toContain('project_brief_gap');
+        expect(health.recommendationKeys).toContain('health.recommendations.completeProjectBrief');
+    });
 });

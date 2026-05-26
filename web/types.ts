@@ -144,6 +144,7 @@ export interface ProjectInviteLink {
 }
 
 export type ProjectOverviewCardId =
+    | 'contract'
     | 'snapshot'
     | 'executionTasks'
     | 'executionFlows'
@@ -194,6 +195,41 @@ export interface ProjectOverviewTemplate {
 }
 
 export type ProjectStatus = 'Active' | 'Brainstorming' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+export type ProjectType = 'standard' | 'software' | 'creative';
+export type ProjectOperatingMode = 'explore' | 'build' | 'ship' | 'maintain';
+export type ProjectCadence = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'ad-hoc';
+export type ProjectDateConfidence = 'fixed' | 'target' | 'rough' | 'unknown';
+
+export interface ProjectBrief {
+    objective?: string;
+    successCriteria?: string[];
+    scope?: string;
+    decisionOwner?: string;
+    cadence?: ProjectCadence;
+}
+
+export interface ProjectOperatingModel {
+    mode?: ProjectOperatingMode;
+    cadence?: ProjectCadence;
+    dateConfidence?: ProjectDateConfidence;
+}
+
+export interface ProjectRiskRegisterItem {
+    id: string;
+    title: string;
+    mitigation?: string;
+    severity: 'low' | 'medium' | 'high';
+    status?: 'open' | 'watching' | 'resolved';
+    createdAt?: any;
+}
+
+export interface ProjectHealthSnapshot {
+    score?: number;
+    status?: string;
+    trend?: 'improving' | 'declining' | 'stable';
+    capturedAt?: any;
+    summary?: string;
+}
 
 export interface Project {
     id: string;
@@ -202,6 +238,13 @@ export interface Project {
     progress: number;
     status: ProjectStatus;
     projectState?: 'pre-release' | 'released' | 'not specified';
+    projectType?: ProjectType;
+    operatingMode?: ProjectOperatingMode;
+    dateConfidence?: ProjectDateConfidence;
+    brief?: ProjectBrief;
+    operatingModel?: ProjectOperatingModel;
+    riskRegister?: ProjectRiskRegisterItem[];
+    healthSnapshot?: ProjectHealthSnapshot;
     dueDate?: string;
     startDate?: string;
     pausedAt?: string;

@@ -6,7 +6,7 @@ import { TextArea } from '../common/Input/TextArea';
 import { Select } from '../common/Select/Select';
 import { Checkbox } from '../common/Checkbox/Checkbox';
 import { Badge } from '../common/Badge/Badge';
-import { Project, WorkspaceGroup, CustomRole } from '../../types';
+import { Project, WorkspaceGroup, CustomRole, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectType } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 
 import { ProjectTeamManager } from './ProjectTeamManager';
@@ -54,6 +54,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [status, setStatus] = useState(project.status);
     const [priority, setPriority] = useState(project.priority);
     const [projectState, setProjectState] = useState(project.projectState || 'not specified');
+    const [projectType, setProjectType] = useState<ProjectType>(project.projectType || 'standard');
+    const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>(project.operatingMode || project.operatingModel?.mode || 'build');
+    const [cadence, setCadence] = useState<ProjectCadence>(project.brief?.cadence || project.operatingModel?.cadence || 'weekly');
+    const [dateConfidence, setDateConfidence] = useState<ProjectDateConfidence>(project.dateConfidence || project.operatingModel?.dateConfidence || 'target');
+    const [objective, setObjective] = useState(project.brief?.objective || '');
+    const [successCriteria, setSuccessCriteria] = useState((project.brief?.successCriteria || []).join('\n'));
+    const [scope, setScope] = useState(project.brief?.scope || '');
+    const [decisionOwner, setDecisionOwner] = useState(project.brief?.decisionOwner || '');
+    const [primaryRisk, setPrimaryRisk] = useState(project.riskRegister?.find(risk => risk.status !== 'resolved')?.title || project.riskRegister?.[0]?.title || '');
+    const [riskMitigation, setRiskMitigation] = useState(project.riskRegister?.find(risk => risk.status !== 'resolved')?.mitigation || project.riskRegister?.[0]?.mitigation || '');
     const [coverImage, setCoverImage] = useState(project.coverImage);
     const [coverImageFileId, setCoverImageFileId] = useState(project.coverImageFileId || '');
     const [squareIcon, setSquareIcon] = useState(project.squareIcon);
@@ -112,6 +122,17 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setStatus(project.status);
             setPriority(project.priority);
             setProjectState(project.projectState || 'not specified');
+            setProjectType(project.projectType || 'standard');
+            setOperatingMode(project.operatingMode || project.operatingModel?.mode || 'build');
+            setCadence(project.brief?.cadence || project.operatingModel?.cadence || 'weekly');
+            setDateConfidence(project.dateConfidence || project.operatingModel?.dateConfidence || 'target');
+            setObjective(project.brief?.objective || '');
+            setSuccessCriteria((project.brief?.successCriteria || []).join('\n'));
+            setScope(project.brief?.scope || '');
+            setDecisionOwner(project.brief?.decisionOwner || '');
+            const currentRisk = project.riskRegister?.find(risk => risk.status !== 'resolved') || project.riskRegister?.[0];
+            setPrimaryRisk(currentRisk?.title || '');
+            setRiskMitigation(currentRisk?.mitigation || '');
             setCoverImage(project.coverImage);
             setCoverImageFileId(project.coverImageFileId || '');
             setSquareIcon(project.squareIcon);
@@ -205,6 +226,26 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            const parsedSuccessCriteria = successCriteria
+                .split(/\n|;/)
+                .map(item => item.trim())
+                .filter(Boolean);
+            const currentRisk = project.riskRegister?.find(risk => risk.status !== 'resolved') || project.riskRegister?.[0];
+            const resolvedRisks = (project.riskRegister || []).filter(risk => risk.status === 'resolved');
+            const riskRegister = primaryRisk.trim()
+                ? [
+                    {
+                        id: currentRisk?.id || `risk-${Date.now()}`,
+                        title: primaryRisk.trim(),
+                        ...(riskMitigation.trim() && { mitigation: riskMitigation.trim() }),
+                        severity: currentRisk?.severity || 'medium',
+                        status: currentRisk?.status || 'open',
+                        createdAt: currentRisk?.createdAt || new Date().toISOString()
+                    },
+                    ...resolvedRisks
+                ]
+                : resolvedRisks;
+
             // Save project settings
             await onSave({
                 title,
@@ -212,6 +253,22 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 status,
                 priority,
                 projectState,
+                projectType,
+                operatingMode,
+                dateConfidence,
+                brief: {
+                    ...(objective.trim() && { objective: objective.trim() }),
+                    ...(parsedSuccessCriteria.length > 0 && { successCriteria: parsedSuccessCriteria }),
+                    ...(scope.trim() && { scope: scope.trim() }),
+                    ...(decisionOwner.trim() && { decisionOwner: decisionOwner.trim() }),
+                    cadence
+                },
+                operatingModel: {
+                    mode: operatingMode,
+                    cadence,
+                    dateConfidence
+                },
+                riskRegister,
                 coverImage,
                 coverImageFileId,
                 squareIcon,
@@ -308,6 +365,30 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { value: 'pre-release', label: projectStateLabels['pre-release'] },
         { value: 'released', label: projectStateLabels.released },
     ];
+    const projectTypeOptions = [
+        { value: 'standard', label: t('projectSettings.brief.type.standard') },
+        { value: 'software', label: t('projectSettings.brief.type.software') },
+        { value: 'creative', label: t('projectSettings.brief.type.creative') },
+    ];
+    const operatingModeOptions = [
+        { value: 'explore', label: t('projectSettings.brief.mode.explore') },
+        { value: 'build', label: t('projectSettings.brief.mode.build') },
+        { value: 'ship', label: t('projectSettings.brief.mode.ship') },
+        { value: 'maintain', label: t('projectSettings.brief.mode.maintain') },
+    ];
+    const cadenceOptions = [
+        { value: 'daily', label: t('projectSettings.brief.cadence.daily') },
+        { value: 'weekly', label: t('projectSettings.brief.cadence.weekly') },
+        { value: 'biweekly', label: t('projectSettings.brief.cadence.biweekly') },
+        { value: 'monthly', label: t('projectSettings.brief.cadence.monthly') },
+        { value: 'ad-hoc', label: t('projectSettings.brief.cadence.adHoc') },
+    ];
+    const dateConfidenceOptions = [
+        { value: 'fixed', label: t('projectSettings.brief.dateConfidence.fixed') },
+        { value: 'target', label: t('projectSettings.brief.dateConfidence.target') },
+        { value: 'rough', label: t('projectSettings.brief.dateConfidence.rough') },
+        { value: 'unknown', label: t('projectSettings.brief.dateConfidence.unknown') },
+    ];
 
     const renderContent = () => {
         switch (activeTab) {
@@ -351,6 +432,75 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 value={projectState || 'not specified'}
                                 onChange={(value) => setProjectState(value as any)}
                                 options={projectStateOptions}
+                            />
+                        </div>
+
+                        <div className="project-edit-modal__brief">
+                            <div className="project-edit-modal__section-title">
+                                <span className="material-symbols-outlined">assignment</span>
+                                {t('projectSettings.brief.title')}
+                            </div>
+                            <div className="project-edit-modal__grid project-edit-modal__grid--two">
+                                <Select
+                                    label={t('projectSettings.brief.type.label')}
+                                    value={projectType}
+                                    onChange={(value) => setProjectType(value as ProjectType)}
+                                    options={projectTypeOptions}
+                                />
+                                <Select
+                                    label={t('projectSettings.brief.operatingMode.label')}
+                                    value={operatingMode}
+                                    onChange={(value) => setOperatingMode(value as ProjectOperatingMode)}
+                                    options={operatingModeOptions}
+                                />
+                                <Select
+                                    label={t('projectSettings.brief.cadence.label')}
+                                    value={cadence}
+                                    onChange={(value) => setCadence(value as ProjectCadence)}
+                                    options={cadenceOptions}
+                                />
+                                <Select
+                                    label={t('projectSettings.brief.dateConfidence.label')}
+                                    value={dateConfidence}
+                                    onChange={(value) => setDateConfidence(value as ProjectDateConfidence)}
+                                    options={dateConfidenceOptions}
+                                />
+                            </div>
+                            <TextArea
+                                label={t('projectSettings.brief.objective.label')}
+                                value={objective}
+                                onChange={(e) => setObjective(e.target.value)}
+                                rows={3}
+                            />
+                            <TextArea
+                                label={t('projectSettings.brief.successCriteria.label')}
+                                value={successCriteria}
+                                onChange={(e) => setSuccessCriteria(e.target.value)}
+                                rows={3}
+                            />
+                            <TextArea
+                                label={t('projectSettings.brief.scope.label')}
+                                value={scope}
+                                onChange={(e) => setScope(e.target.value)}
+                                rows={3}
+                            />
+                            <div className="project-edit-modal__grid project-edit-modal__grid--two">
+                                <TextInput
+                                    label={t('projectSettings.brief.decisionOwner.label')}
+                                    value={decisionOwner}
+                                    onChange={(e) => setDecisionOwner(e.target.value)}
+                                />
+                                <TextInput
+                                    label={t('projectSettings.brief.risk.label')}
+                                    value={primaryRisk}
+                                    onChange={(e) => setPrimaryRisk(e.target.value)}
+                                />
+                            </div>
+                            <TextArea
+                                label={t('projectSettings.brief.riskMitigation.label')}
+                                value={riskMitigation}
+                                onChange={(e) => setRiskMitigation(e.target.value)}
+                                rows={3}
                             />
                         </div>
 

@@ -20,7 +20,7 @@ import { Select } from '../components/common/Select/Select';
 import { PrioritySelect, type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Card } from '../components/common/Card/Card';
 import { ImageCropper } from '../components/ui/ImageCropper';
-import { ProjectModule, ProjectBlueprint, WorkspaceGroup } from '../types';
+import { Project, ProjectModule, ProjectBlueprint, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectType } from '../types';
 import { useToast } from '../context/UIContext';
 import { auth } from '../services/firebase';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
@@ -32,10 +32,11 @@ import { useModuleAccess } from '../hooks/useModuleAccess';
 const STEPS = [
     { id: 0, labelKey: 'createProjectWizard.steps.method' },
     { id: 1, labelKey: 'createProjectWizard.steps.details' },
-    { id: 2, labelKey: 'createProjectWizard.steps.modules' },
-    { id: 3, labelKey: 'createProjectWizard.steps.team' },
-    { id: 4, labelKey: 'createProjectWizard.steps.timeline' },
-    { id: 5, labelKey: 'createProjectWizard.steps.assets' },
+    { id: 2, labelKey: 'createProjectWizard.steps.brief' },
+    { id: 3, labelKey: 'createProjectWizard.steps.modules' },
+    { id: 4, labelKey: 'createProjectWizard.steps.team' },
+    { id: 5, labelKey: 'createProjectWizard.steps.timeline' },
+    { id: 6, labelKey: 'createProjectWizard.steps.assets' },
 ];
 
 type ModuleOption = {
@@ -81,7 +82,16 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     // Form Data
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
-    const [projectType, setProjectType] = useState<'standard' | 'software' | 'creative'>('standard');
+    const [projectType, setProjectType] = useState<ProjectType>('standard');
+    const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>('build');
+    const [cadence, setCadence] = useState<ProjectCadence>('weekly');
+    const [dateConfidence, setDateConfidence] = useState<ProjectDateConfidence>('target');
+    const [objective, setObjective] = useState('');
+    const [successCriteria, setSuccessCriteria] = useState('');
+    const [scope, setScope] = useState('');
+    const [decisionOwner, setDecisionOwner] = useState('');
+    const [primaryRisk, setPrimaryRisk] = useState('');
+    const [riskMitigation, setRiskMitigation] = useState('');
     const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
@@ -122,6 +132,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [connectingGithub, setConnectingGithub] = useState(false);
 
     const handleAiPromptChange = useArrowReplacement((e) => setAiPrompt(e.target.value));
+    const handleObjectiveChange = useArrowReplacement((e) => setObjective(e.target.value));
+    const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
+    const handleScopeChange = useArrowReplacement((e) => setScope(e.target.value));
+    const handleRiskMitigationChange = useArrowReplacement((e) => setRiskMitigation(e.target.value));
 
     useEffect(() => {
         getWorkspaceMembers().then(members => {
@@ -163,7 +177,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     const handleNext = () => {
         setCurrentStep(c => {
-            const next = Math.min(c + 1, 5);
+            const next = Math.min(c + 1, STEPS.length - 1);
             setFurthestVisitedStep(max => Math.max(max, next));
             return next;
         });
@@ -200,6 +214,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             setBlueprint(result);
             setName(result.title);
             setDescription(result.description);
+            setObjective(result.description);
             setModules(['tasks', 'initiatives', 'milestones', 'activity', 'ideas']);
             handleNext();
         } catch (e) {
@@ -257,9 +272,41 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         try {
             const formattedStartDate = startDate ? format(startDate, 'yyyy-MM-dd') : '';
             const formattedDueDate = dueDate ? format(dueDate, 'yyyy-MM-dd') : '';
-            const projectId = await createProject({
+            const parsedSuccessCriteria = successCriteria
+                .split(/\n|;/)
+                .map(item => item.trim())
+                .filter(Boolean);
+            const brief = {
+                ...(objective.trim() && { objective: objective.trim() }),
+                ...(parsedSuccessCriteria.length > 0 && { successCriteria: parsedSuccessCriteria }),
+                ...(scope.trim() && { scope: scope.trim() }),
+                ...(decisionOwner.trim() && { decisionOwner: decisionOwner.trim() }),
+                cadence
+            };
+            const hasBrief = Object.keys(brief).length > 1 || Boolean(brief.cadence);
+            const riskRegister = primaryRisk.trim()
+                ? [{
+                    id: `risk-${Date.now()}`,
+                    title: primaryRisk.trim(),
+                    ...(riskMitigation.trim() && { mitigation: riskMitigation.trim() }),
+                    severity: 'medium' as const,
+                    status: 'open' as const,
+                    createdAt: new Date().toISOString()
+                }]
+                : [];
+            const projectPayload: Partial<Project> = {
                 title: name,
                 description,
+                projectType,
+                operatingMode,
+                dateConfidence,
+                operatingModel: {
+                    mode: operatingMode,
+                    cadence,
+                    dateConfidence
+                },
+                ...(hasBrief && { brief }),
+                ...(riskRegister.length > 0 && { riskRegister }),
                 startDate: formattedStartDate,
                 dueDate: formattedDueDate,
                 priority: priorityValue,
@@ -269,7 +316,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 links: links.filter(l => l.title && l.url),
                 externalResources: externalResources.filter(r => r.title && r.url),
                 ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
-            }, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
+            };
+            const projectId = await createProject(projectPayload, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
 
             if (blueprint) {
                 for (const ms of blueprint.milestones) {
@@ -315,11 +363,30 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         }
     };
 
-    const typeLabels: Record<typeof projectType, string> = {
+    const typeLabels: Record<ProjectType, string> = {
         standard: t('createProjectWizard.type.standard'),
         software: t('createProjectWizard.type.software'),
         creative: t('createProjectWizard.type.creative'),
     };
+    const operatingModeOptions = [
+        { value: 'explore', label: t('createProjectWizard.brief.mode.explore') },
+        { value: 'build', label: t('createProjectWizard.brief.mode.build') },
+        { value: 'ship', label: t('createProjectWizard.brief.mode.ship') },
+        { value: 'maintain', label: t('createProjectWizard.brief.mode.maintain') }
+    ];
+    const cadenceOptions = [
+        { value: 'daily', label: t('createProjectWizard.brief.cadence.daily') },
+        { value: 'weekly', label: t('createProjectWizard.brief.cadence.weekly') },
+        { value: 'biweekly', label: t('createProjectWizard.brief.cadence.biweekly') },
+        { value: 'monthly', label: t('createProjectWizard.brief.cadence.monthly') },
+        { value: 'ad-hoc', label: t('createProjectWizard.brief.cadence.adHoc') }
+    ];
+    const dateConfidenceOptions = [
+        { value: 'fixed', label: t('createProjectWizard.timeline.dateConfidence.fixed') },
+        { value: 'target', label: t('createProjectWizard.timeline.dateConfidence.target') },
+        { value: 'rough', label: t('createProjectWizard.timeline.dateConfidence.rough') },
+        { value: 'unknown', label: t('createProjectWizard.timeline.dateConfidence.unknown') }
+    ];
 
     const priorityLabels: Record<Priority, string> = {
         low: t('tasks.priority.low'),
@@ -589,8 +656,88 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 2: Modules - GRID LAYOUT */}
+                        {/* Step 2: Project Brief */}
                         {currentStep === 2 && (
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.brief.title')}</h2>
+                                    <p>{t('createProjectWizard.brief.subtitle')}</p>
+                                </div>
+
+                                <div className="create-project__brief-grid">
+                                    <div className="create-project__field">
+                                        <label>{t('createProjectWizard.brief.objective.label')}</label>
+                                        <TextArea
+                                            value={objective}
+                                            onChange={handleObjectiveChange}
+                                            placeholder={t('createProjectWizard.brief.objective.placeholder')}
+                                            className="create-project__brief-input"
+                                        />
+                                    </div>
+
+                                    <div className="create-project__field">
+                                        <label>{t('createProjectWizard.brief.successCriteria.label')}</label>
+                                        <TextArea
+                                            value={successCriteria}
+                                            onChange={handleSuccessCriteriaChange}
+                                            placeholder={t('createProjectWizard.brief.successCriteria.placeholder')}
+                                            className="create-project__brief-input"
+                                        />
+                                    </div>
+
+                                    <div className="create-project__field create-project__field--wide">
+                                        <label>{t('createProjectWizard.brief.scope.label')}</label>
+                                        <TextArea
+                                            value={scope}
+                                            onChange={handleScopeChange}
+                                            placeholder={t('createProjectWizard.brief.scope.placeholder')}
+                                            className="create-project__brief-input create-project__brief-input--short"
+                                        />
+                                    </div>
+
+                                    <TextInput
+                                        label={t('createProjectWizard.brief.decisionOwner.label')}
+                                        value={decisionOwner}
+                                        onChange={e => setDecisionOwner(e.target.value)}
+                                        placeholder={t('createProjectWizard.brief.decisionOwner.placeholder')}
+                                    />
+
+                                    <Select
+                                        label={t('createProjectWizard.brief.operatingMode.label')}
+                                        value={operatingMode}
+                                        onChange={(value) => setOperatingMode(value as ProjectOperatingMode)}
+                                        options={operatingModeOptions}
+                                    />
+
+                                    <Select
+                                        label={t('createProjectWizard.brief.cadence.label')}
+                                        value={cadence}
+                                        onChange={(value) => setCadence(value as ProjectCadence)}
+                                        options={cadenceOptions}
+                                    />
+
+                                    <TextInput
+                                        label={t('createProjectWizard.brief.risk.label')}
+                                        value={primaryRisk}
+                                        onChange={e => setPrimaryRisk(e.target.value)}
+                                        placeholder={t('createProjectWizard.brief.risk.placeholder')}
+                                    />
+
+                                    <div className="create-project__field create-project__field--wide">
+                                        <label>{t('createProjectWizard.brief.riskMitigation.label')}</label>
+                                        <TextArea
+                                            value={riskMitigation}
+                                            onChange={handleRiskMitigationChange}
+                                            placeholder={t('createProjectWizard.brief.riskMitigation.placeholder')}
+                                            className="create-project__brief-input create-project__brief-input--short"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 2: Modules - GRID LAYOUT */}
+                        {currentStep === 3 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.modules.title')}</h2>
@@ -607,7 +754,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         )}
 
                         {/* Step 3: Team */}
-                        {currentStep === 3 && (
+                        {currentStep === 4 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.team.title')}</h2>
@@ -720,8 +867,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 4: Timeline */}
-                        {currentStep === 4 && (
+                        {/* Step 5: Timeline */}
+                        {currentStep === 5 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.timeline.title')}</h2>
@@ -759,12 +906,21 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             options={statusOptions}
                                         />
                                     </div>
+                                    <div className="create-project__timeline-control">
+                                        <span className="material-symbols-outlined create-project__timeline-icon">event_available</span>
+                                        <Select
+                                            label={t('createProjectWizard.timeline.dateConfidence.label')}
+                                            value={dateConfidence}
+                                            onChange={(value) => setDateConfidence(value as ProjectDateConfidence)}
+                                            options={dateConfidenceOptions}
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 5: Assets */}
-                        {currentStep === 5 && (
+                        {/* Step 6: Assets */}
+                        {currentStep === 6 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.assets.title')}</h2>
@@ -1027,12 +1183,12 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             )}
                         </div>
                         <div className="create-project__footer-actions">
-                            {currentStep > 0 && currentStep < 5 && (
+                            {currentStep > 0 && currentStep < STEPS.length - 1 && (
                                 <Button onClick={handleNext} disabled={currentStep === 1 && !name}>
                                     {t('createProjectWizard.actions.continue')}
                                 </Button>
                             )}
-                            {currentStep === 5 && (
+                            {currentStep === STEPS.length - 1 && (
                                 <Button onClick={handleSubmit} disabled={isSubmitting || !name} isLoading={isSubmitting}>
                                     {isSubmitting ? t('createProjectWizard.actions.creating') : t('createProjectWizard.actions.create')}
                                 </Button>

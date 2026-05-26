@@ -208,6 +208,12 @@ These tokens define key layout constants used across the app shell.
 - Resume flows should use the common `Modal`, show only open tasks whose due dates fell inside the paused window, and use `DatePicker` controls for inline due-date correction before the project is restored.
 - Use warning tone only for the paused state indicator; recovery rows should stay on normal surface tokens so the modal remains scannable.
 
+## 6.4) Project Contract Pattern
+
+- The Project Contract belongs on the project overview as a first-class operational card, not hidden only in settings.
+- Show objective, scope, success criteria, operating mode, cadence, date confidence, owner, and primary risk with compact labels and tokenized surface contrast.
+- Keep the card un-nested: use one `Card` surface with internal sections, state rows, and chips instead of cards inside cards.
+
 ---
 
 ## 7) Implementation Rules (Mandatory)

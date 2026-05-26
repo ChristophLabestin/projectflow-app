@@ -117,6 +117,15 @@ This pass intentionally implements a narrow end-to-end slice:
 - iOS: notification delivery status card, stored FCM token visibility, unread badge update, and in-app notification deep links to task/issue/flow/project details.
 - Docs: Firestore and gotcha updates for the new delivery/logging model.
 
+## Phase 0 Implemented In Follow-up Pass
+
+- Data model: added optional `projectType`, `operatingMode`, `dateConfidence`, `brief`, `operatingModel`, `riskRegister`, and `healthSnapshot` fields to `Project`.
+- Creation: added a progressive Project Brief step to the create-project wizard while preserving quick-create defaults.
+- Editing: added Project Brief fields to the project settings general tab.
+- Overview: added a default Project Contract overview card with objective, scope, success criteria, operating state, decision owner, and primary risk.
+- Health: added `project_brief_gap` and `project_brief_ready` health factors plus a focused recommendation for missing brief fields.
+- API: allowed Project Brief fields through the ProjectFlow API project create/update field allowlist.
+
 ## Deferred Items
 
 Deferred because they require additional product design, entitlement work, or new app targets:
@@ -124,7 +133,6 @@ Deferred because they require additional product design, entitlement work, or ne
 - WidgetKit target.
 - ActivityKit Live Activity target.
 - Share Sheet extension.
-- Full Project Brief create/edit flow.
 - Codex MCP/plugin packaging.
 - Web push production VAPID key provisioning.
 - Live deployment of functions.
@@ -133,9 +141,11 @@ Deferred because they require additional product design, entitlement work, or ne
 
 - [x] `cd functions && npm run build`
 - [x] `cd web && npm run build`
+- [x] `cd web && npm run test:run -- healthService`
 - [x] `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild-retention build`
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
+- [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
 ## ProjectFlow Tracking
 
-ProjectFlow initiative sync was attempted at the start and completion of the implementation session and returned HTTP 500 HTML responses both times. Local docs and this git diff are the durable record until the ProjectFlow API accepts tracking updates again.
+ProjectFlow initiative sync was attempted at the start and completion of the first implementation session and returned HTTP 500 HTML responses both times. The follow-up implementation session attempted `projectflow_cli.py sync checkpoint --entity initiative --phase start` and received HTTP 403 `Insufficient permissions`. Local docs and this git diff are the durable record until the ProjectFlow API accepts tracking updates again.

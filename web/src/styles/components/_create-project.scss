@@ -211,6 +211,20 @@
     gap: 24px;
 }
 
+.create-project__brief-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+
+    @media (max-width: 767px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.create-project__field--wide {
+    grid-column: 1 / -1;
+}
+
 .create-project__field {
     display: flex;
     flex-direction: column;
@@ -236,7 +250,8 @@
 }
 
 .create-project__ai-input .text-area,
-.create-project__description-input .text-area {
+.create-project__description-input .text-area,
+.create-project__brief-input .text-area {
     min-height: 140px;
     background: var(--color-surface-bg); // Input background
     border: 1px solid transparent;
@@ -251,6 +266,14 @@
 
 .create-project__description-input .text-area {
     min-height: 120px;
+}
+
+.create-project__brief-input .text-area {
+    min-height: 112px;
+}
+
+.create-project__brief-input--short .text-area {
+    min-height: 88px;
 }
 
 .create-project__ai-action {
