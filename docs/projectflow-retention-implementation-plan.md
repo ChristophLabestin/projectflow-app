@@ -135,14 +135,22 @@ This pass intentionally implements a narrow end-to-end slice:
 - iOS dashboard: mirrors the current focus item and status from the shared profile document.
 - iOS pinned sheet: can start, snooze, or block focus from pinned items.
 
+## Phase 3 Implemented In Continuation Pass
+
+- iOS ambient model: added an App Group-backed focus snapshot and share-capture queue shared by the app, WidgetKit extension, Live Activity, and Share Sheet extension.
+- Local reminder fallback: current focus now schedules an actionable local reminder unless the item is blocked or completed.
+- Notification actions: ProjectFlow push/local notifications register Start Focus, Snooze, Blocked, Complete, and Open actions; background actions update Firestore focus/task state.
+- WidgetKit: added Focus and Today widgets that render the current focus from the shared snapshot.
+- ActivityKit: added a Focus Keeper Live Activity/Dynamic Island surface for the current active or snoozed focus.
+- Share Sheet: added a native share extension that captures text/URLs into the App Group queue; the app imports queued captures as tenant-scoped personal tasks on launch/activation.
+- Backend push metadata: FCM payloads now include title/message data and APNs category metadata so iOS can show the ProjectFlow action set.
+
 ## Deferred Items
 
-Deferred because they require additional product design, entitlement work, or new app targets:
+Deferred because they require additional product design, production provisioning, or deployment:
 
-- WidgetKit target.
-- ActivityKit Live Activity target.
-- Share Sheet extension.
 - Codex MCP/plugin packaging.
+- Production App Group/APNs provisioning and release-profile entitlement verification.
 - Web push production VAPID key provisioning.
 - Live deployment of functions.
 
@@ -152,9 +160,13 @@ Deferred because they require additional product design, entitlement work, or ne
 - [x] `cd web && npm run build`
 - [x] `cd web && npm run test:run -- healthService`
 - [x] `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild-retention build`
+- [x] Phase 3: `cd functions && npm run build`
+- [x] Phase 3: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.
 
 ## ProjectFlow Tracking
 
-ProjectFlow initiative sync was attempted at the start and completion of the first implementation session and returned HTTP 500 HTML responses both times. The follow-up implementation session attempted `projectflow_cli.py sync checkpoint --entity initiative --phase start` and received HTTP 403 `Insufficient permissions`. Local docs and this git diff are the durable record until the ProjectFlow API accepts tracking updates again.
+ProjectFlow initiative sync was attempted at the start and completion of the first implementation session and returned HTTP 500 HTML responses both times. The follow-up implementation session attempted `projectflow_cli.py sync checkpoint --entity initiative --phase start` and received HTTP 403 `Insufficient permissions`.
+
+Phase 3 task sync succeeded on 2026-05-26. Task `kCvs5jcVE7Yc1YaaoYQ3` in project `ogZ8Pyz8pwEQtv8I64nu` was marked Done and a checkpoint comment was created with validation and provisioning follow-up notes.

@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
+        FocusAmbientController.shared.registerNotificationCategories()
         requestPushAuthorization(application)
 
         if let remoteNotification = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
@@ -65,6 +66,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
+        if FocusNotificationActionHandler.shared.canHandle(response.actionIdentifier) {
+            FocusNotificationActionHandler.shared.handle(response: response, completion: completionHandler)
+            return
+        }
+
         persistNotificationPayload(response.notification.request.content.userInfo)
         completionHandler()
     }

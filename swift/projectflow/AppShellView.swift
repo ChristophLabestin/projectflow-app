@@ -38,6 +38,7 @@ enum MainTab: Hashable {
 }
 
 struct MainTabView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selection: MainTab = .dashboard
 
     init() {
@@ -83,9 +84,15 @@ struct MainTabView: View {
         .ignoresSafeArea(edges: .bottom)
         .onAppear {
             consumePendingNotificationDeepLink()
+            ShareCaptureImportService.shared.importPendingCaptures()
         }
         .onReceive(NotificationCenter.default.publisher(for: .projectflowNotificationTapped)) { _ in
             consumePendingNotificationDeepLink()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                ShareCaptureImportService.shared.importPendingCaptures()
+            }
         }
     }
 

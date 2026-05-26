@@ -27,6 +27,7 @@ This document provides a component-level breakdown of the ProjectFlow iOS applic
 | **Project Status** | Donut chart with status breakdown. | `✅` | Sector-based status distribution chart. |
 | **Quick Stats** | Tappable cards: Tasks, Issues, Flows. | `✅` | Dynamic sync from `DashboardStore`. |
 | **Pinned Items** | Global list of items across projects. | `✅` | Real-time sync with `PinnedTasksStore`. |
+| **Ambient Focus** | Current focus visible outside the app. | `📱` | App Group snapshot powers local reminders, Focus/Today widgets, and Focus Keeper Live Activity. |
 | **Recent Activity** | Global feed of all workspace events. | `✅` | Tappable cards leading to details. |
 
 ---
@@ -72,6 +73,7 @@ This document provides a component-level breakdown of the ProjectFlow iOS applic
 | **Presence** | Typing indicators, active view list. | `✅` | Online/Busy/Idle status parity. |
 | **Media Library** | AI Generation, Unsplash, Folder structure. | `!` | Project-specific assets works; global studio pending. |
 | **Notifications** | Push, Email, In-app, Browser alerts. | `✅` | Full parity on native Push & Deep Linking. |
+| **Share Sheet Capture** | Quick capture from any app. | `📱` | Native share extension queues text/URLs and imports them as private personal tasks when ProjectFlow activates. |
 
 ---
 

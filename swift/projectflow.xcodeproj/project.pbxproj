@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		7C3100052F33000000A30001 /* projectflowAmbientExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7C3100032F33000000A30001 /* projectflowAmbientExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7C3100062F33000000A30001 /* projectflowShareExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 7C3100042F33000000A30001 /* projectflowShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		551EA05B2F16CC3800A7B376 /* FirebaseAI in Frameworks */ = {isa = PBXBuildFile; productRef = 551EA05A2F16CC3800A7B376 /* FirebaseAI */; };
 		551EA05D2F16CC3800A7B376 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 551EA05C2F16CC3800A7B376 /* FirebaseAuth */; };
 		551EA05F2F16CC3800A7B376 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 551EA05E2F16CC3800A7B376 /* FirebaseCore */; };
@@ -16,14 +18,86 @@
 		551EA0672F16CC3800A7B376 /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 551EA0662F16CC3800A7B376 /* FirebaseStorage */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		7C31000A2F33000000A30001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 551EA0352F16C65E00A7B376 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7C31000C2F33000000A30001;
+			remoteInfo = projectflowAmbientExtension;
+		};
+		7C31000B2F33000000A30001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 551EA0352F16C65E00A7B376 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7C31000D2F33000000A30001;
+			remoteInfo = projectflowShareExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		7C3100072F33000000A30001 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				7C3100052F33000000A30001 /* projectflowAmbientExtension.appex in Embed App Extensions */,
+				7C3100062F33000000A30001 /* projectflowShareExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		551EA03D2F16C65E00A7B376 /* projectflow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = projectflow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C3100032F33000000A30001 /* projectflowAmbientExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = projectflowAmbientExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7C3100042F33000000A30001 /* projectflowShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = projectflowShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		7C31001A2F33000000A30001 /* Exceptions for "projectflowAmbientExtension" folder in "projectflowAmbientExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7C31000C2F33000000A30001 /* projectflowAmbientExtension */;
+		};
+		7C31001B2F33000000A30001 /* Exceptions for "projectflowShareExtension" folder in "projectflowShareExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 7C31000D2F33000000A30001 /* projectflowShareExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		551EA03F2F16C65E00A7B376 /* projectflow */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = projectflow;
+			sourceTree = "<group>";
+		};
+		7C3100002F33000000A30001 /* projectflowAmbientShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = projectflowAmbientShared;
+			sourceTree = "<group>";
+		};
+		7C3100012F33000000A30001 /* projectflowAmbientExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7C31001A2F33000000A30001 /* Exceptions for "projectflowAmbientExtension" folder in "projectflowAmbientExtension" target */,
+			);
+			path = projectflowAmbientExtension;
+			sourceTree = "<group>";
+		};
+		7C3100022F33000000A30001 /* projectflowShareExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				7C31001B2F33000000A30001 /* Exceptions for "projectflowShareExtension" folder in "projectflowShareExtension" target */,
+			);
+			path = projectflowShareExtension;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -43,6 +117,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7C31000F2F33000000A30001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C3100122F33000000A30001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -50,6 +138,9 @@
 			isa = PBXGroup;
 			children = (
 				551EA03F2F16C65E00A7B376 /* projectflow */,
+				7C3100002F33000000A30001 /* projectflowAmbientShared */,
+				7C3100012F33000000A30001 /* projectflowAmbientExtension */,
+				7C3100022F33000000A30001 /* projectflowShareExtension */,
 				551EA03E2F16C65E00A7B376 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -58,6 +149,8 @@
 			isa = PBXGroup;
 			children = (
 				551EA03D2F16C65E00A7B376 /* projectflow.app */,
+				7C3100032F33000000A30001 /* projectflowAmbientExtension.appex */,
+				7C3100042F33000000A30001 /* projectflowShareExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -72,13 +165,17 @@
 				551EA0392F16C65E00A7B376 /* Sources */,
 				551EA03A2F16C65E00A7B376 /* Frameworks */,
 				551EA03B2F16C65E00A7B376 /* Resources */,
+				7C3100072F33000000A30001 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7C3100082F33000000A30001 /* PBXTargetDependency */,
+				7C3100092F33000000A30001 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				551EA03F2F16C65E00A7B376 /* projectflow */,
+				7C3100002F33000000A30001 /* projectflowAmbientShared */,
 			);
 			name = projectflow;
 			packageProductDependencies = (
@@ -94,6 +191,52 @@
 			productReference = 551EA03D2F16C65E00A7B376 /* projectflow.app */;
 			productType = "com.apple.product-type.application";
 		};
+		7C31000C2F33000000A30001 /* projectflowAmbientExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7C3100142F33000000A30001 /* Build configuration list for PBXNativeTarget "projectflowAmbientExtension" */;
+			buildPhases = (
+				7C31000E2F33000000A30001 /* Sources */,
+				7C31000F2F33000000A30001 /* Frameworks */,
+				7C3100102F33000000A30001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7C3100002F33000000A30001 /* projectflowAmbientShared */,
+				7C3100012F33000000A30001 /* projectflowAmbientExtension */,
+			);
+			name = projectflowAmbientExtension;
+			packageProductDependencies = (
+			);
+			productName = projectflowAmbientExtension;
+			productReference = 7C3100032F33000000A30001 /* projectflowAmbientExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		7C31000D2F33000000A30001 /* projectflowShareExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7C3100152F33000000A30001 /* Build configuration list for PBXNativeTarget "projectflowShareExtension" */;
+			buildPhases = (
+				7C3100112F33000000A30001 /* Sources */,
+				7C3100122F33000000A30001 /* Frameworks */,
+				7C3100132F33000000A30001 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				7C3100002F33000000A30001 /* projectflowAmbientShared */,
+				7C3100022F33000000A30001 /* projectflowShareExtension */,
+			);
+			name = projectflowShareExtension;
+			packageProductDependencies = (
+			);
+			productName = projectflowShareExtension;
+			productReference = 7C3100042F33000000A30001 /* projectflowShareExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -105,6 +248,12 @@
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					551EA03C2F16C65E00A7B376 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					7C31000C2F33000000A30001 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					7C31000D2F33000000A30001 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
@@ -127,12 +276,28 @@
 			projectRoot = "";
 			targets = (
 				551EA03C2F16C65E00A7B376 /* projectflow */,
+				7C31000C2F33000000A30001 /* projectflowAmbientExtension */,
+				7C31000D2F33000000A30001 /* projectflowShareExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		551EA03B2F16C65E00A7B376 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C3100102F33000000A30001 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C3100132F33000000A30001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -149,7 +314,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		7C31000E2F33000000A30001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7C3100112F33000000A30001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7C3100082F33000000A30001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7C31000C2F33000000A30001 /* projectflowAmbientExtension */;
+			targetProxy = 7C31000A2F33000000A30001 /* PBXContainerItemProxy */;
+		};
+		7C3100092F33000000A30001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7C31000D2F33000000A30001 /* projectflowShareExtension */;
+			targetProxy = 7C31000B2F33000000A30001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		551EA0462F16C66000A7B376 /* Debug */ = {
@@ -362,6 +554,132 @@
 			};
 			name = Release;
 		};
+		7C3100162F33000000A30001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = projectflowAmbientExtension/projectflowAmbientExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = projectflowAmbientExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.ambient;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7C3100172F33000000A30001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = projectflowAmbientExtension/projectflowAmbientExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = projectflowAmbientExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.ambient;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		7C3100182F33000000A30001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = projectflowShareExtension/projectflowShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = projectflowShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		7C3100192F33000000A30001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = projectflowShareExtension/projectflowShareExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = projectflowShareExtension/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.share;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -379,6 +697,24 @@
 			buildConfigurations = (
 				551EA0492F16C66000A7B376 /* Debug */,
 				551EA04A2F16C66000A7B376 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7C3100142F33000000A30001 /* Build configuration list for PBXNativeTarget "projectflowAmbientExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C3100162F33000000A30001 /* Debug */,
+				7C3100172F33000000A30001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7C3100152F33000000A30001 /* Build configuration list for PBXNativeTarget "projectflowShareExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7C3100182F33000000A30001 /* Debug */,
+				7C3100192F33000000A30001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

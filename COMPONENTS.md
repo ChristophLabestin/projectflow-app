@@ -57,6 +57,17 @@ Rules:
 
 ---
 
+## Native iOS Ambient Components
+
+| Component | Purpose | Typical Usage | Notes |
+|---|---|---|---|
+| `FocusAmbientController` | Keeps the current focus visible outside the app | iOS focus sync, local reminders, widget reloads, Live Activity updates | Uses App Group `group.de.christophlabestin.projectflow`; notification copy remains native-only for now. |
+| `FocusNotificationActionHandler` | Handles actionable push/local notification buttons | Start focus, snooze, block, complete from notification actions | Writes the same user `focusState` and task/issue/personal-task status fields as the in-app focus loop. |
+| `ProjectFlowAmbientExtension` | WidgetKit + ActivityKit ambient surfaces | Home Screen focus widget, Today widget, Focus Keeper Live Activity/Dynamic Island | Reads `ProjectFlowAmbientFocusSnapshot` from the shared App Group store. |
+| `ShareViewController` | Native Share Sheet capture | Captures shared text/URLs into the ProjectFlow app without opening the full UI | Queues captures locally; `ShareCaptureImportService` imports them into `personalTasks` on app activation. |
+
+---
+
 ## Feedback & Overlays
 
 | Component | Purpose | Typical Usage | Notes |

@@ -55,6 +55,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `status`: `"active" | "snoozed" | "blocked"`
   - `startedAt`, `snoozedUntil`, `blockedAt`, `updatedAt`: ISO date strings
   - `lastAction`: `"started" | "resumed" | "snoozed" | "blocked" | "completed" | "cleared"`
+- Native iOS mirrors `focusState` into App Group defaults for widgets, Live Activity, and local reminders. That local mirror is not a Firestore document.
 
 ### 📂 **`tenants`** (Workspaces)
 **Path:** `/tenants/{tenantId}`
@@ -72,6 +73,22 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `joinedAt`: Timestamp
 - `groupIds`: string[] (Workspace groups)
 
+#### ↳ 📂 **`users/{userId}/personalTasks`**
+**Path:** `/tenants/{tenantId}/users/{userId}/personalTasks/{taskId}`
+**Access:** The owning user can read/write; other tenant members must not see private personal tasks.
+**Schema highlights:**
+- `ownerId`: string
+- `tenantId`: string
+- `title`: string
+- `description`: string
+- `priority`: string
+- `isCompleted`: boolean
+- `createdAt`: Timestamp
+- `completedAt`: Timestamp (optional)
+- `source`: string (for example `"ios_share_extension"`)
+- `sourceUrl`: string (optional)
+- `shareCaptureId`: string (optional, native Share Sheet import id)
+
 #### ↳ 📂 **`notifications`**
 **Path:** `/tenants/{tenantId}/notifications/{notificationId}`
 **Schema:** `Notification`
@@ -87,6 +104,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `actorId`: string (Optional)
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
+- Mobile push data includes `title`, `message`, route ids, and APNs category `PROJECTFLOW_NOTIFICATION` so the iOS app can expose action buttons.
 
 #### ↳ 📂 **`notificationDeliveryLogs`**
 **Path:** `/tenants/{tenantId}/notificationDeliveryLogs/{logId}`

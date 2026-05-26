@@ -43,6 +43,7 @@ final class PinnedTasksStore: ObservableObject {
                 } else {
                     focusState = nil
                 }
+                FocusAmbientController.shared.sync(item: focusItem, focusState: focusState)
                 isLoading = false
             }
     }
@@ -81,6 +82,7 @@ final class PinnedTasksStore: ObservableObject {
             next.append(item)
         }
         let nextFocusState = buildFocusState(for: item, status: "active", lastAction: focusItemId == item.id ? "resumed" : "started")
+        FocusAmbientController.shared.sync(item: item, focusState: nextFocusState)
         save(items: next, focusItemId: item.id, focusState: nextFocusState, userId: user.uid)
     }
 
@@ -93,17 +95,20 @@ final class PinnedTasksStore: ObservableObject {
         data["snoozedUntil"] = isoFormatter.string(from: snoozedUntil)
         data["updatedAt"] = isoFormatter.string(from: now)
         nextFocusState = ProjectFlowFocusState(data: data)
+        FocusAmbientController.shared.sync(item: focusItem, focusState: nextFocusState)
         save(items: pinnedItems, focusItemId: focusItem.id, focusState: nextFocusState, userId: user.uid)
     }
 
     func blockFocus() {
         guard let user = Auth.auth().currentUser, let focusItem else { return }
         let nextFocusState = buildFocusState(for: focusItem, status: "blocked", lastAction: "blocked")
+        FocusAmbientController.shared.sync(item: focusItem, focusState: nextFocusState)
         save(items: pinnedItems, focusItemId: focusItem.id, focusState: nextFocusState, userId: user.uid)
     }
 
     func clearFocus() {
         guard let user = Auth.auth().currentUser else { return }
+        FocusAmbientController.shared.clearFocus()
         save(items: pinnedItems, focusItemId: nil, focusState: nil, userId: user.uid)
     }
 
@@ -147,6 +152,7 @@ final class PinnedTasksStore: ObservableObject {
         pinnedItems = []
         focusItemId = nil
         focusState = nil
+        FocusAmbientController.shared.clearFocus()
         isLoading = false
     }
 }

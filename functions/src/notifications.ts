@@ -115,6 +115,8 @@ const sendPushNotification = async (
     const data = compactData({
         notificationId,
         tenantId,
+        title,
+        message: body,
         type: getString(notification.type),
         projectId: getString(notification.projectId),
         taskId: getString(notification.taskId),
@@ -135,7 +137,8 @@ const sendPushNotification = async (
             apns: {
                 payload: {
                     aps: {
-                        sound: 'default'
+                        sound: 'default',
+                        category: 'PROJECTFLOW_NOTIFICATION'
                     }
                 }
             },
