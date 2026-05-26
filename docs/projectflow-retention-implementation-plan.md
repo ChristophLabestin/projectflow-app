@@ -189,12 +189,23 @@ This pass intentionally implements a narrow end-to-end slice:
 - Redeployed Firebase Hosting for `project-manager-9d0ad` and confirmed the previous missing-function rewrite warning no longer appears.
 - Closed ProjectFlow follow-up task `qJdKkyiHALJYNwyMxz8w`.
 
+## Phase 9 Cloud Runtime Config Migration
+
+- Confirmed there are no remaining `functions.config()` calls in `functions/src` or compiled `functions/lib`.
+- Confirmed production functions already load dotenv-backed environment variables from `functions/.env`.
+- Backed up the legacy Runtime Config payload outside the repo before removal.
+- Removed the stale Cloud Runtime Config object `smtp/pass` from `project-manager-9d0ad` using `gcloud beta runtime-config`.
+- Verified `gcloud beta runtime-config configs list --project project-manager-9d0ad` returns no configs.
+- Verified a targeted deploy of `functions:testSMTPConnection` completes without the deploy-time `functions.config()` deprecation warning.
+- Closed ProjectFlow follow-up task `fOa0q1dGYfexIdGCO25C`.
+
 ## Deferred Items
 
 Deferred because they require external console/provisioning access or a signed release artifact:
 
 - Add `VITE_FIREBASE_VAPID_KEY` to local/production web build environments and redeploy hosting. ProjectFlow task: `u7rRtb9TrHuLWxHKgYhl`.
 - Enable/verify Apple Developer App Group and Push capabilities, upload/verify Firebase APNs credentials, archive with a distribution profile, then run the signed `.app` entitlement check. ProjectFlow task: `YYawDDhIJguHIFkKqrZD`.
+- Upgrade `firebase-functions` in a deliberate compatibility pass; deploys still warn that the SDK is outdated even though the legacy Runtime Config blocker is resolved. ProjectFlow task: `IumAQAnwI3iph8Ps2gnN`.
 
 ## Validation Plan
 
@@ -215,6 +226,9 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 8: `firebase functions:list --project project-manager-9d0ad | rg "googleDriveStorageCallback"`
 - [x] Phase 8: `curl -I https://europe-west3-project-manager-9d0ad.cloudfunctions.net/googleDriveStorageCallback`
 - [x] Phase 8: `firebase deploy --only hosting --project project-manager-9d0ad --non-interactive`
+- [x] Phase 9: `rg -n "functions\\.config|\\.config\\(\\)" functions/src functions/lib`
+- [x] Phase 9: `gcloud beta runtime-config configs list --project project-manager-9d0ad --format='table(name)'`
+- [x] Phase 9: `firebase deploy --only functions:testSMTPConnection --project project-manager-9d0ad --non-interactive`
 - [x] Phase 5: `firebase deploy --only functions:api --project project-manager-9d0ad`
 - [x] Phase 5: `firebase deploy --only hosting --project project-manager-9d0ad`
 - [x] Phase 5: `curl -i https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow/projects/ogZ8Pyz8pwEQtv8I64nu/codex/sessions` returned JSON HTTP 401 for missing token.
