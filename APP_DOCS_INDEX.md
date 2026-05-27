@@ -36,6 +36,10 @@ Before making architectural decisions or implementing features, read the documen
 - **File:** `docs/projectflow-production-provisioning.md`
 - **Purpose:** Production push provisioning checklist for web VAPID, iOS App Group, APNs, and signed-release verification.
 
+### 2.4 Startup and company founding project planning
+- **File:** `docs/startup-company-project-expansion-plan.md`
+- **Purpose:** Product and implementation plan for broadening ProjectFlow projects beyond software delivery into startup/company founding, including templates, startup lifecycle tracks, data model additions, overview/health behavior, permissions, AI guardrails, and phased delivery.
+
 ---
 
 ## 3) Routing & Navigation
@@ -62,6 +66,11 @@ Before making architectural decisions or implementing features, read the documen
 - **Must-do:** When creating a new reusable component:
   - add it to `COMPONENTS.md`
   - ensure it uses tokens from `STYLING.md`
+
+### 4.3 Project overview layout restructure
+- **File:** `docs/project-overview-layout-restructure-plan.md`
+- **Purpose:** Implementation-ready plan for turning `/project/:id` into a command-first project overview with a compact header, command strip, attention queue, execution-first body, and demoted reference modules.
+- **Must-do:** Use this plan before large Project Overview layout changes so lifecycle controls, health/work signals, Project Contract, and empty-state behavior remain intentionally ordered.
 
 ---
 

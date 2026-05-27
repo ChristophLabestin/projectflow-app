@@ -17,7 +17,7 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { TextArea } from '../components/common/Input/TextArea';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { Select } from '../components/common/Select/Select';
-import { PrioritySelect, type Priority } from '../components/common/PrioritySelect/PrioritySelect';
+import { type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Card } from '../components/common/Card/Card';
 import { ImageCropper } from '../components/ui/ImageCropper';
 import { Project, ProjectModule, ProjectBlueprint, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectType } from '../types';
@@ -85,13 +85,9 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [projectType, setProjectType] = useState<ProjectType>('standard');
     const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>('build');
     const [cadence, setCadence] = useState<ProjectCadence>('weekly');
-    const [dateConfidence, setDateConfidence] = useState<ProjectDateConfidence>('target');
+    const dateConfidence: ProjectDateConfidence = 'target';
     const [objective, setObjective] = useState('');
     const [successCriteria, setSuccessCriteria] = useState('');
-    const [scope, setScope] = useState('');
-    const [decisionOwner, setDecisionOwner] = useState('');
-    const [primaryRisk, setPrimaryRisk] = useState('');
-    const [riskMitigation, setRiskMitigation] = useState('');
     const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
@@ -134,9 +130,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const handleAiPromptChange = useArrowReplacement((e) => setAiPrompt(e.target.value));
     const handleObjectiveChange = useArrowReplacement((e) => setObjective(e.target.value));
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
-    const handleScopeChange = useArrowReplacement((e) => setScope(e.target.value));
-    const handleRiskMitigationChange = useArrowReplacement((e) => setRiskMitigation(e.target.value));
-
     useEffect(() => {
         getWorkspaceMembers().then(members => {
             setAvailableMembers(members.filter(m => m.role !== 'Guest'));
@@ -176,6 +169,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     }, [projectType, creationMode]);
 
     const handleNext = () => {
+        if (currentStep === 1 && creationMode === 'scratch' && !objective.trim() && description.trim()) {
+            setObjective(description.trim());
+        }
+
         setCurrentStep(c => {
             const next = Math.min(c + 1, STEPS.length - 1);
             setFurthestVisitedStep(max => Math.max(max, next));
@@ -279,21 +276,9 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             const brief = {
                 ...(objective.trim() && { objective: objective.trim() }),
                 ...(parsedSuccessCriteria.length > 0 && { successCriteria: parsedSuccessCriteria }),
-                ...(scope.trim() && { scope: scope.trim() }),
-                ...(decisionOwner.trim() && { decisionOwner: decisionOwner.trim() }),
                 cadence
             };
             const hasBrief = Object.keys(brief).length > 1 || Boolean(brief.cadence);
-            const riskRegister = primaryRisk.trim()
-                ? [{
-                    id: `risk-${Date.now()}`,
-                    title: primaryRisk.trim(),
-                    ...(riskMitigation.trim() && { mitigation: riskMitigation.trim() }),
-                    severity: 'medium' as const,
-                    status: 'open' as const,
-                    createdAt: new Date().toISOString()
-                }]
-                : [];
             const projectPayload: Partial<Project> = {
                 title: name,
                 description,
@@ -306,7 +291,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                     dateConfidence
                 },
                 ...(hasBrief && { brief }),
-                ...(riskRegister.length > 0 && { riskRegister }),
                 startDate: formattedStartDate,
                 dueDate: formattedDueDate,
                 priority: priorityValue,
@@ -381,18 +365,18 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         { value: 'monthly', label: t('createProjectWizard.brief.cadence.monthly') },
         { value: 'ad-hoc', label: t('createProjectWizard.brief.cadence.adHoc') }
     ];
-    const dateConfidenceOptions = [
-        { value: 'fixed', label: t('createProjectWizard.timeline.dateConfidence.fixed') },
-        { value: 'target', label: t('createProjectWizard.timeline.dateConfidence.target') },
-        { value: 'rough', label: t('createProjectWizard.timeline.dateConfidence.rough') },
-        { value: 'unknown', label: t('createProjectWizard.timeline.dateConfidence.unknown') }
-    ];
-
     const priorityLabels: Record<Priority, string> = {
         low: t('tasks.priority.low'),
         medium: t('tasks.priority.medium'),
         high: t('tasks.priority.high'),
         urgent: t('tasks.priority.urgent'),
+    };
+    const projectPriorityOptions: Priority[] = ['low', 'medium', 'high', 'urgent'];
+    const priorityIcons: Record<Priority, string> = {
+        low: 'keyboard_arrow_down',
+        medium: 'drag_handle',
+        high: 'keyboard_double_arrow_up',
+        urgent: 'priority_high'
     };
 
     const priorityValueMap: Record<Priority, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
@@ -405,6 +389,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const priorityValue = priorityValueMap[priority];
 
     const statusLabels: Record<string, string> = {
+        Backlog: t('dashboard.projectStatus.backlog'),
         Planning: t('dashboard.projectStatus.planning'),
         Active: t('dashboard.projectStatus.active'),
         'On Hold': t('dashboard.projectStatus.onHold'),
@@ -427,6 +412,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     const coverPreview = coverUrl || (coverFile ? URL.createObjectURL(coverFile) : '');
     const iconPreview = squareIconUrl || (squareIconFile ? URL.createObjectURL(squareIconFile) : '');
+    const hasProjectLinks = externalResources.length > 0 || links.length > 0;
     const teamEmptyLabel = t('createProjectWizard.preview.teamEmpty');
     const deadlineValue = dueDate
         ? format(dueDate, dateFormat, { locale: dateLocale })
@@ -665,7 +651,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 </div>
 
                                 <div className="create-project__brief-grid">
-                                    <div className="create-project__field">
+                                    <div className="create-project__field create-project__field--wide">
                                         <label>{t('createProjectWizard.brief.objective.label')}</label>
                                         <TextArea
                                             value={objective}
@@ -675,61 +661,22 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         />
                                     </div>
 
-                                    <div className="create-project__field">
+                                    <div className="create-project__field create-project__field--wide">
                                         <label>{t('createProjectWizard.brief.successCriteria.label')}</label>
                                         <TextArea
                                             value={successCriteria}
                                             onChange={handleSuccessCriteriaChange}
                                             placeholder={t('createProjectWizard.brief.successCriteria.placeholder')}
-                                            className="create-project__brief-input"
-                                        />
-                                    </div>
-
-                                    <div className="create-project__field create-project__field--wide">
-                                        <label>{t('createProjectWizard.brief.scope.label')}</label>
-                                        <TextArea
-                                            value={scope}
-                                            onChange={handleScopeChange}
-                                            placeholder={t('createProjectWizard.brief.scope.placeholder')}
                                             className="create-project__brief-input create-project__brief-input--short"
                                         />
                                     </div>
 
-                                    <TextInput
-                                        label={t('createProjectWizard.brief.decisionOwner.label')}
-                                        value={decisionOwner}
-                                        onChange={e => setDecisionOwner(e.target.value)}
-                                        placeholder={t('createProjectWizard.brief.decisionOwner.placeholder')}
-                                    />
-
-                                    <Select
-                                        label={t('createProjectWizard.brief.operatingMode.label')}
-                                        value={operatingMode}
-                                        onChange={(value) => setOperatingMode(value as ProjectOperatingMode)}
-                                        options={operatingModeOptions}
-                                    />
-
-                                    <Select
-                                        label={t('createProjectWizard.brief.cadence.label')}
-                                        value={cadence}
-                                        onChange={(value) => setCadence(value as ProjectCadence)}
-                                        options={cadenceOptions}
-                                    />
-
-                                    <TextInput
-                                        label={t('createProjectWizard.brief.risk.label')}
-                                        value={primaryRisk}
-                                        onChange={e => setPrimaryRisk(e.target.value)}
-                                        placeholder={t('createProjectWizard.brief.risk.placeholder')}
-                                    />
-
-                                    <div className="create-project__field create-project__field--wide">
-                                        <label>{t('createProjectWizard.brief.riskMitigation.label')}</label>
-                                        <TextArea
-                                            value={riskMitigation}
-                                            onChange={handleRiskMitigationChange}
-                                            placeholder={t('createProjectWizard.brief.riskMitigation.placeholder')}
-                                            className="create-project__brief-input create-project__brief-input--short"
+                                    <div className="create-project__brief-options create-project__field--wide">
+                                        <Select
+                                            label={t('createProjectWizard.brief.cadence.label')}
+                                            value={cadence}
+                                            onChange={(value) => setCadence(value as ProjectCadence)}
+                                            options={cadenceOptions}
                                         />
                                     </div>
                                 </div>
@@ -877,28 +824,14 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
                                 <div className="create-project__timeline-grid">
                                     <div className="create-project__timeline-control">
-                                        <span className="material-symbols-outlined create-project__timeline-icon">event</span>
-                                        <DatePicker
-                                            label={t('createProjectWizard.timeline.startDate')}
-                                            value={startDate}
-                                            onChange={setStartDate}
+                                        <Select
+                                            label={t('createProjectWizard.brief.operatingMode.label')}
+                                            value={operatingMode}
+                                            onChange={(value) => setOperatingMode(value as ProjectOperatingMode)}
+                                            options={operatingModeOptions}
                                         />
                                     </div>
                                     <div className="create-project__timeline-control">
-                                        <span className="material-symbols-outlined create-project__timeline-icon">event_upcoming</span>
-                                        <DatePicker
-                                            label={t('createProjectWizard.timeline.dueDate')}
-                                            value={dueDate}
-                                            onChange={setDueDate}
-                                        />
-                                    </div>
-                                    <div className="create-project__field create-project__timeline-control create-project__timeline-control--priority">
-                                        <span className="material-symbols-outlined create-project__timeline-icon">flag</span>
-                                        <label>{t('createProjectWizard.timeline.priority')}</label>
-                                        <PrioritySelect value={priority} onChange={setPriority} variant="group" />
-                                    </div>
-                                    <div className="create-project__timeline-control">
-                                        <span className="material-symbols-outlined create-project__timeline-icon">progress_activity</span>
                                         <Select
                                             label={t('createProjectWizard.timeline.status')}
                                             value={status}
@@ -907,13 +840,37 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         />
                                     </div>
                                     <div className="create-project__timeline-control">
-                                        <span className="material-symbols-outlined create-project__timeline-icon">event_available</span>
-                                        <Select
-                                            label={t('createProjectWizard.timeline.dateConfidence.label')}
-                                            value={dateConfidence}
-                                            onChange={(value) => setDateConfidence(value as ProjectDateConfidence)}
-                                            options={dateConfidenceOptions}
+                                        <DatePicker
+                                            label={t('createProjectWizard.timeline.startDate')}
+                                            value={startDate}
+                                            onChange={setStartDate}
                                         />
+                                    </div>
+                                    <div className="create-project__timeline-control">
+                                        <DatePicker
+                                            label={t('createProjectWizard.timeline.dueDate')}
+                                            value={dueDate}
+                                            onChange={setDueDate}
+                                        />
+                                    </div>
+                                    <div className="create-project__field create-project__timeline-control create-project__timeline-control--priority">
+                                        <label>{t('createProjectWizard.timeline.priority')}</label>
+                                        <div className="create-project__priority-grid" role="radiogroup" aria-label={t('createProjectWizard.timeline.priority')}>
+                                            {projectPriorityOptions.map((option) => (
+                                                <button
+                                                    key={option}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={priority === option}
+                                                    className={`create-project__priority-option ${priority === option ? 'is-active' : ''}`}
+                                                    data-priority={option}
+                                                    onClick={() => setPriority(option)}
+                                                >
+                                                    <span className="material-symbols-outlined">{priorityIcons[option]}</span>
+                                                    <span>{priorityLabels[option]}</span>
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -1001,9 +958,16 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                     {/* GitHub Integration - Only for Software Projects */}
                                     {projectType === 'software' && (
                                         <div className="create-project__github">
-                                            <div className="create-project__section-header">
-                                                <h3 className="create-project__section-title">{t('createProjectWizard.github.title')}</h3>
-                                                <p className="create-project__section-subtitle">{t('createProjectWizard.github.subtitle')}</p>
+                                            <div className="create-project__finish-header">
+                                                <div className="create-project__finish-heading">
+                                                    <div className="create-project__finish-icon create-project__finish-icon--github">
+                                                        <svg className="create-project__github-mark" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="create-project__section-title">{t('createProjectWizard.github.title')}</h3>
+                                                        <p className="create-project__section-subtitle">{t('createProjectWizard.github.subtitle')}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                             {!githubToken ? (
                                                 <button
@@ -1028,9 +992,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                                     type="button"
                                                     aria-busy={connectingGithub}
                                                 >
-                                                    <div className="create-project__github-icon">
-                                                        <svg className="create-project__github-mark" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
-                                                    </div>
                                                     <div className="create-project__github-text">
                                                         <div className="create-project__github-title">
                                                             {connectingGithub ? t('createProjectWizard.github.connecting') : t('createProjectWizard.github.connect')}
@@ -1041,6 +1002,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                                 </button>
                                             ) : (
                                                 <div className="create-project__github-select">
+                                                    <div className="create-project__github-connected">
+                                                        <span className="material-symbols-outlined">check_circle</span>
+                                                        {t('createProjectWizard.github.connected')}
+                                                    </div>
                                                     <Select
                                                         value={githubValue}
                                                         onChange={(value) => setSelectedGithubRepo(String(value))}
@@ -1061,14 +1026,49 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                     )}
 
                                     <div className="create-project__links">
-                                        <div className="create-project__links-header">
-                                            <span className="material-symbols-outlined">link</span>
-                                            <h3 className="create-project__links-title">{t('createProjectWizard.links.title')}</h3>
+                                        <div className="create-project__finish-header create-project__finish-header--split">
+                                            <div className="create-project__finish-heading">
+                                                <div className="create-project__finish-icon">
+                                                    <span className="material-symbols-outlined">link</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="create-project__section-title">{t('createProjectWizard.links.title')}</h3>
+                                                    <p className="create-project__section-subtitle">{t('createProjectWizard.links.subtitle')}</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="create-project__links-actions">
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
+                                                    icon={<span className="material-symbols-outlined">add_link</span>}
+                                                    className="create-project__link-add"
+                                                >
+                                                    {t('createProjectWizard.links.addResource')}
+                                                </Button>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={() => setLinks([...links, { title: '', url: '' }])}
+                                                    icon={<span className="material-symbols-outlined">add</span>}
+                                                    className="create-project__link-add"
+                                                >
+                                                    {t('createProjectWizard.links.addOverview')}
+                                                </Button>
+                                            </div>
                                         </div>
 
                                         <div className="create-project__links-list">
+                                            {!hasProjectLinks && (
+                                                <div className="create-project__links-empty">
+                                                    <span className="material-symbols-outlined">bookmark_add</span>
+                                                    <span>{t('createProjectWizard.links.empty')}</span>
+                                                </div>
+                                            )}
+
                                             {externalResources.map((res, idx) => (
-                                                <div key={`res-${idx}`} className="create-project__link-row">
+                                                <div key={`res-${idx}`} className="create-project__link-row" data-kind="resource">
                                                     <div className="create-project__link-icon">
                                                         <span className="material-symbols-outlined">open_in_new</span>
                                                     </div>
@@ -1105,7 +1105,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             ))}
 
                                             {links.map((link, idx) => (
-                                                <div key={`link-${idx}`} className="create-project__link-row">
+                                                <div key={`link-${idx}`} className="create-project__link-row" data-kind="overview">
                                                     <div className="create-project__link-icon">
                                                         <span className="material-symbols-outlined">link</span>
                                                     </div>
@@ -1140,27 +1140,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                                     </button>
                                                 </div>
                                             ))}
-                                        </div>
-
-                                        <div className="create-project__links-actions">
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
-                                                icon={<span className="material-symbols-outlined">add</span>}
-                                                className="create-project__link-add"
-                                            >
-                                                {t('createProjectWizard.links.addResource')}
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={() => setLinks([...links, { title: '', url: '' }])}
-                                                icon={<span className="material-symbols-outlined">add</span>}
-                                                className="create-project__link-add"
-                                            >
-                                                {t('createProjectWizard.links.addOverview')}
-                                            </Button>
                                         </div>
                                     </div>
                                 </div>

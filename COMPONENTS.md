@@ -81,7 +81,7 @@ Rules:
 | `StatusCard` | Status messaging panel | Invite flows, async states | Variants: `info`, `success`, `error`. Optional icon + extra actions. |
 | `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
 | `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Guided setup/fields/publish builder with schema validation, compact field editing, live public-page preview, and hosted/embed access controls. |
-| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard now includes progressive Project Brief capture for objective, success criteria, scope, owner, cadence, and risk. |
+| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard favors low-friction creation: name-first details, optional brief direction, cadence in the brief, operating mode in the timeline step, and optional finish assets/links. |
 | `Skeleton` | Loading placeholder | List/table loading | |
 
 ### `StatusCard`
@@ -154,6 +154,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
 
 1) **Browse tenant assets**
 - Lists all images/assets available to the tenant **that the current user is authorized to view**.
+- Project pickers default to current-project media, but must expose a tenant-wide view that removes the project filter and groups assets by project plus an "Other" bucket for unscoped uploads.
 - Supports search, folders/tags (optional), and basic metadata (uploader, created date).
 - Must respect permissions and project/external access boundaries.
 

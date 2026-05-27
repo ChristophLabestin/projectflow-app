@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components, Project Contract card, explicit pause/resume catch-up modal)
+- [x] `/project/:id` (index) — Project overview (command-first layout with compact header, command strip, attention queue, demoted reference modules, Project Contract card, explicit pause/resume/cancel lifecycle)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 - [x] `/project/:id/codex` — Codex session feed and Codex follow-up inbox

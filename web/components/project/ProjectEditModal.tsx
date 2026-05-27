@@ -331,6 +331,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     const projectStatusLabels: Record<string, string> = {
         Active: t('project.status.active'),
+        Backlog: t('project.status.backlog'),
         Planning: t('project.status.planning'),
         'On Hold': t('project.status.onHold'),
         Completed: t('project.status.completed'),
@@ -349,6 +350,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const isProjectCanceled = project.status === 'Canceled';
     const projectStatusOptions = [
         { value: 'Active', label: projectStatusLabels.Active },
+        { value: 'Backlog', label: projectStatusLabels.Backlog },
         { value: 'Planning', label: projectStatusLabels.Planning },
         ...(isProjectPaused ? [{ value: 'On Hold', label: projectStatusLabels['On Hold'], disabled: true }] : []),
         ...(isProjectCanceled ? [{ value: 'Canceled', label: projectStatusLabels.Canceled, disabled: true }] : []),

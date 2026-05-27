@@ -41,11 +41,13 @@ export const ProjectDetails = () => {
 
     const statusLabels: Record<string, string> = {
         Active: t('dashboard.projectStatus.active'),
+        Backlog: t('dashboard.projectStatus.backlog'),
         Completed: t('dashboard.projectStatus.completed'),
         Canceled: t('dashboard.projectStatus.canceled'),
         Planning: t('dashboard.projectStatus.planning'),
         'On Hold': t('dashboard.projectStatus.onHold'),
-        Brainstorming: t('dashboard.projectStatus.brainstorming')
+        Brainstorming: t('dashboard.projectStatus.brainstorming'),
+        Review: t('project.status.review')
     };
 
     const priorityLabels: Record<string, string> = {

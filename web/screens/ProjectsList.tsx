@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
@@ -658,6 +658,7 @@ const TEMPLATE_SOURCE_BASE = 'base';
 
 const PROJECT_STATUS_ORDER: Project['status'][] = [
     'Active',
+    'Backlog',
     'Planning',
     'Review',
     'On Hold',
@@ -666,8 +667,9 @@ const PROJECT_STATUS_ORDER: Project['status'][] = [
     'Brainstorming'
 ];
 
-const PROJECT_STATUS_I18N_KEYS: Record<Project['status'], string> = {
+const PROJECT_STATUS_I18N_KEYS: Partial<Record<Project['status'], string>> = {
     'Active': 'project.status.active',
+    'Backlog': 'project.status.backlog',
     'Planning': 'project.status.planning',
     'Review': 'project.status.review',
     'On Hold': 'project.status.onHold',
@@ -809,6 +811,10 @@ export const ProjectsList: React.FC = () => {
     const canManageTemplates = hasPermission('tenant.settings.edit') || can('canManageWorkspace') || isOwner;
     const [overviewLayoutResetComplete, setOverviewLayoutResetComplete] = useState(false);
     const overviewLayoutResetRunningRef = useRef(false);
+    const getProjectStatusLabel = useCallback((status: Project['status']) => {
+        const labelKey = PROJECT_STATUS_I18N_KEYS[status];
+        return labelKey ? t(labelKey) : String(status);
+    }, [t]);
 
     useEffect(() => {
         void loadProjectOverviewTranslations();
@@ -825,18 +831,18 @@ export const ProjectsList: React.FC = () => {
         { value: TEMPLATE_SOURCE_DEFAULT, label: t('projects.templates.form.base.core') },
         ...projects.map((project) => ({
             value: project.id,
-            label: `${project.title} • ${t(PROJECT_STATUS_I18N_KEYS[project.status])}`
+            label: `${project.title} • ${getProjectStatusLabel(project.status)}`
         }))
-    ]), [projects, t]);
+    ]), [getProjectStatusLabel, projects, t]);
 
     const variantLayoutOptions: SelectOption[] = useMemo(() => ([
         { value: TEMPLATE_SOURCE_BASE, label: t('projects.templates.form.variants.useBase') },
         { value: TEMPLATE_SOURCE_DEFAULT, label: t('projects.templates.form.variants.useCore') },
         ...projects.map((project) => ({
             value: project.id,
-            label: `${project.title} • ${t(PROJECT_STATUS_I18N_KEYS[project.status])}`
+            label: `${project.title} • ${getProjectStatusLabel(project.status)}`
         }))
-    ]), [projects, t]);
+    ]), [getProjectStatusLabel, projects, t]);
 
     const getLayoutFromSource = (sourceId: string, baseLayout: ProjectOverviewLayout) => {
         if (sourceId === TEMPLATE_SOURCE_BASE) {
@@ -1874,7 +1880,7 @@ export const ProjectsList: React.FC = () => {
         <CompactProjectRow
             key={project.id}
             project={project}
-            statusLabel={t(PROJECT_STATUS_I18N_KEYS[project.status])}
+            statusLabel={getProjectStatusLabel(project.status)}
             updatedFallback={t('projects.sections.updatedUnknown')}
             onClick={() => navigate(`/project/${project.id}`)}
         />
@@ -2259,7 +2265,7 @@ export const ProjectsList: React.FC = () => {
                                         return (
                                             <div key={status} className={`template-variant ${variant.enabled ? 'is-enabled' : ''}`.trim()}>
                                                 <div className="template-variant__info">
-                                                    <span className="template-variant__status">{t(PROJECT_STATUS_I18N_KEYS[status])}</span>
+                                                    <span className="template-variant__status">{getProjectStatusLabel(status)}</span>
                                                     <span className="template-variant__hint">{t('projects.templates.form.variants.statusHint')}</span>
                                                 </div>
                                                 <div className="template-variant__controls">

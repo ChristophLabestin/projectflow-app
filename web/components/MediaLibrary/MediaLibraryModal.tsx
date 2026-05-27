@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { storage, auth } from '../../services/firebase';
+import { storage, auth, db } from '../../services/firebase';
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
+import { collection, getDocs } from 'firebase/firestore';
 import { useConfirm, useToast } from '../../context/UIContext';
 
 import { ImageEditor } from './ImageEditor';
@@ -28,6 +29,32 @@ interface MediaAsset {
     managedFileId?: string;
     managedTenantId?: string;
 }
+
+type MediaAssetGroup = {
+    id: string;
+    label: string;
+    assets: MediaAsset[];
+};
+
+const OTHER_MEDIA_GROUP_ID = '__other__';
+const TENANT_MEDIA_PAGE_LIMIT = 100;
+
+const getAssetProjectId = (asset: MediaAsset) => {
+    const value = asset.projectId?.trim();
+    return value && value !== 'uncategorized' ? value : '';
+};
+
+const dedupeMediaAssets = (assets: MediaAsset[]) => {
+    const seen = new Set<string>();
+    return assets.filter((asset) => {
+        const key = asset.managedFileId
+            ? `managed:${asset.managedFileId}`
+            : `${asset.id}:${asset.projectId || ''}:${asset.url}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+};
 
 interface MediaLibraryProps {
     isOpen: boolean;
@@ -65,9 +92,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const [uploadedFiles, setUploadedFiles] = useState<MediaAsset[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showTenantMedia, setShowTenantMedia] = useState(false);
+    const [projectNameById, setProjectNameById] = useState<Record<string, string>>({});
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
     const { t } = useLanguage();
+    const canBrowseTenantMedia = collectionType === 'project' && !deferredUpload && !storagePath;
     const aiStyles = [
         { value: 'Photographic', label: t('mediaLibrary.ai.styles.photographic') },
         { value: 'Digital Art', label: t('mediaLibrary.ai.styles.digitalArt') },
@@ -101,6 +131,40 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             loadStockImages();
         }
     }, [activeTab]);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setShowTenantMedia(false);
+        }
+    }, [isOpen]);
+
+    useEffect(() => {
+        if (!isOpen || !showTenantMedia || !canBrowseTenantMedia) return;
+
+        let cancelled = false;
+        const loadProjectNames = async () => {
+            const resolvedTenantId = tenantId || auth.currentUser?.uid;
+            if (!resolvedTenantId) return;
+
+            try {
+                const snapshot = await getDocs(collection(db, 'tenants', resolvedTenantId, 'projects'));
+                if (cancelled) return;
+                setProjectNameById(snapshot.docs.reduce<Record<string, string>>((acc, projectDoc) => {
+                    const project = projectDoc.data();
+                    acc[projectDoc.id] = String(project.title || projectDoc.id);
+                    return acc;
+                }, {}));
+            } catch (error) {
+                console.error('Failed to load media project labels', error);
+            }
+        };
+
+        void loadProjectNames();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [canBrowseTenantMedia, isOpen, showTenantMedia, tenantId]);
 
     const loadStockImages = async (query?: string) => {
         setIsStockLoading(true);
@@ -200,17 +264,29 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     const rootResult = await listAll(rootRef);
                     const rootItems = rootResult.items.filter(item => item.name.includes('_media_'));
 
-                    // 2. Fetch from Project Subfolder
-                    let projectItems: any[] = [];
-                    try {
-                        const projectRef = ref(storage, `tenants/${resolvedTenantId}/projects/${projectId}`);
-                        const projectResult = await listAll(projectRef);
-                        projectItems = projectResult.items.filter(item => item.name.includes('_media_'));
-                    } catch (e) {
-                        // Folder might not exist yet for new projects, that's fine
-                    }
+                    if (showTenantMedia && canBrowseTenantMedia) {
+                        const projectFolderResults = await Promise.all(rootResult.prefixes.map(async (prefixRef) => {
+                            try {
+                                const projectResult = await listAll(prefixRef);
+                                return projectResult.items.filter(item => item.name.includes('_media_'));
+                            } catch (e) {
+                                return [];
+                            }
+                        }));
+                        allItems = [...rootItems, ...projectFolderResults.flat()];
+                    } else {
+                        // 2. Fetch from Project Subfolder
+                        let projectItems: any[] = [];
+                        try {
+                            const projectRef = ref(storage, `tenants/${resolvedTenantId}/projects/${projectId}`);
+                            const projectResult = await listAll(projectRef);
+                            projectItems = projectResult.items.filter(item => item.name.includes('_media_'));
+                        } catch (e) {
+                            // Folder might not exist yet for new projects, that's fine
+                        }
 
-                    allItems = [...rootItems, ...projectItems];
+                        allItems = [...rootItems, ...projectItems];
+                    }
                 }
 
                 const assetPromises = allItems.map(async (item) => {
@@ -238,27 +314,40 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 let managedAssets: MediaAsset[] = [];
 
                 try {
-                    const managed = await listTenantFiles({
-                        tenantId: resolvedTenantId,
-                        module: 'media',
-                        projectId: collectionType === 'project' && projectId !== 'uncategorized' ? projectId : undefined,
-                        entityType: collectionType === 'user' ? 'userAsset' : undefined,
-                        entityId: collectionType === 'user' ? (resolvedUserId || '') : undefined,
-                        limit: 200,
-                    });
+                    const managedFiles: Awaited<ReturnType<typeof listTenantFiles>>['files'] = [];
+                    let cursor: string | undefined;
+                    do {
+                        const managed = await listTenantFiles({
+                            tenantId: resolvedTenantId,
+                            module: showTenantMedia && canBrowseTenantMedia ? undefined : 'media',
+                            projectId: showTenantMedia && canBrowseTenantMedia
+                                ? undefined
+                                : collectionType === 'project' && projectId !== 'uncategorized'
+                                    ? projectId
+                                    : undefined,
+                            entityType: collectionType === 'user' ? 'userAsset' : undefined,
+                            entityId: collectionType === 'user' ? (resolvedUserId || '') : undefined,
+                            cursor,
+                            limit: TENANT_MEDIA_PAGE_LIMIT,
+                        });
+                        managedFiles.push(...managed.files);
+                        cursor = managed.nextCursor || undefined;
+                    } while (cursor);
 
-                    managedAssets = managed.files.map((file) => ({
-                        id: file.id,
-                        managedFileId: file.id,
-                        managedTenantId: file.tenantId,
-                        url: file.downloadUrl,
-                        thumbnailUrl: file.downloadUrl,
-                        name: file.fileName,
-                        projectId: file.projectId || undefined,
-                        type: file.mimeType.startsWith('video/') ? 'video' : 'image',
-                        source: 'upload',
-                        createdAt: file.createdAt || new Date(),
-                    }));
+                    managedAssets = managedFiles
+                        .filter((file) => file.mimeType.startsWith('image/') || file.mimeType.startsWith('video/'))
+                        .map((file) => ({
+                            id: file.id,
+                            managedFileId: file.id,
+                            managedTenantId: file.tenantId,
+                            url: file.downloadUrl,
+                            thumbnailUrl: file.downloadUrl,
+                            name: file.fileName,
+                            projectId: file.projectId || undefined,
+                            type: file.mimeType.startsWith('video/') ? 'video' : 'image',
+                            source: 'upload',
+                            createdAt: file.createdAt || new Date(),
+                        }));
                 } catch (managedError) {
                     console.error('Failed to list managed media files', managedError);
                 }
@@ -272,15 +361,54 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         };
 
         fetchExistingAssets();
-    }, [isOpen, projectId, tenantId]);
+    }, [canBrowseTenantMedia, collectionType, isOpen, projectId, showTenantMedia, storagePath, tenantId, userId]);
 
-    // Combine existing assets with newly uploaded ones, filtered by current project or uncategorized
-    // For deferred upload, show all local uploaded files regardless of project ID filtering (since they are fresh)
-    const allAssets = deferredUpload || collectionType === 'user'
-        ? uploadedFiles
-        : [...existingAssets, ...uploadedFiles].filter(asset =>
-            asset.projectId === projectId || !asset.projectId || asset.projectId === 'uncategorized'
-        );
+    // Combine existing assets with newly uploaded ones, filtered by current project or uncategorized.
+    const allAssets = useMemo(() => {
+        const baseAssets = deferredUpload || collectionType === 'user'
+            ? uploadedFiles
+            : [...existingAssets, ...uploadedFiles];
+
+        const scopedAssets = showTenantMedia && canBrowseTenantMedia
+            ? baseAssets
+            : baseAssets.filter(asset =>
+                asset.projectId === projectId || !asset.projectId || asset.projectId === 'uncategorized'
+            );
+
+        return dedupeMediaAssets(scopedAssets);
+    }, [canBrowseTenantMedia, collectionType, deferredUpload, existingAssets, projectId, showTenantMedia, uploadedFiles]);
+
+    const groupedAssets = useMemo<MediaAssetGroup[]>(() => {
+        if (!showTenantMedia || !canBrowseTenantMedia) {
+            return [{
+                id: projectId || OTHER_MEDIA_GROUP_ID,
+                label: t('mediaLibrary.gallery.groups.currentProject'),
+                assets: allAssets,
+            }];
+        }
+
+        const groups = new Map<string, MediaAsset[]>();
+        allAssets.forEach((asset) => {
+            const groupId = getAssetProjectId(asset) || OTHER_MEDIA_GROUP_ID;
+            groups.set(groupId, [...(groups.get(groupId) || []), asset]);
+        });
+
+        return Array.from(groups.entries())
+            .map(([id, assets]) => ({
+                id,
+                label: id === OTHER_MEDIA_GROUP_ID
+                    ? t('mediaLibrary.gallery.groups.other')
+                    : projectNameById[id] || t('mediaLibrary.gallery.groups.unknownProject').replace('{id}', id.slice(0, 6)),
+                assets,
+            }))
+            .sort((a, b) => {
+                if (a.id === OTHER_MEDIA_GROUP_ID) return 1;
+                if (b.id === OTHER_MEDIA_GROUP_ID) return -1;
+                if (a.id === projectId) return -1;
+                if (b.id === projectId) return 1;
+                return a.label.localeCompare(b.label);
+            });
+    }, [allAssets, canBrowseTenantMedia, projectId, projectNameById, showTenantMedia, t]);
 
     const handleDragOver = useCallback((e: React.DragEvent) => {
         e.preventDefault();
@@ -617,6 +745,91 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         }
     };
 
+    const renderMediaAsset = (asset: MediaAsset) => (
+        <div
+            key={asset.id}
+            className="media-library__asset"
+        >
+            {asset.type === 'video' ? (
+                <video
+                    src={asset.url}
+                    className="media-library__asset-media"
+                    muted
+                    playsInline
+                    onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
+                    onMouseLeave={e => {
+                        const v = e.currentTarget as HTMLVideoElement;
+                        v.pause();
+                        v.currentTime = 0;
+                    }}
+                />
+            ) : (
+                <img
+                    src={asset.thumbnailUrl || asset.url}
+                    alt={asset.name}
+                    className="media-library__asset-media"
+                />
+            )}
+            <div
+                className="media-library__asset-overlay"
+                onClick={() => {
+                    if (onSelect) {
+                        onSelect(asset);
+                        onClose();
+                    }
+                }}
+            />
+
+            <div className="media-library__asset-actions">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(asset.url);
+                        showSuccess(t('mediaLibrary.gallery.actions.copySuccess'));
+                    }}
+                    className="media-library__asset-action"
+                    title={t('mediaLibrary.gallery.actions.copy')}
+                >
+                    <span className="material-symbols-outlined">link</span>
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        downloadFile(asset.url, asset.name);
+                    }}
+                    className="media-library__asset-action"
+                    title={t('mediaLibrary.gallery.actions.download')}
+                >
+                    <span className="material-symbols-outlined">download</span>
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingImage(asset);
+                    }}
+                    className="media-library__asset-action"
+                    title={t('mediaLibrary.gallery.actions.edit')}
+                >
+                    <span className="material-symbols-outlined">edit</span>
+                </button>
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteImage(asset);
+                    }}
+                    className="media-library__asset-action is-danger"
+                    title={t('mediaLibrary.gallery.actions.delete')}
+                >
+                    <span className="material-symbols-outlined">delete</span>
+                </button>
+            </div>
+
+            <div className="media-library__asset-caption">
+                <p>{asset.name}</p>
+            </div>
+        </div>
+    );
+
     if (!isOpen) return null;
 
     return createPortal(
@@ -741,6 +954,40 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     {/* Gallery Tab */}
                     {activeTab === 'gallery' && (
                         <div className="media-library__panel media-library__panel--gallery">
+                            {canBrowseTenantMedia && (
+                                <div className="media-library__gallery-toolbar">
+                                    <div className="media-library__gallery-scope">
+                                        <span className="material-symbols-outlined">
+                                            {showTenantMedia ? 'folder_copy' : 'filter_alt'}
+                                        </span>
+                                        <div>
+                                            <strong>
+                                                {showTenantMedia
+                                                    ? t('mediaLibrary.gallery.scope.allTitle')
+                                                    : t('mediaLibrary.gallery.scope.projectTitle')}
+                                            </strong>
+                                            <p>
+                                                {showTenantMedia
+                                                    ? t('mediaLibrary.gallery.scope.allHint')
+                                                    : t('mediaLibrary.gallery.scope.projectHint')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        className={`media-library__scope-toggle ${showTenantMedia ? 'is-active' : ''}`}
+                                        onClick={() => setShowTenantMedia(prev => !prev)}
+                                        aria-pressed={showTenantMedia}
+                                    >
+                                        <span className="material-symbols-outlined">
+                                            {showTenantMedia ? 'filter_alt' : 'filter_alt_off'}
+                                        </span>
+                                        {showTenantMedia
+                                            ? t('mediaLibrary.gallery.scope.showProject')
+                                            : t('mediaLibrary.gallery.scope.showAll')}
+                                    </button>
+                                </div>
+                            )}
                             {isLoading ? (
                                 <div className="media-library__state">
                                     <span className="material-symbols-outlined">progress_activity</span>
@@ -761,92 +1008,21 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     </button>
                                 </div>
                             ) : (
-                                <div className="media-library__grid media-library__grid--assets">
-                                    {allAssets.map(asset => (
-                                        <div
-                                            key={asset.id}
-                                            className="media-library__asset"
-                                        >
-                                            {asset.type === 'video' ? (
-                                                <video
-                                                    src={asset.url}
-                                                    className="media-library__asset-media"
-                                                    muted
-                                                    playsInline
-                                                    onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
-                                                    onMouseLeave={e => {
-                                                        const v = e.currentTarget as HTMLVideoElement;
-                                                        v.pause();
-                                                        v.currentTime = 0;
-                                                    }}
-                                                />
-                                            ) : (
-                                                <img
-                                                    src={asset.thumbnailUrl || asset.url}
-                                                    alt={asset.name}
-                                                    className="media-library__asset-media"
-                                                />
+                                <div className="media-library__asset-groups">
+                                    {groupedAssets.map(group => (
+                                        <section key={group.id} className="media-library__asset-group">
+                                            {showTenantMedia && (
+                                                <div className="media-library__asset-group-header">
+                                                    <h3>{group.label}</h3>
+                                                    <span>
+                                                        {t('mediaLibrary.gallery.groups.count').replace('{count}', String(group.assets.length))}
+                                                    </span>
+                                                </div>
                                             )}
-                                            {/* Selection Overlay */}
-                                            <div
-                                                className="media-library__asset-overlay"
-                                                onClick={() => {
-                                                    if (onSelect) {
-                                                        onSelect(asset);
-                                                        onClose();
-                                                    }
-                                                }}
-                                            />
-
-                                            {/* Action Buttons */}
-                                            <div className="media-library__asset-actions">
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigator.clipboard.writeText(asset.url);
-                                                        showSuccess(t('mediaLibrary.gallery.actions.copySuccess'));
-                                                    }}
-                                                    className="media-library__asset-action"
-                                                    title={t('mediaLibrary.gallery.actions.copy')}
-                                                >
-                                                    <span className="material-symbols-outlined">link</span>
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        downloadFile(asset.url, asset.name);
-                                                    }}
-                                                    className="media-library__asset-action"
-                                                    title={t('mediaLibrary.gallery.actions.download')}
-                                                >
-                                                    <span className="material-symbols-outlined">download</span>
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setEditingImage(asset);
-                                                    }}
-                                                    className="media-library__asset-action"
-                                                    title={t('mediaLibrary.gallery.actions.edit')}
-                                                >
-                                                    <span className="material-symbols-outlined">edit</span>
-                                                </button>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteImage(asset);
-                                                    }}
-                                                    className="media-library__asset-action is-danger"
-                                                    title={t('mediaLibrary.gallery.actions.delete')}
-                                                >
-                                                    <span className="material-symbols-outlined">delete</span>
-                                                </button>
+                                            <div className="media-library__grid media-library__grid--assets">
+                                                {group.assets.map(renderMediaAsset)}
                                             </div>
-
-                                            <div className="media-library__asset-caption">
-                                                <p>{asset.name}</p>
-                                            </div>
-                                        </div>
+                                        </section>
                                     ))}
                                 </div>
                             )}

@@ -95,11 +95,13 @@ export const Profile = () => {
 
     const projectStatusLabels: Record<string, string> = {
         Active: t('project.status.active'),
+        Backlog: t('project.status.backlog'),
         Completed: t('project.status.completed'),
         Canceled: t('project.status.canceled'),
         Planning: t('project.status.planning'),
         'On Hold': t('project.status.onHold'),
-        Brainstorming: t('project.status.brainstorming')
+        Brainstorming: t('project.status.brainstorming'),
+        Review: t('project.status.review')
     };
 
     return (

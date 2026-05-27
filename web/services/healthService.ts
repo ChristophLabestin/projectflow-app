@@ -379,7 +379,7 @@ export const calculateProjectHealth = (
         ? 82
         : project.status === 'On Hold'
             ? 54
-            : project.status === 'Planning' || project.status === 'Brainstorming'
+            : project.status === 'Planning' || project.status === 'Brainstorming' || project.status === 'Backlog'
                 ? 60
                 : 70;
     const factors: HealthFactor[] = [];
@@ -1722,7 +1722,7 @@ export const calculateSpotlightScore = (
     // 9. STATUS WEIGHT
     if (project.status === 'Active') {
         score += 10; // Baseline boost for active projects
-    } else if (project.status === 'Brainstorming' || project.status === 'Planning') {
+    } else if (project.status === 'Brainstorming' || project.status === 'Planning' || project.status === 'Backlog') {
         score -= 500; // Strong penalty for non-active projects
     } else if (project.status === 'On Hold') {
         score -= 200; // Moderate penalty for on-hold

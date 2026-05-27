@@ -6,7 +6,7 @@ import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
 import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
-import { getHealthDelta, getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
+import { getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
 import { subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
 import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
 import { getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
@@ -106,6 +106,7 @@ type ResumableProjectStatus = Exclude<ProjectStatus, 'On Hold' | 'Canceled'>;
 const DEFAULT_RESUME_STATUS: ResumableProjectStatus = 'Active';
 const RESUMABLE_PROJECT_STATUSES: ResumableProjectStatus[] = [
     'Active',
+    'Backlog',
     'Planning',
     'Completed',
     'Brainstorming',
@@ -170,21 +171,21 @@ const getTypeBadgeClass = (type?: string) => {
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
-    'snapshot',
     'executionTasks',
-    'executionFlows',
-    'executionIssues',
-    'updates',
-    'resources',
     'controls',
     'planning',
+    'contract',
+    'executionFlows',
+    'executionIssues',
     'milestones',
     'aiInsights',
+    'updates',
+    'resources',
     'team',
-    'contract',
     'metadata'
 ];
 
+const OVERVIEW_REFERENCE_CARD_IDS: ProjectOverviewCardId[] = ['updates', 'resources'];
 const OVERVIEW_CARD_SPANS = [12, 9, 6, 3] as const;
 type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
 type ExecutionCardVariant = 'wide' | 'balanced' | 'compact';
@@ -307,7 +308,6 @@ export const ProjectOverview = () => {
     const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
     const [commitsLoading, setCommitsLoading] = useState(false);
     const [commitsError, setCommitsError] = useState<string | null>(null);
-    const [healthDelta, setHealthDelta] = useState<number | null>(null);
     const [projectIdCopied, setProjectIdCopied] = useState(false);
 
 
@@ -506,7 +506,6 @@ export const ProjectOverview = () => {
     useEffect(() => {
         if (!id || !project?.tenantId) return;
         if (isProjectExcludedFromHealth(project)) {
-            setHealthDelta(null);
             return;
         }
 
@@ -515,11 +514,6 @@ export const ProjectOverview = () => {
         // Save daily health snapshot (uses date as doc ID so won't duplicate)
         saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
             .catch(err => console.warn('Failed to save health snapshot:', err));
-
-        // Load delta vs last week
-        getHealthDelta(id, health.score, project.tenantId)
-            .then(delta => setHealthDelta(delta))
-            .catch(err => console.warn('Failed to get health delta:', err));
     }, [id, project, tasks, milestones, issues, sprints, activity, initiatives, ideas]);
 
     useEffect(() => {
@@ -999,20 +993,6 @@ export const ProjectOverview = () => {
             description: t('projectOverview.onboarding.header.description')
         },
         {
-            id: 'metrics',
-            targetId: 'project-overview-metrics',
-            title: t('projectOverview.onboarding.metrics.title'),
-            description: t('projectOverview.onboarding.metrics.description'),
-            placement: 'top'
-        },
-        {
-            id: 'snapshot',
-            targetId: 'project-overview-snapshot',
-            title: t('projectOverview.onboarding.snapshot.title'),
-            description: t('projectOverview.onboarding.snapshot.description'),
-            placement: 'top'
-        },
-        {
             id: 'execution',
             targetId: 'project-overview-execution',
             title: t('projectOverview.onboarding.execution.title'),
@@ -1057,6 +1037,7 @@ export const ProjectOverview = () => {
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
     const projectStatusLabels = useMemo(() => ({
         Active: t('dashboard.projectStatus.active'),
+        Backlog: t('dashboard.projectStatus.backlog'),
         Planning: t('dashboard.projectStatus.planning'),
         'On Hold': t('dashboard.projectStatus.onHold'),
         Completed: t('dashboard.projectStatus.completed'),
@@ -1072,6 +1053,7 @@ export const ProjectOverview = () => {
     }), [t]);
     const statusOptions = useMemo<SelectOption[]>(() => ([
         { value: 'Active', label: projectStatusLabels.Active },
+        { value: 'Backlog', label: projectStatusLabels.Backlog },
         { value: 'Planning', label: projectStatusLabels.Planning },
         { value: 'Completed', label: projectStatusLabels.Completed },
         { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
@@ -1166,14 +1148,6 @@ export const ProjectOverview = () => {
         ));
     }, [catchUpTasks, showResumeModal]);
 
-    const nextSprint = useMemo(() => {
-        const active = sprints.find(s => s.status === 'Active');
-        if (active) return active;
-        return sprints
-            .filter(s => s.status === 'Planning')
-            .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
-    }, [sprints]);
-
     if (loading || !projectOverviewTranslationsReady) return (
         <div className="project-overview__loading">
             <span className="material-symbols-outlined project-overview__loading-icon">progress_activity</span>
@@ -1212,16 +1186,10 @@ export const ProjectOverview = () => {
         acc.done += stat.done;
         return acc;
     }, { total: 0, done: 0 });
-    const completedTasksWithSubtasks = completedTasks + subtaskTotals.done;
-    const totalTasksWithSubtasks = tasks.length + subtaskTotals.total;
-    const completedBreakdownTotal = completedTasksWithSubtasks;
-    const taskCompletionShare = completedBreakdownTotal > 0 ? Math.round((completedTasks / completedBreakdownTotal) * 100) : 0;
-    const subtaskCompletionShare = completedBreakdownTotal > 0 ? 100 - taskCompletionShare : 0;
     const openSubtasks = subtaskTotals.total - subtaskTotals.done;
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     const openTasks = tasks.length - completedTasks + openSubtasks;
-    const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
-    const upcomingDeadlines = tasks.filter(t => t.dueDate && new Date(t.dueDate) > new Date() && !t.isCompleted).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3);
+    const urgentCount = tasks.filter(t => !t.isCompleted && t.status !== 'Done' && t.priority === 'Urgent').length;
     const currentProjectPriority = project.priority || 'Medium';
     const currentPriorityLabel = priorityLabels[currentProjectPriority as keyof typeof priorityLabels] || currentProjectPriority;
     const projectStatusLabel = projectStatusLabels[project.status] || project.status;
@@ -1283,6 +1251,144 @@ export const ProjectOverview = () => {
         })
         .slice(0, 5);
 
+    type ProjectAttentionItem = {
+        id: string;
+        kind: 'task' | 'issue' | 'initiative';
+        title: string;
+        meta: string;
+        badge: string;
+        href: string;
+        icon: string;
+        tone: 'danger' | 'warning' | 'primary' | 'neutral';
+        score: number;
+        dueTime: number;
+    };
+    const attentionToday = startOfToday();
+    const attentionDueSoonEnd = addDays(endOfToday(), 7);
+    const formatAttentionDueLabel = (dateValue: string | undefined, overdue: boolean) => {
+        const dueDate = dateKeyToDate(dateValue);
+        if (!dueDate) return '';
+        const formattedDate = format(dueDate, dateFormat, { locale: dateLocale });
+        return overdue
+            ? t('projectOverview.attention.overdueOn').replace('{date}', formattedDate)
+            : t('projectOverview.attention.dueOn').replace('{date}', formattedDate);
+    };
+    const buildAttentionItem = (item: Omit<ProjectAttentionItem, 'id'> & { id?: string }): ProjectAttentionItem | null => {
+        if (!item.id || item.score <= 0) return null;
+        return item as ProjectAttentionItem;
+    };
+    const attentionItems: ProjectAttentionItem[] = isProjectCanceled ? [] : [
+        ...tasks.map((task) => {
+            if (task.isCompleted || task.status === 'Done' || task.legacyInitiativeRoot) return null;
+
+            const dueDate = dateKeyToDate(task.dueDate);
+            const overdue = Boolean(dueDate && dueDate < attentionToday);
+            const dueSoon = Boolean(dueDate && isWithinInterval(dueDate, { start: attentionToday, end: attentionDueSoonEnd }));
+            const blocked = task.status === 'Blocked';
+            const urgent = task.priority === 'Urgent';
+            const score = blocked ? 110 : overdue ? 100 : urgent ? 90 : dueSoon ? 70 : 0;
+            const dueLabel = formatAttentionDueLabel(task.dueDate, overdue);
+
+            return buildAttentionItem({
+                id: task.id,
+                kind: 'task',
+                title: task.title,
+                meta: dueLabel || (task.status ? taskStatusLabels[task.status] || task.status : priorityLabels[task.priority || 'Medium']),
+                badge: blocked
+                    ? t('projectOverview.attention.blocked')
+                    : overdue
+                        ? t('projectOverview.attention.overdue')
+                        : urgent
+                            ? t('projectOverview.attention.urgent')
+                            : t('projectOverview.attention.dueSoon'),
+                href: `/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`,
+                icon: blocked ? 'block' : overdue ? 'event_busy' : urgent ? 'priority_high' : 'event_upcoming',
+                tone: blocked || overdue || urgent ? 'danger' : 'warning',
+                score,
+                dueTime: dueDate?.getTime() || Number.MAX_SAFE_INTEGER
+            });
+        }),
+        ...recentIssues.map((issue) => {
+            const dueValue = issue.dueDate || issue.scheduledDate;
+            const dueDate = dateKeyToDate(dueValue);
+            const overdue = Boolean(dueDate && dueDate < attentionToday);
+            const dueSoon = Boolean(dueDate && isWithinInterval(dueDate, { start: attentionToday, end: attentionDueSoonEnd }));
+            const urgent = issue.priority === 'Urgent';
+            const high = issue.priority === 'High';
+            const score = overdue ? 105 : urgent ? 95 : dueSoon ? 75 : high ? 55 : 0;
+            const dueLabel = formatAttentionDueLabel(dueValue, overdue);
+
+            return buildAttentionItem({
+                id: issue.id,
+                kind: 'issue',
+                title: issue.title,
+                meta: dueLabel || issueStatusLabels[issue.status] || issue.status,
+                badge: overdue
+                    ? t('projectOverview.attention.overdue')
+                    : urgent
+                        ? t('projectOverview.attention.urgent')
+                        : dueSoon
+                            ? t('projectOverview.attention.dueSoon')
+                            : t('projectOverview.attention.highPriority'),
+                href: `/project/${id}/issues/${issue.id}`,
+                icon: overdue ? 'event_busy' : 'bug_report',
+                tone: overdue || urgent ? 'danger' : 'warning',
+                score,
+                dueTime: dueDate?.getTime() || Number.MAX_SAFE_INTEGER
+            });
+        }),
+        ...activeInitiatives.map((initiative) => {
+            const dueDate = dateKeyToDate(initiative.dueDate);
+            const overdue = Boolean(dueDate && dueDate < attentionToday && initiative.status !== 'Done');
+            const dueSoon = Boolean(dueDate && isWithinInterval(dueDate, { start: attentionToday, end: attentionDueSoonEnd }));
+            const blocked = initiative.status === 'Blocked';
+            const urgent = initiative.priority === 'Urgent';
+            const atRisk = initiative.health === 'At Risk' || initiative.health === 'Off Track';
+            const score = blocked ? 108 : overdue ? 98 : atRisk ? 88 : urgent ? 82 : dueSoon ? 65 : 0;
+            const dueLabel = formatAttentionDueLabel(initiative.dueDate, overdue);
+
+            return buildAttentionItem({
+                id: initiative.id,
+                kind: 'initiative',
+                title: initiative.title,
+                meta: dueLabel || (initiative.health ? t(`projectOverview.attention.health.${initiative.health.replace(/\s+/g, '')}`, initiative.health) : taskStatusLabels[initiative.status] || initiative.status),
+                badge: blocked
+                    ? t('projectOverview.attention.blocked')
+                    : overdue
+                        ? t('projectOverview.attention.overdue')
+                        : atRisk
+                            ? t('projectOverview.attention.atRisk')
+                            : urgent
+                                ? t('projectOverview.attention.urgent')
+                                : t('projectOverview.attention.dueSoon'),
+                href: `/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`,
+                icon: atRisk ? 'warning' : 'rocket_launch',
+                tone: blocked || overdue || atRisk || urgent ? 'danger' : 'warning',
+                score,
+                dueTime: dueDate?.getTime() || Number.MAX_SAFE_INTEGER
+            });
+        })
+    ]
+        .filter((item): item is ProjectAttentionItem => Boolean(item))
+        .sort((a, b) => (b.score - a.score) || (a.dueTime - b.dueTime) || a.title.localeCompare(b.title))
+        .slice(0, 5);
+    const commandHealthValue = health ? `${health.score}/100` : t('projectOverview.command.notScored');
+    const commandHealthMeta = health
+        ? healthStatusLabels[health.status] || health.status
+        : t('projectOverview.command.healthExcluded');
+    const commandHealthTone = health?.status || (isProjectCanceled ? 'canceled' : 'neutral');
+    const commandWorkValue = isProjectCanceled
+        ? t('projectOverview.command.canceledWorkValue')
+        : t('projectOverview.command.openWorkValue').replace('{count}', String(openTasks));
+    const commandWorkMeta = isProjectCanceled
+        ? t('projectOverview.command.canceledWorkMeta')
+        : urgentCount > 0
+            ? t('projectOverview.command.urgentWorkValue').replace('{count}', String(urgentCount))
+            : t('projectOverview.command.noUrgentWork');
+    const commandTimelineValue = isProjectDueOverdue ? t('projectOverview.controls.timelineOverdue') : projectDueLabel;
+    const commandTimelineMeta = t('projectOverview.command.timelineMeta').replace('{date}', projectStartLabel);
+    const commandAttentionCount = t('projectOverview.attention.count').replace('{count}', String(attentionItems.length));
+
     const hasIssuesModule = project.modules?.includes('issues');
     const hasIdeasModule = project.modules?.includes('ideas');
     const openIssues = issues.filter(i => !['Resolved', 'Closed'].includes(i.status)).length;
@@ -1320,9 +1426,6 @@ export const ProjectOverview = () => {
         })
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 3);
-    const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
-    const workloadMetric = { label: t('tasks.status.inProgress'), value: inProgressCount, icon: 'pending_actions' };
-    const projectPriorityKey = (project.priority || 'Medium').toLowerCase();
     const projectBrief = project.brief || {};
     const projectSuccessCriteria = (projectBrief.successCriteria || []).filter(Boolean);
     const projectCadence = projectBrief.cadence || project.operatingModel?.cadence;
@@ -1353,6 +1456,8 @@ export const ProjectOverview = () => {
     };
     const overviewCardsToRender = FIXED_OVERVIEW_CARDS.filter((card) => isCardRenderable(card.id));
     const primaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'primary');
+    const primaryFocusCardsToRender = primaryCardsToRender.filter((card) => !OVERVIEW_REFERENCE_CARD_IDS.includes(card.id));
+    const referenceCardsToRender = primaryCardsToRender.filter((card) => OVERVIEW_REFERENCE_CARD_IDS.includes(card.id));
     const secondaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'secondary');
 
     const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
@@ -1443,175 +1548,7 @@ export const ProjectOverview = () => {
                 </div>
             </Card>
         ),
-        snapshot: (
-            <section data-onboarding-id="project-overview-snapshot" className="section-group">
-                <div className="section-header">
-                    <h2>{t('projectOverview.snapshot.title')}</h2>
-                    <span className="subtitle">{t('projectOverview.snapshot.subtitle')}</span>
-                </div>
-                <div className="snapshot-grid">
-                    {/* Health Card */}
-                    {health && (
-                        <Card className="widget-card health-widget">
-                            <div className="card-header">
-                                <h3 className="title">
-                                    <span className="material-symbols-outlined icon">monitor_heart</span>
-                                    {t('projectOverview.snapshot.health.title')}
-                                </h3>
-                                <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
-                                    <span className="material-symbols-outlined">arrow_forward</span>
-                                </button>
-                            </div>
-
-                            {/* Semi-Circle Gauge Section */}
-                            <div className="health-widget__gauge-section">
-                                <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
-                                    <svg viewBox="0 0 120 70" className="health-widget__svg">
-                                        {/* Background arc */}
-                                        <path
-                                            d="M 10 60 A 50 50 0 0 1 110 60"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="8"
-                                            strokeLinecap="round"
-                                            className="health-widget__track"
-                                        />
-                                        {/* Progress arc */}
-                                        <path
-                                            d="M 10 60 A 50 50 0 0 1 110 60"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            strokeWidth="8"
-                                            strokeLinecap="round"
-                                            strokeDasharray="157"
-                                            strokeDashoffset={157 - (health.score / 100) * 157}
-                                            className="health-widget__progress"
-                                        />
-                                    </svg>
-                                    <div className="health-widget__score-group">
-                                        <span className="health-widget__score">{health.score}</span>
-                                        <span className="health-widget__score-suffix">/100</span>
-                                    </div>
-                                </div>
-
-                                {/* Status & Trend Row */}
-                                <div className="health-widget__status-row">
-                                    <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
-                                        {healthStatusLabels[health.status] || health.status}
-                                    </span>
-                                    <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
-                                        <span className="material-symbols-outlined">
-                                            {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
-                                        </span>
-                                        {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
-                                    </span>
-                                </div>
-                            </div>
-                        </Card>
-                    )}
-
-                    {/* Workload Card */}
-                    <Card className="widget-card">
-                        <div className="card-header">
-                            <h3 className="title">
-                                <span className="material-symbols-outlined icon">inbox</span>
-                                {t('projectOverview.snapshot.workload.title')}
-                            </h3>
-                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
-                        </div>
-                        <div className="workload-content">
-                            <div className="stat-row">
-                                <div className="stat-label">
-                                    <span className="material-symbols-outlined icon">list_alt</span>
-                                    {t('projectOverview.snapshot.workload.openTasks')}
-                                </div>
-                                <span className="stat-value">{openTasks}</span>
-                            </div>
-                            <div className="stat-row">
-                                <div className="stat-label">
-                                    <span className="material-symbols-outlined icon urgent">priority_high</span>
-                                    {t('tasks.priority.urgent')}
-                                </div>
-                                <span className="stat-value">{urgentCount}</span>
-                            </div>
-                            <div className="stat-row">
-                                <div className="stat-label">
-                                    <span className="material-symbols-outlined icon">{workloadMetric.icon}</span>
-                                    {workloadMetric.label}
-                                </div>
-                                <span className="stat-value">{workloadMetric.value}</span>
-                            </div>
-                        </div>
-                    </Card>
-
-                    {/* Priority Card */}
-                    <Card className="widget-card priority-widget">
-                        <div className="card-header">
-                            <h3 className="title">
-                                <span className="material-symbols-outlined icon">flag</span>
-                                {t('projectOverview.snapshot.priority.title', 'Priority')}
-                            </h3>
-                            <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
-                        </div>
-                        <div className="priority-widget__content">
-                            {[
-                                { key: 'Urgent', label: t('tasks.priority.urgent', 'Urgent'), color: 'urgent' },
-                                { key: 'High', label: t('tasks.priority.high', 'High'), color: 'high' },
-                                { key: 'Medium', label: t('tasks.priority.medium', 'Medium'), color: 'medium' },
-                                { key: 'Low', label: t('tasks.priority.low', 'Low'), color: 'low' },
-                            ].map(p => {
-                                const count = tasks.filter(t => !t.isCompleted && t.priority === p.key).length;
-                                return (
-                                    <div key={p.key} className="priority-widget__row">
-                                        <span className={`priority-widget__dot priority-widget__dot--${p.color}`} />
-                                        <span className="priority-widget__label">{p.label}</span>
-                                        <span className="priority-widget__count">{count}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </Card>
-
-                    {/* Activity Card */}
-                    <Card className="widget-card">
-                        <div className="card-header">
-                            <h3 className="title">
-                                <span className="material-symbols-outlined icon">insights</span>
-                                {t('projectOverview.snapshot.activity.title')}
-                            </h3>
-                            <Link to={`/project/${id}/activity`} className="header-action-btn">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </Link>
-                        </div>
-                        <div className="activity-stats-grid">
-                            <div>
-                                <div className="big-num">{activity.length}</div>
-                                <div className="label">{t('projectOverview.snapshot.activity.events')}</div>
-                            </div>
-                            <div>
-                                <div className="big-num comments">{activity.filter(a => a.type === 'comment').length}</div>
-                                <div className="label">{t('projectOverview.snapshot.activity.comments')}</div>
-                            </div>
-                        </div>
-                        <div className="recent-activity-preview">
-                            {activity[0]
-                                ? (
-                                    <>
-                                        <span className="user-name">{activity[0].user}</span> {activity[0].action.length > 35 ? activity[0].action.substring(0, 35) + '...' : activity[0].action}
-                                        <span className="time">{timeAgo(activity[0].createdAt)}</span>
-                                    </>
-                                )
-                                : t('projectOverview.snapshot.activity.empty')}
-                        </div>
-                    </Card>
-
-                </div>
-            </section>
-        ),
+        snapshot: null,
         executionTasks: (
             <section data-onboarding-id="project-overview-execution" className={`section-group execution-card-shell execution-card-shell--tasks execution-card-shell--${executionTasksVariant}`.trim()}>
                 <div className="section-header">
@@ -2692,47 +2629,6 @@ export const ProjectOverview = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="project-control-card__actions">
-                        {isProjectCanceled ? (
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                disabled
-                                size="sm"
-                                className="project-control-card__action"
-                                icon={<span className="material-symbols-outlined">cancel</span>}
-                            >
-                                {projectStatusLabels[PROJECT_CANCELED_STATUS]}
-                            </Button>
-                        ) : (
-                            <>
-                                <Button
-                                    type="button"
-                                    variant={isProjectPaused ? 'primary' : 'secondary'}
-                                    onClick={isProjectPaused ? () => setShowResumeModal(true) : handlePauseProject}
-                                    isLoading={!isProjectPaused && pausingProject}
-                                    disabled={cancelingProject}
-                                    size="sm"
-                                    className={`project-control-card__action ${isProjectPaused ? 'project-control-card__action--resume' : 'project-control-card__action--pause'}`}
-                                    icon={<span className="material-symbols-outlined">{isProjectPaused ? 'play_arrow' : 'pause'}</span>}
-                                >
-                                    {isProjectPaused ? t('projectOverview.resume.action') : t('projectOverview.pause.action')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    onClick={handleCancelProject}
-                                    isLoading={cancelingProject}
-                                    disabled={pausingProject || resumingProject}
-                                    size="sm"
-                                    className="project-control-card__action project-control-card__action--cancel"
-                                    icon={<span className="material-symbols-outlined">cancel</span>}
-                                >
-                                    {t('projectOverview.cancel.action')}
-                                </Button>
-                            </>
-                        )}
-                    </div>
                 </div>
 
                 {isProjectPaused && (
@@ -2994,133 +2890,6 @@ export const ProjectOverview = () => {
 
 
 
-                    {/* Banner Metrics Footer */}
-                    <div data-onboarding-id="project-overview-metrics" className="metrics-footer">
-                        {/* 1. Progress */}
-                        <div className="metric-item">
-                            <span className="material-symbols-outlined icon metric-icon metric-icon--primary">speed</span>
-                            <div className="content">
-                                <div className="value-row">
-                                    <span className="label">{t('projectOverview.metrics.completion')}</span>
-                                    <span className="val" style={{ color: 'var(--color-primary)' }}>{progress}%</span>
-                                </div>
-                                <div className="progress-track">
-                                    <div
-                                        className="progress-fill"
-                                        style={{ width: `${progress}%` }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 2. Tasks Stat */}
-                        <div className="metric-item metric-item--tooltip">
-                            <span className="material-symbols-outlined icon metric-icon metric-icon--success">task_alt</span>
-                            <div className="content">
-                                <div className="main-value">
-                                    {completedTasksWithSubtasks} / {totalTasksWithSubtasks}
-                                </div>
-                                <span className="sub-label">{t('projectOverview.metrics.tasksDone')}</span>
-                            </div>
-
-                            {/* Floating Hover Card (Keeping inline styles for complex layout specific to this popup not fully covered by general SCSS yet) */}
-                            <div className="metric-tooltip">
-                                <div className="metric-tooltip__card">
-                                    <div className="metric-tooltip__header">
-                                        <div className="metric-tooltip__title">
-                                            <span className="material-symbols-outlined">donut_small</span>
-                                            <span>{t('projectOverview.metrics.composition')}</span>
-                                        </div>
-                                        <span className="metric-tooltip__meta">
-                                            {t('projectOverview.metrics.totalCompleted')}
-                                        </span>
-                                    </div>
-                                    <div className="metric-tooltip__body">
-                                        <div className="metric-tooltip__bar">
-                                            <div
-                                                className="metric-tooltip__segment metric-tooltip__segment--tasks"
-                                                style={{ width: `${taskCompletionShare}%` }}
-                                            >
-                                                {taskCompletionShare > 10 && (
-                                                    <span className="metric-tooltip__segment-text">{taskCompletionShare}%</span>
-                                                )}
-                                            </div>
-                                            <div
-                                                className="metric-tooltip__segment metric-tooltip__segment--subtasks"
-                                                style={{ width: `${subtaskCompletionShare}%` }}
-                                            >
-                                                {subtaskCompletionShare > 10 && (
-                                                    <span className="metric-tooltip__segment-text">{subtaskCompletionShare}%</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="metric-tooltip__labels">
-                                            <span>{t('projectOverview.metrics.tasks')}</span>
-                                            <span>{t('projectOverview.metrics.subtasks')}</span>
-                                        </div>
-                                        <div className="metric-tooltip__grid">
-                                            <div className="metric-tooltip__stat-card">
-                                                <div className="metric-tooltip__stat-row">
-                                                    <span className="metric-tooltip__stat-dot metric-tooltip__stat-dot--tasks" />
-                                                    <span className="metric-tooltip__stat-label">{t('projectOverview.metrics.mainTasks')}</span>
-                                                </div>
-                                                <div className="metric-tooltip__stat-value">
-                                                    {completedTasks}
-                                                    <span className="metric-tooltip__stat-total">/ {tasks.length}</span>
-                                                </div>
-                                            </div>
-                                            <div className="metric-tooltip__stat-card">
-                                                <div className="metric-tooltip__stat-row">
-                                                    <span className="metric-tooltip__stat-dot metric-tooltip__stat-dot--subtasks" />
-                                                    <span className="metric-tooltip__stat-label">{t('projectOverview.metrics.subtasksLabel')}</span>
-                                                </div>
-                                                <div className="metric-tooltip__stat-value">
-                                                    {subtaskTotals.done}
-                                                    <span className="metric-tooltip__stat-total">/ {subtaskTotals.total}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 3. Priority */}
-                        <div className="metric-item">
-                            <span className={`material-symbols-outlined icon metric-icon metric-icon--${projectPriorityKey}`}>flag</span>
-                            <div className="content">
-                                <div className={`main-value priority-text priority-text--${projectPriorityKey}`}>
-                                    {project.priority ? (priorityLabels[project.priority] || project.priority) : t('tasks.priority.medium')}
-                                </div>
-                                <span className="sub-label">{t('projectOverview.metrics.priority')}</span>
-                            </div>
-                        </div>
-
-                        {/* 4. Next Sprint */}
-                        <div className="metric-item">
-                            <span className="material-symbols-outlined icon metric-icon metric-icon--warning">directions_run</span>
-                            <div className="content">
-                                <div className="main-value">
-                                    {nextSprint ? nextSprint.name : t('None', 'None')}
-                                </div>
-                                <span className="sub-label">{t('Next Sprint', 'Next Sprint')}</span>
-                            </div>
-                        </div>
-
-                        {/* 5. Next Deadline */}
-                        <div className="metric-item">
-                            <span className="material-symbols-outlined icon metric-icon metric-icon--primary">event_upcoming</span>
-                            <div className="content">
-                                <div className="main-value">
-                                    {upcomingDeadlines[0]
-                                        ? format(new Date(upcomingDeadlines[0].dueDate!), dateFormat, { locale: dateLocale })
-                                        : t('projectOverview.metrics.none')}
-                                </div>
-                                <span className="sub-label">{t('projectOverview.metrics.nextDeadline')}</span>
-                            </div>
-                        </div>
-                    </div>
-
                     {/* Mobile View Toggle */}
                     <div className="project-overview__mobile-toggle">
                         <div className="project-overview__toggle-group">
@@ -3150,6 +2919,121 @@ export const ProjectOverview = () => {
                         </div>
                     ) : (
                         <>
+                            <section className="project-command-strip" aria-label={t('projectOverview.command.label')}>
+                                <div className="project-command-strip__metrics">
+                                    <button
+                                        type="button"
+                                        className={`project-command-strip__item project-command-strip__item--health is-${commandHealthTone}`}
+                                        onClick={() => {
+                                            if (health) setShowHealthModal(true);
+                                        }}
+                                        disabled={!health}
+                                        aria-label={t('projectOverview.snapshot.health.title')}
+                                    >
+                                        <span className="project-command-strip__icon material-symbols-outlined">monitoring</span>
+                                        <div className="project-command-strip__copy">
+                                            <span>{t('projectOverview.command.health')}</span>
+                                            <strong>{commandHealthValue}</strong>
+                                            <em>{commandHealthMeta}</em>
+                                        </div>
+                                    </button>
+                                    <div className={`project-command-strip__item ${urgentCount > 0 ? 'is-danger' : 'is-neutral'}`}>
+                                        <span className="project-command-strip__icon material-symbols-outlined">checklist</span>
+                                        <div className="project-command-strip__copy">
+                                            <span>{t('projectOverview.command.work')}</span>
+                                            <strong>{commandWorkValue}</strong>
+                                            <em>{commandWorkMeta}</em>
+                                        </div>
+                                    </div>
+                                    <div className={`project-command-strip__item ${isProjectDueOverdue ? 'is-danger' : 'is-neutral'}`}>
+                                        <span className="project-command-strip__icon material-symbols-outlined">event</span>
+                                        <div className="project-command-strip__copy">
+                                            <span>{t('projectOverview.command.timeline')}</span>
+                                            <strong>{commandTimelineValue}</strong>
+                                            <em>{commandTimelineMeta}</em>
+                                        </div>
+                                    </div>
+                                    <div className={`project-command-strip__item ${isProjectCanceled ? 'is-canceled' : isProjectPaused ? 'is-paused' : 'is-neutral'}`}>
+                                        <span className="project-command-strip__icon material-symbols-outlined">flag</span>
+                                        <div className="project-command-strip__copy">
+                                            <span>{t('projectOverview.command.lifecycle')}</span>
+                                            <strong>{projectStatusLabel}</strong>
+                                            <em>{releaseStateLabel}</em>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isOwner && !isProjectCanceled && (
+                                    <div className="project-command-strip__actions">
+                                        {isProjectPaused ? (
+                                            <Button
+                                                variant="primary"
+                                                onClick={() => setShowResumeModal(true)}
+                                                icon={<span className="material-symbols-outlined">play_arrow</span>}
+                                            >
+                                                {t('projectOverview.resume.action')}
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handlePauseProject}
+                                                isLoading={pausingProject}
+                                                disabled={pausingProject || cancelingProject}
+                                                className="project-command-strip__action project-command-strip__action--pause"
+                                                icon={<span className="material-symbols-outlined">pause</span>}
+                                            >
+                                                {t('projectOverview.pause.action')}
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="secondary"
+                                            onClick={handleCancelProject}
+                                            isLoading={cancelingProject}
+                                            disabled={cancelingProject || pausingProject || resumingProject}
+                                            className="project-command-strip__action project-command-strip__action--cancel"
+                                            icon={<span className="material-symbols-outlined">cancel</span>}
+                                        >
+                                            {t('projectOverview.cancel.action')}
+                                        </Button>
+                                    </div>
+                                )}
+                            </section>
+
+                            {!isProjectCanceled && (
+                                <section className="project-attention-queue" aria-label={t('projectOverview.attention.title')}>
+                                    <div className="project-attention-queue__header">
+                                        <div>
+                                            <h2>{t('projectOverview.attention.title')}</h2>
+                                            <p>{t('projectOverview.attention.subtitle')}</p>
+                                        </div>
+                                        <span>{commandAttentionCount}</span>
+                                    </div>
+                                    {attentionItems.length > 0 ? (
+                                        <div className="project-attention-queue__list">
+                                            {attentionItems.map((item) => (
+                                                <button
+                                                    key={`${item.kind}-${item.id}`}
+                                                    type="button"
+                                                    className={`project-attention-queue__item is-${item.tone} is-${item.kind}`}
+                                                    onClick={() => navigate(item.href)}
+                                                >
+                                                    <span className="project-attention-queue__icon material-symbols-outlined">{item.icon}</span>
+                                                    <span className="project-attention-queue__copy">
+                                                        <strong>{item.title}</strong>
+                                                        <em>{item.meta}</em>
+                                                    </span>
+                                                    <span className="project-attention-queue__badge">{item.badge}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="project-attention-queue__empty">
+                                            <span className="material-symbols-outlined">check_circle</span>
+                                            <p>{t('projectOverview.attention.empty')}</p>
+                                        </div>
+                                    )}
+                                </section>
+                            )}
 
 
                             {/* Project Overview Layout */}
@@ -3157,7 +3041,7 @@ export const ProjectOverview = () => {
                                 <div className="overview-layout__columns">
                                     <div className="overview-layout__column overview-layout__column--primary">
                                         <div className="overview-layout__primary">
-                                            {primaryCardsToRender.map(renderOverviewCard)}
+                                            {primaryFocusCardsToRender.map(renderOverviewCard)}
                                         </div>
                                     </div>
                                     <div className="overview-layout__column overview-layout__column--secondary">
@@ -3166,6 +3050,11 @@ export const ProjectOverview = () => {
                                         </div>
                                     </div>
                                 </div>
+                                {referenceCardsToRender.length > 0 && (
+                                    <div className="overview-layout__reference">
+                                        {referenceCardsToRender.map(renderOverviewCard)}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Gallery Modal */}

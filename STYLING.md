@@ -214,6 +214,7 @@ These tokens define key layout constants used across the app shell.
 - Keep validation visible near the editable structure and expose direct review actions for field-specific issues.
 - Keep previews sticky and scoped to the real customer-facing surface, with compact counters for visible fields, custom fields, and blocking issues.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
+- Project creation should stay name-first and optional after the required basics. Timeline and finish steps use flat field grids and rows; avoid wrapping each field/link in card surfaces inside the wizard.
 
 ## 6.3) Project Lifecycle Recovery Pattern
 
@@ -232,7 +233,12 @@ These tokens define key layout constants used across the app shell.
 ## 6.5) Project Overview Layout Pattern
 
 - Project overview cards use a fixed, non-editable layout. Do not add user-facing drag handles, card toggles, layout toolbars, or layout customization modals to this screen.
+- Keep the page command-first: compact header, project command strip, attention queue, execution cards, project state/context, then reference modules.
+- Keep the command strip to one full-width section with compact cells for health, work, timeline, and lifecycle. It must not become a second full controls card.
+- Do not render the old header metrics footer or snapshot card alongside the command strip; those signals belong to one top-level summary surface.
+- Hide the attention queue for canceled projects because canceled work should not be promoted as important or urgent.
 - Keep primary work cards in the main grid and compact project state/support cards in the side column so the overview remains predictable across sessions.
+- Move reference-heavy modules such as updates, resources, GitHub, and metadata below the operational work/status area.
 
 ---
 

@@ -194,7 +194,7 @@ export interface ProjectOverviewTemplate {
     tenantId?: string;
 }
 
-export type ProjectStatus = 'Active' | 'Brainstorming' | 'Canceled' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+export type ProjectStatus = 'Active' | 'Backlog' | 'Brainstorming' | 'Canceled' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
 export type ProjectType = 'standard' | 'software' | 'creative';
 export type ProjectOperatingMode = 'explore' | 'build' | 'ship' | 'maintain';
 export type ProjectCadence = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'ad-hoc';
