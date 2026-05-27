@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useUIState } from '../../context/UIContext';
 import { Button } from './Button';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const GlobalConfirmationModal = () => {
     const { confirmation, closeConfirmation } = useUIState();
+    const { t } = useLanguage();
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
@@ -50,14 +52,14 @@ export const GlobalConfirmationModal = () => {
                         onClick={() => closeConfirmation(false)}
                         className="flex-1"
                     >
-                        Cancel
+                        {confirmation.cancelText || t('common.cancel')}
                     </Button>
                     <Button
-                        variant="primary"
+                        variant={confirmation.variant === 'danger' ? 'danger' : 'primary'}
                         onClick={() => closeConfirmation(true)}
                         className="flex-1"
                     >
-                        Confirm
+                        {confirmation.confirmText || t('common.confirm')}
                     </Button>
                 </div>
             </div>

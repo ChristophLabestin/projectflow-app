@@ -76,7 +76,7 @@ export const ProjectTasks = () => {
             }
 
             // Fetch categories for label display
-            getProjectCategories(id).then(setAllCategories).catch(console.error);
+            getProjectCategories(id, p.tenantId).then(setAllCategories).catch(console.error);
 
             // Subscribe to tasks with the correct tenantId
             unsub = subscribeProjectTasks(id, (taskData) => {
@@ -110,7 +110,7 @@ export const ProjectTasks = () => {
             if (!tasks.length) return;
             try {
                 const entries = await Promise.all(tasks.map(async (t) => {
-                    const subs = await getSubTasks(t.id);
+                    const subs = await getSubTasks(t.id, id, t.tenantId || project?.tenantId);
                     const done = subs.filter(s => s.isCompleted).length;
                     return [t.id, { done, total: subs.length }] as const;
                 }));
@@ -120,7 +120,7 @@ export const ProjectTasks = () => {
             }
         };
         loadSubtaskStats();
-    }, [tasks]);
+    }, [id, project?.tenantId, tasks]);
 
     useEffect(() => {
         if (new URLSearchParams(location.search).get('newTask') === '1') {
@@ -139,18 +139,24 @@ export const ProjectTasks = () => {
         });
     }, [tasks]);
 
-    const handleToggle = async (taskId: string, currentStatus: boolean) => {
+    const handleToggle = async (task: Task) => {
         if (!can('canManageTasks')) return;
+        const currentStatus = task.isCompleted;
         // Optimistic
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
-        await toggleTaskStatus(taskId, currentStatus);
+        setTasks(prev => prev.map(t => t.id === task.id ? { ...t, isCompleted: !currentStatus } : t));
+        await toggleTaskStatus(task.id, currentStatus, id, task.tenantId || project?.tenantId);
     };
 
-    const handleDelete = async (taskId: string) => {
+    const handleDelete = async (task: Task) => {
         if (!can('canManageTasks')) return;
-        if (!await confirm(t('projectTasks.confirm.delete.title'), t('projectTasks.confirm.delete.body'))) return;
+        if (!await confirm({
+            title: t('projectTasks.confirm.delete.title'),
+            message: t('projectTasks.confirm.delete.body'),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        })) return;
         try {
-            await deleteTask(taskId);
+            await deleteTask(task.id, id, task.tenantId || project?.tenantId);
         } catch (e) {
             console.error(e);
             setError(t('projectTasks.error.delete'));
@@ -364,12 +370,17 @@ export const ProjectTasks = () => {
     const handleBulkDelete = async () => {
         if (!selectedIds.size) return;
         if (!can('canManageTasks')) return;
-        if (!await confirm(
-            t('projectTasks.confirm.bulkDelete.title'),
-            t('projectTasks.confirm.bulkDelete.body').replace('{count}', String(selectedIds.size))
-        )) return;
+        if (!await confirm({
+            title: t('projectTasks.confirm.bulkDelete.title'),
+            message: t('projectTasks.confirm.bulkDelete.body').replace('{count}', String(selectedIds.size)),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        })) return;
         try {
-            await Promise.all(Array.from(selectedIds).map((id: string) => deleteTask(id)));
+            await Promise.all(Array.from(selectedIds).map((taskId: string) => {
+                const task = tasks.find((item) => item.id === taskId);
+                return deleteTask(taskId, id, task?.tenantId || project?.tenantId);
+            }));
             setSelectedIds(new Set());
         } catch (e) {
             console.error(e);
@@ -488,7 +499,7 @@ export const ProjectTasks = () => {
                 <div className="task-main-info">
                     <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
+                        onClick={(e) => { e.stopPropagation(); handleToggle(task); }}
                         disabled={!can('canManageTasks')}
                         className={`check-btn ${task.isCompleted ? 'checked' : ''} ${!can('canManageTasks') ? 'disabled' : ''}`}
                     >
@@ -871,7 +882,7 @@ export const ProjectTasks = () => {
                         {can('canManageTasks') && (
                             <button
                                 type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
+                                onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
                                 className="action-btn action-btn--delete"
                             >
                                 <span className="material-symbols-outlined action-btn__icon">delete</span>
@@ -889,6 +900,7 @@ export const ProjectTasks = () => {
                                         type: 'task',
                                         title: task.title,
                                         projectId: id!,
+                                        tenantId: task.tenantId || project?.tenantId,
                                         priority: task.priority,
                                         isCompleted: task.isCompleted
                                     });
@@ -904,7 +916,7 @@ export const ProjectTasks = () => {
                                         type: 'task',
                                         title: task.title,
                                         projectId: id!,
-                                        tenantId: task.tenantId,
+                                        tenantId: task.tenantId || project?.tenantId,
                                         priority: task.priority,
                                         isCompleted: task.isCompleted
                                     });

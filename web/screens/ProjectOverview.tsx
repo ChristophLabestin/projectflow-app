@@ -1,31 +1,6 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import '../src/styles/components/_project-overview.scss';
-import {
-    type CollisionDetection,
-    closestCenter,
-    DndContext,
-    DragCancelEvent,
-    DragEndEvent,
-    DragOverEvent,
-    DragOverlay,
-    DragStartEvent,
-    KeyboardSensor,
-    pointerWithin,
-    PointerSensor,
-    TouchSensor,
-    useDroppable,
-    useSensor,
-    useSensors
-} from '@dnd-kit/core';
-import {
-    rectSortingStrategy,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
@@ -52,9 +27,7 @@ import {
     ProjectGroup,
     Sprint,
     CustomRole,
-    ProjectOverviewLayout,
     ProjectOverviewCardId,
-    ProjectOverviewCardConfig,
     ProjectOverviewCardPlacement,
     ProjectStatus
 } from '../types';
@@ -66,6 +39,7 @@ import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
 import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/UIContext';
 import confetti from 'canvas-confetti';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/common/Card/Card';
@@ -78,7 +52,7 @@ import { useProjectPermissions } from '../hooks/useProjectPermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
-import { calculateProjectHealth } from '../services/healthService';
+import { calculateProjectHealth, isProjectExcludedFromHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { getHealthFactorText } from '../utils/healthLocalization';
@@ -127,8 +101,10 @@ const activityIcon = (type?: Activity['type'], actionText?: string) => {
 };
 
 const PROJECT_PAUSED_STATUS: ProjectStatus = 'On Hold';
-const DEFAULT_RESUME_STATUS: Exclude<ProjectStatus, 'On Hold'> = 'Active';
-const RESUMABLE_PROJECT_STATUSES: Exclude<ProjectStatus, 'On Hold'>[] = [
+const PROJECT_CANCELED_STATUS: ProjectStatus = 'Canceled';
+type ResumableProjectStatus = Exclude<ProjectStatus, 'On Hold' | 'Canceled'>;
+const DEFAULT_RESUME_STATUS: ResumableProjectStatus = 'Active';
+const RESUMABLE_PROJECT_STATUSES: ResumableProjectStatus[] = [
     'Active',
     'Planning',
     'Completed',
@@ -171,9 +147,9 @@ const isCatchUpTask = (task: Task, pauseStartDateKey: string, resumeDateKey: str
     return dueDateKey >= pauseStartDateKey && dueDateKey <= resumeDateKey;
 };
 
-const resolveResumeStatus = (status?: ProjectStatus): Exclude<ProjectStatus, 'On Hold'> => {
-    if (status && status !== PROJECT_PAUSED_STATUS && RESUMABLE_PROJECT_STATUSES.includes(status)) {
-        return status;
+const resolveResumeStatus = (status?: ProjectStatus): ResumableProjectStatus => {
+    if (status && status !== PROJECT_PAUSED_STATUS && status !== PROJECT_CANCELED_STATUS && RESUMABLE_PROJECT_STATUSES.includes(status as ResumableProjectStatus)) {
+        return status as ResumableProjectStatus;
     }
 
     return DEFAULT_RESUME_STATUS;
@@ -194,350 +170,68 @@ const getTypeBadgeClass = (type?: string) => {
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
-    'contract',
     'snapshot',
     'executionTasks',
     'executionFlows',
     'executionIssues',
     'updates',
     'resources',
+    'controls',
     'planning',
     'milestones',
     'aiInsights',
     'team',
-    'metadata',
-    'controls'
+    'contract',
+    'metadata'
 ];
 
 const OVERVIEW_CARD_SPANS = [12, 9, 6, 3] as const;
 type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
 type ExecutionCardVariant = 'wide' | 'balanced' | 'compact';
 
-const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: OverviewCardSpan; defaultEnabled: boolean; defaultPlacement: ProjectOverviewCardPlacement }> = {
-    contract: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    snapshot: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    executionTasks: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    executionFlows: { defaultSpan: 6, defaultEnabled: true, defaultPlacement: 'primary' },
-    executionIssues: { defaultSpan: 6, defaultEnabled: true, defaultPlacement: 'primary' },
-    updates: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    resources: { defaultSpan: 12, defaultEnabled: true, defaultPlacement: 'primary' },
-    planning: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
-    milestones: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
-    aiInsights: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
-    team: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
-    metadata: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' },
-    controls: { defaultSpan: 3, defaultEnabled: true, defaultPlacement: 'secondary' }
+const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: OverviewCardSpan; defaultPlacement: ProjectOverviewCardPlacement }> = {
+    contract: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    snapshot: { defaultSpan: 12, defaultPlacement: 'primary' },
+    executionTasks: { defaultSpan: 12, defaultPlacement: 'primary' },
+    executionFlows: { defaultSpan: 6, defaultPlacement: 'primary' },
+    executionIssues: { defaultSpan: 6, defaultPlacement: 'primary' },
+    updates: { defaultSpan: 12, defaultPlacement: 'primary' },
+    resources: { defaultSpan: 12, defaultPlacement: 'primary' },
+    planning: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    milestones: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    aiInsights: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    team: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    metadata: { defaultSpan: 3, defaultPlacement: 'secondary' },
+    controls: { defaultSpan: 3, defaultPlacement: 'secondary' }
 };
 
-const normalizeOverviewSpan = (span: number | undefined, fallback: OverviewCardSpan): OverviewCardSpan => {
-    if (span && OVERVIEW_CARD_SPANS.includes(span as OverviewCardSpan)) {
-        return span as OverviewCardSpan;
-    }
-    return fallback;
+type FixedOverviewCardConfig = {
+    id: ProjectOverviewCardId;
+    span: OverviewCardSpan;
+    placement: ProjectOverviewCardPlacement;
 };
 
-const normalizeOverviewPlacement = (placement: ProjectOverviewCardPlacement | undefined, fallback: ProjectOverviewCardPlacement) => {
-    if (placement === 'secondary') {
-        return 'secondary';
-    }
-    return fallback === 'secondary' ? 'secondary' : 'primary';
-};
+const FIXED_OVERVIEW_CARDS: FixedOverviewCardConfig[] = OVERVIEW_CARD_ORDER.map((id) => ({
+    id,
+    span: OVERVIEW_CARD_DEFINITIONS[id].defaultSpan,
+    placement: OVERVIEW_CARD_DEFINITIONS[id].defaultPlacement
+}));
 
-const DEFAULT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
-    layoutVersion: 3,
-    templateId: 'core',
-    cards: OVERVIEW_CARD_ORDER.map((id) => ({
-        id,
-        enabled: OVERVIEW_CARD_DEFINITIONS[id].defaultEnabled,
-        span: OVERVIEW_CARD_DEFINITIONS[id].defaultSpan,
-        placement: OVERVIEW_CARD_DEFINITIONS[id].defaultPlacement
-    }))
-};
-
-const isOverviewCardId = (value: string): value is ProjectOverviewCardId => (
-    Object.prototype.hasOwnProperty.call(OVERVIEW_CARD_DEFINITIONS, value)
-);
-
-const normalizeOverviewLayout = (layout?: ProjectOverviewLayout): ProjectOverviewLayout => {
-    if (!layout || !Array.isArray(layout.cards)) {
-        return DEFAULT_OVERVIEW_LAYOUT;
-    }
-
-    const seen = new Set<ProjectOverviewCardId>();
-    const normalized: ProjectOverviewCardConfig[] = [];
-
-    for (const card of layout.cards as Array<(ProjectOverviewCardConfig & { id: string }) | null | undefined>) {
-        if (!card) {
-            continue;
-        }
-
-        if (card.id === 'execution') {
-            const legacyEnabled = Boolean(card.enabled);
-            const legacyPlacement = normalizeOverviewPlacement(card.placement, 'primary');
-            const executionCards: ProjectOverviewCardId[] = ['executionTasks', 'executionFlows', 'executionIssues'];
-
-            executionCards.forEach((executionCardId) => {
-                if (seen.has(executionCardId)) return;
-                const def = OVERVIEW_CARD_DEFINITIONS[executionCardId];
-                const legacySpan = executionCardId === 'executionTasks'
-                    ? normalizeOverviewSpan(card.span, def.defaultSpan)
-                    : def.defaultSpan;
-                normalized.push({
-                    id: executionCardId,
-                    enabled: legacyEnabled,
-                    span: legacySpan,
-                    placement: legacyPlacement
-                });
-                seen.add(executionCardId);
-            });
-            continue;
-        }
-
-        if (!isOverviewCardId(card.id) || seen.has(card.id)) {
-            continue;
-        }
-
-        const def = OVERVIEW_CARD_DEFINITIONS[card.id];
-        const isLegacyPrimary = layout.templateId === 'core' && card.placement == null && def.defaultPlacement === 'primary';
-        normalized.push({
-            id: card.id,
-            enabled: Boolean(card.enabled),
-            span: normalizeOverviewSpan(isLegacyPrimary ? def.defaultSpan : card.span, def.defaultSpan),
-            placement: normalizeOverviewPlacement(card.placement, def.defaultPlacement)
-        });
-        seen.add(card.id);
-    }
-
-    if (!seen.has('contract')) {
-        const def = OVERVIEW_CARD_DEFINITIONS.contract;
-        normalized.unshift({
-            id: 'contract',
-            enabled: def.defaultEnabled,
-            span: def.defaultSpan,
-            placement: def.defaultPlacement
-        });
-        seen.add('contract');
-    }
-
-    for (const id of OVERVIEW_CARD_ORDER) {
-        if (seen.has(id)) continue;
-        const def = OVERVIEW_CARD_DEFINITIONS[id];
-        normalized.push({
-            id,
-            enabled: def.defaultEnabled,
-            span: def.defaultSpan,
-            placement: def.defaultPlacement
-        });
-    }
-
-    return {
-        layoutVersion: layout.layoutVersion || DEFAULT_OVERVIEW_LAYOUT.layoutVersion,
-        templateId: layout.templateId || DEFAULT_OVERVIEW_LAYOUT.templateId,
-        cards: normalized
-    };
-};
-
-const markLayoutCustom = (layout: ProjectOverviewLayout): ProjectOverviewLayout => {
-    if (layout.templateId === 'custom') {
-        return layout;
-    }
-    return { ...layout, templateId: 'custom' };
-};
-
-const resolveCardPlacement = (card: ProjectOverviewCardConfig) => {
-    const def = OVERVIEW_CARD_DEFINITIONS[card.id];
-    return normalizeOverviewPlacement(card.placement, def.defaultPlacement);
-};
-
-const reorderPlacementCards = (
-    cards: ProjectOverviewCardConfig[],
-    placement: ProjectOverviewCardPlacement,
-    fromId: ProjectOverviewCardId,
-    toId: ProjectOverviewCardId
-) => {
-    const placementCards = cards.filter((card) => resolveCardPlacement(card) === placement);
-    const fromIndex = placementCards.findIndex((card) => card.id === fromId);
-    const toIndex = placementCards.findIndex((card) => card.id === toId);
-    if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) {
-        return cards;
-    }
-    const reordered = [...placementCards];
-    const [moved] = reordered.splice(fromIndex, 1);
-    reordered.splice(toIndex, 0, moved);
-    let placementIndex = 0;
-    return cards.map((card) => {
-        if (resolveCardPlacement(card) !== placement) {
-            return card;
-        }
-        return reordered[placementIndex++];
-    });
-};
-
-const moveOverviewCard = (
-    cards: ProjectOverviewCardConfig[],
-    fromId: ProjectOverviewCardId,
-    toId: ProjectOverviewCardId
-) => {
-    const fromCard = cards.find((card) => card.id === fromId);
-    const toCard = cards.find((card) => card.id === toId);
-    if (!fromCard || !toCard) {
-        return cards;
-    }
-    const targetPlacement = resolveCardPlacement(toCard);
-    const next = cards.map((card) => (
-        card.id === fromId
-            ? { ...card, placement: targetPlacement }
-            : card
-    ));
-    return reorderPlacementCards(next, targetPlacement, fromId, toId);
-};
-
-const moveOverviewCardToPlacement = (
-    cards: ProjectOverviewCardConfig[],
-    cardId: ProjectOverviewCardId,
-    placement: ProjectOverviewCardPlacement
-) => {
-    const target = cards.find((card) => card.id === cardId);
-    if (!target) return cards;
-    const resolvedPlacement = placement;
-    const next = cards.map((card) => (
-        card.id === cardId
-            ? { ...card, placement: resolvedPlacement }
-            : card
-    ));
-    const placementCards = next.filter((card) => resolveCardPlacement(card) === resolvedPlacement);
-    const moved = placementCards.filter((card) => card.id !== cardId);
-    const movedCard = next.find((card) => card.id === cardId);
-    if (!movedCard) return next;
-    const ordered = [...moved, movedCard];
-    let placementIndex = 0;
-    return next.map((card) => {
-        if (resolveCardPlacement(card) !== resolvedPlacement) {
-            return card;
-        }
-        return ordered[placementIndex++];
-    });
-};
-
-const moveOverviewCardByPlacementOffset = (
-    cards: ProjectOverviewCardConfig[],
-    cardId: ProjectOverviewCardId,
-    offset: -1 | 1
-) => {
-    const card = cards.find((entry) => entry.id === cardId);
-    if (!card) return cards;
-
-    const placement = resolveCardPlacement(card);
-    const placementCards = cards.filter((entry) => resolveCardPlacement(entry) === placement);
-    const currentIndex = placementCards.findIndex((entry) => entry.id === cardId);
-    if (currentIndex < 0) return cards;
-
-    const nextIndex = Math.max(0, Math.min(placementCards.length - 1, currentIndex + offset));
-    if (nextIndex === currentIndex) return cards;
-
-    return reorderPlacementCards(cards, placement, cardId, placementCards[nextIndex].id);
-};
-
-const areOverviewLayoutsEqual = (a: ProjectOverviewLayout, b: ProjectOverviewLayout) => {
-    if (a.templateId !== b.templateId) return false;
-    if ((a.layoutVersion || 0) !== (b.layoutVersion || 0)) return false;
-    if (a.cards.length !== b.cards.length) return false;
-
-    for (let i = 0; i < a.cards.length; i += 1) {
-        const cardA = a.cards[i];
-        const cardB = b.cards[i];
-        if (cardA.id !== cardB.id) return false;
-        if (cardA.enabled !== cardB.enabled) return false;
-        if (cardA.span !== cardB.span) return false;
-        if (resolveCardPlacement(cardA) !== resolveCardPlacement(cardB)) return false;
-    }
-
-    return true;
-};
-
-const OVERVIEW_PRIMARY_COLUMN_DROP_ID = 'overview-column-primary';
-const OVERVIEW_SECONDARY_COLUMN_DROP_ID = 'overview-column-secondary';
-
-const getOverviewDropPlacement = (
-    dropId: string | null | undefined,
-    cards: ProjectOverviewCardConfig[]
-): ProjectOverviewCardPlacement | null => {
-    if (!dropId) return null;
-    if (dropId === OVERVIEW_PRIMARY_COLUMN_DROP_ID) return 'primary';
-    if (dropId === OVERVIEW_SECONDARY_COLUMN_DROP_ID) return 'secondary';
-    const targetCard = cards.find((card) => card.id === dropId);
-    return targetCard ? resolveCardPlacement(targetCard) : null;
-};
-
-type OverviewSortableCardProps = {
-    card: ProjectOverviewCardConfig;
-    layoutEditMode: boolean;
-    draggingCardId: ProjectOverviewCardId | null;
-    keyboardDraggingCardId: ProjectOverviewCardId | null;
-    onHandleKeyDown: (cardId: ProjectOverviewCardId, event: React.KeyboardEvent<HTMLButtonElement>) => void;
-    hiddenLabel: string;
+type OverviewCardShellProps = {
+    card: FixedOverviewCardConfig;
     children: JSX.Element;
 };
 
-const OverviewSortableCard = ({
-    card,
-    layoutEditMode,
-    draggingCardId,
-    keyboardDraggingCardId,
-    onHandleKeyDown,
-    hiddenLabel,
-    children
-}: OverviewSortableCardProps) => {
-    const placement = resolveCardPlacement(card);
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        setActivatorNodeRef,
-        transform,
-        transition,
-        isDragging,
-        isOver
-    } = useSortable({
-        id: card.id,
-        disabled: !layoutEditMode
-    });
-
+const OverviewCardShell = ({ card, children }: OverviewCardShellProps) => {
     const cardStyle = {
-        '--overview-card-span': placement === 'secondary' ? 12 : card.span,
-        transform: CSS.Transform.toString(transform),
-        transition
+        '--overview-card-span': card.placement === 'secondary' ? 12 : card.span
     } as React.CSSProperties;
-
-    const isKeyboardDragging = keyboardDraggingCardId === card.id;
-    const isPointerDragging = draggingCardId === card.id || isDragging;
 
     return (
         <div
-            ref={setNodeRef}
-            className={`overview-card ${layoutEditMode ? 'is-editing' : ''} ${placement === 'secondary' ? 'is-secondary' : 'is-primary'} ${!card.enabled ? 'is-disabled' : ''} ${isPointerDragging ? 'is-dragging' : ''} ${isOver && layoutEditMode ? 'is-drop-target' : ''} ${isKeyboardDragging ? 'is-keyboard-dragging' : ''}`.trim()}
+            className={`overview-card ${card.placement === 'secondary' ? 'is-secondary' : 'is-primary'}`.trim()}
             style={cardStyle}
         >
-            {layoutEditMode && (
-                <button
-                    type="button"
-                    className="overview-card__drag-handle"
-                    ref={setActivatorNodeRef}
-                    {...attributes}
-                    {...listeners}
-                    onKeyDown={(event) => {
-                        onHandleKeyDown(card.id, event);
-                    }}
-                    aria-label={`Reorder ${card.id}`}
-                >
-                    <span className="material-symbols-outlined">drag_indicator</span>
-                </button>
-            )}
-            {layoutEditMode && !card.enabled && (
-                <div className="overview-card__disabled-pill">
-                    {hiddenLabel}
-                </div>
-            )}
             <div className="overview-card__body">
                 {children}
             </div>
@@ -548,6 +242,7 @@ const OverviewSortableCard = ({
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const confirm = useConfirm();
     const { statusPreference } = useOutletContext<{ statusPreference: 'online' | 'busy' | 'idle' | 'offline' }>();
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const { pinItem, unpinItem, isPinned } = usePinnedTasks();
@@ -606,6 +301,7 @@ export const ProjectOverview = () => {
     const [savingEdit, setSavingEdit] = useState(false);
     const [pausingProject, setPausingProject] = useState(false);
     const [resumingProject, setResumingProject] = useState(false);
+    const [cancelingProject, setCancelingProject] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
     const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
@@ -640,72 +336,6 @@ export const ProjectOverview = () => {
 
     // View Mode State
     const [viewMode, setViewMode] = useState<'overview' | 'mindmap'>('overview');
-    const [overviewLayout, setOverviewLayout] = useState<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
-    const [layoutDraft, setLayoutDraft] = useState<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
-    const [layoutEditMode, setLayoutEditMode] = useState(false);
-    const [layoutModalOpen, setLayoutModalOpen] = useState(false);
-    const [draggingCardId, setDraggingCardId] = useState<ProjectOverviewCardId | null>(null);
-    const [keyboardDraggingCardId, setKeyboardDraggingCardId] = useState<ProjectOverviewCardId | null>(null);
-    const [dragOverPlacement, setDragOverPlacement] = useState<ProjectOverviewCardPlacement | null>(null);
-    const [layoutSaving, setLayoutSaving] = useState(false);
-    const [layoutError, setLayoutError] = useState<string | null>(null);
-    const layoutRef = useRef<ProjectOverviewLayout>(DEFAULT_OVERVIEW_LAYOUT);
-    const keyboardDragStartLayoutRef = useRef<ProjectOverviewLayout | null>(null);
-
-    const layoutSensors = useSensors(
-        useSensor(PointerSensor, {
-            activationConstraint: {
-                distance: 8
-            }
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 180,
-                tolerance: 5
-            }
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates
-        })
-    );
-    const { setNodeRef: setPrimaryDropRef, isOver: isOverPrimaryDrop } = useDroppable({
-        id: OVERVIEW_PRIMARY_COLUMN_DROP_ID,
-        disabled: !layoutEditMode
-    });
-    const { setNodeRef: setSecondaryDropRef, isOver: isOverSecondaryDrop } = useDroppable({
-        id: OVERVIEW_SECONDARY_COLUMN_DROP_ID,
-        disabled: !layoutEditMode
-    });
-    const layoutCollisionDetection = useMemo<CollisionDetection>(() => (args) => {
-        const pointerCollisions = pointerWithin(args);
-        if (pointerCollisions.length > 0) {
-            const activeId = String(args.active.id);
-            const activeCard = layoutRef.current.cards.find((card) => card.id === activeId);
-            const activePlacement = activeCard ? resolveCardPlacement(activeCard) : null;
-
-            const crossColumnCollision = pointerCollisions.find((collision) => {
-                const dropPlacement = getOverviewDropPlacement(String(collision.id), layoutRef.current.cards);
-                return dropPlacement != null && dropPlacement !== activePlacement;
-            });
-
-            if (crossColumnCollision) {
-                return [crossColumnCollision];
-            }
-
-            const columnCollision = pointerCollisions.find((collision) => (
-                String(collision.id) === OVERVIEW_PRIMARY_COLUMN_DROP_ID
-                || String(collision.id) === OVERVIEW_SECONDARY_COLUMN_DROP_ID
-            ));
-
-            if (columnCollision) {
-                return [columnCollision];
-            }
-
-            return pointerCollisions;
-        }
-
-        return closestCenter(args);
-    }, []);
 
     const fetchProjectAssets = async () => {
         if (!id || !project?.tenantId) return;
@@ -852,40 +482,6 @@ export const ProjectOverview = () => {
     }, [id]);
 
     useEffect(() => {
-        if (!project) return;
-        const normalized = normalizeOverviewLayout(project.overviewLayout);
-        setOverviewLayout(normalized);
-        layoutRef.current = normalized;
-        if (!layoutModalOpen) {
-            setLayoutDraft(normalized);
-        }
-    }, [project, layoutModalOpen]);
-
-    useEffect(() => {
-        layoutRef.current = overviewLayout;
-        if (!layoutModalOpen) {
-            setLayoutDraft(overviewLayout);
-        }
-    }, [overviewLayout, layoutModalOpen]);
-
-    useEffect(() => {
-        if (viewMode !== 'overview' && layoutEditMode) {
-            setLayoutEditMode(false);
-            setDraggingCardId(null);
-            setKeyboardDraggingCardId(null);
-            setDragOverPlacement(null);
-        }
-    }, [viewMode, layoutEditMode]);
-
-    useEffect(() => {
-        if (layoutEditMode) return;
-        setDraggingCardId(null);
-        setKeyboardDraggingCardId(null);
-        setDragOverPlacement(null);
-        keyboardDragStartLayoutRef.current = null;
-    }, [layoutEditMode]);
-
-    useEffect(() => {
         const loadSubtaskStats = async () => {
             if (!tasks.length) {
                 setSubtaskStats({});
@@ -909,6 +505,10 @@ export const ProjectOverview = () => {
     // Health tracking: Save snapshot daily and load delta
     useEffect(() => {
         if (!id || !project?.tenantId) return;
+        if (isProjectExcludedFromHealth(project)) {
+            setHealthDelta(null);
+            return;
+        }
 
         const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
 
@@ -1050,7 +650,7 @@ export const ProjectOverview = () => {
 
         // Optimistic update
         setMilestones(prev => prev.map(m => m.id === milestone.id ? { ...m, status: newStatus } : m));
-        await updateMilestone(project.id, milestone.id, { status: newStatus });
+        await updateMilestone(project.id, milestone.id, { status: newStatus }, project.tenantId || milestone.tenantId);
     };
 
     const handleGenerateReport = async () => {
@@ -1150,7 +750,7 @@ export const ProjectOverview = () => {
     };
 
     const handlePauseProject = async () => {
-        if (!project || !id || project.status === PROJECT_PAUSED_STATUS) return;
+        if (!project || !id || project.status === PROJECT_PAUSED_STATUS || project.status === PROJECT_CANCELED_STATUS) return;
 
         const pausedAt = new Date().toISOString();
         const updates: Partial<Project> = {
@@ -1180,6 +780,53 @@ export const ProjectOverview = () => {
             setError(t('projectOverview.pause.error'));
         } finally {
             setPausingProject(false);
+        }
+    };
+
+    const handleCancelProject = async () => {
+        if (!project || !id || project.status === PROJECT_CANCELED_STATUS) return;
+
+        const confirmed = await confirm({
+            title: t('projectOverview.cancel.confirmTitle'),
+            message: t('projectOverview.cancel.confirmBody').replace('{project}', project.title),
+            confirmText: t('projectOverview.cancel.confirm'),
+            cancelText: t('common.cancel'),
+            variant: 'danger'
+        });
+
+        if (!confirmed) return;
+
+        const canceledAt = new Date().toISOString();
+        const updates: Partial<Project> = {
+            status: PROJECT_CANCELED_STATUS,
+            canceledAt,
+            canceledBy: auth.currentUser?.uid || '',
+            canceledFromStatus: project.status,
+            lastCanceledAt: canceledAt,
+            pausedAt: '',
+            pausedBy: ''
+        };
+
+        setCancelingProject(true);
+        try {
+            await updateProjectFields(
+                id,
+                updates,
+                {
+                    action: `Canceled project "${project.title}"`,
+                    target: 'Project',
+                    type: 'status'
+                },
+                project.tenantId
+            );
+
+            setProject(prev => prev ? { ...prev, ...updates } : prev);
+            setShowResumeModal(false);
+        } catch (error) {
+            console.error('Error canceling project:', error);
+            setError(t('projectOverview.cancel.error'));
+        } finally {
+            setCancelingProject(false);
         }
     };
 
@@ -1329,7 +976,7 @@ export const ProjectOverview = () => {
         if (!project) return;
         setDeletingProject(true);
         try {
-            await deleteProjectById(project.id);
+            await deleteProjectById(project.id, project.tenantId);
             navigate('/projects');
         } catch (err) {
             console.error(err);
@@ -1413,6 +1060,7 @@ export const ProjectOverview = () => {
         Planning: t('dashboard.projectStatus.planning'),
         'On Hold': t('dashboard.projectStatus.onHold'),
         Completed: t('dashboard.projectStatus.completed'),
+        Canceled: t('dashboard.projectStatus.canceled'),
         Brainstorming: t('dashboard.projectStatus.brainstorming'),
         Review: t('projectOverview.status.review')
     }), [t]);
@@ -1440,11 +1088,6 @@ export const ProjectOverview = () => {
         { value: 'pre-release', label: t('projectOverview.controls.state.preRelease') },
         { value: 'released', label: t('projectOverview.controls.state.released') }
     ]), [t]);
-    const projectTypeLabels = useMemo(() => ({
-        standard: t('projectOverview.contract.type.standard'),
-        software: t('projectOverview.contract.type.software'),
-        creative: t('projectOverview.contract.type.creative')
-    }), [t]);
     const operatingModeLabels = useMemo(() => ({
         explore: t('projectOverview.contract.mode.explore'),
         build: t('projectOverview.contract.mode.build'),
@@ -1457,12 +1100,6 @@ export const ProjectOverview = () => {
         biweekly: t('projectOverview.contract.cadence.biweekly'),
         monthly: t('projectOverview.contract.cadence.monthly'),
         'ad-hoc': t('projectOverview.contract.cadence.adHoc')
-    }), [t]);
-    const dateConfidenceLabels = useMemo(() => ({
-        fixed: t('projectOverview.contract.dateConfidence.fixed'),
-        target: t('projectOverview.contract.dateConfidence.target'),
-        rough: t('projectOverview.contract.dateConfidence.rough'),
-        unknown: t('projectOverview.contract.dateConfidence.unknown')
     }), [t]);
     const issueStatusLabels = useMemo(() => ({
         Open: t('projectIssues.status.open'),
@@ -1489,6 +1126,7 @@ export const ProjectOverview = () => {
         stalemate: t('status.stalemate')
     }), [t]);
     const isProjectPaused = project?.status === PROJECT_PAUSED_STATUS;
+    const isProjectCanceled = project?.status === PROJECT_CANCELED_STATUS;
     const pauseStartDateKey = useMemo(() => getProjectPauseStartDateKey(project), [
         project?.pausedAt,
         project?.status,
@@ -1516,6 +1154,10 @@ export const ProjectOverview = () => {
         const resumeDate = dateKeyToDate(resumeDateKey);
         return resumeDate ? format(resumeDate, dateFormat, { locale: dateLocale }) : t('projectOverview.resume.unknownDate');
     }, [dateFormat, dateLocale, resumeDateKey, t]);
+    const canceledDateLabel = useMemo(() => {
+        const canceledDate = dateKeyToDate(project?.canceledAt || project?.lastCanceledAt);
+        return canceledDate ? format(canceledDate, dateFormat, { locale: dateLocale }) : t('projectOverview.resume.unknownDate');
+    }, [dateFormat, dateLocale, project?.canceledAt, project?.lastCanceledAt, t]);
 
     useEffect(() => {
         if (!showResumeModal) return;
@@ -1559,7 +1201,9 @@ export const ProjectOverview = () => {
 
     if (!project) return <div className="project-overview__not-found">{t('projectOverview.error.notFound')}</div>;
 
-    const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
+    const health = isProjectExcludedFromHealth(project)
+        ? null
+        : calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
 
     // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
@@ -1578,6 +1222,29 @@ export const ProjectOverview = () => {
     const openTasks = tasks.length - completedTasks + openSubtasks;
     const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
     const upcomingDeadlines = tasks.filter(t => t.dueDate && new Date(t.dueDate) > new Date() && !t.isCompleted).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3);
+    const currentProjectPriority = project.priority || 'Medium';
+    const currentPriorityLabel = priorityLabels[currentProjectPriority as keyof typeof priorityLabels] || currentProjectPriority;
+    const projectStatusLabel = projectStatusLabels[project.status] || project.status;
+    const releaseStateValue = project.projectState || 'not specified';
+    const releaseStateLabel = projectStateOptions.find(option => option.value === releaseStateValue)?.label || t('projectOverview.controls.state.notSpecified');
+    const projectStartDate = dateKeyToDate(project.startDate);
+    const projectDueDate = dateKeyToDate(project.dueDate);
+    const projectStartLabel = projectStartDate
+        ? format(projectStartDate, dateFormat, { locale: dateLocale })
+        : t('projectOverview.controls.timelineStartMissing');
+    const projectDueLabel = projectDueDate
+        ? format(projectDueDate, dateFormat, { locale: dateLocale })
+        : t('projectOverview.controls.timelineDueMissing');
+    const isProjectDueOverdue = Boolean(
+        projectDueDate
+        && projectDueDate < startOfToday()
+        && project.status !== 'Completed'
+        && !isProjectPaused
+        && !isProjectCanceled
+    );
+    const projectTimelineSummary = isProjectDueOverdue
+        ? t('projectOverview.controls.timelineOverdue')
+        : `${projectStartLabel} - ${projectDueLabel}`;
 
 
     const recentTasks = tasks
@@ -1627,12 +1294,9 @@ export const ProjectOverview = () => {
     const showIssueCard = Boolean(hasIssuesModule);
     const executionSideCards = Number(showIdeaCard) + Number(showIssueCard);
     const getExecutionCardVariant = (cardId: ProjectOverviewCardId): ExecutionCardVariant => {
-        const cardConfig = overviewLayout.cards.find((card) => card.id === cardId);
-        const fallback = OVERVIEW_CARD_DEFINITIONS[cardId];
-        const placement = normalizeOverviewPlacement(cardConfig?.placement, fallback.defaultPlacement);
-        const span = normalizeOverviewSpan(cardConfig?.span, fallback.defaultSpan);
-        if (placement === 'secondary' || span <= 3) return 'compact';
-        if (span <= 6) return 'balanced';
+        const cardConfig = OVERVIEW_CARD_DEFINITIONS[cardId];
+        if (cardConfig.defaultPlacement === 'secondary' || cardConfig.defaultSpan <= 3) return 'compact';
+        if (cardConfig.defaultSpan <= 6) return 'balanced';
         return 'wide';
     };
     const executionTasksVariant = getExecutionCardVariant('executionTasks');
@@ -1663,106 +1327,18 @@ export const ProjectOverview = () => {
     const projectSuccessCriteria = (projectBrief.successCriteria || []).filter(Boolean);
     const projectCadence = projectBrief.cadence || project.operatingModel?.cadence;
     const projectOperatingMode = project.operatingMode || project.operatingModel?.mode;
-    const projectDateConfidence = project.dateConfidence || project.operatingModel?.dateConfidence;
     const unresolvedRisk = project.riskRegister?.find((risk) => risk.status !== 'resolved') || project.riskRegister?.[0];
     const missingContractValue = t('projectOverview.contract.missing');
-    const contractStateItems = [
-        {
-            icon: 'category',
-            label: t('projectOverview.contract.type'),
-            value: project.projectType ? projectTypeLabels[project.projectType] : missingContractValue
-        },
-        {
-            icon: 'route',
-            label: t('projectOverview.contract.mode'),
-            value: projectOperatingMode ? operatingModeLabels[projectOperatingMode] : missingContractValue
-        },
-        {
-            icon: 'event_repeat',
-            label: t('projectOverview.contract.cadence'),
-            value: projectCadence ? cadenceLabels[projectCadence] : missingContractValue
-        },
-        {
-            icon: 'event_available',
-            label: t('projectOverview.contract.dateConfidence'),
-            value: projectDateConfidence ? dateConfidenceLabels[projectDateConfidence] : missingContractValue
-        }
-    ];
-    const canCustomizeLayout = can('canEdit') || isOwner;
-    const templateLabel = overviewLayout.templateId === 'custom'
-        ? t('projectOverview.layout.template.custom')
-        : overviewLayout.templateId === 'core'
-            ? t('projectOverview.layout.template.core')
-            : t('projectOverview.layout.template.template');
-    const draftTemplateLabel = layoutDraft.templateId === 'custom'
-        ? t('projectOverview.layout.template.custom')
-        : layoutDraft.templateId === 'core'
-            ? t('projectOverview.layout.template.core')
-            : t('projectOverview.layout.template.template');
-    const layoutSizeOptions = [
-        { value: 12, label: t('projectOverview.layout.size.full') },
-        { value: 9, label: t('projectOverview.layout.size.wide') },
-        { value: 6, label: t('projectOverview.layout.size.half') },
-        { value: 3, label: t('projectOverview.layout.size.slim') }
-    ];
-    const layoutPlacementOptions = [
-        { value: 'primary' as ProjectOverviewCardPlacement, label: t('projectOverview.layout.placement.primary') },
-        { value: 'secondary' as ProjectOverviewCardPlacement, label: t('projectOverview.layout.placement.secondary') }
-    ];
-    const overviewCardMeta: Record<ProjectOverviewCardId, { title: string; description: string }> = {
-        contract: {
-            title: t('projectOverview.layout.cards.contract.title'),
-            description: t('projectOverview.layout.cards.contract.description')
-        },
-        snapshot: {
-            title: t('projectOverview.layout.cards.snapshot.title'),
-            description: t('projectOverview.layout.cards.snapshot.description')
-        },
-        executionTasks: {
-            title: t('projectOverview.layout.cards.executionTasks.title'),
-            description: t('projectOverview.layout.cards.executionTasks.description')
-        },
-        executionFlows: {
-            title: t('projectOverview.layout.cards.executionFlows.title'),
-            description: t('projectOverview.layout.cards.executionFlows.description')
-        },
-        executionIssues: {
-            title: t('projectOverview.layout.cards.executionIssues.title'),
-            description: t('projectOverview.layout.cards.executionIssues.description')
-        },
-        updates: {
-            title: t('projectOverview.layout.cards.updates.title'),
-            description: t('projectOverview.layout.cards.updates.description')
-        },
-        resources: {
-            title: t('projectOverview.layout.cards.resources.title'),
-            description: t('projectOverview.layout.cards.resources.description')
-        },
-        planning: {
-            title: t('projectOverview.layout.cards.planning.title'),
-            description: t('projectOverview.layout.cards.planning.description')
-        },
-        milestones: {
-            title: t('projectOverview.layout.cards.milestones.title'),
-            description: t('projectOverview.layout.cards.milestones.description')
-        },
-        aiInsights: {
-            title: t('projectOverview.layout.cards.aiInsights.title'),
-            description: t('projectOverview.layout.cards.aiInsights.description')
-        },
-        team: {
-            title: t('projectOverview.layout.cards.team.title'),
-            description: t('projectOverview.layout.cards.team.description')
-        },
-        metadata: {
-            title: t('projectOverview.layout.cards.metadata.title'),
-            description: t('projectOverview.layout.cards.metadata.description')
-        },
-        controls: {
-            title: t('projectOverview.layout.cards.controls.title'),
-            description: t('projectOverview.layout.cards.controls.description')
-        }
-    };
+    const contractRhythmParts = [
+        projectOperatingMode ? operatingModeLabels[projectOperatingMode] : '',
+        projectCadence ? cadenceLabels[projectCadence] : ''
+    ].filter(Boolean);
+    const contractRhythmSummary = contractRhythmParts.length > 0
+        ? contractRhythmParts.join(' / ')
+        : missingContractValue;
+    const contractDoneSummary = projectSuccessCriteria[0] || t('projectOverview.contract.emptySuccessCriteria');
+    const additionalSuccessCriteriaCount = Math.max(projectSuccessCriteria.length - 1, 0);
+    const contractRiskSummary = unresolvedRisk?.title || t('projectOverview.contract.emptyRisk');
     const isCardRenderable = (cardId: ProjectOverviewCardId) => {
         if (cardId === 'controls') {
             return isOwner;
@@ -1775,265 +1351,21 @@ export const ProjectOverview = () => {
         }
         return true;
     };
-    const overviewCardsToRender = overviewLayout.cards.filter((card) => (
-        (layoutEditMode || card.enabled) && isCardRenderable(card.id)
-    ));
-    const primaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'primary');
-    const secondaryCardsToRender = overviewCardsToRender.filter((card) => resolveCardPlacement(card) === 'secondary');
-    const primaryCardIds = primaryCardsToRender.map((card) => card.id);
-    const secondaryCardIds = secondaryCardsToRender.map((card) => card.id);
-    const primaryColumnDropActive = layoutEditMode && (isOverPrimaryDrop || dragOverPlacement === 'primary');
-    const secondaryColumnDropActive = layoutEditMode && (isOverSecondaryDrop || dragOverPlacement === 'secondary');
-
-    const persistOverviewLayout = async (
-        nextLayout: ProjectOverviewLayout,
-        rollbackLayout?: ProjectOverviewLayout
-    ) => {
-        if (!project || !id || !canCustomizeLayout) return;
-        setLayoutSaving(true);
-        setLayoutError(null);
-        try {
-            await updateProjectFields(id, { overviewLayout: nextLayout }, undefined, project.tenantId);
-            setProject(prev => prev ? { ...prev, overviewLayout: nextLayout } : prev);
-        } catch (error) {
-            console.error("Error updating overview layout:", error);
-            setLayoutError(t('projectOverview.layout.error'));
-            if (rollbackLayout) {
-                setOverviewLayout(rollbackLayout);
-                layoutRef.current = rollbackLayout;
-            }
-        } finally {
-            setLayoutSaving(false);
-        }
-    };
-
-    const openLayoutModal = () => {
-        setLayoutDraft(overviewLayout);
-        setLayoutModalOpen(true);
-    };
-
-    const resetLayoutDraft = () => {
-        setLayoutDraft(DEFAULT_OVERVIEW_LAYOUT);
-    };
-
-    const applyLayoutDraft = async () => {
-        const normalized = normalizeOverviewLayout(layoutDraft);
-        setOverviewLayout(normalized);
-        layoutRef.current = normalized;
-        await persistOverviewLayout(normalized);
-        setLayoutModalOpen(false);
-    };
-
-    const updateLayoutDraft = (updater: (layout: ProjectOverviewLayout) => ProjectOverviewLayout) => {
-        setLayoutDraft(prev => markLayoutCustom(updater(prev)));
-    };
-
-    const updateOverviewLayout = (updater: (layout: ProjectOverviewLayout) => ProjectOverviewLayout) => {
-        setOverviewLayout(prev => {
-            const next = markLayoutCustom(updater(prev));
-            layoutRef.current = next;
-            return next;
-        });
-    };
-
-    const commitOverviewLayout = (nextLayout: ProjectOverviewLayout, rollbackLayout?: ProjectOverviewLayout) => {
-        const normalizedNextLayout = markLayoutCustom(normalizeOverviewLayout(nextLayout));
-        if (rollbackLayout && areOverviewLayoutsEqual(normalizedNextLayout, rollbackLayout)) {
-            return;
-        }
-
-        setOverviewLayout(normalizedNextLayout);
-        layoutRef.current = normalizedNextLayout;
-        void persistOverviewLayout(normalizedNextLayout, rollbackLayout);
-    };
-
-    const handleLayoutToggle = (cardId: ProjectOverviewCardId) => {
-        updateLayoutDraft((prev) => ({
-            ...prev,
-            cards: prev.cards.map(card => (
-                card.id === cardId ? { ...card, enabled: !card.enabled } : card
-            ))
-        }));
-    };
-
-    const handleLayoutSpanChange = (cardId: ProjectOverviewCardId, span: number) => {
-        updateLayoutDraft((prev) => ({
-            ...prev,
-            cards: prev.cards.map(card => {
-                if (card.id !== cardId) return card;
-                const def = OVERVIEW_CARD_DEFINITIONS[cardId];
-                return {
-                    ...card,
-                    span: normalizeOverviewSpan(span, def.defaultSpan)
-                };
-            })
-        }));
-    };
-
-    const handleLayoutPlacementChange = (cardId: ProjectOverviewCardId, placement: ProjectOverviewCardPlacement) => {
-        updateLayoutDraft((prev) => ({
-            ...prev,
-            cards: prev.cards.map(card => {
-                if (card.id !== cardId) return card;
-                const def = OVERVIEW_CARD_DEFINITIONS[cardId];
-                return {
-                    ...card,
-                    placement: normalizeOverviewPlacement(placement, def.defaultPlacement)
-                };
-            })
-        }));
-    };
-
-    const handleLayoutDragStart = (event: DragStartEvent) => {
-        if (!layoutEditMode) return;
-        const activeId = String(event.active.id) as ProjectOverviewCardId;
-        setDraggingCardId(activeId);
-        setDragOverPlacement(getOverviewDropPlacement(activeId, layoutRef.current.cards));
-    };
-
-    const handleLayoutDragOver = (event: DragOverEvent) => {
-        if (!layoutEditMode) return;
-        const collisionId = event.collisions
-            ?.map((collision) => String(collision.id))
-            .find((collisionId) => collisionId !== String(event.active.id));
-        const overId = collisionId || (event.over ? String(event.over.id) : null);
-        setDragOverPlacement(getOverviewDropPlacement(overId, layoutRef.current.cards));
-    };
-
-    const handleLayoutDragCancel = (_event: DragCancelEvent) => {
-        setDraggingCardId(null);
-        setDragOverPlacement(null);
-    };
-
-    const handleLayoutDragEnd = (event: DragEndEvent) => {
-        if (!layoutEditMode) return;
-        const activeId = String(event.active.id) as ProjectOverviewCardId;
-        const collisionId = event.collisions
-            ?.map((collision) => String(collision.id))
-            .find((collisionId) => collisionId !== activeId);
-        const overId = collisionId || (event.over ? String(event.over.id) : null);
-        const currentLayout = layoutRef.current;
-        const activeCard = currentLayout.cards.find((card) => card.id === activeId);
-        const activePlacement = activeCard ? resolveCardPlacement(activeCard) : null;
-        const overPlacement = overId ? getOverviewDropPlacement(overId, currentLayout.cards) : null;
-        const fallbackPlacement = dragOverPlacement || overPlacement;
-        setDraggingCardId(null);
-        setDragOverPlacement(null);
-
-        if (!overId || activeId === overId) {
-            if (fallbackPlacement && activePlacement && fallbackPlacement !== activePlacement) {
-                const nextCards = moveOverviewCardToPlacement(currentLayout.cards, activeId, fallbackPlacement);
-                if (nextCards !== currentLayout.cards) {
-                    const nextLayout = { ...currentLayout, cards: nextCards };
-                    commitOverviewLayout(nextLayout, currentLayout);
-                }
-            }
-            return;
-        }
-
-        let nextCards = currentLayout.cards;
-        if (overId === OVERVIEW_PRIMARY_COLUMN_DROP_ID || overId === OVERVIEW_SECONDARY_COLUMN_DROP_ID) {
-            nextCards = moveOverviewCardToPlacement(
-                currentLayout.cards,
-                activeId,
-                overId === OVERVIEW_PRIMARY_COLUMN_DROP_ID ? 'primary' : 'secondary'
-            );
-        } else {
-            nextCards = moveOverviewCard(currentLayout.cards, activeId, overId as ProjectOverviewCardId);
-        }
-
-        if (nextCards === currentLayout.cards) return;
-        const nextLayout = { ...currentLayout, cards: nextCards };
-        commitOverviewLayout(nextLayout, currentLayout);
-    };
-
-    const beginKeyboardLayoutDrag = (cardId: ProjectOverviewCardId) => {
-        if (keyboardDraggingCardId === cardId) return;
-        keyboardDragStartLayoutRef.current = layoutRef.current;
-        setKeyboardDraggingCardId(cardId);
-        setLayoutError(null);
-    };
-
-    const commitKeyboardLayoutDrag = () => {
-        const startLayout = keyboardDragStartLayoutRef.current;
-        const nextLayout = layoutRef.current;
-        setKeyboardDraggingCardId(null);
-        keyboardDragStartLayoutRef.current = null;
-
-        if (!startLayout || areOverviewLayoutsEqual(startLayout, nextLayout)) {
-            return;
-        }
-        void persistOverviewLayout(nextLayout, startLayout);
-    };
-
-    const cancelKeyboardLayoutDrag = () => {
-        const startLayout = keyboardDragStartLayoutRef.current;
-        setKeyboardDraggingCardId(null);
-        keyboardDragStartLayoutRef.current = null;
-        if (!startLayout) return;
-        setOverviewLayout(startLayout);
-        layoutRef.current = startLayout;
-    };
-
-    const handleLayoutCardHandleKeyDown = (cardId: ProjectOverviewCardId, event: React.KeyboardEvent<HTMLButtonElement>) => {
-        if (!layoutEditMode) return;
-
-        if (event.key === ' ' || event.key === 'Enter') {
-            event.preventDefault();
-            if (keyboardDraggingCardId === cardId) {
-                commitKeyboardLayoutDrag();
-            } else {
-                beginKeyboardLayoutDrag(cardId);
-            }
-            return;
-        }
-
-        if (keyboardDraggingCardId !== cardId) {
-            return;
-        }
-
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            cancelKeyboardLayoutDrag();
-            return;
-        }
-
-        if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
-            event.preventDefault();
-            updateOverviewLayout((prev) => ({
-                ...prev,
-                cards: moveOverviewCardByPlacementOffset(prev.cards, cardId, event.key === 'ArrowUp' ? -1 : 1)
-            }));
-            return;
-        }
-
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
-            event.preventDefault();
-            updateOverviewLayout((prev) => ({
-                ...prev,
-                cards: moveOverviewCardToPlacement(prev.cards, cardId, event.key === 'ArrowLeft' ? 'primary' : 'secondary')
-            }));
-        }
-    };
-
-    const toggleLayoutEditMode = () => {
-        if (layoutEditMode && keyboardDraggingCardId) {
-            commitKeyboardLayoutDrag();
-        }
-        setLayoutEditMode((prev) => !prev);
-    };
+    const overviewCardsToRender = FIXED_OVERVIEW_CARDS.filter((card) => isCardRenderable(card.id));
+    const primaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'primary');
+    const secondaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'secondary');
 
     const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
         contract: (
-            <Card className="project-contract-card">
+            <Card className="project-contract-card project-contract-card--rail">
                 <div className="project-contract-card__header">
                     <div className="project-contract-card__title-wrap">
                         <div className="project-contract-card__icon">
-                            <span className="material-symbols-outlined">assignment</span>
+                            <span className="material-symbols-outlined">article</span>
                         </div>
                         <div>
-                            <h2 className="project-contract-card__title">{t('projectOverview.contract.title')}</h2>
-                            <p className="project-contract-card__subtitle">{t('projectOverview.contract.subtitle')}</p>
+                            <h2 className="project-contract-card__title">{t('projectOverview.contract.briefTitle')}</h2>
+                            <p className="project-contract-card__subtitle">{t('projectOverview.contract.briefSubtitle')}</p>
                         </div>
                     </div>
                     {isOwner && (
@@ -2053,66 +1385,60 @@ export const ProjectOverview = () => {
                 </div>
 
                 <div className="project-contract-card__body">
-                    <div className="project-contract-card__main">
-                        <div className="project-contract-card__field">
-                            <span className="project-contract-card__label">{t('projectOverview.contract.objective')}</span>
-                            <p className={`project-contract-card__value ${projectBrief.objective ? '' : 'is-empty'}`.trim()}>
-                                {projectBrief.objective || t('projectOverview.contract.emptyObjective')}
-                            </p>
-                        </div>
+                    <section className="project-contract-card__summary">
+                        <span className="project-contract-card__eyebrow">{t('projectOverview.contract.objective')}</span>
+                        <p className={`project-contract-card__objective ${projectBrief.objective ? '' : 'is-empty'}`.trim()}>
+                            {projectBrief.objective || t('projectOverview.contract.emptyObjective')}
+                        </p>
+                    </section>
 
-                        <div className="project-contract-card__field">
-                            <span className="project-contract-card__label">{t('projectOverview.contract.scope')}</span>
-                            <p className={`project-contract-card__value ${projectBrief.scope ? '' : 'is-empty'}`.trim()}>
-                                {projectBrief.scope || t('projectOverview.contract.emptyScope')}
-                            </p>
-                        </div>
-
-                        <div className="project-contract-card__field">
-                            <span className="project-contract-card__label">{t('projectOverview.contract.successCriteria')}</span>
-                            {projectSuccessCriteria.length > 0 ? (
-                                <div className="project-contract-card__criteria">
-                                    {projectSuccessCriteria.slice(0, 4).map((criterion, index) => (
-                                        <span key={`${criterion}-${index}`} className="project-contract-card__criterion">
-                                            <span className="material-symbols-outlined">check_circle</span>
-                                            {criterion}
-                                        </span>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="project-contract-card__value is-empty">{t('projectOverview.contract.emptySuccessCriteria')}</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="project-contract-card__side">
-                        <div className="project-contract-card__state-grid">
-                            {contractStateItems.map((item) => (
-                                <div key={item.label} className="project-contract-card__state-item">
-                                    <span className="material-symbols-outlined">{item.icon}</span>
-                                    <div>
-                                        <span className="project-contract-card__state-label">{item.label}</span>
-                                        <strong className="project-contract-card__state-value">{item.value}</strong>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="project-contract-card__owner">
-                            <span className="project-contract-card__label">{t('projectOverview.contract.decisionOwner')}</span>
-                            <strong>{projectBrief.decisionOwner || t('projectOverview.contract.emptyDecisionOwner')}</strong>
-                        </div>
-
-                        <div className={`project-contract-card__risk ${unresolvedRisk ? '' : 'is-empty'}`.trim()}>
-                            <span className="material-symbols-outlined">{unresolvedRisk ? 'warning' : 'verified'}</span>
+                    <div className="project-contract-card__rail-list">
+                        <section className="project-contract-card__rail-row">
+                            <span className="material-symbols-outlined">frame_source</span>
                             <div>
-                                <span className="project-contract-card__label">{t('projectOverview.contract.primaryRisk')}</span>
-                                <strong>{unresolvedRisk?.title || t('projectOverview.contract.emptyRisk')}</strong>
-                                {unresolvedRisk?.mitigation && (
-                                    <p>{unresolvedRisk.mitigation}</p>
+                                <strong>{t('projectOverview.contract.scopeBoundary')}</strong>
+                                <p className={projectBrief.scope ? '' : 'is-empty'}>
+                                    {projectBrief.scope || t('projectOverview.contract.emptyScope')}
+                                </p>
+                            </div>
+                        </section>
+
+                        <section className="project-contract-card__rail-row project-contract-card__rail-row--success">
+                            <span className="material-symbols-outlined">done_all</span>
+                            <div>
+                                <strong>{t('projectOverview.contract.doneLooksLike')}</strong>
+                                <p className={projectSuccessCriteria.length > 0 ? '' : 'is-empty'}>
+                                    {contractDoneSummary}
+                                </p>
+                                {additionalSuccessCriteriaCount > 0 && (
+                                    <em>
+                                        {t('projectOverview.contract.moreCriteria').replace('{count}', additionalSuccessCriteriaCount.toString())}
+                                    </em>
                                 )}
                             </div>
-                        </div>
+                        </section>
+
+                        <section className={`project-contract-card__rail-row project-contract-card__rail-row--risk ${unresolvedRisk ? '' : 'is-empty'}`.trim()}>
+                            <span className="material-symbols-outlined">{unresolvedRisk ? 'warning' : 'verified'}</span>
+                            <div>
+                                <strong>{t('projectOverview.contract.watchItem')}</strong>
+                                <p>{contractRiskSummary}</p>
+                                {unresolvedRisk?.mitigation && (
+                                    <em>{unresolvedRisk.mitigation}</em>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+
+                    <div className="project-contract-card__footer">
+                        <span>
+                            <span className="material-symbols-outlined">sync_alt</span>
+                            {contractRhythmSummary}
+                        </span>
+                        <span>
+                            <span className="material-symbols-outlined">person_check</span>
+                            {projectBrief.decisionOwner || t('projectOverview.contract.emptyDecisionOwner')}
+                        </span>
                     </div>
                 </div>
             </Card>
@@ -2125,62 +1451,64 @@ export const ProjectOverview = () => {
                 </div>
                 <div className="snapshot-grid">
                     {/* Health Card */}
-                    <Card className="widget-card health-widget">
-                        <div className="card-header">
-                            <h3 className="title">
-                                <span className="material-symbols-outlined icon">monitor_heart</span>
-                                {t('projectOverview.snapshot.health.title')}
-                            </h3>
-                            <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                            </button>
-                        </div>
+                    {health && (
+                        <Card className="widget-card health-widget">
+                            <div className="card-header">
+                                <h3 className="title">
+                                    <span className="material-symbols-outlined icon">monitor_heart</span>
+                                    {t('projectOverview.snapshot.health.title')}
+                                </h3>
+                                <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
+                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                </button>
+                            </div>
 
-                        {/* Semi-Circle Gauge Section */}
-                        <div className="health-widget__gauge-section">
-                            <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
-                                <svg viewBox="0 0 120 70" className="health-widget__svg">
-                                    {/* Background arc */}
-                                    <path
-                                        d="M 10 60 A 50 50 0 0 1 110 60"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="8"
-                                        strokeLinecap="round"
-                                        className="health-widget__track"
-                                    />
-                                    {/* Progress arc */}
-                                    <path
-                                        d="M 10 60 A 50 50 0 0 1 110 60"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="8"
-                                        strokeLinecap="round"
-                                        strokeDasharray="157"
-                                        strokeDashoffset={157 - (health.score / 100) * 157}
-                                        className="health-widget__progress"
-                                    />
-                                </svg>
-                                <div className="health-widget__score-group">
-                                    <span className="health-widget__score">{health.score}</span>
-                                    <span className="health-widget__score-suffix">/100</span>
+                            {/* Semi-Circle Gauge Section */}
+                            <div className="health-widget__gauge-section">
+                                <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
+                                    <svg viewBox="0 0 120 70" className="health-widget__svg">
+                                        {/* Background arc */}
+                                        <path
+                                            d="M 10 60 A 50 50 0 0 1 110 60"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="8"
+                                            strokeLinecap="round"
+                                            className="health-widget__track"
+                                        />
+                                        {/* Progress arc */}
+                                        <path
+                                            d="M 10 60 A 50 50 0 0 1 110 60"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="8"
+                                            strokeLinecap="round"
+                                            strokeDasharray="157"
+                                            strokeDashoffset={157 - (health.score / 100) * 157}
+                                            className="health-widget__progress"
+                                        />
+                                    </svg>
+                                    <div className="health-widget__score-group">
+                                        <span className="health-widget__score">{health.score}</span>
+                                        <span className="health-widget__score-suffix">/100</span>
+                                    </div>
+                                </div>
+
+                                {/* Status & Trend Row */}
+                                <div className="health-widget__status-row">
+                                    <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
+                                        {healthStatusLabels[health.status] || health.status}
+                                    </span>
+                                    <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
+                                        <span className="material-symbols-outlined">
+                                            {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
+                                        </span>
+                                        {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
+                                    </span>
                                 </div>
                             </div>
-
-                            {/* Status & Trend Row */}
-                            <div className="health-widget__status-row">
-                                <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
-                                    {healthStatusLabels[health.status] || health.status}
-                                </span>
-                                <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
-                                    <span className="material-symbols-outlined">
-                                        {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
-                                    </span>
-                                    {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
-                                </span>
-                            </div>
-                        </div>
-                    </Card>
+                        </Card>
+                    )}
 
                     {/* Workload Card */}
                     <Card className="widget-card">
@@ -2443,6 +1771,7 @@ export const ProjectOverview = () => {
                                                         type: 'task',
                                                         title: task.title,
                                                         projectId: id!,
+                                                        tenantId: task.tenantId || project?.tenantId,
                                                         priority: task.priority,
                                                         isCompleted: task.isCompleted
                                                     });
@@ -2820,6 +2149,7 @@ export const ProjectOverview = () => {
                                                         type: 'issue',
                                                         title: issue.title,
                                                         projectId: id!,
+                                                        tenantId: issue.tenantId || project?.tenantId,
                                                         priority: issue.priority
                                                     });
                                                 }
@@ -3346,114 +2676,178 @@ export const ProjectOverview = () => {
             </Card>
         ),
         controls: isOwner ? (
-            <Card className="updates-card">
-                <div className="controls-card__header">
-                    <span className="material-symbols-outlined controls-card__icon">tune</span>
-                    <h3 className="controls-card__title">{t('projectOverview.controls.title')}</h3>
-                </div>
-                <div className="controls-form">
-                    <div className="form-group-row">
-                        {isProjectPaused ? (
-                            <div className="project-overview__paused-status">
-                                <span className="project-overview__paused-status-label">{t('projectOverview.controls.status')}</span>
-                                <span className="project-overview__paused-status-value">{projectStatusLabels[PROJECT_PAUSED_STATUS]}</span>
+            <Card className="updates-card project-control-card">
+                <div className="project-control-card__header">
+                    <div className="project-control-card__heading">
+                        <span className="material-symbols-outlined project-control-card__icon">tune</span>
+                        <div className="project-control-card__heading-copy">
+                            <h3 className="project-control-card__title">{t('projectOverview.controls.title')}</h3>
+                            <div className="project-control-card__pills" aria-label={t('projectOverview.controls.summary')}>
+                                <span className={`project-control-card__pill ${isProjectCanceled ? 'is-canceled' : isProjectPaused ? 'is-paused' : 'is-active'}`}>
+                                    {projectStatusLabel}
+                                </span>
+                                <span className={`project-control-card__pill project-control-card__pill--priority is-${currentProjectPriority.toLowerCase()}`}>
+                                    {currentPriorityLabel}
+                                </span>
                             </div>
-                        ) : (
-                            <Select
-                                label={t('projectOverview.controls.status')}
-                                value={project.status}
-                                options={statusOptions}
-                                onChange={(value) => handleUpdateField('status', value)}
-                                className="project-overview__select"
-                            />
-                        )}
-
-                        <Select
-                            label={t('projectOverview.controls.priority')}
-                            value={project.priority || 'Medium'}
-                            options={priorityOptions}
-                            onChange={(value) => handleUpdateField('priority', value)}
-                            className="project-overview__select"
-                        />
+                        </div>
                     </div>
+                    <div className="project-control-card__actions">
+                        {isProjectCanceled ? (
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                disabled
+                                size="sm"
+                                className="project-control-card__action"
+                                icon={<span className="material-symbols-outlined">cancel</span>}
+                            >
+                                {projectStatusLabels[PROJECT_CANCELED_STATUS]}
+                            </Button>
+                        ) : (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant={isProjectPaused ? 'primary' : 'secondary'}
+                                    onClick={isProjectPaused ? () => setShowResumeModal(true) : handlePauseProject}
+                                    isLoading={!isProjectPaused && pausingProject}
+                                    disabled={cancelingProject}
+                                    size="sm"
+                                    className={`project-control-card__action ${isProjectPaused ? 'project-control-card__action--resume' : 'project-control-card__action--pause'}`}
+                                    icon={<span className="material-symbols-outlined">{isProjectPaused ? 'play_arrow' : 'pause'}</span>}
+                                >
+                                    {isProjectPaused ? t('projectOverview.resume.action') : t('projectOverview.pause.action')}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={handleCancelProject}
+                                    isLoading={cancelingProject}
+                                    disabled={pausingProject || resumingProject}
+                                    size="sm"
+                                    className="project-control-card__action project-control-card__action--cancel"
+                                    icon={<span className="material-symbols-outlined">cancel</span>}
+                                >
+                                    {t('projectOverview.cancel.action')}
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </div>
 
-                    <div className={`project-overview__pause-row ${isProjectPaused ? 'project-overview__pause-row--paused' : ''}`}>
-                        <div className="project-overview__pause-row-copy">
-                            <span className="material-symbols-outlined">{isProjectPaused ? 'pause_circle' : 'pause'}</span>
-                            <span className="project-overview__pause-row-text">
-                                <strong>
-                                    {isProjectPaused
-                                        ? t('projectOverview.pause.pausedSince').replace('{date}', pauseStartLabel)
-                                        : t('projectOverview.pause.currentStatus').replace('{status}', projectStatusLabels[project.status])}
-                                </strong>
-                                {isProjectPaused && (
-                                    <span>
-                                        {t('projectOverview.pause.catchUpCount').replace('{count}', catchUpTasks.length.toString())}
-                                    </span>
-                                )}
+                {isProjectPaused && (
+                    <div className="project-control-card__pause-strip">
+                        <span className="material-symbols-outlined">pause_circle</span>
+                        <div>
+                            <strong>{t('projectOverview.pause.pausedSince').replace('{date}', pauseStartLabel)}</strong>
+                            <span>{t('projectOverview.pause.catchUpCount').replace('{count}', catchUpTasks.length.toString())}</span>
+                        </div>
+                    </div>
+                )}
+
+                {isProjectCanceled && (
+                    <div className="project-control-card__cancel-strip">
+                        <span className="material-symbols-outlined">cancel</span>
+                        <div>
+                            <strong>{t('projectOverview.cancel.canceledSince').replace('{date}', canceledDateLabel)}</strong>
+                            <span>{t('projectOverview.cancel.currentStatus').replace('{status}', projectStatusLabel)}</span>
+                        </div>
+                    </div>
+                )}
+
+                <div className="controls-form project-control-card__form">
+                    <section className="project-control-card__section">
+                        <div className="project-control-card__section-heading">
+                            <span>
+                                <span className="material-symbols-outlined">sync_alt</span>
+                                {t('projectOverview.controls.lifecycle')}
                             </span>
                         </div>
-                        <Button
-                            type="button"
-                            variant={isProjectPaused ? 'primary' : 'secondary'}
-                            onClick={isProjectPaused ? () => setShowResumeModal(true) : handlePauseProject}
-                            isLoading={pausingProject}
-                            size="sm"
-                            className="project-overview__pause-row-action"
-                            icon={<span className="material-symbols-outlined">{isProjectPaused ? 'play_arrow' : 'pause'}</span>}
-                        >
-                            {isProjectPaused ? t('projectOverview.resume.action') : t('projectOverview.pause.action')}
-                        </Button>
-                    </div>
+                        <div className="project-control-card__field-grid">
+                            {isProjectPaused || isProjectCanceled ? (
+                                <div className="project-control-card__readonly-field">
+                                    <span>{t('projectOverview.controls.status')}</span>
+                                    <strong>{projectStatusLabels[project.status]}</strong>
+                                </div>
+                            ) : (
+                                <Select
+                                    label={t('projectOverview.controls.status')}
+                                    value={project.status}
+                                    options={statusOptions}
+                                    onChange={(value) => handleUpdateField('status', value)}
+                                    className="project-overview__select"
+                                />
+                            )}
 
-                    <div>
+                            <Select
+                                label={t('projectOverview.controls.priority')}
+                                value={project.priority || 'Medium'}
+                                options={priorityOptions}
+                                onChange={(value) => handleUpdateField('priority', value)}
+                                className="project-overview__select"
+                            />
+                        </div>
+                    </section>
+
+                    <section className="project-control-card__section">
+                        <div className="project-control-card__section-heading">
+                            <span>
+                                <span className="material-symbols-outlined">event</span>
+                                {t('projectOverview.controls.timeline')}
+                            </span>
+                            <em className={`project-control-card__timeline-chip ${isProjectDueOverdue ? 'is-overdue' : ''}`}>
+                                {projectTimelineSummary}
+                            </em>
+                        </div>
+                        <div className="date-inputs project-control-card__date-grid">
+                            <DatePicker
+                                label={t('projectOverview.planning.start')}
+                                value={toDateValue(project.startDate)}
+                                onChange={(date) => handleUpdateField('startDate', toDateString(date))}
+                                placeholder={t('projectOverview.controls.startPlaceholder')}
+                            />
+                            <DatePicker
+                                label={t('projectOverview.planning.due')}
+                                value={toDateValue(project.dueDate)}
+                                onChange={(date) => handleUpdateField('dueDate', toDateString(date))}
+                                placeholder={t('projectOverview.controls.duePlaceholder')}
+                            />
+                        </div>
+                    </section>
+
+                    <section className="project-control-card__section project-control-card__section--details">
+                        <div className="project-control-card__section-heading">
+                            <span>
+                                <span className="material-symbols-outlined">tactic</span>
+                                {t('projectOverview.controls.details')}
+                            </span>
+                            <em>{releaseStateLabel}</em>
+                        </div>
                         <Select
-                            label={t('projectOverview.controls.projectState')}
-                            value={project.projectState || 'not specified'}
+                            label={t('projectOverview.controls.releaseState')}
+                            value={releaseStateValue}
                             options={projectStateOptions}
                             onChange={(value) => handleUpdateField('projectState', value)}
                             className="project-overview__select"
                         />
-                    </div>
-
-                    <div className="date-inputs">
-                        <DatePicker
-                            label={t('projectOverview.planning.start')}
-                            value={toDateValue(project.startDate)}
-                            onChange={(date) => handleUpdateField('startDate', toDateString(date))}
-                            placeholder={t('projectOverview.controls.startPlaceholder')}
-                        />
-                        <DatePicker
-                            label={t('projectOverview.planning.due')}
-                            value={toDateValue(project.dueDate)}
-                            onChange={(date) => handleUpdateField('dueDate', toDateString(date))}
-                            placeholder={t('projectOverview.controls.duePlaceholder')}
-                        />
-                    </div>
+                    </section>
                 </div>
             </Card>
         ) : null
     };
 
-    const renderOverviewCard = (card: ProjectOverviewCardConfig) => {
+    const renderOverviewCard = (card: FixedOverviewCardConfig) => {
         const content = overviewCardContent[card.id];
         if (!content) return null;
         return (
-            <OverviewSortableCard
+            <OverviewCardShell
                 key={card.id}
                 card={card}
-                layoutEditMode={layoutEditMode}
-                draggingCardId={draggingCardId}
-                keyboardDraggingCardId={keyboardDraggingCardId}
-                onHandleKeyDown={handleLayoutCardHandleKeyDown}
-                hiddenLabel={t('projectOverview.layout.hidden')}
             >
                 {content}
-            </OverviewSortableCard>
+            </OverviewCardShell>
         );
     };
-
-    const draggingCardMeta = draggingCardId ? overviewCardMeta[draggingCardId] : null;
 
 
     return (
@@ -3760,183 +3154,19 @@ export const ProjectOverview = () => {
 
                             {/* Project Overview Layout */}
                             <div className="overview-layout">
-                                {canCustomizeLayout && (
-                                    <div className="overview-layout__toolbar">
-                                        <div className="overview-layout__info">
-                                            <span className="overview-layout__label">{t('projectOverview.layout.title')}</span>
-                                            <div className="overview-layout__meta">
-                                                <span className="overview-layout__template">{templateLabel}</span>
-                                                {layoutEditMode && (
-                                                    <span className="overview-layout__hint">{t('projectOverview.layout.dragHint')}</span>
-                                                )}
-                                                {layoutSaving && (
-                                                    <span className="overview-layout__saving">{t('projectOverview.layout.saving')}</span>
-                                                )}
-                                            </div>
-                                            {layoutError && (
-                                                <span className="overview-layout__error">{layoutError}</span>
-                                            )}
-                                        </div>
-                                        <div className="overview-layout__actions">
-                                            <Button
-                                                variant={layoutEditMode ? 'primary' : 'ghost'}
-                                                size="sm"
-                                                icon={<span className="material-symbols-outlined">drag_indicator</span>}
-                                                onClick={toggleLayoutEditMode}
-                                            >
-                                                {layoutEditMode ? t('projectOverview.layout.done') : t('projectOverview.layout.edit')}
-                                            </Button>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                icon={<span className="material-symbols-outlined">tune</span>}
-                                                onClick={openLayoutModal}
-                                            >
-                                                {t('projectOverview.layout.customize')}
-                                            </Button>
+                                <div className="overview-layout__columns">
+                                    <div className="overview-layout__column overview-layout__column--primary">
+                                        <div className="overview-layout__primary">
+                                            {primaryCardsToRender.map(renderOverviewCard)}
                                         </div>
                                     </div>
-                                )}
-                                <DndContext
-                                    sensors={layoutSensors}
-                                    collisionDetection={layoutCollisionDetection}
-                                    onDragStart={handleLayoutDragStart}
-                                    onDragOver={handleLayoutDragOver}
-                                    onDragEnd={handleLayoutDragEnd}
-                                    onDragCancel={handleLayoutDragCancel}
-                                >
-                                    <div className={`overview-layout__columns ${layoutEditMode ? 'is-editing' : ''}`.trim()}>
-                                        <div
-                                            ref={setPrimaryDropRef}
-                                            className={`overview-layout__column overview-layout__column--primary ${primaryColumnDropActive ? 'is-drop-target' : ''}`.trim()}
-                                        >
-                                            <SortableContext items={primaryCardIds} strategy={rectSortingStrategy}>
-                                                <div className="overview-layout__primary">
-                                                    {primaryCardsToRender.map(renderOverviewCard)}
-                                                    {layoutEditMode && primaryCardIds.length === 0 && (
-                                                        <div className="overview-layout__drop-placeholder">
-                                                            {t('projectOverview.layout.dropZone')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </SortableContext>
+                                    <div className="overview-layout__column overview-layout__column--secondary">
+                                        <div className="overview-layout__secondary">
+                                            {secondaryCardsToRender.map(renderOverviewCard)}
                                         </div>
-                                        <div
-                                            ref={setSecondaryDropRef}
-                                            className={`overview-layout__column overview-layout__column--secondary ${secondaryColumnDropActive ? 'is-drop-target' : ''}`.trim()}
-                                        >
-                                            <SortableContext items={secondaryCardIds} strategy={verticalListSortingStrategy}>
-                                                <div className="overview-layout__secondary">
-                                                    {secondaryCardsToRender.map(renderOverviewCard)}
-                                                    {layoutEditMode && secondaryCardIds.length === 0 && (
-                                                        <div className="overview-layout__drop-placeholder">
-                                                            {t('projectOverview.layout.dropZone')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </SortableContext>
-                                        </div>
-                                    </div>
-                                    <DragOverlay>
-                                        {draggingCardMeta ? (
-                                            <div className="overview-card overview-card--overlay">
-                                                <div className="overview-card__body">
-                                                    <Card className="updates-card">
-                                                        <h3 className="overview-card__overlay-title">{draggingCardMeta.title}</h3>
-                                                        <p className="overview-card__overlay-description">{draggingCardMeta.description}</p>
-                                                    </Card>
-                                                </div>
-                                            </div>
-                                        ) : null}
-                                    </DragOverlay>
-                                </DndContext>
-                            </div>
-
-                            {/* Overview Layout Modal */}
-                            <Modal
-                                isOpen={layoutModalOpen}
-                                onClose={() => setLayoutModalOpen(false)}
-                                title={t('projectOverview.layout.modalTitle')}
-                                size="lg"
-                            >
-                                <div className="overview-layout-modal">
-                                    <div className="overview-layout-template">
-                                        <div>
-                                            <span className="overview-layout-template__label">{t('projectOverview.layout.template.label')}</span>
-                                            <span className="overview-layout-template__value">{draftTemplateLabel}</span>
-                                        </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            icon={<span className="material-symbols-outlined">restart_alt</span>}
-                                            onClick={resetLayoutDraft}
-                                        >
-                                            {t('projectOverview.layout.reset')}
-                                        </Button>
-                                    </div>
-
-                                    <p className="overview-layout-modal__hint">{t('projectOverview.layout.modalHint')}</p>
-
-                                    <div className="overview-layout-list">
-                                        {layoutDraft.cards.map(card => {
-                                            const placement = resolveCardPlacement(card);
-                                            const isSecondary = placement === 'secondary';
-                                            return (
-                                                <div key={card.id} className={`overview-layout-item ${card.enabled ? 'is-enabled' : 'is-disabled'}`.trim()}>
-                                                    <div className="overview-layout-item__info">
-                                                        <h4>{overviewCardMeta[card.id].title}</h4>
-                                                        <p>{overviewCardMeta[card.id].description}</p>
-                                                    </div>
-                                                    <div className="overview-layout-item__controls">
-                                                        <button
-                                                            type="button"
-                                                            className={`overview-layout-toggle ${card.enabled ? 'is-on' : ''}`.trim()}
-                                                            onClick={() => handleLayoutToggle(card.id)}
-                                                            aria-pressed={card.enabled}
-                                                        >
-                                                            <span className="overview-layout-toggle__thumb" />
-                                                        </button>
-                                                        <div className="overview-layout-placement">
-                                                            {layoutPlacementOptions.map(option => (
-                                                                <button
-                                                                    key={`${card.id}-${option.value}`}
-                                                                    type="button"
-                                                                    className={`overview-layout-placement__chip ${placement === option.value ? 'is-active' : ''}`.trim()}
-                                                                    onClick={() => handleLayoutPlacementChange(card.id, option.value)}
-                                                                >
-                                                                    {option.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                        <div className={`overview-layout-size ${isSecondary ? 'is-disabled' : ''}`.trim()}>
-                                                            {layoutSizeOptions.map(option => (
-                                                                <button
-                                                                    key={`${card.id}-${option.value}`}
-                                                                    type="button"
-                                                                    className={`overview-layout-size__chip ${card.span === option.value ? 'is-active' : ''}`.trim()}
-                                                                    onClick={() => handleLayoutSpanChange(card.id, option.value)}
-                                                                    disabled={isSecondary}
-                                                                >
-                                                                    {option.label}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-
-                                    <div className="overview-layout-modal__actions">
-                                        <Button variant="ghost" onClick={() => setLayoutModalOpen(false)}>
-                                            {t('projectOverview.layout.cancel')}
-                                        </Button>
-                                        <Button variant="primary" onClick={applyLayoutDraft} isLoading={layoutSaving}>
-                                            {t('projectOverview.layout.save')}
-                                        </Button>
                                     </div>
                                 </div>
-                            </Modal>
+                            </div>
 
                             {/* Gallery Modal */}
                             <Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title={t('projectOverview.gallery.title')} size="xl">
@@ -4215,6 +3445,7 @@ export const ProjectOverview = () => {
                                             isOpen={showIssueModal}
                                             onClose={() => setShowIssueModal(false)}
                                             projectId={id!}
+                                            tenantId={project?.tenantId}
                                         />
                                     </Suspense>
                                 )
@@ -4238,15 +3469,17 @@ export const ProjectOverview = () => {
                             }
 
                             {/* Health Detail Modal */}
-                            <HealthDetailModal
-                                isOpen={showHealthModal}
-                                onClose={() => setShowHealthModal(false)}
-                                health={health}
-                                tasks={tasks}
-                                milestones={milestones}
-                                issues={issues}
-                                projectTitle={project.title}
-                            />
+                            {health && (
+                                <HealthDetailModal
+                                    isOpen={showHealthModal}
+                                    onClose={() => setShowHealthModal(false)}
+                                    health={health}
+                                    tasks={tasks}
+                                    milestones={milestones}
+                                    issues={issues}
+                                    projectTitle={project.title}
+                                />
+                            )}
 
 
                             {/* Report Modal */}

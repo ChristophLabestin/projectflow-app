@@ -194,7 +194,7 @@ export interface ProjectOverviewTemplate {
     tenantId?: string;
 }
 
-export type ProjectStatus = 'Active' | 'Brainstorming' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+export type ProjectStatus = 'Active' | 'Brainstorming' | 'Canceled' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
 export type ProjectType = 'standard' | 'software' | 'creative';
 export type ProjectOperatingMode = 'explore' | 'build' | 'ship' | 'maintain';
 export type ProjectCadence = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'ad-hoc';
@@ -252,6 +252,10 @@ export interface Project {
     pausedFromStatus?: ProjectStatus;
     lastPauseStartedAt?: string;
     lastResumedAt?: string;
+    canceledAt?: string;
+    canceledBy?: string;
+    canceledFromStatus?: ProjectStatus;
+    lastCanceledAt?: string;
     ownerId: string;
     coverImage?: string;
     coverImageFileId?: string;
@@ -280,7 +284,7 @@ export interface Project {
     overviewLayout?: ProjectOverviewLayout;
 }
 
-export type FocusItemType = 'task' | 'issue' | 'personal-task';
+export type FocusItemType = 'task' | 'issue' | 'initiative' | 'personal-task';
 export type UserFocusStatus = 'active' | 'snoozed' | 'blocked';
 export type UserFocusLastAction = 'started' | 'resumed' | 'snoozed' | 'blocked' | 'completed' | 'cleared';
 
@@ -418,6 +422,7 @@ export interface Task {
     convertedIdeaId?: string; // Linked idea (if converted from an idea)
     initiativeId?: string;
     legacyInitiativeRoot?: boolean;
+    initiativeMigrationDismissed?: boolean;
     createdBy?: string;
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
@@ -430,6 +435,7 @@ export interface Task {
     codexSessionId?: string;
     codexSessionExternalKey?: string;
     filesTouched?: string[];
+    path?: string;
 }
 
 export type InitiativeStatus = TaskStatus | 'Planning';
@@ -741,6 +747,7 @@ export interface Issue {
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
     originIdeaId?: string;
+    path?: string;
 }
 
 export interface Activity {

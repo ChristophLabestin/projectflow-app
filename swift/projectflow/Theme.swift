@@ -87,7 +87,7 @@ struct PFScreenPadding: ViewModifier {
     var vertical: CGFloat = PFSpacing.lg
 
     private var horizontal: CGFloat {
-        horizontalSizeClass == .compact ? PFSpacing.md : PFSpacing.lg
+        horizontalSizeClass == .compact ? 14 : PFSpacing.lg
     }
 
     func body(content: Content) -> some View {
@@ -101,7 +101,7 @@ struct PFScreenHorizontalPadding: ViewModifier {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var horizontal: CGFloat {
-        horizontalSizeClass == .compact ? PFSpacing.md : PFSpacing.lg
+        horizontalSizeClass == .compact ? 14 : PFSpacing.lg
     }
 
     func body(content: Content) -> some View {

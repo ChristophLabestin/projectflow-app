@@ -36,7 +36,7 @@ These routes are rendered inside the authenticated app shell/layout.
 
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
-- [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
+- [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
 - [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
@@ -82,7 +82,7 @@ Base:
 ### 3.2 Project Tasks
 
 - [x] `/project/:id/tasks` — Project tasks list/board (SCSS refactor, common controls + badges, tooltip + timeline alignment)
-- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n, initiative badge + legacy initiative redirect)
+- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n, initiative badge + legacy initiative redirect, explicit focus action)
 
 ### 3.2.1 Project Initiatives
 
@@ -194,7 +194,7 @@ These are outside the Social module shell in the old routing.
 - [ ] web/components/flows/InitiativeConversionModal.tsx - Initiative conversion modal
 - [x] web/components/InitiativeCreateModal.tsx - Initiative create modal
 - [x] web/screens/ProjectInitiatives.tsx - Initiative list page
-- [x] web/screens/ProjectInitiativeDetail.tsx - Initiative detail page
+- [x] web/screens/ProjectInitiativeDetail.tsx - Initiative detail page (includes explicit focus action)
 - [ ] web/components/ui/Modal.tsx - Legacy modal base
 - [ ] web/components/ui/GlobalConfirmationModal.tsx - Legacy global confirmation
 - [x] web/components/common/Modal/Modal.tsx - Common modal base (SCSS)

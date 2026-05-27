@@ -16,6 +16,7 @@ import { DatePicker } from '../components/ui/DatePicker';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
+import { isProjectIncludedInImportantSignals } from '../services/healthService';
 
 export const PersonalTaskDetailPage = () => {
     const { taskId } = useParams<{ taskId: string }>();
@@ -60,7 +61,7 @@ export const PersonalTaskDetailPage = () => {
                 getUserProjects()
             ]);
             setTask(taskData);
-            setProjects(projectsData);
+            setProjects(projectsData.filter(isProjectIncludedInImportantSignals));
             if (taskData) {
                 setDescValue(taskData.description || '');
             }

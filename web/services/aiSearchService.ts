@@ -4,6 +4,7 @@ import { Project, Task, SearchResult, AISearchAnswer } from "../types";
 import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, incrementAIUsage, incrementImageUsage } from "./dataService";
 import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
+import { isProjectIncludedInImportantSignals } from "./healthService";
 
 /**
  * Helper to check if a query looks like a question
@@ -139,8 +140,9 @@ export const searchProjectsAndTasks = async (
  */
 const buildContextForAI = (projects: Project[], tasks: Task[]): string => {
     let context = "Current Projects:\n";
+    const contextProjects = projects.filter(isProjectIncludedInImportantSignals);
 
-    for (const project of projects) {
+    for (const project of contextProjects) {
         context += `- ${project.title} (Status: ${project.status}, Priority: ${project.priority || 'Medium'}`;
         if (project.dueDate) context += `, Due: ${project.dueDate}`;
         context += `)\n`;
@@ -211,6 +213,7 @@ export const answerQuestionWithContext = async (
 
         // Match project and task titles to IDs
         const relevantProjects = projects
+            .filter(isProjectIncludedInImportantSignals)
             .filter(p => result.answer.toLowerCase().includes(p.title.toLowerCase()))
             .map(p => p.id)
             .slice(0, 3);

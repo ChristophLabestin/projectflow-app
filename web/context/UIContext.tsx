@@ -18,12 +18,23 @@ interface ConfirmationState {
     show: boolean;
     title: string;
     message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'neutral' | 'danger';
     resolve: ((value: boolean) => void) | null;
+}
+
+export interface ConfirmationRequest {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'neutral' | 'danger';
 }
 
 interface UIContextType {
     showToast: (message: string, type?: ToastType, action?: { label: string; path: string }, details?: string) => void;
-    confirm: (title: string, message: string) => Promise<boolean>;
+    confirm: (title: string | ConfirmationRequest, message?: string) => Promise<boolean>;
 
     // State for components to consume
     toast: ToastState;
@@ -70,6 +81,9 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         show: false,
         title: '',
         message: '',
+        confirmText: undefined,
+        cancelText: undefined,
+        variant: 'neutral',
         resolve: null,
     });
 
@@ -196,12 +210,18 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         setToast(prev => ({ ...prev, show: false }));
     }, []);
 
-    const confirm = useCallback((title: string, message: string): Promise<boolean> => {
+    const confirm = useCallback((title: string | ConfirmationRequest, message?: string): Promise<boolean> => {
         return new Promise((resolve) => {
+            const request = typeof title === 'string'
+                ? { title, message: message || '' }
+                : title;
             setConfirmation({
                 show: true,
-                title,
-                message,
+                title: request.title,
+                message: request.message,
+                confirmText: request.confirmText,
+                cancelText: request.cancelText,
+                variant: request.variant || 'neutral',
                 resolve,
             });
         });
@@ -215,6 +235,9 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             show: false,
             title: '',
             message: '',
+            confirmText: undefined,
+            cancelText: undefined,
+            variant: 'neutral',
             resolve: null,
         });
     }, [confirmation]);

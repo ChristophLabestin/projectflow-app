@@ -13,6 +13,7 @@ import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { subscribeProjectIssues } from '../services/domain/issuesService';
+import { isProjectExcludedFromHealth } from '../services/healthService';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -58,6 +59,7 @@ export const AppLayout = () => {
     const user = auth?.currentUser;
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const isCurrentProjectCanceled = isProjectExcludedFromHealth(project);
 
     // Close nav on route change
     useEffect(() => {
@@ -310,9 +312,9 @@ export const AppLayout = () => {
                         workspace={projectId ? {
                             projectId,
                             projectTitle: project?.title,
-                            tasksCount,
-                            ideasCount,
-                            issuesCount,
+                            tasksCount: isCurrentProjectCanceled ? 0 : tasksCount,
+                            ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
+                            issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
                             modules: project?.modules,
                             externalResources: project?.externalResources,
                             isLoaded: Boolean(project),
@@ -337,9 +339,9 @@ export const AppLayout = () => {
                                 workspace={projectId ? {
                                     projectId,
                                     projectTitle: project?.title,
-                                    tasksCount,
-                                    ideasCount,
-                                    issuesCount,
+                                    tasksCount: isCurrentProjectCanceled ? 0 : tasksCount,
+                                    ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
+                                    issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
                                     modules: project?.modules,
                                     externalResources: project?.externalResources,
                                     isLoaded: Boolean(project),
@@ -400,6 +402,7 @@ export const AppLayout = () => {
                         isOpen={isIssueCreateModalOpen}
                         onClose={closeIssueCreateModal}
                         projectId={resolvedIssueCreateProjectId}
+                        tenantId={project?.id === resolvedIssueCreateProjectId ? project.tenantId : undefined}
                     />
                 </Suspense>
             )}

@@ -151,7 +151,22 @@ export const deleteInitiative = async (
 
     const data = initiativeSnap.data() as Initiative;
     const childTasks = await getInitiativeTasks(data.projectId, initiativeId, data.tenantId);
-    await Promise.all(childTasks.map((task) => updateTaskInitiative(task.id, null, data.projectId, data.tenantId)));
+    await Promise.all(childTasks.map(async (task) => {
+        const taskSnap = await findTaskDoc(task.id, data.projectId, data.tenantId);
+        if (!taskSnap?.exists()) return;
+
+        const updates: Record<string, unknown> = {
+            initiativeId: null,
+            legacyInitiativeRoot: false,
+            updatedAt: serverTimestamp()
+        };
+
+        if (task.legacyInitiativeRoot === true || task.convertedIdeaId || task.originIdeaId) {
+            updates.initiativeMigrationDismissed = true;
+        }
+
+        await updateDoc(taskSnap.ref, updates);
+    }));
     await deleteDoc(initiativeSnap.ref);
     await logActivity(
         data.projectId,
@@ -269,11 +284,19 @@ export const updateTaskInitiative = async (
     if (!taskSnap?.exists()) throw new Error('Task not found');
 
     const task = { id: taskSnap.id, ...taskSnap.data() } as Task;
-    await updateDoc(taskSnap.ref, {
+    const updates: Record<string, unknown> = {
         initiativeId: initiativeId || null,
         legacyInitiativeRoot: initiativeId ? task.legacyInitiativeRoot === true : false,
         updatedAt: serverTimestamp()
-    });
+    };
+
+    if (!initiativeId && (task.legacyInitiativeRoot === true || task.convertedIdeaId || task.originIdeaId)) {
+        updates.initiativeMigrationDismissed = true;
+    } else if (initiativeId && (task.convertedIdeaId || task.originIdeaId) && task.legacyInitiativeRoot !== true) {
+        updates.initiativeMigrationDismissed = true;
+    }
+
+    await updateDoc(taskSnap.ref, updates);
 
     await logActivity(
         task.projectId,
@@ -332,20 +355,41 @@ export const ensureProjectInitiativesMigrated = async (
     const milestonesSnapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, MILESTONES));
     const milestones = milestonesSnapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Record<string, unknown>));
     const existingInitiatives = await getDocs(projectSubCollection(resolvedTenant, projectId, INITIATIVES));
+    const existingInitiativeIds = new Set<string>();
     const byOriginIdeaId = new Map<string, string>();
+    const byExternalKey = new Map<string, string>();
 
     existingInitiatives.forEach((docSnap) => {
-        const originIdeaId = String(docSnap.data().originIdeaId || '');
+        const data = docSnap.data();
+        const originIdeaId = String(data.originIdeaId || '');
+        const externalKey = String(data.externalKey || '');
+        existingInitiativeIds.add(docSnap.id);
         if (originIdeaId) {
             byOriginIdeaId.set(originIdeaId, docSnap.id);
+        }
+        if (externalKey) {
+            byExternalKey.set(externalKey, docSnap.id);
         }
     });
 
     for (const taskDoc of tasksSnapshot.docs) {
         const task = { id: taskDoc.id, ...taskDoc.data() } as Task;
-        const originIdeaId = task.convertedIdeaId || task.originIdeaId || '';
+        if (task.initiativeMigrationDismissed === true) {
+            continue;
+        }
 
-        let initiativeId = task.initiativeId || (originIdeaId ? byOriginIdeaId.get(originIdeaId) || '' : '');
+        const originIdeaId = task.convertedIdeaId || task.originIdeaId || '';
+        const legacyExternalKey = `legacy-task:${task.id}`;
+
+        let initiativeId = '';
+        if (task.initiativeId && existingInitiativeIds.has(task.initiativeId)) {
+            initiativeId = task.initiativeId;
+        } else if (originIdeaId) {
+            initiativeId = byOriginIdeaId.get(originIdeaId) || '';
+        }
+        if (!initiativeId) {
+            initiativeId = byExternalKey.get(legacyExternalKey) || '';
+        }
         if (!initiativeId) {
             initiativeId = await createInitiative(
                 projectId,
@@ -359,10 +403,12 @@ export const ensureProjectInitiativesMigrated = async (
                     assigneeIds: task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []),
                     assignedGroupIds: task.assignedGroupIds,
                     originIdeaId,
-                    externalKey: `legacy-task:${task.id}`
+                    externalKey: legacyExternalKey
                 },
                 resolvedTenant
             );
+            existingInitiativeIds.add(initiativeId);
+            byExternalKey.set(legacyExternalKey, initiativeId);
             if (originIdeaId) {
                 byOriginIdeaId.set(originIdeaId, initiativeId);
             }

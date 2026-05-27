@@ -2,7 +2,6 @@ import {
     collection,
     collectionGroup,
     doc,
-    documentId,
     getDoc,
     getDocs,
     onSnapshot,
@@ -30,11 +29,17 @@ const resolveProjectDoc = async (projectId: string, tenantId?: string) => {
         }
     }
 
-    const snapshot = await getDocs(
-        query(collectionGroup(db, PROJECTS), where(documentId(), '==', projectId))
-    );
+    const user = auth.currentUser;
+    if (!user) {
+        return null;
+    }
 
-    return snapshot.docs[0] || null;
+    const [ownedSnapshot, memberSnapshot] = await Promise.all([
+        getDocs(query(collectionGroup(db, PROJECTS), where('ownerId', '==', user.uid))),
+        getDocs(query(collectionGroup(db, PROJECTS), where('memberIds', 'array-contains', user.uid)))
+    ]);
+
+    return [...ownedSnapshot.docs, ...memberSnapshot.docs].find((docSnap) => docSnap.id === projectId) || null;
 };
 
 const getTenantIdFromRef = (ref: { path: string }) => {

@@ -40,6 +40,7 @@ import {
     createNotification
 } from './notificationService';
 import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
+import { isProjectIncludedInImportantSignals } from './healthService';
 import {
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
@@ -1406,7 +1407,7 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
     await ensureTenantAndUser(resolvedTenant);
 
     // Get all projects first
-    const projects = await getAllWorkspaceProjects(resolvedTenant);
+    const projects = (await getAllWorkspaceProjects(resolvedTenant)).filter(isProjectIncludedInImportantSignals);
 
     // Fetch tasks for all projects
     const taskPromises = projects.map(async p => {
@@ -1669,7 +1670,9 @@ export const getUnassignedTasks = async (): Promise<Task[]> => {
         console.warn("Failed to fetch projects for unassigned tasks", e);
     }
 
-    const relevantProjects = allProjects.filter(p => p.memberIds?.includes(user.uid) || p.ownerId === user.uid);
+    const relevantProjects = allProjects
+        .filter(isProjectIncludedInImportantSignals)
+        .filter(p => p.memberIds?.includes(user.uid) || p.ownerId === user.uid);
 
     const taskPromises = relevantProjects.map(async p => {
         try {
@@ -1701,10 +1704,12 @@ export const getUsersTasks = async (userIds: string[]): Promise<Task[]> => {
     }
 
     // We only care about projects where at least one of the target users is a member
-    const relevantProjects = allProjects.filter(p =>
-        p.ownerId && userIds.includes(p.ownerId) ||
-        (p.memberIds && p.memberIds.some(uid => userIds.includes(uid)))
-    );
+    const relevantProjects = allProjects
+        .filter(isProjectIncludedInImportantSignals)
+        .filter(p =>
+            p.ownerId && userIds.includes(p.ownerId) ||
+            (p.memberIds && p.memberIds.some(uid => userIds.includes(uid)))
+        );
 
     const taskPromises = relevantProjects.map(async p => {
         try {

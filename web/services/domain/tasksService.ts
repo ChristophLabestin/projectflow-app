@@ -29,6 +29,7 @@ import {
     syncProjectProgress
 } from '../internal/workspaceDataCore';
 import { toMillis } from '../../utils/time';
+import { isProjectIncludedInImportantSignals } from '../healthService';
 import type { Activity, SubTask, Task } from '../../types';
 import { getSharedProjects, getUserProjects } from './projectsService';
 
@@ -59,7 +60,7 @@ export const getUserTasks = async (): Promise<Task[]> => {
 
         const uniqueProjects = Array.from(
             new Map([...myProjects, ...sharedProjects].map((project) => [project.id, project])).values()
-        );
+        ).filter(isProjectIncludedInImportantSignals);
 
         const results = await Promise.all(uniqueProjects.map(async (project) => {
             try {
@@ -213,7 +214,7 @@ export const subscribeProjectTasks = (
     const resolvedTenant = resolveTenantId(tenantId);
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, TASKS), (snapshot) => {
         const tasks = snapshot.docs
-            .map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Task))
+            .map((docSnap) => ({ id: docSnap.id, tenantId: resolvedTenant, path: docSnap.ref.path, ...docSnap.data() } as Task))
             .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
         callback(tasks);
     });

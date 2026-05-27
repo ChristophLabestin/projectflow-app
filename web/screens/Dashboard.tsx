@@ -12,7 +12,7 @@ import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import { Project, Task, Idea, Issue, Initiative } from '../types';
 import { toDate, toMillis } from '../utils/time';
-import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
+import { calculateProjectHealth, isProjectActiveForGlobalSignals, ProjectHealth } from '../services/healthService';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -341,46 +341,76 @@ export const Dashboard = () => {
         return map;
     }, [projects]);
 
+    const activeProjects = useMemo(
+        () => projects.filter(isProjectActiveForGlobalSignals),
+        [projects]
+    );
+
+    const activeProjectIds = useMemo(
+        () => new Set(activeProjects.map((project) => project.id)),
+        [activeProjects]
+    );
+
+    const activeTasks = useMemo(
+        () => tasks.filter((task) => activeProjectIds.has(task.projectId)),
+        [activeProjectIds, tasks]
+    );
+
+    const activeIssues = useMemo(
+        () => issues.filter((issue) => activeProjectIds.has(issue.projectId)),
+        [activeProjectIds, issues]
+    );
+
+    const activeInitiatives = useMemo(
+        () => initiatives.filter((initiative) => activeProjectIds.has(initiative.projectId)),
+        [activeProjectIds, initiatives]
+    );
+
+    const activeIdeas = useMemo(
+        () => ideas.filter((idea) => Boolean(idea.projectId && activeProjectIds.has(idea.projectId))),
+        [activeProjectIds, ideas]
+    );
+
     const tasksByProject = useMemo(() => {
         const map: Record<string, Task[]> = {};
-        tasks.forEach((task) => {
+        activeTasks.forEach((task) => {
             if (!map[task.projectId]) map[task.projectId] = [];
             map[task.projectId].push(task);
         });
         return map;
-    }, [tasks]);
+    }, [activeTasks]);
 
     const issuesByProject = useMemo(() => {
         const map: Record<string, Issue[]> = {};
-        issues.forEach((issue) => {
+        activeIssues.forEach((issue) => {
             if (!map[issue.projectId]) map[issue.projectId] = [];
             map[issue.projectId].push(issue);
         });
         return map;
-    }, [issues]);
+    }, [activeIssues]);
 
     const initiativesByProject = useMemo(() => {
         const map: Record<string, Initiative[]> = {};
-        initiatives.forEach((initiative) => {
+        activeInitiatives.forEach((initiative) => {
             if (!map[initiative.projectId]) map[initiative.projectId] = [];
             map[initiative.projectId].push(initiative);
         });
         return map;
-    }, [initiatives]);
+    }, [activeInitiatives]);
 
     const ideasByProject = useMemo(() => {
         const map: Record<string, Idea[]> = {};
-        ideas.forEach((idea) => {
+        activeIdeas.forEach((idea) => {
             if (!idea.projectId) return;
             if (!map[idea.projectId]) map[idea.projectId] = [];
             map[idea.projectId].push(idea);
         });
         return map;
-    }, [ideas]);
+    }, [activeIdeas]);
 
     const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
-        projects.forEach((project) => {
+        activeProjects.forEach((project) => {
             healthMap[project.id] = calculateProjectHealth(
                 project,
                 tasksByProject[project.id] || [],
@@ -394,61 +424,60 @@ export const Dashboard = () => {
             );
         });
         return healthMap;
-    }, [ideasByProject, initiativesByProject, issuesByProject, projects, tasksByProject]);
+    }, [activeProjects, ideasByProject, initiativesByProject, issuesByProject, tasksByProject]);
 
     const allProjectsAtRisk = useMemo(() => {
-        return projects
-            .filter((project) => project.status !== 'Completed')
+        return activeProjects
             .map((project) => ({ project, health: projectHealthMap[project.id] }))
             .filter((entry) => entry.health?.status === 'warning' || entry.health?.status === 'critical')
             .sort((a, b) => a.health.score - b.health.score);
-    }, [projectHealthMap, projects]);
+    }, [activeProjects, projectHealthMap]);
 
     const projectsAtRisk = useMemo(() => allProjectsAtRisk.slice(0, 2), [allProjectsAtRisk]);
 
     const overdueTasks = useMemo(
-        () => tasks.filter((task) => !task.isCompleted && isPastDue(task.dueDate)),
-        [tasks]
+        () => activeTasks.filter((task) => !task.isCompleted && isPastDue(task.dueDate)),
+        [activeTasks]
     );
 
     const dueTodayTasks = useMemo(
-        () => tasks.filter((task) => !task.isCompleted && isToday(task.dueDate)),
-        [tasks]
+        () => activeTasks.filter((task) => !task.isCompleted && isToday(task.dueDate)),
+        [activeTasks]
     );
 
     const scheduledTodayTasks = useMemo(
-        () => tasks.filter((task) => !task.isCompleted && isToday(task.scheduledDate)),
-        [tasks]
+        () => activeTasks.filter((task) => !task.isCompleted && isToday(task.scheduledDate)),
+        [activeTasks]
     );
 
     const blockedTasks = useMemo(
-        () => tasks.filter((task) => !task.isCompleted && task.status === 'Blocked'),
-        [tasks]
+        () => activeTasks.filter((task) => !task.isCompleted && task.status === 'Blocked'),
+        [activeTasks]
     );
 
     const urgentIssues = useMemo(
-        () => issues.filter((issue) => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
-        [issues]
+        () => activeIssues.filter((issue) => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
+        [activeIssues]
     );
 
     const reviewIdeas = useMemo(
-        () => ideas.filter((idea) => REVIEW_STAGES.has(idea.stage || '')),
-        [ideas]
+        () => activeIdeas.filter((idea) => REVIEW_STAGES.has(idea.stage || '')),
+        [activeIdeas]
     );
 
     const openTasksCount = useMemo(
-        () => tasks.filter((task) => !task.isCompleted).length,
-        [tasks]
+        () => activeTasks.filter((task) => !task.isCompleted).length,
+        [activeTasks]
     );
 
     const activeProjectsCount = useMemo(
-        () => projects.filter((project) => project.status === 'Active').length,
-        [projects]
+        () => activeProjects.length,
+        [activeProjects.length]
     );
 
-    const taskTrend = useMemo(() => bucketByDay(tasks), [tasks]);
-    const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);
-    const issueTrend = useMemo(() => bucketByDay(issues), [issues]);
+    const taskTrend = useMemo(() => bucketByDay(activeTasks), [activeTasks]);
+    const ideaTrend = useMemo(() => bucketByDay(activeIdeas), [activeIdeas]);
+    const issueTrend = useMemo(() => bucketByDay(activeIssues), [activeIssues]);
 
     const maxVelocityValue = useMemo(
         () => Math.max(
@@ -492,7 +521,7 @@ export const Dashboard = () => {
     ]), [activeProjectsCount, allProjectsAtRisk.length, openTasksCount, reviewIdeas.length, t]);
 
     const projectHealthSummary = useMemo(() => {
-        return projects.reduce((summary, project) => {
+        return activeProjects.reduce((summary, project) => {
             const health = projectHealthMap[project.id];
             if (health?.status === 'critical') {
                 summary.risk += 1;
@@ -503,7 +532,7 @@ export const Dashboard = () => {
             }
             return summary;
         }, { healthy: 0, watch: 0, risk: 0 });
-    }, [projectHealthMap, projects]);
+    }, [activeProjects, projectHealthMap]);
 
     const totalVelocity = useMemo(
         () => taskTrend.reduce((sum, item) => sum + item.value, 0)
@@ -513,7 +542,7 @@ export const Dashboard = () => {
     );
 
     const focusTasks = useMemo(() => {
-        return [...tasks]
+        return [...activeTasks]
             .filter((task) => !task.isCompleted)
             .sort((a, b) => {
                 const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -522,7 +551,7 @@ export const Dashboard = () => {
                 return toMillis(b.createdAt) - toMillis(a.createdAt);
             })
             .slice(0, 3);
-    }, [tasks]);
+    }, [activeTasks]);
 
     const todayLongLabel = useMemo(
         () => format(new Date(), 'PPPP', { locale: dateLocale }),
@@ -726,11 +755,17 @@ export const Dashboard = () => {
 
     const focusResumeItem = useMemo<DashboardCommandItem | null>(() => {
         if (!focusItem || !focusItem.projectId) return null;
+        if (!activeProjectIds.has(focusItem.projectId)) return null;
 
         const status = isFocusSnoozed ? 'snoozed' : focusState?.status || 'active';
+        const focusPath = focusItem.type === 'issue'
+            ? 'issues'
+            : focusItem.type === 'initiative'
+                ? 'initiatives'
+                : 'tasks';
         return {
             id: `focus:${focusItem.id}`,
-            href: `/project/${focusItem.projectId}/${focusItem.type === 'issue' ? 'issues' : 'tasks'}/${focusItem.id}`,
+            href: `/project/${focusItem.projectId}/${focusPath}/${focusItem.id}`,
             icon: status === 'blocked' ? 'block' : status === 'snoozed' ? 'snooze' : 'center_focus_strong',
             label: status === 'blocked'
                 ? t('dashboard.command.tag.blockedFocus')
@@ -743,7 +778,7 @@ export const Dashboard = () => {
             title: focusItem.title,
             tone: status === 'blocked' ? 'danger' : status === 'snoozed' ? 'neutral' : 'info'
         };
-    }, [focusItem, focusState?.status, isFocusSnoozed, projectById, t]);
+    }, [activeProjectIds, focusItem, focusState?.status, isFocusSnoozed, projectById, t]);
 
     const primaryCommandItems = useMemo(() => {
         const merged = focusResumeItem
@@ -858,7 +893,7 @@ export const Dashboard = () => {
     );
 
     const workloadProjectItems = useMemo(() => {
-        return projects
+        return activeProjects
             .map((project) => ({
                 health: projectHealthMap[project.id],
                 openTasks: (tasksByProject[project.id] || []).filter((task) => !task.isCompleted).length,
@@ -872,7 +907,7 @@ export const Dashboard = () => {
                 return b.openTasks - a.openTasks;
             })
             .slice(0, 3);
-    }, [projectHealthMap, projects, tasksByProject]);
+    }, [activeProjects, projectHealthMap, tasksByProject]);
 
     const todayWatchProject = workloadProjectItems[0];
 
@@ -1242,7 +1277,7 @@ export const Dashboard = () => {
                                     <section className="dashboard-health-panel">
                                         <div className="dashboard-health-panel__header">
                                             <h3>{t('dashboard.expanded.health.title')}</h3>
-                                            <span>{projects.length}</span>
+                                            <span>{activeProjects.length}</span>
                                         </div>
                                         <div className="dashboard-health-meter" aria-hidden="true">
                                             {portfolioHealthSegments.map((item) => (

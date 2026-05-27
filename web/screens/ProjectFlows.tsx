@@ -166,10 +166,8 @@ export const ProjectFlows = () => {
         if (!id) return;
         setLoading(true);
         try {
-            const [proj, projTasks] = await Promise.all([
-                getProjectById(id),
-                getProjectTasks(id),
-            ]);
+            const proj = await getProjectById(id);
+            const projTasks = await getProjectTasks(id, proj?.tenantId);
             setProject(proj);
             setTasks(projTasks);
         } catch (e) {
@@ -185,14 +183,14 @@ export const ProjectFlows = () => {
 
     // Real-time Subscription for Ideas
     useEffect(() => {
-        if (!id) return;
+        if (!id || !project?.tenantId) return;
 
         const unsubscribe = subscribeProjectIdeas(id, (newIdeas) => {
             setIdeas(newIdeas);
-        });
+        }, project.tenantId);
 
         return () => unsubscribe();
-    }, [id]);
+    }, [id, project?.tenantId]);
 
     const handleGenerate = async () => {
         if (!project || !id) return;
@@ -261,7 +259,7 @@ export const ProjectFlows = () => {
                 // Optimistic Update
                 setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, type: finalType as any, socialType: socialType as any, stage: newInitialStage } : i));
 
-                await updateIdea(ideaId, { type: finalType as any, socialType: socialType as any, stage: newInitialStage }, id);
+                await updateIdea(ideaId, { type: finalType as any, socialType: socialType as any, stage: newInitialStage }, id, project?.tenantId);
 
             } else {
                 // Standard Pipeline Mode: Dragging changes Stage
@@ -275,7 +273,7 @@ export const ProjectFlows = () => {
                 // Optimistic Update
                 setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, stage: newStage } : i));
 
-                await updateIdea(ideaId, { stage: newStage }, id);
+                await updateIdea(ideaId, { stage: newStage }, id, project?.tenantId);
             }
         } catch (e) {
             console.error("Failed to move flow", e);
@@ -284,10 +282,15 @@ export const ProjectFlows = () => {
         }
     };
 
-    const handleDelete = async (ideaId: string) => {
-        if (!await confirm(t('flows.confirm.deleteTitle'), t('flows.confirm.deleteMessage'))) return;
+    const handleDelete = async (idea: Idea) => {
+        if (!await confirm({
+            title: t('flows.confirm.deleteTitle'),
+            message: t('flows.confirm.deleteMessage'),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        })) return;
         try {
-            await deleteIdea(ideaId, id);
+            await deleteIdea(idea.id, id, idea.tenantId || project?.tenantId);
             // Real-time listener handles update
         } catch (e) { console.error(e); }
     };
@@ -574,7 +577,7 @@ export const ProjectFlows = () => {
                                                         size="icon"
                                                         variant="ghost"
                                                         className="flow-list-card__delete"
-                                                        onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
+                                                        onClick={(e) => { e.stopPropagation(); handleDelete(idea); }}
                                                         aria-label={t('flows.actions.delete')}
                                                     >
                                                         <span className="material-symbols-outlined">delete</span>

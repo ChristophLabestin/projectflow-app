@@ -334,6 +334,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         Planning: t('project.status.planning'),
         'On Hold': t('project.status.onHold'),
         Completed: t('project.status.completed'),
+        Canceled: t('project.status.canceled'),
         Brainstorming: t('project.status.brainstorming'),
         Review: t('project.status.review')
     };
@@ -345,10 +346,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     };
 
     const isProjectPaused = project.status === 'On Hold';
+    const isProjectCanceled = project.status === 'Canceled';
     const projectStatusOptions = [
         { value: 'Active', label: projectStatusLabels.Active },
         { value: 'Planning', label: projectStatusLabels.Planning },
         ...(isProjectPaused ? [{ value: 'On Hold', label: projectStatusLabels['On Hold'], disabled: true }] : []),
+        ...(isProjectCanceled ? [{ value: 'Canceled', label: projectStatusLabels.Canceled, disabled: true }] : []),
         { value: 'Completed', label: projectStatusLabels.Completed },
         { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
         { value: 'Review', label: projectStatusLabels.Review },
@@ -418,7 +421,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 value={status || 'Active'}
                                 onChange={(value) => setStatus(value as any)}
                                 options={projectStatusOptions}
-                                disabled={isProjectPaused}
+                                disabled={isProjectPaused || isProjectCanceled}
                             />
                             <Select
                                 label={t('projectSettings.general.fields.priority')}

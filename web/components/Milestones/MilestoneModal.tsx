@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { collectionGroup, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, query, updateDoc, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Milestone } from '../../types';
 import { createMilestone, updateMilestone } from '../../services/dataService';
@@ -17,12 +17,13 @@ import confetti from 'canvas-confetti';
 
 interface MilestoneModalProps {
     projectId: string;
+    tenantId?: string;
     isOpen: boolean;
     onClose: () => void;
     milestone?: Milestone;
 }
 
-export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: MilestoneModalProps) => {
+export const MilestoneModal = ({ projectId, tenantId, isOpen, onClose, milestone }: MilestoneModalProps) => {
     const { t } = useLanguage();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -50,24 +51,24 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
             if (!projectId) return;
 
             try {
-                const tasksRef = collectionGroup(db, 'tasks');
-                const qTasks = query(tasksRef, where('projectId', '==', projectId));
-                const tasksSnap = await getDocs(qTasks);
+                const tasksSnap = tenantId
+                    ? await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'tasks'))
+                    : await getDocs(query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId)));
                 setAvailableTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data(), ref: d.ref })));
 
-                await ensureProjectInitiativesMigrated(projectId).catch(console.error);
+                await ensureProjectInitiativesMigrated(projectId, tenantId).catch(console.error);
 
-                const initiativesRef = collectionGroup(db, 'initiatives');
-                const qInitiatives = query(initiativesRef, where('projectId', '==', projectId));
-                const initiativesSnap = await getDocs(qInitiatives);
+                const initiativesSnap = tenantId
+                    ? await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'initiatives'))
+                    : await getDocs(query(collectionGroup(db, 'initiatives'), where('projectId', '==', projectId)));
                 const nextInitiatives = initiativesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
                 if (nextInitiatives.length > 0) {
                     setAvailableInitiatives(nextInitiatives);
                 } else {
-                    const ideasRef = collectionGroup(db, 'ideas');
-                    const qIdeas = query(ideasRef, where('projectId', '==', projectId));
-                    const ideasSnap = await getDocs(qIdeas);
+                    const ideasSnap = tenantId
+                        ? await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas'))
+                        : await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
                     setAvailableInitiatives(ideasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
                 }
             } catch (e) {
@@ -93,7 +94,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 setLinkedInitiativeId('');
             }
         }
-    }, [isOpen, milestone, projectId]);
+    }, [isOpen, milestone, projectId, tenantId]);
 
     const handleSave = async () => {
         setLoading(true);
@@ -117,15 +118,15 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
             }
 
             if (milestone) {
-                await updateMilestone(projectId, milestone.id, payload);
+                await updateMilestone(projectId, milestone.id, payload, tenantId || milestone.tenantId);
             } else {
-                await createMilestone(projectId, payload);
+                await createMilestone(projectId, payload, tenantId);
             }
 
             if (dueDate && linkedTaskIds.length > 0) {
-                const tasksRef = collectionGroup(db, 'tasks');
-                const allTasksQ = query(tasksRef, where('projectId', '==', projectId));
-                const allTasksSnap = await getDocs(allTasksQ);
+                const allTasksSnap = tenantId
+                    ? await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'tasks'))
+                    : await getDocs(query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId)));
 
                 const batchUpdates: Promise<void>[] = [];
                 allTasksSnap.forEach(docSnap => {

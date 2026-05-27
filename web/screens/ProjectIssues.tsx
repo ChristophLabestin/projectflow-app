@@ -101,11 +101,16 @@ export const ProjectIssues = () => {
         };
     }, [id]);
 
-    const handleDelete = async (issueId: string) => {
+    const handleDelete = async (issue: Issue) => {
         if (!can('canManageIssues')) return;
-        if (!await confirm(t('projectIssues.confirm.delete.title'), t('projectIssues.confirm.delete.body'))) return;
+        if (!await confirm({
+            title: t('projectIssues.confirm.delete.title'),
+            message: t('projectIssues.confirm.delete.body'),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        })) return;
         try {
-            await deleteIssue(issueId);
+            await deleteIssue(issue.id, id, issue.tenantId || project?.tenantId, issue.path);
         } catch (e) {
             console.error("Failed to delete issue:", e);
         }
@@ -294,7 +299,7 @@ export const ProjectIssues = () => {
                     {can('canManageIssues') && (
                         <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDelete(issue.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(issue); }}
                             className="issue-card__action issue-card__action--delete"
                             title={t('projectIssues.actions.delete')}
                         >
@@ -313,6 +318,7 @@ export const ProjectIssues = () => {
                                     type: 'issue',
                                     title: issue.title,
                                     projectId: id!,
+                                    tenantId: issue.tenantId || project?.tenantId,
                                 });
                             }
                         }}
@@ -478,6 +484,7 @@ export const ProjectIssues = () => {
                             isOpen={showNewIssueModal}
                             onClose={() => setShowNewIssueModal(false)}
                             projectId={id}
+                            tenantId={project?.tenantId}
                         />
                     </Suspense>
                 )}

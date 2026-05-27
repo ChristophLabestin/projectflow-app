@@ -5,7 +5,7 @@ struct AppBackground: View {
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     private var dotColor: Color {
-        colorScheme == .dark ? Color.white.opacity(0.06) : Color(hex: "#e5e7eb")
+        colorScheme == .dark ? Color.white.opacity(0.035) : Color(hex: "#e5e7eb").opacity(0.7)
     }
 
     var body: some View {
@@ -13,7 +13,7 @@ struct AppBackground: View {
             colors.surfaceBg
                 .ignoresSafeArea()
 
-            DottedBackground(color: dotColor)
+            DottedBackground(color: dotColor, spacing: 28, dotSize: 1)
                 .ignoresSafeArea()
         }
     }

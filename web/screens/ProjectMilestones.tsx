@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import '../src/styles/components/_project-milestones.scss';
-import { collection, collectionGroup, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, getDocs, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Milestone } from '../types';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
@@ -13,6 +13,7 @@ import { Badge } from '../components/common/Badge/Badge';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/common/Card/Card';
 import { useLanguage } from '../context/LanguageContext';
+import { getProjectById } from '../services/domain/projectsService';
 import confetti from 'canvas-confetti';
 
 export const ProjectMilestones = () => {
@@ -29,6 +30,7 @@ export const ProjectMilestones = () => {
     const [initiativeLookup, setInitiativeLookup] = useState<Record<string, string>>({});
     const [taskStatusLookup, setTaskStatusLookup] = useState<Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }>>({});
     const [subtaskLookup, setSubtaskLookup] = useState<Record<string, { total: number; completed: number }>>({});
+    const [projectTenantId, setProjectTenantId] = useState<string | undefined>(undefined);
     const confirm = useConfirm();
 
     const statusLabels = useMemo(() => ({
@@ -51,46 +53,68 @@ export const ProjectMilestones = () => {
     useEffect(() => {
         if (!projectId) return;
 
-        const unsub = subscribeProjectMilestones(projectId, (data) => {
-            setMilestones(data);
-            setLoading(false);
-        });
+        let mounted = true;
+        let unsub: () => void = () => undefined;
+        let unsubTasks: () => void = () => undefined;
+        setLoading(true);
 
-        const fetchInitiatives = async () => {
+        const fetchInitiatives = async (tenantId: string) => {
             try {
-                const snapshot = await getDocs(query(collectionGroup(db, 'initiatives'), where('projectId', '==', projectId)));
+                const snapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'initiatives'));
                 const lookup: Record<string, string> = {};
                 snapshot.forEach(doc => {
                     lookup[doc.id] = doc.data().title;
                 });
-                const legacyIdeaSnapshot = await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
+                const legacyIdeaSnapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas'));
                 legacyIdeaSnapshot.forEach(doc => {
                     lookup[doc.id] = doc.data().title;
                 });
-                setInitiativeLookup(lookup);
+                if (mounted) setInitiativeLookup(lookup);
             } catch (e) {
                 console.error('Failed to fetch initiative lookup', e);
             }
         };
-        fetchInitiatives();
 
-        const tasksQ = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
-        const unsubTasks = onSnapshot(tasksQ, (snap) => {
-            const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }> = {};
-            snap.forEach(doc => {
-                const data = doc.data();
-                lookup[doc.id] = {
-                    isCompleted: data.isCompleted === true || data.status === 'Done',
-                    hasSubtasks: false,
-                    dueDate: data.dueDate,
-                    priority: data.priority,
-                    title: data.title
-                };
+        void getProjectById(projectId).then((project) => {
+            if (!mounted) return;
+            const tenantId = project?.tenantId;
+            setProjectTenantId(tenantId);
+            if (!tenantId) {
+                setLoading(false);
+                return;
+            }
+
+            unsub = subscribeProjectMilestones(projectId, (data) => {
+                if (!mounted) return;
+                setMilestones(data);
+                setLoading(false);
+            }, tenantId);
+
+            void fetchInitiatives(tenantId);
+
+            const tasksRef = collection(db, 'tenants', tenantId, 'projects', projectId, 'tasks');
+            unsubTasks = onSnapshot(tasksRef, (snap) => {
+                if (!mounted) return;
+                const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }> = {};
+                snap.forEach(doc => {
+                    const data = doc.data();
+                    lookup[doc.id] = {
+                        isCompleted: data.isCompleted === true || data.status === 'Done',
+                        hasSubtasks: false,
+                        dueDate: data.dueDate,
+                        priority: data.priority,
+                        title: data.title
+                    };
+                });
+                setTaskStatusLookup(prev => ({ ...prev, ...lookup }));
             });
-            setTaskStatusLookup(prev => ({ ...prev, ...lookup }));
+        }).catch((error) => {
+            console.error('Failed to load milestone project context', error);
+            if (mounted) setLoading(false);
         });
 
         return () => {
+            mounted = false;
             unsub();
             unsubTasks();
         };
@@ -98,7 +122,7 @@ export const ProjectMilestones = () => {
 
     useEffect(() => {
         if (milestones.length === 0) return;
-        const tenantId = milestones[0].tenantId;
+        const tenantId = projectTenantId || milestones[0].tenantId;
         if (!tenantId) return;
 
         const allTaskIds = new Set<string>();
@@ -133,7 +157,7 @@ export const ProjectMilestones = () => {
         return () => {
             unsubs.forEach(u => u());
         };
-    }, [milestones, projectId]);
+    }, [milestones, projectId, projectTenantId]);
 
     const handleEdit = (milestone: Milestone) => {
         setEditingMilestone(milestone);
@@ -142,12 +166,14 @@ export const ProjectMilestones = () => {
 
     const handleDelete = async (milestone: Milestone) => {
         if (!projectId) return;
-        const confirmed = await confirm(
-            t('projectMilestones.confirm.delete.title'),
-            t('projectMilestones.confirm.delete.message').replace('{title}', milestone.title)
-        );
+        const confirmed = await confirm({
+            title: t('projectMilestones.confirm.delete.title'),
+            message: t('projectMilestones.confirm.delete.message').replace('{title}', milestone.title),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        });
         if (confirmed) {
-            await deleteMilestone(projectId, milestone.id);
+            await deleteMilestone(projectId, milestone.id, projectTenantId || milestone.tenantId);
         }
     };
 
@@ -168,7 +194,7 @@ export const ProjectMilestones = () => {
         );
         setMilestones(optimisticMilestones);
 
-        await updateMilestone(projectId, milestone.id, { status: newStatus });
+        await updateMilestone(projectId, milestone.id, { status: newStatus }, projectTenantId || milestone.tenantId);
     };
 
     const stats = useMemo(() => {
@@ -476,6 +502,7 @@ export const ProjectMilestones = () => {
 
             <MilestoneModal
                 projectId={projectId}
+                tenantId={projectTenantId}
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 milestone={editingMilestone}

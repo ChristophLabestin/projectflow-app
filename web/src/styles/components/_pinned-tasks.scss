@@ -1464,7 +1464,8 @@
                         color: var(--color-text-muted);
 
                         &.is-task,
-                        &.is-issue {
+                        &.is-issue,
+                        &.is-initiative {
                             color: var(--color-primary);
                         }
 
@@ -1537,6 +1538,11 @@
                             &.is-issue {
                                 background-color: rgba(var(--color-primary-rgb), 0.12);
                                 color: var(--color-primary);
+                            }
+
+                            &.is-initiative {
+                                background-color: rgba(var(--color-success-rgb), 0.12);
+                                color: var(--color-success);
                             }
 
                             &.is-focus {

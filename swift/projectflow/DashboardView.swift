@@ -73,7 +73,7 @@ struct DashboardView: View {
                 Button("Go to Projects") { selectedTab = .projects }
                 Button("Go to Tasks") { selectedTab = .tasks }
                 Button("Go to Issues") { selectedTab = .issues }
-                Button("Go to Flows") { selectedTab = .flows }
+                Button("Go to Focus") { selectedTab = .focus }
             } label: {
                 Image(systemName: "plus.circle")
                     .foregroundStyle(colors.textMain)
@@ -91,19 +91,223 @@ struct DashboardView: View {
     }
 
     private var content: some View {
-        VStack(alignment: .leading, spacing: PFSpacing.lg) {
-            heroCard
+        VStack(alignment: .leading, spacing: 14) {
+            companionHeader
+            whatMattersNowSection
+            todayWorkSection
             activeProjectsCarousel
-            quickActions
-            quickStatsSection
-            focusSection
-            calendarSection
-            chartsSection
-            pinnedSection
-            highlightsSection
-            recentSection
+            compactQuickActions
+            compactStatsSection
+            recentWorkSection
         }
-        .pfScreenPadding()
+        .pfScreenPadding(vertical: PFSpacing.md)
+    }
+
+    private var companionHeader: some View {
+        HStack(alignment: .center, spacing: PFSpacing.md) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(Self.dateFormatter.string(from: Date()).uppercased())
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(colors.textMuted)
+
+                Text("\(greeting), \(shortGreetingName)")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+
+                Text(attentionSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+
+            UserAvatar(
+                name: session.user?.displayName ?? session.user?.email,
+                url: URL(string: session.user?.photoURL?.absoluteString ?? ""),
+                size: 42
+            )
+        }
+    }
+
+    private var whatMattersNowSection: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    Image(systemName: attentionIcon)
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(attentionTint)
+                        .frame(width: 40, height: 40)
+                        .background(attentionTint.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("WHAT'S IMPORTANT NOW")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(colors.textMuted)
+
+                        Text(attentionHeadline)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(colors.textMain)
+                            .lineLimit(2)
+
+                        Text(attentionDetail)
+                            .font(.caption)
+                            .foregroundStyle(colors.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: PFSpacing.sm) {
+                    DashboardAttentionChip(title: "Overdue", value: store.overdueTaskCount, tint: colors.error)
+                    DashboardAttentionChip(title: "Today", value: store.dueTodayTaskCount, tint: colors.warning)
+                    DashboardAttentionChip(title: "Blocked", value: store.blockedTaskCount, tint: colors.error)
+                }
+
+                if let focusItem = pinnedTasksStore.focusItem {
+                    currentFocusCard(focusItem)
+                }
+
+                Button(action: openPrimaryAttention) {
+                    HStack {
+                        Text(primaryAttentionActionTitle)
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                            .font(.caption.weight(.bold))
+                    }
+                    .foregroundStyle(colors.primaryText)
+                    .padding(.vertical, PFSpacing.sm)
+                    .padding(.horizontal, PFSpacing.md)
+                    .background(colors.primary)
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private var todayWorkSection: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                HStack {
+                    PFSectionHeader(title: "Due next", subtitle: "The next few things worth seeing")
+                    Spacer()
+                    Button {
+                        selectedTab = .tasks
+                    } label: {
+                        Text("Tasks")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.primary)
+                    }
+                }
+
+                let tasks = nextDueTasks
+                if tasks.isEmpty {
+                    Text("No scheduled work in the next seven days.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, PFSpacing.sm)
+                } else {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(tasks) { task in
+                            NavigationLink(destination: ProjectTaskDetailView(
+                                task: task,
+                                tenantId: tenantStore.activeTenantId ?? "",
+                                permissions: tenantStore.permissionContext()
+                            )) {
+                                DashboardTaskRow(task: task)
+                            }
+                            .buttonStyle(.plain)
+
+                            if task.id != tasks.last?.id {
+                                Divider()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var compactQuickActions: some View {
+        LazyVGrid(columns: columns, spacing: PFSpacing.sm) {
+            DashboardJumpButton(title: "Projects", icon: "square.stack.3d.down.forward", tint: colors.primary) {
+                selectedTab = .projects
+            }
+            DashboardJumpButton(title: "Tasks", icon: "checklist", tint: colors.warning) {
+                selectedTab = .tasks
+            }
+            DashboardJumpButton(title: "Focus", icon: "scope", tint: colors.primaryLight) {
+                selectedTab = .focus
+            }
+            DashboardJumpButton(title: "Inbox", icon: "bell", tint: colors.primaryDark) {
+                selectedTab = .notifications
+            }
+        }
+    }
+
+    private var compactStatsSection: some View {
+        LazyVGrid(columns: columns, spacing: PFSpacing.sm) {
+            DashboardMetricTile(title: "Projects", value: "\(store.projectCount)", icon: "square.stack.3d.down.forward", tint: colors.primary) {
+                selectedTab = .projects
+            }
+            DashboardMetricTile(title: "Open tasks", value: "\(store.openTaskCount)", icon: "checklist", tint: colors.warning) {
+                selectedTab = .tasks
+            }
+            DashboardMetricTile(title: "Due today", value: "\(store.dueTodayTaskCount)", icon: "calendar", tint: colors.warning) {
+                selectedTab = .tasks
+            }
+            DashboardMetricTile(title: "Issues", value: "\(store.openIssueCount)", icon: "exclamationmark.bubble", tint: colors.error) {
+                selectedTab = .issues
+            }
+        }
+    }
+
+    private var recentWorkSection: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionHeader(title: "Recent work", subtitle: "Latest tasks and issues")
+
+                let tasks = Array(store.recentTasks.prefix(3))
+                let issues = Array(store.recentIssues.prefix(2))
+                if tasks.isEmpty && issues.isEmpty {
+                    Text("Recent project activity will appear here.")
+                        .font(.subheadline)
+                        .foregroundStyle(colors.textMuted)
+                        .padding(.vertical, PFSpacing.sm)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(tasks) { task in
+                            NavigationLink(destination: ProjectTaskDetailView(
+                                task: task,
+                                tenantId: tenantStore.activeTenantId ?? "",
+                                permissions: tenantStore.permissionContext()
+                            )) {
+                                DashboardRecentRow(title: task.title, detail: task.status, icon: "checklist", tint: colors.warning)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        ForEach(issues) { issue in
+                            NavigationLink(destination: ProjectIssueDetailView(
+                                issue: issue,
+                                tenantId: tenantStore.activeTenantId ?? "",
+                                permissions: tenantStore.permissionContext()
+                            )) {
+                                DashboardRecentRow(title: issue.title, detail: issue.status, icon: "exclamationmark.bubble", tint: colors.error)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private var heroCard: some View {
@@ -138,7 +342,17 @@ struct DashboardView: View {
     private var activeProjectsCarousel: some View {
         let active = projectsStore.projects.filter { $0.status == "Active" }
         return VStack(alignment: .leading, spacing: PFSpacing.sm) {
-            PFSectionHeader(title: "Active Projects", subtitle: "Jump back into your work")
+            HStack {
+                PFSectionHeader(title: "Active projects", subtitle: "Companion-sized context")
+                Spacer()
+                Button {
+                    selectedTab = .projects
+                } label: {
+                    Text("All")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(colors.primary)
+                }
+            }
 
             if active.isEmpty && !projectsStore.isLoading {
                 PFCard {
@@ -147,20 +361,16 @@ struct DashboardView: View {
                         .foregroundStyle(colors.textMuted)
                 }
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: PFSpacing.md) {
-                        ForEach(active) { project in
-                            NavigationLink(destination: ProjectOverviewView(
-                                project: project,
-                                tenantId: tenantStore.activeTenantId ?? ""
-                            )) {
-                                DashboardProjectCard(project: project)
-                                    .frame(width: UIScreen.main.bounds.width * 0.65)
-                            }
-                            .buttonStyle(.plain)
+                VStack(spacing: PFSpacing.sm) {
+                    ForEach(active.prefix(4)) { project in
+                        NavigationLink(destination: ProjectOverviewView(
+                            project: project,
+                            tenantId: tenantStore.activeTenantId ?? ""
+                        )) {
+                            DashboardCompactProjectRow(project: project)
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.horizontal, 4) // Slight padding for shadows
                 }
             }
         }
@@ -622,6 +832,113 @@ struct DashboardView: View {
         return "there"
     }
 
+    private var shortGreetingName: String {
+        let name = greetingName
+        return name.split(separator: " ").first.map(String.init) ?? name
+    }
+
+    private var attentionSubtitle: String {
+        if store.overdueTaskCount > 0 {
+            return "\(store.overdueTaskCount) overdue task\(store.overdueTaskCount == 1 ? "" : "s") need attention."
+        }
+        if store.blockedTaskCount > 0 {
+            return "\(store.blockedTaskCount) blocked task\(store.blockedTaskCount == 1 ? "" : "s") may need a decision."
+        }
+        if store.dueTodayTaskCount > 0 {
+            return "\(store.dueTodayTaskCount) task\(store.dueTodayTaskCount == 1 ? "" : "s") due today."
+        }
+        return "All clear for deadlines. Keep the next focus visible."
+    }
+
+    private var attentionHeadline: String {
+        if let focusItem = pinnedTasksStore.focusItem {
+            return "Continue \(focusItem.title)"
+        }
+        if store.overdueTaskCount > 0 {
+            return "Recover overdue work first"
+        }
+        if store.blockedTaskCount > 0 {
+            return "Unblock the work queue"
+        }
+        if store.dueTodayTaskCount > 0 {
+            return "Finish today's due work"
+        }
+        if store.urgentTaskCount > 0 {
+            return "Review urgent work"
+        }
+        return "Pick a focused next move"
+    }
+
+    private var attentionDetail: String {
+        if pinnedTasksStore.focusItem != nil {
+            return "Your active focus is synced with ProjectFlow reminders and Live Activity support."
+        }
+        if store.overdueTaskCount > 0 {
+            return "Start with stale work before opening broader project context."
+        }
+        if store.blockedTaskCount > 0 {
+            return "Resolve the blockers before adding more work to the system."
+        }
+        if store.dueTodayTaskCount > 0 {
+            return "Start with the scheduled tasks that are closest to slipping."
+        }
+        return "Open Focus to choose pinned work or review the next due tasks."
+    }
+
+    private var attentionIcon: String {
+        if pinnedTasksStore.focusItem != nil { return "scope" }
+        if store.overdueTaskCount > 0 { return "calendar.badge.exclamationmark" }
+        if store.blockedTaskCount > 0 { return "xmark.octagon" }
+        if store.dueTodayTaskCount > 0 { return "calendar" }
+        return "sparkle.magnifyingglass"
+    }
+
+    private var attentionTint: Color {
+        if store.overdueTaskCount > 0 || store.blockedTaskCount > 0 {
+            return colors.error
+        }
+        if store.dueTodayTaskCount > 0 || store.urgentTaskCount > 0 {
+            return colors.warning
+        }
+        return colors.primary
+    }
+
+    private var primaryAttentionActionTitle: String {
+        if pinnedTasksStore.focusItem != nil {
+            return "Open Focus"
+        }
+        if store.overdueTaskCount > 0 || store.dueTodayTaskCount > 0 || store.urgentTaskCount > 0 {
+            return "Review Tasks"
+        }
+        if store.blockedTaskCount > 0 {
+            return "Review Blockers"
+        }
+        return "Choose Focus"
+    }
+
+    private var nextDueTasks: [ProjectTask] {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let upcomingDays = (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: today) }
+        let scheduled = upcomingDays
+            .flatMap { store.scheduledTasks[$0] ?? [] }
+            .filter { !$0.isCompleted }
+        if scheduled.isEmpty {
+            return Array(store.recentTasks.filter { !$0.isCompleted }.prefix(3))
+        }
+        return Array(scheduled.prefix(3))
+    }
+
+    private func openPrimaryAttention() {
+        if pinnedTasksStore.focusItem != nil {
+            selectedTab = .focus
+        } else if store.overdueTaskCount > 0 || store.dueTodayTaskCount > 0 || store.urgentTaskCount > 0 || store.blockedTaskCount > 0 {
+            selectedTab = .tasks
+        } else {
+            selectedTab = .focus
+        }
+    }
+
     private var quickStats: [DashboardStat] {
         [
             DashboardStat(
@@ -768,6 +1085,207 @@ private struct DashboardProjectCard: View {
         .background(colors.surfaceCard)
         .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
         .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
+    }
+}
+
+private struct DashboardCompactProjectRow: View {
+    @Environment(\.colorScheme) private var colorScheme
+    let project: Project
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        PFCard {
+            HStack(alignment: .center, spacing: PFSpacing.md) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
+                        .fill(colors.primary.opacity(colorScheme == .dark ? 0.18 : 0.08))
+
+                    Text(String(project.title.prefix(1)).uppercased())
+                        .font(.headline.weight(.bold))
+                        .foregroundStyle(colors.primary)
+                }
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(spacing: PFSpacing.xs) {
+                        Text(project.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(colors.textMain)
+                            .lineLimit(1)
+
+                        Text(project.status)
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(colors.textMuted)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(colors.surfaceHover)
+                            .clipShape(Capsule())
+                    }
+
+                    ProgressView(value: project.progress, total: 100)
+                        .tint(colors.primary)
+
+                    HStack(spacing: PFSpacing.sm) {
+                        Text("\(Int(project.progress))%")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMain)
+                        if !project.dueDate.isEmpty {
+                            Text(project.dueDate)
+                                .font(.caption)
+                                .foregroundStyle(colors.textMuted)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(colors.textSubtle)
+            }
+        }
+    }
+}
+
+private struct DashboardAttentionChip: View {
+    let title: String
+    let value: Int
+    let tint: Color
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value)")
+                .font(.headline.weight(.bold))
+                .foregroundStyle(value > 0 ? tint : colors.textMain)
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(colors.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, PFSpacing.sm)
+        .padding(.horizontal, PFSpacing.sm)
+        .background((value > 0 ? tint : colors.surfaceHover).opacity(value > 0 ? 0.12 : 1))
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+    }
+}
+
+private struct DashboardJumpButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: PFSpacing.sm) {
+                Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .frame(width: 30, height: 30)
+                    .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
+
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(PFSpacing.sm)
+            .background(colors.surfaceCard)
+            .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
+            .shadow(color: colors.shadowSm, radius: 2, x: 0, y: 1)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct DashboardMetricTile: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        Button(action: action) {
+            PFCard {
+                HStack(spacing: PFSpacing.sm) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(value)
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(colors.textMain)
+                        Text(title)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMuted)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: icon)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(tint)
+                        .frame(width: 30, height: 30)
+                        .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct DashboardRecentRow: View {
+    let title: String
+    let detail: String
+    let icon: String
+    let tint: Color
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        HStack(spacing: PFSpacing.sm) {
+            Image(systemName: icon)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(tint)
+                .frame(width: 30, height: 30)
+                .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(colors.textMain)
+                    .lineLimit(1)
+
+                Text(detail.isEmpty ? "Open" : detail)
+                    .font(.caption)
+                    .foregroundStyle(colors.textMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(colors.textSubtle)
+        }
+        .padding(.vertical, PFSpacing.sm)
     }
 }
 

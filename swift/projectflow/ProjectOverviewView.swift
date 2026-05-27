@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 import FirebaseCore // For Timestamp
 import FirebaseStorage
 
@@ -10,13 +9,9 @@ struct ProjectOverviewView: View {
     let project: Project
     let tenantId: String?
     @StateObject private var store = ProjectOverviewStore()
-    @StateObject private var layoutStore = ProjectOverviewLayoutStore()
     @StateObject private var tenantStore = TenantStore()
-    @State private var draggingCardId: String?
-    @State private var showingCustomizer = false
     @State private var showingTeamManagement = false
     @State private var showingReport = false
-    @State private var isEditing = false
 
     init(project: Project, tenantId: String? = nil) {
         self.project = project
@@ -24,15 +19,22 @@ struct ProjectOverviewView: View {
     }
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    private let columns = [GridItem(.flexible())] // Single column for mobile vertical layout
+    private let fixedCards: [ProjectOverviewCardType] = [
+        .snapshot,
+        .execution,
+        .updates,
+        .milestones,
+        .aiInsights,
+        .team,
+        .resources,
+        .planning,
+        .controls
+    ]
     private var resolvedTenantId: String? {
         tenantId ?? project.tenantId
     }
     private var permissionContext: PermissionContext {
         tenantStore.permissionContext(projectOwnerId: project.ownerId)
-    }
-    private var canEditLayout: Bool {
-        PermissionEvaluator(context: permissionContext).allows(PermissionNode.projectSettingsEdit)
     }
     private var healthSnapshot: ProjectHealthSnapshot {
         HealthService.calculateProjectHealth(
@@ -49,34 +51,24 @@ struct ProjectOverviewView: View {
         ZStack {
             AppBackground()
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 0) {
-                    // Header fits edge-to-edge at the top of the scroll view
-                    CoverImageHeader(project: project, coverImageURL: store.coverImageURL)
-                    
+                VStack(alignment: .leading, spacing: 14) {
+                    ProjectDetailHeaderCard(project: project, coverImageURL: store.coverImageURL)
+                    ProjectDetailAttentionCard(
+                        health: healthSnapshot,
+                        tasks: store.tasks,
+                        issues: store.issues,
+                        milestones: store.milestones,
+                        onOpenReport: { showingReport = true }
+                    )
                     content
-                        .pfScreenPadding()
-                        .padding(.bottom, PFSpacing.xl)
                 }
+                .pfScreenPadding(vertical: PFSpacing.md)
+                .padding(.bottom, PFSpacing.xl)
             }
-            .edgesIgnoringSafeArea(.top)
         }
         .navigationTitle(project.title)
-        .toolbar(.hidden, for: .navigationBar) // iOS 16+
-        .edgesIgnoringSafeArea(.top)
-//        .toolbar { overviewToolbar } // Toolbar temporarily disabled or needs adjustment for new layout
-        .sheet(isPresented: $showingCustomizer) {
-            ProjectOverviewCustomizationSheet(
-                layout: $layoutStore.layout,
-                onReset: {
-                    layoutStore.resetToDefault()
-                    persistLayoutChanges()
-                },
-                onDone: {
-                    persistLayoutChanges()
-                    showingCustomizer = false
-                }
-            )
-        }
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar { overviewToolbar }
         .sheet(isPresented: $showingTeamManagement) {
             if let tenantId = resolvedTenantId {
                 ProjectMemberManagementView(project: project, tenantId: tenantId)
@@ -105,14 +97,12 @@ struct ProjectOverviewView: View {
             tenantStore.update(for: session.user)
             guard let tenantId = resolvedTenantId else { return }
             store.start(tenantId: tenantId, projectId: project.id)
-            layoutStore.start(tenantId: tenantId, projectId: project.id)
         }
         .onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
         }
         .onDisappear {
             store.stop()
-            layoutStore.stop()
             tenantStore.stop()
         }
     }
@@ -120,26 +110,12 @@ struct ProjectOverviewView: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let _ = resolvedTenantId {
-                if store.isLoading || layoutStore.isLoading {
+                if store.isLoading {
                     ProgressView()
                         .frame(maxWidth: .infinity, minHeight: 200)
                 } else {
-                    // Dynamic Cards based on Layout
-                    ForEach(layoutStore.layout.enabledCards) { card in
-                        renderCard(for: card.type)
-                            .onDrag {
-                                self.draggingCardId = card.id
-                                return NSItemProvider(object: card.id as NSString)
-                            }
-                            .onDrop(of: [UTType.text], delegate: ProjectOverviewDropDelegate(
-                                item: card,
-                                cards: $layoutStore.layout.cards,
-                                draggingCardId: $draggingCardId,
-                                onDrop: {
-                                    layoutStore.markCustom()
-                                    persistLayoutChanges()
-                                }
-                            ))
+                    ForEach(fixedCards, id: \.self) { card in
+                        renderCard(for: card)
                     }
                 }
             } else {
@@ -214,19 +190,292 @@ struct ProjectOverviewView: View {
         }
     }
 
-    private func persistLayoutChanges() {
-        guard let tenantId = resolvedTenantId else { return }
-        _Concurrency.Task {
-            await layoutStore.saveLayout(
-                tenantId: tenantId,
-                projectId: project.id,
-                permissions: permissionContext
-            )
+    @ToolbarContentBuilder
+    private var overviewToolbar: some ToolbarContent {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button {
+                showingReport = true
+            } label: {
+                Image(systemName: "doc.text.magnifyingglass")
+                    .foregroundStyle(colors.textMain)
+            }
+
+            Button {
+                showingTeamManagement = true
+            } label: {
+                Image(systemName: "person.2")
+                    .foregroundStyle(colors.textMain)
+            }
         }
     }
 }
 
 // MARK: - Header
+private struct ProjectDetailHeaderCard: View {
+    let project: Project
+    let coverImageURL: URL?
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    ProjectIcon(project: project, coverImageURL: coverImageURL)
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: PFSpacing.xs) {
+                            Text(project.status)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(colors.textMain)
+                                .padding(.horizontal, 7)
+                                .padding(.vertical, 3)
+                                .background(colors.surfaceHover)
+                                .clipShape(Capsule())
+
+                            if !project.priority.isEmpty {
+                                Text(project.priority)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(priorityColor)
+                                    .padding(.horizontal, 7)
+                                    .padding(.vertical, 3)
+                                    .background(priorityColor.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                                    .clipShape(Capsule())
+                            }
+                        }
+
+                        Text(project.title)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(colors.textMain)
+                            .lineLimit(2)
+
+                        Text(project.description.isEmpty ? "No description provided." : project.description)
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                            .lineLimit(3)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                    HStack {
+                        Text("Progress")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(colors.textMuted)
+                        Spacer()
+                        Text("\(Int(project.progress))%")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(colors.textMain)
+                    }
+
+                    ProgressView(value: project.progress, total: 100)
+                        .tint(colors.primary)
+                }
+
+                HStack(spacing: PFSpacing.sm) {
+                    ProjectDetailMiniMetric(title: "Start", value: project.startDate.isEmpty ? "Unset" : project.startDate)
+                    ProjectDetailMiniMetric(title: "Due", value: project.dueDate.isEmpty ? "Unset" : project.dueDate)
+                }
+            }
+        }
+    }
+
+    private var priorityColor: Color {
+        switch project.priority.lowercased() {
+        case "urgent": return colors.error
+        case "high": return colors.warning
+        case "low": return colors.success
+        default: return colors.primary
+        }
+    }
+}
+
+private struct ProjectIcon: View {
+    let project: Project
+    let coverImageURL: URL?
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous)
+                .fill(colors.surfaceHover)
+
+            if let coverImageURL {
+                AsyncImage(url: coverImageURL) { phase in
+                    if case .success(let image) = phase {
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                    } else {
+                        Text(String(project.title.prefix(1)).uppercased())
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(colors.primary)
+                    }
+                }
+            } else {
+                Text(String(project.title.prefix(1)).uppercased())
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(colors.primary)
+            }
+        }
+        .frame(width: 58, height: 58)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
+    }
+}
+
+private struct ProjectDetailMiniMetric: View {
+    let title: String
+    let value: String
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(colors.textMuted)
+            Text(value)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(colors.textMain)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(PFSpacing.sm)
+        .background(colors.surfaceHover)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+    }
+}
+
+private struct ProjectDetailAttentionCard: View {
+    let health: ProjectHealthSnapshot
+    let tasks: [ProjectTask]
+    let issues: [Issue]
+    let milestones: [Milestone]
+    let onOpenReport: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    private var openTasks: Int {
+        tasks.filter { !$0.isCompleted && $0.status != "Done" }.count
+    }
+
+    private var urgentTasks: Int {
+        tasks.filter { !$0.isCompleted && $0.priority == "Urgent" }.count
+    }
+
+    private var openIssues: Int {
+        issues.filter { $0.status != "Resolved" && $0.status != "Closed" }.count
+    }
+
+    private var headline: String {
+        if urgentTasks > 0 {
+            return "\(urgentTasks) urgent task\(urgentTasks == 1 ? "" : "s") need the next move"
+        }
+        if openIssues > 0 {
+            return "\(openIssues) open issue\(openIssues == 1 ? "" : "s") could slow delivery"
+        }
+        if openTasks > 0 {
+            return "\(openTasks) open task\(openTasks == 1 ? "" : "s") remain"
+        }
+        return "Project is clear for now"
+    }
+
+    private var tint: Color {
+        if urgentTasks > 0 || health.status == .critical {
+            return colors.error
+        }
+        if openIssues > 0 || health.status == .warning {
+            return colors.warning
+        }
+        return colors.success
+    }
+
+    var body: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    Image(systemName: "target")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(tint)
+                        .frame(width: 40, height: 40)
+                        .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("IMPORTANT NOW")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(colors.textMuted)
+
+                        Text(headline)
+                            .font(.headline.weight(.semibold))
+                            .foregroundStyle(colors.textMain)
+                            .lineLimit(2)
+
+                        Text("Open work, risk, and project health at a glance.")
+                            .font(.caption)
+                            .foregroundStyle(colors.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    Spacer(minLength: 0)
+                }
+
+                HStack(spacing: PFSpacing.sm) {
+                    ProjectAttentionMetric(title: "Health", value: "\(Int(health.score))", tint: tint)
+                    ProjectAttentionMetric(title: "Open tasks", value: "\(openTasks)", tint: colors.warning)
+                    ProjectAttentionMetric(title: "Issues", value: "\(openIssues)", tint: colors.error)
+                    ProjectAttentionMetric(title: "Milestones", value: "\(milestones.count)", tint: colors.primary)
+                }
+
+                Button(action: onOpenReport) {
+                    Label("Open project report", systemImage: "doc.text.magnifyingglass")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(colors.primary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, PFSpacing.sm)
+                        .background(colors.primary.opacity(colorScheme == .dark ? 0.16 : 0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+}
+
+private struct ProjectAttentionMetric: View {
+    let title: String
+    let value: String
+    let tint: Color
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(value)
+                .font(.headline.weight(.bold))
+                .foregroundStyle(tint)
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(colors.textMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, PFSpacing.sm)
+        .padding(.horizontal, 7)
+        .background(colors.surfaceHover)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+    }
+}
+
 struct CoverImageHeader: View {
     let project: Project
     let coverImageURL: URL? // Passed from store
@@ -925,35 +1174,6 @@ struct IssueFocus: View {
 }
 
 
-private struct ProjectOverviewDropDelegate: DropDelegate {
-    let item: ProjectOverviewCardConfig
-    @Binding var cards: [ProjectOverviewCardConfig]
-    @Binding var draggingCardId: String?
-    let onDrop: () -> Void
-
-    func dropEntered(info: DropInfo) {
-        guard let draggingId = draggingCardId,
-              draggingId != item.id,
-              let fromIndex = cards.firstIndex(where: { $0.id == draggingId }),
-              let toIndex = cards.firstIndex(where: { $0.id == item.id })
-        else { return }
-
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.85)) {
-            cards.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
-        }
-    }
-
-    func performDrop(info: DropInfo) -> Bool {
-        draggingCardId = nil
-        onDrop()
-        return true
-    }
-
-    func dropUpdated(info: DropInfo) -> DropProposal? {
-        DropProposal(operation: .move)
-    }
-}
-
 private struct StatusPill: View {
     @Environment(\.colorScheme) private var colorScheme
     let text: String
@@ -967,78 +1187,6 @@ private struct StatusPill: View {
             .padding(.vertical, 4)
             .background(colors.surfaceHover)
             .clipShape(Capsule())
-    }
-}
-
-private struct ProjectOverviewCustomizationSheet: View {
-    @Environment(\.colorScheme) private var colorScheme
-    @Binding var layout: ProjectOverviewLayout
-    let onReset: () -> Void
-    let onDone: () -> Void
-
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                AppBackground()
-                ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: PFSpacing.md) {
-                        VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                            Text("Active Template")
-                                .font(.caption.weight(.semibold))
-                                .foregroundStyle(colors.textMuted)
-                            Text(layout.templateLabel)
-                                .font(.title3.weight(.bold))
-                                .foregroundStyle(colors.textMain)
-                        }
-
-                        Text("Toggle cards on or off. Drag and drop on the overview screen to change their order.")
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMuted)
-
-                        VStack(spacing: PFSpacing.sm) {
-                            ForEach($layout.cards) { $card in
-                                Toggle(isOn: $card.isEnabled) {
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text(card.type.title)
-                                            .font(.headline)
-                                            .foregroundStyle(colors.textMain)
-                                        Text(card.type.subtitle)
-                                            .font(.caption)
-                                            .foregroundStyle(colors.textMuted)
-                                    }
-                                }
-                                .toggleStyle(SwitchToggleStyle(tint: colors.primary))
-                                .padding(PFSpacing.md)
-                                .background(colors.surfaceCard)
-                                .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
-                                .shadow(color: colors.shadowSm, radius: 4, x: 0, y: 2)
-                            }
-                        }
-                    }
-                    .padding(PFSpacing.lg)
-                }
-            }
-            .navigationTitle("Customize Overview")
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Reset") {
-                        onReset()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        onDone()
-                    }
-                }
-            }
-        }
-        .onChange(of: layout.cards) { _, _ in
-            if layout.templateId != ProjectOverviewTemplateId.custom {
-                layout.templateId = ProjectOverviewTemplateId.custom
-            }
-        }
     }
 }
 

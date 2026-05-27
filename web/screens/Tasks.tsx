@@ -13,6 +13,7 @@ import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
 import { ProjectBoard } from '../components/ProjectBoard';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
+import { isProjectIncludedInImportantSignals } from '../services/healthService';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -53,7 +54,7 @@ export const Tasks = () => {
             try {
                 const [taskData, projectData] = await Promise.all([getUserTasks(), getUserProjects()]);
                 setTasks(taskData);
-                setProjects(projectData);
+                setProjects(projectData.filter(isProjectIncludedInImportantSignals));
             } catch (error) {
                 console.error('Failed to fetch tasks', error);
             } finally {
@@ -70,7 +71,7 @@ export const Tasks = () => {
             try {
                 // Optimization: only load for visible tasks if possible, but for now load all to match project view
                 const entries = await Promise.all(tasks.map(async (task) => {
-                    const subs = await getSubTasks(task.id);
+                    const subs = await getSubTasks(task.id, task.projectId, task.tenantId);
                     const done = subs.filter(s => s.isCompleted).length;
                     return [task.id, { done, total: subs.length }] as const;
                 }));
@@ -82,17 +83,23 @@ export const Tasks = () => {
         loadSubtaskStats();
     }, [tasks]);
 
-    const handleToggle = async (taskId: string, currentStatus: boolean) => {
+    const handleToggle = async (task: Task) => {
+        const currentStatus = task.isCompleted;
         // Optimistic update
-        setTasks(prev => prev.map(task => task.id === taskId ? { ...task, isCompleted: !currentStatus } : task));
-        await toggleTaskStatus(taskId, currentStatus);
+        setTasks(prev => prev.map(item => item.id === task.id ? { ...item, isCompleted: !currentStatus } : item));
+        await toggleTaskStatus(task.id, currentStatus, task.projectId, task.tenantId);
     };
 
-    const handleDelete = async (taskId: string) => {
-        if (!await confirm(t('tasks.confirm.deleteTitle'), t('tasks.confirm.deleteMessage'))) return;
+    const handleDelete = async (task: Task) => {
+        if (!await confirm({
+            title: t('tasks.confirm.deleteTitle'),
+            message: t('tasks.confirm.deleteMessage'),
+            confirmText: t('common.delete'),
+            variant: 'danger'
+        })) return;
         try {
-            await deleteTask(taskId);
-            setTasks(prev => prev.filter(task => task.id !== taskId));
+            await deleteTask(task.id, task.projectId, task.tenantId);
+            setTasks(prev => prev.filter(item => item.id !== task.id));
         } catch (e) {
             console.error(e);
         }
@@ -229,7 +236,7 @@ export const Tasks = () => {
                 <div className="task-main-info">
                     <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
+                        onClick={(e) => { e.stopPropagation(); handleToggle(task); }}
                         className={`check-btn ${task.isCompleted ? 'checked' : ''}`}
                     >
                         <span className="material-symbols-outlined">check</span>
@@ -404,6 +411,7 @@ export const Tasks = () => {
                                         type: 'task',
                                         title: task.title,
                                         projectId: task.projectId,
+                                        tenantId: task.tenantId,
                                         priority: task.priority,
                                         isCompleted: task.isCompleted
                                     });
@@ -422,7 +430,7 @@ export const Tasks = () => {
                         </button>
                         <button
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
+                            onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
                             className="action-btn action-btn--delete"
                             title={t('tasks.actions.delete')}
                         >

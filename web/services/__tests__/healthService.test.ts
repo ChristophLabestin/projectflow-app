@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { calculateProjectHealth } from '../healthService';
+import {
+    calculateProjectHealth,
+    calculateWorkspaceHealth,
+    isProjectActiveForGlobalSignals,
+    isProjectExcludedFromHealth,
+    type ProjectHealth
+} from '../healthService';
 import type { Activity, Idea, Initiative, Issue, Milestone, Project, Sprint, Task } from '../../types';
 
 const baseProject = (overrides: Partial<Project> = {}): Project => ({
@@ -105,6 +111,16 @@ const activity = (overrides: Partial<Activity>): Activity => ({
     target: 'Launch',
     type: 'status',
     createdAt: '2026-05-24T08:00:00.000Z',
+    ...overrides
+});
+
+const workspaceHealth = (overrides: Partial<ProjectHealth> = {}): ProjectHealth => ({
+    score: 80,
+    status: 'healthy',
+    factors: [],
+    recommendations: [],
+    trend: 'stable',
+    lastUpdated: Date.now(),
     ...overrides
 });
 
@@ -234,5 +250,65 @@ describe('calculateProjectHealth', () => {
 
         expect(health.factors.map((factor) => factor.id)).toContain('project_brief_gap');
         expect(health.recommendationKeys).toContain('health.recommendations.completeProjectBrief');
+    });
+
+    it('does not calculate health signals for canceled projects', () => {
+        const canceledProject = baseProject({ status: 'Canceled', dueDate: '2026-05-20', priority: 'Urgent' });
+
+        const health = calculateProjectHealth(
+            canceledProject,
+            [
+                task({ id: 'overdue-urgent', priority: 'Urgent', dueDate: '2026-05-18' }),
+                task({ id: 'blocked', status: 'Blocked', priority: 'High', dueDate: '2026-05-19' })
+            ],
+            [
+                milestone({ status: 'Pending', dueDate: '2026-05-18', riskRating: 'High' })
+            ],
+            [
+                issue({ priority: 'High', dueDate: '2026-05-19' })
+            ]
+        );
+
+        expect(isProjectExcludedFromHealth(canceledProject)).toBe(true);
+        expect(isProjectActiveForGlobalSignals(canceledProject)).toBe(false);
+        expect(health.score).toBe(0);
+        expect(health.status).toBe('normal');
+        expect(health.trend).toBe('stable');
+        expect(health.factors).toEqual([]);
+        expect(health.recommendations).toEqual([]);
+        expect(health.recommendationKeys).toEqual([]);
+    });
+});
+
+describe('calculateWorkspaceHealth', () => {
+    it('ignores paused and non-active projects in global health', () => {
+        const activeProject = baseProject({ id: 'active-project', status: 'Active' });
+        const pausedProject = baseProject({ id: 'paused-project', status: 'On Hold' });
+        const canceledProject = baseProject({ id: 'canceled-project', status: 'Canceled' });
+        const planningProject = baseProject({ id: 'planning-project', status: 'Planning' });
+        const reviewProject = baseProject({ id: 'review-project', status: 'Review' });
+
+        const health = calculateWorkspaceHealth(
+            [activeProject, pausedProject, canceledProject, planningProject, reviewProject],
+            {
+                'active-project': workspaceHealth({ score: 92, status: 'excellent' }),
+                'paused-project': workspaceHealth({ score: 8, status: 'critical' }),
+                'canceled-project': workspaceHealth({ score: 4, status: 'critical' }),
+                'planning-project': workspaceHealth({ score: 18, status: 'critical' }),
+                'review-project': workspaceHealth({ score: 25, status: 'warning' })
+            }
+        );
+
+        expect(isProjectActiveForGlobalSignals(activeProject)).toBe(true);
+        expect(isProjectActiveForGlobalSignals(pausedProject)).toBe(false);
+        expect(isProjectActiveForGlobalSignals(canceledProject)).toBe(false);
+        expect(isProjectActiveForGlobalSignals(planningProject)).toBe(false);
+        expect(isProjectActiveForGlobalSignals(reviewProject)).toBe(false);
+        expect(health.score).toBe(92);
+        expect(health.status).toBe('excellent');
+        expect(health.breakdown.total).toBe(1);
+        expect(health.breakdown.excellent).toBe(1);
+        expect(health.breakdown.critical).toBe(0);
+        expect(health.breakdown.warning).toBe(0);
     });
 });

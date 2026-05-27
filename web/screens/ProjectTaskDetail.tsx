@@ -104,7 +104,38 @@ export const ProjectTaskDetail = () => {
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
     const [effortMenuOpen, setEffortMenuOpen] = useState(false);
     const effortMenuRef = useRef<HTMLDivElement | null>(null);
-    const { unpinItem, isPinned, focusItemId, startFocusItem } = usePinnedTasks();
+    const { pinItem, unpinItem, isPinned, focusItemId, startFocusItem } = usePinnedTasks();
+
+    const buildPinnedTaskItem = () => {
+        if (!task || !id) return null;
+        return {
+            id: task.id,
+            type: 'task' as const,
+            title: task.title,
+            projectId: id,
+            tenantId: task.tenantId,
+            priority: task.priority,
+            isCompleted: task.isCompleted
+        };
+    };
+
+    const handleStartTaskFocus = () => {
+        const pinnedTask = buildPinnedTaskItem();
+        if (!pinnedTask) return;
+        startFocusItem(pinnedTask);
+    };
+
+    const handleTogglePinnedTask = () => {
+        const pinnedTask = buildPinnedTaskItem();
+        if (!pinnedTask) return;
+
+        if (isPinned(pinnedTask.id)) {
+            unpinItem(pinnedTask.id);
+            return;
+        }
+
+        pinItem(pinnedTask);
+    };
 
     const statusLabels = useMemo(() => ({
         Backlog: t('tasks.status.backlog'),
@@ -181,6 +212,8 @@ export const ProjectTaskDetail = () => {
         return ids;
     }, [task]);
 
+    const activeTenantId = task?.tenantId || project?.tenantId || tenantId;
+
     const loadData = async () => {
         if (!taskId) return;
         setLoading(true);
@@ -211,7 +244,7 @@ export const ProjectTaskDetail = () => {
                 setInitiative(null);
             }
 
-            const subs = await getSubTasks(taskId, id, tenantId);
+            const subs = await getSubTasks(taskId, id, t?.tenantId || tenantId);
             setSubTasks(subs);
 
             if (id) {
@@ -284,7 +317,7 @@ export const ProjectTaskDetail = () => {
 
     const refreshSubs = async () => {
         if (!taskId) return;
-        const subs = await getSubTasks(taskId, id);
+        const subs = await getSubTasks(taskId, id, activeTenantId);
         setSubTasks(subs);
     };
 
@@ -294,7 +327,7 @@ export const ProjectTaskDetail = () => {
         if (!taskId || !newSubTitle.trim()) return;
         setAdding(true);
         try {
-            await addSubTask(taskId, newSubTitle.trim(), id);
+            await addSubTask(taskId, newSubTitle.trim(), id, activeTenantId);
             setNewSubTitle('');
             await refreshSubs();
         } catch (err) {
@@ -307,7 +340,7 @@ export const ProjectTaskDetail = () => {
 
     const handleToggleSubTask = async (subId: string, currentStatus: boolean) => {
         setSubTasks(prev => prev.map(s => s.id === subId ? { ...s, isCompleted: !currentStatus } : s));
-        await toggleSubTaskStatus(subId, currentStatus, taskId, id);
+        await toggleSubTaskStatus(subId, currentStatus, taskId, id, activeTenantId);
     };
 
     const handleDeleteSubTask = (subId: string) => {
@@ -317,7 +350,7 @@ export const ProjectTaskDetail = () => {
     const confirmDeleteSubTask = async () => {
         if (!subTaskToDelete || !task) return;
         try {
-            await deleteSubTask(subTaskToDelete, task.id, id);
+            await deleteSubTask(subTaskToDelete, task.id, id, activeTenantId);
             setSubTaskToDelete(null);
             loadData();
         } catch (error) {
@@ -328,7 +361,7 @@ export const ProjectTaskDetail = () => {
     const handleUpdateSubTaskAssignee = async (subId: string, userId: string | null) => {
         setSubTasks(prev => prev.map(s => s.id === subId ? { ...s, assigneeId: userId || undefined } : s));
         try {
-            await updateSubtaskFields(subId, { assigneeId: userId || deleteField() }, taskId, id);
+            await updateSubtaskFields(subId, { assigneeId: userId || deleteField() }, taskId, id, activeTenantId);
         } catch (error) {
             console.error("Failed to update subtask assignee", error);
         }
@@ -341,11 +374,11 @@ export const ProjectTaskDetail = () => {
         const newStatus = !task.isCompleted;
         setTask({ ...task, isCompleted: newStatus, status: newStatus ? 'Done' : 'In Progress' });
         try {
-            await toggleTaskStatus(task.id, task.isCompleted, id);
+            await toggleTaskStatus(task.id, task.isCompleted, id, activeTenantId);
             if (newStatus) {
-                await updateTaskFields(task.id, { status: 'Done' }, id);
+                await updateTaskFields(task.id, { status: 'Done' }, id, activeTenantId);
             } else {
-                await updateTaskFields(task.id, { status: 'In Progress' }, id);
+                await updateTaskFields(task.id, { status: 'In Progress' }, id, activeTenantId);
             }
         } finally {
             setSavingStatus(false);
@@ -356,7 +389,7 @@ export const ProjectTaskDetail = () => {
         if (!task || !taskId) return;
         setDeleting(true);
         try {
-            await deleteTask(taskId, id);
+            await deleteTask(taskId, id, activeTenantId);
             navigate(`/project/${id}/tasks`);
         } catch (err) {
             console.error('Failed to delete task', err);
@@ -375,13 +408,13 @@ export const ProjectTaskDetail = () => {
             nextValue = '';
         }
         setTask({ ...task, [field]: nextValue });
-        await updateTaskFields(task.id, { [field]: nextValue }, id);
+        await updateTaskFields(task.id, { [field]: nextValue }, id, activeTenantId);
     };
 
     useEffect(() => {
         if (!id) return;
-        getProjectCategories(id).then(setAllCategories).catch(console.error);
-    }, [id]);
+        getProjectCategories(id, activeTenantId).then(setAllCategories).catch(console.error);
+    }, [activeTenantId, id]);
 
     const handleUpdateAssignees = async (ids: string[]) => {
         if (!task) return;
@@ -391,19 +424,19 @@ export const ProjectTaskDetail = () => {
             assigneeId: primaryAssignee,
         };
         setTask(prev => prev ? { ...prev, ...updates } : null);
-        await updateTaskFields(task.id, updates, id);
+        await updateTaskFields(task.id, updates, id, activeTenantId);
     };
 
     const handleUpdateAssignedGroups = async (groupIds: string[]) => {
         if (!task || !id) return;
         setTask(prev => prev ? { ...prev, assignedGroupIds: groupIds } : null);
-        await updateTaskFields(task.id, { assignedGroupIds: groupIds }, id);
+        await updateTaskFields(task.id, { assignedGroupIds: groupIds }, id, activeTenantId);
     };
 
     const handleUpdateDependencies = async (dependencyIds: string[]) => {
         if (!task || !id) return;
         setTask(prev => prev ? { ...prev, dependencies: dependencyIds } : null);
-        await updateTaskFields(task.id, { dependencies: dependencyIds }, id);
+        await updateTaskFields(task.id, { dependencies: dependencyIds }, id, activeTenantId);
     };
 
     const handleLinkMilestone = async (milestoneId: string) => {
@@ -416,7 +449,7 @@ export const ProjectTaskDetail = () => {
         if (!currentTasks.includes(task.id)) {
             await updateMilestone(id, milestoneId, {
                 linkedTaskIds: [...currentTasks, task.id]
-            }, tenantId);
+            }, activeTenantId);
         }
         setActiveMilestoneMenu(false);
         // If task has no due date, inherit? This is done in modal but nice to have here too?
@@ -432,7 +465,7 @@ export const ProjectTaskDetail = () => {
         const currentTasks = milestone.linkedTaskIds || [];
         await updateMilestone(id, milestoneId, {
             linkedTaskIds: currentTasks.filter(tid => tid !== task.id)
-        }, tenantId);
+        }, activeTenantId);
     };
 
     const linkedMilestone = useMemo(() => {
@@ -506,7 +539,7 @@ export const ProjectTaskDetail = () => {
                     onClose={() => setShowLabelsModal(false)}
                     projectId={id!}
                     onLabelsChange={async () => {
-                        const cats = await getProjectCategories(id!);
+                        const cats = await getProjectCategories(id!, activeTenantId);
                         setAllCategories(cats);
                     }}
                 />
@@ -609,7 +642,7 @@ export const ProjectTaskDetail = () => {
 
                         <div className="task-detail__actions">
                             <Button
-                                variant={task.isCompleted ? 'secondary' : 'primary'}
+                                variant="secondary"
                                 onClick={handleToggleTask}
                                 size="lg"
                                 className="task-detail__primary-action"
@@ -622,42 +655,7 @@ export const ProjectTaskDetail = () => {
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    onClick={() => {
-                                        if (isPinned(task.id)) {
-                                            if (focusItemId === task.id) {
-                                                // If already focused, just unpin (which also un-focuses)
-                                                unpinItem(task.id);
-                                            } else {
-                                                // If pinned but not focused, set it as focus
-                                                startFocusItem({
-                                                    id: task.id,
-                                                    type: 'task',
-                                                    title: task.title,
-                                                    projectId: id!,
-                                                    tenantId: task.tenantId,
-                                                    priority: task.priority,
-                                                    isCompleted: task.isCompleted
-                                                });
-                                            }
-                                        } else {
-                                            // Pin and set as focus
-                                            startFocusItem({
-                                                id: task.id,
-                                                type: 'task',
-                                                title: task.title,
-                                                projectId: id!,
-                                                tenantId: task.tenantId,
-                                                priority: task.priority,
-                                                isCompleted: task.isCompleted
-                                            });
-                                        }
-                                    }}
-                                    onContextMenu={(e) => {
-                                        if (isPinned(task.id)) {
-                                            e.preventDefault();
-                                            unpinItem(task.id);
-                                        }
-                                    }}
+                                    onClick={handleTogglePinnedTask}
                                     className="task-detail__action-button"
                                     data-state={focusItemId === task.id ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'}
                                     icon={<span className="material-symbols-outlined task-detail__action-icon">push_pin</span>}
@@ -793,7 +791,7 @@ export const ProjectTaskDetail = () => {
                                                         setStatusMenuOpen(false);
                                                         const isDone = status === 'Done';
                                                         setTask(prev => prev ? ({ ...prev, status: status as any, isCompleted: isDone }) : null);
-                                                        updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
+                                                        updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id, activeTenantId);
                                                     }}
                                                     className={`task-detail__select-item ${getTaskStatusStyle(status)} ${status === currentStatus ? 'task-detail__select-item--selected' : ''}`}
                                                 >
@@ -1076,6 +1074,16 @@ export const ProjectTaskDetail = () => {
                 <div className="task-detail__sidebar">
                     {/* Controls Card */}
                     <div className="task-detail__sidebar-stack">
+                        <Button
+                            variant={focusItemId === task.id ? 'secondary' : 'primary'}
+                            onClick={handleStartTaskFocus}
+                            size="md"
+                            className="task-detail__focus-action task-detail__focus-action--sidebar"
+                            data-state={focusItemId === task.id ? 'focused' : 'default'}
+                            icon={<span className="material-symbols-outlined task-detail__action-icon">{focusItemId === task.id ? 'center_focus_strong' : 'center_focus_weak'}</span>}
+                        >
+                            {focusItemId === task.id ? t('taskDetail.actions.currentFocus') : t('taskDetail.actions.setFocusTask')}
+                        </Button>
 
                         {/* Timeline Card */}
                         <div className="app-card task-detail__card">

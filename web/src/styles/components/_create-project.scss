@@ -253,14 +253,17 @@
 .create-project__description-input .text-area,
 .create-project__brief-input .text-area {
     min-height: 140px;
-    background: var(--color-surface-bg); // Input background
+    background: var(--color-surface-hover);
     border: 1px solid transparent;
     transition: all var(--transition-fast);
 
+    &:hover:not(:disabled),
+    .text-area-group:hover &:not(:disabled),
+    &:focus,
     &:focus-within {
-        background: var(--color-surface-card);
+        background: var(--color-surface-hover-light);
         border-color: transparent;
-        box-shadow: var(--shadow-sm);
+        box-shadow: none;
     }
 }
 

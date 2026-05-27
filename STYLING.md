@@ -165,6 +165,7 @@ Transitions should feel responsive but not abrupt. Use the tokens below consiste
 
 - The top-bar focus pill and pinned-task focus controls use semantic status color, not a new palette: primary for active, muted surface for snoozed, error for blocked, success for completion.
 - Focus controls should stay compact and action-oriented: start/resume, snooze, block, complete. Avoid explanatory cards around them.
+- Detail-page focus actions should live as standalone buttons at the top of the right/sidebar column, outside cards. Keep the hero for identity, status, and primary edit/complete actions; icon-only focus controls are reserved for pinning or compact toolbars.
 - Keep the current focus visible in the first dashboard viewport and top bar without relying on hover text.
 
 ### Codex Session Surface
@@ -214,17 +215,24 @@ These tokens define key layout constants used across the app shell.
 - Keep previews sticky and scoped to the real customer-facing surface, with compact counters for visible fields, custom fields, and blocking issues.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
 
-## 6.3) Project Pause Recovery Pattern
+## 6.3) Project Lifecycle Recovery Pattern
 
-- Project pause/resume must be an explicit action in the project overview controls, not a normal status select option.
+- Project pause/resume and project canceling must be explicit actions in the project overview controls, not normal status select options.
+- The project overview controls should read as a compact project-state command card: lifecycle action in the header, status/priority as editable controls, timeline as its own section, and release state as secondary detail.
 - Resume flows should use the common `Modal`, show only open tasks whose due dates fell inside the paused window, and use `DatePicker` controls for inline due-date correction before the project is restored.
-- Use warning tone only for the paused state indicator; recovery rows should stay on normal surface tokens so the modal remains scannable.
+- Use warning tone only for the paused state indicator and danger tone only for canceled-state indicators; recovery rows should stay on normal surface tokens so the modal remains scannable.
 
 ## 6.4) Project Contract Pattern
 
-- The Project Contract belongs on the project overview as a first-class operational card, not hidden only in settings.
-- Show objective, scope, success criteria, operating mode, cadence, date confidence, owner, and primary risk with compact labels and tokenized surface contrast.
-- Keep the card un-nested: use one `Card` surface with internal sections, state rows, and chips instead of cards inside cards.
+- The Project Contract belongs on the project overview as a supporting context card, not as the first full-width focus area.
+- Keep live status, workload, and execution cards ahead of the contract in the first viewport. The contract should live in the side rail and stay compact enough that it never pushes the work queue out of focus.
+- Treat the contract as a brief: objective first, then one-line scope, first success criterion, watch item, rhythm, and owner. Avoid repeating every metadata field unless the user opens project editing.
+- Keep the card un-nested: use one `Card` surface with compact internal rows instead of cards inside cards.
+
+## 6.5) Project Overview Layout Pattern
+
+- Project overview cards use a fixed, non-editable layout. Do not add user-facing drag handles, card toggles, layout toolbars, or layout customization modals to this screen.
+- Keep primary work cards in the main grid and compact project state/support cards in the side column so the overview remains predictable across sessions.
 
 ---
 

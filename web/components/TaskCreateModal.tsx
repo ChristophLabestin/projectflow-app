@@ -140,6 +140,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     type: 'task',
                     title: title.trim(),
                     projectId,
+                    tenantId,
                     priority
                 };
                 pinItem(newPinnedItem);

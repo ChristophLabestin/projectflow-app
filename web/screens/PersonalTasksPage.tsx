@@ -16,6 +16,7 @@ import { Card } from '../components/ui/Card';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
+import { isProjectIncludedInImportantSignals } from '../services/healthService';
 
 export const PersonalTasksPage = () => {
     const [tasks, setTasks] = useState<PersonalTask[]>([]);
@@ -42,7 +43,7 @@ export const PersonalTasksPage = () => {
                 getUserProjects()
             ]);
             setTasks(taskData);
-            setProjects(projectData);
+            setProjects(projectData.filter(isProjectIncludedInImportantSignals));
         } catch (error) {
             console.error('Failed to fetch data', error);
         } finally {

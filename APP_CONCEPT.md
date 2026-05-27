@@ -56,6 +56,7 @@ Projects contain their own operational data such as:
 - Milestones, sprints (optional module)
 - Social/marketing artifacts (optional modules)
 - Project membership (including externals)
+- Project lifecycle state: active delivery, planning/backlog, paused recovery, completed archive, and canceled work are distinct so the workspace can separate active planning from stopped or finished projects. Canceled projects stay visible in their archive section but are excluded from health scoring, spotlight selection, and global task scheduling/priority surfaces.
 - Project Brief contract: objective, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. This gives ProjectFlow and Codex a durable source of truth for judging whether work is moving the project toward the intended outcome.
 - Codex session records and follow-ups that keep coding work truthful across repositories.
 

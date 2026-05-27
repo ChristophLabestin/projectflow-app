@@ -55,6 +55,16 @@ const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value
 
 const isIssueOpen = (issue: Issue) => issue.status !== 'Resolved' && issue.status !== 'Closed';
 
+export const isProjectCanceled = (project?: Pick<Project, 'status'> | null) => project?.status === 'Canceled';
+
+export const isProjectExcludedFromHealth = (project?: Pick<Project, 'status'> | null) => isProjectCanceled(project);
+
+export const isProjectIncludedInImportantSignals = (project: Pick<Project, 'status'>) => !isProjectCanceled(project);
+
+export const isProjectActiveForGlobalSignals = (project: Project) => (
+    project.status === 'Active' && isProjectIncludedInImportantSignals(project)
+);
+
 const isProjectActivelyManaged = (project: Project) => (
     project.status === 'Active' || project.status === 'Review'
 );
@@ -348,6 +358,23 @@ export const calculateProjectHealth = (
     initiatives: Initiative[] = [],
     ideas: Idea[] = []
 ): ProjectHealth => {
+    const now = Date.now();
+
+    if (isProjectExcludedFromHealth(project)) {
+        return {
+            score: 0,
+            status: 'normal',
+            factors: [],
+            recommendations: [],
+            recommendationKeys: [],
+            trend: 'stable',
+            lastUpdated: now
+        };
+    }
+
+    const isTerminalProject = project.status === 'Completed';
+    const isPausedProject = project.status === 'On Hold';
+
     let score = project.status === 'Completed'
         ? 82
         : project.status === 'On Hold'
@@ -357,7 +384,6 @@ export const calculateProjectHealth = (
                 : 70;
     const factors: HealthFactor[] = [];
     const recommendationEntries: { key: string; text: string }[] = [];
-    const now = Date.now();
     const addRecommendation = (key: string, text: string) => {
         recommendationEntries.push({ key, text });
     };
@@ -434,7 +460,7 @@ export const calculateProjectHealth = (
                 'Close, move, or re-scope the open work before treating the project as fully complete.'
             );
         }
-    } else if (project.status === 'On Hold') {
+    } else if (isPausedProject) {
         addFactor({
             id: 'project_on_hold',
             label: 'Project On Hold',
@@ -448,7 +474,7 @@ export const calculateProjectHealth = (
 
     // 1. DELIVERY TIMELINE
     const dueDays = getDaysUntil(project.dueDate);
-    if (dueDays !== null && project.status !== 'Completed') {
+    if (dueDays !== null && !isTerminalProject) {
         if (dueDays < 0) {
             const overdueDays = Math.abs(Math.floor(dueDays));
             const urgency = Math.min(24, overdueDays * 2);
@@ -495,7 +521,7 @@ export const calculateProjectHealth = (
         }
     }
 
-    if (project.startDate && project.dueDate && project.status !== 'Completed') {
+    if (project.startDate && project.dueDate && !isTerminalProject) {
         const startTime = new Date(project.startDate).getTime();
         const dueTime = new Date(project.dueDate).getTime();
         const totalDuration = dueTime - startTime;
@@ -1197,7 +1223,7 @@ export const calculateProjectHealth = (
     const lastActivity = activityMillis.length > 0 ? Math.max(...activityMillis) : 0;
     idleDays = lastActivity > 0 ? (now - lastActivity) / DAY : 999;
 
-    if (project.status !== 'Completed' && project.status !== 'On Hold') {
+    if (!isTerminalProject && project.status !== 'On Hold') {
         if (idleDays > 30) {
             addFactor({
                 id: 'stale_project',
@@ -1268,7 +1294,7 @@ export const calculateProjectHealth = (
         typeof brief.decisionOwner === 'string' && brief.decisionOwner.trim() ? null : 'decisionOwner',
         brief.cadence ? null : 'cadence'
     ].filter(Boolean);
-    const needsProjectBrief = project.status !== 'Completed' && project.status !== 'On Hold';
+    const needsProjectBrief = !isTerminalProject && project.status !== 'On Hold';
 
     if (needsProjectBrief && missingBriefFields.length > 0) {
         addFactor({
@@ -1311,10 +1337,10 @@ export const calculateProjectHealth = (
 
     // Guardrails keep severe live risks from being hidden by unrelated positives.
     score = clampScore(score);
-    if (dueDays !== null && dueDays < 0 && openWorkCount > 0) score = Math.min(score, 34);
-    if (urgentOverdueTaskCount > 0 || overdueIssueCount > 0) score = Math.min(score, 42);
-    if (blockedTasks >= 3 || urgentIssues >= 3) score = Math.min(score, 50);
-    if (urgentDueSoonTaskCount > 0 && score > 58) score = 58;
+    if (!isTerminalProject && dueDays !== null && dueDays < 0 && openWorkCount > 0) score = Math.min(score, 34);
+    if (!isTerminalProject && (urgentOverdueTaskCount > 0 || overdueIssueCount > 0)) score = Math.min(score, 42);
+    if (!isTerminalProject && (blockedTasks >= 3 || urgentIssues >= 3)) score = Math.min(score, 50);
+    if (!isTerminalProject && urgentDueSoonTaskCount > 0 && score > 58) score = 58;
     if (!hasTrackedWork && activelyManaged) score = Math.min(score, 62);
     if (project.status === 'Completed' && openWorkCount === 0 && missedMilestones === 0) score = Math.max(score, 88);
     score = clampScore(score);
@@ -1326,7 +1352,7 @@ export const calculateProjectHealth = (
     else if (score >= 35) status = 'warning';
     else status = 'critical';
 
-    if (taskProgress < 100 && idleDays > 30 && status !== 'critical' && project.status !== 'Completed') {
+    if (taskProgress < 100 && idleDays > 30 && status !== 'critical' && !isPausedProject && project.status !== 'Completed') {
         status = 'stalemate';
     }
 
@@ -1414,6 +1440,22 @@ export const calculateSpotlightScore = (
     sprints: Sprint[] = [],
     activities: Activity[] = []
 ): SpotlightScore => {
+    if (isProjectExcludedFromHealth(project)) {
+        const reason = {
+            key: 'health.spotlight.excludedCanceled',
+            text: 'Canceled projects are excluded from spotlight',
+            weight: 0
+        };
+        return {
+            score: -10000,
+            reasons: [reason],
+            primaryReason: reason.text,
+            primaryReasonKey: reason.key,
+            reason: reason.text,
+            reasonKey: reason.key
+        };
+    }
+
     let score = 0;
     const reasons: SpotlightReason[] = [];
     const now = Date.now();
@@ -1684,6 +1726,8 @@ export const calculateSpotlightScore = (
         score -= 500; // Strong penalty for non-active projects
     } else if (project.status === 'On Hold') {
         score -= 200; // Moderate penalty for on-hold
+    } else if (project.status === 'Canceled') {
+        score -= 600; // Canceled projects should never win spotlight.
     }
 
     // Sort reasons by weight (highest first)
@@ -1735,7 +1779,9 @@ export interface WorkspaceHealth {
 }
 
 export const calculateWorkspaceHealth = (projects: Project[], healthMap: Record<string, ProjectHealth>): WorkspaceHealth => {
-    if (projects.length === 0) {
+    const activeProjects = projects.filter(isProjectActiveForGlobalSignals);
+
+    if (activeProjects.length === 0) {
         return {
             score: 0,
             status: 'normal',
@@ -1750,7 +1796,7 @@ export const calculateWorkspaceHealth = (projects: Project[], healthMap: Record<
     let decliningProjects = 0;
     let improvingProjects = 0;
 
-    projects.forEach(p => {
+    activeProjects.forEach(p => {
         const health = healthMap[p.id];
         if (!health) return;
 
@@ -1770,9 +1816,6 @@ export const calculateWorkspaceHealth = (projects: Project[], healthMap: Record<
         // Critical projects pull the score harder (risk awareness)
         if (health.status === 'critical') weight = 3;
         else if (health.status === 'warning') weight = 2;
-
-        // Planning/Brainstorming projects have less impact
-        if (p.status === 'Brainstorming' || p.status === 'Planning') weight = 0.5;
 
         // Urgent priority projects matter more
         if (p.priority === 'Urgent') weight *= 1.5;

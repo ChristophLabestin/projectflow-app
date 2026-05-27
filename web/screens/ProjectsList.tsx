@@ -7,6 +7,7 @@ import {
     getProjectActivity,
     getProjectIdeas,
     getProjectIssues,
+    getProjectInitiatives,
     getProjectOverviewTemplates,
     getProjectTasks,
     saveProjectOverviewTemplate,
@@ -25,7 +26,14 @@ import { Badge } from '../components/common/Badge/Badge';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
-import { calculateSpotlightScore, SpotlightReason, calculateProjectHealth, HealthStatus, ProjectHealth } from '../services/healthService';
+import {
+    calculateSpotlightScore,
+    SpotlightReason,
+    calculateProjectHealth,
+    HealthStatus,
+    ProjectHealth,
+    isProjectExcludedFromHealth
+} from '../services/healthService';
 import { useAuth } from '../context/AuthContext';
 import { Tenant } from '../types';
 import { Modal } from '../components/common/Modal/Modal';
@@ -33,7 +41,6 @@ import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useConfirm, useToast, useUIState } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
 import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
-import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserProfile } from '../services/domain/usersService';
@@ -46,6 +53,38 @@ export type ProjectMetrics = {
     flowCount: number;
     issueCount: number;
 };
+
+type ProjectHealthInputs = {
+    tasks: Task[];
+    ideas: Idea[];
+    issues: Issue[];
+    activity: Activity[];
+    milestones: Milestone[];
+    sprints: Sprint[];
+    initiatives: Initiative[];
+};
+
+const EMPTY_PROJECT_HEALTH_INPUTS: ProjectHealthInputs = {
+    tasks: [],
+    ideas: [],
+    issues: [],
+    activity: [],
+    milestones: [],
+    sprints: [],
+    initiatives: []
+};
+
+const withProjectScope = <T extends { projectId?: string; tenantId?: string }>(
+    items: T[],
+    projectId: string,
+    tenantId: string
+): T[] => (
+    items.map((item) => ({
+        ...item,
+        projectId,
+        tenantId
+    }))
+);
 
 const getProjectMilestonesForHealth = async (tenantId: string, projectId: string): Promise<Milestone[]> => {
     const snapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'milestones'));
@@ -518,11 +557,16 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
 };
 
 // 3. Redesigned Compact List Row
-const CompactProjectRow: React.FC<{ project: Project; onClick: () => void }> = ({ project, onClick }) => {
+const CompactProjectRow: React.FC<{
+    project: Project;
+    onClick: () => void;
+    statusLabel: string;
+    updatedFallback: string;
+}> = ({ project, onClick, statusLabel, updatedFallback }) => {
     const statusClass = `status-${project.status?.toLowerCase().replace(/\s+/g, '-') || 'backlog'}`;
     const lastUpdated = project.updatedAt?.seconds
         ? new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
-        : 'Unknown';
+        : updatedFallback;
 
     return (
         <div
@@ -561,7 +605,7 @@ const CompactProjectRow: React.FC<{ project: Project; onClick: () => void }> = (
             {/* Right Section */}
             <div className="compact-right">
                 <span className={`compact-badge ${statusClass}`}>
-                    {project.status || 'Backlog'}
+                    {statusLabel}
                 </span>
             </div>
 
@@ -570,6 +614,30 @@ const CompactProjectRow: React.FC<{ project: Project; onClick: () => void }> = (
                 <span className="material-symbols-outlined">chevron_right</span>
             </div>
         </div>
+    );
+};
+
+const ProjectLifecycleSection: React.FC<{
+    id?: string;
+    title: string;
+    description: string;
+    projects: Project[];
+    renderRow: (project: Project) => JSX.Element;
+}> = ({ id, title, description, projects, renderRow }) => {
+    if (projects.length === 0) return null;
+
+    return (
+        <section id={id} className="projects-lifecycle-section">
+            <div className="projects-lifecycle-section__header">
+                <div>
+                    <h2 className="section-title">{title}</h2>
+                    <p>{description}</p>
+                </div>
+            </div>
+            <div className="compact-list">
+                {projects.map(renderRow)}
+            </div>
+        </section>
     );
 };
 
@@ -594,6 +662,7 @@ const PROJECT_STATUS_ORDER: Project['status'][] = [
     'Review',
     'On Hold',
     'Completed',
+    'Canceled',
     'Brainstorming'
 ];
 
@@ -603,6 +672,7 @@ const PROJECT_STATUS_I18N_KEYS: Record<Project['status'], string> = {
     'Review': 'project.status.review',
     'On Hold': 'project.status.onHold',
     'Completed': 'project.status.completed',
+    'Canceled': 'project.status.canceled',
     'Brainstorming': 'project.status.brainstorming'
 };
 
@@ -693,11 +763,10 @@ export const ProjectsList: React.FC = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
-    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
-    const [activities, setActivities] = useState<Activity[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [sprints, setSprints] = useState<Sprint[]>([]);
+    const [healthInputsByProject, setHealthInputsByProject] = useState<Record<string, ProjectHealthInputs>>({});
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [templateModalOpen, setTemplateModalOpen] = useState(false);
@@ -1449,11 +1518,10 @@ export const ProjectsList: React.FC = () => {
             setProjects([]);
             setTasks([]);
             setIdeas([]);
-            setInitiatives([]);
             setIssues([]);
-            setActivities([]);
             setMilestones([]);
             setSprints([]);
+            setHealthInputsByProject({});
             setLoading(false);
             return;
         }
@@ -1482,39 +1550,55 @@ export const ProjectsList: React.FC = () => {
                     }
                 }
 
-                const [allInitiatives, projectInputs] = await Promise.all([
-                    getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
-                    Promise.all(allProjects.map(async (project) => {
+                const projectInputEntries = await Promise.all(
+                    allProjects.map(async (project): Promise<[string, ProjectHealthInputs]> => {
                         const tenantId = project.tenantId || resolvedTenantId;
-                        const [projectTasks, projectIdeas, projectIssues, projectActivity, projectMilestones, projectSprints] = await Promise.all([
+                        const [
+                            projectTasks,
+                            projectIdeas,
+                            projectIssues,
+                            projectActivity,
+                            projectMilestones,
+                            projectSprints,
+                            projectInitiatives
+                        ] = await Promise.all([
                             getProjectTasks(project.id, tenantId).catch(() => []),
                             getProjectIdeas(project.id, tenantId).catch(() => []),
                             getProjectIssues(project.id, tenantId).catch(() => []),
                             getProjectActivity(project.id, tenantId).catch(() => []),
                             getProjectMilestonesForHealth(tenantId, project.id).catch(() => []),
-                            getProjectSprintsForHealth(tenantId, project.id).catch(() => [])
+                            getProjectSprintsForHealth(tenantId, project.id).catch(() => []),
+                            getProjectInitiatives(project.id, tenantId).catch(() => [])
                         ]);
 
-                        return {
-                            tasks: projectTasks,
-                            ideas: projectIdeas,
-                            issues: projectIssues,
-                            activity: projectActivity,
-                            milestones: projectMilestones,
-                            sprints: projectSprints
-                        };
-                    }))
-                ]);
+                        return [
+                            project.id,
+                            {
+                                tasks: withProjectScope(projectTasks, project.id, tenantId),
+                                ideas: withProjectScope(projectIdeas, project.id, tenantId),
+                                issues: withProjectScope(projectIssues, project.id, tenantId),
+                                activity: withProjectScope(projectActivity, project.id, tenantId),
+                                milestones: withProjectScope(projectMilestones, project.id, tenantId),
+                                sprints: withProjectScope(projectSprints, project.id, tenantId),
+                                initiatives: withProjectScope(projectInitiatives, project.id, tenantId)
+                            }
+                        ];
+                    })
+                );
+                const nextHealthInputsByProject = projectInputEntries.reduce<Record<string, ProjectHealthInputs>>((acc, [projectId, inputs]) => {
+                    acc[projectId] = inputs;
+                    return acc;
+                }, {});
+                const projectInputs = Object.values(nextHealthInputsByProject);
 
                 if (mounted) {
                     setProjects(allProjects);
                     setTasks(projectInputs.flatMap((entry) => entry.tasks));
                     setIdeas(projectInputs.flatMap((entry) => entry.ideas));
-                    setInitiatives(allInitiatives);
                     setIssues(projectInputs.flatMap((entry) => entry.issues));
-                    setActivities(projectInputs.flatMap((entry) => entry.activity));
                     setMilestones(projectInputs.flatMap((entry) => entry.milestones));
                     setSprints(projectInputs.flatMap((entry) => entry.sprints));
+                    setHealthInputsByProject(nextHealthInputsByProject);
                 }
             } catch (e) {
                 console.error(e);
@@ -1550,9 +1634,29 @@ export const ProjectsList: React.FC = () => {
         filteredProjects.filter(p => p.status === 'Active'),
         [filteredProjects]);
 
-    const inactiveList = useMemo(() =>
-        filteredProjects.filter(p => p.status !== 'Active'),
+    const pausedList = useMemo(() =>
+        filteredProjects.filter(p => p.status === 'On Hold'),
         [filteredProjects]);
+
+    const completedList = useMemo(() =>
+        filteredProjects.filter(p => p.status === 'Completed'),
+        [filteredProjects]);
+
+    const canceledList = useMemo(() =>
+        filteredProjects.filter(p => p.status === 'Canceled'),
+        [filteredProjects]);
+
+    const backlogList = useMemo(() =>
+        filteredProjects.filter(p => (
+            p.status !== 'Active'
+            && p.status !== 'On Hold'
+            && p.status !== 'Completed'
+            && p.status !== 'Canceled'
+        )),
+        [filteredProjects]);
+
+    const lifecycleSectionCount = backlogList.length + pausedList.length + completedList.length + canceledList.length;
+    const decisionQueueCount = backlogList.length + pausedList.length;
 
     // Manual Focus Project
     const manualFocusProject = useMemo(() => {
@@ -1568,41 +1672,6 @@ export const ProjectsList: React.FC = () => {
         manualFocusProject ? sprints.filter(s => s.projectId === manualFocusProject.id) : [],
         [manualFocusProject, sprints]);
 
-    const initiativesByProject = useMemo(() => {
-        const map: Record<string, Initiative[]> = {};
-        initiatives.forEach((initiative) => {
-            if (!map[initiative.projectId]) {
-                map[initiative.projectId] = [];
-            }
-            map[initiative.projectId].push(initiative);
-        });
-        return map;
-    }, [initiatives]);
-
-    const ideasByProject = useMemo(() => {
-        const map: Record<string, Idea[]> = {};
-        ideas.forEach((idea) => {
-            if (!idea.projectId) return;
-            if (!map[idea.projectId]) {
-                map[idea.projectId] = [];
-            }
-            map[idea.projectId].push(idea);
-        });
-        return map;
-    }, [ideas]);
-
-    const activitiesByProject = useMemo(() => {
-        const map: Record<string, Activity[]> = {};
-        activities.forEach((activity) => {
-            if (!activity.projectId) return;
-            if (!map[activity.projectId]) {
-                map[activity.projectId] = [];
-            }
-            map[activity.projectId].push(activity);
-        });
-        return map;
-    }, [activities]);
-
     const nextFocusMilestone = useMemo(() => {
         const pending = focusMilestones.filter(m => m.status === 'Pending');
         if (pending.length === 0) return undefined;
@@ -1614,67 +1683,68 @@ export const ProjectsList: React.FC = () => {
         return pending[0];
     }, [focusMilestones]);
 
-    // Compute health for all active projects
+    // Compute the same project-scoped health payloads used by the overview page.
     const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
-        activeList.forEach(project => {
-            const projectTasks = tasks.filter(t => t.projectId === project.id);
-            const projectIssues = issues.filter(i => i.projectId === project.id);
-            const projectMilestones = milestones.filter(m => m.projectId === project.id);
-            const projectSprints = sprints.filter(s => s.projectId === project.id);
+        filteredProjects.forEach(project => {
+            if (isProjectExcludedFromHealth(project)) return;
+            const projectInputs = healthInputsByProject[project.id] || EMPTY_PROJECT_HEALTH_INPUTS;
             healthMap[project.id] = calculateProjectHealth(
                 project,
-                projectTasks,
-                projectMilestones,
-                projectIssues,
-                projectSprints,
-                activitiesByProject[project.id] || [],
+                projectInputs.tasks,
+                projectInputs.milestones,
+                projectInputs.issues,
+                projectInputs.sprints,
+                projectInputs.activity,
                 [],
-                initiativesByProject[project.id] || [],
-                ideasByProject[project.id] || []
+                projectInputs.initiatives,
+                projectInputs.ideas
             );
         });
         return healthMap;
-    }, [activeList, tasks, issues, milestones, sprints, activitiesByProject, initiativesByProject, ideasByProject]);
+    }, [filteredProjects, healthInputsByProject]);
 
     // Calculate spotlight data for the manually focused project
     const manualFocusSpotlightData = useMemo(() => {
         if (!manualFocusProject) return null;
+        if (isProjectExcludedFromHealth(manualFocusProject)) return null;
         const projectTasks = tasks.filter(t => t.projectId === manualFocusProject.id);
         const projectIssues = issues.filter(i => i.projectId === manualFocusProject.id);
         const projectMilestones = milestones.filter(m => m.projectId === manualFocusProject.id);
         const projectSprints = sprints.filter(s => s.projectId === manualFocusProject.id);
-        const projectInitiatives = initiativesByProject[manualFocusProject.id] || [];
+        const projectInputs = healthInputsByProject[manualFocusProject.id] || EMPTY_PROJECT_HEALTH_INPUTS;
 
         const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
         const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(
             manualFocusProject,
-            projectTasks,
-            projectMilestones,
-            projectIssues,
-            projectSprints,
-            activitiesByProject[manualFocusProject.id] || [],
+            projectInputs.tasks,
+            projectInputs.milestones,
+            projectInputs.issues,
+            projectInputs.sprints,
+            projectInputs.activity,
             [],
-            projectInitiatives,
-            ideasByProject[manualFocusProject.id] || []
+            projectInputs.initiatives,
+            projectInputs.ideas
         );
         return {
             reasons: score.reasons,
             score: score.score,
             health: health
         };
-    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, activitiesByProject, initiativesByProject, ideasByProject]);
+    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, healthInputsByProject]);
 
     // Count critical/warning projects
     const { criticalCount, warningCount } = useMemo(() => {
         let critical = 0;
         let warning = 0;
-        Object.values(projectHealthMap).forEach(health => {
+        activeList.forEach(project => {
+            const health = projectHealthMap[project.id];
+            if (!health) return;
             if (health.status === 'critical') critical++;
             else if (health.status === 'warning') warning++;
         });
         return { criticalCount: critical, warningCount: warning };
-    }, [projectHealthMap]);
+    }, [activeList, projectHealthMap]);
 
     // Spotlight Logic: Uses enhanced algorithm to select most critical/urgent project
     const spotlightData = useMemo(() => {
@@ -1749,7 +1819,7 @@ export const ProjectsList: React.FC = () => {
         { id: 'spotlight', targetId: 'spotlight-hero', title: 'Spotlight', description: 'Your most critical project.' },
         { id: 'focus', targetId: 'focus-card', title: 'Team Focus', description: 'The project currently prioritized by the team.' },
         { id: 'grid', targetId: 'grid-area', title: 'Active Projects', description: 'Key metrics for your active work.' },
-        { id: 'list', targetId: 'list-area', title: 'Backlog', description: 'Projects on hold or planning.' },
+        { id: 'list', targetId: 'list-area', title: 'Lifecycle lists', description: 'Backlog, paused, completed, and canceled projects are separated.' },
     ];
     const { onboardingActive, stepIndex, setStepIndex, skip, finish } = useOnboardingTour('projects_rich', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
@@ -1791,14 +1861,24 @@ export const ProjectsList: React.FC = () => {
         {
             key: 'backlog',
             label: t('projects.workbench.backlog.label'),
-            value: `${inactiveList.length}`,
-            detail: inactiveList.length > 0
-                ? t('projects.workbench.backlog.detail').replace('{count}', String(inactiveList.length))
+            value: `${decisionQueueCount}`,
+            detail: decisionQueueCount > 0
+                ? t('projects.workbench.backlog.detail').replace('{count}', String(decisionQueueCount))
                 : t('projects.workbench.backlog.clear'),
             onClick: () => navigate('/team'),
             action: t('projects.workbench.backlog.action')
         }
-    ], [criticalCount, inactiveList.length, navigate, openProjectCreateModal, spotlightProject, t, warningCount]);
+    ], [criticalCount, decisionQueueCount, navigate, openProjectCreateModal, spotlightProject, t, warningCount]);
+
+    const renderCompactProjectRow = (project: Project) => (
+        <CompactProjectRow
+            key={project.id}
+            project={project}
+            statusLabel={t(PROJECT_STATUS_I18N_KEYS[project.status])}
+            updatedFallback={t('projects.sections.updatedUnknown')}
+            onClick={() => navigate(`/project/${project.id}`)}
+        />
+    );
 
     if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
 
@@ -1930,7 +2010,9 @@ export const ProjectsList: React.FC = () => {
                 {/* Active Grid */}
                 {gridProjects.length > 0 && (
                     <div id="grid-area" className="mb-12">
-                        <h2 className="section-title">Active Projects ({gridProjects.length})</h2>
+                        <h2 className="section-title">
+                            {t('projects.sections.active.title').replace('{count}', String(gridProjects.length))}
+                        </h2>
                         <div className="rich-grid">
                             {gridProjects.map(p => {
                                 const health = projectHealthMap[p.id];
@@ -1952,19 +2034,33 @@ export const ProjectsList: React.FC = () => {
                     </div>
                 )}
 
-                {/* Inactive List */}
-                {(inactiveList.length > 0) && (
-                    <div id="list-area" className="mb-12">
-                        <h2 className="section-title">On Hold & Backlog ({inactiveList.length})</h2>
-                        <div className="compact-list">
-                            {inactiveList.map(p => (
-                                <CompactProjectRow
-                                    key={p.id}
-                                    project={p}
-                                    onClick={() => navigate(`/project/${p.id}`)}
-                                />
-                            ))}
-                        </div>
+                {/* Lifecycle Lists */}
+                {lifecycleSectionCount > 0 && (
+                    <div id="list-area" className="projects-lifecycle mb-12">
+                        <ProjectLifecycleSection
+                            title={t('projects.sections.backlog.title').replace('{count}', String(backlogList.length))}
+                            description={t('projects.sections.backlog.description')}
+                            projects={backlogList}
+                            renderRow={renderCompactProjectRow}
+                        />
+                        <ProjectLifecycleSection
+                            title={t('projects.sections.paused.title').replace('{count}', String(pausedList.length))}
+                            description={t('projects.sections.paused.description')}
+                            projects={pausedList}
+                            renderRow={renderCompactProjectRow}
+                        />
+                        <ProjectLifecycleSection
+                            title={t('projects.sections.completed.title').replace('{count}', String(completedList.length))}
+                            description={t('projects.sections.completed.description')}
+                            projects={completedList}
+                            renderRow={renderCompactProjectRow}
+                        />
+                        <ProjectLifecycleSection
+                            title={t('projects.sections.canceled.title').replace('{count}', String(canceledList.length))}
+                            description={t('projects.sections.canceled.description')}
+                            projects={canceledList}
+                            renderRow={renderCompactProjectRow}
+                        />
                     </div>
                 )}
 

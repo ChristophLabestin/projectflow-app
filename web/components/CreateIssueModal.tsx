@@ -30,6 +30,8 @@ interface CreateIssueModalProps {
 
     projectId: string;
 
+    tenantId?: string;
+
     initialDescription?: string;
 
     initialTitle?: string;
@@ -45,6 +47,8 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
     onClose,
 
     projectId,
+
+    tenantId,
 
     initialDescription = '',
 
@@ -162,7 +166,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
 
                 dueDate: dueDate || undefined
 
-            });
+            }, tenantId);
 
 
 
@@ -179,6 +183,8 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                     title: title.trim(),
 
                     projectId,
+
+                    tenantId,
 
                     priority
 

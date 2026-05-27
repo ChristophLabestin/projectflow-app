@@ -12,6 +12,7 @@ import { InitiativeSettingsModal } from '../components/InitiativeSettingsModal';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { Initiative, Milestone, Project, Task } from '../types';
 import { calculateInitiativeHealth } from '../services/healthService';
 import { timeAgo, toDate } from '../utils/time';
@@ -54,6 +55,7 @@ export const ProjectInitiativeDetail = () => {
     const statusMenuRef = useRef<HTMLDivElement>(null);
     const priorityMenuRef = useRef<HTMLDivElement>(null);
     const { can, hasPermission } = useProjectPermissions(project);
+    const { focusItemId, startFocusItem } = usePinnedTasks();
     const canManageInitiative = can('canManageTasks') || hasPermission('project.initiatives.edit');
     const canManageInitiativeTasks = can('canManageTasks') || hasPermission('project.initiatives.manageTasks');
 
@@ -100,6 +102,19 @@ export const ProjectInitiativeDetail = () => {
         'Blocked',
         'Done'
     ]), []);
+
+    const handleStartInitiativeFocus = () => {
+        if (!initiative || !projectId) return;
+        startFocusItem({
+            id: initiative.id,
+            type: 'initiative',
+            title: initiative.title,
+            projectId,
+            tenantId: initiative.tenantId || project?.tenantId,
+            priority: initiative.priority,
+            isCompleted: initiative.status === 'Done'
+        });
+    };
 
     useEffect(() => {
         if (!statusMenuOpen && !priorityMenuOpen) return;
@@ -426,7 +441,7 @@ export const ProjectInitiativeDetail = () => {
                             {canManageInitiative && (
                                 <>
                                     <Button
-                                        variant="primary"
+                                        variant="secondary"
                                         size="lg"
                                         className="initiative-detail__primary-action"
                                         onClick={() => setShowSettingsModal(true)}
@@ -829,6 +844,17 @@ export const ProjectInitiativeDetail = () => {
                 </section>
 
                 <aside className="initiative-detail__sidebar">
+                    <Button
+                        variant={focusItemId === initiative.id ? 'secondary' : 'primary'}
+                        size="md"
+                        className="initiative-detail__focus-action initiative-detail__focus-action--sidebar"
+                        data-state={focusItemId === initiative.id ? 'focused' : 'default'}
+                        onClick={handleStartInitiativeFocus}
+                        icon={<span className="material-symbols-outlined initiative-detail__action-icon">{focusItemId === initiative.id ? 'center_focus_strong' : 'center_focus_weak'}</span>}
+                    >
+                        {focusItemId === initiative.id ? t('initiatives.detail.currentFocus') : t('initiatives.detail.setFocusTask')}
+                    </Button>
+
                     <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
                         <div className="initiative-detail__section-header">
                             <div>

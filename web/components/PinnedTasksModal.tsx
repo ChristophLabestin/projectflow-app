@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
-import { Task, SubTask, Project, Member, PersonalTask } from '../types';
+import { FocusItemType, Initiative, Task, SubTask, Project, Member, PersonalTask } from '../types';
 import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
-import { updateIssue } from '../services/domain/issuesService';
+import { deleteIssue, updateIssue } from '../services/domain/issuesService';
+import { updateInitiative } from '../services/domain/initiativesService';
 import { getProjectById } from '../services/domain/projectsService';
 import {
     addPersonalTask,
@@ -23,8 +24,9 @@ import { useLanguage } from '../context/LanguageContext';
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
 const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
+const INITIATIVE_STATUS_OPTIONS = ['Planning', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
 
-type StatusKind = 'task' | 'issue';
+type StatusKind = 'task' | 'issue' | 'initiative';
 
 const getStatusClass = (status?: string) => {
     if (!status) return 'status-badge--default';
@@ -119,7 +121,7 @@ const getDefaultCompactPosition = (size: { width: number; height: number }) => {
 
 const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClose?: () => void; onComplete?: (id: string) => void }) => {
     const [item, setItem] = useState<Task | any | null>(null);
-    const [itemType, setItemType] = useState<'task' | 'issue' | 'personal-task'>('task');
+    const [itemType, setItemType] = useState<FocusItemType>('task');
     const [subtasks, setSubtasks] = useState<SubTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -158,10 +160,21 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         Resolved: t('projectIssues.status.resolved'),
         Closed: t('projectIssues.status.closed')
     };
+    const initiativeStatusLabels: Record<string, string> = {
+        Planning: t('initiatives.status.planning'),
+        Open: t('initiatives.status.open'),
+        'In Progress': t('initiatives.status.inProgress'),
+        Review: t('initiatives.status.review'),
+        'On Hold': t('initiatives.status.onHold'),
+        Blocked: t('initiatives.status.blocked'),
+        Done: t('initiatives.status.done')
+    };
     const getStatusLabel = (status: string, kind: StatusKind) => (
         kind === 'issue'
             ? issueStatusLabels[status] || status
-            : taskStatusLabels[status] || status
+            : kind === 'initiative'
+                ? initiativeStatusLabels[status] || status
+                : taskStatusLabels[status] || status
     );
 
 
@@ -194,6 +207,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     return;
                 }
                 setItemType(current.type);
+                let loadedTenantId = current.tenantId;
 
                 // Fetch Personal Task
                 if (current.type === 'personal-task') {
@@ -229,21 +243,26 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 }
                 // Fetch Project Task / Issue
                 else if (current.projectId) {
-                    const projectData = await getProjectById(current.projectId);
+                    const projectData = await getProjectById(current.projectId, current.tenantId);
                     if (projectData) {
+                        loadedTenantId = current.tenantId || projectData.tenantId;
                         setProject(projectData);
-                        const collectionName = current.type === 'issue' ? 'issues' : 'tasks';
+                        const collectionName = current.type === 'issue'
+                            ? 'issues'
+                            : current.type === 'initiative'
+                                ? 'initiatives'
+                                : 'tasks';
                         const itemRef = doc(db, `tenants/${projectData.tenantId}/projects/${projectData.id}/${collectionName}/${itemId}`);
                         const snap = await getDoc(itemRef);
                         if (snap.exists() && mounted) {
-                            setItem({ id: snap.id, ...snap.data() });
+                            setItem({ id: snap.id, projectId: projectData.id, tenantId: projectData.tenantId, ...snap.data() });
                         }
                     }
                 }
 
                 // Fetch Subtasks (only for tasks)
                 if (current.type === 'task') {
-                    const subs = await getSubTasks(itemId);
+                    const subs = await getSubTasks(itemId, current.projectId, loadedTenantId);
                     if (mounted) setSubtasks(subs);
                 }
 
@@ -322,7 +341,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             const t = item as Task;
             const newStatus = !t.isCompleted;
             setItem(prev => prev ? { ...prev, isCompleted: newStatus } : null);
-            await toggleTaskStatus(t.id, newStatus, t.projectId);
+            await toggleTaskStatus(t.id, t.isCompleted, t.projectId, t.tenantId || project?.tenantId);
             if (newStatus && onComplete) {
                 onComplete(t.id);
             }
@@ -333,6 +352,14 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             await togglePersonalTaskStatus(t.id, newStatus, t.tenantId);
             if (newStatus && onComplete) {
                 onComplete(t.id);
+            }
+        } else if (itemType === 'initiative') {
+            const initiative = item as Initiative;
+            const nextStatus = initiative.status === 'Done' ? 'In Progress' : 'Done';
+            setItem(prev => prev ? { ...prev, status: nextStatus } : null);
+            await updateInitiative(initiative.id, { status: nextStatus }, initiative.projectId, initiative.tenantId || project?.tenantId);
+            if (nextStatus === 'Done' && onComplete) {
+                onComplete(initiative.id);
             }
         } else {
             const i = item as any; // Issue
@@ -356,7 +383,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         if (itemType === 'task') {
             const isDone = newStatus === 'Done';
             setItem(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
-            await updateTaskFields(item.id, { status: newStatus as any, isCompleted: isDone });
+            await updateTaskFields(item.id, { status: newStatus as any, isCompleted: isDone }, item.projectId, item.tenantId || project?.tenantId);
             if (isDone && onComplete) {
                 onComplete(item.id);
             }
@@ -368,19 +395,25 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
                 onComplete(item.id);
             }
+        } else if (itemType === 'initiative') {
+            setItem(prev => prev ? { ...prev, status: newStatus } : null);
+            await updateInitiative(item.id, { status: newStatus as Initiative['status'] }, item.projectId, item.tenantId || project?.tenantId);
+            if (newStatus === 'Done' && onComplete) {
+                onComplete(item.id);
+            }
         }
     };
 
     const handleToggleSubtask = async (subId: string, current: boolean) => {
         setSubtasks(prev => prev.map(s => s.id === subId ? { ...s, isCompleted: !current } : s));
-        await toggleSubTaskStatus(subId, current, item?.id);
+        await toggleSubTaskStatus(subId, current, item?.id, item?.projectId, item?.tenantId || project?.tenantId);
     };
 
     const handleSaveSubtaskTitle = async (subId: string, newTitle: string) => {
         if (!newTitle.trim()) return;
         setSubtasks(prev => prev.map(s => s.id === subId ? { ...s, title: newTitle } : s));
         setEditingSubtaskId(null);
-        await updateSubtaskFields(subId, { title: newTitle }, item.id, item.projectId);
+        await updateSubtaskFields(subId, { title: newTitle }, item.id, item.projectId, item.tenantId || project?.tenantId);
     };
 
     const handleAddSubtask = async (e: React.FormEvent) => {
@@ -412,9 +445,11 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
         try {
             if (itemType === 'task') {
-                await updateTaskFields(item.id, { description: descValue });
+                await updateTaskFields(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
             } else if (itemType === 'personal-task') {
                 await updatePersonalTask(item.id, { description: descValue }, item.tenantId);
+            } else if (itemType === 'initiative') {
+                await updateInitiative(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
             } else {
                 await updateIssue(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
             }
@@ -425,9 +460,18 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         }
     };
 
-    const isCompleted = itemType === 'task' ? (item as Task)?.isCompleted : (item as any)?.status === 'Resolved' || (item as any)?.status === 'Closed';
-    const statusKind: StatusKind = itemType === 'issue' ? 'issue' : 'task';
+    const isCompleted = itemType === 'task' || itemType === 'personal-task'
+        ? (item as Task | PersonalTask)?.isCompleted
+        : itemType === 'initiative'
+            ? (item as Initiative)?.status === 'Done'
+            : (item as any)?.status === 'Resolved' || (item as any)?.status === 'Closed';
+    const statusKind: StatusKind = itemType === 'issue' ? 'issue' : itemType === 'initiative' ? 'initiative' : 'task';
     const currentStatus = item?.status || 'Open';
+    const statusOptions = itemType === 'issue'
+        ? ISSUE_STATUS_OPTIONS
+        : itemType === 'initiative'
+            ? INITIATIVE_STATUS_OPTIONS
+            : TASK_STATUS_OPTIONS;
 
     if (loading) return <div className="pinned-tasks__loading">{t('pinnedTasks.loading')}</div>;
     if (!item) {
@@ -470,7 +514,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 <button
                     onClick={handleToggleCompletion}
                     className={`completion-toggle ${isCompleted ? (itemType === 'task' ? 'completed-task' : 'completed') : ''}`}
-                    title={itemType === 'task' ? t('pinnedTasks.actions.markComplete') : t('pinnedTasks.actions.markResolved')}
+                    title={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
                 >
                     <span className="material-symbols-outlined pinned-tasks__completion-icon">check</span>
                 </button>
@@ -480,7 +524,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     </h3>
                     <div className="meta-badges">
                         {item.priority && <PriorityBadge priority={item.priority} />}
-                        {(itemType === 'task' || itemType === 'issue') && (
+                        {(itemType === 'task' || itemType === 'issue' || itemType === 'initiative') && (
                             <div ref={statusMenuRef} className="status-dropdown">
                                 <button
                                     type="button"
@@ -495,7 +539,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                 </button>
                                 {statusMenuOpen && (
                                     <div className="menu">
-                                        {(itemType === 'task' ? TASK_STATUS_OPTIONS : ISSUE_STATUS_OPTIONS).map((status) => (
+                                        {statusOptions.map((status) => (
                                             <button
                                                 key={status}
                                                 type="button"
@@ -522,7 +566,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             {/* Description Section */}
             {/* Description Section */}
             {/* Description Section */}
-            {(item.description || itemType === 'task' || itemType === 'personal-task' || isEditingDesc) && (
+            {(item.description || itemType === 'task' || itemType === 'initiative' || itemType === 'personal-task' || isEditingDesc) && (
                 <div className="pinned-tasks__section pinned-tasks__section--description">
                     <div className="pinned-tasks__section-header">
                         <button
@@ -655,7 +699,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                         onClick={async () => {
                                             if (await confirm(t('pinnedTasks.confirm.deleteSubtask.title'), t('pinnedTasks.confirm.deleteSubtask.body'))) {
                                                 setSubtasks(prev => prev.filter(s => s.id !== sub.id));
-                                                await deleteSubTask(sub.id, item.id, item.projectId);
+                                                await deleteSubTask(sub.id, item.id, item.projectId, item.tenantId || project?.tenantId);
                                             }
                                         }}
                                         className="delete-btn"
@@ -666,7 +710,28 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                             ))}
                         </div>
                     </div>
-                ) : itemType === 'personal-task' ? null : (
+                ) : itemType === 'personal-task' ? null : itemType === 'initiative' ? (
+                    <div className="pinned-tasks__issue-sections">
+                        <div>
+                            <h4 className="pinned-tasks__section-title">
+                                <span className="material-symbols-outlined pinned-tasks__section-title-icon">chat</span>
+                                {t('pinnedTasks.sections.discussion').replace('{count}', String(commentCount))}
+                            </h4>
+                            <div className="pinned-tasks__comment-section">
+                                <CommentSection
+                                    projectId={project?.id || ''}
+                                    targetId={itemId}
+                                    targetType="initiative"
+                                    tenantId={project?.tenantId}
+                                    isProjectOwner={project?.ownerId === auth.currentUser?.uid}
+                                    targetTitle={item?.title}
+                                    hideHeader={true}
+                                    onCountChange={setCommentCount}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                ) : (
                     <div className="pinned-tasks__issue-sections">
                         {/* Discussion / Comments for Issues */}
                         <div>
@@ -769,7 +834,7 @@ export const PinnedTasksModal = () => {
     const [addingItems, setAddingItems] = useState<string[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [isCreatingTask, setIsCreatingTask] = useState(false);
-    const [pinnedFilter, setPinnedFilter] = useState<'all' | 'task' | 'issue'>('all');
+    const [pinnedFilter, setPinnedFilter] = useState<'all' | 'task' | 'issue' | 'initiative'>('all');
     const navigate = useNavigate();
     const confirm = useConfirm();
     const { t } = useLanguage();
@@ -777,6 +842,7 @@ export const PinnedTasksModal = () => {
     const itemTypeLabels: Record<string, string> = {
         task: t('pinnedTasks.types.task'),
         issue: t('pinnedTasks.types.issue'),
+        initiative: t('pinnedTasks.types.initiative'),
         'personal-task': t('pinnedTasks.types.personalTask')
     };
     const priorityLabels: Record<string, string> = {
@@ -788,10 +854,27 @@ export const PinnedTasksModal = () => {
     const filterLabels = {
         all: t('pinnedTasks.tabs.all'),
         task: t('pinnedTasks.tabs.tasks'),
-        issue: t('pinnedTasks.tabs.issues')
+        issue: t('pinnedTasks.tabs.issues'),
+        initiative: t('pinnedTasks.tabs.initiatives')
     };
     const pressEnterHint = t('pinnedTasks.hint.pressEnter');
     const [pressEnterPrefix, pressEnterSuffix] = pressEnterHint.split('{key}');
+
+    const getPinnedItemPath = (item: PinnedItem) => {
+        if (!item.projectId) return null;
+        const resource = item.type === 'issue'
+            ? 'issues'
+            : item.type === 'initiative'
+                ? 'initiatives'
+                : 'tasks';
+        return `/project/${item.projectId}/${resource}/${item.id}`;
+    };
+
+    const matchesPinnedFilter = (item: PinnedItem) => (
+        pinnedFilter === 'all'
+        || item.type === pinnedFilter
+        || (pinnedFilter === 'task' && item.type === 'personal-task')
+    );
 
     // Draggable position and size state for compact mode
     const [position, setPosition] = useState(() => getDefaultCompactPosition(COMPACT_DEFAULT_SIZE));
@@ -948,12 +1031,20 @@ export const PinnedTasksModal = () => {
 
     const handleDeleteTask = async (e: React.MouseEvent, item: PinnedItem) => {
         e.stopPropagation(); // Prevent selection
+        if (item.type === 'initiative') {
+            unpinItem(item.id);
+            if (selectedItemId === item.id) setSelectedItemId(null);
+            return;
+        }
+
         if (await confirm(t('pinnedTasks.confirm.delete.title'), t('pinnedTasks.confirm.delete.body'))) {
             try {
                 if (item.type === 'personal-task') {
                     await deletePersonalTask(item.id);
+                } else if (item.type === 'issue') {
+                    await deleteIssue(item.id, item.projectId, item.tenantId);
                 } else {
-                    await deleteTask(item.id, item.projectId);
+                    await deleteTask(item.id, item.projectId, item.tenantId);
                 }
                 unpinItem(item.id);
                 if (selectedItemId === item.id) setSelectedItemId(null);
@@ -1081,6 +1172,8 @@ export const PinnedTasksModal = () => {
 
         if (item.type === 'task') {
             await updateTaskFields(item.id, { status: 'Blocked', isCompleted: false }, item.projectId, item.tenantId);
+        } else if (item.type === 'initiative') {
+            await updateInitiative(item.id, { status: 'Blocked' }, item.projectId, item.tenantId);
         }
     };
 
@@ -1093,6 +1186,8 @@ export const PinnedTasksModal = () => {
             await togglePersonalTaskStatus(item.id, false, item.tenantId);
         } else if (item.type === 'issue') {
             await updateIssue(item.id, { status: 'Resolved' }, item.projectId, item.tenantId);
+        } else if (item.type === 'initiative') {
+            await updateInitiative(item.id, { status: 'Done' }, item.projectId, item.tenantId);
         }
 
         completeFocusItem(item.id);
@@ -1132,9 +1227,10 @@ export const PinnedTasksModal = () => {
                                 <button
                                     onClick={() => {
                                         const item = pinnedItems.find(i => i.id === activeItemId);
-                                        if (item && item.projectId) {
+                                        const path = item ? getPinnedItemPath(item) : null;
+                                        if (path) {
                                             toggleModal();
-                                            navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
+                                            navigate(path);
                                         }
                                     }}
                                     className="pinned-tasks-compact__action"
@@ -1294,9 +1390,10 @@ export const PinnedTasksModal = () => {
                             <button
                                 onClick={() => {
                                     const item = pinnedItems.find(i => i.id === activeItemId);
-                                    if (item && item.projectId) {
+                                    const path = item ? getPinnedItemPath(item) : null;
+                                    if (path) {
                                         toggleModal();
-                                        navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
+                                        navigate(path);
                                     }
                                 }}
                                 className="action-btn"
@@ -1351,8 +1448,10 @@ export const PinnedTasksModal = () => {
 
                     {/* Filter Tabs */}
                     <div className="filter-tabs">
-                        {(['all', 'task', 'issue'] as const).map(tab => {
-                            const count = tab === 'all' ? pinnedItems.length : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;
+                        {(['all', 'task', 'issue', 'initiative'] as const).map(tab => {
+                            const count = tab === 'all'
+                                ? pinnedItems.length
+                                : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;
                             return (
                                 <button
                                     key={tab}
@@ -1366,20 +1465,23 @@ export const PinnedTasksModal = () => {
                     </div>
 
                     <div className="pinned-list">
-                        {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).length === 0 && (
+                        {pinnedItems.filter(matchesPinnedFilter).length === 0 && (
                             <div className="pinned-tasks__empty-list">
                                 {pinnedFilter === 'all'
                                     ? t('pinnedTasks.empty.all')
                                     : pinnedFilter === 'task'
                                         ? t('pinnedTasks.empty.tasks')
-                                        : t('pinnedTasks.empty.issues')}
+                                        : pinnedFilter === 'issue'
+                                            ? t('pinnedTasks.empty.issues')
+                                            : t('pinnedTasks.empty.initiatives')}
                             </div>
                         )}
 
-                        {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).map(item => {
+                        {pinnedItems.filter(matchesPinnedFilter).map(item => {
                             const isFocus = item.id === focusItemId;
                             const isSelected = item.id === activeItemId;
                             const isIssue = item.type === 'issue';
+                            const isInitiative = item.type === 'initiative';
                             const isCompleting = completingItems.includes(item.id);
                             const isAdding = addingItems.includes(item.id);
 
@@ -1393,8 +1495,8 @@ export const PinnedTasksModal = () => {
                                     className={`pinned-item-btn ${isSelected ? 'selected' : ''} ${isAdding ? 'adding' : ''}`}
                                 >
                                     <div className={`icon-box ${isFocus ? 'focused' : ''}`}>
-                                        <span className={`material-symbols-outlined pinned-item-icon ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : 'is-task'}`}>
-                                            {isIssue ? 'bug_report' : 'task_alt'}
+                                        <span className={`material-symbols-outlined pinned-item-icon ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : isInitiative ? 'is-initiative' : 'is-task'}`}>
+                                            {isIssue ? 'bug_report' : isInitiative ? 'rocket_launch' : 'task_alt'}
                                         </span>
                                         {isFocus && <div className="indicator-dot" />}
                                     </div>
@@ -1403,7 +1505,7 @@ export const PinnedTasksModal = () => {
                                             {item.title}
                                         </p>
                                         <div className="item-meta">
-                                            <span className={`item-type-badge ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : 'is-task'}`}>
+                                            <span className={`item-type-badge ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : isInitiative ? 'is-initiative' : 'is-task'}`}>
                                                 {itemTypeLabels[item.type] || item.type}
                                             </span>
 

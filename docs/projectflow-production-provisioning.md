@@ -37,7 +37,7 @@ Production setup:
 
 Firebase's FCM web setup docs currently route Web Push certificate generation/import through Firebase Console, not through the Firebase app SDK config returned by `firebase apps:sdkconfig`.
 
-Current local observation on 2026-05-26: `web/.env.local` has Firebase app config keys but does not define `VITE_FIREBASE_VAPID_KEY`, and `firebase apps:sdkconfig WEB 1:156746866932:web:48cc57f5ae6509dcc9bea1 --project project-manager-9d0ad` returns only the normal Firebase web app config keys. Web push token registration remains blocked until the public Web Push certificate key is generated/imported in Firebase Console and added to the local and production web build environments. ProjectFlow follow-up task: `u7rRtb9TrHuLWxHKgYhl`.
+Current local observation on 2026-05-26: `web/.env.local` now defines `VITE_FIREBASE_VAPID_KEY`, and `scripts/check-retention-provisioning.sh` confirms the local VAPID configuration. Production web push still needs the same public key in the hosting/build environment followed by a hosting redeploy and `/notifications` diagnostics check. ProjectFlow follow-up task: `u7rRtb9TrHuLWxHKgYhl`.
 
 ## iOS App Group And APNs
 
@@ -67,7 +67,7 @@ Apple Developer setup:
 
 The source entitlement file currently declares `aps-environment` as `development`. Treat that as normal for local development, but do not consider production push ready until a signed release app reports `aps-environment` as `production`.
 
-Current local observation on 2026-05-26: a Release archive with `-allowProvisioningUpdates` succeeded, but Xcode used `Apple Development: Christoph Labestin (U9SR73H968)` and the Xcode-managed profile `iOS Team Provisioning Profile: de.christophlabestin.projectflow`. The signed app includes `group.de.christophlabestin.projectflow`, but its APNs entitlement is still `development`, so production push remains blocked until an Apple Distribution identity/profile with production APNs is available and Firebase APNs credentials are verified. ProjectFlow follow-up task: `YYawDDhIJguHIFkKqrZD`.
+Current local observation on 2026-05-26: a Release archive with `-allowProvisioningUpdates` succeeded, but Xcode used `Apple Development: Christoph Labestin (U9SR73H968)` and the Xcode-managed profile `iOS Team Provisioning Profile: de.christophlabestin.projectflow`. The signed app includes `group.de.christophlabestin.projectflow`, but its APNs entitlement is still `development`. User-reported external update on 2026-05-26: the APNs credential was created in Apple Developer and the iOS push certificate was configured in Firebase Cloud Messaging. Remaining production push verification is a distribution-signed archive whose signed `.app` reports `aps-environment=production`, followed by a real device/TestFlight push test. ProjectFlow follow-up task: `YYawDDhIJguHIFkKqrZD`.
 
 ## Release Checklist
 

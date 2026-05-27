@@ -31,6 +31,7 @@ enum MainTab: Hashable {
     case dashboard
     case projects
     case tasks
+    case focus
     case flows
     case issues
     case notifications
@@ -58,6 +59,10 @@ struct MainTabView: View {
             TasksView()
                 .tabItem { Label("Tasks", systemImage: "checklist") }
                 .tag(MainTab.tasks)
+
+            FocusCompanionView(selectedTab: $selection)
+                .tabItem { Label("Focus", systemImage: "scope") }
+                .tag(MainTab.focus)
 
             FlowsView()
                 .tabItem { Label("Flows", systemImage: "point.3.connected.trianglepath.dotted") }
