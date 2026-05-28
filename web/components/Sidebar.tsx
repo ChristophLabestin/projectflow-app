@@ -12,6 +12,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useUIState } from '../context/UIContext';
+import type { ProjectExternalResource } from '../types';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -23,7 +24,7 @@ type SidebarProps = {
         ideasCount?: number;
         issuesCount?: number;
         modules?: string[];
-        externalResources?: { title: string; url: string; icon?: string }[];
+        externalResources?: ProjectExternalResource[];
         isLoaded?: boolean; // New flag to prevent flickering
         navPrefs?: { order: string[]; hidden: string[] }; // User-specific nav preferences
     };
@@ -373,6 +374,11 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                                 <span className="text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">
                                                     {res.title}
                                                 </span>
+                                                {(res.sensitivity === 'confidential' || res.sensitivity === 'restricted' || res.advisorReviewRequired) && (
+                                                    <span className="material-symbols-outlined text-[14px] text-warning" title={t('sidebar.resourcesRestricted')}>
+                                                        lock
+                                                    </span>
+                                                )}
                                                 <span className="material-symbols-outlined text-[14px] opacity-0 group-hover:opacity-40 transition-opacity">open_in_new</span>
                                             </a>
                                         ))}

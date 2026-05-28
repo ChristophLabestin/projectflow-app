@@ -21,7 +21,6 @@ const IDEAS = 'ideas';
 const MILESTONES = 'milestones';
 const SPRINTS = 'sprints';
 const CATEGORIES = 'categories';
-const MINDMAPS = 'mindmaps';
 const PROJECT_GROUPS = 'project_groups';
 const COMMENTS = 'comments';
 const CODEX = 'codex';
@@ -35,12 +34,18 @@ const PROJECT_WRITE_FIELDS = [
     'status',
     'projectState',
     'projectType',
+    'projectCategory',
+    'templateId',
+    'companyProjectId',
+    'companyProjectRole',
     'operatingMode',
     'dateConfidence',
     'brief',
     'operatingModel',
     'riskRegister',
     'healthSnapshot',
+    'startupProfile',
+    'startupReadiness',
     'dueDate',
     'startDate',
     'priority',
@@ -81,7 +86,12 @@ const TASK_WRITE_FIELDS = [
     'convertedIdeaId',
     'initiativeId',
     'legacyInitiativeRoot',
-    'externalKey'
+    'externalKey',
+    'source',
+    'templateId',
+    'templateTrack',
+    'templateSeedId',
+    'sourceReferences'
 ] as const;
 
 const INITIATIVE_WRITE_FIELDS = [
@@ -95,6 +105,11 @@ const INITIATIVE_WRITE_FIELDS = [
     'assignedGroupIds',
     'originIdeaId',
     'externalKey',
+    'source',
+    'templateId',
+    'templateTrack',
+    'templateSeedId',
+    'sourceReferences',
     'successMetric',
     'outcome',
     'health',
@@ -436,12 +451,18 @@ const createProject = async (req: any, res: any) => {
         status: getString(body.status) || 'Planning',
         projectState: getString(body.projectState) || 'not specified',
         projectType: getString(body.projectType),
+        projectCategory: getString(body.projectCategory),
+        templateId: getString(body.templateId),
+        companyProjectId: getString(body.companyProjectId),
+        companyProjectRole: getString(body.companyProjectRole),
         operatingMode: getString(body.operatingMode),
         dateConfidence: getString(body.dateConfidence),
         brief: body.brief && typeof body.brief === 'object' ? body.brief : undefined,
         operatingModel: body.operatingModel && typeof body.operatingModel === 'object' ? body.operatingModel : undefined,
         riskRegister: Array.isArray(body.riskRegister) ? body.riskRegister : [],
         healthSnapshot: body.healthSnapshot && typeof body.healthSnapshot === 'object' ? body.healthSnapshot : undefined,
+        startupProfile: body.startupProfile && typeof body.startupProfile === 'object' ? body.startupProfile : undefined,
+        startupReadiness: body.startupReadiness && typeof body.startupReadiness === 'object' ? body.startupReadiness : undefined,
         dueDate: getString(body.dueDate),
         startDate: getString(body.startDate),
         priority: getString(body.priority) || 'Medium',
@@ -1762,17 +1783,6 @@ const updateCategory = async (req: any, res: any, projectId: string, categoryId:
 const deleteCategory = async (req: any, res: any, projectId: string, categoryId: string) =>
     deleteProjectCollectionItem(req, res, projectId, categoryId, CATEGORIES, 'Category', 'deletedCategoryId', 'Categories');
 
-const listMindmaps = async (req: any, res: any, projectId: string) =>
-    listProjectCollectionItems(req, res, projectId, MINDMAPS, 'mindmaps');
-const createMindmap = async (req: any, res: any, projectId: string) =>
-    createProjectCollectionItem(req, res, projectId, MINDMAPS, 'mindmap', 'name', 'mindmap', 'Mindmaps');
-const getMindmap = async (req: any, res: any, projectId: string, mindmapId: string) =>
-    getProjectCollectionItem(req, res, projectId, mindmapId, MINDMAPS, 'mindmap', 'Mindmap');
-const updateMindmap = async (req: any, res: any, projectId: string, mindmapId: string) =>
-    updateProjectCollectionItem(req, res, projectId, mindmapId, MINDMAPS, 'mindmap', 'Mindmap', 'Mindmaps');
-const deleteMindmap = async (req: any, res: any, projectId: string, mindmapId: string) =>
-    deleteProjectCollectionItem(req, res, projectId, mindmapId, MINDMAPS, 'Mindmap', 'deletedMindmapId', 'Mindmaps');
-
 const listProjectGroups = async (req: any, res: any, projectId: string) =>
     listProjectCollectionItems(req, res, projectId, PROJECT_GROUPS, 'projectGroups');
 const createProjectGroup = async (req: any, res: any, projectId: string) =>
@@ -2556,11 +2566,6 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects/:projectId/categories/:categoryId',
     'PATCH /api/projectflow/projects/:projectId/categories/:categoryId',
     'DELETE /api/projectflow/projects/:projectId/categories/:categoryId',
-    'GET /api/projectflow/projects/:projectId/mindmaps',
-    'POST /api/projectflow/projects/:projectId/mindmaps',
-    'GET /api/projectflow/projects/:projectId/mindmaps/:mindmapId',
-    'PATCH /api/projectflow/projects/:projectId/mindmaps/:mindmapId',
-    'DELETE /api/projectflow/projects/:projectId/mindmaps/:mindmapId',
     'GET /api/projectflow/projects/:projectId/project-groups',
     'POST /api/projectflow/projects/:projectId/project-groups',
     'GET /api/projectflow/projects/:projectId/project-groups/:groupId',
@@ -2752,17 +2757,6 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
                 }
             }
 
-            if (resource === MINDMAPS) {
-                if (req.method === 'GET') {
-                    await listMindmaps(req, res, projectId);
-                    return true;
-                }
-                if (req.method === 'POST') {
-                    await createMindmap(req, res, projectId);
-                    return true;
-                }
-            }
-
             if (resource === 'project-groups') {
                 if (req.method === 'GET') {
                     await listProjectGroups(req, res, projectId);
@@ -2906,21 +2900,6 @@ export const handleProjectflowApiRoute = async (req: any, res: any, path: string
                 }
                 if (req.method === 'DELETE') {
                     await deleteCategory(req, res, projectId, resourceId);
-                    return true;
-                }
-            }
-
-            if (resource === MINDMAPS) {
-                if (req.method === 'GET') {
-                    await getMindmap(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'PATCH') {
-                    await updateMindmap(req, res, projectId, resourceId);
-                    return true;
-                }
-                if (req.method === 'DELETE') {
-                    await deleteMindmap(req, res, projectId, resourceId);
                     return true;
                 }
             }

@@ -2107,7 +2107,6 @@ min-w-[800px]
 min-w-[80px]
 min-w-full
 min-w-max
-mindmap-edge
 mix-blend-multiply
 mix-blend-overlay
 ml-0.5

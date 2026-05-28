@@ -36,7 +36,7 @@ These routes are rendered inside the authenticated app shell/layout.
 
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
-- [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
+- [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
 - [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
@@ -53,7 +53,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/finance/sync` — External sync connections and sync run history
 - [x] `/finance/settings` — Finance settings, numbering defaults, and controls
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
-- [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with Project Brief capture and returns to `/projects`
+- [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with one project purpose field, optional success criteria/cadence, and returns to `/projects`
 - [x] `/team` — Team / members management
 - [x] `/media` — Media library
 - [x] `/profile` — User profile
@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (command-first layout with compact header, command strip, attention queue, demoted reference modules, Project Contract card, explicit pause/resume/cancel lifecycle)
+- [x] `/project/:id` (index) — Project overview (command-first layout with compact header, command strip, attention queue, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add a founding-briefing hint card, founding cockpit, source metadata, finance/marketing actions, and linked-project rollups)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 - [x] `/project/:id/codex` — Codex session feed and Codex follow-up inbox

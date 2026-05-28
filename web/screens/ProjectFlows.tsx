@@ -214,7 +214,6 @@ export const ProjectFlows = () => {
                 return {
                     ...idea,
                     projectId: id,
-                    mindmapId: null,
                     type,
                     socialType: socialType as any,
                     stage: initialStage

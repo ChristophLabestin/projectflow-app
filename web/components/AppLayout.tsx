@@ -4,7 +4,7 @@ import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
 import { subscribeProjectIdeas, subscribeUserProjectNavPrefs } from '../services/dataService';
-import { Project } from '../types';
+import { Project, ProjectExternalResource } from '../types';
 import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
 import { useLanguage } from '../context/LanguageContext';
@@ -46,6 +46,7 @@ export const AppLayout = () => {
 
     const [navOpen, setNavOpen] = useState(false);
     const [project, setProject] = useState<Project | null>(null);
+    const [companyProject, setCompanyProject] = useState<Project | null>(null);
     const [tasksCount, setTasksCount] = useState(0);
     const [ideasCount, setIdeasCount] = useState(0);
     const [issuesCount, setIssuesCount] = useState(0);
@@ -60,6 +61,24 @@ export const AppLayout = () => {
     const navigate = useNavigate();
     const { t } = useLanguage();
     const isCurrentProjectCanceled = isProjectExcludedFromHealth(project);
+    const visibleExternalResources = useMemo<ProjectExternalResource[]>(() => {
+        const resources = project?.externalResources || [];
+        if (!project || resources.length === 0) return [];
+        const userId = user?.uid;
+
+        return resources.filter(resource => {
+            const restrictedRoles = resource.restrictedToRoleIds || [];
+            if (restrictedRoles.length === 0) return true;
+            if (!userId) return false;
+            if (project.ownerId === userId) return true;
+
+            const member = (project.members || []).find(memberEntry => (
+                (typeof memberEntry === 'string' ? memberEntry : memberEntry.userId) === userId
+            ));
+            const memberRole = typeof member === 'object' ? member.role : (member ? 'Viewer' : '');
+            return Boolean(memberRole && restrictedRoles.includes(memberRole));
+        });
+    }, [project, user?.uid]);
 
     // Close nav on route change
     useEffect(() => {
@@ -101,6 +120,7 @@ export const AppLayout = () => {
     useEffect(() => {
         if (!projectId) {
             setProject(null);
+            setCompanyProject(null);
             return;
         }
 
@@ -180,6 +200,27 @@ export const AppLayout = () => {
         return () => unsub();
     }, [user?.uid]);
 
+    useEffect(() => {
+        if (!project?.companyProjectId) {
+            setCompanyProject(null);
+            return;
+        }
+
+        let mounted = true;
+        getProjectById(project.companyProjectId, project.tenantId)
+            .then(parentProject => {
+                if (mounted) setCompanyProject(parentProject);
+            })
+            .catch(error => {
+                console.warn('Failed to load breadcrumb company project', error);
+                if (mounted) setCompanyProject(null);
+            });
+
+        return () => {
+            mounted = false;
+        };
+    }, [project?.companyProjectId, project?.tenantId]);
+
     // Global Workspace Presence Heartbeat
     useWorkspacePresence({
         enabled: !!user,
@@ -206,6 +247,9 @@ export const AppLayout = () => {
         // Handle Individual Project Routes
         else if (parts[0] === 'project' && parts[1]) {
             rawItems.push({ label: t('breadcrumbs.projects'), to: '/projects' });
+            if (companyProject && companyProject.id !== parts[1]) {
+                rawItems.push({ label: companyProject.title, to: `/project/${companyProject.id}` });
+            }
 
             // Project Title (or loading state)
             const pTitle = project?.title || t('breadcrumbs.loading');
@@ -301,7 +345,7 @@ export const AppLayout = () => {
             }
             return item;
         });
-    }, [location.pathname, project, taskTitle, campaignName, t]);
+    }, [location.pathname, project, companyProject, taskTitle, campaignName, t]);
 
     return (
         <div className="flex h-screen w-full bg-surface overflow-hidden">
@@ -316,7 +360,7 @@ export const AppLayout = () => {
                             ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
                             issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
                             modules: project?.modules,
-                            externalResources: project?.externalResources,
+                            externalResources: visibleExternalResources,
                             isLoaded: Boolean(project),
                             navPrefs: navPrefs
                         } : undefined}
@@ -343,7 +387,7 @@ export const AppLayout = () => {
                                     ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
                                     issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
                                     modules: project?.modules,
-                                    externalResources: project?.externalResources,
+                                    externalResources: visibleExternalResources,
                                     isLoaded: Boolean(project),
                                     navPrefs: navPrefs
                                 } : undefined}

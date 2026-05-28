@@ -19,6 +19,38 @@ const PROJECTS = 'projects';
 
 const projectsCollection = (tenantId: string) => collection(db, TENANTS, tenantId, PROJECTS);
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+    if (!value || Object.prototype.toString.call(value) !== '[object Object]') {
+        return false;
+    }
+    const prototype = Object.getPrototypeOf(value);
+    return prototype === Object.prototype || prototype === null;
+};
+
+const removeUndefinedFields = <T>(value: T): T | undefined => {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    if (Array.isArray(value)) {
+        return value
+            .map(item => removeUndefinedFields(item))
+            .filter(item => item !== undefined) as T;
+    }
+
+    if (isPlainObject(value)) {
+        return Object.entries(value).reduce((acc, [key, entryValue]) => {
+            const sanitizedValue = removeUndefinedFields(entryValue);
+            if (sanitizedValue !== undefined) {
+                acc[key] = sanitizedValue;
+            }
+            return acc;
+        }, {} as Record<string, unknown>) as T;
+    }
+
+    return value;
+};
+
 export const createProject = async (
     projectData: Partial<Project>,
     coverFile?: File | string,
@@ -35,8 +67,9 @@ export const createProject = async (
     await ensureTenantAndUser(resolvedTenant);
 
     const memberIds = Array.from(new Set([user.uid, ...initialMemberIds]));
+    const sanitizedProjectData = removeUndefinedFields(projectData) || {};
     const docRef = await addDoc(projectsCollection(resolvedTenant), {
-        ...projectData,
+        ...sanitizedProjectData,
         tenantId: resolvedTenant,
         ownerId: user.uid,
         coverImage: '',
@@ -142,8 +175,9 @@ export const updateProjectFields = async (
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
     const sanitizedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
-        if (value !== undefined) {
-            acc[key] = value;
+        const sanitizedValue = removeUndefinedFields(value);
+        if (sanitizedValue !== undefined) {
+            acc[key] = sanitizedValue;
         }
         return acc;
     }, {} as Record<string, any>);

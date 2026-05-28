@@ -41,6 +41,11 @@ type InitiativePayload = Partial<Pick<
     | 'assignedGroupIds'
     | 'originIdeaId'
     | 'externalKey'
+    | 'source'
+    | 'templateId'
+    | 'templateTrack'
+    | 'templateSeedId'
+    | 'sourceReferences'
     | 'successMetric'
     | 'outcome'
     | 'health'
@@ -63,6 +68,11 @@ const normalizeInitiative = (id: string, data: Record<string, unknown>): Initiat
     assignedGroupIds: Array.isArray(data.assignedGroupIds) ? data.assignedGroupIds as string[] : [],
     originIdeaId: typeof data.originIdeaId === 'string' ? data.originIdeaId : '',
     externalKey: typeof data.externalKey === 'string' ? data.externalKey : '',
+    source: typeof data.source === 'string' ? data.source : '',
+    templateId: data.templateId as Initiative['templateId'],
+    templateTrack: typeof data.templateTrack === 'string' ? data.templateTrack : '',
+    templateSeedId: typeof data.templateSeedId === 'string' ? data.templateSeedId : '',
+    sourceReferences: Array.isArray(data.sourceReferences) ? data.sourceReferences as Initiative['sourceReferences'] : [],
     successMetric: typeof data.successMetric === 'string' ? data.successMetric : '',
     outcome: typeof data.outcome === 'string' ? data.outcome : '',
     health: data.health as Initiative['health'],
@@ -99,6 +109,11 @@ export const createInitiative = async (
         assignedGroupIds: payload.assignedGroupIds || [],
         originIdeaId: payload.originIdeaId || '',
         externalKey: payload.externalKey || '',
+        source: payload.source || '',
+        templateId: payload.templateId || '',
+        templateTrack: payload.templateTrack || '',
+        templateSeedId: payload.templateSeedId || '',
+        sourceReferences: payload.sourceReferences || [],
         successMetric: payload.successMetric || '',
         outcome: payload.outcome || '',
         completedAt: payload.completedAt || null,
@@ -314,7 +329,7 @@ export const createInitiativeTask = async (
     projectId: string,
     initiativeId: string,
     title: string,
-    options: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeIds' | 'assignedGroupIds' | 'startDate'>> & {
+    options: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeIds' | 'assignedGroupIds' | 'startDate' | 'source' | 'templateId' | 'templateTrack' | 'templateSeedId' | 'sourceReferences' | 'externalKey'>> & {
         dueDate?: string;
         priority?: Task['priority'];
     } = {},
@@ -333,7 +348,13 @@ export const createInitiativeTask = async (
             assigneeIds: options.assigneeIds,
             assignedGroupIds: options.assignedGroupIds,
             initiativeId,
-            startDate: options.startDate
+            startDate: options.startDate,
+            source: options.source,
+            templateId: options.templateId,
+            templateTrack: options.templateTrack,
+            templateSeedId: options.templateSeedId,
+            sourceReferences: options.sourceReferences,
+            externalKey: options.externalKey
         },
         tenantId
     );

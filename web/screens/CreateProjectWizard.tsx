@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
-import { createMilestone, linkWithGithub } from '../services/dataService';
+import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects, linkWithGithub } from '../services/dataService';
 import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
 import { getWorkspaceGroups } from '../services/domain/workspaceGroupsService';
 import { createProject } from '../services/domain/projectAdminService';
@@ -20,7 +20,20 @@ import { Select } from '../components/common/Select/Select';
 import { type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Card } from '../components/common/Card/Card';
 import { ImageCropper } from '../components/ui/ImageCropper';
-import { Project, ProjectModule, ProjectBlueprint, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectType } from '../types';
+import { CompanyProjectRole, Project, ProjectExternalResource, ProjectModule, ProjectBlueprint, StartupJurisdictionTemplateId, StartupTrackId, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectStatus, ProjectTemplateId, ProjectType } from '../types';
+import {
+    PROJECT_TEMPLATE_DEFINITIONS,
+    STARTUP_JURISDICTION_SEED_TASKS,
+    STARTUP_SEED_INITIATIVES,
+    STARTUP_SEED_MILESTONES,
+    STARTUP_SEED_TASKS,
+    STARTUP_TRACK_DEFINITIONS,
+    getStartupJurisdictionTemplate,
+    getStartupSourceReferences,
+    getProjectTemplateDefinition,
+    isCompanyProject,
+    isSoftwareProject
+} from '../config/projectTemplates';
 import { useToast } from '../context/UIContext';
 import { auth } from '../services/firebase';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
@@ -31,13 +44,43 @@ import { useModuleAccess } from '../hooks/useModuleAccess';
 
 const STEPS = [
     { id: 0, labelKey: 'createProjectWizard.steps.method' },
-    { id: 1, labelKey: 'createProjectWizard.steps.details' },
-    { id: 2, labelKey: 'createProjectWizard.steps.brief' },
-    { id: 3, labelKey: 'createProjectWizard.steps.modules' },
-    { id: 4, labelKey: 'createProjectWizard.steps.team' },
-    { id: 5, labelKey: 'createProjectWizard.steps.timeline' },
-    { id: 6, labelKey: 'createProjectWizard.steps.assets' },
+    { id: 1, labelKey: 'createProjectWizard.steps.type' },
+    { id: 2, labelKey: 'createProjectWizard.steps.details' },
+    { id: 3, labelKey: 'createProjectWizard.steps.brief' },
+    { id: 4, labelKey: 'createProjectWizard.steps.setup' },
+    { id: 5, labelKey: 'createProjectWizard.steps.modules' },
+    { id: 6, labelKey: 'createProjectWizard.steps.team' },
+    { id: 7, labelKey: 'createProjectWizard.steps.timeline' },
+    { id: 8, labelKey: 'createProjectWizard.steps.assets' },
 ];
+
+const SETUP_WORKSTREAMS_STEP_ID = 4;
+
+const getWizardSteps = (includeSetupWorkstreams: boolean) => (
+    includeSetupWorkstreams
+        ? STEPS
+        : STEPS.filter(step => step.id !== SETUP_WORKSTREAMS_STEP_ID)
+);
+
+const getNextStepId = (currentStep: number, includeSetupWorkstreams: boolean) => {
+    const steps = getWizardSteps(includeSetupWorkstreams);
+    const currentIndex = steps.findIndex(step => step.id === currentStep);
+    if (currentIndex === -1) {
+        return steps.find(step => step.id > currentStep)?.id ?? steps[steps.length - 1]?.id ?? currentStep;
+    }
+    const nextIndex = Math.min(currentIndex + 1, steps.length - 1);
+    return steps[nextIndex]?.id ?? currentStep;
+};
+
+const getPreviousStepId = (currentStep: number, includeSetupWorkstreams: boolean) => {
+    const steps = getWizardSteps(includeSetupWorkstreams);
+    const currentIndex = steps.findIndex(step => step.id === currentStep);
+    if (currentIndex === -1) {
+        return [...steps].reverse().find(step => step.id < currentStep)?.id ?? steps[0]?.id ?? currentStep;
+    }
+    const previousIndex = Math.max(currentIndex - 1, 0);
+    return steps[previousIndex]?.id ?? currentStep;
+};
 
 type ModuleOption = {
     id: ProjectModule | 'groups';
@@ -82,26 +125,31 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     // Form Data
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
+    const [templateId, setTemplateId] = useState<ProjectTemplateId>('blank');
     const [projectType, setProjectType] = useState<ProjectType>('standard');
     const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>('build');
     const [cadence, setCadence] = useState<ProjectCadence>('weekly');
     const dateConfidence: ProjectDateConfidence = 'target';
-    const [objective, setObjective] = useState('');
     const [successCriteria, setSuccessCriteria] = useState('');
     const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
+    const [companyProjects, setCompanyProjects] = useState<Project[]>([]);
+    const [companyProjectId, setCompanyProjectId] = useState('');
+    const [companyProjectRole, setCompanyProjectRole] = useState<CompanyProjectRole>('other');
+    const [startupTrackIds, setStartupTrackIds] = useState<StartupTrackId[]>([]);
+    const [startupSensitiveTracksConfirmed, setStartupSensitiveTracksConfirmed] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [dueDate, setDueDate] = useState<Date | null>(null);
     const [priority, setPriority] = useState<Priority>('medium');
-    const [status, setStatus] = useState('Planning');
+    const [status, setStatus] = useState<ProjectStatus>('Planning');
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
     const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
-    const [externalResources, setExternalResources] = useState<{ title: string; url: string; icon?: string }[]>([]);
+    const [externalResources, setExternalResources] = useState<ProjectExternalResource[]>([]);
 
     // Media Library State
     const [mediaPickerTarget, setMediaPickerTarget] = useState<'cover' | 'icon' | null>(null);
@@ -128,13 +176,18 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [connectingGithub, setConnectingGithub] = useState(false);
 
     const handleAiPromptChange = useArrowReplacement((e) => setAiPrompt(e.target.value));
-    const handleObjectiveChange = useArrowReplacement((e) => setObjective(e.target.value));
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
     useEffect(() => {
         getWorkspaceMembers().then(members => {
             setAvailableMembers(members.filter(m => m.role !== 'Guest'));
         });
         getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
+        getAllWorkspaceProjects()
+            .then(projects => setCompanyProjects(projects.filter(isCompanyProject)))
+            .catch(error => {
+                console.warn('Failed to load company projects for project creation', error);
+                setCompanyProjects([]);
+            });
         // Load GitHub token
         const loadGithubData = async () => {
             const user = auth.currentUser;
@@ -159,22 +212,49 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     useEffect(() => {
         if (creationMode === 'scratch') {
-            const defaults: Record<string, ProjectModule[]> = {
-                standard: ['tasks', 'initiatives', 'ideas', 'milestones', 'activity'],
-                software: ['tasks', 'initiatives', 'issues', 'activity'],
-                creative: ['ideas', 'initiatives', 'tasks', 'activity']
-            };
-            setModules(defaults[projectType] || defaults.standard);
+            setModules(getProjectTemplateDefinition(templateId).defaultModules);
         }
-    }, [projectType, creationMode]);
+    }, [templateId, creationMode]);
+
+    const handleTemplateSelect = (nextTemplateId: ProjectTemplateId) => {
+        const template = getProjectTemplateDefinition(nextTemplateId);
+        setTemplateId(template.id);
+        setProjectType(template.legacyProjectType);
+        setOperatingMode(template.defaultOperatingMode);
+        setCadence(template.defaultCadence);
+        setModules(template.defaultModules);
+        if (!isSoftwareProject({
+            projectCategory: template.projectCategory,
+            templateId: template.id,
+            projectType: template.legacyProjectType
+        }) && status === 'In Testing') {
+            setStatus('Planning');
+        }
+        if (template.isCompanyProject) {
+            setCompanyProjectId('');
+            setCompanyProjectRole('other');
+            setStartupTrackIds(template.suggestedStartupTrackIds || []);
+            setStartupSensitiveTracksConfirmed(false);
+        } else {
+            setStartupTrackIds([]);
+            setStartupSensitiveTracksConfirmed(false);
+        }
+    };
 
     const handleNext = () => {
-        if (currentStep === 1 && creationMode === 'scratch' && !objective.trim() && description.trim()) {
-            setObjective(description.trim());
+        const currentTemplate = getProjectTemplateDefinition(templateId);
+        const selectedSensitiveTracks = STARTUP_TRACK_DEFINITIONS.filter(track => (
+            currentTemplate.isCompanyProject
+            && track.sensitive
+            && startupTrackIds.includes(track.id)
+        ));
+        if (currentStep === SETUP_WORKSTREAMS_STEP_ID && selectedSensitiveTracks.length > 0 && !startupSensitiveTracksConfirmed) {
+            showToast(t('createProjectWizard.startup.confirmSensitive.error'), 'error');
+            return;
         }
 
         setCurrentStep(c => {
-            const next = Math.min(c + 1, STEPS.length - 1);
+            const next = getNextStepId(c, currentTemplate.isCompanyProject === true);
             setFurthestVisitedStep(max => Math.max(max, next));
             return next;
         });
@@ -186,7 +266,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             setCreationMode(null);
             setBlueprint(null);
         } else {
-            setCurrentStep(c => Math.max(c - 1, 0));
+            const currentTemplate = getProjectTemplateDefinition(templateId);
+            setCurrentStep(c => getPreviousStepId(c, currentTemplate.isCompanyProject === true));
         }
     };
 
@@ -208,11 +289,19 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         setIsGenerating(true);
         try {
             const result = await generateProjectBlueprint(aiPrompt);
+            const template = getProjectTemplateDefinition(templateId);
             setBlueprint(result);
             setName(result.title);
             setDescription(result.description);
-            setObjective(result.description);
-            setModules(['tasks', 'initiatives', 'milestones', 'activity', 'ideas']);
+            setTemplateId(template.id);
+            setProjectType(template.legacyProjectType);
+            setOperatingMode(template.defaultOperatingMode);
+            setCadence(template.defaultCadence);
+            setModules(template.defaultModules);
+            if (!template.isCompanyProject) {
+                setStartupTrackIds([]);
+            }
+            setStartupSensitiveTracksConfirmed(false);
             handleNext();
         } catch (e) {
             console.error(e);
@@ -263,6 +352,81 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         setCropType(null);
     };
 
+    const seedStartupProject = async (
+        projectId: string,
+        selectedTrackIds: StartupTrackId[],
+        jurisdictionTemplateId: StartupJurisdictionTemplateId
+    ) => {
+        const selectedTracks = new Set(selectedTrackIds);
+        const initiativeIdsByTrack = new Map<StartupTrackId, string>();
+
+        const seedInitiatives = STARTUP_SEED_INITIATIVES.filter(initiative => selectedTracks.has(initiative.trackId));
+        for (const initiative of seedInitiatives) {
+            const initiativeId = await createInitiative(projectId, t(initiative.titleKey), {
+                description: t(initiative.descriptionKey),
+                priority: initiative.priority,
+                status: 'Planning',
+                source: 'template',
+                templateId: 'startup_company_formation',
+                templateTrack: initiative.trackId,
+                templateSeedId: initiative.id,
+                externalKey: `startup_company_formation:${initiative.id}`
+            });
+            initiativeIdsByTrack.set(initiative.trackId, initiativeId);
+        }
+
+        const seedMilestones = STARTUP_SEED_MILESTONES.filter(milestone => (
+            milestone.trackIds.some(trackId => selectedTracks.has(trackId))
+        ));
+        for (const milestone of seedMilestones) {
+            await createMilestone(projectId, {
+                title: t(milestone.titleKey),
+                description: t(milestone.descriptionKey),
+                status: 'Pending',
+                riskRating: milestone.riskRating,
+                source: 'template',
+                templateId: 'startup_company_formation',
+                templateTrack: milestone.trackIds.find(trackId => selectedTracks.has(trackId)) || milestone.trackIds[0],
+                templateSeedId: milestone.id,
+                externalKey: `startup_company_formation:${milestone.id}`
+            });
+        }
+
+        const seedTasks = [
+            ...STARTUP_SEED_TASKS,
+            ...STARTUP_JURISDICTION_SEED_TASKS.filter(task => (
+                task.jurisdictionTemplateId === jurisdictionTemplateId
+                && selectedTracks.has(task.trackId)
+            ))
+        ].filter(task => selectedTracks.has(task.trackId));
+        for (const task of seedTasks) {
+            const initiativeId = initiativeIdsByTrack.get(task.trackId);
+            const track = STARTUP_TRACK_DEFINITIONS.find(item => item.id === task.trackId);
+            const sourceReferences = getStartupSourceReferences(
+                'jurisdictionTemplateId' in task ? task.jurisdictionTemplateId : jurisdictionTemplateId,
+                task.sourceReferenceIds || []
+            );
+            const taskOptions = {
+                description: t(task.descriptionKey),
+                priority: task.priority,
+                status: 'Open' as const,
+                category: ['Startup', track ? t(track.labelKey) : 'Startup'],
+                source: sourceReferences.length > 0 ? 'official_template' : 'template',
+                templateId: 'startup_company_formation' as ProjectTemplateId,
+                templateTrack: task.trackId,
+                templateSeedId: task.id,
+                sourceReferences,
+                externalKey: `startup_company_formation:${task.id}`
+            };
+
+            if (initiativeId) {
+                await createInitiativeTask(projectId, initiativeId, t(task.titleKey), taskOptions);
+            } else {
+                await addTask(projectId, t(task.titleKey), undefined, undefined, task.priority, taskOptions);
+            }
+        }
+    };
+
     const handleSubmit = async () => {
         if (!name) return;
         setIsSubmitting(true);
@@ -274,15 +438,31 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 .map(item => item.trim())
                 .filter(Boolean);
             const brief = {
-                ...(objective.trim() && { objective: objective.trim() }),
+                ...(description.trim() && { objective: description.trim() }),
                 ...(parsedSuccessCriteria.length > 0 && { successCriteria: parsedSuccessCriteria }),
                 cadence
             };
             const hasBrief = Object.keys(brief).length > 1 || Boolean(brief.cadence);
+            const selectedTemplate = getProjectTemplateDefinition(templateId);
+            const trimmedCompanyProjectId = selectedTemplate.isCompanyProject ? '' : companyProjectId.trim();
+            const jurisdictionTemplate = getStartupJurisdictionTemplate('', '');
+            const selectedSensitiveTracks = STARTUP_TRACK_DEFINITIONS.filter(track => track.sensitive && startupTrackIds.includes(track.id));
+            if (selectedTemplate.isCompanyProject && selectedSensitiveTracks.length > 0 && !startupSensitiveTracksConfirmed) {
+                showToast(t('createProjectWizard.startup.confirmSensitive.error'), 'error');
+                setIsSubmitting(false);
+                return;
+            }
+            const jurisdictionSourcesReviewedAt = jurisdictionTemplate.sourceReferences[0]?.lastReviewedAt;
             const projectPayload: Partial<Project> = {
                 title: name,
                 description,
                 projectType,
+                projectCategory: selectedTemplate.projectCategory,
+                templateId: selectedTemplate.id,
+                ...(trimmedCompanyProjectId && {
+                    companyProjectId: trimmedCompanyProjectId,
+                    companyProjectRole
+                }),
                 operatingMode,
                 dateConfidence,
                 operatingModel: {
@@ -299,9 +479,45 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 modules,
                 links: links.filter(l => l.title && l.url),
                 externalResources: externalResources.filter(r => r.title && r.url),
+                ...(selectedTemplate.isCompanyProject && {
+                    startupProfile: {
+                        workingName: name,
+                        formationStatus: 'idea',
+                        fundingRoute: 'undecided',
+                        jurisdictionTemplateId: jurisdictionTemplate.id,
+                        jurisdictionSources: jurisdictionTemplate.sourceReferences,
+                        ...(jurisdictionSourcesReviewedAt && {
+                            jurisdictionSourcesReviewedAt
+                        }),
+                        advisorReviewRequired: jurisdictionTemplate.advisorReviewRequired || selectedSensitiveTracks.length > 0,
+                        regulatedIndustryStatus: 'unknown',
+                        ...(formattedDueDate && {
+                            targetLaunchDate: formattedDueDate
+                        }),
+                        selectedTrackIds: startupTrackIds
+                    },
+                    startupReadiness: {
+                        legalStructureDecided: false,
+                        founderAgreementReady: false,
+                        ipAssignmentReady: false,
+                        registrationSubmitted: false,
+                        registrationConfirmed: false,
+                        taxSetupReady: false,
+                        bankAccountReady: false,
+                        bookkeepingReady: false,
+                        privacyDocsReady: false,
+                        requiredPermitsKnown: false,
+                        launchOfferReady: false,
+                        firstChannelReady: false
+                    }
+                }),
                 ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
             };
             const projectId = await createProject(projectPayload, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
+
+            if (selectedTemplate.isCompanyProject && startupTrackIds.length > 0) {
+                await seedStartupProject(projectId, startupTrackIds, jurisdictionTemplate.id);
+            }
 
             if (blueprint) {
                 for (const ms of blueprint.milestones) {
@@ -335,23 +551,56 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         });
     };
 
+    const handleStartupTrackToggle = (trackId: StartupTrackId) => {
+        setStartupTrackIds(current => (
+            current.includes(trackId)
+                ? current.filter(id => id !== trackId)
+                : [...current, trackId]
+        ));
+        setStartupSensitiveTracksConfirmed(false);
+    };
+
     if (!can('canCreateProjects')) {
         return <div className="create-project__blocked">{t('createProjectWizard.errors.accessDenied')}</div>;
     }
 
-    const getTypeIcon = (type: string) => {
-        switch (type) {
-            case 'software': return 'terminal';
-            case 'creative': return 'palette';
-            default: return 'folder_open';
-        }
-    };
-
-    const typeLabels: Record<ProjectType, string> = {
-        standard: t('createProjectWizard.type.standard'),
-        software: t('createProjectWizard.type.software'),
-        creative: t('createProjectWizard.type.creative'),
-    };
+    const selectedTemplate = getProjectTemplateDefinition(templateId);
+    const isSelectedSoftwareProject = isSoftwareProject({
+        projectCategory: selectedTemplate.projectCategory,
+        templateId: selectedTemplate.id,
+        projectType
+    });
+    const isCreatingCompanyProject = selectedTemplate.isCompanyProject === true;
+    const visibleSteps = getWizardSteps(isCreatingCompanyProject);
+    const finalStepId = visibleSteps[visibleSteps.length - 1]?.id ?? STEPS[STEPS.length - 1].id;
+    const startupJurisdictionTemplate = getStartupJurisdictionTemplate('', '');
+    const selectedStartupTracks = STARTUP_TRACK_DEFINITIONS.filter(track => startupTrackIds.includes(track.id));
+    const selectedStartupTrackSet = new Set(startupTrackIds);
+    const selectedSensitiveStartupTracks = selectedStartupTracks.filter(track => track.sensitive);
+    const startupNeedsSensitiveConfirmation = isCreatingCompanyProject && selectedSensitiveStartupTracks.length > 0;
+    const startupSeedMilestoneCount = STARTUP_SEED_MILESTONES.filter(milestone => (
+        milestone.trackIds.some(trackId => selectedStartupTrackSet.has(trackId))
+    )).length;
+    const startupSeedTaskCount = STARTUP_SEED_TASKS.filter(task => selectedStartupTrackSet.has(task.trackId)).length
+        + STARTUP_JURISDICTION_SEED_TASKS.filter(task => (
+            task.jurisdictionTemplateId === startupJurisdictionTemplate.id
+            && selectedStartupTrackSet.has(task.trackId)
+        )).length;
+    const startupSeedInitiativeCount = STARTUP_SEED_INITIATIVES.filter(initiative => selectedStartupTrackSet.has(initiative.trackId)).length;
+    const companyProjectOptions = [
+        { value: '', label: t('createProjectWizard.companyProject.none') },
+        ...companyProjects.map(project => ({ value: project.id, label: project.title }))
+    ];
+    const companyProjectRoleOptions = [
+        { value: 'product', label: t('projectCompanyRoles.product') },
+        { value: 'marketing', label: t('projectCompanyRoles.marketing') },
+        { value: 'finance', label: t('projectCompanyRoles.finance') },
+        { value: 'legal', label: t('projectCompanyRoles.legal') },
+        { value: 'operations', label: t('projectCompanyRoles.operations') },
+        { value: 'funding', label: t('projectCompanyRoles.funding') },
+        { value: 'research', label: t('projectCompanyRoles.research') },
+        { value: 'other', label: t('projectCompanyRoles.other') }
+    ];
     const operatingModeOptions = [
         { value: 'explore', label: t('createProjectWizard.brief.mode.explore') },
         { value: 'build', label: t('createProjectWizard.brief.mode.build') },
@@ -392,6 +641,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         Backlog: t('dashboard.projectStatus.backlog'),
         Planning: t('dashboard.projectStatus.planning'),
         Active: t('dashboard.projectStatus.active'),
+        ...(isSelectedSoftwareProject ? { 'In Testing': t('dashboard.projectStatus.inTesting') } : {}),
         'On Hold': t('dashboard.projectStatus.onHold'),
     };
     const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
@@ -417,9 +667,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const deadlineValue = dueDate
         ? format(dueDate, dateFormat, { locale: dateLocale })
         : t('createProjectWizard.preview.deadlineEmpty');
-
-    const totalSteps = STEPS.length - 1;
-    const currentStepLabel = t(STEPS[currentStep]?.labelKey);
 
     return (
         <div className="create-project">
@@ -476,16 +723,16 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Stepper Navigation */}
                         {/* Stepper Navigation (Pills) */}
                         <div className="create-project__stepper">
-                            {STEPS.map((step, index) => {
-                                const isActive = currentStep === index;
-                                const isCompleted = currentStep > index;
-                                const isClickable = index <= furthestVisitedStep;
+                            {visibleSteps.map((step) => {
+                                const isActive = currentStep === step.id;
+                                const isCompleted = currentStep > step.id;
+                                const isClickable = step.id <= furthestVisitedStep;
 
                                 return (
                                     <div
                                         key={step.id}
                                         className={`create-project__step-item ${isActive ? 'is-active' : ''} ${isCompleted ? 'is-completed' : ''} ${isClickable ? 'is-clickable' : ''}`}
-                                        onClick={() => handleStepClick(index)}
+                                        onClick={() => handleStepClick(step.id)}
                                         role="button"
                                         tabIndex={isClickable ? 0 : -1}
                                         title={t(step.labelKey)} // Tooltip for context
@@ -496,7 +743,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             })}
                         </div>
                         <div className="create-project__progress" style={{ display: 'none' }}>
-                            {STEPS.slice(1).map((step) => (
+                            {visibleSteps.slice(1).map((step) => (
                                 <div
                                     key={step.id}
                                     className={`create-project__progress-pill ${currentStep >= step.id ? 'is-active' : ''}`}
@@ -552,8 +799,48 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 1: Details (AI) */}
-                        {currentStep === 1 && creationMode === 'ai' && (
+                        {/* Step 1: Type */}
+                        {currentStep === 1 && creationMode && (
+                            <div className="create-project__step create-project__step--type animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.typeStep.title')}</h2>
+                                    <p>{t('createProjectWizard.typeStep.subtitle')}</p>
+                                </div>
+
+                                <div
+                                    className="create-project__type-grid"
+                                    role="radiogroup"
+                                    aria-label={t('createProjectWizard.typeStep.title')}
+                                >
+                                    {PROJECT_TEMPLATE_DEFINITIONS.map(template => {
+                                        const isActive = templateId === template.id;
+
+                                        return (
+                                            <button
+                                                key={template.id}
+                                                type="button"
+                                                onClick={() => handleTemplateSelect(template.id)}
+                                                role="radio"
+                                                aria-checked={isActive}
+                                                className={`create-project__type-card ${isActive ? 'is-active' : ''}`}
+                                            >
+                                                <span className="material-symbols-outlined create-project__type-icon">{template.icon}</span>
+                                                <span className="create-project__type-text">
+                                                    <span className="create-project__type-title">{t(template.labelKey)}</span>
+                                                    <span className="create-project__type-description">{t(template.descriptionKey)}</span>
+                                                </span>
+                                                <span className="material-symbols-outlined create-project__type-check" aria-hidden="true">
+                                                    {isActive ? 'check_circle' : 'radio_button_unchecked'}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 2: Details (AI) */}
+                        {currentStep === 2 && creationMode === 'ai' && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.ai.title')}</h2>
@@ -579,8 +866,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 1: Details (Scratch) */}
-                        {currentStep === 1 && creationMode === 'scratch' && (
+                        {/* Step 2: Details (Scratch) */}
+                        {currentStep === 2 && creationMode === 'scratch' && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.details.title')}</h2>
@@ -622,28 +909,33 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         />
                                     </div>
 
-                                    <div className="create-project__field">
-                                        <label>{t('createProjectWizard.details.type.label')}</label>
-                                        <div className="create-project__type-grid">
-                                            {(['standard', 'software', 'creative'] as const).map(type => (
-                                                <button
-                                                    key={type}
-                                                    type="button"
-                                                    onClick={() => setProjectType(type)}
-                                                    className={`create-project__type-card ${projectType === type ? 'is-active' : ''}`}
-                                                >
-                                                    <span className="material-symbols-outlined">{getTypeIcon(type)}</span>
-                                                    <span>{typeLabels[type]}</span>
-                                                </button>
-                                            ))}
+                                    {!isCreatingCompanyProject && (
+                                        <div className="create-project__field create-project__field--wide">
+                                            <Select
+                                                label={t('createProjectWizard.companyProject.label')}
+                                                value={companyProjectId}
+                                                onChange={(value) => setCompanyProjectId(String(value))}
+                                                options={companyProjectOptions}
+                                                placeholder={t('createProjectWizard.companyProject.placeholder')}
+                                            />
+                                            {companyProjectId && (
+                                                <div className="create-project__brief-options create-project__field--wide">
+                                                    <Select
+                                                        label={t('createProjectWizard.companyProject.roleLabel')}
+                                                        value={companyProjectRole}
+                                                        onChange={(value) => setCompanyProjectRole(value as CompanyProjectRole)}
+                                                        options={companyProjectRoleOptions}
+                                                    />
+                                                </div>
+                                            )}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 2: Project Brief */}
-                        {currentStep === 2 && (
+                        {/* Step 3: Project Brief */}
+                        {currentStep === 3 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.brief.title')}</h2>
@@ -651,16 +943,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 </div>
 
                                 <div className="create-project__brief-grid">
-                                    <div className="create-project__field create-project__field--wide">
-                                        <label>{t('createProjectWizard.brief.objective.label')}</label>
-                                        <TextArea
-                                            value={objective}
-                                            onChange={handleObjectiveChange}
-                                            placeholder={t('createProjectWizard.brief.objective.placeholder')}
-                                            className="create-project__brief-input"
-                                        />
-                                    </div>
-
                                     <div className="create-project__field create-project__field--wide">
                                         <label>{t('createProjectWizard.brief.successCriteria.label')}</label>
                                         <TextArea
@@ -679,12 +961,66 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             options={cadenceOptions}
                                         />
                                     </div>
+
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 2: Modules - GRID LAYOUT */}
-                        {currentStep === 3 && (
+                        {/* Step 4: Setup Workstreams */}
+                        {currentStep === SETUP_WORKSTREAMS_STEP_ID && isCreatingCompanyProject && (
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.startup.tracks.title')}</h2>
+                                    <p>{t('createProjectWizard.startup.tracks.subtitle')}</p>
+                                </div>
+
+                                <div className="create-project__startup-panel create-project__startup-panel--tracks">
+                                    <div className="create-project__startup-track-list">
+                                        {STARTUP_TRACK_DEFINITIONS.map(track => {
+                                            const isSelected = startupTrackIds.includes(track.id);
+                                            return (
+                                                <button
+                                                    key={track.id}
+                                                    type="button"
+                                                    onClick={() => handleStartupTrackToggle(track.id)}
+                                                    aria-pressed={isSelected}
+                                                    className={`create-project__startup-track ${isSelected ? 'is-active' : ''}`}
+                                                >
+                                                    <span className="material-symbols-outlined create-project__startup-track-icon" aria-hidden="true">{track.icon}</span>
+                                                    <span className="create-project__startup-track-copy">
+                                                        <strong>{t(track.labelKey)}</strong>
+                                                        <small>{t(track.descriptionKey)}</small>
+                                                    </span>
+                                                    <span className="create-project__startup-track-check" aria-hidden="true">
+                                                        {isSelected && (
+                                                            <span className="material-symbols-outlined">check</span>
+                                                        )}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {startupNeedsSensitiveConfirmation && (
+                                        <button
+                                            type="button"
+                                            className={`create-project__startup-sensitive ${startupSensitiveTracksConfirmed ? 'is-active' : ''}`}
+                                            onClick={() => setStartupSensitiveTracksConfirmed(value => !value)}
+                                        >
+                                            <span className="create-project__startup-track-check" aria-hidden="true">
+                                                {startupSensitiveTracksConfirmed && (
+                                                    <span className="material-symbols-outlined">check</span>
+                                                )}
+                                            </span>
+                                            <span>{t('createProjectWizard.startup.confirmSensitive.label')}</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 5: Modules */}
+                        {currentStep === 5 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.modules.title')}</h2>
@@ -700,8 +1036,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 3: Team */}
-                        {currentStep === 4 && (
+                        {/* Step 6: Team */}
+                        {currentStep === 6 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.team.title')}</h2>
@@ -814,8 +1150,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 5: Timeline */}
-                        {currentStep === 5 && (
+                        {/* Step 7: Timeline */}
+                        {currentStep === 7 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.timeline.title')}</h2>
@@ -835,7 +1171,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         <Select
                                             label={t('createProjectWizard.timeline.status')}
                                             value={status}
-                                            onChange={(value) => setStatus(String(value))}
+                                            onChange={(value) => setStatus(String(value) as ProjectStatus)}
                                             options={statusOptions}
                                         />
                                     </div>
@@ -876,8 +1212,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 6: Assets */}
-                        {currentStep === 6 && (
+                        {/* Step 8: Assets */}
+                        {currentStep === 8 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.assets.title')}</h2>
@@ -1162,13 +1498,24 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             )}
                         </div>
                         <div className="create-project__footer-actions">
-                            {currentStep > 0 && currentStep < STEPS.length - 1 && (
-                                <Button onClick={handleNext} disabled={currentStep === 1 && !name}>
+                            {currentStep > 0 && currentStep !== finalStepId && (
+                                <Button
+                                    onClick={handleNext}
+                                    disabled={
+                                        (currentStep === 2 && creationMode === 'scratch' && !name)
+                                        || (currentStep === 2 && creationMode === 'ai' && !blueprint)
+                                        || (currentStep === SETUP_WORKSTREAMS_STEP_ID && startupNeedsSensitiveConfirmation && !startupSensitiveTracksConfirmed)
+                                    }
+                                >
                                     {t('createProjectWizard.actions.continue')}
                                 </Button>
                             )}
-                            {currentStep === STEPS.length - 1 && (
-                                <Button onClick={handleSubmit} disabled={isSubmitting || !name} isLoading={isSubmitting}>
+                            {currentStep === finalStepId && (
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={isSubmitting || !name || (startupNeedsSensitiveConfirmation && !startupSensitiveTracksConfirmed)}
+                                    isLoading={isSubmitting}
+                                >
                                     {isSubmitting ? t('createProjectWizard.actions.creating') : t('createProjectWizard.actions.create')}
                                 </Button>
                             )}
@@ -1197,7 +1544,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 {iconPreview ? (
                                     <img src={iconPreview} className="create-project__preview-icon-image" alt="" />
                                 ) : (
-                                    <span className="material-symbols-outlined create-project__preview-icon-fallback">{getTypeIcon(projectType)}</span>
+                                    <span className="material-symbols-outlined create-project__preview-icon-fallback">{selectedTemplate.icon}</span>
                                 )}
                             </div>
 
@@ -1206,6 +1553,9 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 <p className="create-project__preview-description">
                                     {description || t('createProjectWizard.preview.descriptionFallback')}
                                 </p>
+                                <span className="create-project__preview-template">
+                                    {t(selectedTemplate.labelKey)}
+                                </span>
                             </div>
 
                             <div className="create-project__preview-meta">
@@ -1240,6 +1590,19 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                     <span className="create-project__preview-date">{deadlineValue}</span>
                                 </div>
                             </div>
+
+                            {isCreatingCompanyProject && (
+                                <div className="create-project__preview-startup">
+                                    <div>
+                                        <span>{t('createProjectWizard.startup.preview.seeded')}</span>
+                                        <strong>{startupSeedInitiativeCount + startupSeedMilestoneCount + startupSeedTaskCount}</strong>
+                                    </div>
+                                    <div>
+                                        <span>{t('createProjectWizard.startup.preview.tracks')}</span>
+                                        <strong>{startupTrackIds.length}</strong>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="create-project__preview-footer">
                                 <div className="create-project__preview-modules">

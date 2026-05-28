@@ -79,4 +79,17 @@ describe('initiative feedback builder helpers', () => {
             expect.objectContaining({ code: 'missingTitleMapping', severity: 'warning' }),
         ]));
     });
+
+    it('warns when multiple visible fields use the same task mapping', () => {
+        const issues = getInitiativeFeedbackBuilderIssues([
+            baseField({ id: 'title-a', role: 'title', label: 'Summary', enabled: true }),
+            baseField({ id: 'title-b', role: 'title', label: 'Customer headline', enabled: true }),
+            baseField({ id: 'details', role: 'description', label: 'Details', enabled: true }),
+        ]);
+
+        expect(issues).toEqual(expect.arrayContaining([
+            expect.objectContaining({ code: 'duplicateRoleMapping', severity: 'warning', fieldId: 'title-a' }),
+            expect.objectContaining({ code: 'duplicateRoleMapping', severity: 'warning', fieldId: 'title-b' }),
+        ]));
+    });
 });

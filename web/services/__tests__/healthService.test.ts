@@ -252,6 +252,24 @@ describe('calculateProjectHealth', () => {
         expect(health.recommendationKeys).toContain('health.recommendations.completeProjectBrief');
     });
 
+    it('uses the project purpose instead of requiring a separate brief objective', () => {
+        const health = calculateProjectHealth(
+            baseProject({
+                description: 'Launch the customer beta.',
+                status: 'Planning',
+                brief: {
+                    successCriteria: ['Beta invite sent'],
+                    scope: 'Customer beta only',
+                    decisionOwner: 'Product',
+                    cadence: 'weekly'
+                }
+            })
+        );
+
+        expect(health.factors.map((factor) => factor.id)).not.toContain('project_brief_gap');
+        expect(health.factors.map((factor) => factor.id)).toContain('project_brief_ready');
+    });
+
     it('does not calculate health signals for canceled projects', () => {
         const canceledProject = baseProject({ status: 'Canceled', dueDate: '2026-05-20', priority: 'Urgent' });
 
@@ -281,17 +299,19 @@ describe('calculateProjectHealth', () => {
 });
 
 describe('calculateWorkspaceHealth', () => {
-    it('ignores paused and non-active projects in global health', () => {
+    it('includes active and testing projects while ignoring paused and non-active projects in global health', () => {
         const activeProject = baseProject({ id: 'active-project', status: 'Active' });
+        const testingProject = baseProject({ id: 'testing-project', status: 'In Testing' });
         const pausedProject = baseProject({ id: 'paused-project', status: 'On Hold' });
         const canceledProject = baseProject({ id: 'canceled-project', status: 'Canceled' });
         const planningProject = baseProject({ id: 'planning-project', status: 'Planning' });
         const reviewProject = baseProject({ id: 'review-project', status: 'Review' });
 
         const health = calculateWorkspaceHealth(
-            [activeProject, pausedProject, canceledProject, planningProject, reviewProject],
+            [activeProject, testingProject, pausedProject, canceledProject, planningProject, reviewProject],
             {
                 'active-project': workspaceHealth({ score: 92, status: 'excellent' }),
+                'testing-project': workspaceHealth({ score: 80, status: 'healthy' }),
                 'paused-project': workspaceHealth({ score: 8, status: 'critical' }),
                 'canceled-project': workspaceHealth({ score: 4, status: 'critical' }),
                 'planning-project': workspaceHealth({ score: 18, status: 'critical' }),
@@ -300,14 +320,16 @@ describe('calculateWorkspaceHealth', () => {
         );
 
         expect(isProjectActiveForGlobalSignals(activeProject)).toBe(true);
+        expect(isProjectActiveForGlobalSignals(testingProject)).toBe(true);
         expect(isProjectActiveForGlobalSignals(pausedProject)).toBe(false);
         expect(isProjectActiveForGlobalSignals(canceledProject)).toBe(false);
         expect(isProjectActiveForGlobalSignals(planningProject)).toBe(false);
         expect(isProjectActiveForGlobalSignals(reviewProject)).toBe(false);
-        expect(health.score).toBe(92);
-        expect(health.status).toBe('excellent');
-        expect(health.breakdown.total).toBe(1);
+        expect(health.score).toBe(86);
+        expect(health.status).toBe('healthy');
+        expect(health.breakdown.total).toBe(2);
         expect(health.breakdown.excellent).toBe(1);
+        expect(health.breakdown.healthy).toBe(1);
         expect(health.breakdown.critical).toBe(0);
         expect(health.breakdown.warning).toBe(0);
     });

@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useUIState } from '../context/UIContext';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
+import { isCompanyProject } from '../config/projectTemplates';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {
@@ -57,6 +58,9 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     }, [isAuthReady, isAuthenticated]);
 
     const activeProject = projects.find(p => p.id === currentProjectId);
+    const activeCompanyProject = activeProject?.companyProjectId
+        ? projects.find(p => p.id === activeProject.companyProjectId)
+        : null;
 
     // Close on click outside
     useEffect(() => {
@@ -69,9 +73,19 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
         return () => window.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredProjects = projects.filter(p =>
-        p.title?.toLowerCase().includes(searchQuery.toLowerCase())
+    const companyProjects = projects.filter(isCompanyProject);
+    const ordinaryProjects = projects.filter(project => !isCompanyProject(project));
+    const filteredCompanyProjects = companyProjects.filter(project =>
+        project.title?.toLowerCase().includes(searchQuery.toLowerCase())
+        || ordinaryProjects.some(child => child.companyProjectId === project.id && child.title?.toLowerCase().includes(searchQuery.toLowerCase()))
     );
+    const filteredOrdinaryProjects = ordinaryProjects.filter(project => {
+        const companyProject = project.companyProjectId ? companyProjects.find(company => company.id === project.companyProjectId) : null;
+        return project.title?.toLowerCase().includes(searchQuery.toLowerCase())
+            || companyProject?.title?.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+    const ungroupedProjects = filteredOrdinaryProjects.filter(project => !project.companyProjectId);
+    const hasFilteredProjects = filteredCompanyProjects.length > 0 || ungroupedProjects.length > 0;
 
     const handleSwitch = (projectId: string) => {
         navigate(`/project/${projectId}`);
@@ -84,6 +98,74 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
         setIsOpen(false);
         if (onClose) onClose();
     };
+
+    const renderProjectRow = (p: Project, options: { nested?: boolean; companyTitle?: string } = {}) => (
+        <div
+            key={p.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => handleSwitch(p.id)}
+            onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    handleSwitch(p.id);
+                }
+            }}
+            className={`
+                w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer group outline-none
+                ${options.nested ? 'pl-8' : ''}
+                ${currentProjectId === p.id ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}
+            `}
+        >
+            <div className={`
+                size-6 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden
+                ${p.squareIcon ? 'bg-transparent' : isCompanyProject(p) ? 'bg-[var(--color-primary)]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
+            `}>
+                {p.squareIcon ? (
+                    <img src={p.squareIcon} alt={p.title} className="w-full h-full object-cover" />
+                ) : isCompanyProject(p) ? (
+                    <span className="material-symbols-outlined text-[16px]">domain</span>
+                ) : (
+                    <span>{p.title ? p.title.substring(0, 1).toUpperCase() : 'P'}</span>
+                )}
+            </div>
+            <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
+                <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+                    {options.companyTitle
+                        ? t('projectSwitcher.companyContext').replace('{company}', options.companyTitle)
+                        : isCompanyProject(p)
+                            ? t('projectSwitcher.companyProject')
+                            : p.ownerId === p.id
+                                ? t('projectSwitcher.role.owner')
+                                : t('projectSwitcher.role.member')}
+                </div>
+            </div>
+
+            {currentProjectId === p.id && (
+                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+            )}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    if (pinnedProjectId === p.id) {
+                        unpinProject();
+                    } else {
+                        pinProject(p.id);
+                    }
+                }}
+                className={`
+                    w-6 h-6 flex items-center justify-center rounded-full transition-all shrink-0 ml-1
+                    ${pinnedProjectId === p.id
+                        ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                        : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)]'
+                    }
+                `}
+                title={pinnedProjectId === p.id ? t('projectSwitcher.unpinProject') : t('projectSwitcher.pinProject')}
+            >
+                <span className="material-symbols-outlined text-[16px]">{pinnedProjectId === p.id ? 'push_pin' : 'keep'}</span>
+            </button>
+        </div>
+    );
 
     return (
         <div className="relative" ref={dropdownRef}>
@@ -117,11 +199,20 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                     </div>
                     <div className="flex flex-col items-start min-w-0">
                         <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                            {currentProjectId ? t('projectSwitcher.scope.project') : t('projectSwitcher.scope.workspace')}
+                            {activeCompanyProject
+                                ? t('projectSwitcher.scope.linkedProject')
+                                : currentProjectId
+                                    ? t('projectSwitcher.scope.project')
+                                    : t('projectSwitcher.scope.workspace')}
                         </span>
                         <span className="text-sm font-bold text-[var(--color-text-main)] truncate max-w-[140px]">
                             {currentProjectTitle || t('app.brand')}
                         </span>
+                        {activeCompanyProject && (
+                            <span className="text-[10px] text-[var(--color-text-muted)] truncate max-w-[140px]">
+                                {t('projectSwitcher.companyContext').replace('{company}', activeCompanyProject.title)}
+                            </span>
+                        )}
                     </div>
                 </div>
                 <span className="material-symbols-outlined text-[var(--color-text-muted)]">unfold_more</span>
@@ -170,69 +261,37 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
 
                             <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">{t('nav.projects')}</div>
 
-                            {loading && filteredProjects.length === 0 ? (
+                            {loading && !hasFilteredProjects ? (
                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
                                     {t('projectSwitcher.loading')}
                                 </div>
-                            ) : filteredProjects.length > 0 ? (
-                                filteredProjects.map(p => (
-                                    <div
-                                        key={p.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={() => handleSwitch(p.id)}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter' || e.key === ' ') {
-                                                handleSwitch(p.id);
-                                            }
-                                        }}
-                                        className={`
-                                            w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer group outline-none
-                                            ${currentProjectId === p.id ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}
-                                        `}
-                                    >
-                                        <div className={`
-                                            size-6 rounded-md flex items-center justify-center text-xs font-bold text-white shrink-0 overflow-hidden
-                                            ${p.squareIcon ? 'bg-transparent' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
-                                        `}>
-                                            {p.squareIcon ? (
-                                                <img src={p.squareIcon} alt={p.title} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <span>{p.title ? p.title.substring(0, 1).toUpperCase() : 'P'}</span>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
-                                            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
-                                                {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
+                            ) : hasFilteredProjects ? (
+                                <>
+                                    {filteredCompanyProjects.length > 0 && (
+                                        <div className="mb-1">
+                                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">
+                                                {t('projectSwitcher.companyProjects')}
                                             </div>
+                                            {filteredCompanyProjects.map(companyProject => {
+                                                const linkedProjects = filteredOrdinaryProjects.filter(project => project.companyProjectId === companyProject.id);
+                                                return (
+                                                    <div key={companyProject.id}>
+                                                        {renderProjectRow(companyProject)}
+                                                        {linkedProjects.map(project => renderProjectRow(project, { nested: true, companyTitle: companyProject.title }))}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
-
-                                        {currentProjectId === p.id && (
-                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
-                                        )}
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (pinnedProjectId === p.id) {
-                                                    unpinProject();
-                                                } else {
-                                                    pinProject(p.id);
-                                                }
-                                            }}
-                                            className={`
-                                                w-6 h-6 flex items-center justify-center rounded-full transition-all shrink-0 ml-1
-                                                ${pinnedProjectId === p.id
-                                                    ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
-                                                    : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)]'
-                                                }
-                                            `}
-                                            title={pinnedProjectId === p.id ? t('projectSwitcher.unpinProject') : t('projectSwitcher.pinProject')}
-                                        >
-                                            <span className="material-symbols-outlined text-[16px]">{pinnedProjectId === p.id ? 'push_pin' : 'keep'}</span>
-                                        </button>
-                                    </div>
-                                ))
+                                    )}
+                                    {ungroupedProjects.length > 0 && (
+                                        <div>
+                                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">
+                                                {t('projectSwitcher.otherProjects')}
+                                            </div>
+                                            {ungroupedProjects.map(project => renderProjectRow(project))}
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
                                     {t('projectSwitcher.empty')}

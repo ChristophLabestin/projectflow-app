@@ -90,7 +90,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = 'Medium',
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate' | 'source' | 'templateId' | 'templateTrack' | 'templateSeedId' | 'sourceReferences' | 'externalKey'>>,
     tenantId?: string
 ) => {
     const user = auth.currentUser;
@@ -116,6 +116,12 @@ export const addTask = async (
         assigneeIds: extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []),
         assignedGroupIds: extra?.assignedGroupIds || [],
         legacyInitiativeRoot: extra?.legacyInitiativeRoot === true,
+        source: extra?.source || '',
+        templateId: extra?.templateId || '',
+        templateTrack: extra?.templateTrack || '',
+        templateSeedId: extra?.templateSeedId || '',
+        sourceReferences: extra?.sourceReferences || [],
+        externalKey: extra?.externalKey || '',
         createdBy: user.uid,
         createdAt: serverTimestamp()
     };

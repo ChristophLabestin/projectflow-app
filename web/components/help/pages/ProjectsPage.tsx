@@ -482,12 +482,6 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
                         features={['Timeline view', 'Progress tracking', 'Risk indicators']}
                     />
                     <ModuleCard
-                        icon="hub"
-                        name="Mindmap"
-                        description="Visual brainstorming and flow organization. Connect concepts and explore relationships."
-                        features={['Node connections', 'Drag and drop', 'Export']}
-                    />
-                    <ModuleCard
                         icon="campaign"
                         name="Social Studio"
                         description="Plan and manage social media campaigns. Strategy, content creation, and scheduling."

@@ -29,7 +29,7 @@ import { linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
+import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -91,7 +91,6 @@ const TASKS = "tasks";
 const SUBTASKS = "subtasks";
 export const ISSUES = "issues";
 const IDEAS = "ideas";
-const MINDMAPS = "mindmaps";
 const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
@@ -435,23 +434,6 @@ export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (id
             onUpdate({ ...snap.data(), id: snap.id } as Idea);
         }
     });
-};
-
-
-
-const findMindmapDoc = async (mindmapId: string, projectId?: string, tenantId?: string) => {
-    if (projectId) {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const ref = doc(projectSubCollection(resolvedTenant, projectId, MINDMAPS), mindmapId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
-    }
-
-    // Note: documentId() in collection group queries requires a full path, not just the ID.
-    const cg = collectionGroup(db, MINDMAPS);
-    const snapshot = await getDocs(cg);
-    const matchingDoc = snapshot.docs.find((d) => d.id === mindmapId);
-    return matchingDoc || null;
 };
 
 export const addActivityEntry = async (projectId: string, payload: Omit<Activity, "id" | "projectId" | "createdAt" | "ownerId">) => {
@@ -1824,39 +1806,6 @@ export const getProjectIdeas = async (projectId: string, tenantId?: string): Pro
     return snapshot.docs
         .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-};
-
-// --- Mindmaps ---
-
-export const getProjectMindmaps = async (projectId: string, tenantId?: string): Promise<Mindmap[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, MINDMAPS));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Mindmap))
-        .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
-};
-
-export const createMindmap = async (projectId: string, name: string, tenantId?: string): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, MINDMAPS), {
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        name,
-        createdAt: serverTimestamp()
-    });
-    return docRef.id;
-};
-
-export const updateMindmapName = async (mindmapId: string, name: string, projectId?: string, tenantId?: string) => {
-    const snap = await findMindmapDoc(mindmapId, projectId, tenantId);
-    if (!snap) throw new Error("Mindmap not found");
-    await updateDoc(snap.ref, { name });
 };
 
 // --- Activity ---

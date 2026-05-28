@@ -14,7 +14,8 @@ export type InitiativeFeedbackBuilderIssueCode =
     | 'hiddenRequired'
     | 'missingTitleMapping'
     | 'missingDescriptionMapping'
-    | 'duplicateLabel';
+    | 'duplicateLabel'
+    | 'duplicateRoleMapping';
 
 export interface InitiativeFeedbackBuilderIssue {
     code: InitiativeFeedbackBuilderIssueCode;
@@ -214,6 +215,26 @@ export const getInitiativeFeedbackBuilderIssues = (fields: InitiativeFeedbackFie
                 severity: 'warning',
                 fieldId: field.id,
                 fieldLabel: field.label,
+            });
+        }
+    }
+
+    const mappedRoleCounts = new Map<InitiativeFeedbackFieldRole, number>();
+    for (const field of enabledFields) {
+        const role = field.role || 'general';
+        if (role === 'general') continue;
+        mappedRoleCounts.set(role, (mappedRoleCounts.get(role) || 0) + 1);
+    }
+
+    for (const field of enabledFields) {
+        const role = field.role || 'general';
+        if (role === 'general') continue;
+        if ((mappedRoleCounts.get(role) || 0) > 1) {
+            issues.push({
+                code: 'duplicateRoleMapping',
+                severity: 'warning',
+                fieldId: field.id,
+                fieldLabel: role,
             });
         }
     }

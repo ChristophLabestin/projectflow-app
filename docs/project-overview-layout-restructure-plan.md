@@ -26,6 +26,17 @@ Implemented the first structural pass:
 - Reordered the fixed card hierarchy so project state, planning, and contract context sit ahead of reference modules.
 - Moved updates/resources into a lower reference section.
 
+## Implementation Pass - 2026-05-28
+
+Refined the masthead after visual review:
+
+- Kept project cover media as a shallow identity band instead of a large hero.
+- Removed the empty cover placeholder icon for projects without cover media.
+- Reduced the project icon, header spacing, and overall first-viewport height.
+- Kept mobile masthead actions on one row so utility controls no longer add a stray second line.
+- Combined the command strip and attention queue into one Project focus panel so the top of the page reads as one decision surface instead of two stacked cards.
+- Embedded lifecycle actions under the project status metrics and placed the attention list beside them on desktop.
+
 ## Current Problems
 
 - The cover/header consumes too much vertical space before the page shows useful project signals.
@@ -46,7 +57,7 @@ Keep:
 - Status badge
 - Priority badge
 - Due date or timeline summary
-- New Task, Invite, Mindmap, Settings actions
+- New Task, Invite, Settings actions
 
 Change:
 - Reduce cover height substantially.

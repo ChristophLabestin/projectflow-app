@@ -29,7 +29,7 @@ const deProfile = {
     'profile.activity.empty': 'Keine aktuellen Aktivitäten.',
     'profile.sections.projects': 'Projekte',
     'profile.actions.filter': 'Filtern',
-    'profile.projects.emptyDescription': 'Keine Beschreibung vorhanden.',
+    'profile.projects.emptyDescription': 'Kein Projektzweck gesetzt.',
     'profile.projects.empty': 'Noch keine Projekte.',
     'profile.sections.activity': 'Aktivität',
     'profile.activity.detailsEmpty': 'Detaillierte Aktivitäten erscheinen hier.',

@@ -29,7 +29,7 @@ const enProfile = {
     'profile.activity.empty': 'No recent activity.',
     'profile.sections.projects': 'Projects',
     'profile.actions.filter': 'Filter',
-    'profile.projects.emptyDescription': 'No description provided.',
+    'profile.projects.emptyDescription': 'No project purpose set.',
     'profile.projects.empty': 'No projects yet.',
     'profile.sections.activity': 'Activity',
     'profile.activity.detailsEmpty': 'Detailed activity will appear here.',

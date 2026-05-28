@@ -7,7 +7,7 @@ It is the product-level source of truth for scope, entities, relationships, subs
 
 ## 1) Product Positioning
 
-**Primary audience:** B2B software companies and teams working in the digital sector (product, engineering, marketing, design, growth), plus freelancers/solo operators.
+**Primary audience:** B2B software companies, founders, startup operators, and teams working in the digital sector (product, engineering, marketing, design, growth), plus freelancers/solo operators.
 
 **Primary value proposition:** A workspace that combines execution (projects/tasks/issues) with structured ideation (Flows) and optional operational modules (Social, Marketing, Sprints, Accounting).
 
@@ -48,7 +48,7 @@ ProjectFlow distinguishes between two collaboration scopes:
 - Must not see other tenant projects or tenant-level areas outside the project scope.
 
 ### 2.4 Project
-A **Project** exists under a tenant and represents a unit of work (product, client project, internal initiative).  
+A **Project** exists under a tenant and represents a unit of work (product, client project, internal initiative, or company/startup founding effort).
 Projects contain their own operational data such as:
 - Tasks, subtasks
 - Issues (optional module)
@@ -57,7 +57,9 @@ Projects contain their own operational data such as:
 - Social/marketing artifacts (optional modules)
 - Project membership (including externals)
 - Project lifecycle state: active delivery, planning/backlog, paused recovery, completed archive, and canceled work are distinct so the workspace can separate active planning from stopped or finished projects. Canceled projects stay visible in their archive section but are excluded from health scoring, spotlight selection, and global task scheduling/priority surfaces.
-- Project Brief contract: objective, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. This gives ProjectFlow and Codex a durable source of truth for judging whether work is moving the project toward the intended outcome.
+- Project delivery setup: one project purpose, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. The purpose is entered once and reused internally so ProjectFlow and Codex can judge whether work is moving toward the intended outcome without asking users for a duplicate objective.
+- Project category/template metadata so company/startup projects can be grouped separately from normal projects and normal projects can be linked back to a company project as independent workstreams.
+- Startup/company profile and readiness metadata for founding projects: current stage, jurisdiction template/source metadata, target customer, funding route, selected founding tracks, legal/finance/compliance/launch readiness, restricted advisor/legal/finance resource handling, and seeded work metadata.
 - Codex session records and follow-ups that keep coding work truthful across repositories.
 
 ### 2.5 Modules (Project-Configurable)

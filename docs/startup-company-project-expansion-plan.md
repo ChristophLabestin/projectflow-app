@@ -1,7 +1,7 @@
 # Startup And Company Founding Project Expansion Plan
 
 Date: 2026-05-27  
-Status: Product and implementation planning  
+Status: Plan implemented through jurisdiction-aware templates, company grouping/linking, startup cockpit, restricted resource handling, and validation
 Scope: Extend ProjectFlow projects beyond software delivery so a project can manage founding and launching a new company or startup.
 
 ## Goal
@@ -1091,12 +1091,21 @@ Do not start with jurisdiction automation. Start with a product-safe, high-signa
 
 This gives ProjectFlow a real startup founding workflow without creating legal-risk-heavy country-specific automation too early.
 
+## Implementation Tracking
+
+- Completed first foundation slice in ProjectFlow task `EKUXkKCMlRlKxySGTeq8`: taxonomy fields, startup/company template, company-project grouping, normal-project linking, overview context, API allowlist, docs, and locales.
+- Completed second workflow slice in ProjectFlow task `IuT5nkx8uP9HZCshPAEp`: startup brief fields, selectable tracks, sensitive-track confirmation, seeded milestones/initiatives/tasks, startup overview cockpit, editable readiness settings, startup-aware health factors, docs, and locales.
+- Completed full-plan follow-up in ProjectFlow task `EpGbJtroS0WsNYNpM12G`: Germany/US/global jurisdiction templates with official source metadata, source-backed jurisdiction seed tasks, restricted/advisor-reviewed sidebar resource metadata with role filtering, company context in switcher/search/breadcrumbs, finance/marketing/readiness actions, linked-project rollups without duplicating company-owned tasks, API/type/doc/i18n updates, and validation.
+
 ## Official Reference Inputs
 
 These sources should guide generic checklist categories and jurisdiction template design, but they should not be copied verbatim into legal advice:
 
-- U.S. Small Business Administration, "10 steps to start your business": https://www.sba.gov/business-guide/10-steps-start-your-business
-- IRS, business structures and starting-a-business tax resources: https://www.irs.gov/businesses/small-businesses-self-employed/business-structures
-- Germany federal startup portal / Existenzgruendungsportal: https://www.existenzgruendungsportal.de/
-- IHK Berlin startup checklist: https://www.ihk.de/berlin/service-und-beratung/existenzgruendung/checkliste-zur-gruendung-3170924
-- IHK Ostwuerttemberg formation formalities checklist: https://www.ihk.de/ostwuerttemberg/produktmarken/gruendung-und-unternehmensservice/existenzgruendung/formalitaeten-der-gruendung-3308404
+- U.S. Small Business Administration launch guide: https://www.sba.gov/business-guide/launch-your-business
+- U.S. Small Business Administration business registration guide: https://www.sba.gov/business-guide/launch-your-business/register-your-business
+- U.S. Small Business Administration federal/state tax ID guide: https://www.sba.gov/business-guide/launch-your-business/get-federal-state-tax-id-numbers
+- IRS starting-a-business resource: https://www.irs.gov/businesses/small-businesses-self-employed/starting-a-business
+- Germany federal startup portal / Existenzgruendungsportal legal forms: https://www.existenzgruendungsportal.de/Navigation/DE/Gruendungswissen/Rechtsformen/rechtsformen
+- BMWK GruenderZeiten registration and law PDF: https://www.existenzgruendungsportal.de/Redaktion/DE/Downloads/DE/GruenderZeiten/GruenderZeiten-24.pdf
+- IHK Region Stuttgart formation formalities: https://www.ihk.de/stuttgart/gruendung/orientierungsphase/anmeldung-eines-unternehmens/formerfordernisse-einer-gruendung-685190
+- IHK Darmstadt business and tax registration: https://www.ihk.de/darmstadt/produktmarken/gruendung/existenzgruendung-und-steuern/aufnahme-einer-gewerblichen-taetigkeit-2538356

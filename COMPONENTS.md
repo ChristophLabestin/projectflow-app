@@ -48,7 +48,7 @@ Rules:
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
-| `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior |
+| `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
 | `Breadcrumbs` | Context path | Project/module navigation | Optional on smaller screens |
 | `PinnedTasksModal` | Quick-access focus workspace | Top bar focus pill, dashboard resume action, pinned task/issue/initiative shortcuts | Uses persisted `focusState` with start, snooze, block, and complete controls. |
 | `Notifications` diagnostics card | Notification delivery verification | `/notifications` delivery health panel | Registers web push, sends a self-test notification, and shows recent `notificationDeliveryLogs`. |
@@ -80,8 +80,8 @@ Rules:
 | `EmptyState` | No data guidance | Empty lists | |
 | `StatusCard` | Status messaging panel | Invite flows, async states | Variants: `info`, `success`, `error`. Optional icon + extra actions. |
 | `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
-| `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Guided setup/fields/publish builder with schema validation, compact field editing, live public-page preview, and hosted/embed access controls. |
-| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard favors low-friction creation: name-first details, optional brief direction, cadence in the brief, operating mode in the timeline step, and optional finish assets/links. |
+| `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Task-modal-style form editor with title/description first, compact Questions/Share toolbar, fully customizable default and custom fields, inline row editing, schema validation, opt-in preview, and hosted/embed access controls. |
+| `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard favors low-friction creation: method, compact type selection, then required details with a single project purpose field; optional company-project assignment for normal projects, company-project setup workstreams as a quiet checklist step with sensitive-track confirmation, optional success criteria plus cadence, operating mode in the timeline step, and optional finish assets/links. Company-project founding context is completed after creation from the overview hint card/settings flow. |
 | `Skeleton` | Loading placeholder | List/table loading | |
 
 ### `StatusCard`

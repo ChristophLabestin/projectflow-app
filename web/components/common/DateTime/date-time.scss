@@ -54,6 +54,11 @@
             transform-origin: bottom right;
         }
 
+        &--portal {
+            position: fixed;
+            z-index: 10000;
+        }
+
         &--time-only {
             min-width: 160px; // Slightly narrower
             max-height: 320px;

@@ -16,7 +16,6 @@ ProjectFlow is a collaborative workspace that combines project planning, flow ba
 - Drag and drop email builder with reusable templates and variables
 - Recipient management with imports and segmentation
 - Media library for assets and creative files
-- Mind map for visual planning
 - Activity log for changes and audit history
 - Global search with AI answers across projects, tasks, issues, and flows
 - Help center drawer and guided onboarding tours

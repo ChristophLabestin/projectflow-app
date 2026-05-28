@@ -486,10 +486,17 @@ export const AISearchBar = () => {
                                             `}
                                             >
                                                 <div className="flex items-center justify-center p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
-                                                    <span className="material-symbols-outlined text-[18px] leading-none">folder</span>
+                                                    <span className="material-symbols-outlined text-[18px] leading-none">
+                                                        {result.projectCategory === 'startup_company' ? 'domain' : 'folder'}
+                                                    </span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-main truncate">{result.title}</p>
+                                                    {result.companyProjectTitle && (
+                                                        <p className="text-xs text-muted truncate">
+                                                            {t('search.companyProjectContext').replace('{company}', result.companyProjectTitle)}
+                                                        </p>
+                                                    )}
                                                     {result.description && (
                                                         <p className="text-xs text-muted truncate">{result.description}</p>
                                                     )}
@@ -528,6 +535,9 @@ export const AISearchBar = () => {
                                                             {inProjectPrefix}
                                                             <span className="text-main">{result.projectTitle}</span>
                                                             {inProjectSuffix}
+                                                            {result.companyProjectTitle && (
+                                                                <span> - {t('search.companyProjectContext').replace('{company}', result.companyProjectTitle)}</span>
+                                                            )}
                                                         </p>
                                                 </div>
                                             </button>

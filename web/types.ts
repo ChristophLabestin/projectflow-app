@@ -194,11 +194,88 @@ export interface ProjectOverviewTemplate {
     tenantId?: string;
 }
 
-export type ProjectStatus = 'Active' | 'Backlog' | 'Brainstorming' | 'Canceled' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+export type ProjectStatus = 'Active' | 'In Testing' | 'Backlog' | 'Brainstorming' | 'Canceled' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
 export type ProjectType = 'standard' | 'software' | 'creative';
+export type ProjectCategory =
+    | 'general'
+    | 'software'
+    | 'creative'
+    | 'client_delivery'
+    | 'operations'
+    | 'marketing'
+    | 'finance'
+    | 'startup_company'
+    | 'personal';
+export type ProjectTemplateId =
+    | 'blank'
+    | 'software_release'
+    | 'creative_project'
+    | 'client_delivery'
+    | 'startup_company_formation'
+    | 'marketing_campaign'
+    | 'internal_operations'
+    | 'finance_setup';
+export type CompanyProjectRole = 'product' | 'marketing' | 'finance' | 'legal' | 'operations' | 'funding' | 'research' | 'other';
+export type StartupTrackId =
+    | 'validation'
+    | 'legal_formation'
+    | 'finance_accounting'
+    | 'compliance'
+    | 'product_delivery'
+    | 'marketing_sales'
+    | 'funding'
+    | 'operations';
+export type StartupJurisdictionTemplateId = 'global_generic' | 'de_generic' | 'us_generic';
+export type ProjectResourceType = 'general' | 'legal' | 'finance' | 'compliance' | 'advisor' | 'marketing' | 'operations' | 'funding';
+export type ProjectResourceSensitivity = 'public' | 'internal' | 'confidential' | 'restricted';
 export type ProjectOperatingMode = 'explore' | 'build' | 'ship' | 'maintain';
 export type ProjectCadence = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'ad-hoc';
 export type ProjectDateConfidence = 'fixed' | 'target' | 'rough' | 'unknown';
+
+export interface StartupSourceReference {
+    id: string;
+    labelKey: string;
+    url: string;
+    publisher: string;
+    lastReviewedAt: string;
+}
+
+export interface StartupProfile {
+    ventureName?: string;
+    workingName?: string;
+    jurisdictionCountry?: string;
+    jurisdictionRegion?: string;
+    jurisdictionTemplateId?: StartupJurisdictionTemplateId;
+    jurisdictionSources?: StartupSourceReference[];
+    jurisdictionSourcesReviewedAt?: string;
+    advisorReviewRequired?: boolean;
+    plannedLegalStructure?: string;
+    formationStatus?: 'idea' | 'validating' | 'preparing' | 'filed' | 'registered' | 'operating';
+    businessModel?: 'saas' | 'service' | 'marketplace' | 'commerce' | 'content' | 'hardware' | 'agency' | 'other';
+    fundingRoute?: 'bootstrapped' | 'grant' | 'loan' | 'angel' | 'vc' | 'crowdfunding' | 'revenue_funded' | 'undecided';
+    targetCustomer?: string;
+    regulatedIndustryStatus?: 'yes' | 'no' | 'unknown';
+    regulatedIndustry?: boolean;
+    hasEmployeesPlanned?: boolean;
+    hasCoFounders?: boolean;
+    targetLaunchDate?: string;
+    selectedTrackIds?: StartupTrackId[];
+}
+
+export interface StartupReadiness {
+    legalStructureDecided?: boolean;
+    founderAgreementReady?: boolean;
+    ipAssignmentReady?: boolean;
+    registrationSubmitted?: boolean;
+    registrationConfirmed?: boolean;
+    taxSetupReady?: boolean;
+    bankAccountReady?: boolean;
+    bookkeepingReady?: boolean;
+    privacyDocsReady?: boolean;
+    requiredPermitsKnown?: boolean;
+    launchOfferReady?: boolean;
+    firstChannelReady?: boolean;
+}
 
 export interface ProjectBrief {
     objective?: string;
@@ -239,12 +316,18 @@ export interface Project {
     status: ProjectStatus;
     projectState?: 'pre-release' | 'released' | 'not specified';
     projectType?: ProjectType;
+    projectCategory?: ProjectCategory;
+    templateId?: ProjectTemplateId;
+    companyProjectId?: string;
+    companyProjectRole?: CompanyProjectRole;
     operatingMode?: ProjectOperatingMode;
     dateConfidence?: ProjectDateConfidence;
     brief?: ProjectBrief;
     operatingModel?: ProjectOperatingModel;
     riskRegister?: ProjectRiskRegisterItem[];
     healthSnapshot?: ProjectHealthSnapshot;
+    startupProfile?: StartupProfile;
+    startupReadiness?: StartupReadiness;
     dueDate?: string;
     startDate?: string;
     pausedAt?: string;
@@ -267,7 +350,7 @@ export interface Project {
     isPrivate?: boolean;
     modules?: ProjectModule[];
     links?: { title: string; url: string; originIdeaId?: string; }[]; // Links shown in Overview
-    externalResources?: { title: string; url: string; icon?: string; originIdeaId?: string; }[]; // Links shown in Sidebar
+    externalResources?: ProjectExternalResource[]; // Links shown in Sidebar
     members?: ProjectMember[]; // Team members with roles (replaces string[])
     roles?: { [userId: string]: ProjectRole | string }; // Map for O(1) access in rules. Can be legacy ProjectRole or custom workspace role ID
     memberIds?: string[]; // IDs of all members for collectionGroup queries
@@ -282,6 +365,20 @@ export interface Project {
     visibilityGroupId?: string; // @deprecated Use visibilityGroupIds instead
     originIdeaId?: string;
     overviewLayout?: ProjectOverviewLayout;
+}
+
+export interface ProjectExternalResource {
+    title: string;
+    url: string;
+    icon?: string;
+    originIdeaId?: string;
+    type?: ProjectResourceType;
+    sensitivity?: ProjectResourceSensitivity;
+    restrictedToRoleIds?: string[];
+    advisorReviewRequired?: boolean;
+    sourceTemplateId?: StartupJurisdictionTemplateId | string;
+    sourceReferenceId?: string;
+    lastReviewedAt?: string;
 }
 
 export type FocusItemType = 'task' | 'issue' | 'initiative' | 'personal-task';
@@ -396,7 +493,7 @@ export interface Comment {
     originIdeaId?: string;
 }
 
-export type ProjectModule = 'tasks' | 'initiatives' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing' | 'accounting' | 'sprints';
+export type ProjectModule = 'tasks' | 'initiatives' | 'ideas' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing' | 'accounting' | 'sprints';
 
 export interface Task {
     id: string;
@@ -431,6 +528,10 @@ export interface Task {
     sprintId?: string; // Sprint ID
     feedbackSubmission?: InitiativeFeedbackSubmission;
     externalKey?: string;
+    templateId?: ProjectTemplateId;
+    templateTrack?: StartupTrackId | string;
+    templateSeedId?: string;
+    sourceReferences?: StartupSourceReference[];
     source?: string;
     codexSessionId?: string;
     codexSessionExternalKey?: string;
@@ -520,6 +621,11 @@ export interface Initiative {
     assignedGroupIds?: string[];
     originIdeaId?: string;
     externalKey?: string;
+    source?: string;
+    templateId?: ProjectTemplateId;
+    templateTrack?: StartupTrackId | string;
+    templateSeedId?: string;
+    sourceReferences?: StartupSourceReference[];
     successMetric?: string;
     outcome?: string;
     health?: InitiativeHealth;
@@ -600,7 +706,6 @@ export interface Idea {
     description: string;
     type: IdeaGroup;
     stage: IdeaStage;
-    mindmapId?: string;
     parentIdeaId?: string;
     votes: number;
     likedBy?: string[]; // User IDs
@@ -836,13 +941,6 @@ export type IdeaGroup =
     | 'Growth'
     | string;
 
-export interface MindmapGrouping {
-    group: string;
-    reason?: string;
-    ideaIds: string[];
-    originIdeaId?: string;
-}
-
 export type TaskStatus = 'Backlog' | 'Todo' | 'Open' | 'In Progress' | 'Review' | 'On Hold' | 'Blocked' | 'Done';
 
 export interface TaskCategory {
@@ -856,14 +954,6 @@ export interface TaskCategory {
     originIdeaId?: string;
 }
 
-export interface Mindmap {
-    id: string;
-    projectId: string;
-    ownerId?: string;
-    name: string;
-    createdAt?: any;
-    originIdeaId?: string;
-}
 export interface ProjectBlueprint {
     id: string;
     title: string;
@@ -890,6 +980,12 @@ export interface Milestone {
     linkedInitiativeId?: string;
     riskRating?: 'Low' | 'Medium' | 'High';
     originIdeaId?: string;
+    externalKey?: string;
+    templateId?: ProjectTemplateId;
+    templateTrack?: StartupTrackId | string;
+    templateSeedId?: string;
+    sourceReferences?: StartupSourceReference[];
+    source?: string;
 }
 
 export interface ProjectRisk {
@@ -927,6 +1023,10 @@ export interface SearchResult {
     description?: string;
     projectId?: string;
     projectTitle?: string;
+    companyProjectId?: string;
+    companyProjectTitle?: string;
+    projectCategory?: ProjectCategory;
+    templateId?: ProjectTemplateId;
     helpPageId?: string;
     helpSectionId?: string;
     helpPageTitle?: string;

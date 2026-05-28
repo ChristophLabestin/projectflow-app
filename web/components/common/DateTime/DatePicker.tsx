@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { TextInput } from '../Input/TextInput';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { usePopoverPosition } from '../../../hooks/usePopoverPosition';
 import {
     DAYS_OF_WEEK,
     MONTH_NAMES,
@@ -36,10 +36,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     disabled
 }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [position, setPosition] = useState<'top' | 'bottom'>('bottom');
     const [horizontalPosition, setHorizontalPosition] = useState<'left' | 'right'>('left');
+    const [popoverStyle, setPopoverStyle] = useState<React.CSSProperties>({
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 'auto',
+        bottom: 'auto',
+        zIndex: 10000
+    });
     const triggerRef = useRef<HTMLDivElement>(null);
     const contentRef = useRef<HTMLDivElement>(null);
-    const position = usePopoverPosition(triggerRef, contentRef, isOpen);
 
     // View state for the calendar
     const [viewDate, setViewDate] = useState(value || new Date());
@@ -52,27 +60,57 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         }
     }, [value]);
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (!isOpen || !triggerRef.current) return;
 
-        const updateHorizontalPosition = () => {
+        const updatePopoverPosition = () => {
             const triggerRect = triggerRef.current?.getBoundingClientRect();
             if (!triggerRect) return;
 
             const contentWidth = contentRef.current?.offsetWidth || 280;
+            const contentHeight = contentRef.current?.offsetHeight || 320;
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
             const buffer = 16;
-            const wouldClipRight = triggerRect.left + contentWidth > window.innerWidth - buffer;
+            const gap = 4;
+            const availableBelow = viewportHeight - triggerRect.bottom;
+            const availableAbove = triggerRect.top;
+            const nextPosition = availableBelow < contentHeight + buffer && availableAbove > contentHeight + buffer
+                ? 'top'
+                : 'bottom';
+            const nextHorizontalPosition = triggerRect.left + contentWidth > viewportWidth - buffer
+                ? 'right'
+                : 'left';
+            const rawLeft = nextHorizontalPosition === 'right'
+                ? triggerRect.right - contentWidth
+                : triggerRect.left;
+            const maxLeft = Math.max(buffer, viewportWidth - contentWidth - buffer);
+            const rawTop = nextPosition === 'top'
+                ? triggerRect.top - contentHeight - gap
+                : triggerRect.bottom + gap;
+            const maxTop = Math.max(buffer, viewportHeight - contentHeight - buffer);
 
-            setHorizontalPosition(wouldClipRight ? 'right' : 'left');
+            setPosition(nextPosition);
+            setHorizontalPosition(nextHorizontalPosition);
+            setPopoverStyle({
+                position: 'fixed',
+                top: Math.max(buffer, Math.min(rawTop, maxTop)),
+                left: Math.max(buffer, Math.min(rawLeft, maxLeft)),
+                right: 'auto',
+                bottom: 'auto',
+                zIndex: 10000
+            });
         };
 
-        updateHorizontalPosition();
-        window.addEventListener('resize', updateHorizontalPosition);
-        window.addEventListener('scroll', updateHorizontalPosition, true);
+        updatePopoverPosition();
+        const frame = window.requestAnimationFrame(updatePopoverPosition);
+        window.addEventListener('resize', updatePopoverPosition);
+        window.addEventListener('scroll', updatePopoverPosition, true);
 
         return () => {
-            window.removeEventListener('resize', updateHorizontalPosition);
-            window.removeEventListener('scroll', updateHorizontalPosition, true);
+            window.cancelAnimationFrame(frame);
+            window.removeEventListener('resize', updatePopoverPosition);
+            window.removeEventListener('scroll', updatePopoverPosition, true);
         };
     }, [isOpen]);
 
@@ -229,47 +267,51 @@ export const DatePicker: React.FC<DatePickerProps> = ({
             {isOpen && (
                 <>
                     <div className="dt-picker__backdrop" onClick={() => setIsOpen(false)} />
-                    <div
-                        ref={contentRef}
-                        className={`dt-picker__popover dt-picker__popover--visible dt-picker__popover--${position} dt-picker__popover--align-${horizontalPosition}`}
-                    >
-                        <div className="dt-picker__header">
-                            {viewMode !== 'year' && (
-                                <button className="dt-picker__nav-btn" onClick={handlePrevMonth}>
-                                    <ChevronLeft size={16} />
-                                </button>
-                            )}
-
-                            <div style={{ display: 'flex', gap: '4px' }}>
-                                {/* Only show Month button if not in year view? or always allow jumping? */}
-                                {viewMode === 'day' && (
-                                    <button className="dt-picker__title-btn" onClick={() => setViewMode('month')}>
-                                        {MONTH_NAMES[viewDate.getMonth()]}
+                    {createPortal(
+                        <div
+                            ref={contentRef}
+                            className={`dt-picker__popover dt-picker__popover--portal dt-picker__popover--visible dt-picker__popover--${position} dt-picker__popover--align-${horizontalPosition}`}
+                            style={popoverStyle}
+                        >
+                            <div className="dt-picker__header">
+                                {viewMode !== 'year' && (
+                                    <button className="dt-picker__nav-btn" onClick={handlePrevMonth}>
+                                        <ChevronLeft size={16} />
                                     </button>
                                 )}
-                                <button className="dt-picker__title-btn" onClick={() => setViewMode('year')}>
-                                    {viewDate.getFullYear()}
-                                </button>
+
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {/* Only show Month button if not in year view? or always allow jumping? */}
+                                    {viewMode === 'day' && (
+                                        <button className="dt-picker__title-btn" onClick={() => setViewMode('month')}>
+                                            {MONTH_NAMES[viewDate.getMonth()]}
+                                        </button>
+                                    )}
+                                    <button className="dt-picker__title-btn" onClick={() => setViewMode('year')}>
+                                        {viewDate.getFullYear()}
+                                    </button>
+                                </div>
+
+                                {viewMode !== 'year' && (
+                                    <button className="dt-picker__nav-btn" onClick={handleNextMonth}>
+                                        <ChevronRight size={16} />
+                                    </button>
+                                )}
                             </div>
 
-                            {viewMode !== 'year' && (
-                                <button className="dt-picker__nav-btn" onClick={handleNextMonth}>
-                                    <ChevronRight size={16} />
-                                </button>
+                            {viewMode === 'day' && (
+                                <div className="dt-picker__grid">
+                                    {DAYS_OF_WEEK.map(day => (
+                                        <div key={day} className="dt-picker__day-label">{day}</div>
+                                    ))}
+                                    {renderCalendarGrid()}
+                                </div>
                             )}
-                        </div>
-
-                        {viewMode === 'day' && (
-                            <div className="dt-picker__grid">
-                                {DAYS_OF_WEEK.map(day => (
-                                    <div key={day} className="dt-picker__day-label">{day}</div>
-                                ))}
-                                {renderCalendarGrid()}
-                            </div>
-                        )}
-                        {viewMode === 'month' && renderMonthGrid()}
-                        {viewMode === 'year' && renderYearGrid()}
-                    </div>
+                            {viewMode === 'month' && renderMonthGrid()}
+                            {viewMode === 'year' && renderYearGrid()}
+                        </div>,
+                        document.body
+                    )}
                 </>
             )}
         </div>

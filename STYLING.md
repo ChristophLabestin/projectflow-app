@@ -210,11 +210,12 @@ These tokens define key layout constants used across the app shell.
 
 ## 6.2) Builder / Configuration Modal Pattern
 
-- Complex builders should expose a short step rail for setup, structure, and publishing instead of showing every setting with equal weight.
+- Complex builders should start from the app's standard modal language: title/description first, a compact toolbar for mode and creation controls, inline expansion for selected-item controls, and footer actions. Only expand into workspace-like layouts when the workflow genuinely needs persistent side-by-side context.
 - Keep validation visible near the editable structure and expose direct review actions for field-specific issues.
-- Keep previews sticky and scoped to the real customer-facing surface, with compact counters for visible fields, custom fields, and blocking issues.
+- Keep previews scoped to the real customer-facing surface, but make them opt-in when the editor is already dense; do not keep counters or status strips visible by default.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
-- Project creation should stay name-first and optional after the required basics. Timeline and finish steps use flat field grids and rows; avoid wrapping each field/link in card surfaces inside the wizard.
+- Put publishing, links, tokens, and embed data behind a Share/Access mode instead of mixing them into the primary editing canvas.
+- Project creation should keep project-type selection in its own compact step before details, then stay name-first and optional after the required basics. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline and finish steps use flat field grids and rows; avoid wrapping each field/link in card surfaces inside the wizard.
 
 ## 6.3) Project Lifecycle Recovery Pattern
 
@@ -227,13 +228,16 @@ These tokens define key layout constants used across the app shell.
 
 - The Project Contract belongs on the project overview as a supporting context card, not as the first full-width focus area.
 - Keep live status, workload, and execution cards ahead of the contract in the first viewport. The contract should live in the side rail and stay compact enough that it never pushes the work queue out of focus.
-- Treat the contract as a brief: objective first, then one-line scope, first success criterion, watch item, rhythm, and owner. Avoid repeating every metadata field unless the user opens project editing.
+- Treat the contract as delivery guardrails: one-line scope, first success criterion, watch item, rhythm, and owner. The project purpose already lives in the masthead and must not be repeated inside the contract card unless a future design provides a distinct purpose/source split.
 - Keep the card un-nested: use one `Card` surface with compact internal rows instead of cards inside cards.
 
 ## 6.5) Project Overview Layout Pattern
 
 - Project overview cards use a fixed, non-editable layout. Do not add user-facing drag handles, card toggles, layout toolbars, or layout customization modals to this screen.
 - Keep the page command-first: compact header, project command strip, attention queue, execution cards, project state/context, then reference modules.
+- Keep project cover media as a shallow identity band in the masthead. Do not turn it back into a large hero card, and do not show a big empty image placeholder when no cover is set.
+- Combine command metrics and attention work into one `Project focus` surface. Do not render the command strip and attention queue as two separate top-level cards.
+- Startup/company overview additions should use the same neutral card, row, and metadata patterns as the rest of Project Overview. Avoid yellow warning panels, large standalone cockpit blocks, and loud pill clusters for routine setup guidance.
 - Keep the command strip to one full-width section with compact cells for health, work, timeline, and lifecycle. It must not become a second full controls card.
 - Do not render the old header metrics footer or snapshot card alongside the command strip; those signals belong to one top-level summary surface.
 - Hide the attention queue for canceled projects because canceled work should not be promoted as important or urgent.

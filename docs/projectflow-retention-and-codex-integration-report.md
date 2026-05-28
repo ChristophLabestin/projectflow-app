@@ -63,7 +63,7 @@ This report is grounded in the current repository structure and docs.
 - `functions/src/notifications.ts` reacts to new tenant notification documents and sends email.
 - That function currently does **not** send FCM/APNs push notifications, despite iOS token registration existing.
 - `functions/src/scheduler.ts` already contains scheduled jobs for social posts, sprints, and daily health snapshots. This is the right place to add daily agenda/digest and stale-work nudges.
-- `functions/src/projectflow-api.ts` exposes REST endpoints for projects, tasks, initiatives, subtasks, issues, ideas, milestones, sprints, categories, mindmaps, project groups, comments, and activities.
+- `functions/src/projectflow-api.ts` exposes REST endpoints for projects, tasks, initiatives, subtasks, issues, ideas, milestones, sprints, categories, project groups, comments, and activities.
 - `functions/src/authUtils.ts` and `functions/src/workspace-admin.ts` support API tokens, but current token permissions are mainly project/task/initiative oriented.
 
 ### Existing Codex Integration

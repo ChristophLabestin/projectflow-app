@@ -41,6 +41,7 @@ export const ProjectDetails = () => {
 
     const statusLabels: Record<string, string> = {
         Active: t('dashboard.projectStatus.active'),
+        'In Testing': t('dashboard.projectStatus.inTesting'),
         Backlog: t('dashboard.projectStatus.backlog'),
         Completed: t('dashboard.projectStatus.completed'),
         Canceled: t('dashboard.projectStatus.canceled'),

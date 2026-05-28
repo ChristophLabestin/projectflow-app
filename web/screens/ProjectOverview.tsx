@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom
 import '../src/styles/components/_project-overview.scss';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { addActivityEntry, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
+import { addActivityEntry, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
 import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
@@ -57,13 +57,14 @@ import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
+import { isCompanyProject, isSoftwareProject } from '../config/projectTemplates';
+import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStartupStageKey } from '../utils/startupProjects';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateIssueModal = lazy(() => import('../components/CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
-import { ProjectMindmap } from '../components/mindmap/ProjectMindmap';
 import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 
 const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
@@ -106,6 +107,7 @@ type ResumableProjectStatus = Exclude<ProjectStatus, 'On Hold' | 'Canceled'>;
 const DEFAULT_RESUME_STATUS: ResumableProjectStatus = 'Active';
 const RESUMABLE_PROJECT_STATUSES: ResumableProjectStatus[] = [
     'Active',
+    'In Testing',
     'Backlog',
     'Planning',
     'Completed',
@@ -185,7 +187,6 @@ const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'metadata'
 ];
 
-const OVERVIEW_REFERENCE_CARD_IDS: ProjectOverviewCardId[] = ['updates', 'resources'];
 const OVERVIEW_CARD_SPANS = [12, 9, 6, 3] as const;
 type OverviewCardSpan = typeof OVERVIEW_CARD_SPANS[number];
 type ExecutionCardVariant = 'wide' | 'balanced' | 'compact';
@@ -262,6 +263,8 @@ export const ProjectOverview = () => {
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [workspaceRoles, setWorkspaceRoles] = useState<CustomRole[]>([]);
     const [teamMemberProfiles, setTeamMemberProfiles] = useState<Array<{ id: string; displayName: string; photoURL?: string; role: string }>>([]);
+    const [companyContextProject, setCompanyContextProject] = useState<Project | null>(null);
+    const [linkedCompanyProjects, setLinkedCompanyProjects] = useState<Project[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [unauthorized, setUnauthorized] = useState(false);
     const [report, setReport] = useState<string | null>(null);
@@ -333,9 +336,6 @@ export const ProjectOverview = () => {
     useEffect(() => {
         void loadProjectOverviewTranslations();
     }, [loadProjectOverviewTranslations]);
-
-    // View Mode State
-    const [viewMode, setViewMode] = useState<'overview' | 'mindmap'>('overview');
 
     const fetchProjectAssets = async () => {
         if (!id || !project?.tenantId) return;
@@ -622,6 +622,51 @@ export const ProjectOverview = () => {
             window.clearTimeout(timeoutId);
         };
     }, [projectIdCopied]);
+
+    useEffect(() => {
+        if (!project) {
+            setCompanyContextProject(null);
+            setLinkedCompanyProjects([]);
+            return;
+        }
+
+        let mounted = true;
+        const tenantId = project.tenantId || getActiveTenantId() || undefined;
+
+        if (project.companyProjectId) {
+            getProjectById(project.companyProjectId, tenantId)
+                .then(parentProject => {
+                    if (mounted) {
+                        setCompanyContextProject(parentProject);
+                    }
+                })
+                .catch(error => {
+                    console.warn('Failed to load company project context', error);
+                    if (mounted) setCompanyContextProject(null);
+                });
+        } else {
+            setCompanyContextProject(null);
+        }
+
+        if (isCompanyProject(project)) {
+            getAllWorkspaceProjects(tenantId)
+                .then(projects => {
+                    if (mounted) {
+                        setLinkedCompanyProjects(projects.filter(item => item.companyProjectId === project.id));
+                    }
+                })
+                .catch(error => {
+                    console.warn('Failed to load linked company projects', error);
+                    if (mounted) setLinkedCompanyProjects([]);
+                });
+        } else {
+            setLinkedCompanyProjects([]);
+        }
+
+        return () => {
+            mounted = false;
+        };
+    }, [project?.id, project?.companyProjectId, project?.projectCategory, project?.templateId, project?.tenantId]);
 
     const handleToggleTask = async (taskId: string, currentStatus: boolean, event?: React.MouseEvent<HTMLButtonElement>) => {
         event?.stopPropagation();
@@ -1037,6 +1082,7 @@ export const ProjectOverview = () => {
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
     const projectStatusLabels = useMemo(() => ({
         Active: t('dashboard.projectStatus.active'),
+        'In Testing': t('dashboard.projectStatus.inTesting'),
         Backlog: t('dashboard.projectStatus.backlog'),
         Planning: t('dashboard.projectStatus.planning'),
         'On Hold': t('dashboard.projectStatus.onHold'),
@@ -1045,6 +1091,9 @@ export const ProjectOverview = () => {
         Brainstorming: t('dashboard.projectStatus.brainstorming'),
         Review: t('projectOverview.status.review')
     }), [t]);
+    const projectAllowsTestingStatus = project
+        ? isSoftwareProject(project) || project.status === 'In Testing'
+        : false;
     const priorityLabels = useMemo(() => ({
         Urgent: t('tasks.priority.urgent'),
         High: t('tasks.priority.high'),
@@ -1053,12 +1102,13 @@ export const ProjectOverview = () => {
     }), [t]);
     const statusOptions = useMemo<SelectOption[]>(() => ([
         { value: 'Active', label: projectStatusLabels.Active },
+        ...(projectAllowsTestingStatus ? [{ value: 'In Testing', label: projectStatusLabels['In Testing'] }] : []),
         { value: 'Backlog', label: projectStatusLabels.Backlog },
         { value: 'Planning', label: projectStatusLabels.Planning },
         { value: 'Completed', label: projectStatusLabels.Completed },
         { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
         { value: 'Review', label: projectStatusLabels.Review }
-    ]), [projectStatusLabels]);
+    ]), [projectAllowsTestingStatus, projectStatusLabels]);
     const priorityOptions = useMemo<SelectOption[]>(() => ([
         { value: 'Low', label: priorityLabels.Low },
         { value: 'Medium', label: priorityLabels.Medium },
@@ -1175,9 +1225,30 @@ export const ProjectOverview = () => {
 
     if (!project) return <div className="project-overview__not-found">{t('projectOverview.error.notFound')}</div>;
 
+    const projectIsCompanyProject = isCompanyProject(project);
+
     const health = isProjectExcludedFromHealth(project)
         ? null
         : calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
+    const startupReadiness = projectIsCompanyProject
+        ? calculateStartupReadinessSnapshot(project, tasks, milestones, initiatives)
+        : null;
+    const linkedProjectRollup = projectIsCompanyProject
+        ? calculateCompanyLinkedProjectRollup(linkedCompanyProjects)
+        : null;
+    const startupSourceReferences = project.startupProfile?.jurisdictionSources || [];
+    const startupModules = new Set(project.modules || []);
+    const startupBriefingMissingItems = projectIsCompanyProject
+        ? [
+            !project.startupProfile?.targetCustomer?.trim() ? t('projectOverview.startup.briefing.field.targetCustomer') : '',
+            !project.startupProfile?.businessModel ? t('projectOverview.startup.briefing.field.businessModel') : '',
+            !project.startupProfile?.jurisdictionCountry?.trim() ? t('projectOverview.startup.briefing.field.jurisdiction') : '',
+            project.startupProfile?.regulatedIndustryStatus !== 'yes' && project.startupProfile?.regulatedIndustryStatus !== 'no'
+                ? t('projectOverview.startup.briefing.field.regulatoryRisk')
+                : ''
+        ].filter(Boolean)
+        : [];
+    const showStartupBriefingPrompt = projectIsCompanyProject && startupBriefingMissingItems.length > 0;
 
     // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
@@ -1386,8 +1457,12 @@ export const ProjectOverview = () => {
             ? t('projectOverview.command.urgentWorkValue').replace('{count}', String(urgentCount))
             : t('projectOverview.command.noUrgentWork');
     const commandTimelineValue = isProjectDueOverdue ? t('projectOverview.controls.timelineOverdue') : projectDueLabel;
-    const commandTimelineMeta = t('projectOverview.command.timelineMeta').replace('{date}', projectStartLabel);
+    const commandTimelineMeta = projectStartDate
+        ? t('projectOverview.command.timelineMeta').replace('{date}', projectStartLabel)
+        : projectStartLabel;
     const commandAttentionCount = t('projectOverview.attention.count').replace('{count}', String(attentionItems.length));
+    const primaryAttentionItem = attentionItems[0] || null;
+    const secondaryAttentionItems = attentionItems.slice(1);
 
     const hasIssuesModule = project.modules?.includes('issues');
     const hasIdeasModule = project.modules?.includes('ideas');
@@ -1427,6 +1502,7 @@ export const ProjectOverview = () => {
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 3);
     const projectBrief = project.brief || {};
+    const projectPurpose = (project.description || projectBrief.objective || '').trim();
     const projectSuccessCriteria = (projectBrief.successCriteria || []).filter(Boolean);
     const projectCadence = projectBrief.cadence || project.operatingModel?.cadence;
     const projectOperatingMode = project.operatingMode || project.operatingModel?.mode;
@@ -1456,8 +1532,6 @@ export const ProjectOverview = () => {
     };
     const overviewCardsToRender = FIXED_OVERVIEW_CARDS.filter((card) => isCardRenderable(card.id));
     const primaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'primary');
-    const primaryFocusCardsToRender = primaryCardsToRender.filter((card) => !OVERVIEW_REFERENCE_CARD_IDS.includes(card.id));
-    const referenceCardsToRender = primaryCardsToRender.filter((card) => OVERVIEW_REFERENCE_CARD_IDS.includes(card.id));
     const secondaryCardsToRender = overviewCardsToRender.filter((card) => card.placement === 'secondary');
 
     const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
@@ -1490,13 +1564,6 @@ export const ProjectOverview = () => {
                 </div>
 
                 <div className="project-contract-card__body">
-                    <section className="project-contract-card__summary">
-                        <span className="project-contract-card__eyebrow">{t('projectOverview.contract.objective')}</span>
-                        <p className={`project-contract-card__objective ${projectBrief.objective ? '' : 'is-empty'}`.trim()}>
-                            {projectBrief.objective || t('projectOverview.contract.emptyObjective')}
-                        </p>
-                    </section>
-
                     <div className="project-contract-card__rail-list">
                         <section className="project-contract-card__rail-row">
                             <span className="material-symbols-outlined">frame_source</span>
@@ -2728,6 +2795,42 @@ export const ProjectOverview = () => {
                         />
                     </section>
                 </div>
+
+                {!isProjectCanceled && (
+                    <div className="project-control-card__actions" aria-label={t('projectOverview.controls.lifecycleActions')}>
+                        {isProjectPaused ? (
+                            <Button
+                                variant="primary"
+                                onClick={() => setShowResumeModal(true)}
+                                icon={<span className="material-symbols-outlined">play_arrow</span>}
+                                className="project-control-card__action"
+                            >
+                                {t('projectOverview.resume.action')}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="secondary"
+                                onClick={handlePauseProject}
+                                isLoading={pausingProject}
+                                disabled={pausingProject || cancelingProject}
+                                className="project-control-card__action project-control-card__action--pause"
+                                icon={<span className="material-symbols-outlined">pause</span>}
+                            >
+                                {t('projectOverview.pause.action')}
+                            </Button>
+                        )}
+                        <Button
+                            variant="secondary"
+                            onClick={handleCancelProject}
+                            isLoading={cancelingProject}
+                            disabled={cancelingProject || pausingProject || resumingProject}
+                            className="project-control-card__action project-control-card__action--cancel"
+                            icon={<span className="material-symbols-outlined">cancel</span>}
+                        >
+                            {t('projectOverview.cancel.action')}
+                        </Button>
+                    </div>
+                )}
             </Card>
         ) : null
     };
@@ -2744,6 +2847,83 @@ export const ProjectOverview = () => {
             </OverviewCardShell>
         );
     };
+    const nextActionSubtitle = isProjectCanceled
+        ? t('projectOverview.operations.canceledTitle')
+        : attentionItems.length > 0
+            ? commandAttentionCount
+            : t('projectOverview.attention.empty');
+
+    const renderNextActionSection = () => (
+        <div className="overview-card is-primary project-next-action-section-shell" style={{ '--overview-card-span': 12 } as React.CSSProperties}>
+            <div className="overview-card__body">
+                <section className={`project-next-action-section ${isProjectCanceled ? 'is-canceled' : ''}`}>
+                    <div className="section-header-simple project-next-action-section__header">
+                        <h2>{t('projectOverview.operations.nextTitle')}</h2>
+                        <span className="subtitle">{nextActionSubtitle}</span>
+                    </div>
+
+                    <div className="project-next-action-section__content">
+                        {isProjectCanceled ? (
+                            <div className="project-next-action-card__primary is-canceled">
+                                <span className="project-next-action-card__icon material-symbols-outlined">cancel</span>
+                                <span className="project-next-action-card__copy">
+                                    <strong>{t('projectOverview.operations.canceledTitle')}</strong>
+                                    <em>{t('projectOverview.operations.canceledMeta')}</em>
+                                </span>
+                            </div>
+                        ) : primaryAttentionItem ? (
+                            <button
+                                type="button"
+                                className={`project-next-action-card__primary is-${primaryAttentionItem.tone}`}
+                                onClick={() => navigate(primaryAttentionItem.href)}
+                            >
+                                <span className="project-next-action-card__icon material-symbols-outlined">{primaryAttentionItem.icon}</span>
+                                <span className="project-next-action-card__copy">
+                                    <strong>{primaryAttentionItem.title}</strong>
+                                    <em>{primaryAttentionItem.meta}</em>
+                                </span>
+                                <span className="project-next-action-card__badge">{primaryAttentionItem.badge}</span>
+                            </button>
+                        ) : (
+                            <div className="project-next-action-card__primary is-clear">
+                                <span className="project-next-action-card__icon material-symbols-outlined">check_circle</span>
+                                <span className="project-next-action-card__copy">
+                                    <strong>{t('projectOverview.operations.nextEmptyTitle')}</strong>
+                                    <em>{t('projectOverview.attention.empty')}</em>
+                                </span>
+                            </div>
+                        )}
+
+                        {!isProjectCanceled && secondaryAttentionItems.length > 0 && (
+                            <div className="project-next-action-card__queue" aria-label={t('projectOverview.operations.queueTitle')}>
+                                <div className="project-next-action-card__queue-header">
+                                    <span>{t('projectOverview.operations.queueTitle')}</span>
+                                </div>
+                                <div className="project-next-action-card__queue-list">
+                                    {secondaryAttentionItems.map((item) => (
+                                        <button
+                                            key={`${item.kind}-${item.id}`}
+                                            type="button"
+                                            className={`project-next-action-card__queue-row is-${item.tone} is-${item.kind}`}
+                                            onClick={() => navigate(item.href)}
+                                        >
+                                            <span className="project-next-action-card__queue-icon material-symbols-outlined">{item.icon}</span>
+                                            <span className="project-next-action-card__queue-copy">
+                                                <strong>{item.title}</strong>
+                                                <em>{item.meta}</em>
+                                            </span>
+                                            <span className="project-next-action-card__badge">{item.badge}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </section>
+            </div>
+        </div>
+    );
+    const hasVisibleCover = !coverRemoved && Boolean(project.coverImage);
 
 
     return (
@@ -2756,18 +2936,11 @@ export const ProjectOverview = () => {
 
                     {/* 1. Cover Image Banner */}
                     <div
-                        className={`cover-section ${!project.coverImage ? 'no-image' : 'has-image'}`}
+                        className={`cover-section ${hasVisibleCover ? 'has-image' : 'no-image'}`}
                         style={{
-                            backgroundImage: !coverRemoved && project.coverImage ? `url(${project.coverImage})` : undefined,
-                            backgroundColor: !project.coverImage ? 'var(--color-surface-hover)' : undefined
+                            backgroundImage: hasVisibleCover ? `url(${project.coverImage})` : undefined
                         }}
                     >
-                        {!project.coverImage && (
-                            <div className="empty-cover-placeholder">
-                                <span className="material-symbols-outlined">image</span>
-                            </div>
-                        )}
-
                         {/* Action Overlay (Cover) */}
                         {isOwner && (
                             <div className="edit-cover-btn-wrapper">
@@ -2811,49 +2984,63 @@ export const ProjectOverview = () => {
                             <div>
                                 <div className="title-row">
                                     <h1>{project.title}</h1>
-                                    <Badge variant={project.status === 'Active' ? 'success' : 'neutral'}>
+                                    <Badge variant={project.status === 'Active' ? 'success' : project.status === 'In Testing' ? 'warning' : 'neutral'}>
                                         {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
                                     </Badge>
                                 </div>
                                 <div className="description-area">
-                                    <p className="desc-text">{project.description || t('projectOverview.header.noDescription')}</p>
-
-                                    {/* Hover Expand Box */}
-                                    {project.description && (
-                                        <div className="hover-popover">
-                                            <p className="popover-content">
-                                                {project.description}
-                                            </p>
-                                        </div>
-                                    )}
+                                    <div className="description-text-wrap">
+                                        <p className="desc-text">{projectPurpose || t('projectOverview.header.noDescription')}</p>
+                                        {/* Hover Expand Box */}
+                                        {projectPurpose && (
+                                            <div className="hover-popover" role="tooltip">
+                                                <p className="popover-content">
+                                                    {projectPurpose}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="project-overview__company-context-row">
+                                        {companyContextProject && (
+                                            <Link
+                                                to={`/project/${companyContextProject.id}`}
+                                                className="project-overview__company-context-chip"
+                                            >
+                                                <span className="material-symbols-outlined">account_tree</span>
+                                                {t('projectOverview.company.partOf').replace('{company}', companyContextProject.title)}
+                                            </Link>
+                                        )}
+                                        {projectIsCompanyProject && (
+                                            <span className="project-overview__company-context-chip">
+                                                <span className="material-symbols-outlined">domain_add</span>
+                                                {t('projectOverview.company.linkedCount').replace('{count}', String(linkedCompanyProjects.length))}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Right: Actions */}
                         <div className="actions-section">
-                            {/* View Toggle (Desktop) */}
-                            <div className="view-toggle">
-                                <button
-                                    onClick={() => setViewMode('overview')}
-                                    className={viewMode === 'overview' ? 'active' : ''}
-                                >
-                                    <span className="material-symbols-outlined view-toggle-icon">grid_view</span>
-                                    <span>{t('nav.overview')}</span>
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('mindmap')}
-                                    className={viewMode === 'mindmap' ? 'active' : ''}
-                                >
-                                    <span className="material-symbols-outlined view-toggle-icon">hub</span>
-                                    <span>{t('nav.mindmap')}</span>
-                                </button>
-                            </div>
-
                             <div className="button-group">
                                 {can('canManageTasks') && (
                                     <Button variant="primary" onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>
                                         {t('projectOverview.actions.newTask')}
+                                    </Button>
+                                )}
+                                {can('canManageTasks') && (
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => setShowInitiativeModal(true)}
+                                        icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                                        aria-label={t('projectOverview.actions.newInitiative')}
+                                        title={t('projectOverview.actions.newInitiative')}
+                                        className="project-overview-action project-overview-action--initiative"
+                                    >
+                                        <span className="project-overview-action__label">
+                                            {t('projectOverview.actions.newInitiative')}
+                                        </span>
                                     </Button>
                                 )}
                                 {can('canInvite') && (
@@ -2890,150 +3077,251 @@ export const ProjectOverview = () => {
 
 
 
-                    {/* Mobile View Toggle */}
-                    <div className="project-overview__mobile-toggle">
-                        <div className="project-overview__toggle-group">
-                            <button
-                                onClick={() => setViewMode('overview')}
-                                className={`project-overview__toggle-btn ${viewMode === 'overview' ? 'is-active' : ''}`}
-                            >
-                                <span className="material-symbols-outlined view-toggle-icon">grid_view</span>
-                                <span>{t('nav.overview')}</span>
-                            </button>
-                            <button
-                                onClick={() => setViewMode('mindmap')}
-                                className={`project-overview__toggle-btn ${viewMode === 'mindmap' ? 'is-active' : ''}`}
-                            >
-                                <span className="material-symbols-outlined view-toggle-icon">hub</span>
-                                <span>{t('nav.mindmap')}</span>
-                            </button>
-                        </div>
-                    </div>
-
                 </div>
 
-                {
-                    viewMode === 'mindmap' ? (
-                        <div className="project-overview__mindmap">
-                            <ProjectMindmap projectId={id!} />
-                        </div>
-                    ) : (
-                        <>
-                            <section className="project-command-strip" aria-label={t('projectOverview.command.label')}>
-                                <div className="project-command-strip__metrics">
+                <>
+                            {showStartupBriefingPrompt && (
+                                <section className="project-overview__startup-briefing-card" data-state="hint">
+                                    <div className="project-overview__startup-briefing-icon">
+                                        <span className="material-symbols-outlined">assignment_add</span>
+                                    </div>
+                                    <div className="project-overview__startup-briefing-body">
+                                        <span className="project-overview__startup-briefing-label">
+                                            {t('projectOverview.startup.briefing.badge')}
+                                        </span>
+                                        <h2>{t('projectOverview.startup.briefing.title')}</h2>
+                                        <p>{t('projectOverview.startup.briefing.description')}</p>
+                                        <div className="project-overview__startup-briefing-missing">
+                                            {startupBriefingMissingItems.map(item => (
+                                                <span key={item}>{item}</span>
+                                            ))}
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
-                                        className={`project-command-strip__item project-command-strip__item--health is-${commandHealthTone}`}
+                                        className="project-overview__startup-briefing-action"
+                                        onClick={() => {
+                                            setEditModalTab('general');
+                                            setShowEditModal(true);
+                                        }}
+                                    >
+                                        <span className="material-symbols-outlined">edit_note</span>
+                                        {t('projectOverview.startup.briefing.action')}
+                                    </button>
+                                </section>
+                            )}
+                            {projectIsCompanyProject && startupReadiness && (
+                                <section className="project-overview__startup-cockpit">
+                                    <div className="project-overview__startup-cockpit-header">
+                                        <div>
+                                            <h2>{t('projectOverview.startup.cockpitTitle')}</h2>
+                                            <p>{t('projectOverview.startup.cockpitDescription')}</p>
+                                        </div>
+                                        <Badge variant={startupReadiness.launchGate === 'ready' ? 'success' : startupReadiness.launchGate === 'blocked' ? 'error' : 'warning'}>
+                                            {t(`projectOverview.startup.launchGate.${startupReadiness.launchGate}`)}
+                                        </Badge>
+                                    </div>
+                                    <div className="project-overview__startup-metrics">
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.stage')}</span>
+                                            <strong>{t(getStartupStageKey(startupReadiness.stage))}</strong>
+                                        </div>
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.formationReadiness')}</span>
+                                            <strong>{startupReadiness.formationPercent}%</strong>
+                                        </div>
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.financeReadiness')}</span>
+                                            <strong>{startupReadiness.financePercent}%</strong>
+                                        </div>
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.marketingReadiness')}</span>
+                                            <strong>{startupReadiness.marketingPercent}%</strong>
+                                        </div>
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.complianceReadiness')}</span>
+                                            <strong>{startupReadiness.compliancePercent}%</strong>
+                                        </div>
+                                        <div className="project-overview__startup-metric">
+                                            <span>{t('projectOverview.startup.blockers')}</span>
+                                            <strong>{startupReadiness.blockerCount}</strong>
+                                        </div>
+                                    </div>
+                                    <div className="project-overview__startup-body">
+                                        <div className="project-overview__startup-next">
+                                            <span>{t('projectOverview.startup.nextFounderAction')}</span>
+                                            {startupReadiness.nextFounderAction ? (
+                                                <Link to={`/project/${project.id}/tasks/${startupReadiness.nextFounderAction.id}`}>
+                                                    {startupReadiness.nextFounderAction.title}
+                                                </Link>
+                                            ) : (
+                                                <strong>{t('projectOverview.startup.noNextAction')}</strong>
+                                            )}
+                                        </div>
+                                        <div className="project-overview__startup-context">
+                                            <span>{t('projectOverview.startup.targetCustomer')}</span>
+                                            <strong>{project.startupProfile?.targetCustomer || t('projectOverview.contract.missing')}</strong>
+                                        </div>
+                                        <div className="project-overview__startup-context">
+                                            <span>{t('projectOverview.startup.jurisdiction')}</span>
+                                            <strong>
+                                                {[project.startupProfile?.jurisdictionCountry, project.startupProfile?.jurisdictionRegion]
+                                                    .filter(Boolean)
+                                                    .join(' / ') || t('projectOverview.contract.missing')}
+                                            </strong>
+                                        </div>
+                                        <div className="project-overview__startup-context">
+                                            <span>{t('projectOverview.startup.sourceReview')}</span>
+                                            <strong>{project.startupProfile?.jurisdictionSourcesReviewedAt || t('common.notAvailable')}</strong>
+                                        </div>
+                                        {project.startupProfile?.advisorReviewRequired && (
+                                            <div className="project-overview__startup-context">
+                                                <span>{t('projectOverview.startup.advisorReview')}</span>
+                                                <strong>{t('projectOverview.startup.advisorReviewRequired')}</strong>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="project-overview__startup-actions">
+                                        {startupModules.has('accounting') && (
+                                            <Link to="/finance/cockpit">
+                                                <span className="material-symbols-outlined">account_balance_wallet</span>
+                                                {t('projectOverview.startup.openFinance')}
+                                            </Link>
+                                        )}
+                                        {startupModules.has('marketing') && (
+                                            <Link to={`/project/${project.id}/marketing`}>
+                                                <span className="material-symbols-outlined">ads_click</span>
+                                                {t('projectOverview.startup.openMarketing')}
+                                            </Link>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setEditModalTab('general');
+                                                setShowEditModal(true);
+                                            }}
+                                        >
+                                            <span className="material-symbols-outlined">fact_check</span>
+                                            {t('projectOverview.startup.updateReadiness')}
+                                        </button>
+                                    </div>
+                                    {startupSourceReferences.length > 0 && (
+                                        <div className="project-overview__startup-sources">
+                                            <span>{t('projectOverview.startup.sources')}</span>
+                                            <div>
+                                                {startupSourceReferences.map(reference => (
+                                                    <a key={reference.id} href={reference.url} target="_blank" rel="noopener noreferrer">
+                                                        {t(reference.labelKey)}
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {Object.keys(startupReadiness.trackProgress).length > 0 && (
+                                        <div className="project-overview__startup-tracks">
+                                            {Object.entries(startupReadiness.trackProgress).map(([trackId, value]) => (
+                                                <div key={trackId} className="project-overview__startup-track-progress">
+                                                    <span>{t(`startupTracks.${trackId.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase())}.label`, trackId)}</span>
+                                                    <strong>{value}%</strong>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </section>
+                            )}
+                            {projectIsCompanyProject && linkedCompanyProjects.length > 0 && (
+                                <section className="project-overview__linked-projects">
+                                    <div className="project-overview__linked-projects-header">
+                                        <div>
+                                            <h2>{t('projectOverview.company.linkedProjectsTitle')}</h2>
+                                            <p>{t('projectOverview.company.linkedProjectsDescription')}</p>
+                                        </div>
+                                    </div>
+                                    {linkedProjectRollup && (
+                                        <div className="project-overview__linked-rollup">
+                                            <div>
+                                                <span>{t('projectOverview.company.rollup.total')}</span>
+                                                <strong>{linkedProjectRollup.total}</strong>
+                                            </div>
+                                            <div>
+                                                <span>{t('projectOverview.company.rollup.active')}</span>
+                                                <strong>{linkedProjectRollup.activeCount}</strong>
+                                            </div>
+                                            <div>
+                                                <span>{t('projectOverview.company.rollup.progress')}</span>
+                                                <strong>{linkedProjectRollup.averageProgress}%</strong>
+                                            </div>
+                                            <div>
+                                                <span>{t('projectOverview.company.rollup.risk')}</span>
+                                                <strong>{linkedProjectRollup.atRiskCount}</strong>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="project-overview__linked-projects-list">
+                                        {linkedCompanyProjects.slice(0, 6).map(linkedProject => (
+                                            <Link
+                                                key={linkedProject.id}
+                                                to={`/project/${linkedProject.id}`}
+                                                className="project-overview__linked-project-row"
+                                            >
+                                                <span className="material-symbols-outlined">folder</span>
+                                                <span>{linkedProject.title}</span>
+                                                <small>{t(`projectCompanyRoles.${linkedProject.companyProjectRole || 'other'}`)}</small>
+                                                {typeof linkedProject.healthSnapshot?.score === 'number' && (
+                                                    <small>{linkedProject.healthSnapshot.score}/100</small>
+                                                )}
+                                                <Badge variant={linkedProject.status === 'Active' ? 'success' : linkedProject.status === 'In Testing' ? 'warning' : 'neutral'}>
+                                                    {projectStatusLabels[linkedProject.status] || linkedProject.status}
+                                                </Badge>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </section>
+                            )}
+                            <Card className="updates-card project-overview-metrics" aria-label={t('projectOverview.command.label')}>
+                                <div className="project-overview-metrics__grid">
+                                    <button
+                                        type="button"
+                                        className={`project-overview-metrics__item is-${commandHealthTone}`}
                                         onClick={() => {
                                             if (health) setShowHealthModal(true);
                                         }}
                                         disabled={!health}
                                         aria-label={t('projectOverview.snapshot.health.title')}
                                     >
-                                        <span className="project-command-strip__icon material-symbols-outlined">monitoring</span>
-                                        <div className="project-command-strip__copy">
-                                            <span>{t('projectOverview.command.health')}</span>
+                                        <span className="project-overview-metrics__icon material-symbols-outlined">monitoring</span>
+                                        <span className="project-overview-metrics__copy">
+                                            <span className="project-overview-metrics__label">{t('projectOverview.command.health')}</span>
                                             <strong>{commandHealthValue}</strong>
                                             <em>{commandHealthMeta}</em>
-                                        </div>
+                                        </span>
                                     </button>
-                                    <div className={`project-command-strip__item ${urgentCount > 0 ? 'is-danger' : 'is-neutral'}`}>
-                                        <span className="project-command-strip__icon material-symbols-outlined">checklist</span>
-                                        <div className="project-command-strip__copy">
-                                            <span>{t('projectOverview.command.work')}</span>
+                                    <div className={`project-overview-metrics__item ${urgentCount > 0 ? 'is-danger' : 'is-neutral'}`}>
+                                        <span className="project-overview-metrics__icon material-symbols-outlined">checklist</span>
+                                        <span className="project-overview-metrics__copy">
+                                            <span className="project-overview-metrics__label">{t('projectOverview.command.work')}</span>
                                             <strong>{commandWorkValue}</strong>
                                             <em>{commandWorkMeta}</em>
-                                        </div>
+                                        </span>
                                     </div>
-                                    <div className={`project-command-strip__item ${isProjectDueOverdue ? 'is-danger' : 'is-neutral'}`}>
-                                        <span className="project-command-strip__icon material-symbols-outlined">event</span>
-                                        <div className="project-command-strip__copy">
-                                            <span>{t('projectOverview.command.timeline')}</span>
+                                    <div className={`project-overview-metrics__item ${isProjectDueOverdue ? 'is-danger' : 'is-neutral'}`}>
+                                        <span className="project-overview-metrics__icon material-symbols-outlined">event</span>
+                                        <span className="project-overview-metrics__copy">
+                                            <span className="project-overview-metrics__label">{t('projectOverview.command.timeline')}</span>
                                             <strong>{commandTimelineValue}</strong>
                                             <em>{commandTimelineMeta}</em>
-                                        </div>
+                                        </span>
                                     </div>
-                                    <div className={`project-command-strip__item ${isProjectCanceled ? 'is-canceled' : isProjectPaused ? 'is-paused' : 'is-neutral'}`}>
-                                        <span className="project-command-strip__icon material-symbols-outlined">flag</span>
-                                        <div className="project-command-strip__copy">
-                                            <span>{t('projectOverview.command.lifecycle')}</span>
+                                    <div className={`project-overview-metrics__item ${isProjectCanceled ? 'is-canceled' : isProjectPaused ? 'is-paused' : 'is-neutral'}`}>
+                                        <span className="project-overview-metrics__icon material-symbols-outlined">{isProjectCanceled ? 'cancel' : isProjectPaused ? 'pause_circle' : 'flag'}</span>
+                                        <span className="project-overview-metrics__copy">
+                                            <span className="project-overview-metrics__label">{t('projectOverview.command.lifecycle')}</span>
                                             <strong>{projectStatusLabel}</strong>
                                             <em>{releaseStateLabel}</em>
-                                        </div>
+                                        </span>
                                     </div>
                                 </div>
-
-                                {isOwner && !isProjectCanceled && (
-                                    <div className="project-command-strip__actions">
-                                        {isProjectPaused ? (
-                                            <Button
-                                                variant="primary"
-                                                onClick={() => setShowResumeModal(true)}
-                                                icon={<span className="material-symbols-outlined">play_arrow</span>}
-                                            >
-                                                {t('projectOverview.resume.action')}
-                                            </Button>
-                                        ) : (
-                                            <Button
-                                                variant="secondary"
-                                                onClick={handlePauseProject}
-                                                isLoading={pausingProject}
-                                                disabled={pausingProject || cancelingProject}
-                                                className="project-command-strip__action project-command-strip__action--pause"
-                                                icon={<span className="material-symbols-outlined">pause</span>}
-                                            >
-                                                {t('projectOverview.pause.action')}
-                                            </Button>
-                                        )}
-                                        <Button
-                                            variant="secondary"
-                                            onClick={handleCancelProject}
-                                            isLoading={cancelingProject}
-                                            disabled={cancelingProject || pausingProject || resumingProject}
-                                            className="project-command-strip__action project-command-strip__action--cancel"
-                                            icon={<span className="material-symbols-outlined">cancel</span>}
-                                        >
-                                            {t('projectOverview.cancel.action')}
-                                        </Button>
-                                    </div>
-                                )}
-                            </section>
-
-                            {!isProjectCanceled && (
-                                <section className="project-attention-queue" aria-label={t('projectOverview.attention.title')}>
-                                    <div className="project-attention-queue__header">
-                                        <div>
-                                            <h2>{t('projectOverview.attention.title')}</h2>
-                                            <p>{t('projectOverview.attention.subtitle')}</p>
-                                        </div>
-                                        <span>{commandAttentionCount}</span>
-                                    </div>
-                                    {attentionItems.length > 0 ? (
-                                        <div className="project-attention-queue__list">
-                                            {attentionItems.map((item) => (
-                                                <button
-                                                    key={`${item.kind}-${item.id}`}
-                                                    type="button"
-                                                    className={`project-attention-queue__item is-${item.tone} is-${item.kind}`}
-                                                    onClick={() => navigate(item.href)}
-                                                >
-                                                    <span className="project-attention-queue__icon material-symbols-outlined">{item.icon}</span>
-                                                    <span className="project-attention-queue__copy">
-                                                        <strong>{item.title}</strong>
-                                                        <em>{item.meta}</em>
-                                                    </span>
-                                                    <span className="project-attention-queue__badge">{item.badge}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <div className="project-attention-queue__empty">
-                                            <span className="material-symbols-outlined">check_circle</span>
-                                            <p>{t('projectOverview.attention.empty')}</p>
-                                        </div>
-                                    )}
-                                </section>
-                            )}
+                            </Card>
 
 
                             {/* Project Overview Layout */}
@@ -3041,7 +3329,8 @@ export const ProjectOverview = () => {
                                 <div className="overview-layout__columns">
                                     <div className="overview-layout__column overview-layout__column--primary">
                                         <div className="overview-layout__primary">
-                                            {primaryFocusCardsToRender.map(renderOverviewCard)}
+                                            {renderNextActionSection()}
+                                            {primaryCardsToRender.map(renderOverviewCard)}
                                         </div>
                                     </div>
                                     <div className="overview-layout__column overview-layout__column--secondary">
@@ -3050,11 +3339,6 @@ export const ProjectOverview = () => {
                                         </div>
                                     </div>
                                 </div>
-                                {referenceCardsToRender.length > 0 && (
-                                    <div className="overview-layout__reference">
-                                        {referenceCardsToRender.map(renderOverviewCard)}
-                                    </div>
-                                )}
                             </div>
 
                             {/* Gallery Modal */}
@@ -3389,9 +3673,7 @@ export const ProjectOverview = () => {
                                 onFinish={finish}
                                 onSkip={skip}
                             />
-                        </>
-                    )
-                }
+                </>
             </div >
         </>
     );

@@ -44,6 +44,7 @@ import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/auth
 import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserProfile } from '../services/domain/usersService';
+import { isCompanyProject } from '../config/projectTemplates';
 import './projects-list.scss';
 
 // --- Types ---
@@ -174,6 +175,7 @@ interface SpotlightHeroProps {
     criticalIssuesCount?: number;
     daysRemaining?: number;
     sprintCount?: number;
+    descriptionFallback: string;
     onClick: () => void;
     mode?: 'spotlight' | 'focus';
 }
@@ -181,7 +183,7 @@ interface SpotlightHeroProps {
 const SpotlightHero: React.FC<SpotlightHeroProps> = ({
     project, metrics, healthStatus, healthScore, reasons,
     pendingTaskCount, completedTaskCount, nextMilestone,
-    criticalIssuesCount = 0, daysRemaining, onClick,
+    criticalIssuesCount = 0, daysRemaining, descriptionFallback, onClick,
     sprintCount = 0,
     mode = 'spotlight'
 }) => {
@@ -257,7 +259,7 @@ const SpotlightHero: React.FC<SpotlightHeroProps> = ({
 
                     <h1 className="hero-title-large">{project.title}</h1>
                     <p className="hero-desc">
-                        {project.description || "The central hub for your team's work."}
+                        {project.description || descriptionFallback}
                     </p>
 
                     {/* Secondary Reasons as Pills */}
@@ -387,6 +389,9 @@ interface RichProjectCardProps {
     isFocus?: boolean;
     canSetFocus?: boolean;
     onSetFocus?: () => void;
+    companyLabel?: string;
+    descriptionFallback: string;
+    statusLabel: string;
     onClick: () => void;
 }
 
@@ -398,6 +403,9 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
     isFocus,
     canSetFocus,
     onSetFocus,
+    companyLabel,
+    descriptionFallback,
+    statusLabel,
     onClick
 }) => {
     const healthColor = getHealthColor(healthStatus);
@@ -426,7 +434,7 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
                         <span className={`material-symbols-outlined icon-xs text-${getHealthBadgeVariant(healthStatus)}`}>
                             {healthStatus === 'critical' ? 'gpp_maybe' : 'check_circle'}
                         </span>
-                        <span>{project.status || 'Active'}</span>
+                        <span>{statusLabel}</span>
                     </div>
                 </div>
 
@@ -447,8 +455,14 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
                     <div className="rich-card__header">
                         <h3 className="title">{project.title}</h3>
                         <p className="description">
-                            {project.description || "No description provided."}
+                            {project.description || descriptionFallback}
                         </p>
+                        {companyLabel && (
+                            <span className="rich-card__company-context">
+                                <span className="material-symbols-outlined">account_tree</span>
+                                {companyLabel}
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>
@@ -562,7 +576,8 @@ const CompactProjectRow: React.FC<{
     onClick: () => void;
     statusLabel: string;
     updatedFallback: string;
-}> = ({ project, onClick, statusLabel, updatedFallback }) => {
+    companyLabel?: string;
+}> = ({ project, onClick, statusLabel, updatedFallback, companyLabel }) => {
     const statusClass = `status-${project.status?.toLowerCase().replace(/\s+/g, '-') || 'backlog'}`;
     const lastUpdated = project.updatedAt?.seconds
         ? new Date(project.updatedAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -597,6 +612,12 @@ const CompactProjectRow: React.FC<{
                         <span className="meta-item">
                             <span className="material-symbols-outlined">event</span>
                             {new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        </span>
+                    )}
+                    {companyLabel && (
+                        <span className="meta-item compact-company-context">
+                            <span className="material-symbols-outlined">account_tree</span>
+                            {companyLabel}
                         </span>
                     )}
                 </div>
@@ -641,6 +662,48 @@ const ProjectLifecycleSection: React.FC<{
     );
 };
 
+const CompanyProjectGroup: React.FC<{
+    companyProject: Project;
+    linkedProjects: Project[];
+    companyStatusLabel: string;
+    updatedFallback: string;
+    linkedEmptyLabel: string;
+    linkedCountLabel: string;
+    renderLinkedProject: (project: Project) => JSX.Element;
+    onOpenCompany: () => void;
+}> = ({
+    companyProject,
+    linkedProjects,
+    companyStatusLabel,
+    updatedFallback,
+    linkedEmptyLabel,
+    linkedCountLabel,
+    renderLinkedProject,
+    onOpenCompany
+}) => (
+    <article className="company-project-group">
+        <CompactProjectRow
+            project={companyProject}
+            statusLabel={companyStatusLabel}
+            updatedFallback={updatedFallback}
+            onClick={onOpenCompany}
+        />
+        <div className="company-project-group__body">
+            <div className="company-project-group__meta">
+                <span className="material-symbols-outlined">hub</span>
+                {linkedCountLabel}
+            </div>
+            {linkedProjects.length > 0 ? (
+                <div className="company-project-group__linked-list">
+                    {linkedProjects.map(renderLinkedProject)}
+                </div>
+            ) : (
+                <div className="company-project-group__empty">{linkedEmptyLabel}</div>
+            )}
+        </div>
+    </article>
+);
+
 
 
 // Helper to get consistent color from string
@@ -658,6 +721,7 @@ const TEMPLATE_SOURCE_BASE = 'base';
 
 const PROJECT_STATUS_ORDER: Project['status'][] = [
     'Active',
+    'In Testing',
     'Backlog',
     'Planning',
     'Review',
@@ -669,6 +733,7 @@ const PROJECT_STATUS_ORDER: Project['status'][] = [
 
 const PROJECT_STATUS_I18N_KEYS: Partial<Record<Project['status'], string>> = {
     'Active': 'project.status.active',
+    'In Testing': 'project.status.inTesting',
     'Backlog': 'project.status.backlog',
     'Planning': 'project.status.planning',
     'Review': 'project.status.review',
@@ -684,7 +749,6 @@ const PROJECT_MODULE_OPTIONS: ProjectModule[] = [
     'tasks',
     'initiatives',
     'ideas',
-    'mindmap',
     'activity',
     'issues',
     'milestones',
@@ -1636,33 +1700,65 @@ export const ProjectsList: React.FC = () => {
         }).sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
     }, [projects, authUserId, search]);
 
-    const activeList = useMemo(() =>
-        filteredProjects.filter(p => p.status === 'Active'),
+    const companyProjects = useMemo(() =>
+        filteredProjects.filter(isCompanyProject),
         [filteredProjects]);
+
+    const ordinaryProjects = useMemo(() =>
+        filteredProjects.filter(project => !isCompanyProject(project)),
+        [filteredProjects]);
+
+    const companyProjectLookup = useMemo(() => {
+        const lookup = new Map<string, Project>();
+        projects.filter(isCompanyProject).forEach(project => lookup.set(project.id, project));
+        return lookup;
+    }, [projects]);
+
+    const linkedProjectsByCompany = useMemo(() => {
+        const grouped = new Map<string, Project[]>();
+        ordinaryProjects.forEach(project => {
+            if (!project.companyProjectId) return;
+            const current = grouped.get(project.companyProjectId) || [];
+            current.push(project);
+            grouped.set(project.companyProjectId, current);
+        });
+        return grouped;
+    }, [ordinaryProjects]);
+
+    const getCompanyContextLabel = useCallback((project: Project) => {
+        if (!project.companyProjectId) return '';
+        const companyProject = companyProjectLookup.get(project.companyProjectId);
+        if (!companyProject) return '';
+        return t('projects.company.partOf').replace('{company}', companyProject.title);
+    }, [companyProjectLookup, t]);
+
+    const activeList = useMemo(() =>
+        ordinaryProjects.filter(p => p.status === 'Active' || p.status === 'In Testing'),
+        [ordinaryProjects]);
 
     const pausedList = useMemo(() =>
-        filteredProjects.filter(p => p.status === 'On Hold'),
-        [filteredProjects]);
+        ordinaryProjects.filter(p => p.status === 'On Hold'),
+        [ordinaryProjects]);
 
     const completedList = useMemo(() =>
-        filteredProjects.filter(p => p.status === 'Completed'),
-        [filteredProjects]);
+        ordinaryProjects.filter(p => p.status === 'Completed'),
+        [ordinaryProjects]);
 
     const canceledList = useMemo(() =>
-        filteredProjects.filter(p => p.status === 'Canceled'),
-        [filteredProjects]);
+        ordinaryProjects.filter(p => p.status === 'Canceled'),
+        [ordinaryProjects]);
 
     const backlogList = useMemo(() =>
-        filteredProjects.filter(p => (
+        ordinaryProjects.filter(p => (
             p.status !== 'Active'
+            && p.status !== 'In Testing'
             && p.status !== 'On Hold'
             && p.status !== 'Completed'
             && p.status !== 'Canceled'
         )),
-        [filteredProjects]);
+        [ordinaryProjects]);
 
     const lifecycleSectionCount = backlogList.length + pausedList.length + completedList.length + canceledList.length;
-    const decisionQueueCount = backlogList.length + pausedList.length;
 
     // Manual Focus Project
     const manualFocusProject = useMemo(() => {
@@ -1738,19 +1834,6 @@ export const ProjectsList: React.FC = () => {
             health: health
         };
     }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, healthInputsByProject]);
-
-    // Count critical/warning projects
-    const { criticalCount, warningCount } = useMemo(() => {
-        let critical = 0;
-        let warning = 0;
-        activeList.forEach(project => {
-            const health = projectHealthMap[project.id];
-            if (!health) return;
-            if (health.status === 'critical') critical++;
-            else if (health.status === 'warning') warning++;
-        });
-        return { criticalCount: critical, warningCount: warning };
-    }, [activeList, projectHealthMap]);
 
     // Spotlight Logic: Uses enhanced algorithm to select most critical/urgent project
     const spotlightData = useMemo(() => {
@@ -1829,59 +1912,13 @@ export const ProjectsList: React.FC = () => {
     ];
     const { onboardingActive, stepIndex, setStepIndex, skip, finish } = useOnboardingTour('projects_rich', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
-    // Calculate Avg Progress for Header
-    const avgProgress = useMemo(() => {
-        const total = filteredProjects.length;
-        if (total === 0) return 0;
-        return Math.round(filteredProjects.reduce((acc, p) => acc + (p.progress || 0), 0) / total);
-    }, [filteredProjects]);
-
-    const activeWorkCount = useMemo(() => filteredProjects.filter(p => p.status === 'Active').length, [filteredProjects]);
-    const projectWorkbenchCards = useMemo(() => [
-        {
-            key: 'focus',
-            label: t('projects.workbench.focus.label'),
-            value: spotlightProject?.title || t('projects.workbench.focus.empty'),
-            detail: spotlightProject
-                ? t('projects.workbench.focus.detail')
-                : t('projects.workbench.focus.emptyDetail'),
-            onClick: () => {
-                if (spotlightProject) {
-                    navigate(`/project/${spotlightProject.id}`);
-                    return;
-                }
-                openProjectCreateModal();
-            },
-            action: t('projects.workbench.focus.action')
-        },
-        {
-            key: 'risk',
-            label: t('projects.workbench.risk.label'),
-            value: `${criticalCount + warningCount}`,
-            detail: criticalCount > 0
-                ? t('projects.workbench.risk.detail').replace('{count}', String(criticalCount))
-                : t('projects.workbench.risk.clear'),
-            onClick: () => navigate('/tasks'),
-            action: t('projects.workbench.risk.action')
-        },
-        {
-            key: 'backlog',
-            label: t('projects.workbench.backlog.label'),
-            value: `${decisionQueueCount}`,
-            detail: decisionQueueCount > 0
-                ? t('projects.workbench.backlog.detail').replace('{count}', String(decisionQueueCount))
-                : t('projects.workbench.backlog.clear'),
-            onClick: () => navigate('/team'),
-            action: t('projects.workbench.backlog.action')
-        }
-    ], [criticalCount, decisionQueueCount, navigate, openProjectCreateModal, spotlightProject, t, warningCount]);
-
     const renderCompactProjectRow = (project: Project) => (
         <CompactProjectRow
             key={project.id}
             project={project}
             statusLabel={getProjectStatusLabel(project.status)}
             updatedFallback={t('projects.sections.updatedUnknown')}
+            companyLabel={getCompanyContextLabel(project)}
             onClick={() => navigate(`/project/${project.id}`)}
         />
     );
@@ -1899,35 +1936,6 @@ export const ProjectsList: React.FC = () => {
                     <h1 className="projects-header-title">Projects</h1>
                     <p className="projects-header-subtitle">Manage your team's work.</p>
                 </div>
-
-                <div className="projects-header-stats">
-                    <div className="header-stat-card">
-                        <div className="stat-value">{activeWorkCount}</div>
-                        <div className="stat-label">Active Projects</div>
-                    </div>
-                    <div className="header-stat-card">
-                        <div className={`stat-value ${criticalCount > 0 ? 'red' : ''}`}>{criticalCount}</div>
-                        <div className="stat-label">Critical Issues</div>
-                    </div>
-                    <div className="header-stat-card">
-                        <div className="stat-value emerald">{avgProgress}%</div>
-                        <div className="stat-label">Avg. Completion</div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="projects-workbench">
-                {projectWorkbenchCards.map((card) => (
-                    <Card key={card.key} padding="md" className="projects-workbench-card">
-                        <div className="projects-workbench-card__label">{card.label}</div>
-                        <div className="projects-workbench-card__value">{card.value}</div>
-                        <p className="projects-workbench-card__detail">{card.detail}</p>
-                        <button type="button" onClick={card.onClick} className="projects-workbench-card__link">
-                            {card.action}
-                            <span className="material-symbols-outlined">arrow_forward</span>
-                        </button>
-                    </Card>
-                ))}
             </div>
 
             {/* Toolbar: Search & Actions */}
@@ -1972,6 +1980,35 @@ export const ProjectsList: React.FC = () => {
                 </div>
             </div>
 
+            {companyProjects.length > 0 && (
+                <section className="company-projects-section">
+                    <div className="company-projects-section__header">
+                        <div>
+                            <h2 className="section-title">{t('projects.company.section.title').replace('{count}', String(companyProjects.length))}</h2>
+                            <p>{t('projects.company.section.description')}</p>
+                        </div>
+                    </div>
+                    <div className="company-projects-section__list">
+                        {companyProjects.map(companyProject => {
+                            const linkedProjects = linkedProjectsByCompany.get(companyProject.id) || [];
+                            return (
+                                <CompanyProjectGroup
+                                    key={companyProject.id}
+                                    companyProject={companyProject}
+                                    linkedProjects={linkedProjects}
+                                    companyStatusLabel={getProjectStatusLabel(companyProject.status)}
+                                    updatedFallback={t('projects.sections.updatedUnknown')}
+                                    linkedEmptyLabel={t('projects.company.emptyLinked')}
+                                    linkedCountLabel={t('projects.company.linkedCount').replace('{count}', String(linkedProjects.length))}
+                                    renderLinkedProject={renderCompactProjectRow}
+                                    onOpenCompany={() => navigate(`/project/${companyProject.id}`)}
+                                />
+                            );
+                        })}
+                    </div>
+                </section>
+            )}
+
             <div className="rich-content">
                 {spotlightProject && spotlightData && !search && (
                     <div id="spotlight-hero" className="mb-12">
@@ -1985,6 +2022,7 @@ export const ProjectsList: React.FC = () => {
                             completedTaskCount={tasks.filter(t => t.projectId === spotlightProject.id && (t.isCompleted || t.status === 'Done')).length}
                             nextMilestone={nextSpotlightMilestone}
                             sprintCount={spotlightProjectSprints.length}
+                            descriptionFallback={t('projectsList.spotlight.noDescription')}
                             onClick={() => navigate(`/project/${spotlightProject.id}`)}
                         />
                     </div>
@@ -2004,6 +2042,7 @@ export const ProjectsList: React.FC = () => {
                             nextMilestone={nextFocusMilestone}
                             criticalIssuesCount={getMetrics(manualFocusProject.id).issueCount}
                             sprintCount={focusSprints.length}
+                            descriptionFallback={t('projectsList.spotlight.noDescription')}
                             onClick={() => navigate(`/project/${manualFocusProject.id}`)}
                             mode="focus"
                         />
@@ -2029,6 +2068,9 @@ export const ProjectsList: React.FC = () => {
                                         metrics={getMetrics(p.id)}
                                         healthStatus={health?.status || 'normal'}
                                         healthScore={health?.score || 50}
+                                        companyLabel={getCompanyContextLabel(p)}
+                                        descriptionFallback={t('projectsList.card.defaultDescription')}
+                                        statusLabel={getProjectStatusLabel(p.status)}
                                         onClick={() => navigate(`/project/${p.id}`)}
                                         isFocus={p.id === focusProjectId}
                                         canSetFocus={hasPermission('tenant.settings.edit')}

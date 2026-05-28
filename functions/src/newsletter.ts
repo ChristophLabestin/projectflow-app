@@ -675,8 +675,6 @@ export const api = functions.region(REGION).https.onRequest((req, res) => {
                 'GET|PATCH|DELETE /api/projectflow/projects/:projectId/sprints/:sprintId',
                 'GET|POST /api/projectflow/projects/:projectId/categories',
                 'GET|PATCH|DELETE /api/projectflow/projects/:projectId/categories/:categoryId',
-                'GET|POST /api/projectflow/projects/:projectId/mindmaps',
-                'GET|PATCH|DELETE /api/projectflow/projects/:projectId/mindmaps/:mindmapId',
                 'GET|POST /api/projectflow/projects/:projectId/project-groups',
                 'GET|PATCH|DELETE /api/projectflow/projects/:projectId/project-groups/:groupId',
                 'GET|POST /api/projectflow/projects/:projectId/comments',

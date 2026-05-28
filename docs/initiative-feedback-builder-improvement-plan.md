@@ -1,38 +1,43 @@
-# Initiative Feedback Builder Improvement Plan
+# Initiative Feedback Builder Rework Plan
 
-Date: 2026-05-25
+Date: 2026-05-28
 
 ## Problem
 
-The initiative feedback form builder currently exposes every concern in one long modal: form copy, field structure, field settings, publishing links, and preview. It works technically, but the experience makes it hard to know what to do next, whether the form is safe to publish, and how a configured field will turn into a linked task.
+The old initiative feedback builder mixed form setup, field editing, publishing, validation, and preview into a heavy settings modal. Even after visual compaction, the workflow still asked users to understand the builder's internal model before they could answer the practical question: what will customers be asked, and where does the feedback go?
 
-## Product Goals
+## Product Direction
 
-- Make the builder feel like a guided workflow instead of a settings dump.
-- Keep the core action clear: configure a customer-facing form that creates tasks on the initiative.
-- Surface validation before save, not only after backend rejection.
-- Explain task mapping where the user is editing fields, not in detached help copy.
-- Keep the public preview sticky and useful while editing.
-- Keep the hosted link, endpoint, and token management available only when relevant.
+- Rebuild the feature around the public intake outcome, not around implementation settings.
+- Match the existing task/initiative modal language instead of introducing a bespoke builder shell.
+- Make the public form title and description the first editable controls so the modal starts with the customer-facing form, not internal setup text.
+- Make questions the primary workspace; put publishing and links in a secondary Share view.
+- Move field editing into inline row expansion instead of showing every setting at once.
+- Let every field, including default fields, be fully customized: label, type, task mapping, placeholder, help text, select options, required state, visibility, width, order, and removal.
+- Add question templates for the common field types so users do not start from an abstract "custom field".
+- Keep preview available on demand, not as a permanent competing column.
+- Preserve the existing `InitiativeFeedbackFormSettings` schema, callable save path, hosted public page, and embedded endpoint contract.
 
-## Implementation Plan
+## Implementation Scope
 
-1. Add a three-step builder frame: setup, fields, publish.
-2. Add builder health checks for missing labels, hidden required fields, select fields without options, empty enabled forms, and missing task title/description mapping.
-3. Block save when blocking issues exist and show issue rows with direct field selection where possible.
-4. Refactor field cards into a denser list with type, mapping, visibility, and required state visible at scan level.
-5. Make field movement available in the list and editor so reordering does not require opening a secondary control cluster.
-6. Add helper functions that prepare fields for save by trimming labels, placeholders, help text, and select options.
-7. Refresh the preview column so it shows the current publishing state, enabled field count, attachment behavior, and the live public form.
-8. Keep all new strings in `web/locales/en.ts` and `web/locales/de.ts`.
-9. Update docs and add focused tests for the schema helpers.
+1. Replace the setup/fields/publish stepper with a task-modal-style editor:
+   - form title input and description textarea at the top
+   - one compact toolbar for Questions/Share, add-question, preview, and publish
+   - footer save/cancel actions with compact form health
+   - main Questions canvas with dense question rows and inline selected-question editing
+   - Share canvas for hosted link, endpoint, token, and attachment settings
+2. Keep validation visible through a single top alert, field-level issue chips, selected-question issue rows, and the compact health text.
+3. Use existing schema helper validation and save preparation so public submissions and task creation keep the same behavior, with an added warning when more than one visible field maps to the same task property.
+4. Localize all new visible text in English and German.
+5. Update styling guidance to treat builders as compact modal editors first, only expanding into workspace-like layouts when the workflow genuinely needs it.
 
 ## Validation
 
-- Run focused Vitest coverage for the feedback builder helpers.
-- Run the web production build.
-- Browser-check the initiative feedback modal if a local app session is practical.
+- `cd web && npm run lint:theme`
+- `cd web && npm run test:run -- initiativeFeedbackBuilder`
+- `cd web && npm run build`
+- Browser-check desktop and mobile renders through a temporary local harness because the authenticated initiative route redirects to login outside a signed-in session.
 
 ## Tracking
 
-ProjectFlow initiative/task upsert was attempted at the start and end of the session. Initiative creation returned HTTP 500, and the plain task-create fallback returned HTTP 503. Tracking still needs to be retried when the ProjectFlow API is healthy again.
+ProjectFlow initiative tracking was attempted with `projectflow_cli.py sync checkpoint --entity initiative --phase start --request "Rework initiative feedback form builder from scratch"` and returned `HTTP 403: Insufficient permissions`. Completed fallback tasks were created instead: `8t1Of9ds8lQ1jc3Q7zEi` for the scratch rework and `UIEnvyqfNkGbquxzEYji` for the quieting pass.

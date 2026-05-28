@@ -1,4 +1,4 @@
-import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool } from "../types";
+import { Idea, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool } from "../types";
 import { functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
 import { incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
@@ -420,55 +420,6 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
     } catch (error) {
         console.error("Gemini Project Flows Error:", error);
         throw error;
-    }
-};
-
-export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): Promise<MindmapGrouping[]> => {
-    if (!ideas.length) return [];
-    try {
-        const responseSchema = {
-            type: "ARRAY",
-            items: {
-                type: "OBJECT",
-                properties: {
-                    group: { type: "STRING" },
-                    reason: { type: "STRING" },
-                    ideaIds: {
-                        type: "ARRAY",
-                        items: { type: "STRING" }
-                    }
-                },
-                required: ['group', 'ideaIds']
-            }
-        };
-
-        const ideaList = ideas
-            .map((idea) => `- ${idea.id}: ${idea.title} — ${idea.description || 'No description'} `)
-            .join('\n');
-
-        const response = await callGeminiAPI({
-            model: "gpt-5-mini",
-            prompt: `You are CORA, a mind-mapping assistant. Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
-            Project: "${project.title}".
-                Flows (id: title — description):
-${ideaList}
-Return JSON only.Each object must include:
-        - group: the group name you propose(keep it short, eg. "UI", "Architecture", "Growth Ops")
-            - ideaIds: an array of flow ids from above that belong in that group
-                - reason: optional one - line rationale`,
-            responseSchema,
-            temperature: 0.5
-        });
-
-        const parsed = JSON.parse(response.text || "[]");
-        return (Array.isArray(parsed) ? parsed : []).map((entry, index) => ({
-            group: entry.group || `Group ${index + 1} `,
-            reason: entry.reason || '',
-            ideaIds: Array.isArray(entry.ideaIds) ? entry.ideaIds : [],
-        })) as MindmapGrouping[];
-    } catch (error) {
-        console.error("Gemini Mindmap Grouping Error:", error);
-        return [];
     }
 };
 

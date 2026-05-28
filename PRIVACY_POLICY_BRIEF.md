@@ -13,7 +13,6 @@ Use it as source input for a formal privacy policy. Fill in the TODOs with your 
 - Marketing suite (paid ads, email campaigns, recipient lists, templates)
 - Drag and drop email builder (content blocks and templates)
 - Media library for uploads (file storage)
-- Mind map for visual planning (idea data)
 - Help center and onboarding tours (user preferences and progress)
 - Global search with AI answers across workspace content
 - Integrations: GitHub issues sync, Facebook/Instagram for social publishing
@@ -25,7 +24,7 @@ Use it as source input for a formal privacy policy. Fill in the TODOs with your 
 - Account data: email, display name, profile photo URL, user ID (Firebase Auth).
 - Authentication data: hashed credentials (managed by Firebase), OAuth provider IDs, MFA/TOTP status, passkey credential IDs.
 - Workspace data: role, group membership, invites, activity actions.
-- Content data: projects, tasks, issues, comments, milestones, flows, mind maps, campaigns, posts, reports.
+- Content data: projects, tasks, issues, comments, milestones, flows, campaigns, posts, reports.
 - Social/marketing data: campaign strategy, scheduled posts, asset metadata, recipient emails, ad campaign details.
 - Integration data: GitHub access token (if linked), Facebook/Instagram access token, social account IDs.
 - AI usage data: token counts, image usage, usage timestamps.

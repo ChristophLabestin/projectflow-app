@@ -61,12 +61,15 @@ export const isProjectExcludedFromHealth = (project?: Pick<Project, 'status'> | 
 
 export const isProjectIncludedInImportantSignals = (project: Pick<Project, 'status'>) => !isProjectCanceled(project);
 
+const ACTIVE_GLOBAL_PROJECT_STATUSES: Project['status'][] = ['Active', 'In Testing'];
+const ACTIVELY_MANAGED_PROJECT_STATUSES: Project['status'][] = ['Active', 'In Testing', 'Review'];
+
 export const isProjectActiveForGlobalSignals = (project: Project) => (
-    project.status === 'Active' && isProjectIncludedInImportantSignals(project)
+    ACTIVE_GLOBAL_PROJECT_STATUSES.includes(project.status) && isProjectIncludedInImportantSignals(project)
 );
 
 const isProjectActivelyManaged = (project: Project) => (
-    project.status === 'Active' || project.status === 'Review'
+    ACTIVELY_MANAGED_PROJECT_STATUSES.includes(project.status)
 );
 
 const priorityWeight = (priority?: string) => {
@@ -1287,8 +1290,12 @@ export const calculateProjectHealth = (
     }
 
     const brief = project.brief || {};
+    const hasProjectPurpose = Boolean(
+        (typeof project.description === 'string' && project.description.trim())
+        || (typeof brief.objective === 'string' && brief.objective.trim())
+    );
     const missingBriefFields = [
-        typeof brief.objective === 'string' && brief.objective.trim() ? null : 'objective',
+        hasProjectPurpose ? null : 'purpose',
         Array.isArray(brief.successCriteria) && brief.successCriteria.some((item) => typeof item === 'string' && item.trim()) ? null : 'successCriteria',
         typeof brief.scope === 'string' && brief.scope.trim() ? null : 'scope',
         typeof brief.decisionOwner === 'string' && brief.decisionOwner.trim() ? null : 'decisionOwner',
@@ -1299,9 +1306,9 @@ export const calculateProjectHealth = (
     if (needsProjectBrief && missingBriefFields.length > 0) {
         addFactor({
             id: 'project_brief_gap',
-            label: 'Project Brief Incomplete',
+            label: 'Delivery Setup Incomplete',
             labelKey: 'health.factors.project_brief_gap.label',
-            description: 'The project is missing objective, success criteria, scope, owner, or cadence.',
+            description: 'The project is missing purpose, success criteria, scope, owner, or cadence.',
             descriptionKey: 'health.factors.project_brief_gap.description',
             meta: { count: missingBriefFields.length },
             impact: -Math.min(7, 2 + missingBriefFields.length),
@@ -1309,14 +1316,14 @@ export const calculateProjectHealth = (
         });
         addRecommendation(
             'health.recommendations.completeProjectBrief',
-            'Complete the Project Brief so ProjectFlow can judge health against the real project contract.'
+            'Complete delivery setup so ProjectFlow can judge health against the real project contract.'
         );
     } else if (needsProjectBrief) {
         addFactor({
             id: 'project_brief_ready',
-            label: 'Project Brief Ready',
+            label: 'Delivery Setup Ready',
             labelKey: 'health.factors.project_brief_ready.label',
-            description: 'The project has a clear objective, success criteria, scope, owner, and cadence.',
+            description: 'The project has a clear purpose, success criteria, scope, owner, and cadence.',
             descriptionKey: 'health.factors.project_brief_ready.description',
             impact: 4,
             type: 'positive'
@@ -1333,6 +1340,177 @@ export const calculateProjectHealth = (
             impact: -8,
             type: 'negative'
         });
+    }
+
+    const isStartupCompanyProject = project.projectCategory === 'startup_company' || project.templateId === 'startup_company_formation';
+    if (isStartupCompanyProject && !isTerminalProject) {
+        const startupProfile = project.startupProfile || {};
+        const startupReadiness = project.startupReadiness || {};
+        const selectedTracks = startupProfile.selectedTrackIds || [];
+        const startupTasks = tasks.filter(task => (
+            task.templateId === 'startup_company_formation'
+            || typeof task.templateTrack === 'string'
+            || (Array.isArray(task.category) && task.category.includes('Startup' as any))
+        ));
+        const legalTrackSelected = selectedTracks.includes('legal_formation');
+        const financeTrackSelected = selectedTracks.includes('finance_accounting');
+        const complianceTrackSelected = selectedTracks.includes('compliance');
+        const validationTrackSelected = selectedTracks.includes('validation');
+        const marketingTrackSelected = selectedTracks.includes('marketing_sales');
+        const restrictedAdvisorResources = (project.externalResources || []).filter(resource => (
+            resource.advisorReviewRequired
+            || resource.type === 'advisor'
+            || resource.type === 'legal'
+            || resource.type === 'finance'
+        ));
+
+        if (!startupProfile.jurisdictionCountry && (legalTrackSelected || complianceTrackSelected)) {
+            addFactor({
+                id: 'startup_jurisdiction_missing',
+                label: 'Startup Jurisdiction Missing',
+                labelKey: 'health.factors.startup_jurisdiction_missing.label',
+                description: 'Formation or compliance work is selected without a jurisdiction country.',
+                descriptionKey: 'health.factors.startup_jurisdiction_missing.description',
+                impact: -10,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.startupSetJurisdiction',
+                'Set the startup jurisdiction before relying on legal, tax, or compliance work.'
+            );
+        }
+
+        if (startupProfile.jurisdictionCountry && !startupProfile.jurisdictionTemplateId) {
+            addFactor({
+                id: 'startup_jurisdiction_template_missing',
+                label: 'Jurisdiction Template Missing',
+                labelKey: 'health.factors.startup_jurisdiction_template_missing.label',
+                description: 'The startup has a jurisdiction country but no source-backed template metadata.',
+                descriptionKey: 'health.factors.startup_jurisdiction_template_missing.description',
+                impact: -5,
+                type: 'neutral'
+            });
+            addRecommendation(
+                'health.recommendations.startupRefreshJurisdictionTemplate',
+                'Refresh the startup profile so official source metadata is attached.'
+            );
+        }
+
+        if (startupProfile.regulatedIndustryStatus === 'unknown' || (startupProfile.regulatedIndustryStatus === undefined && startupProfile.regulatedIndustry === undefined)) {
+            addFactor({
+                id: 'startup_compliance_unknown',
+                label: 'Compliance Unknown',
+                labelKey: 'health.factors.startup_compliance_unknown.label',
+                description: 'The regulated-industry risk is not classified yet.',
+                descriptionKey: 'health.factors.startup_compliance_unknown.description',
+                impact: -7,
+                type: 'neutral'
+            });
+            addRecommendation(
+                'health.recommendations.startupClassifyRegulatoryRisk',
+                'Classify whether the startup operates in a regulated area before launch.'
+            );
+        }
+
+        if (startupProfile.hasCoFounders && !startupReadiness.founderAgreementReady) {
+            addFactor({
+                id: 'startup_founder_agreement_gap',
+                label: 'Founder Decision Needed',
+                labelKey: 'health.factors.startup_founder_agreement_gap.label',
+                description: 'Co-founder setup exists but founder agreement readiness is not marked complete.',
+                descriptionKey: 'health.factors.startup_founder_agreement_gap.description',
+                impact: -9,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.startupFounderAgreement',
+                'Track founder agreement and IP assignment readiness before formation or launch decisions.'
+            );
+        }
+
+        if (financeTrackSelected && (!startupReadiness.taxSetupReady || !startupReadiness.bankAccountReady || !startupReadiness.bookkeepingReady)) {
+            addFactor({
+                id: 'startup_finance_setup_missing',
+                label: 'Finance Setup Missing',
+                labelKey: 'health.factors.startup_finance_setup_missing.label',
+                description: 'Tax, bank, or bookkeeping readiness is still incomplete.',
+                descriptionKey: 'health.factors.startup_finance_setup_missing.description',
+                impact: -8,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.startupFinanceSetup',
+                'Complete the finance/accounting setup before treating the company as operationally ready.'
+            );
+        }
+
+        if ((legalTrackSelected || financeTrackSelected || complianceTrackSelected) && restrictedAdvisorResources.length === 0) {
+            addFactor({
+                id: 'startup_advisor_resource_missing',
+                label: 'Advisor Resource Missing',
+                labelKey: 'health.factors.startup_advisor_resource_missing.label',
+                description: 'Sensitive legal, finance, or compliance work has no classified advisor resource.',
+                descriptionKey: 'health.factors.startup_advisor_resource_missing.description',
+                impact: -5,
+                type: 'neutral'
+            });
+            addRecommendation(
+                'health.recommendations.startupAddAdvisorResource',
+                'Add a restricted advisor, legal, or finance resource in project settings before relying on sensitive decisions.'
+            );
+        }
+
+        if (complianceTrackSelected && (!startupReadiness.privacyDocsReady || !startupReadiness.requiredPermitsKnown)) {
+            addFactor({
+                id: 'startup_launch_gate_blocked',
+                label: 'Launch Gate Blocked',
+                labelKey: 'health.factors.startup_launch_gate_blocked.label',
+                description: 'Compliance, privacy, or permit readiness is not complete.',
+                descriptionKey: 'health.factors.startup_launch_gate_blocked.description',
+                impact: -8,
+                type: 'negative'
+            });
+            addRecommendation(
+                'health.recommendations.startupReviewLaunchGate',
+                'Review launch-critical compliance, privacy, and permit tasks before shipping publicly.'
+            );
+        }
+
+        if (validationTrackSelected && !startupTasks.some(task => task.templateTrack === 'validation' && isTaskDone(task))) {
+            addFactor({
+                id: 'startup_validation_evidence_stale',
+                label: 'Validation Evidence Missing',
+                labelKey: 'health.factors.startup_validation_evidence_stale.label',
+                description: 'No completed validation task is visible yet.',
+                descriptionKey: 'health.factors.startup_validation_evidence_stale.description',
+                impact: -6,
+                type: 'neutral'
+            });
+        }
+
+        if (marketingTrackSelected && !startupReadiness.firstChannelReady) {
+            addFactor({
+                id: 'startup_gtm_channel_missing',
+                label: 'Go-To-Market Channel Missing',
+                labelKey: 'health.factors.startup_gtm_channel_missing.label',
+                description: 'The first sales or marketing channel is not marked ready.',
+                descriptionKey: 'health.factors.startup_gtm_channel_missing.description',
+                impact: -5,
+                type: 'neutral'
+            });
+        }
+
+        if (startupTasks.length >= 8) {
+            addFactor({
+                id: 'startup_operating_workflow_ready',
+                label: 'Startup Workflow Ready',
+                labelKey: 'health.factors.startup_operating_workflow_ready.label',
+                description: 'Startup formation work is tracked as editable ProjectFlow tasks.',
+                descriptionKey: 'health.factors.startup_operating_workflow_ready.description',
+                impact: 5,
+                type: 'positive'
+            });
+        }
     }
 
     // Guardrails keep severe live risks from being hidden by unrelated positives.
@@ -1707,7 +1885,7 @@ export const calculateSpotlightScore = (
     }
 
     // 8. LOW PROGRESS WARNING
-    if (project.status === 'Active' && (project.progress || 0) < 20) {
+    if ((project.status === 'Active' || project.status === 'In Testing') && (project.progress || 0) < 20) {
         const progress = project.progress || 0;
         if (!reasons.some(r => r.key === 'health.spotlight.behindSchedule')) {
             addReason(
@@ -1720,7 +1898,7 @@ export const calculateSpotlightScore = (
     }
 
     // 9. STATUS WEIGHT
-    if (project.status === 'Active') {
+    if (project.status === 'Active' || project.status === 'In Testing') {
         score += 10; // Baseline boost for active projects
     } else if (project.status === 'Brainstorming' || project.status === 'Planning' || project.status === 'Backlog') {
         score -= 500; // Strong penalty for non-active projects

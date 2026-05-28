@@ -23,6 +23,7 @@ Related documents:
 - `APP_CONCEPT.md`
 - `STYLING.md`
 - `COMPONENTS.md` (notably: `MediaLibraryModal` requirements)
+- `FIRESTORE_STRUCTURE.md` (project `externalResources` can carry resource-level `sensitivity`, `restrictedToRoleIds`, and `advisorReviewRequired` metadata)
 
 ---
 
@@ -178,6 +179,8 @@ Implementation can use:
 3) combine allow/deny (deny wins)  
 4) apply overrides (project → module → resource)  
 5) enforce entitlements (plan, seats, modules, AI quota)
+
+Startup/company legal, finance, compliance, funding, and advisor links use the same resource-level model. The UI filters sidebar resources by `restrictedToRoleIds` when present and labels sensitive/advisor-reviewed resources, but any backend or rules enforcement must still use the authoritative project membership and role model.
 
 ---
 

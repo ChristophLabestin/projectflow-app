@@ -233,6 +233,10 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `description`: string
 - `status`: "Active" | "Completed" | ...
 - `projectType`: `"standard" | "software" | "creative"` (Project Brief classification)
+- `projectCategory`: `"general" | "software" | "creative" | "client_delivery" | "operations" | "marketing" | "finance" | "startup_company" | "personal"` (durable project class)
+- `templateId`: `"blank" | "software_release" | "creative_project" | "client_delivery" | "startup_company_formation" | "marketing_campaign" | "internal_operations" | "finance_setup"` (creation/behavior template)
+- `companyProjectId`: string (optional link from a normal project to a startup/company project)
+- `companyProjectRole`: `"product" | "marketing" | "finance" | "legal" | "operations" | "funding" | "research" | "other"` (relationship label for company workstream grouping)
 - `operatingMode`: `"explore" | "build" | "ship" | "maintain"` (current execution mode)
 - `dateConfidence`: `"fixed" | "target" | "rough" | "unknown"` (how firm the project dates are)
 - `brief`: Object (lightweight project contract)
@@ -244,8 +248,28 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `operatingModel`: Object (`mode`, `cadence`, `dateConfidence`) used by overview and future automation
 - `riskRegister`: Array of `{ id, title, mitigation, severity, status, createdAt }`
 - `healthSnapshot`: Object (optional durable score/status/trend snapshot)
+- `startupProfile`: Object (optional company/startup formation profile)
+  - `workingName`: string
+  - `targetCustomer`: string
+  - `formationStatus`: `"idea" | "validating" | "preparing" | "filed" | "registered" | "operating"`
+  - `businessModel`: `"saas" | "service" | "marketplace" | "commerce" | "content" | "hardware" | "agency" | "other"`
+  - `fundingRoute`: `"bootstrapped" | "grant" | "loan" | "angel" | "vc" | "crowdfunding" | "revenue_funded" | "undecided"`
+  - `jurisdictionCountry`: string
+  - `jurisdictionRegion`: string
+  - `jurisdictionTemplateId`: `"global_generic" | "de_generic" | "us_generic"`
+  - `jurisdictionSources`: Array of `{ id, labelKey, url, publisher, lastReviewedAt }` official-source metadata used by jurisdiction-aware seed work
+  - `jurisdictionSourcesReviewedAt`: string
+  - `advisorReviewRequired`: boolean
+  - `regulatedIndustryStatus`: `"yes" | "no" | "unknown"`
+  - `hasCoFounders`: boolean
+  - `hasEmployeesPlanned`: boolean
+  - `targetLaunchDate`: string
+  - `selectedTrackIds`: `("validation" | "legal_formation" | "finance_accounting" | "compliance" | "product_delivery" | "marketing_sales" | "funding" | "operations")[]`
+- `startupReadiness`: Object (optional readiness checklist summary for company/startup projects)
+  - `legalStructureDecided`, `founderAgreementReady`, `ipAssignmentReady`, `registrationSubmitted`, `registrationConfirmed`, `taxSetupReady`, `bankAccountReady`, `bookkeepingReady`, `privacyDocsReady`, `requiredPermitsKnown`, `launchOfferReady`, `firstChannelReady`: boolean
 - `ownerId`: string
 - `modules`: string[] (Enabled modules like 'tasks', 'ideas')
+- `externalResources`: Array of sidebar resources with optional `{ type, sensitivity, restrictedToRoleIds, advisorReviewRequired, sourceTemplateId, sourceReferenceId, lastReviewedAt }` metadata. Legal, finance, compliance, funding, and advisor resources should be classified so the UI can warn/filter by project role.
 - `visibilityGroupIds`: string[]
 - `coverImage`: string (Legacy URL)
 - `coverImageFileId`: string (Optional, managed file reference)
@@ -258,7 +282,10 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 > These collections exist *within* a project document.
 
 *   **`tasks`**
-    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, externalKey, codexSessionId, source, ... }`
+    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`
+        *   Startup/company template seeds use `source: "template"` or `source: "official_template"`, `templateId: "startup_company_formation"`, `templateTrack`, `templateSeedId`, and optional `sourceReferences` to keep generated work editable, filterable, and source-auditable.
+    *   📄 `Initiative`: `{ title, status, priority, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, successMetric, ... }`
+    *   📄 `Milestone`: `{ title, status, dueDate, riskRating, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`
 *   **`issues`**
     *   📄 `Issue`: `{ title, status, severity, reporterId, ... }`
 *   **`ideas`**

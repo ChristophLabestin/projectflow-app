@@ -48,17 +48,23 @@ export const searchProjectsAndTasks = async (
 
         // Search projects
         for (const project of projects) {
+            const companyProject = project.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
             const titleMatch = project.title.toLowerCase().includes(normalizedQuery);
             const descMatch = project.description?.toLowerCase().includes(normalizedQuery);
+            const companyMatch = companyProject?.title.toLowerCase().includes(normalizedQuery);
 
-            if (titleMatch || descMatch) {
+            if (titleMatch || descMatch || companyMatch) {
                 results.push({
                     type: 'project',
                     id: project.id,
                     title: project.title,
                     description: project.description,
                     status: project.status,
-                    relevance: titleMatch ? 10 : 5
+                    projectCategory: project.projectCategory,
+                    templateId: project.templateId,
+                    companyProjectId: project.companyProjectId,
+                    companyProjectTitle: companyProject?.title,
+                    relevance: titleMatch ? 10 : companyMatch ? 7 : 5
                 });
             }
         }
@@ -70,6 +76,7 @@ export const searchProjectsAndTasks = async (
 
             if (titleMatch || descMatch) {
                 const project = projects.find(p => p.id === task.projectId);
+                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
                 results.push({
                     type: 'task',
                     id: task.id,
@@ -77,6 +84,8 @@ export const searchProjectsAndTasks = async (
                     description: task.description,
                     projectId: task.projectId,
                     projectTitle: project?.title,
+                    companyProjectId: project?.companyProjectId,
+                    companyProjectTitle: companyProject?.title,
                     status: task.status || (task.isCompleted ? 'Completed' : 'Open'),
                     relevance: titleMatch ? 8 : 4
                 });
@@ -90,6 +99,7 @@ export const searchProjectsAndTasks = async (
 
             if (titleMatch || descMatch) {
                 const project = projects.find(p => p.id === issue.projectId);
+                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
                 results.push({
                     type: 'issue',
                     id: issue.id,
@@ -97,6 +107,8 @@ export const searchProjectsAndTasks = async (
                     description: issue.description,
                     projectId: issue.projectId,
                     projectTitle: project?.title,
+                    companyProjectId: project?.companyProjectId,
+                    companyProjectTitle: companyProject?.title,
                     status: issue.status,
                     relevance: titleMatch ? 8 : 4
                 });
@@ -110,6 +122,7 @@ export const searchProjectsAndTasks = async (
 
             if (titleMatch || descMatch) {
                 const project = projects.find(p => p.id === idea.projectId);
+                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
                 results.push({
                     type: 'idea',
                     id: idea.id,
@@ -117,6 +130,8 @@ export const searchProjectsAndTasks = async (
                     description: idea.description,
                     projectId: idea.projectId,
                     projectTitle: project?.title,
+                    companyProjectId: project?.companyProjectId,
+                    companyProjectTitle: companyProject?.title,
                     status: idea.stage,
                     relevance: titleMatch ? 8 : 4
                 });
