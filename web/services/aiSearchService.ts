@@ -2,6 +2,7 @@ import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
 import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, incrementAIUsage, incrementImageUsage } from "./dataService";
+import { getWorkspaceInitiatives } from './domain/initiativesService';
 import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
 import { isProjectIncludedInImportantSignals } from "./healthService";
@@ -26,7 +27,7 @@ export const isQuestionQuery = (input: string): boolean => {
 };
 
 /**
- * Search projects, tasks, issues, and ideas locally using keyword matching
+ * Search projects, initiatives, tasks, issues, and ideas locally using keyword matching
  */
 export const searchProjectsAndTasks = async (
     query: string,
@@ -39,8 +40,9 @@ export const searchProjectsAndTasks = async (
 
     try {
         // Fetch all searchable entities
-        const [projects, tasks, issues, ideas] = await Promise.all([
+        const [projects, initiatives, tasks, issues, ideas] = await Promise.all([
             getAllWorkspaceProjects(tenantId),
+            getWorkspaceInitiatives(tenantId),
             getAllWorkspaceTasks(tenantId),
             getAllWorkspaceIssues(tenantId),
             getAllWorkspaceIdeas(tenantId)
@@ -65,6 +67,34 @@ export const searchProjectsAndTasks = async (
                     companyProjectId: project.companyProjectId,
                     companyProjectTitle: companyProject?.title,
                     relevance: titleMatch ? 10 : companyMatch ? 7 : 5
+                });
+            }
+        }
+
+        // Search initiatives
+        for (const initiative of initiatives) {
+            const titleMatch = initiative.title.toLowerCase().includes(normalizedQuery);
+            const descMatch = initiative.description?.toLowerCase().includes(normalizedQuery);
+            const statusMatch = initiative.status?.toLowerCase().includes(normalizedQuery);
+            const outcomeMatch = initiative.outcome?.toLowerCase().includes(normalizedQuery);
+            const successMetricMatch = initiative.successMetric?.toLowerCase().includes(normalizedQuery);
+
+            if (titleMatch || descMatch || statusMatch || outcomeMatch || successMetricMatch) {
+                const project = projects.find(p => p.id === initiative.projectId);
+                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
+
+                results.push({
+                    type: 'initiative',
+                    id: initiative.id,
+                    title: initiative.title,
+                    description: initiative.description || initiative.outcome || initiative.successMetric,
+                    projectId: initiative.projectId,
+                    projectTitle: project?.title,
+                    companyProjectId: project?.companyProjectId,
+                    companyProjectTitle: companyProject?.title,
+                    status: initiative.status,
+                    originIdeaId: initiative.originIdeaId,
+                    relevance: titleMatch ? 9 : outcomeMatch || successMetricMatch ? 6 : statusMatch ? 5 : 4
                 });
             }
         }
@@ -138,11 +168,32 @@ export const searchProjectsAndTasks = async (
             }
         }
 
-        // Sort by relevance (higher first)
+        // Sort by relevance (higher first), then keep enough variety that one entity type
+        // does not crowd out initiatives, tasks, projects, or other workspace matches.
         results.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
 
-        // Limit to first 15 results (increased from 10)
-        return results.slice(0, 15);
+        const perTypeLimit: Partial<Record<SearchResult['type'], number>> = {
+            project: 5,
+            initiative: 5,
+            task: 6,
+            issue: 4,
+            idea: 4
+        };
+        const typeCounts: Partial<Record<SearchResult['type'], number>> = {};
+        const diversifiedResults: SearchResult[] = [];
+
+        for (const result of results) {
+            const currentCount = typeCounts[result.type] || 0;
+            const typeLimit = perTypeLimit[result.type] || 4;
+            if (currentCount >= typeLimit) continue;
+
+            diversifiedResults.push(result);
+            typeCounts[result.type] = currentCount + 1;
+
+            if (diversifiedResults.length >= 24) break;
+        }
+
+        return diversifiedResults;
 
     } catch (error) {
         console.error("Search error:", error);

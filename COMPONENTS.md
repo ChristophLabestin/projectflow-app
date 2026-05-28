@@ -50,6 +50,7 @@ Rules:
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
 | `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
 | `Breadcrumbs` | Context path | Project/module navigation | Optional on smaller screens |
+| `PinnedProjectPill` | Current pinned project shortcut and menu | Top bar project quick access | Uses portal-rendered fixed dropdown with health, project module stats, quick create actions, and project navigation. |
 | `PinnedTasksModal` | Quick-access focus workspace | Top bar focus pill, dashboard resume action, pinned task/issue/initiative shortcuts | Uses persisted `focusState` with start, snooze, block, and complete controls. |
 | `Notifications` diagnostics card | Notification delivery verification | `/notifications` delivery health panel | Registers web push, sends a self-test notification, and shows recent `notificationDeliveryLogs`. |
 | `Tabs` | Section switching | Settings, modal tabs | Keyboard-accessible |

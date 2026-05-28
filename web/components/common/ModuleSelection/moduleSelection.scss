@@ -2,60 +2,60 @@
 
 .module-selection {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: minmax(var(--module-selection-card-min-height, 96px), 1fr);
+    align-items: stretch;
     gap: 16px;
 
+    @media (max-width: 640px) {
+        grid-template-columns: 1fr;
+    }
+
     &__item {
+        width: 100%;
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 12px;
-        padding: 16px; // Uniform padding as requested (16px all around)
-        background-color: var(--color-surface-hover); // Default unselected bg (Light: F5F5F5 / Dark: 262626)
-        border: none; // Explicitly no border as requested
-        border-radius: var(--radius-lg); // Larger radius
+        padding: 16px;
+        min-height: var(--module-selection-card-min-height, 96px);
+        height: 100%;
+        background-color: var(--color-surface-hover);
+        border: 0;
+        border-radius: var(--radius-lg);
+        color: var(--color-text-main);
         cursor: pointer;
-        transition: all var(--transition-fast);
+        font: inherit;
+        text-align: left;
+        transition: background var(--transition-fast), box-shadow var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
         user-select: none;
 
-        // Unselected text colors
-        .module-selection__title {
-            color: var(--color-text-main);
+        &:hover:not(:disabled) {
+            transform: translateY(-1px);
+            background: var(--color-surface-hover-light);
         }
 
-        .module-selection__desc {
-            color: var(--color-text-muted);
+        &:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
         }
 
-        .module-selection__check {
-            border: 2px solid var(--color-text-subtle); // Outlined circle when unselected
-            color: transparent;
-        }
-
-        &:hover {
-            transform: translateY(-1px); // Subtle lift
-            // Slightly darken/lighten on hover to show interactivity if needed, 
-            // but keep it subtle.
-            filter: brightness(0.95);
-        }
-
-        &--selected {
-            // Strictly use Primary Button Tokens
+        &--selected,
+        &--selected:hover:not(:disabled) {
             background-color: var(--color-primary);
+            color: var(--color-primary-text);
             box-shadow: var(--shadow-md);
 
-            .module-selection__title {
+            .module-selection__title,
+            .module-selection__desc {
                 color: var(--color-primary-text);
             }
 
             .module-selection__desc {
-                color: var(--color-primary-text);
                 opacity: 0.8;
             }
 
             .module-selection__icon {
-                // Use inverted colors for high contrast (Cutout look)
-                // Light Mode: Black Card -> White Box -> Black Icon
-                // Dark Mode: White Card -> Black Box -> White Icon
                 background-color: var(--color-primary-text);
                 color: var(--color-primary);
             }
@@ -65,59 +65,79 @@
                 color: var(--color-primary-text);
             }
         }
+
+        &--disabled {
+            cursor: not-allowed;
+            opacity: 0.62;
+
+            .module-selection__icon {
+                color: var(--color-text-subtle);
+            }
+
+            .module-selection__check {
+                color: var(--color-text-subtle);
+            }
+        }
     }
 
     &__icon {
-        width: 40px; // Compact icon box
+        width: 40px;
         height: 40px;
-        // Unselected icon background
-        background-color: rgba(0, 0, 0, 0.05); // Subtle dark tint
-
         border-radius: 10px;
+        background-color: rgba(0, 0, 0, 0.05);
+        color: var(--color-text-main);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-text-main);
         flex-shrink: 0;
-        transition: all var(--transition-fast);
+        transition: background var(--transition-fast), color var(--transition-fast);
 
-        svg {
+        svg,
+        .material-symbols-outlined {
             width: 20px;
             height: 20px;
+            font-size: 20px;
+            line-height: 1;
         }
     }
 
     &__info {
+        min-width: 0;
         flex: 1;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        gap: 0; // Ensure no flex gap
+        gap: 4px;
     }
 
     &__title {
-        font-size: 0.9rem; // Smaller title
+        color: var(--color-text-main);
+        font-size: 0.9rem;
         font-weight: 700;
-        margin-bottom: 0; // Removed margin
         line-height: 1.2;
+        overflow-wrap: anywhere;
         transition: color var(--transition-fast);
     }
 
     &__desc {
-        font-size: 0.75rem; // Smaller desc
-        line-height: 1.3;
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+        line-height: 1.35;
+        overflow-wrap: anywhere;
         transition: color var(--transition-fast);
     }
 
     &__check {
         width: 24px;
         height: 24px;
+        border: 2px solid var(--color-text-subtle);
         border-radius: 50%;
+        color: transparent;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: all var(--transition-fast);
         flex-shrink: 0;
+        transition: border-color var(--transition-fast), color var(--transition-fast);
 
         svg {
             width: 14px;
@@ -125,9 +145,3 @@
         }
     }
 }
-
-// Dark mode overrides if tokens aren't doing the full job automatically
-// Since --color-primary inverts in tokens, the logic above should hold.
-// Reference:
-// Light Mode: primary = #171717 (Dark). Selected Item = Dark. Text = White. Correct.
-// Dark Mode: primary = #ffffff (White). Selected Item = White. Text = Black. Correct.

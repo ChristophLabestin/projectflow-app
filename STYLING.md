@@ -189,6 +189,10 @@ These tokens define key layout constants used across the app shell.
 **Guideline:**
 - Mobile layout: sidebar is collapsed/hidden (`0px`).
 - Desktop layout: sidebar uses `280px` width.
+- The app top bar is an overlay, not a layout band: keep context, search, and tool clusters in separate floating pill surfaces, and let page content paint/scroll underneath it.
+- The global search belongs in the top-right cluster as a compact magnifying-glass trigger with the keyboard shortcut visible; the full input and results should open in a centered Spotlight-style modal.
+- Search shell behavior must use explicit SCSS classes instead of relying on ad hoc responsive utility classes.
+- Pinned-project menus render through `document.body` as fixed overlays, align from the trigger's right edge, and clamp to the viewport on resize. Keep their visible content dense enough for a normal desktop viewport and let the inner menu scroll when project modules add more rows.
 
 ---
 
@@ -215,7 +219,7 @@ These tokens define key layout constants used across the app shell.
 - Keep previews scoped to the real customer-facing surface, but make them opt-in when the editor is already dense; do not keep counters or status strips visible by default.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
 - Put publishing, links, tokens, and embed data behind a Share/Access mode instead of mixing them into the primary editing canvas.
-- Project creation should keep project-type selection in its own compact step before details, then stay name-first and optional after the required basics. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline and finish steps use flat field grids and rows; avoid wrapping each field/link in card surfaces inside the wizard.
+- Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and CORA in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
 
 ## 6.3) Project Lifecycle Recovery Pattern
 

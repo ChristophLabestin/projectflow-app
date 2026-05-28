@@ -1017,7 +1017,7 @@ export type StudioChatSession = {
 
 // AI Search Types
 export interface SearchResult {
-    type: 'project' | 'task' | 'issue' | 'idea' | 'answer' | 'help_page' | 'help_section';
+    type: 'project' | 'initiative' | 'task' | 'issue' | 'idea' | 'answer' | 'help_page' | 'help_section';
     id?: string;
     title: string;
     description?: string;

@@ -1,9 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useUIState } from '../context/UIContext';
-import { Project, Task, Issue, Milestone, Activity, Initiative, Idea } from '../types';
+import { ProjectModule, Task, Issue, Milestone, Activity, Initiative, Idea } from '../types';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { getHealthFactorText } from '../utils/healthLocalization';
@@ -14,6 +14,15 @@ import { subscribeProjectMilestones } from '../services/domain/projectMetaServic
 import { subscribeProjectActivity } from '../services/domain/activityService';
 import { subscribeProjectIdeas } from '../services/domain/ideasService';
 
+const DROPDOWN_WIDTH = 376;
+const DROPDOWN_GAP = 12;
+
+type DropdownCoords = {
+    top: number;
+    left: number;
+    width: number;
+};
+
 export const PinnedProjectPill = () => {
     const { pinnedProject, isLoading } = usePinnedProject();
     const { openTaskCreateModal, openIdeaCreateModal, openIssueCreateModal } = useUIState();
@@ -21,10 +30,9 @@ export const PinnedProjectPill = () => {
     const navigate = useNavigate();
 
     const [isOpen, setIsOpen] = useState(false);
-    const [dropdownCoords, setDropdownCoords] = useState({ top: 0, left: 0 });
+    const [dropdownCoords, setDropdownCoords] = useState<DropdownCoords>({ top: 0, left: 0, width: DROPDOWN_WIDTH });
     const buttonRef = useRef<HTMLButtonElement>(null);
 
-    // Data for Health Calc
     const [tasks, setTasks] = useState<Task[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
@@ -33,14 +41,26 @@ export const PinnedProjectPill = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [health, setHealth] = useState<ProjectHealth | null>(null);
 
-    // Close on click outside (modified for Portal)
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            // Check if click is inside button (ref) or inside the portal dropdown (we can't easily ref the portal content directly here without another ref, but usually clicking "outside" implies checking the button ref first)
-            // Actually, for portals, we need to be careful. Let's use a simple global click handler that checks if the target is NOT inside the button.
-            // AND we need to assign a unique ID or Ref to the dropdown to check that too.
-            const dropdownEl = document.getElementById('pinned-project-dropdown');
+    const updateDropdownPosition = useCallback(() => {
+        if (!buttonRef.current) return;
 
+        const rect = buttonRef.current.getBoundingClientRect();
+        const width = Math.min(DROPDOWN_WIDTH, window.innerWidth - DROPDOWN_GAP * 2);
+        const preferredLeft = rect.right - width;
+        const maxLeft = window.innerWidth - width - DROPDOWN_GAP;
+
+        setDropdownCoords({
+            top: rect.bottom + 10,
+            left: Math.min(Math.max(preferredLeft, DROPDOWN_GAP), maxLeft),
+            width,
+        });
+    }, []);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        const handleClickOutside = (event: MouseEvent) => {
+            const dropdownEl = document.getElementById('pinned-project-dropdown');
             if (
                 buttonRef.current &&
                 !buttonRef.current.contains(event.target as Node) &&
@@ -51,29 +71,31 @@ export const PinnedProjectPill = () => {
             }
         };
 
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-            window.addEventListener('resize', () => setIsOpen(false)); // Close on resize to avoid alignment issues
-        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setIsOpen(false);
+            }
+        };
+
+        updateDropdownPosition();
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('resize', updateDropdownPosition);
+
         return () => {
             document.removeEventListener('mousedown', handleClickOutside);
-            window.removeEventListener('resize', () => setIsOpen(false));
+            document.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('resize', updateDropdownPosition);
         };
-    }, [isOpen]);
+    }, [isOpen, updateDropdownPosition]);
 
-    // Handle Open - Calculate Position
     const toggleDropdown = () => {
-        if (!isOpen && buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect();
-            setDropdownCoords({
-                top: rect.bottom + 8,
-                left: rect.left + (rect.width / 2)
-            });
+        if (!isOpen) {
+            updateDropdownPosition();
         }
         setIsOpen(!isOpen);
     };
 
-    // Subscribe to project data for health calculation
     useEffect(() => {
         if (!pinnedProject) {
             setTasks([]);
@@ -101,9 +123,8 @@ export const PinnedProjectPill = () => {
             unsubActivity();
             unsubIdeas();
         };
-    }, [pinnedProject?.id]);
+    }, [pinnedProject?.id, pinnedProject?.tenantId]);
 
-    // Recalculate health when data changes
     useEffect(() => {
         if (!pinnedProject) return;
         const h = calculateProjectHealth(pinnedProject, tasks, milestones, issues, [], activity, [], initiatives, ideas);
@@ -112,13 +133,54 @@ export const PinnedProjectPill = () => {
 
     if (isLoading || !pinnedProject) return null;
 
-    const modules = pinnedProject.modules || [];
-    const showIssues = modules.includes('issues') || modules.length === 0;
-    const showMilestones = modules.includes('milestones') || modules.length === 0;
+    const modules = pinnedProject.modules ?? [];
+    const moduleEnabled = (module: ProjectModule) => modules.length === 0 || modules.includes(module);
+    const showTasks = moduleEnabled('tasks');
+    const showInitiatives = moduleEnabled('initiatives');
+    const showIdeas = moduleEnabled('ideas');
+    const showActivity = moduleEnabled('activity');
+    const showIssues = moduleEnabled('issues');
+    const showMilestones = moduleEnabled('milestones');
+    const healthStatusClass = `pinned-project-health--${health?.status ?? 'unknown'}`;
+    const visibleFactors = health?.factors.slice(0, 2) ?? [];
+
     const stats = [
-        { id: 'tasks', label: t('nav.tasks'), value: tasks.length, icon: 'task_alt' },
+        ...(showTasks ? [{ id: 'tasks', label: t('nav.tasks'), value: tasks.length, icon: 'task_alt' }] : []),
+        ...(showInitiatives ? [{ id: 'initiatives', label: t('nav.initiatives'), value: initiatives.length, icon: 'account_tree' }] : []),
+        ...(showIdeas ? [{ id: 'flows', label: t('nav.flows'), value: ideas.length, icon: 'schema' }] : []),
         ...(showIssues ? [{ id: 'issues', label: t('nav.issues'), value: issues.length, icon: 'bug_report' }] : []),
         ...(showMilestones ? [{ id: 'milestones', label: t('nav.milestones'), value: milestones.length, icon: 'flag' }] : []),
+        ...(showActivity ? [{ id: 'activity', label: t('nav.activity'), value: activity.length, icon: 'history' }] : []),
+    ];
+
+    const quickActions = [
+        {
+            id: 'task',
+            label: t('quickActions.newTask'),
+            icon: 'add_task',
+            onSelect: () => openTaskCreateModal(pinnedProject.id),
+        },
+        ...(showIdeas ? [{
+            id: 'flow',
+            label: t('quickActions.newFlow'),
+            icon: 'lightbulb',
+            onSelect: () => openIdeaCreateModal(pinnedProject.id),
+        }] : []),
+        ...(showIssues ? [{
+            id: 'issue',
+            label: t('quickActions.newIssue'),
+            icon: 'bug_report',
+            onSelect: () => openIssueCreateModal(pinnedProject.id),
+        }] : []),
+    ];
+
+    const navigationItems = [
+        { id: 'overview', label: t('nav.overview'), icon: 'dashboard', path: `/project/${pinnedProject.id}` },
+        ...(showTasks ? [{ id: 'tasks', label: t('nav.tasks'), icon: 'list_alt', path: `/project/${pinnedProject.id}/tasks` }] : []),
+        ...(showInitiatives ? [{ id: 'initiatives', label: t('nav.initiatives'), icon: 'account_tree', path: `/project/${pinnedProject.id}/initiatives` }] : []),
+        ...(showIdeas ? [{ id: 'flows', label: t('nav.flows'), icon: 'schema', path: `/project/${pinnedProject.id}/flows` }] : []),
+        ...(showIssues ? [{ id: 'issues', label: t('nav.issues'), icon: 'bug_report', path: `/project/${pinnedProject.id}/issues` }] : []),
+        ...(showMilestones ? [{ id: 'milestones', label: t('nav.milestones'), icon: 'flag', path: `/project/${pinnedProject.id}/milestones` }] : []),
     ];
 
     const handleAction = (action: () => void) => {
@@ -126,203 +188,155 @@ export const PinnedProjectPill = () => {
         action();
     };
 
-    const getHealthColor = (status?: string) => {
-        switch (status) {
-            case 'excellent': return 'text-emerald-500';
-            case 'healthy': return 'text-green-500';
-            case 'normal': return 'text-indigo-500';
-            case 'warning': return 'text-amber-500';
-            case 'critical': return 'text-rose-500';
-            default: return 'text-slate-400';
-        }
-    };
-
     return (
         <>
             <button
+                type="button"
                 ref={buttonRef}
                 onClick={toggleDropdown}
-                className={`
-                    group flex items-center gap-2 h-8 pl-1 pr-2.5 rounded-lg transition-all border
-                    ${isOpen
-                        ? 'bg-surface-hover border-surface shadow-inner'
-                        : 'bg-surface border-transparent hover:bg-surface-hover hover:border-surface'
-                    }
-                `}
-                title={`${t('pinned.pinnedProject', 'Pinned Project')}: ${pinnedProject.title}`}
+                className={`pinned-project-trigger${isOpen ? ' is-open' : ''}`}
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
+                aria-controls={isOpen ? 'pinned-project-dropdown' : undefined}
+                title={`${t('pinned.pinnedProject')}: ${pinnedProject.title}`}
             >
-                {/* Project Icon */}
-                <div className={`
-                    size-6 rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-transparent group-hover:border-surface transition-all
-                    ${pinnedProject.squareIcon ? 'bg-transparent' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
-                    font-bold text-white text-[10px]
-                `}>
+                <span className={`pinned-project-icon pinned-project-icon--trigger${pinnedProject.squareIcon ? ' has-image' : ''}`}>
                     {pinnedProject.squareIcon ? (
-                        <img src={pinnedProject.squareIcon} alt="" className="w-full h-full object-cover" />
+                        <img src={pinnedProject.squareIcon} alt="" />
                     ) : (
                         <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
                     )}
-                </div>
+                </span>
 
-                <div className="flex flex-col items-start leading-tight max-w-[120px] hidden sm:flex">
-                    <span className="text-[12px] font-bold text-main truncate w-full">{pinnedProject.title}</span>
-                    <span className="text-[10px] text-muted group-hover:text-subtle transition-colors">
+                <span className="pinned-project-trigger__copy">
+                    <span className="pinned-project-trigger__title">{pinnedProject.title}</span>
+                    <span className="pinned-project-trigger__meta">
                         {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
                     </span>
-                </div>
+                </span>
 
-                <span className="material-symbols-outlined text-[18px] text-muted group-hover:text-main transition-colors">
+                <span className="material-symbols-outlined pinned-project-trigger__chevron">
                     {isOpen ? 'expand_less' : 'expand_more'}
                 </span>
             </button>
 
-            {/* Portal Dropdown */}
             {isOpen && createPortal(
                 <div
                     id="pinned-project-dropdown"
-                    className="fixed z-[100] w-[360px] rounded-2xl shadow-2xl border border-surface bg-card overflow-hidden origin-top animate-in fade-in zoom-in-95 duration-200"
+                    className="pinned-project-menu"
+                    role="menu"
+                    aria-label={t('pinned.projectMenu')}
                     style={{
                         top: dropdownCoords.top,
                         left: dropdownCoords.left,
-                        transform: 'translateX(-50%)',
+                        width: dropdownCoords.width,
+                        maxHeight: `calc(100vh - ${dropdownCoords.top + DROPDOWN_GAP}px)`,
                     }}
                 >
-                    {/* Header */}
-                    <div className="relative px-5 py-4 border-b border-surface bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] overflow-hidden">
-                        <div className="absolute -top-10 -right-8 opacity-[0.08] pointer-events-none">
-                            <span className="material-symbols-outlined text-[140px]">insights</span>
-                        </div>
+                    <div className="pinned-project-menu__scroll">
+                        <div className="pinned-project-menu__header">
+                            <div className="pinned-project-menu__identity">
+                                <span className={`pinned-project-icon pinned-project-icon--menu${pinnedProject.squareIcon ? ' has-image' : ''}`}>
+                                    {pinnedProject.squareIcon ? (
+                                        <img src={pinnedProject.squareIcon} alt="" />
+                                    ) : (
+                                        <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
+                                    )}
+                                </span>
 
-                        <div className="relative z-10 flex items-start gap-4">
-                            <div className={`
-                                size-11 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-surface
-                                ${pinnedProject.squareIcon ? 'bg-surface-paper' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
-                                font-bold text-white text-sm
-                            `}>
-                                {pinnedProject.squareIcon ? (
-                                    <img src={pinnedProject.squareIcon} alt="" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
-                                )}
-                            </div>
-
-                            <div className="min-w-0">
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-subtle font-bold">
-                                    {t('pinned.pinnedProject', 'Pinned Project')}
-                                </div>
-                                <h4 className="text-sm font-bold text-main line-clamp-1">{pinnedProject.title}</h4>
-                                <div className="text-[11px] text-muted">
-                                    {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
+                                <div className="pinned-project-menu__copy">
+                                    <div className="pinned-project-menu__eyebrow">{t('pinned.pinnedProject')}</div>
+                                    <h4 className="pinned-project-menu__title">{pinnedProject.title}</h4>
+                                    <div className="pinned-project-menu__meta">
+                                        {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="ml-auto flex flex-col items-center justify-center size-14 rounded-2xl border border-surface bg-surface-paper shadow-sm shrink-0">
-                                <span className={`text-lg font-black ${getHealthColor(health?.status)}`}>{health?.score || 0}</span>
-                                <span className="text-[8px] font-bold text-subtle uppercase">{t('pinned.score')}</span>
+                            <div className="pinned-project-menu__score-card">
+                                <span className={`pinned-project-menu__score-value ${healthStatusClass}`}>{health?.score ?? 0}</span>
+                                <span className="pinned-project-menu__score-label">{t('pinned.score')}</span>
                             </div>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-2">
+                        <div className="pinned-project-menu__status-row">
                             <Badge status={health?.status} />
-                            <span className="text-[10px] text-muted font-medium uppercase tracking-wider">
-                                {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
-                            </span>
+                            <span>{health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}</span>
                         </div>
 
-                        <div className={`mt-4 grid gap-2 ${stats.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                            {stats.map(stat => (
-                                <div key={stat.id} className="rounded-xl border border-surface bg-surface-paper px-3 py-2">
-                                    <div className="flex items-center gap-2 text-subtle text-[11px] font-medium">
-                                        <span className="material-symbols-outlined text-[14px]">{stat.icon}</span>
-                                        <span className="uppercase tracking-wider">{stat.label}</span>
+                        <div className="pinned-project-menu__stats">
+                            {stats.map((stat) => (
+                                <div key={stat.id} className="pinned-project-menu__stat">
+                                    <div className="pinned-project-menu__stat-label">
+                                        <span className="material-symbols-outlined">{stat.icon}</span>
+                                        <span>{stat.label}</span>
                                     </div>
-                                    <div className="text-lg font-black text-main leading-tight mt-1">
-                                        {stat.value}
-                                    </div>
+                                    <div className="pinned-project-menu__stat-value">{stat.value}</div>
                                 </div>
                             ))}
                         </div>
-                    </div>
+                        <section className="pinned-project-menu__section">
+                            <div className="pinned-project-menu__section-title">{t('pinned.healthSignals')}</div>
+                            {visibleFactors.length > 0 ? (
+                                <div className="pinned-project-menu__health-list">
+                                    {visibleFactors.map((factor) => {
+                                        const factorClass = `pinned-project-health-factor--${factor.type}`;
+                                        const { label, description } = getHealthFactorText(factor, t);
 
-                    {/* Health Factors */}
-                    <div className="px-5 py-4 border-b border-surface bg-surface-paper">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-subtle">
-                            {t('pinned.healthScore')}
-                        </div>
-                        {health && health.factors.length > 0 ? (
-                            <div className="space-y-2 mt-3">
-                                {health.factors.slice(0, 2).map(factor => {
-                                    const { label, description } = getHealthFactorText(factor, t);
-                                    return (
-                                        <div key={factor.id} className="flex gap-2 items-start bg-card border border-surface p-3 rounded-xl">
-                                            <div className={`mt-1 size-2 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
-                                            <p className="text-[11px] text-muted leading-tight">
-                                                <span className="font-bold text-main">{label}:</span> {description}
-                                            </p>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <div className="mt-3 text-xs text-muted">{t('pinned.loading')}</div>
-                        )}
-                    </div>
-
-                    {/* Quick Actions Grid */}
-                    <div className="px-4 py-3 bg-surface">
-                        <div className="grid grid-cols-3 gap-2">
-                        <button
-                            onClick={() => handleAction(() => openTaskCreateModal(pinnedProject.id))}
-                            className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
-                        >
-                            <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                <span className="material-symbols-outlined text-[18px]">add_task</span>
-                            </div>
-                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newTask')}</span>
-                        </button>
-
-                        {(modules.includes('ideas') || modules.length === 0) && (
-                            <button
-                                onClick={() => handleAction(() => openIdeaCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
-                            >
-                                <div className="size-8 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                    <span className="material-symbols-outlined text-[18px]">lightbulb</span>
+                                        return (
+                                            <div key={factor.id} className={`pinned-project-health-factor ${factorClass}`}>
+                                                <span className="pinned-project-health-factor__dot" />
+                                                <p>
+                                                    <span>{label}:</span> {description}
+                                                </p>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newFlow')}</span>
-                            </button>
-                        )}
-
-                        {(modules.includes('issues') || modules.length === 0) && (
-                            <button
-                                onClick={() => handleAction(() => openIssueCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
-                            >
-                                <div className="size-8 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
-                                    <span className="material-symbols-outlined text-[18px]">bug_report</span>
+                            ) : (
+                                <div className="pinned-project-menu__empty">
+                                    {health ? t('pinned.noFactors') : t('pinned.loading')}
                                 </div>
-                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newIssue')}</span>
-                            </button>
-                        )}
-                        </div>
-                    </div>
+                            )}
+                        </section>
 
-                    {/* Navigation Footer */}
-                    <div className="p-3 border-t border-surface bg-card flex gap-2">
-                        <button
-                            onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}`))}
-                            className="flex-1 h-8 rounded-lg bg-surface-paper border border-surface hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-muted transition-all shadow-sm flex items-center justify-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-[16px]">dashboard</span>
-                            {t('quickActions.overview')}
-                        </button>
-                        <button
-                            onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}/tasks`))}
-                            className="flex-1 h-8 rounded-lg bg-surface-paper border border-surface hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-muted transition-all shadow-sm flex items-center justify-center gap-2"
-                        >
-                            <span className="material-symbols-outlined text-[16px]">list_alt</span>
-                            {t('quickActions.tasks')}
-                        </button>
+                        <section className="pinned-project-menu__section">
+                            <div className="pinned-project-menu__section-title">{t('pinned.quickActions')}</div>
+                            <div className="pinned-project-menu__quick-actions">
+                                {quickActions.map((action) => (
+                                    <button
+                                        key={action.id}
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => handleAction(action.onSelect)}
+                                        className={`pinned-project-menu__quick-action pinned-project-menu__quick-action--${action.id}`}
+                                    >
+                                        <span className="pinned-project-menu__quick-icon">
+                                            <span className="material-symbols-outlined">{action.icon}</span>
+                                        </span>
+                                        <span>{action.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="pinned-project-menu__section pinned-project-menu__section--navigation">
+                            <div className="pinned-project-menu__section-title">{t('pinned.projectMenu')}</div>
+                            <div className="pinned-project-menu__nav-grid">
+                                {navigationItems.map((item) => (
+                                    <button
+                                        key={item.id}
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => handleAction(() => navigate(item.path))}
+                                        className="pinned-project-menu__nav-button"
+                                    >
+                                        <span className="material-symbols-outlined">{item.icon}</span>
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
                     </div>
                 </div>,
                 document.body
@@ -331,24 +345,12 @@ export const PinnedProjectPill = () => {
     );
 };
 
-// Mini Badge Component
-const Badge = ({ status }: { status?: string }) => {
+const Badge = ({ status }: { status?: ProjectHealth['status'] }) => {
     const { t } = useLanguage();
-    const getColor = (s?: string) => {
-        switch (s) {
-            case 'excellent': return 'bg-emerald-500 text-white';
-            case 'healthy': return 'bg-green-500 text-white';
-            case 'normal': return 'bg-indigo-500 text-white';
-            case 'warning': return 'bg-amber-500 text-white';
-            case 'critical': return 'bg-rose-500 text-white';
-            default: return 'bg-slate-400 text-white';
-        }
-    };
-
     const statusLabel = status ? t(`status.${status}`, status) : t('pinned.unknown');
 
     return (
-        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getColor(status)}`}>
+        <span className={`pinned-project-badge pinned-project-health--${status ?? 'unknown'}`}>
             {statusLabel}
         </span>
     );

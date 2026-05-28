@@ -32,6 +32,12 @@ export const AppLayout = () => {
         isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
     const location = useLocation();
+    const isFullWidthRoute = location.pathname.includes('/social')
+        || location.pathname.includes('/marketing')
+        || location.pathname.includes('/flows')
+        || location.pathname.includes('/activity')
+        || location.pathname.includes('/codex')
+        || location.pathname.includes('/brainstorm');
 
     // Derived project ID from URL if not in params (e.g. nested routes)
     const derivedProjectId = useMemo(() => {
@@ -401,7 +407,7 @@ export const AppLayout = () => {
             <div className="flex-1 flex flex-col min-w-0 h-full relative">
 
                 {/* Header */}
-                <Suspense fallback={<div className="h-14 border-b border-surface bg-card/95 backdrop-blur-sm" />}>
+                <Suspense fallback={<div className="topbar-shell" />}>
                     <TopBar
                         project={project}
                         breadcrumbs={breadcrumbs}
@@ -410,8 +416,8 @@ export const AppLayout = () => {
                 </Suspense>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/codex') || location.pathname.includes('/brainstorm') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') || location.pathname.includes('/codex') || location.pathname.includes('/brainstorm') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`app-main-scroll dotted-bg ${isFullWidthRoute ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
+                    <div className={isFullWidthRoute ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>

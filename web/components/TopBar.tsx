@@ -41,16 +41,11 @@ const PinnedTasksToggle = () => {
         return (
             <button
                 onClick={toggleModal}
-                className={`
-                    flex items-center justify-center size-8 rounded-lg transition-all duration-200
-                    ${hasItems
-                        ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                        : 'text-muted hover:bg-surface-hover'
-                    }
-                `}
+                className={`topbar-icon-button ${hasItems ? 'is-active' : ''}`}
                 title={t('topbar.pinnedTasks')}
+                aria-label={t('topbar.pinnedTasks')}
             >
-                <span className="material-symbols-outlined text-[20px]">push_pin</span>
+                <span className="material-symbols-outlined">push_pin</span>
             </button>
         );
     }
@@ -101,61 +96,51 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
     };
 
     return (
-        <header className="
-            sticky top-0 z-30 w-full h-14
-            flex items-center justify-between 
-            px-4
-            bg-card/95 backdrop-blur-sm
-            border-b border-surface
-            transition-all duration-200
-        ">
-            {/* LEFT: Navigation & Context */}
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+        <header className="topbar-shell">
+            <div className="topbar-context-pill">
                 <button
                     onClick={onOpenNav}
-                    className="md:hidden p-1.5 rounded-md text-muted hover:bg-surface-hover transition-colors"
+                    className="topbar-icon-button topbar-nav-toggle"
+                    aria-label={t('topbar.openNavigation')}
                 >
-                    <span className="material-symbols-outlined text-[20px]">menu</span>
+                    <span className="material-symbols-outlined">menu</span>
                 </button>
 
-                {/* V3 Breadcrumbs: Clean, Text-based */}
-                <div className="flex items-center text-sm">
+                <div className="topbar-breadcrumbs">
                     <Breadcrumbs items={breadcrumbs} />
                 </div>
             </div>
 
-            {/* RIGHT: Tools & Actions */}
-            <div className="flex items-center gap-2 md:gap-3 shrink-0">
-
-                {/* Search - Right Aligned Now */}
-                <div className="hidden sm:block w-64 md:w-72 lg:w-80 transition-all">
+            <div className="topbar-right">
+                <div className="topbar-search-pill">
                     <Suspense fallback={<div className="h-9 rounded-lg bg-surface/60" />}>
                         <AISearchBar />
                     </Suspense>
                 </div>
 
-                <div className="h-4 w-px bg-surface-border mx-1 hidden sm:block" />
+                <div className="topbar-tools-pill">
+                    <span className="topbar-pinned-project-slot">
+                        <Suspense fallback={null}>
+                            <PinnedProjectPill />
+                        </Suspense>
+                    </span>
 
-                <Suspense fallback={null}>
-                    <PinnedProjectPill />
-                </Suspense>
+                    <PinnedTasksToggle />
 
-                <div className="hidden md:block w-px h-4 bg-surface-border mx-1" />
+                    <button
+                        onClick={handleOpenHelp}
+                        className="topbar-icon-button"
+                        title={t('topbar.helpCenter')}
+                        aria-label={t('topbar.helpCenter')}
+                    >
+                        <span className="material-symbols-outlined">help</span>
+                    </button>
 
-                <PinnedTasksToggle />
-
-                <button
-                    onClick={handleOpenHelp}
-                    className="flex items-center justify-center size-8 rounded-lg text-muted hover:bg-surface-hover hover:text-main transition-colors"
-                    title={t('topbar.helpCenter')}
-                >
-                    <span className="material-symbols-outlined text-[20px]">help</span>
-                </button>
-
-                <div className="pl-1">
-                    <Suspense fallback={<div className="size-8 rounded-full bg-surface/60" />}>
-                        <UserProfileDropdown />
-                    </Suspense>
+                    <span className="topbar-profile-slot">
+                        <Suspense fallback={<div className="topbar-avatar-skeleton" />}>
+                            <UserProfileDropdown />
+                        </Suspense>
+                    </span>
                 </div>
             </div>
         </header>

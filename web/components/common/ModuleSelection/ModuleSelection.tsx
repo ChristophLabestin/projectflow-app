@@ -1,18 +1,5 @@
 import React from 'react';
-import {
-    CheckSquare,
-    Rocket,
-    Bug,
-    Lightbulb,
-    Flag,
-    History,
-    Users,
-    Megaphone,
-    Target,
-    Receipt,
-    Zap,
-    Check
-} from 'lucide-react';
+import { Check, Lock } from 'lucide-react';
 import './moduleSelection.scss';
 
 export interface ModuleItem {
@@ -20,49 +7,58 @@ export interface ModuleItem {
     title: string;
     description: string;
     icon: React.ReactNode;
+    disabled?: boolean;
+    disabledReason?: string;
 }
-
-const MODULES: ModuleItem[] = [
-    { id: 'tasks', title: 'Tasks', description: 'Track work items', icon: <CheckSquare size={24} /> },
-    { id: 'initiatives', title: 'Initiatives', description: 'Organize larger work streams', icon: <Rocket size={24} /> },
-    { id: 'sprints', title: 'Sprints', description: 'Agile iterations', icon: <Zap size={24} /> },
-    { id: 'issues', title: 'Issues', description: 'Bug tracking', icon: <Bug size={24} /> },
-    { id: 'flows', title: 'Flows', description: 'Brainstorming', icon: <Lightbulb size={24} /> },
-    { id: 'milestones', title: 'Milestones', description: 'Key deadlines', icon: <Flag size={24} /> },
-    { id: 'activity', title: 'Activity', description: 'Change log', icon: <History size={24} /> },
-    { id: 'groups', title: 'Groups', description: 'Manage Team Groups', icon: <Users size={24} /> },
-    { id: 'social', title: 'Social', description: 'Campaign Manager', icon: <Megaphone size={24} /> },
-    { id: 'marketing', title: 'Marketing', description: 'Ads & Email', icon: <Target size={24} /> },
-    { id: 'accounting', title: 'Accounting', description: 'Financial planning & expenses', icon: <Receipt size={24} /> },
-];
 
 interface ModuleSelectionProps {
+    modules: ModuleItem[];
     selectedModules: string[];
     onToggle: (moduleId: string) => void;
+    ariaLabel?: string;
+    className?: string;
+    selectionMode?: 'single' | 'multiple';
 }
 
-export const ModuleSelection: React.FC<ModuleSelectionProps> = ({ selectedModules, onToggle }) => {
+export const ModuleSelection: React.FC<ModuleSelectionProps> = ({
+    modules,
+    selectedModules,
+    onToggle,
+    ariaLabel,
+    className = '',
+    selectionMode = 'multiple'
+}) => {
     return (
-        <div className="module-selection">
-            {MODULES.map((module) => {
+        <div
+            className={`module-selection ${className}`}
+            role={selectionMode === 'single' ? 'radiogroup' : 'group'}
+            aria-label={ariaLabel}
+        >
+            {modules.map((module) => {
                 const isSelected = selectedModules.includes(module.id);
                 return (
-                    <div
+                    <button
                         key={module.id}
-                        className={`module-selection__item ${isSelected ? 'module-selection__item--selected' : ''}`}
+                        type="button"
+                        className={`module-selection__item ${isSelected ? 'module-selection__item--selected' : ''} ${module.disabled ? 'module-selection__item--disabled' : ''}`}
                         onClick={() => onToggle(module.id)}
+                        disabled={module.disabled}
+                        role={selectionMode === 'single' ? 'radio' : 'checkbox'}
+                        aria-checked={isSelected}
                     >
                         <div className="module-selection__icon">
                             {module.icon}
                         </div>
                         <div className="module-selection__info">
                             <span className="module-selection__title">{module.title}</span>
-                            <span className="module-selection__desc">{module.description}</span>
+                            <span className="module-selection__desc">
+                                {module.disabled && module.disabledReason ? module.disabledReason : module.description}
+                            </span>
                         </div>
                         <div className="module-selection__check">
-                            <Check strokeWidth={3} />
+                            {module.disabled ? <Lock strokeWidth={2.5} /> : isSelected && <Check strokeWidth={3} />}
                         </div>
-                    </div>
+                    </button>
                 );
             })}
         </div>

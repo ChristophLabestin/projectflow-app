@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
-import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects, linkWithGithub } from '../services/dataService';
+import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects } from '../services/dataService';
 import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
 import { getWorkspaceGroups } from '../services/domain/workspaceGroupsService';
 import { createProject } from '../services/domain/projectAdminService';
-import { getUserProfile, updateUserData } from '../services/domain/usersService';
 import { addTask } from '../services/domain/tasksService';
-import { fetchUserRepositories, GithubRepo } from '../services/githubService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { useLanguage } from '../context/LanguageContext';
@@ -19,8 +16,7 @@ import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { Select } from '../components/common/Select/Select';
 import { type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Card } from '../components/common/Card/Card';
-import { ImageCropper } from '../components/ui/ImageCropper';
-import { CompanyProjectRole, Project, ProjectExternalResource, ProjectModule, ProjectBlueprint, StartupJurisdictionTemplateId, StartupTrackId, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectStatus, ProjectTemplateId, ProjectType } from '../types';
+import { CompanyProjectRole, Project, ProjectModule, StartupJurisdictionTemplateId, StartupTrackId, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectStatus, ProjectTemplateId, ProjectType } from '../types';
 import {
     PROJECT_TEMPLATE_DEFINITIONS,
     STARTUP_JURISDICTION_SEED_TASKS,
@@ -35,26 +31,24 @@ import {
     isSoftwareProject
 } from '../config/projectTemplates';
 import { useToast } from '../context/UIContext';
-import { auth } from '../services/firebase';
-import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { ModuleSelection } from '../components/common/ModuleSelection/ModuleSelection';
 import MemberSelection from '../components/common/MemberSelection/MemberSelection';
 
 import { useModuleAccess } from '../hooks/useModuleAccess';
 
 const STEPS = [
-    { id: 0, labelKey: 'createProjectWizard.steps.method' },
-    { id: 1, labelKey: 'createProjectWizard.steps.type' },
-    { id: 2, labelKey: 'createProjectWizard.steps.details' },
-    { id: 3, labelKey: 'createProjectWizard.steps.brief' },
-    { id: 4, labelKey: 'createProjectWizard.steps.setup' },
-    { id: 5, labelKey: 'createProjectWizard.steps.modules' },
-    { id: 6, labelKey: 'createProjectWizard.steps.team' },
-    { id: 7, labelKey: 'createProjectWizard.steps.timeline' },
-    { id: 8, labelKey: 'createProjectWizard.steps.assets' },
+    { id: 0, labelKey: 'createProjectWizard.steps.type' },
+    { id: 1, labelKey: 'createProjectWizard.steps.details' },
+    { id: 2, labelKey: 'createProjectWizard.steps.setup' },
+    { id: 3, labelKey: 'createProjectWizard.steps.modules' },
+    { id: 4, labelKey: 'createProjectWizard.steps.team' },
+    { id: 5, labelKey: 'createProjectWizard.steps.visibility' },
+    { id: 6, labelKey: 'createProjectWizard.steps.timeline' },
 ];
 
-const SETUP_WORKSTREAMS_STEP_ID = 4;
+const SETUP_WORKSTREAMS_STEP_ID = 2;
+const TEAM_STEP_ID = 4;
+const VISIBILITY_STEP_ID = 5;
 
 const getWizardSteps = (includeSetupWorkstreams: boolean) => (
     includeSetupWorkstreams
@@ -83,10 +77,11 @@ const getPreviousStepId = (currentStep: number, includeSetupWorkstreams: boolean
 };
 
 type ModuleOption = {
-    id: ProjectModule | 'groups';
+    id: ProjectModule;
     labelKey: string;
     descKey: string;
     icon: string;
+    gatedBy?: 'social' | 'marketing' | 'accounting';
 };
 
 const MODULE_OPTIONS: ModuleOption[] = [
@@ -97,11 +92,12 @@ const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
     { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
-    { id: 'groups', labelKey: 'createProjectWizard.modules.groups.label', descKey: 'createProjectWizard.modules.groups.desc', icon: 'groups' },
-    { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
-    { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
-    { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
+    { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign', gatedBy: 'social' },
+    { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click', gatedBy: 'marketing' },
+    { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long', gatedBy: 'accounting' },
 ];
+
+type VisibilityMode = 'everyone' | 'groups' | 'private';
 
 type CreateProjectWizardProps = {
     onClose?: () => void;
@@ -109,7 +105,6 @@ type CreateProjectWizardProps = {
 
 export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClose }) => {
     const navigate = useNavigate();
-    const user = auth.currentUser;
     const { can } = useWorkspacePermissions();
     const { hasAccess: isSocialAllowed } = useModuleAccess('social');
     const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
@@ -120,7 +115,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     const [currentStep, setCurrentStep] = useState(0);
     const [furthestVisitedStep, setFurthestVisitedStep] = useState(0); // Track max progress
-    const [creationMode, setCreationMode] = useState<'scratch' | 'ai' | null>(null);
 
     // Form Data
     const [name, setName] = useState('');
@@ -141,42 +135,25 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [startupSensitiveTracksConfirmed, setStartupSensitiveTracksConfirmed] = useState(false);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>([]);
+    const [visibilityMode, setVisibilityMode] = useState<VisibilityMode>('everyone');
     const [isPrivate, setIsPrivate] = useState(false);
     const [startDate, setStartDate] = useState<Date | null>(null);
     const [dueDate, setDueDate] = useState<Date | null>(null);
     const [priority, setPriority] = useState<Priority>('medium');
     const [status, setStatus] = useState<ProjectStatus>('Planning');
-    const [coverFile, setCoverFile] = useState<File | null>(null);
-    const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
-    const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
-    const [externalResources, setExternalResources] = useState<ProjectExternalResource[]>([]);
 
-    // Media Library State
-    const [mediaPickerTarget, setMediaPickerTarget] = useState<'cover' | 'icon' | null>(null);
-    const [coverUrl, setCoverUrl] = useState<string | null>(null);
-    const [squareIconUrl, setSquareIconUrl] = useState<string | null>(null);
-    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
-
-    // AI State
-    const [aiPrompt, setAiPrompt] = useState('');
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [blueprint, setBlueprint] = useState<ProjectBlueprint | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Cropper State
-    const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
-    const [cropAspectRatio, setCropAspectRatio] = useState(1);
-    const [cropType, setCropType] = useState<'cover' | 'icon' | null>(null);
-
-    // GitHub State
-    const [githubToken, setGithubToken] = useState<string | null>(null);
-    const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
-    const [selectedGithubRepo, setSelectedGithubRepo] = useState<string>('');
-    const [loadingGithub, setLoadingGithub] = useState(false);
-    const [connectingGithub, setConnectingGithub] = useState(false);
-
-    const handleAiPromptChange = useArrowReplacement((e) => setAiPrompt(e.target.value));
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
+    const filterAccessibleModules = (nextModules: ProjectModule[]) => (
+        nextModules.filter(module => (
+            MODULE_OPTIONS.some(option => option.id === module)
+            && (module !== 'social' || isSocialAllowed)
+            && (module !== 'marketing' || isMarketingAllowed)
+            && (module !== 'accounting' || isAccountingAllowed)
+        ))
+    );
+
     useEffect(() => {
         getWorkspaceMembers().then(members => {
             setAvailableMembers(members.filter(m => m.role !== 'Guest'));
@@ -188,33 +165,15 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 console.warn('Failed to load company projects for project creation', error);
                 setCompanyProjects([]);
             });
-        // Load GitHub token
-        const loadGithubData = async () => {
-            const user = auth.currentUser;
-            if (user) {
-                const profile = await getUserProfile(user.uid);
-                if (profile?.githubToken) {
-                    setGithubToken(profile.githubToken);
-                    setLoadingGithub(true);
-                    try {
-                        const repos = await fetchUserRepositories(profile.githubToken);
-                        setGithubRepos(repos);
-                    } catch (e) {
-                        console.error('Failed to fetch repos', e);
-                    } finally {
-                        setLoadingGithub(false);
-                    }
-                }
-            }
-        };
-        loadGithubData();
     }, []);
 
     useEffect(() => {
-        if (creationMode === 'scratch') {
-            setModules(getProjectTemplateDefinition(templateId).defaultModules);
-        }
-    }, [templateId, creationMode]);
+        setModules(filterAccessibleModules(getProjectTemplateDefinition(templateId).defaultModules));
+    }, [templateId, isSocialAllowed, isMarketingAllowed, isAccountingAllowed]);
+
+    useEffect(() => {
+        setModules(current => filterAccessibleModules(current));
+    }, [isSocialAllowed, isMarketingAllowed, isAccountingAllowed]);
 
     const handleTemplateSelect = (nextTemplateId: ProjectTemplateId) => {
         const template = getProjectTemplateDefinition(nextTemplateId);
@@ -222,7 +181,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         setProjectType(template.legacyProjectType);
         setOperatingMode(template.defaultOperatingMode);
         setCadence(template.defaultCadence);
-        setModules(template.defaultModules);
+        setModules(filterAccessibleModules(template.defaultModules));
         if (!isSoftwareProject({
             projectCategory: template.projectCategory,
             templateId: template.id,
@@ -252,6 +211,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             showToast(t('createProjectWizard.startup.confirmSensitive.error'), 'error');
             return;
         }
+        if (currentStep === VISIBILITY_STEP_ID && visibilityMode === 'groups' && visibilityGroupIds.length === 0) {
+            showToast(t('createProjectWizard.visibility.requiresGroup'), 'error');
+            return;
+        }
 
         setCurrentStep(c => {
             const next = getNextStepId(c, currentTemplate.isCompanyProject === true);
@@ -261,14 +224,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     };
 
     const handleBack = () => {
-        if (currentStep === 1) {
-            setCurrentStep(0);
-            setCreationMode(null);
-            setBlueprint(null);
-        } else {
-            const currentTemplate = getProjectTemplateDefinition(templateId);
-            setCurrentStep(c => getPreviousStepId(c, currentTemplate.isCompanyProject === true));
-        }
+        const currentTemplate = getProjectTemplateDefinition(templateId);
+        setCurrentStep(c => getPreviousStepId(c, currentTemplate.isCompanyProject === true));
     };
 
     const handleStepClick = (stepIndex: number) => {
@@ -276,80 +233,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         if (stepIndex <= furthestVisitedStep) {
             setCurrentStep(stepIndex);
         }
-    };
-
-    const handleMethodSelect = (mode: 'scratch' | 'ai') => {
-        setCreationMode(mode);
-        setCurrentStep(1);
-        setFurthestVisitedStep(max => Math.max(max, 1));
-    };
-
-    const handleExecuteAI = async () => {
-        if (!aiPrompt.trim()) return;
-        setIsGenerating(true);
-        try {
-            const result = await generateProjectBlueprint(aiPrompt);
-            const template = getProjectTemplateDefinition(templateId);
-            setBlueprint(result);
-            setName(result.title);
-            setDescription(result.description);
-            setTemplateId(template.id);
-            setProjectType(template.legacyProjectType);
-            setOperatingMode(template.defaultOperatingMode);
-            setCadence(template.defaultCadence);
-            setModules(template.defaultModules);
-            if (!template.isCompanyProject) {
-                setStartupTrackIds([]);
-            }
-            setStartupSensitiveTracksConfirmed(false);
-            handleNext();
-        } catch (e) {
-            console.error(e);
-            showToast(t('createProjectWizard.errors.generateBlueprint'), 'error');
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleGenerateDesc = async () => {
-        if (!name) return;
-        setIsGenerating(true);
-        try {
-            const desc = await generateProjectDescription(name, `A ${projectType} project`);
-            setDescription(desc);
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'icon') => {
-        if (e.target.files?.[0]) {
-            const reader = new FileReader();
-            reader.onload = () => {
-                setCropImageSrc(reader.result as string);
-                setCropType(type);
-                setCropAspectRatio(type === 'cover' ? 16 / 9 : 1);
-            };
-            reader.readAsDataURL(e.target.files[0]);
-
-            // Clear URL if picking a local file
-            if (type === 'cover') setCoverUrl(null);
-            else setSquareIconUrl(null);
-        }
-        e.target.value = '';
-    };
-
-    const handleCropComplete = (blob: Blob) => {
-        const file = new File([blob], cropType === 'cover' ? "cover.jpg" : "icon.jpg", { type: "image/jpeg" });
-        if (cropType === 'cover') {
-            setCoverFile(file);
-            setCoverUrl(null);
-        } else {
-            setSquareIconFile(file);
-            setSquareIconUrl(null);
-        }
-        setCropImageSrc(null);
-        setCropType(null);
     };
 
     const seedStartupProject = async (
@@ -428,9 +311,18 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     };
 
     const handleSubmit = async () => {
-        if (!name) return;
+        if (!name.trim()) return;
+        if (startDate && dueDate && startDate > dueDate) {
+            showToast(t('createProjectWizard.errors.dateOrder'), 'error');
+            return;
+        }
+        if (visibilityMode === 'groups' && visibilityGroupIds.length === 0) {
+            showToast(t('createProjectWizard.visibility.requiresGroup'), 'error');
+            return;
+        }
         setIsSubmitting(true);
         try {
+            const trimmedName = name.trim();
             const formattedStartDate = startDate ? format(startDate, 'yyyy-MM-dd') : '';
             const formattedDueDate = dueDate ? format(dueDate, 'yyyy-MM-dd') : '';
             const parsedSuccessCriteria = successCriteria
@@ -454,7 +346,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             }
             const jurisdictionSourcesReviewedAt = jurisdictionTemplate.sourceReferences[0]?.lastReviewedAt;
             const projectPayload: Partial<Project> = {
-                title: name,
+                title: trimmedName,
                 description,
                 projectType,
                 projectCategory: selectedTemplate.projectCategory,
@@ -476,12 +368,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 priority: priorityValue,
                 status: status as any,
                 isPrivate,
-                modules,
-                links: links.filter(l => l.title && l.url),
-                externalResources: externalResources.filter(r => r.title && r.url),
+                modules: safeModules,
                 ...(selectedTemplate.isCompanyProject && {
                     startupProfile: {
-                        workingName: name,
+                        workingName: trimmedName,
                         formationStatus: 'idea',
                         fundingRoute: 'undecided',
                         jurisdictionTemplateId: jurisdictionTemplate.id,
@@ -510,27 +400,26 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         launchOfferReady: false,
                         firstChannelReady: false
                     }
-                }),
-                ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
+                })
             };
-            const projectId = await createProject(projectPayload, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
+            const projectId = await createProject(projectPayload, undefined, undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
+            let setupWarning = false;
 
             if (selectedTemplate.isCompanyProject && startupTrackIds.length > 0) {
-                await seedStartupProject(projectId, startupTrackIds, jurisdictionTemplate.id);
-            }
-
-            if (blueprint) {
-                for (const ms of blueprint.milestones) {
-                    await createMilestone(projectId, { title: ms.title, description: ms.description, status: 'Pending' });
-                }
-                for (const task of blueprint.initialTasks) {
-                    await addTask(projectId, task.title, undefined, undefined, task.priority, { category: ['CORA Generated'] });
+                try {
+                    await seedStartupProject(projectId, startupTrackIds, jurisdictionTemplate.id);
+                } catch (setupError) {
+                    setupWarning = true;
+                    console.error('Project created, but startup setup seeding failed', setupError);
                 }
             }
 
             onClose?.();
-            navigate('/projects');
-            showToast(t('createProjectWizard.toast.created').replace('{name}', name), 'success');
+            navigate(`/project/${projectId}`);
+            showToast(
+                t(setupWarning ? 'createProjectWizard.toast.createdWithSetupWarning' : 'createProjectWizard.toast.created').replace('{name}', trimmedName),
+                setupWarning ? 'info' : 'success'
+            );
         } catch (e) {
             console.error(e);
             setIsSubmitting(false);
@@ -541,6 +430,15 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const handleModuleToggle = (moduleId: string) => {
         // Map 'flows' from ModuleSelection to 'ideas' used in Wizard/Backend
         const targetId = moduleId === 'flows' ? 'ideas' : moduleId as ProjectModule;
+        const option = MODULE_OPTIONS.find(item => item.id === targetId);
+        if (!option) return;
+        if (
+            (targetId === 'social' && !isSocialAllowed)
+            || (targetId === 'marketing' && !isMarketingAllowed)
+            || (targetId === 'accounting' && !isAccountingAllowed)
+        ) {
+            return;
+        }
 
         setModules(prev => {
             if (prev.includes(targetId)) {
@@ -558,6 +456,28 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 : [...current, trackId]
         ));
         setStartupSensitiveTracksConfirmed(false);
+    };
+
+    const handleVisibilitySelect = (mode: string) => {
+        if (mode === 'everyone') {
+            setVisibilityMode('everyone');
+            setVisibilityGroupIds([]);
+            setIsPrivate(false);
+            return;
+        }
+
+        if (mode === 'groups') {
+            if (workspaceGroups.length === 0) return;
+            setVisibilityMode('groups');
+            setIsPrivate(false);
+            return;
+        }
+
+        if (mode === 'private') {
+            setVisibilityMode('private');
+            setIsPrivate(true);
+            setVisibilityGroupIds([]);
+        }
     };
 
     if (!can('canCreateProjects')) {
@@ -649,20 +569,71 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         label
     }));
     const statusLabel = statusLabels[status] || status;
-
-    const githubOptions = githubRepos.map((repo) => ({
-        label: repo.full_name,
-        value: repo.full_name,
+    const templateSelectionItems = PROJECT_TEMPLATE_DEFINITIONS.map(template => ({
+        id: template.id,
+        title: t(template.labelKey),
+        description: t(template.descriptionKey),
+        icon: <span className="material-symbols-outlined">{template.icon}</span>
     }));
-    const githubPlaceholder = loadingGithub
-        ? t('createProjectWizard.github.loadingRepos')
-        : t('createProjectWizard.github.selectRepo');
-    const githubValue = selectedGithubRepo || null;
-    const githubSelectDisabled = loadingGithub || githubOptions.length === 0;
-
-    const coverPreview = coverUrl || (coverFile ? URL.createObjectURL(coverFile) : '');
-    const iconPreview = squareIconUrl || (squareIconFile ? URL.createObjectURL(squareIconFile) : '');
-    const hasProjectLinks = externalResources.length > 0 || links.length > 0;
+    const moduleAccess: Record<NonNullable<ModuleOption['gatedBy']>, boolean> = {
+        social: isSocialAllowed,
+        marketing: isMarketingAllowed,
+        accounting: isAccountingAllowed
+    };
+    const moduleSelectionItems = MODULE_OPTIONS.map(option => {
+        const isLocked = option.gatedBy ? !moduleAccess[option.gatedBy] : false;
+        return {
+            id: option.id === 'ideas' ? 'flows' : option.id,
+            title: t(option.labelKey),
+            description: t(option.descKey),
+            icon: <span className="material-symbols-outlined">{option.icon}</span>,
+            disabled: isLocked,
+            disabledReason: isLocked ? t('createProjectWizard.modules.locked') : undefined
+        };
+    });
+    const startupTrackSelectionItems = STARTUP_TRACK_DEFINITIONS.map(track => ({
+        id: track.id,
+        title: t(track.labelKey),
+        description: t(track.descriptionKey),
+        icon: <span className="material-symbols-outlined">{track.icon}</span>
+    }));
+    const visibilitySelectionItems = [
+        {
+            id: 'everyone',
+            title: t('createProjectWizard.visibility.everyone'),
+            description: t('createProjectWizard.visibility.everyoneHint'),
+            icon: <span className="material-symbols-outlined">public</span>
+        },
+        {
+            id: 'groups',
+            title: t('createProjectWizard.visibility.groups'),
+            description: workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : t('createProjectWizard.visibility.groupsHint'),
+            icon: <span className="material-symbols-outlined">lock_person</span>,
+            disabled: workspaceGroups.length === 0,
+            disabledReason: workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : undefined
+        },
+        {
+            id: 'private',
+            title: t('createProjectWizard.visibility.private'),
+            description: t('createProjectWizard.visibility.privateHint'),
+            icon: <span className="material-symbols-outlined">lock</span>
+        }
+    ];
+    const invalidModuleIds = modules.filter(module => (
+        !MODULE_OPTIONS.some(option => option.id === module)
+        || (module === 'social' && !isSocialAllowed)
+        || (module === 'marketing' && !isMarketingAllowed)
+        || (module === 'accounting' && !isAccountingAllowed)
+    ));
+    const safeModules = modules.filter(module => !invalidModuleIds.includes(module));
+    const dateRangeInvalid = Boolean(startDate && dueDate && startDate > dueDate);
+    const cadenceIcons: Record<ProjectCadence, string> = {
+        daily: 'today',
+        weekly: 'view_week',
+        biweekly: 'date_range',
+        monthly: 'calendar_month',
+        'ad-hoc': 'event_repeat'
+    };
     const teamEmptyLabel = t('createProjectWizard.preview.teamEmpty');
     const deadlineValue = dueDate
         ? format(dueDate, dateFormat, { locale: dateLocale })
@@ -670,41 +641,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     return (
         <div className="create-project">
-            <ImageCropper
-                isOpen={!!cropImageSrc}
-                imageSrc={cropImageSrc}
-                aspectRatio={cropAspectRatio}
-                onCropComplete={handleCropComplete}
-                onCancel={() => { setCropImageSrc(null); setCropType(null); }}
-            />
-
-            <MediaLibrary
-                isOpen={showMediaLibrary}
-                onClose={() => setShowMediaLibrary(false)}
-                projectId={""} // No project yet
-                deferredUpload={true}
-                onSelect={(asset) => {
-                    if (mediaPickerTarget === 'cover') {
-                        if (asset.source === 'local_file' && asset.file) {
-                            setCoverFile(asset.file);
-                            setCoverUrl(null);
-                        } else {
-                            setCoverUrl(asset.url);
-                            setCoverFile(null);
-                        }
-                    } else if (mediaPickerTarget === 'icon') {
-                        if (asset.source === 'local_file' && asset.file) {
-                            setSquareIconFile(asset.file);
-                            setSquareIconUrl(null);
-                        } else {
-                            setSquareIconUrl(asset.url);
-                            setSquareIconFile(null);
-                        }
-                    }
-                    setShowMediaLibrary(false);
-                }}
-            />
-
             <div className="create-project__shell animate-fade-in">
 
                 {/* LEFT: Form Panel */}
@@ -755,126 +691,34 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                     {/* Content Area - Fixed Height with Overflow */}
                     <div className="create-project__content">
 
-                        {/* Step 0: Method */}
+                        {/* Step 0: Type */}
                         {currentStep === 0 && (
-                            <div className="create-project__step create-project__step--method animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.method.title')}</h2>
-                                    <p>{t('createProjectWizard.method.subtitle')}</p>
-                                </div>
-
-                                <div className="create-project__method-grid">
-                                    <button
-                                        onClick={() => handleMethodSelect('scratch')}
-                                        type="button"
-                                        className="create-project__method-card"
-                                        data-mode="scratch"
-                                    >
-                                        <div className="create-project__method-icon">
-                                            <span className="material-symbols-outlined">edit_note</span>
-                                        </div>
-                                        <div className="create-project__method-text">
-                                            <div className="create-project__method-title">{t('createProjectWizard.method.scratch.title')}</div>
-                                            <div className="create-project__method-description">{t('createProjectWizard.method.scratch.description')}</div>
-                                        </div>
-                                        <span className="material-symbols-outlined create-project__method-chevron">chevron_right</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleMethodSelect('ai')}
-                                        type="button"
-                                        className="create-project__method-card"
-                                        data-mode="ai"
-                                    >
-                                        <div className="create-project__method-icon">
-                                            <span className="material-symbols-outlined">auto_awesome</span>
-                                        </div>
-                                        <div className="create-project__method-text">
-                                            <div className="create-project__method-title">{t('createProjectWizard.method.ai.title')}</div>
-                                            <div className="create-project__method-description">{t('createProjectWizard.method.ai.description')}</div>
-                                        </div>
-                                        <span className="material-symbols-outlined create-project__method-chevron">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 1: Type */}
-                        {currentStep === 1 && creationMode && (
-                            <div className="create-project__step create-project__step--type animate-fade-in">
+                            <div className="create-project__step create-project__step--start animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.typeStep.title')}</h2>
                                     <p>{t('createProjectWizard.typeStep.subtitle')}</p>
                                 </div>
 
-                                <div
-                                    className="create-project__type-grid"
-                                    role="radiogroup"
-                                    aria-label={t('createProjectWizard.typeStep.title')}
-                                >
-                                    {PROJECT_TEMPLATE_DEFINITIONS.map(template => {
-                                        const isActive = templateId === template.id;
-
-                                        return (
-                                            <button
-                                                key={template.id}
-                                                type="button"
-                                                onClick={() => handleTemplateSelect(template.id)}
-                                                role="radio"
-                                                aria-checked={isActive}
-                                                className={`create-project__type-card ${isActive ? 'is-active' : ''}`}
-                                            >
-                                                <span className="material-symbols-outlined create-project__type-icon">{template.icon}</span>
-                                                <span className="create-project__type-text">
-                                                    <span className="create-project__type-title">{t(template.labelKey)}</span>
-                                                    <span className="create-project__type-description">{t(template.descriptionKey)}</span>
-                                                </span>
-                                                <span className="material-symbols-outlined create-project__type-check" aria-hidden="true">
-                                                    {isActive ? 'check_circle' : 'radio_button_unchecked'}
-                                                </span>
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 2: Details (AI) */}
-                        {currentStep === 2 && creationMode === 'ai' && (
-                            <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.ai.title')}</h2>
-                                    <p>{t('createProjectWizard.ai.subtitle')}</p>
-                                </div>
-
-                                <TextArea
-                                    value={aiPrompt}
-                                    onChange={handleAiPromptChange}
-                                    placeholder={t('createProjectWizard.ai.placeholder')}
-                                    className="create-project__ai-input"
+                                <ModuleSelection
+                                    modules={templateSelectionItems}
+                                    selectedModules={[templateId]}
+                                    onToggle={(nextTemplateId) => handleTemplateSelect(nextTemplateId as ProjectTemplateId)}
+                                    ariaLabel={t('createProjectWizard.typeStep.title')}
+                                    className="create-project__type-selection"
+                                    selectionMode="single"
                                 />
-
-                                <Button
-                                    onClick={handleExecuteAI}
-                                    disabled={!aiPrompt.trim()}
-                                    isLoading={isGenerating}
-                                    icon={<span className="material-symbols-outlined">magic_button</span>}
-                                    className="create-project__ai-action"
-                                >
-                                    {isGenerating ? t('createProjectWizard.ai.generating') : t('createProjectWizard.ai.action')}
-                                </Button>
                             </div>
                         )}
 
-                        {/* Step 2: Details (Scratch) */}
-                        {currentStep === 2 && creationMode === 'scratch' && (
+                        {/* Step 1: Details */}
+                        {currentStep === 1 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.details.title')}</h2>
                                     <p>{t('createProjectWizard.details.subtitle')}</p>
                                 </div>
 
-                                <div className="create-project__form-grid">
+                                <div className="create-project__form-grid create-project__form-grid--details">
                                     <TextInput
                                         label={t('createProjectWizard.details.name.label')}
                                         value={name}
@@ -888,17 +732,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             <label htmlFor={descriptionFieldId}>
                                                 {t('createProjectWizard.details.description.label')}
                                             </label>
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={handleGenerateDesc}
-                                                disabled={!name || isGenerating}
-                                                icon={<span className={`material-symbols-outlined ${isGenerating ? 'create-project__spin' : ''}`}>auto_awesome</span>}
-                                                className="create-project__ai-helper"
-                                            >
-                                                {t('createProjectWizard.details.description.aiCompose')}
-                                            </Button>
                                         </div>
                                         <TextArea
                                             id={descriptionFieldId}
@@ -906,6 +739,16 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             onChange={e => setDescription(e.target.value)}
                                             placeholder={t('createProjectWizard.details.description.placeholder')}
                                             className="create-project__description-input"
+                                        />
+                                    </div>
+
+                                    <div className="create-project__field create-project__field--wide">
+                                        <label>{t('createProjectWizard.brief.successCriteria.label')}</label>
+                                        <TextArea
+                                            value={successCriteria}
+                                            onChange={handleSuccessCriteriaChange}
+                                            placeholder={t('createProjectWizard.brief.successCriteria.placeholder')}
+                                            className="create-project__brief-input create-project__brief-input--short"
                                         />
                                     </div>
 
@@ -934,39 +777,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 3: Project Brief */}
-                        {currentStep === 3 && (
-                            <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.brief.title')}</h2>
-                                    <p>{t('createProjectWizard.brief.subtitle')}</p>
-                                </div>
-
-                                <div className="create-project__brief-grid">
-                                    <div className="create-project__field create-project__field--wide">
-                                        <label>{t('createProjectWizard.brief.successCriteria.label')}</label>
-                                        <TextArea
-                                            value={successCriteria}
-                                            onChange={handleSuccessCriteriaChange}
-                                            placeholder={t('createProjectWizard.brief.successCriteria.placeholder')}
-                                            className="create-project__brief-input create-project__brief-input--short"
-                                        />
-                                    </div>
-
-                                    <div className="create-project__brief-options create-project__field--wide">
-                                        <Select
-                                            label={t('createProjectWizard.brief.cadence.label')}
-                                            value={cadence}
-                                            onChange={(value) => setCadence(value as ProjectCadence)}
-                                            options={cadenceOptions}
-                                        />
-                                    </div>
-
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Step 4: Setup Workstreams */}
+                        {/* Step 2: Setup Workstreams */}
                         {currentStep === SETUP_WORKSTREAMS_STEP_ID && isCreatingCompanyProject && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
@@ -975,31 +786,14 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 </div>
 
                                 <div className="create-project__startup-panel create-project__startup-panel--tracks">
-                                    <div className="create-project__startup-track-list">
-                                        {STARTUP_TRACK_DEFINITIONS.map(track => {
-                                            const isSelected = startupTrackIds.includes(track.id);
-                                            return (
-                                                <button
-                                                    key={track.id}
-                                                    type="button"
-                                                    onClick={() => handleStartupTrackToggle(track.id)}
-                                                    aria-pressed={isSelected}
-                                                    className={`create-project__startup-track ${isSelected ? 'is-active' : ''}`}
-                                                >
-                                                    <span className="material-symbols-outlined create-project__startup-track-icon" aria-hidden="true">{track.icon}</span>
-                                                    <span className="create-project__startup-track-copy">
-                                                        <strong>{t(track.labelKey)}</strong>
-                                                        <small>{t(track.descriptionKey)}</small>
-                                                    </span>
-                                                    <span className="create-project__startup-track-check" aria-hidden="true">
-                                                        {isSelected && (
-                                                            <span className="material-symbols-outlined">check</span>
-                                                        )}
-                                                    </span>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <ModuleSelection
+                                        modules={startupTrackSelectionItems}
+                                        selectedModules={startupTrackIds}
+                                        onToggle={(trackId) => handleStartupTrackToggle(trackId as StartupTrackId)}
+                                        ariaLabel={t('createProjectWizard.startup.tracks.title')}
+                                        className="create-project__startup-selection"
+                                        selectionMode="multiple"
+                                    />
 
                                     {startupNeedsSensitiveConfirmation && (
                                         <button
@@ -1019,8 +813,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             </div>
                         )}
 
-                        {/* Step 5: Modules */}
-                        {currentStep === 5 && (
+                        {/* Step 3: Modules */}
+                        {currentStep === 3 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.modules.title')}</h2>
@@ -1029,129 +823,108 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
                                 <div className="create-project__selection-container">
                                     <ModuleSelection
-                                        selectedModules={modules.map(m => m === 'ideas' ? 'flows' : m)}
+                                        modules={moduleSelectionItems}
+                                        selectedModules={safeModules.map(m => m === 'ideas' ? 'flows' : m)}
                                         onToggle={handleModuleToggle}
                                     />
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 6: Team */}
-                        {currentStep === 6 && (
+                        {/* Step 4: Team */}
+                        {currentStep === TEAM_STEP_ID && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.team.title')}</h2>
-                                    <p>{t('createProjectWizard.team.subtitle')}</p>
+                                    <h2>{t('createProjectWizard.access.teamTitle')}</h2>
+                                    <p>{t('createProjectWizard.access.teamSubtitle')}</p>
                                 </div>
 
-                                {availableMembers.length === 0 ? (
-                                    <div className="create-project__empty">
-                                        <span className="material-symbols-outlined">group</span>
-                                        <p>{t('createProjectWizard.team.empty')}</p>
-                                    </div>
-                                ) : (
-                                    <MemberSelection
-                                        members={availableMembers}
-                                        selectedIds={selectedMemberIds}
-                                        onToggle={(id) => setSelectedMemberIds(curr => curr.includes(id) ? curr.filter(x => x !== id) : [...curr, id])}
-                                    />
-                                )}
-
-                                <div className="create-project__visibility">
-                                    <div className="create-project__visibility-header">
-                                        <h3>{t('createProjectWizard.visibility.title')}</h3>
-                                        <p>{t('createProjectWizard.visibility.subtitle')}</p>
-                                    </div>
-
-                                    <div className="create-project__visibility-grid">
-                                        <button
-                                            type="button"
-                                            onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
-                                            className={`create-project__visibility-card ${!isPrivate && visibilityGroupIds.length === 0 ? 'is-active' : ''}`}
-                                        >
-                                            <div className="create-project__visibility-title">
-                                                <span className="material-symbols-outlined">public</span>
-                                                {t('createProjectWizard.visibility.everyone')}
+                                <div className="create-project__access-stack">
+                                    <section className="create-project__access-section">
+                                        {availableMembers.length === 0 ? (
+                                            <div className="create-project__empty">
+                                                <span className="material-symbols-outlined">group</span>
+                                                <p>{t('createProjectWizard.team.empty')}</p>
                                             </div>
-                                            <span className="create-project__visibility-hint">
-                                                {t('createProjectWizard.visibility.everyoneHint')}
-                                            </span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsPrivate(false);
-                                                if (visibilityGroupIds.length === 0 && workspaceGroups.length > 0) {
-                                                    setVisibilityGroupIds([workspaceGroups[0].id]);
-                                                }
-                                            }}
-                                            disabled={workspaceGroups.length === 0}
-                                            className={`create-project__visibility-card ${!isPrivate && visibilityGroupIds.length > 0 ? 'is-active' : ''}`}
-                                        >
-                                            <div className="create-project__visibility-title">
-                                                <span className="material-symbols-outlined">lock_person</span>
-                                                {t('createProjectWizard.visibility.groups')}
-                                            </div>
-                                            <span className="create-project__visibility-hint">
-                                                {workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : t('createProjectWizard.visibility.groupsHint')}
-                                            </span>
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
-                                            className={`create-project__visibility-card ${isPrivate ? 'is-active' : ''}`}
-                                        >
-                                            <div className="create-project__visibility-title">
-                                                <span className="material-symbols-outlined">lock</span>
-                                                {t('createProjectWizard.visibility.private')}
-                                            </div>
-                                            <span className="create-project__visibility-hint">
-                                                {t('createProjectWizard.visibility.privateHint')}
-                                            </span>
-                                        </button>
-                                    </div>
-
-                                    {!isPrivate && visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
-                                        <div className="create-project__group-select animate-fade-in">
-                                            <label>{t('createProjectWizard.visibility.selectGroups')}</label>
-                                            <div className="create-project__group-grid">
-                                                {workspaceGroups.map(group => {
-                                                    const isSelected = visibilityGroupIds.includes(group.id);
-                                                    return (
-                                                        <button
-                                                            key={group.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                if (isSelected) {
-                                                                    setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
-                                                                } else {
-                                                                    setVisibilityGroupIds(prev => [...prev, group.id]);
-                                                                }
-                                                            }}
-                                                            className={`create-project__group-chip ${isSelected ? 'is-active' : ''}`}
-                                                        >
-                                                            <span
-                                                                className="create-project__group-dot"
-                                                                style={{ backgroundColor: group.color || 'var(--color-text-subtle)' }}
-                                                            />
-                                                            <span className="create-project__group-name">{group.name}</span>
-                                                            {isSelected && (
-                                                                <span className="material-symbols-outlined">check</span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
+                                        ) : (
+                                            <MemberSelection
+                                                members={availableMembers}
+                                                selectedIds={selectedMemberIds}
+                                                onToggle={(id) => setSelectedMemberIds(curr => curr.includes(id) ? curr.filter(x => x !== id) : [...curr, id])}
+                                                ariaLabel={t('createProjectWizard.access.teamTitle')}
+                                                searchPlaceholder={t('createProjectWizard.team.search')}
+                                                noResultsText={t('createProjectWizard.team.noSearchResults')}
+                                            />
+                                        )}
+                                    </section>
                                 </div>
                             </div>
                         )}
 
-                        {/* Step 7: Timeline */}
-                        {currentStep === 7 && (
+                        {/* Step 5: Visibility */}
+                        {currentStep === VISIBILITY_STEP_ID && (
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.access.visibilityTitle')}</h2>
+                                    <p>{t('createProjectWizard.access.visibilitySubtitle')}</p>
+                                </div>
+
+                                <div className="create-project__access-stack">
+                                    <section className="create-project__access-section">
+                                        <ModuleSelection
+                                            modules={visibilitySelectionItems}
+                                            selectedModules={[visibilityMode]}
+                                            onToggle={handleVisibilitySelect}
+                                            ariaLabel={t('createProjectWizard.access.visibilityTitle')}
+                                            className="create-project__visibility-selection"
+                                            selectionMode="single"
+                                        />
+
+                                        {visibilityMode === 'groups' && workspaceGroups.length > 0 && (
+                                            <div className="create-project__group-select animate-fade-in">
+                                                <label>{t('createProjectWizard.visibility.selectGroups')}</label>
+                                                <div className="create-project__group-grid">
+                                                    {workspaceGroups.map(group => {
+                                                        const isSelected = visibilityGroupIds.includes(group.id);
+                                                        return (
+                                                            <button
+                                                                key={group.id}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    if (isSelected) {
+                                                                        setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
+                                                                    } else {
+                                                                        setVisibilityGroupIds(prev => [...prev, group.id]);
+                                                                    }
+                                                                }}
+                                                                className={`create-project__group-chip ${isSelected ? 'is-active' : ''}`}
+                                                            >
+                                                                <span
+                                                                    className="create-project__group-dot"
+                                                                    style={{ backgroundColor: group.color || 'var(--color-text-subtle)' }}
+                                                                />
+                                                                <span className="create-project__group-name">{group.name}</span>
+                                                                {isSelected && (
+                                                                    <span className="material-symbols-outlined">check</span>
+                                                                )}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                                {visibilityGroupIds.length === 0 && (
+                                                    <p className="create-project__group-warning">
+                                                        {t('createProjectWizard.visibility.requiresGroup')}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+                                    </section>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 6: Timeline */}
+                        {currentStep === 6 && (
                             <div className="create-project__step animate-fade-in">
                                 <div className="create-project__step-header">
                                     <h2>{t('createProjectWizard.timeline.title')}</h2>
@@ -1176,6 +949,33 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         />
                                     </div>
                                     <div className="create-project__timeline-control">
+                                        <label>{t('createProjectWizard.brief.cadence.label')}</label>
+                                        <div className="create-project__cadence-grid" role="radiogroup" aria-label={t('createProjectWizard.brief.cadence.label')}>
+                                            {cadenceOptions.map(option => {
+                                                const optionValue = option.value as ProjectCadence;
+                                                const isActive = cadence === optionValue;
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={isActive}
+                                                        className={`create-project__cadence-option ${isActive ? 'is-active' : ''}`}
+                                                        onClick={() => setCadence(optionValue)}
+                                                    >
+                                                        <span className="material-symbols-outlined create-project__cadence-icon" aria-hidden="true">
+                                                            {cadenceIcons[optionValue]}
+                                                        </span>
+                                                        <span className="create-project__cadence-label">{option.label}</span>
+                                                        <span className="create-project__cadence-check" aria-hidden="true">
+                                                            {isActive && <span className="material-symbols-outlined">check</span>}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                    <div className="create-project__timeline-control">
                                         <DatePicker
                                             label={t('createProjectWizard.timeline.startDate')}
                                             value={startDate}
@@ -1189,6 +989,12 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             onChange={setDueDate}
                                         />
                                     </div>
+                                    {dateRangeInvalid && (
+                                        <div className="create-project__date-error">
+                                            <span className="material-symbols-outlined">error</span>
+                                            {t('createProjectWizard.errors.dateOrder')}
+                                        </div>
+                                    )}
                                     <div className="create-project__field create-project__timeline-control create-project__timeline-control--priority">
                                         <label>{t('createProjectWizard.timeline.priority')}</label>
                                         <div className="create-project__priority-grid" role="radiogroup" aria-label={t('createProjectWizard.timeline.priority')}>
@@ -1209,278 +1015,13 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Step 8: Assets */}
-                        {currentStep === 8 && (
-                            <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.assets.title')}</h2>
-                                    <p>{t('createProjectWizard.assets.subtitle')}</p>
-                                </div>
-
-                                <div className="create-project__assets">
-                                    <div className="create-project__asset-grid">
-                                        {/* Cover Selection */}
-                                        <div className="create-project__asset">
-                                            <label className="create-project__asset-label">{t('createProjectWizard.assets.cover.label')}</label>
-                                            <div
-                                                onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
-                                                className="create-project__asset-card"
-                                                data-asset="cover"
-                                            >
-                                                {coverUrl || coverFile ? (
-                                                    <>
-                                                        <img src={coverPreview} className="create-project__asset-image" />
-                                                        <div className="create-project__asset-overlay">
-                                                            <span>
-                                                                <span className="material-symbols-outlined">edit</span>
-                                                                {t('createProjectWizard.assets.change')}
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverFile(null); }}
-                                                            className="create-project__asset-remove"
-                                                        >
-                                                            <span className="material-symbols-outlined">close</span>
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <div className="create-project__asset-placeholder">
-                                                        <span className="material-symbols-outlined">image</span>
-                                                        <span>{t('createProjectWizard.assets.cover.select')}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Icon Selection */}
-                                        <div className="create-project__asset">
-                                            <label className="create-project__asset-label">{t('createProjectWizard.assets.icon.label')}</label>
-                                            <div
-                                                onClick={() => { setMediaPickerTarget('icon'); setShowMediaLibrary(true); }}
-                                                className="create-project__asset-card create-project__asset-card--icon"
-                                                data-asset="icon"
-                                            >
-                                                {squareIconUrl || squareIconFile ? (
-                                                    <>
-                                                        <img src={iconPreview} className="create-project__asset-image create-project__asset-image--icon" />
-                                                        <div className="create-project__asset-overlay">
-                                                            <span>
-                                                                <span className="material-symbols-outlined">edit</span>
-                                                                {t('createProjectWizard.assets.change')}
-                                                            </span>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => { e.stopPropagation(); setSquareIconUrl(null); setSquareIconFile(null); }}
-                                                            className="create-project__asset-remove"
-                                                        >
-                                                            <span className="material-symbols-outlined">close</span>
-                                                        </button>
-                                                    </>
-                                                ) : (
-                                                    <div className="create-project__asset-placeholder">
-                                                        <span className="material-symbols-outlined">smart_button</span>
-                                                        <span>{t('createProjectWizard.assets.icon.select')}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* GitHub Integration - Only for Software Projects */}
-                                    {projectType === 'software' && (
-                                        <div className="create-project__github">
-                                            <div className="create-project__finish-header">
-                                                <div className="create-project__finish-heading">
-                                                    <div className="create-project__finish-icon create-project__finish-icon--github">
-                                                        <svg className="create-project__github-mark" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
-                                                    </div>
-                                                    <div>
-                                                        <h3 className="create-project__section-title">{t('createProjectWizard.github.title')}</h3>
-                                                        <p className="create-project__section-subtitle">{t('createProjectWizard.github.subtitle')}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            {!githubToken ? (
-                                                <button
-                                                    onClick={async () => {
-                                                        const user = auth.currentUser;
-                                                        if (!user) return;
-                                                        setConnectingGithub(true);
-                                                        try {
-                                                            const token = await linkWithGithub();
-                                                            await updateUserData(user.uid, { githubToken: token });
-                                                            setGithubToken(token);
-                                                            const repos = await fetchUserRepositories(token);
-                                                            setGithubRepos(repos);
-                                                        } catch (e: any) {
-                                                            console.error('Failed to link GitHub', e);
-                                                        } finally {
-                                                            setConnectingGithub(false);
-                                                        }
-                                                    }}
-                                                    disabled={connectingGithub}
-                                                    className="create-project__github-connect"
-                                                    type="button"
-                                                    aria-busy={connectingGithub}
-                                                >
-                                                    <div className="create-project__github-text">
-                                                        <div className="create-project__github-title">
-                                                            {connectingGithub ? t('createProjectWizard.github.connecting') : t('createProjectWizard.github.connect')}
-                                                        </div>
-                                                        <div className="create-project__github-hint">{t('createProjectWizard.github.connectHint')}</div>
-                                                    </div>
-                                                    <span className="material-symbols-outlined create-project__github-arrow">arrow_forward</span>
-                                                </button>
-                                            ) : (
-                                                <div className="create-project__github-select">
-                                                    <div className="create-project__github-connected">
-                                                        <span className="material-symbols-outlined">check_circle</span>
-                                                        {t('createProjectWizard.github.connected')}
-                                                    </div>
-                                                    <Select
-                                                        value={githubValue}
-                                                        onChange={(value) => setSelectedGithubRepo(String(value))}
-                                                        options={githubOptions}
-                                                        placeholder={githubPlaceholder}
-                                                        disabled={githubSelectDisabled}
-                                                        className="create-project__github-select-input"
-                                                    />
-                                                    {selectedGithubRepo && (
-                                                        <div className="create-project__github-note">
-                                                            <span className="material-symbols-outlined">check_circle</span>
-                                                            {t('createProjectWizard.github.syncNotice')}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <div className="create-project__links">
-                                        <div className="create-project__finish-header create-project__finish-header--split">
-                                            <div className="create-project__finish-heading">
-                                                <div className="create-project__finish-icon">
-                                                    <span className="material-symbols-outlined">link</span>
-                                                </div>
-                                                <div>
-                                                    <h3 className="create-project__section-title">{t('createProjectWizard.links.title')}</h3>
-                                                    <p className="create-project__section-subtitle">{t('createProjectWizard.links.subtitle')}</p>
-                                                </div>
-                                            </div>
-
-                                            <div className="create-project__links-actions">
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
-                                                    icon={<span className="material-symbols-outlined">add_link</span>}
-                                                    className="create-project__link-add"
-                                                >
-                                                    {t('createProjectWizard.links.addResource')}
-                                                </Button>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    onClick={() => setLinks([...links, { title: '', url: '' }])}
-                                                    icon={<span className="material-symbols-outlined">add</span>}
-                                                    className="create-project__link-add"
-                                                >
-                                                    {t('createProjectWizard.links.addOverview')}
-                                                </Button>
-                                            </div>
-                                        </div>
-
-                                        <div className="create-project__links-list">
-                                            {!hasProjectLinks && (
-                                                <div className="create-project__links-empty">
-                                                    <span className="material-symbols-outlined">bookmark_add</span>
-                                                    <span>{t('createProjectWizard.links.empty')}</span>
-                                                </div>
-                                            )}
-
-                                            {externalResources.map((res, idx) => (
-                                                <div key={`res-${idx}`} className="create-project__link-row" data-kind="resource">
-                                                    <div className="create-project__link-icon">
-                                                        <span className="material-symbols-outlined">open_in_new</span>
-                                                    </div>
-                                                    <div className="create-project__link-fields">
-                                                        <input
-                                                            placeholder={t('createProjectWizard.links.resourcePlaceholder')}
-                                                            value={res.title}
-                                                            onChange={(e) => {
-                                                                const newRes = [...externalResources];
-                                                                newRes[idx].title = e.target.value;
-                                                                setExternalResources(newRes);
-                                                            }}
-                                                            className="create-project__link-input create-project__link-input--title"
-                                                        />
-                                                        <input
-                                                            placeholder={t('createProjectWizard.links.urlPlaceholder')}
-                                                            value={res.url}
-                                                            onChange={(e) => {
-                                                                const newRes = [...externalResources];
-                                                                newRes[idx].url = e.target.value;
-                                                                setExternalResources(newRes);
-                                                            }}
-                                                            className="create-project__link-input create-project__link-input--url"
-                                                        />
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
-                                                        className="create-project__link-remove"
-                                                    >
-                                                        <span className="material-symbols-outlined">delete</span>
-                                                    </button>
-                                                </div>
-                                            ))}
-
-                                            {links.map((link, idx) => (
-                                                <div key={`link-${idx}`} className="create-project__link-row" data-kind="overview">
-                                                    <div className="create-project__link-icon">
-                                                        <span className="material-symbols-outlined">link</span>
-                                                    </div>
-                                                    <div className="create-project__link-fields">
-                                                        <input
-                                                            placeholder={t('createProjectWizard.links.linkPlaceholder')}
-                                                            value={link.title}
-                                                            onChange={(e) => {
-                                                                const newLinks = [...links];
-                                                                newLinks[idx].title = e.target.value;
-                                                                setLinks(newLinks);
-                                                            }}
-                                                            className="create-project__link-input create-project__link-input--title"
-                                                        />
-                                                        <input
-                                                            placeholder={t('createProjectWizard.links.urlPlaceholder')}
-                                                            value={link.url}
-                                                            onChange={(e) => {
-                                                                const newLinks = [...links];
-                                                                newLinks[idx].url = e.target.value;
-                                                                setLinks(newLinks);
-                                                            }}
-                                                            className="create-project__link-input create-project__link-input--url"
-                                                        />
-                                                    </div>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setLinks(links.filter((_, i) => i !== idx))}
-                                                        className="create-project__link-remove"
-                                                    >
-                                                        <span className="material-symbols-outlined">delete</span>
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
+                                <div className="create-project__post-create-note">
+                                    <span className="material-symbols-outlined">info</span>
+                                    <span>{t('createProjectWizard.timeline.postCreateHint')}</span>
                                 </div>
                             </div>
                         )}
+
                     </div>
 
                     {/* Footer */}
@@ -1498,13 +1039,13 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             )}
                         </div>
                         <div className="create-project__footer-actions">
-                            {currentStep > 0 && currentStep !== finalStepId && (
+                            {currentStep !== finalStepId && (
                                 <Button
                                     onClick={handleNext}
                                     disabled={
-                                        (currentStep === 2 && creationMode === 'scratch' && !name)
-                                        || (currentStep === 2 && creationMode === 'ai' && !blueprint)
+                                        (currentStep === 1 && !name.trim())
                                         || (currentStep === SETUP_WORKSTREAMS_STEP_ID && startupNeedsSensitiveConfirmation && !startupSensitiveTracksConfirmed)
+                                        || (currentStep === VISIBILITY_STEP_ID && visibilityMode === 'groups' && visibilityGroupIds.length === 0)
                                     }
                                 >
                                     {t('createProjectWizard.actions.continue')}
@@ -1513,7 +1054,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                             {currentStep === finalStepId && (
                                 <Button
                                     onClick={handleSubmit}
-                                    disabled={isSubmitting || !name || (startupNeedsSensitiveConfirmation && !startupSensitiveTracksConfirmed)}
+                                    disabled={isSubmitting || !name.trim() || dateRangeInvalid || (startupNeedsSensitiveConfirmation && !startupSensitiveTracksConfirmed)}
                                     isLoading={isSubmitting}
                                 >
                                     {isSubmitting ? t('createProjectWizard.actions.creating') : t('createProjectWizard.actions.create')}
@@ -1527,13 +1068,9 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                 <aside className="create-project__preview">
                     <Card className="create-project__preview-card">
                         <div className="create-project__preview-cover">
-                            {coverPreview ? (
-                                <img src={coverPreview} className="create-project__preview-cover-image" alt="" />
-                            ) : (
-                                <div className="create-project__preview-cover-placeholder">
-                                    <span className="material-symbols-outlined">landscape</span>
-                                </div>
-                            )}
+                            <div className="create-project__preview-cover-placeholder">
+                                <span className="material-symbols-outlined">landscape</span>
+                            </div>
                             <div className="create-project__preview-status">
                                 {statusLabel}
                             </div>
@@ -1541,11 +1078,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
                         <div className="create-project__preview-body">
                             <div className="create-project__preview-icon">
-                                {iconPreview ? (
-                                    <img src={iconPreview} className="create-project__preview-icon-image" alt="" />
-                                ) : (
-                                    <span className="material-symbols-outlined create-project__preview-icon-fallback">{selectedTemplate.icon}</span>
-                                )}
+                                <span className="material-symbols-outlined create-project__preview-icon-fallback">{selectedTemplate.icon}</span>
                             </div>
 
                             <div className="create-project__preview-info">
@@ -1606,11 +1139,18 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
                             <div className="create-project__preview-footer">
                                 <div className="create-project__preview-modules">
-                                    {modules.slice(0, 5).map((module) => (
-                                        <span key={module} className="create-project__preview-module-dot" />
-                                    ))}
-                                    {modules.length > 5 && (
-                                        <span className="create-project__preview-module-more">+{modules.length - 5}</span>
+                                    {safeModules.slice(0, 5).map((module) => {
+                                        const option = MODULE_OPTIONS.find(item => item.id === module);
+                                        return (
+                                            <span
+                                                key={module}
+                                                className="create-project__preview-module-dot"
+                                                title={option ? t(option.labelKey) : module}
+                                            />
+                                        );
+                                    })}
+                                    {safeModules.length > 5 && (
+                                        <span className="create-project__preview-module-more">+{safeModules.length - 5}</span>
                                     )}
                                 </div>
                                 <span className={`create-project__preview-priority create-project__preview-priority--${priority}`}>

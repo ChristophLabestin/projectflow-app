@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { ModuleSelection, ModuleItem } from '../ModuleSelection/ModuleSelection';
+import { TextInput } from '../Input/TextInput';
 import './memberSelection.scss';
 
 interface Member {
@@ -13,53 +15,70 @@ interface MemberSelectionProps {
     members: Member[];
     selectedIds: string[];
     onToggle: (id: string) => void;
+    ariaLabel?: string;
+    searchPlaceholder?: string;
+    noResultsText?: string;
+    searchThreshold?: number;
 }
 
-const MemberSelection: React.FC<MemberSelectionProps> = ({ members, selectedIds, onToggle }) => {
+const MemberSelection: React.FC<MemberSelectionProps> = ({
+    members,
+    selectedIds,
+    onToggle,
+    ariaLabel,
+    searchPlaceholder,
+    noResultsText,
+    searchThreshold = 8
+}) => {
+    const [query, setQuery] = useState('');
+    const shouldShowSearch = members.length >= searchThreshold;
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredMembers = useMemo(() => {
+        if (!normalizedQuery) return members;
+        return members.filter(member => (
+            (member.displayName || '').toLowerCase().includes(normalizedQuery)
+            || member.email.toLowerCase().includes(normalizedQuery)
+        ));
+    }, [members, normalizedQuery]);
+
+    const memberItems: ModuleItem[] = filteredMembers.map(member => ({
+        id: member.uid,
+        title: member.displayName || member.email,
+        description: member.email,
+        icon: member.photoURL ? (
+            <img src={member.photoURL} alt="" className="member-selection__avatar-image" />
+        ) : (
+            <span className="material-symbols-outlined">person</span>
+        )
+    }));
+
     return (
-        <div className="member-selection">
-            {members.map((member) => {
-                const isSelected = selectedIds.includes(member.uid);
-
-                return (
-                    <button
-                        key={member.uid}
-                        type="button"
-                        className={`member-selection__item ${isSelected ? 'member-selection__item--selected' : ''}`}
-                        onClick={() => onToggle(member.uid)}
-                    >
-                        <div className="member-selection__avatar">
-                            {member.photoURL ? (
-                                <img src={member.photoURL} alt={member.displayName} />
-                            ) : (
-                                <span className="material-symbols-outlined">person</span>
-                            )}
-                        </div>
-
-                        <div className="member-selection__info">
-                            <h3 className="member-selection__title">{member.displayName}</h3>
-                            <p className="member-selection__desc">{member.email}</p>
-                        </div>
-
-                        <div className="member-selection__check">
-                            {isSelected && (
-                                <svg
-                                    width="14"
-                                    height="14"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="3"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                            )}
-                        </div>
-                    </button>
-                );
-            })}
+        <div className="member-selection__layout">
+            {shouldShowSearch && (
+                <TextInput
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    placeholder={searchPlaceholder}
+                    leftElement={<span className="material-symbols-outlined">search</span>}
+                    className="member-selection__search"
+                />
+            )}
+            {memberItems.length > 0 ? (
+                <ModuleSelection
+                    modules={memberItems}
+                    selectedModules={selectedIds}
+                    onToggle={onToggle}
+                    ariaLabel={ariaLabel}
+                    className="member-selection"
+                    selectionMode="multiple"
+                />
+            ) : (
+                <div className="member-selection__empty">
+                    <span className="material-symbols-outlined">person_search</span>
+                    <p>{noResultsText}</p>
+                </div>
+            )}
         </div>
     );
 };
