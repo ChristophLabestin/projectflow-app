@@ -75,6 +75,25 @@ const EMPTY_PROJECT_HEALTH_INPUTS: ProjectHealthInputs = {
     initiatives: []
 };
 
+const EMPTY_PROJECT_METRICS: ProjectMetrics = {
+    taskCount: 0,
+    taskCompleted: 0,
+    flowCount: 0,
+    issueCount: 0
+};
+
+const shouldLoadProjectInsights = (project: Project) => (
+    !isCompanyProject(project) && (project.status === 'Active' || project.status === 'In Testing')
+);
+
+const yieldToBrowser = () => new Promise<void>((resolve) => {
+    if (typeof window === 'undefined') {
+        resolve();
+        return;
+    }
+    window.setTimeout(resolve, 0);
+});
+
 const withProjectScope = <T extends { projectId?: string; tenantId?: string }>(
     items: T[],
     projectId: string,
@@ -1603,8 +1622,8 @@ export const ProjectsList: React.FC = () => {
                 const resolvedTenantId = await ensureActiveTenantId();
                 let allProjects: Project[] = [];
                 const [ownedProjects, sharedProjects] = await Promise.all([
-                    getUserProjects().catch(() => []),
-                    getSharedProjects().catch(() => [])
+                    getUserProjects(undefined, { includeScreenshots: false }).catch(() => []),
+                    getSharedProjects({ includeScreenshots: false }).catch(() => [])
                 ]);
                 const dedupedProjects = new Map<string, Project>();
                 [...ownedProjects, ...sharedProjects].forEach((project) => {
@@ -1614,14 +1633,33 @@ export const ProjectsList: React.FC = () => {
 
                 if (allProjects.length === 0) {
                     try {
-                        allProjects = await getAllWorkspaceProjects(resolvedTenantId);
+                        allProjects = await getAllWorkspaceProjects(resolvedTenantId, { includeScreenshots: false });
                     } catch (error) {
                         console.warn('Projects list workspace query failed', error);
                     }
                 }
 
+                if (!mounted) return;
+
+                setProjects(allProjects);
+                setTasks([]);
+                setIdeas([]);
+                setIssues([]);
+                setMilestones([]);
+                setSprints([]);
+                setHealthInputsByProject({});
+                setLoading(false);
+
+                const insightProjects = allProjects.filter(shouldLoadProjectInsights);
+                if (insightProjects.length === 0) {
+                    return;
+                }
+
+                await yieldToBrowser();
+                if (!mounted) return;
+
                 const projectInputEntries = await Promise.all(
-                    allProjects.map(async (project): Promise<[string, ProjectHealthInputs]> => {
+                    insightProjects.map(async (project): Promise<[string, ProjectHealthInputs]> => {
                         const tenantId = project.tenantId || resolvedTenantId;
                         const [
                             projectTasks,
@@ -1662,7 +1700,6 @@ export const ProjectsList: React.FC = () => {
                 const projectInputs = Object.values(nextHealthInputsByProject);
 
                 if (mounted) {
-                    setProjects(allProjects);
                     setTasks(projectInputs.flatMap((entry) => entry.tasks));
                     setIdeas(projectInputs.flatMap((entry) => entry.ideas));
                     setIssues(projectInputs.flatMap((entry) => entry.issues));
@@ -1681,16 +1718,39 @@ export const ProjectsList: React.FC = () => {
         return () => { mounted = false; };
     }, [authUserId, isAuthReady]);
 
-    // Helper to get metrics for a project
-    const getMetrics = (projectId: string): ProjectMetrics => {
-        const projectTasks = tasks.filter(t => t.projectId === projectId);
-        return {
-            taskCount: projectTasks.length,
-            taskCompleted: projectTasks.filter(t => t.isCompleted).length,
-            flowCount: ideas.filter(i => i.projectId === projectId).length,
-            issueCount: issues.filter(i => i.projectId === projectId).length
+    const metricsByProject = useMemo(() => {
+        const map: Record<string, ProjectMetrics> = {};
+        const ensureMetrics = (projectId: string) => {
+            if (!map[projectId]) {
+                map[projectId] = { ...EMPTY_PROJECT_METRICS };
+            }
+            return map[projectId];
         };
-    };
+
+        tasks.forEach((task) => {
+            const metrics = ensureMetrics(task.projectId);
+            metrics.taskCount += 1;
+            if (task.isCompleted) {
+                metrics.taskCompleted += 1;
+            }
+        });
+
+        ideas.forEach((idea) => {
+            if (!idea.projectId) return;
+            ensureMetrics(idea.projectId).flowCount += 1;
+        });
+
+        issues.forEach((issue) => {
+            if (!issue.projectId) return;
+            ensureMetrics(issue.projectId).issueCount += 1;
+        });
+
+        return map;
+    }, [ideas, issues, tasks]);
+
+    const getMetrics = useCallback((projectId: string): ProjectMetrics => (
+        metricsByProject[projectId] || EMPTY_PROJECT_METRICS
+    ), [metricsByProject]);
 
     const filteredProjects = useMemo(() => {
         if (!authUserId) return [];

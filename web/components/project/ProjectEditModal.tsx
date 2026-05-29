@@ -1427,7 +1427,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title={t('projectSettings.title')} size="xl">
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title={t('projectSettings.title')}
+                size="xl"
+                className="project-edit-modal-shell"
+            >
                 <div className="project-edit-modal">
                     <div className="project-edit-modal__layout">
                         {/* Sidebar */}
@@ -1452,15 +1458,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             <div className="project-edit-modal__body">
                                 {renderContent()}
                             </div>
-
-                            {/* Footer */}
-                            <div className="project-edit-modal__footer">
-                                <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-                                <Button variant="primary" onClick={handleSave} isLoading={isSaving}>
-                                    {t('common.saveChanges')}
-                                </Button>
-                            </div>
                         </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="project-edit-modal__footer">
+                        <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+                        <Button type="button" variant="primary" onClick={handleSave} isLoading={isSaving}>
+                            {t('common.saveChanges')}
+                        </Button>
                     </div>
                 </div>
             </Modal>

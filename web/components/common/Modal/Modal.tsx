@@ -8,6 +8,7 @@ export interface ModalProps {
     onClose: () => void;
     title?: string;
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+    className?: string;
     children: React.ReactNode;
     footer?: React.ReactNode;
     closeOnOutsideClick?: boolean;
@@ -18,6 +19,7 @@ export const Modal: React.FC<ModalProps> = ({
     onClose,
     title,
     size = 'md',
+    className = '',
     children,
     footer,
     closeOnOutsideClick = true,
@@ -64,7 +66,7 @@ export const Modal: React.FC<ModalProps> = ({
             aria-modal="true"
             role="dialog"
         >
-            <div className={`modal modal--${size} ${isOpen ? 'modal--open' : ''}`} ref={modalRef}>
+            <div className={`modal modal--${size} ${isOpen ? 'modal--open' : ''} ${className}`.trim()} ref={modalRef}>
                 {(title || onClose) && (
                     <div className="modal__header">
                         {title && <h2 className="modal__title">{title}</h2>}

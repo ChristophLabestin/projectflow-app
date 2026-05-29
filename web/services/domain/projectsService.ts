@@ -18,6 +18,11 @@ import { resolveActiveTenantId } from './authService';
 const TENANTS = 'tenants';
 const PROJECTS = 'projects';
 
+type ProjectHydrationOptions = {
+    hydrateAssets?: boolean;
+    includeScreenshots?: boolean;
+};
+
 const projectDocRef = (tenantId: string, projectId: string) => doc(db, TENANTS, tenantId, PROJECTS, projectId);
 
 const resolveProjectDoc = async (projectId: string, tenantId?: string) => {
@@ -48,7 +53,14 @@ const getTenantIdFromRef = (ref: { path: string }) => {
     return tenantIndex >= 0 ? parts[tenantIndex + 1] : '';
 };
 
-const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
+const hydrateProjectAssetUrls = async (
+    project: Project,
+    options: ProjectHydrationOptions = {}
+): Promise<Project> => {
+    if (options.hydrateAssets === false) {
+        return project;
+    }
+
     const tenantId = project.tenantId || '';
     if (!tenantId) {
         return project;
@@ -86,7 +98,9 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
         }
     }
 
-    if (Array.isArray(project.screenshotFileIds) && project.screenshotFileIds.length > 0) {
+    const shouldHydrateScreenshots = options.includeScreenshots !== false;
+
+    if (shouldHydrateScreenshots && Array.isArray(project.screenshotFileIds) && project.screenshotFileIds.length > 0) {
         const nextScreenshots = await Promise.all(project.screenshotFileIds.map(async (fileId) => {
             try {
                 const signed = await getTenantFileDownloadUrl({ tenantId, fileId });
@@ -98,7 +112,7 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
         }));
 
         next.screenshots = nextScreenshots.filter(Boolean);
-    } else if (Array.isArray(project.screenshots) && project.screenshots.length > 0) {
+    } else if (shouldHydrateScreenshots && Array.isArray(project.screenshots) && project.screenshots.length > 0) {
         const nextScreenshots = await Promise.all(project.screenshots.map(async (url) => {
             try {
                 return await refreshFirebaseStorageUrl(tenantId, url);
@@ -114,7 +128,10 @@ const hydrateProjectAssetUrls = async (project: Project): Promise<Project> => {
     return next;
 };
 
-export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {
+export const getUserProjects = async (
+    tenantId?: string,
+    hydrationOptions?: ProjectHydrationOptions
+): Promise<Project[]> => {
     const user = auth.currentUser;
     const resolvedTenant = resolveActiveTenantId(tenantId);
     if (!user || !resolvedTenant) return [];
@@ -128,10 +145,10 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
         .filter((project) => !project.isPersonal)
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 
-    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, hydrationOptions)));
 };
 
-export const getSharedProjects = async (): Promise<Project[]> => {
+export const getSharedProjects = async (hydrationOptions?: ProjectHydrationOptions): Promise<Project[]> => {
     const user = auth.currentUser;
     if (!user) return [];
 
@@ -148,7 +165,7 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         .filter((project) => project.ownerId !== user.uid)
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 
-    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
+    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, hydrationOptions)));
 };
 
 export const getProjectMembers = async (projectId: string, tenantId?: string): Promise<string[]> => {

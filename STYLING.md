@@ -166,6 +166,8 @@ Transitions should feel responsive but not abrupt. Use the tokens below consiste
 - The top-bar focus pill and pinned-task focus controls use semantic status color, not a new palette: primary for active, muted surface for snoozed, error for blocked, success for completion.
 - Focus controls should stay compact and action-oriented: start/resume, snooze, block, complete. Avoid explanatory cards around them.
 - Detail-page focus actions should live as standalone buttons at the top of the right/sidebar column, outside cards. Keep the hero for identity, status, and primary edit/complete actions; icon-only focus controls are reserved for pinning or compact toolbars.
+- Task, initiative, and issue detail heroes should use an open document-header pattern rather than a boxed card: no glow background, no giant rounded wrapper, title and context on the page surface, actions aligned as compact controls, and key facts in a thin metadata rail below the title.
+- Follow-up `MFV0szRMsrCI4Uqc2bEq`: flatten the task/initiative/issue detail body sections next. The hero now reads cleaner, but the main metadata controls and sidebar still repeat facts and rely on oversized cards.
 - Keep the current focus visible in the first dashboard viewport and top bar without relying on hover text.
 
 ### Codex Session Surface
@@ -228,6 +230,14 @@ These tokens define key layout constants used across the app shell.
 - Resume flows should use the common `Modal`, show only open tasks whose due dates fell inside the paused window, and use `DatePicker` controls for inline due-date correction before the project is restored.
 - Use warning tone only for the paused state indicator and danger tone only for canceled-state indicators; recovery rows should stay on normal surface tokens so the modal remains scannable.
 
+## 6.3.1) Project Triage Pattern
+
+- Project triage belongs with the project overview task execution surface, not in the masthead/hero and not as a detached task-list replacement.
+- Show the right-column triage card only when the cleanup rule is triggered: overdue tasks, blocked tasks, unassigned tasks, high-priority tasks without dates, or clusters of three or more due-soon/no-date tasks. Do not show it for ordinary open work.
+- Use queue filters for overdue, blocked, due-soon, unassigned, no-date, high-priority, and all-open tasks; keep the list dense enough for bulk cleanup.
+- Bulk actions should focus on reversible task metadata changes: due dates, status, completion, and team-member assignment. Keep delegation compact with a suggested member/select flow; do not reintroduce workload charts unless the user asks for a richer staffing view.
+- Keep triage in the common `Modal` with tokenized surfaces, no nested cards, no native dialogs, and no hardcoded user-facing text.
+
 ## 6.4) Project Contract Pattern
 
 - The Project Contract belongs on the project overview as a supporting context card, not as the first full-width focus area.
@@ -239,12 +249,12 @@ These tokens define key layout constants used across the app shell.
 
 - Project overview cards use a fixed, non-editable layout. Do not add user-facing drag handles, card toggles, layout toolbars, or layout customization modals to this screen.
 - Keep the page command-first: compact header, project command strip, attention queue, execution cards, project state/context, then reference modules.
-- Keep project cover media as a shallow identity band in the masthead. Do not turn it back into a large hero card, and do not show a big empty image placeholder when no cover is set.
+- Keep the project masthead compact by default, but use the same floating identity-box language for both `Compact` and `Showcase`. Compact mode should be the short version with a shallow cover/backdrop band behind the title box; Showcase may enlarge that cover area when media should carry more visual weight. Both modes must keep identity, status, and primary actions visible without scrolling and return to command metrics immediately after the masthead; never show a big empty image placeholder when no cover is set.
 - Combine command metrics and attention work into one `Project focus` surface. Do not render the command strip and attention queue as two separate top-level cards.
-- Startup/company overview additions should use the same neutral card, row, and metadata patterns as the rest of Project Overview. Avoid yellow warning panels, large standalone cockpit blocks, and loud pill clusters for routine setup guidance.
+- Startup/company overview additions should use the same neutral card, row, and metadata patterns as the rest of Project Overview. Company projects should use one unified command surface with a compact header, one founder action, launch readiness, a quiet context rail, compact workstream rows, and linked delivery projects; avoid yellow warning panels, separate cockpit cards, long explanatory paragraphs, and loud pill clusters for routine setup guidance.
 - Keep the command strip to one full-width section with compact cells for health, work, timeline, and lifecycle. It must not become a second full controls card.
 - Do not render the old header metrics footer or snapshot card alongside the command strip; those signals belong to one top-level summary surface.
-- Hide the attention queue for canceled projects because canceled work should not be promoted as important or urgent.
+- Hide the attention queue for canceled projects or projects with no attention items; do not render a success/empty next-action card in the command area.
 - Keep primary work cards in the main grid and compact project state/support cards in the side column so the overview remains predictable across sessions.
 - Move reference-heavy modules such as updates, resources, GitHub, and metadata below the operational work/status area.
 

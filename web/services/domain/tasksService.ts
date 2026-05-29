@@ -30,7 +30,7 @@ import {
 } from '../internal/workspaceDataCore';
 import { toMillis } from '../../utils/time';
 import { isProjectIncludedInImportantSignals } from '../healthService';
-import type { Activity, SubTask, Task } from '../../types';
+import type { Activity, Project, SubTask, Task } from '../../types';
 import { getSharedProjects, getUserProjects } from './projectsService';
 
 const TASKS = 'tasks';
@@ -48,36 +48,47 @@ const loadProjectTasks = async (projectId: string, tenantId?: string): Promise<T
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
+const getUserTasksFromProjects = async (projects: Project[], userId: string): Promise<Task[]> => {
+    const uniqueProjects = Array.from(
+        new Map(projects.map((project) => [`${project.tenantId || 'none'}:${project.id}`, project])).values()
+    ).filter(isProjectIncludedInImportantSignals);
+
+    const results = await Promise.all(uniqueProjects.map(async (project) => {
+        try {
+            const projectTasks = await loadProjectTasks(project.id, project.tenantId);
+            return projectTasks.map((task) => ({ ...task, tenantId: project.tenantId }));
+        } catch (error) {
+            console.warn(`Failed to fetch tasks for project ${project.id}`, error);
+            return [] as Task[];
+        }
+    }));
+
+    const allTasks = results.flat();
+    return allTasks.filter((task) =>
+        task.assigneeId === userId ||
+        (task.assigneeIds && task.assigneeIds.includes(userId)) ||
+        (task.ownerId === userId && !task.assigneeId && (!task.assigneeIds || task.assigneeIds.length === 0))
+    );
+};
+
+export const getUserTasksForProjects = async (projects: Project[]): Promise<Task[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    return getUserTasksFromProjects(projects, user.uid);
+};
+
 export const getUserTasks = async (): Promise<Task[]> => {
     const user = auth.currentUser;
     if (!user) return [];
 
     try {
         const [myProjects, sharedProjects] = await Promise.all([
-            getUserProjects(),
-            getSharedProjects()
+            getUserProjects(undefined, { hydrateAssets: false }),
+            getSharedProjects({ hydrateAssets: false })
         ]);
 
-        const uniqueProjects = Array.from(
-            new Map([...myProjects, ...sharedProjects].map((project) => [project.id, project])).values()
-        ).filter(isProjectIncludedInImportantSignals);
-
-        const results = await Promise.all(uniqueProjects.map(async (project) => {
-            try {
-                const projectTasks = await loadProjectTasks(project.id, project.tenantId);
-                return projectTasks.map((task) => ({ ...task, tenantId: project.tenantId }));
-            } catch (error) {
-                console.warn(`Failed to fetch tasks for project ${project.id}`, error);
-                return [] as Task[];
-            }
-        }));
-
-        const allTasks = results.flat();
-        return allTasks.filter((task) =>
-            task.assigneeId === user.uid ||
-            (task.assigneeIds && task.assigneeIds.includes(user.uid)) ||
-            (task.ownerId === user.uid && !task.assigneeId && (!task.assigneeIds || task.assigneeIds.length === 0))
-        );
+        return getUserTasksFromProjects([...myProjects, ...sharedProjects], user.uid);
     } catch (error) {
         console.error('getUserTasks failed', error);
         return [];

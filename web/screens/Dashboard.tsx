@@ -8,7 +8,7 @@ import { getUserIdeas } from '../services/domain/ideasService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getUserIssues } from '../services/domain/issuesService';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
-import { getUserTasks } from '../services/domain/tasksService';
+import { getUserTasksForProjects } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import { Project, Task, Idea, Issue, Initiative } from '../types';
 import { toDate, toMillis } from '../utils/time';
@@ -210,13 +210,17 @@ export const Dashboard = () => {
             return;
         }
 
+        let cancelled = false;
+
         const loadDashboard = async () => {
             setLoading(true);
             try {
                 const resolvedTenantId = await ensureActiveTenantId();
-                const [ownedProjects, sharedProjects] = await Promise.all([
-                    getUserProjects().catch(() => []),
-                    getSharedProjects().catch(() => [])
+                const profilePromise = getUserProfile(authUserId).catch(() => null);
+                const [ownedProjects, sharedProjects, profile] = await Promise.all([
+                    getUserProjects(undefined, { hydrateAssets: false }).catch(() => []),
+                    getSharedProjects({ hydrateAssets: false }).catch(() => []),
+                    profilePromise
                 ]);
                 const dedupedProjects = new Map<string, Project>();
                 [...ownedProjects, ...sharedProjects].forEach((project) => {
@@ -226,36 +230,49 @@ export const Dashboard = () => {
                 let workspaceProjects = Array.from(dedupedProjects.values());
                 if (workspaceProjects.length === 0) {
                     try {
-                        workspaceProjects = await getAllWorkspaceProjects(resolvedTenantId);
+                        workspaceProjects = await getAllWorkspaceProjects(resolvedTenantId, { hydrateAssets: false });
                     } catch (error) {
                         console.warn('Dashboard workspace project query failed', error);
                     }
                 }
 
+                if (cancelled) return;
+                setProjects(workspaceProjects);
+                setTasks([]);
+                setInitiatives([]);
+                setIdeas([]);
+                setIssues([]);
+
+                const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
+                setUserName(displayName ? displayName.split(' ')[0] : '');
+                setLoading(false);
+
                 const [workspaceTasks, workspaceInitiatives, workspaceIdeas, workspaceIssues] = await Promise.all([
-                    getUserTasks().catch(() => []),
+                    getUserTasksForProjects(workspaceProjects).catch(() => []),
                     getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
                     getUserIdeas().catch(() => []),
                     getUserIssues().catch(() => [])
                 ]);
 
-                setProjects(workspaceProjects);
+                if (cancelled) return;
                 setTasks(workspaceTasks);
                 setInitiatives(workspaceInitiatives);
                 setIdeas(workspaceIdeas);
                 setIssues(workspaceIssues);
-
-                const profile = await getUserProfile(authUserId);
-                const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
-                setUserName(displayName ? displayName.split(' ')[0] : '');
             } catch (err) {
                 console.error(err);
             } finally {
-                setLoading(false);
+                if (!cancelled) {
+                    setLoading(false);
+                }
             }
         };
 
         void loadDashboard();
+
+        return () => {
+            cancelled = true;
+        };
     }, [authUserId, isAuthReady, user?.displayName]);
 
     useEffect(() => {

@@ -21,22 +21,29 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
+    const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated } = useAuth();
     const { openProjectCreateModal } = useUIState();
 
-    // Fetch projects on mount - only when auth is ready
+    // Fetch projects lazily so the sidebar does not duplicate workspace queries on first load.
     useEffect(() => {
-        // Only fetch when auth is ready and user is authenticated
-        if (!isAuthReady || !isAuthenticated) return;
+        if (!isAuthReady || !isAuthenticated) {
+            setProjects([]);
+            setHasLoadedProjects(false);
+            return;
+        }
+
+        if (!isOpen || hasLoadedProjects) return;
 
         const fetchProjects = async () => {
+            setLoading(true);
             try {
                 const [myProjects, sharedProjects] = await Promise.all([
-                    getUserProjects(),
-                    getSharedProjects()
+                    getUserProjects(undefined, { includeScreenshots: false }),
+                    getSharedProjects({ includeScreenshots: false })
                 ]);
                 const combined = [...myProjects, ...sharedProjects];
                 const unique = Array.from(new Map(combined.map(item => [item.id, item])).values());
@@ -48,14 +55,15 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                 });
 
                 setProjects(unique);
+                setHasLoadedProjects(true);
             } catch (error) {
                 console.error("Failed to load projects", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchProjects();
-    }, [isAuthReady, isAuthenticated]);
+        void fetchProjects();
+    }, [hasLoadedProjects, isAuthReady, isAuthenticated, isOpen]);
 
     const activeProject = projects.find(p => p.id === currentProjectId);
     const activeCompanyProject = activeProject?.companyProjectId

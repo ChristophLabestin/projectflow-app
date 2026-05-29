@@ -1520,6 +1520,7 @@ const en = {
     'onboarding.dashboard.steps.issues.description': 'Issues appear here so you can triage and follow up quickly.',
 
     'common.cancel': 'Cancel',
+    'common.close': 'Close',
     'common.saveChanges': 'Save Changes',
     'common.saving': 'Saving...',
     'common.copy': 'Copy',
@@ -2502,6 +2503,7 @@ const en = {
     'healthDetail.recommendations.title': 'CORA Recommendations',
     'healthDetail.empty.title': 'All Clear!',
     'healthDetail.empty.subtitle': 'This project is in great shape.',
+    'healthDetail.actions.close': 'Close',
     'healthDetail.actions.done': 'Done',
     'health.tooltip.title': 'Project Health',
     'health.tooltip.subtitle': 'Based on recent activity and metrics',

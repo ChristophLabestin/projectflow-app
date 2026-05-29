@@ -680,13 +680,12 @@ export const ProjectTaskDetail = () => {
                                 <span className="task-detail__action-divider" />
                                 <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
                                     onClick={() => setShowTaskModal(true)}
                                     className="task-detail__action-button task-detail__action-button--wide"
+                                    aria-label={t('taskDetail.actions.newTask')}
                                     icon={<span className="material-symbols-outlined task-detail__action-icon">add</span>}
-                                >
-                                    {t('taskDetail.actions.newTask')}
-                                </Button>
+                                />
                             </div>
                         </div>
                     </div>

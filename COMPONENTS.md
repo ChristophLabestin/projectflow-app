@@ -83,6 +83,7 @@ Rules:
 | `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
 | `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Task-modal-style form editor with title/description first, compact Questions/Share toolbar, fully customizable default and custom fields, inline row editing, schema validation, opt-in preview, and hosted/embed access controls. |
 | `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard favors low-friction creation: method, compact type selection, then required details with a single project purpose field; optional company-project assignment for normal projects, company-project setup workstreams as a quiet checklist step with sensitive-track confirmation, optional success criteria plus cadence, operating mode in the timeline step, and optional finish assets/links. Company-project founding context is completed after creation from the overview hint card/settings flow. |
+| `ProjectOverview` company command surface | Action-first Unternehmensprojekt overview | `/project/:id` for company/startup projects | Replaces the old text-heavy founding cockpit with one founder action, launch-readiness meter, compact workstream rows, company context, source links, and linked-project rollups using the same neutral Project Overview surface language. |
 | `Skeleton` | Loading placeholder | List/table loading | |
 
 ### `StatusCard`
@@ -119,6 +120,7 @@ Example usage:
 | `ListRow` | Consistent list item | Tasks, projects | |
 | `KeyValue` | Small metadata block | Details pages | |
 | `ProjectCodex` | Project-level Codex session and follow-up surface | `/project/:id/codex` | Subscribes to `codex_sessions` and `codex_followups`, uses shared `Button`, tokenized SCSS, and i18n strings. |
+| `ProjectTriageModal` | Project-level task cleanup and delegation workflow | Conditional `/project/:id` right-column triage card | Filters overdue/blocked/unassigned/near-term tasks, then supports bulk due-date, status, completion, and team assignment updates from a calmer triage workbench. |
 
 ---
 

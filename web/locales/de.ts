@@ -1519,6 +1519,7 @@ const de = {
     'onboarding.dashboard.steps.issues.description': 'Issues erscheinen hier, damit du sie schnell triagieren und nachverfolgen kannst.',
 
     'common.cancel': 'Abbrechen',
+    'common.close': 'Schließen',
     'common.saveChanges': 'Änderungen speichern',
     'common.saving': 'Wird gespeichert...',
     'common.copy': 'Kopieren',
@@ -2649,6 +2650,7 @@ const de = {
     'healthDetail.recommendations.title': 'CORA-Empfehlungen',
     'healthDetail.empty.title': 'Alles im grünen Bereich!',
     'healthDetail.empty.subtitle': 'Dieses Projekt ist in guter Verfassung.',
+    'healthDetail.actions.close': 'Schließen',
     'healthDetail.actions.done': 'Fertig',
     'health.tooltip.title': 'Projektgesundheit',
     'health.tooltip.subtitle': 'Basierend auf aktueller Aktivität und Kennzahlen',

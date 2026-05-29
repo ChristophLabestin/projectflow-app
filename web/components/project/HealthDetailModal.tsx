@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useId, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { ProjectHealth, HealthStatus, HealthFactor } from '../../services/healthService';
 import { Task, Milestone, Issue } from '../../types';
 import { Button } from '../ui/Button';
@@ -15,54 +16,43 @@ interface HealthDetailModalProps {
     projectTitle?: string;
 }
 
-const themes = {
-    critical: {
-        badge: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30',
-        gradient: 'from-rose-50 via-red-50 to-orange-50 dark:from-rose-950/50 dark:via-red-950/50 dark:to-slate-900',
-        progressBar: 'from-rose-500 via-red-500 to-orange-500',
-        border: 'border-rose-200/50 dark:border-rose-500/20',
-        shadow: 'shadow-[0_20px_60px_-15px_rgba(244,63,94,0.4)]',
-        statusDot: 'bg-rose-500',
-        color: '#f43f5e',
-        ring: 'ring-rose-500/30'
-    },
-    warning: {
-        badge: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30',
-        gradient: 'from-amber-50 via-orange-50 to-yellow-50 dark:from-amber-950/50 dark:via-orange-950/50 dark:to-slate-900',
-        progressBar: 'from-amber-500 via-orange-500 to-yellow-500',
-        border: 'border-amber-200/50 dark:border-amber-500/20',
-        shadow: 'shadow-[0_20px_60px_-15px_rgba(245,158,11,0.4)]',
-        statusDot: 'bg-amber-500',
-        color: '#f59e0b',
-        ring: 'ring-amber-500/30'
-    },
-    success: {
-        badge: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30',
-        gradient: 'from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950/50 dark:via-green-950/50 dark:to-slate-900',
-        progressBar: 'from-emerald-500 via-green-500 to-teal-500',
-        border: 'border-emerald-200/50 dark:border-emerald-500/20',
-        shadow: 'shadow-[0_20px_60px_-15px_rgba(16,185,129,0.35)]',
-        statusDot: 'bg-emerald-500',
-        color: '#10b981',
-        ring: 'ring-emerald-500/30'
-    },
-    normal: {
-        badge: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/30',
-        gradient: 'from-indigo-50 via-purple-50 to-slate-50 dark:from-indigo-950/50 dark:via-purple-950/50 dark:to-slate-900',
-        progressBar: 'from-indigo-500 via-purple-500 to-pink-500',
-        border: 'border-slate-200/50 dark:border-white/10',
-        shadow: 'shadow-[0_20px_60px_-15px_rgba(99,102,241,0.35)]',
-        statusDot: 'bg-indigo-500',
-        color: '#6366f1',
-        ring: 'ring-indigo-500/30'
-    },
+type AttentionTone = 'critical' | 'warning' | 'normal';
+
+const DAY = 24 * 60 * 60 * 1000;
+const factorTypeOrder: Record<HealthFactor['type'], number> = {
+    negative: 0,
+    neutral: 1,
+    positive: 2
 };
 
-const getThemeState = (status: HealthStatus): keyof typeof themes => {
-    if (status === 'excellent' || status === 'healthy') return 'success';
-    if (status === 'warning') return 'warning';
-    if (status === 'critical') return 'critical';
-    return 'normal';
+const getToneClass = (status: HealthStatus) => {
+    if (status === 'excellent' || status === 'healthy') return 'is-healthy';
+    if (status === 'warning') return 'is-warning';
+    if (status === 'critical') return 'is-critical';
+    if (status === 'stalemate') return 'is-stalemate';
+    return 'is-normal';
+};
+
+const getTrendIcon = (trend: ProjectHealth['trend']) => {
+    if (trend === 'improving') return 'trending_up';
+    if (trend === 'declining') return 'trending_down';
+    return 'trending_flat';
+};
+
+const getFactorIcon = (factor: HealthFactor) => {
+    const id = factor.id.toLowerCase();
+    if (id.includes('deadline') || id.includes('schedule') || id.includes('due')) return 'event';
+    if (id.includes('milestone')) return 'flag';
+    if (id.includes('sprint') || id.includes('velocity')) return 'speed';
+    if (id.includes('blocked') || id.includes('dependency')) return 'account_tree';
+    if (id.includes('issue') || id.includes('bug')) return 'bug_report';
+    if (id.includes('task') || id.includes('owner')) return 'checklist';
+    if (id.includes('initiative')) return 'conversion_path';
+    if (id.includes('idea') || id.includes('flow')) return 'hub';
+    if (id.includes('activity') || id.includes('comment')) return 'forum';
+    if (factor.type === 'positive') return 'check_circle';
+    if (factor.type === 'negative') return 'error';
+    return 'radio_button_unchecked';
 };
 
 export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
@@ -75,279 +65,292 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
     projectTitle
 }) => {
     const { t } = useLanguage();
-    const state = getThemeState(health.status);
-    const theme = themes[state];
-    const statusLabel = state === 'critical'
-        ? t('status.critical')
-        : state === 'warning'
-            ? t('status.warning')
-            : state === 'success'
-                ? t('status.healthy')
-                : t('status.normal');
-
-    // Derive at-risk items
-    const now = Date.now();
-    const DAY = 24 * 60 * 60 * 1000;
-
-    const { overdueTasks, dueSoonTasks, blockedTasks, overdueMilestones, urgentIssues } = useMemo(() => ({
-        overdueTasks: tasks.filter(t => {
-            if (t.isCompleted || t.status === 'Done' || !t.dueDate) return false;
-            return new Date(t.dueDate).getTime() < now;
-        }),
-        dueSoonTasks: tasks.filter(t => {
-            if (t.isCompleted || t.status === 'Done' || !t.dueDate) return false;
-            const due = new Date(t.dueDate).getTime();
-            return due >= now && due <= now + 3 * DAY;
-        }),
-        blockedTasks: tasks.filter(t => t.status === 'Blocked'),
-        overdueMilestones: milestones.filter(m => {
-            if (m.status === 'Achieved' || !m.dueDate) return false;
-            return new Date(m.dueDate).getTime() < now;
-        }),
-        urgentIssues: issues.filter(i =>
-            (i.priority === 'Urgent' || i.priority === 'High') &&
-            i.status !== 'Resolved' && i.status !== 'Closed'
-        )
-    }), [tasks, milestones, issues, now]);
-
-    const attentionCount = overdueTasks.length + dueSoonTasks.length + blockedTasks.length + overdueMilestones.length + urgentIssues.length;
-
-    const negativeFactors = health.factors.filter(f => f.type === 'negative');
-    const positiveFactors = health.factors.filter(f => f.type === 'positive');
-    const recommendations = getHealthRecommendations(health, t);
-
-    // Gauge
-    const radius = 70;
+    const titleId = useId();
+    const subtitleId = useId();
+    const now = useMemo(() => Date.now(), [isOpen]);
+    const score = Math.max(0, Math.min(100, health.score));
+    const radius = 46;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (health.score / 100) * circumference;
+    const strokeOffset = circumference - (score / 100) * circumference;
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const previousOverflow = document.body.style.overflow;
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', handleEscape);
+
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', handleEscape);
+        };
+    }, [isOpen, onClose]);
+
+    const riskItems = useMemo(() => {
+        const overdueTasks = tasks.filter(task => {
+            if (task.isCompleted || task.status === 'Done' || !task.dueDate) return false;
+            return new Date(task.dueDate).getTime() < now;
+        });
+        const dueSoonTasks = tasks.filter(task => {
+            if (task.isCompleted || task.status === 'Done' || !task.dueDate) return false;
+            const due = new Date(task.dueDate).getTime();
+            return due >= now && due <= now + 3 * DAY;
+        });
+        const blockedTasks = tasks.filter(task => task.status === 'Blocked');
+        const overdueMilestones = milestones.filter(milestone => {
+            if (milestone.status === 'Achieved' || !milestone.dueDate) return false;
+            return new Date(milestone.dueDate).getTime() < now;
+        });
+        const urgentIssues = issues.filter(issue =>
+            (issue.priority === 'Urgent' || issue.priority === 'High') &&
+            issue.status !== 'Resolved' &&
+            issue.status !== 'Closed'
+        );
+
+        return [
+            { id: 'overdue-tasks', icon: 'event_busy', label: t('healthDetail.attention.overdueTasks'), count: overdueTasks.length, tone: 'critical' as AttentionTone },
+            { id: 'due-soon', icon: 'schedule', label: t('healthDetail.attention.dueSoon'), count: dueSoonTasks.length, tone: 'warning' as AttentionTone },
+            { id: 'blocked-tasks', icon: 'block', label: t('healthDetail.attention.blocked'), count: blockedTasks.length, tone: 'critical' as AttentionTone },
+            { id: 'overdue-milestones', icon: 'flag', label: t('healthDetail.attention.milestones'), count: overdueMilestones.length, tone: 'warning' as AttentionTone },
+            { id: 'urgent-issues', icon: 'bug_report', label: t('healthDetail.attention.criticalIssues'), count: urgentIssues.length, tone: 'critical' as AttentionTone }
+        ].filter(item => item.count > 0);
+    }, [issues, milestones, now, t, tasks]);
+
+    const sortedFactors = useMemo(() => {
+        return [...health.factors].sort((a, b) => {
+            const typeDelta = factorTypeOrder[a.type] - factorTypeOrder[b.type];
+            if (typeDelta !== 0) return typeDelta;
+            return Math.abs(b.impact) - Math.abs(a.impact);
+        });
+    }, [health.factors]);
+
+    const negativeFactors = health.factors.filter(factor => factor.type === 'negative');
+    const positiveFactors = health.factors.filter(factor => factor.type === 'positive');
+    const recommendations = getHealthRecommendations(health, t);
+    const attentionCount = riskItems.reduce((sum, item) => sum + item.count, 0);
+    const hasSideColumn = riskItems.length > 0 || recommendations.length > 0;
+    const hasAnyDetail = sortedFactors.length > 0 || hasSideColumn;
 
     if (!isOpen) return null;
 
-    return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8" onClick={onClose}>
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
-
-            {/* Modal */}
-            <div
-                className={`relative w-full max-w-2xl ${theme.shadow} animate-in zoom-in-95 fade-in duration-300`}
-                onClick={(e) => e.stopPropagation()}
+    const modal = (
+        <div
+            className={`project-health-modal ${getToneClass(health.status)}`}
+            role="presentation"
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onClose();
+            }}
+        >
+            <section
+                className="project-health-modal__dialog"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={titleId}
+                aria-describedby={projectTitle ? subtitleId : undefined}
             >
-                <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} bg-white dark:bg-card ring-1 ${theme.ring}`}>
-                    {/* Gradient Background */}
-                    <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-50`} />
+                <button
+                    type="button"
+                    className="project-health-modal__close"
+                    onClick={onClose}
+                    aria-label={t('healthDetail.actions.close', 'Close')}
+                >
+                    <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                </button>
 
-                    {/* Content */}
-                    <div className="relative z-10">
-                        {/* Header */}
-                        <div className="p-8 pb-0">
-                            <div className="flex items-start gap-6">
-                                {/* Score Gauge */}
-                                <div className="relative shrink-0">
-                                    <div className="relative size-40">
-                                        <svg className="size-full -rotate-90" viewBox="0 0 160 160">
-                                            <circle
-                                                cx="80" cy="80" r={radius}
-                                                fill="none"
-                                                strokeWidth="12"
-                                                className="stroke-slate-200/50 dark:stroke-white/10"
-                                            />
-                                            <circle
-                                                cx="80" cy="80" r={radius}
-                                                fill="none"
-                                                strokeWidth="12"
-                                                strokeLinecap="round"
-                                                strokeDasharray={circumference}
-                                                strokeDashoffset={offset}
-                                                stroke={theme.color}
-                                                className="transition-all duration-1000 ease-out"
-                                                style={{ filter: `drop-shadow(0 0 8px ${theme.color}50)` }}
-                                            />
-                                        </svg>
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                            <span className="text-5xl font-black text-slate-900 dark:text-white">{health.score}</span>
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest">{t('healthDetail.score')}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                <header className="project-health-modal__hero">
+                    <div className="project-health-modal__score" aria-label={`${t('healthDetail.score')}: ${score}`}>
+                        <svg className="project-health-modal__score-svg" viewBox="0 0 112 112" aria-hidden="true">
+                            <circle
+                                className="project-health-modal__score-track"
+                                cx="56"
+                                cy="56"
+                                r={radius}
+                                fill="none"
+                                strokeWidth="9"
+                            />
+                            <circle
+                                className="project-health-modal__score-value"
+                                cx="56"
+                                cy="56"
+                                r={radius}
+                                fill="none"
+                                strokeWidth="9"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={strokeOffset}
+                            />
+                        </svg>
+                        <div className="project-health-modal__score-copy">
+                            <strong>{score}</strong>
+                            <span>{t('healthDetail.score')}</span>
+                        </div>
+                    </div>
 
-                                {/* Info */}
-                                <div className="flex-1 min-w-0 pt-2">
-                                    <button
-                                        onClick={onClose}
-                                        className="absolute top-6 right-6 size-9 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 flex items-center justify-center text-slate-500 dark:text-white/60 transition-colors"
-                                    >
-                                        <span className="material-symbols-outlined">close</span>
-                                    </button>
+                    <div className="project-health-modal__headline">
+                        <p className="project-health-modal__eyebrow">
+                            <span className="material-symbols-outlined" aria-hidden="true">monitoring</span>
+                            {t('healthDetail.title')}
+                        </p>
+                        <h2 id={titleId} className="project-health-modal__title">
+                            {projectTitle || t('healthDetail.title')}
+                        </h2>
+                        {projectTitle && (
+                            <p id={subtitleId} className="project-health-modal__subtitle">
+                                {t('healthDetail.title')}
+                            </p>
+                        )}
 
-                                    <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
-                                        {t('healthDetail.title')}
-                                    </h2>
-                                    {projectTitle && (
-                                        <p className="text-slate-500 dark:text-white/60 font-medium mb-4 truncate">{projectTitle}</p>
-                                    )}
-
-                                    <div className="flex items-center gap-3 mb-6">
-                                        <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${theme.badge}`}>
-                                            <span className={`size-2 rounded-full ${theme.statusDot} animate-pulse`} />
-                                            {statusLabel}
-                                        </div>
-                                        <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-white/70 font-medium">
-                                            <span className={`material-symbols-outlined text-[18px] ${health.trend === 'improving' ? 'text-emerald-500' : health.trend === 'declining' ? 'text-rose-500' : 'text-slate-400'}`}>
-                                                {health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat'}
-                                            </span>
-                                            {t(`trend.${health.trend}`, health.trend)}
-                                        </div>
-                                    </div>
-
-                                    {/* Quick Stats */}
-                                    <div className="grid grid-cols-3 gap-3">
-                                        <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                                            <span className="block text-2xl font-black text-rose-500">{negativeFactors.length}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.risks')}</span>
-                                        </div>
-                                        <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                                            <span className="block text-2xl font-black text-emerald-500">{positiveFactors.length}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.strengths')}</span>
-                                        </div>
-                                        <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                                            <span className="block text-2xl font-black text-amber-500">{attentionCount}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.attention')}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div className="project-health-modal__chips">
+                            <span className="project-health-modal__status-chip">
+                                <span className="project-health-modal__status-dot" aria-hidden="true" />
+                                {t(`status.${health.status}`, health.status)}
+                            </span>
+                            <span className={`project-health-modal__trend-chip is-${health.trend}`}>
+                                <span className="material-symbols-outlined" aria-hidden="true">{getTrendIcon(health.trend)}</span>
+                                {t(`trend.${health.trend}`, health.trend)}
+                            </span>
                         </div>
 
-                        {/* Scrollable Content */}
-                        <div className="p-8 pt-6 max-h-[45vh] overflow-y-auto space-y-6">
+                        <div className="project-health-modal__stats" aria-label={t('healthDetail.title')}>
+                            <SummaryMetric icon="report" label={t('healthDetail.stats.risks')} value={negativeFactors.length} tone="critical" />
+                            <SummaryMetric icon="verified" label={t('healthDetail.stats.strengths')} value={positiveFactors.length} tone="healthy" />
+                            <SummaryMetric icon="priority_high" label={t('healthDetail.stats.attention')} value={attentionCount} tone="warning" />
+                        </div>
+                    </div>
+                </header>
 
-                            {/* Attention Items */}
-                            {attentionCount > 0 && (
-                                <div className="backdrop-blur-xl bg-white/60 dark:bg-white/5 p-5 rounded-2xl border border-slate-200 dark:border-white/10">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="material-symbols-outlined text-amber-500">warning</span>
-                                        <span className="font-bold text-slate-900 dark:text-white">{t('healthDetail.attention.title')}</span>
-                                    </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {overdueTasks.length > 0 && (
-                                            <AttentionChip icon="event_busy" label={t('healthDetail.attention.overdueTasks')} count={overdueTasks.length} color="rose" />
-                                        )}
-                                        {dueSoonTasks.length > 0 && (
-                                            <AttentionChip icon="schedule" label={t('healthDetail.attention.dueSoon')} count={dueSoonTasks.length} color="amber" />
-                                        )}
-                                        {blockedTasks.length > 0 && (
-                                            <AttentionChip icon="block" label={t('healthDetail.attention.blocked')} count={blockedTasks.length} color="rose" />
-                                        )}
-                                        {overdueMilestones.length > 0 && (
-                                            <AttentionChip icon="flag" label={t('healthDetail.attention.milestones')} count={overdueMilestones.length} color="orange" />
-                                        )}
-                                        {urgentIssues.length > 0 && (
-                                            <AttentionChip icon="bug_report" label={t('healthDetail.attention.criticalIssues')} count={urgentIssues.length} color="rose" />
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Factors */}
-                            {health.factors.length > 0 && (
-                                <div className="space-y-3">
-                                    <h3 className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-sm">analytics</span>
-                                        {t('healthDetail.factors.title')}
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {health.factors.map((factor) => {
+                <div className={`project-health-modal__body ${hasSideColumn ? 'has-side-column' : 'is-single-column'}`}>
+                    {hasAnyDetail ? (
+                        <>
+                            {sortedFactors.length > 0 && (
+                                <section className="project-health-modal__section project-health-modal__section--factors">
+                                    <SectionHeader icon="analytics" title={t('healthDetail.factors.title')} />
+                                    <div className="project-health-modal__factor-list">
+                                        {sortedFactors.map((factor) => {
                                             const { label, description } = getHealthFactorText(factor, t);
                                             return (
-                                                <FactorRow key={factor.id} factor={factor} label={label} description={description} />
+                                                <FactorRow
+                                                    key={factor.id}
+                                                    factor={factor}
+                                                    icon={getFactorIcon(factor)}
+                                                    label={label}
+                                                    description={description}
+                                                />
                                             );
                                         })}
                                     </div>
-                                </div>
+                                </section>
                             )}
 
-                            {/* Recommendations */}
-                            {recommendations.length > 0 && (
-                                <div className="space-y-3">
-                                    <h3 className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                        {t('healthDetail.recommendations.title')}
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {recommendations.map((rec, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex items-start gap-3 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20"
-                                            >
-                                                <span className="material-symbols-outlined text-indigo-500 mt-0.5">lightbulb</span>
-                                                <p className="text-sm text-slate-700 dark:text-white/80 font-medium">{rec}</p>
+                            {hasSideColumn && (
+                                <aside className="project-health-modal__side">
+                                    {riskItems.length > 0 && (
+                                        <section className="project-health-modal__section">
+                                            <SectionHeader icon="warning" title={t('healthDetail.attention.title')} />
+                                            <div className="project-health-modal__attention-list">
+                                                {riskItems.map(item => (
+                                                    <AttentionItem
+                                                        key={item.id}
+                                                        icon={item.icon}
+                                                        label={item.label}
+                                                        count={item.count}
+                                                        tone={item.tone}
+                                                    />
+                                                ))}
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                                        </section>
+                                    )}
 
-                            {/* Empty State */}
-                            {health.factors.length === 0 && recommendations.length === 0 && attentionCount === 0 && (
-                                <div className="text-center py-8">
-                                    <span className="material-symbols-outlined text-5xl text-emerald-500 mb-3">verified</span>
-                                    <p className="text-slate-900 dark:text-white font-bold text-lg">{t('healthDetail.empty.title')}</p>
-                                    <p className="text-sm text-slate-500 dark:text-white/60">{t('healthDetail.empty.subtitle')}</p>
-                                </div>
+                                    {recommendations.length > 0 && (
+                                        <section className="project-health-modal__section">
+                                            <SectionHeader icon="lightbulb" title={t('healthDetail.recommendations.title')} />
+                                            <div className="project-health-modal__recommendation-list">
+                                                {recommendations.map((recommendation, index) => (
+                                                    <div key={`${recommendation}-${index}`} className="project-health-modal__recommendation">
+                                                        <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                                        <p>{recommendation}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </section>
+                                    )}
+                                </aside>
                             )}
+                        </>
+                    ) : (
+                        <div className="project-health-modal__empty">
+                            <span className="material-symbols-outlined" aria-hidden="true">verified</span>
+                            <strong>{t('healthDetail.empty.title')}</strong>
+                            <p>{t('healthDetail.empty.subtitle')}</p>
                         </div>
-
-                        {/* Footer */}
-                        <div className="p-6 pt-0 flex justify-end">
-                            <Button onClick={onClose} size="lg" className="px-8 rounded-xl font-bold">{t('healthDetail.actions.done')}</Button>
-                        </div>
-                    </div>
+                    )}
                 </div>
-            </div>
+
+                <footer className="project-health-modal__footer">
+                    <Button onClick={onClose} size="md">
+                        {t('healthDetail.actions.done')}
+                    </Button>
+                </footer>
+            </section>
         </div>
     );
+
+    return createPortal(modal, document.body);
 };
 
-const AttentionChip: React.FC<{ icon: string; label: string; count: number; color: 'rose' | 'amber' | 'orange' }> = ({ icon, label, count, color }) => {
-    const colors = {
-        rose: 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-500/30',
-        amber: 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30',
-        orange: 'bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-500/30',
-    };
+const SectionHeader: React.FC<{ icon: string; title: string }> = ({ icon, title }) => (
+    <div className="project-health-modal__section-header">
+        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+        <h3>{title}</h3>
+    </div>
+);
 
-    return (
-        <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-semibold ${colors[color]}`}>
-            <span className="material-symbols-outlined text-sm">{icon}</span>
+const SummaryMetric: React.FC<{ icon: string; label: string; value: number; tone: 'critical' | 'healthy' | 'warning' }> = ({
+    icon,
+    label,
+    value,
+    tone
+}) => (
+    <div className={`project-health-modal__metric is-${tone}`}>
+        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+        <div>
+            <strong>{value}</strong>
             <span>{label}</span>
-            <span className="font-bold">{count}</span>
         </div>
-    );
-};
+    </div>
+);
 
-const FactorRow: React.FC<{ factor: HealthFactor; label: string; description: string }> = ({ factor, label, description }) => {
-    const isNegative = factor.type === 'negative';
-    const isPositive = factor.type === 'positive';
+const AttentionItem: React.FC<{ icon: string; label: string; count: number; tone: AttentionTone }> = ({
+    icon,
+    label,
+    count,
+    tone
+}) => (
+    <div className={`project-health-modal__attention-item is-${tone}`}>
+        <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>
+        <span>{label}</span>
+        <strong>{count}</strong>
+    </div>
+);
 
-    const dotColor = isNegative ? 'bg-rose-500' : isPositive ? 'bg-emerald-500' : 'bg-slate-400';
-    const impactClass = isNegative
-        ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
-        : isPositive
-            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-            : 'bg-slate-100 dark:bg-white/10 text-slate-500';
-
-    return (
-        <div className="flex items-start gap-4 p-4 rounded-xl bg-white dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-slate-200 dark:hover:border-white/10 transition-colors">
-            <div className={`size-2.5 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
-            <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-3 mb-1">
-                    <h4 className="font-bold text-slate-900 dark:text-white">{label}</h4>
-                    <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded-md ${impactClass}`}>
-                        {factor.impact > 0 ? '+' : ''}{factor.impact}
-                    </span>
-                </div>
-                <p className="text-sm text-slate-500 dark:text-white/60">{description}</p>
-            </div>
+const FactorRow: React.FC<{ factor: HealthFactor; icon: string; label: string; description: string }> = ({
+    factor,
+    icon,
+    label,
+    description
+}) => (
+    <article className={`project-health-modal__factor is-${factor.type}`}>
+        <span className="project-health-modal__factor-icon material-symbols-outlined" aria-hidden="true">{icon}</span>
+        <div className="project-health-modal__factor-copy">
+            <h4>{label}</h4>
+            <p>{description}</p>
         </div>
-    );
-};
+        <span className="project-health-modal__factor-impact">
+            {factor.impact > 0 ? '+' : ''}{factor.impact}
+        </span>
+    </article>
+);

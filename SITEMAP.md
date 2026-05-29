@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (command-first layout with compact header, command strip, attention queue, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add a founding-briefing hint card, founding cockpit, source metadata, finance/marketing actions, and linked-project rollups)
+- [x] `/project/:id` (index) — Project overview (command-first layout with compact/showcase masthead modes, command strip, attention queue, conditional right-column project triage for overdue/blocked/unassigned task cleanup and team delegation, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add an action-first company command surface with founder action, launch readiness, compact workstream rows, company context, source references, and linked-project rollups)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 - [x] `/project/:id/codex` — Codex session feed and Codex follow-up inbox
@@ -82,12 +82,12 @@ Base:
 ### 3.2 Project Tasks
 
 - [x] `/project/:id/tasks` — Project tasks list/board (SCSS refactor, common controls + badges, tooltip + timeline alignment)
-- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n, initiative badge + legacy initiative redirect, explicit focus action)
+- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, cardless document-style hero, dependencies card, common components + i18n, initiative badge + legacy initiative redirect, explicit focus action)
 
 ### 3.2.1 Project Initiatives
 
 - [x] `/project/:id/initiatives` — Initiative list with direct create CTA, status filters, and search
-- [x] `/project/:id/initiatives/:initiativeId` — Initiative detail page with summary, child tasks, milestones, comments, and activity
+- [x] `/project/:id/initiatives/:initiativeId` — Initiative detail page with cardless document-style hero, summary, child tasks, milestones, comments, and activity
 
 ### 3.3 Flows & Ideas
 
@@ -101,7 +101,7 @@ Note: In the old routing, `ideas` reused the same components as `flows`.
 ### 3.4 Issues
 
 - [x] `/project/:id/issues` – Issues list (SCSS refactor, common components + issue modals aligned)
-- [x] `/project/:id/issues/:issueId` - Issue detail (SCSS refactor, common components + i18n)
+- [x] `/project/:id/issues/:issueId` - Issue detail (SCSS refactor, cardless document-style hero, common components + i18n)
 
 ### 3.5 Milestones & Sprints
 

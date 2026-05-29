@@ -24,6 +24,7 @@ const IDEAS = 'ideas';
 const ACTIVITIES = 'activities';
 const CATEGORIES = 'taskCategories';
 const TENANT_CACHE_KEY = 'activeTenantId';
+const ensureTenantAndUserCache = new Map<string, Promise<void>>();
 
 export const getCachedTenantId = () => {
     try {
@@ -57,54 +58,68 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
     const user = auth.currentUser;
     if (!user) return;
 
-    const isOwner = user.uid === tenantId;
-    const globalUserRef = userDocRef(user.uid);
-    const globalUserSnap = await getDoc(globalUserRef);
+    const cacheKey = `${tenantId}:${user.uid}:${role || 'default'}`;
+    const cachedEnsure = ensureTenantAndUserCache.get(cacheKey);
+    if (cachedEnsure) {
+        return cachedEnsure;
+    }
 
-    await setDoc(globalUserRef, {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || 'User',
-        photoURL: user.photoURL || '',
-        updatedAt: serverTimestamp(),
-        ...(!globalUserSnap.exists() ? { createdAt: serverTimestamp() } : {})
-    }, { merge: true });
+    const ensurePromise = (async () => {
+        const isOwner = user.uid === tenantId;
+        const globalUserRef = userDocRef(user.uid);
+        const globalUserSnap = await getDoc(globalUserRef);
 
-    if (!globalUserSnap.exists() || !globalUserSnap.data()?.aiUsage) {
         await setDoc(globalUserRef, {
-            aiUsage: {
-                tokensUsed: 0,
-                tokenLimit: 1000000,
-                imagesUsed: 0,
-                imageLimit: 50,
-                lastReset: serverTimestamp()
-            }
+            uid: user.uid,
+            email: user.email || '',
+            displayName: user.displayName || 'User',
+            photoURL: user.photoURL || '',
+            updatedAt: serverTimestamp(),
+            ...(!globalUserSnap.exists() ? { createdAt: serverTimestamp() } : {})
         }, { merge: true });
-    }
 
-    if (isOwner) {
-        await setDoc(
-            tenantDocRef(tenantId),
-            {
-                tenantId,
-                name: user.displayName || 'Workspace',
-                updatedAt: serverTimestamp()
-            },
-            { merge: true }
-        );
-    }
+        if (!globalUserSnap.exists() || !globalUserSnap.data()?.aiUsage) {
+            await setDoc(globalUserRef, {
+                aiUsage: {
+                    tokensUsed: 0,
+                    tokenLimit: 1000000,
+                    imagesUsed: 0,
+                    imageLimit: 50,
+                    lastReset: serverTimestamp()
+                }
+            }, { merge: true });
+        }
 
-    const tenantSnap = await getDoc(tenantDocRef(tenantId));
-    if (!tenantSnap.exists() && !isOwner) {
-        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
-        return;
-    }
+        if (isOwner) {
+            await setDoc(
+                tenantDocRef(tenantId),
+                {
+                    tenantId,
+                    name: user.displayName || 'Workspace',
+                    updatedAt: serverTimestamp()
+                },
+                { merge: true }
+            );
+        }
 
-    await setDoc(tenantMemberDocRef(tenantId, user.uid), {
-        uid: user.uid,
-        joinedAt: serverTimestamp(),
-        role: role || (isOwner ? 'Owner' : 'Member')
-    }, { merge: true });
+        const tenantSnap = await getDoc(tenantDocRef(tenantId));
+        if (!tenantSnap.exists() && !isOwner) {
+            console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
+            return;
+        }
+
+        await setDoc(tenantMemberDocRef(tenantId, user.uid), {
+            uid: user.uid,
+            joinedAt: serverTimestamp(),
+            role: role || (isOwner ? 'Owner' : 'Member')
+        }, { merge: true });
+    })().catch((error) => {
+        ensureTenantAndUserCache.delete(cacheKey);
+        throw error;
+    });
+
+    ensureTenantAndUserCache.set(cacheKey, ensurePromise);
+    return ensurePromise;
 };
 
 export const getProjectContextFromRef = (ref: { parent?: any }) => {

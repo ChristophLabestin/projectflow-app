@@ -1,14 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
-import { ThemeProvider } from './context/ThemeContext';
-import { LanguageProvider } from './context/LanguageContext';
-import { UIProvider } from './context/UIContext';
-import { HelpCenterProvider } from './context/HelpCenterContext';
-import { PinnedTasksProvider } from './context/PinnedTasksContext';
-import { PinnedProjectProvider } from './context/PinnedProjectContext';
-import { AuthProvider } from './context/AuthContext';
-import { PermissionProvider } from './context/PermissionContext';
+import { AppProviders } from './AppProviders';
 import './styles/index.scss';
 
 const rootElement = document.getElementById('root');
@@ -19,22 +12,8 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <LanguageProvider defaultLanguage="en" storageKey="pf-language">
-        <PinnedProjectProvider>
-          <PinnedTasksProvider>
-            <UIProvider>
-              <HelpCenterProvider>
-                <AuthProvider>
-                  <PermissionProvider>
-                    <App />
-                  </PermissionProvider>
-                </AuthProvider>
-              </HelpCenterProvider>
-            </UIProvider>
-          </PinnedTasksProvider>
-        </PinnedProjectProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <AppProviders>
+      <App />
+    </AppProviders>
   </React.StrictMode>
 );

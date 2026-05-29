@@ -136,7 +136,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
         if (!isAuthReady || !isAuthenticated) return;
 
         let mounted = true;
-        (async () => {
+        const loadCounts = async () => {
             try {
                 const [tasks, ideas] = await Promise.all([
                     getUserTasks(),
@@ -153,8 +153,15 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             } catch (e) {
                 console.warn('Failed to load counts', e);
             }
-        })();
-        return () => { mounted = false; };
+        };
+        const timer = window.setTimeout(() => {
+            void loadCounts();
+        }, 300);
+
+        return () => {
+            mounted = false;
+            window.clearTimeout(timer);
+        };
     }, [isAuthReady, isAuthenticated, user]);
 
     // Derived State: Is inside a project?
