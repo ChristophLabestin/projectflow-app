@@ -45,6 +45,7 @@ import { getProjectMembers, getSharedProjects, getUserProjects } from '../servic
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserProfile } from '../services/domain/usersService';
 import { isCompanyProject } from '../config/projectTemplates';
+import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
 
 // --- Types ---
@@ -681,47 +682,171 @@ const ProjectLifecycleSection: React.FC<{
     );
 };
 
-const CompanyProjectGroup: React.FC<{
+const CompanyProjectCard: React.FC<{
     companyProject: Project;
     linkedProjects: Project[];
-    companyStatusLabel: string;
-    updatedFallback: string;
-    linkedEmptyLabel: string;
-    linkedCountLabel: string;
-    renderLinkedProject: (project: Project) => JSX.Element;
+    statusLabel: string;
+    descriptionFallback: string;
     onOpenCompany: () => void;
+    onOpenLinked: (projectId: string) => void;
+    getLinkedStatusLabel: (status: Project['status']) => string;
 }> = ({
     companyProject,
     linkedProjects,
-    companyStatusLabel,
-    updatedFallback,
-    linkedEmptyLabel,
-    linkedCountLabel,
-    renderLinkedProject,
-    onOpenCompany
-}) => (
-    <article className="company-project-group">
-        <CompactProjectRow
-            project={companyProject}
-            statusLabel={companyStatusLabel}
-            updatedFallback={updatedFallback}
+    statusLabel,
+    descriptionFallback,
+    onOpenCompany,
+    onOpenLinked,
+    getLinkedStatusLabel
+}) => {
+    const { t } = useLanguage();
+    const rollup = useMemo(
+        () => calculateCompanyLinkedProjectRollup(linkedProjects),
+        [linkedProjects]
+    );
+    const stage = companyProject.startupProfile?.formationStatus || 'idea';
+    const stageLabel = t(`projectOverview.startup.stage.${stage}`);
+    const linkedPreview = linkedProjects.slice(0, 5);
+    const hiddenLinkedCount = Math.max(0, linkedProjects.length - linkedPreview.length);
+
+    return (
+        <article
+            className="company-project-card"
             onClick={onOpenCompany}
-        />
-        <div className="company-project-group__body">
-            <div className="company-project-group__meta">
-                <span className="material-symbols-outlined">hub</span>
-                {linkedCountLabel}
-            </div>
-            {linkedProjects.length > 0 ? (
-                <div className="company-project-group__linked-list">
-                    {linkedProjects.map(renderLinkedProject)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onOpenCompany();
+                }
+            }}
+        >
+            <div
+                className="company-project-card__cover"
+                style={{
+                    backgroundImage: companyProject.coverImage ? `url(${companyProject.coverImage})` : undefined,
+                    backgroundColor: getDeterministicColor(companyProject.id)
+                }}
+            >
+                <div className="company-project-card__cover-overlay" />
+                <div className="company-project-card__cover-top">
+                    <span className="company-project-card__badge">
+                        <span className="material-symbols-outlined">corporate_fare</span>
+                        {t('projectSwitcher.companyProject')}
+                    </span>
+                    <span className="company-project-card__status">{statusLabel}</span>
                 </div>
-            ) : (
-                <div className="company-project-group__empty">{linkedEmptyLabel}</div>
-            )}
-        </div>
-    </article>
-);
+                <div className="company-project-card__cover-bottom">
+                    <div className="company-project-card__icon">
+                        {companyProject.squareIcon ? (
+                            <img src={companyProject.squareIcon} alt="" />
+                        ) : companyProject.icon ? (
+                            <span>{companyProject.icon}</span>
+                        ) : (
+                            <span className="material-symbols-outlined">domain</span>
+                        )}
+                    </div>
+                    <div className="company-project-card__heading">
+                        <h3>{companyProject.title}</h3>
+                        <p>{companyProject.description || descriptionFallback}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="company-project-card__body">
+                <div className="company-project-card__meta-row">
+                    <span className="company-project-card__stage">
+                        <span className="material-symbols-outlined">flag</span>
+                        {stageLabel}
+                    </span>
+                    <span className="company-project-card__progress">
+                        <span className="material-symbols-outlined">trending_up</span>
+                        {companyProject.progress || 0}%
+                    </span>
+                </div>
+
+                <div className="company-project-card__stats">
+                    <div className="company-project-card__stat">
+                        <span>{t('projectOverview.company.rollup.total')}</span>
+                        <strong>{rollup.total}</strong>
+                    </div>
+                    <div className="company-project-card__stat">
+                        <span>{t('projectOverview.company.rollup.active')}</span>
+                        <strong className="is-success">{rollup.activeCount}</strong>
+                    </div>
+                    <div className="company-project-card__stat">
+                        <span>{t('projectOverview.company.rollup.progress')}</span>
+                        <strong>{rollup.averageProgress}%</strong>
+                    </div>
+                    <div className="company-project-card__stat">
+                        <span>{t('projectOverview.company.rollup.risk')}</span>
+                        <strong className={rollup.atRiskCount > 0 ? 'is-danger' : ''}>{rollup.atRiskCount}</strong>
+                    </div>
+                </div>
+
+                <div className="company-project-card__workstreams">
+                    <div className="company-project-card__workstreams-header">
+                        <span className="material-symbols-outlined">account_tree</span>
+                        <span>{t('projectOverview.company.linkedProjectsTitle')}</span>
+                    </div>
+                    {linkedPreview.length > 0 ? (
+                        <div className="company-project-card__workstream-list">
+                            {linkedPreview.map(linkedProject => {
+                                const linkedProgress = linkedProject.progress || 0;
+                                return (
+                                    <button
+                                        key={linkedProject.id}
+                                        type="button"
+                                        className="company-project-card__workstream"
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            onOpenLinked(linkedProject.id);
+                                        }}
+                                    >
+                                        <span className="company-project-card__workstream-icon material-symbols-outlined">folder</span>
+                                        <span className="company-project-card__workstream-copy">
+                                            <strong>{linkedProject.title}</strong>
+                                            <small>
+                                                {t(`projectCompanyRoles.${linkedProject.companyProjectRole || 'other'}`)}
+                                                {' · '}
+                                                {getLinkedStatusLabel(linkedProject.status)}
+                                            </small>
+                                        </span>
+                                        <span className="company-project-card__workstream-progress">
+                                            <span className="company-project-card__workstream-track">
+                                                <i style={{ width: `${linkedProgress}%` }} />
+                                            </span>
+                                            <strong>{linkedProgress}%</strong>
+                                        </span>
+                                    </button>
+                                );
+                            })}
+                            {hiddenLinkedCount > 0 && (
+                                <span className="company-project-card__workstream-more">
+                                    +{hiddenLinkedCount}
+                                </span>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="company-project-card__workstreams-empty">
+                            <span className="material-symbols-outlined">hub</span>
+                            <span>{t('projects.company.emptyLinked')}</span>
+                        </div>
+                    )}
+                </div>
+
+                <div className="company-project-card__footer">
+                    <span>{t('projects.company.linkedCount').replace('{count}', String(linkedProjects.length))}</span>
+                    <span className="company-project-card__cta">
+                        {t('projectsList.actions.openProject')}
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                    </span>
+                </div>
+            </div>
+        </article>
+    );
+};
 
 
 
@@ -2040,35 +2165,6 @@ export const ProjectsList: React.FC = () => {
                 </div>
             </div>
 
-            {companyProjects.length > 0 && (
-                <section className="company-projects-section">
-                    <div className="company-projects-section__header">
-                        <div>
-                            <h2 className="section-title">{t('projects.company.section.title').replace('{count}', String(companyProjects.length))}</h2>
-                            <p>{t('projects.company.section.description')}</p>
-                        </div>
-                    </div>
-                    <div className="company-projects-section__list">
-                        {companyProjects.map(companyProject => {
-                            const linkedProjects = linkedProjectsByCompany.get(companyProject.id) || [];
-                            return (
-                                <CompanyProjectGroup
-                                    key={companyProject.id}
-                                    companyProject={companyProject}
-                                    linkedProjects={linkedProjects}
-                                    companyStatusLabel={getProjectStatusLabel(companyProject.status)}
-                                    updatedFallback={t('projects.sections.updatedUnknown')}
-                                    linkedEmptyLabel={t('projects.company.emptyLinked')}
-                                    linkedCountLabel={t('projects.company.linkedCount').replace('{count}', String(linkedProjects.length))}
-                                    renderLinkedProject={renderCompactProjectRow}
-                                    onOpenCompany={() => navigate(`/project/${companyProject.id}`)}
-                                />
-                            );
-                        })}
-                    </div>
-                </section>
-            )}
-
             <div className="rich-content">
                 {spotlightProject && spotlightData && !search && (
                     <div id="spotlight-hero" className="mb-12">
@@ -2107,6 +2203,31 @@ export const ProjectsList: React.FC = () => {
                             mode="focus"
                         />
                     </div>
+                )}
+
+                {companyProjects.length > 0 && !search && (
+                    <section id="company-projects" className="company-projects-section mb-12">
+                        <div className="company-projects-section__header">
+                            <h2 className="section-title">{t('projects.company.section.title').replace('{count}', String(companyProjects.length))}</h2>
+                        </div>
+                        <div className="company-projects-section__list">
+                            {companyProjects.map(companyProject => {
+                                const linkedProjects = linkedProjectsByCompany.get(companyProject.id) || [];
+                                return (
+                                    <CompanyProjectCard
+                                        key={companyProject.id}
+                                        companyProject={companyProject}
+                                        linkedProjects={linkedProjects}
+                                        statusLabel={getProjectStatusLabel(companyProject.status)}
+                                        descriptionFallback={t('projectsList.card.defaultDescription')}
+                                        onOpenCompany={() => navigate(`/project/${companyProject.id}`)}
+                                        onOpenLinked={(projectId) => navigate(`/project/${projectId}`)}
+                                        getLinkedStatusLabel={getProjectStatusLabel}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </section>
                 )}
 
                 {/* Health Warning Strip (Optional, if user wants repeated warnings, but Spotlight covers it mostly) */}
