@@ -121,23 +121,23 @@
         }
 
         .trigger-btn--priority.priority-urgent {
-            background-color: rgba(var(--color-error-rgb), 0.12);
-            color: var(--color-error);
+            background-color: rgba(var(--priority-urgent-rgb), 0.12);
+            color: var(--priority-urgent);
         }
 
         .trigger-btn--priority.priority-high {
-            background-color: rgba(var(--color-warning-rgb), 0.12);
-            color: var(--color-warning);
+            background-color: rgba(var(--priority-high-rgb), 0.12);
+            color: var(--priority-high);
         }
 
         .trigger-btn--priority.priority-medium {
-            background-color: rgba(var(--color-primary-rgb), 0.1);
-            color: var(--color-primary);
+            background-color: rgba(var(--priority-medium-rgb), 0.12);
+            color: var(--priority-medium);
         }
 
         .trigger-btn--priority.priority-low {
-            background-color: var(--color-surface-bg);
-            color: var(--color-text-muted);
+            background-color: rgba(var(--priority-low-rgb), 0.1);
+            color: var(--priority-low);
         }
 
         .trigger-icon {
@@ -191,19 +191,19 @@
         }
 
         .dropdown-item.priority-urgent {
-            color: var(--color-error);
+            color: var(--priority-urgent);
         }
 
         .dropdown-item.priority-high {
-            color: var(--color-warning);
+            color: var(--priority-high);
         }
 
         .dropdown-item.priority-medium {
-            color: var(--color-primary);
+            color: var(--priority-medium);
         }
 
         .dropdown-item.priority-low {
-            color: var(--color-text-muted);
+            color: var(--priority-low);
         }
 
         .dropdown-item.status-blocked {
@@ -256,19 +256,19 @@
         }
 
         .priority-dot--urgent {
-            background-color: var(--color-error);
+            background-color: var(--priority-urgent);
         }
 
         .priority-dot--high {
-            background-color: var(--color-warning);
+            background-color: var(--priority-high);
         }
 
         .priority-dot--medium {
-            background-color: var(--color-primary);
+            background-color: var(--priority-medium);
         }
 
         .priority-dot--low {
-            background-color: var(--color-text-subtle);
+            background-color: var(--priority-low);
         }
 
         &:hover .dropdown-menu,

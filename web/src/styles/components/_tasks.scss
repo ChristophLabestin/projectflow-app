@@ -601,23 +601,23 @@
         }
 
         &.priority-urgent {
-            background-color: rgba(var(--color-error-rgb), 0.12);
-            color: var(--color-error);
+            background-color: rgba(var(--priority-urgent-rgb), 0.12);
+            color: var(--priority-urgent);
         }
 
         &.priority-high {
-            background-color: rgba(var(--color-warning-rgb), 0.12);
-            color: var(--color-warning);
+            background-color: rgba(var(--priority-high-rgb), 0.12);
+            color: var(--priority-high);
         }
 
         &.priority-medium {
-            background-color: rgba(var(--color-primary-rgb), 0.1);
-            color: var(--color-primary);
+            background-color: rgba(var(--priority-medium-rgb), 0.12);
+            color: var(--priority-medium);
         }
 
         &.priority-low {
-            background-color: var(--color-surface-bg);
-            color: var(--color-text-muted);
+            background-color: rgba(var(--priority-low-rgb), 0.1);
+            color: var(--priority-low);
         }
 
         &.blocked {

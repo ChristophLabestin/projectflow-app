@@ -355,19 +355,19 @@
 }
 
 .calendar-priority-dot--urgent {
-    background: var(--color-error);
+    background: var(--priority-urgent);
 }
 
 .calendar-priority-dot--high {
-    background: var(--color-warning);
+    background: var(--priority-high);
 }
 
 .calendar-priority-dot--medium {
-    background: var(--color-primary);
+    background: var(--priority-medium);
 }
 
 .calendar-priority-dot--low {
-    background: var(--color-success);
+    background: var(--priority-low);
 }
 
 .calendar-priority {
@@ -382,23 +382,23 @@
 }
 
 .calendar-priority--urgent {
-    background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error);
+    background: rgba(var(--priority-urgent-rgb), 0.12);
+    color: var(--priority-urgent);
 }
 
 .calendar-priority--high {
-    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    color: var(--color-warning);
+    background: rgba(var(--priority-high-rgb), 0.12);
+    color: var(--priority-high);
 }
 
 .calendar-priority--medium {
-    background: color-mix(in srgb, var(--color-primary) 12%, transparent);
-    color: var(--color-primary);
+    background: rgba(var(--priority-medium-rgb), 0.12);
+    color: var(--priority-medium);
 }
 
 .calendar-priority--low {
-    background: color-mix(in srgb, var(--color-success) 12%, transparent);
-    color: var(--color-success);
+    background: rgba(var(--priority-low-rgb), 0.1);
+    color: var(--priority-low);
 }
 
 .calendar-sidebar {

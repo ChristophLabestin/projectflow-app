@@ -187,11 +187,7 @@ export const PersonalTaskDetailPage = () => {
 
                                 {/* Priority Badge */}
                                 {task.priority && (
-                                    <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                        task.priority === 'High' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                            task.priority === 'Medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                        }`}>
+                                    <span className={`priority-badge priority-badge--${task.priority.toLowerCase()}`}>
                                         {priorityLabels[task.priority] || task.priority}
                                     </span>
                                 )}
@@ -390,10 +386,7 @@ export const PersonalTaskDetailPage = () => {
                                     `}
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className={`size-2 rounded-full ${p === 'Urgent' ? 'bg-rose-500' :
-                                            p === 'High' ? 'bg-orange-500' :
-                                                p === 'Medium' ? 'bg-yellow-500' : 'bg-slate-400'
-                                            }`} />
+                                        <span className={`priority-dot priority-dot--${p.toLowerCase()}`} style={{ display: 'inline-block', width: '0.45rem', height: '0.45rem', borderRadius: '999px' }} />
                                         {priorityLabels[p] || p}
                                     </div>
                                     {task.priority === p && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}

@@ -898,6 +898,12 @@
     border-color: var(--color-surface-border);
 }
 
+/* Global priority dot utilities */
+.priority-dot--urgent { background-color: var(--priority-urgent); }
+.priority-dot--high   { background-color: var(--priority-high); }
+.priority-dot--medium { background-color: var(--priority-medium); }
+.priority-dot--low    { background-color: var(--priority-low); }
+
 .priority-badge {
     display: inline-flex;
     align-items: center;
@@ -916,27 +922,27 @@
 }
 
 .priority-badge--urgent {
-    background-color: rgba(var(--color-error-rgb), 0.12);
-    color: var(--color-error);
-    border-color: rgba(var(--color-error-rgb), 0.2);
+    background-color: rgba(var(--priority-urgent-rgb), 0.12);
+    color: var(--priority-urgent);
+    border-color: rgba(var(--priority-urgent-rgb), 0.2);
 }
 
 .priority-badge--high {
-    background-color: rgba(var(--color-warning-rgb), 0.12);
-    color: var(--color-warning);
-    border-color: rgba(var(--color-warning-rgb), 0.2);
+    background-color: rgba(var(--priority-high-rgb), 0.12);
+    color: var(--priority-high);
+    border-color: rgba(var(--priority-high-rgb), 0.2);
 }
 
 .priority-badge--medium {
-    background-color: rgba(var(--color-primary-rgb), 0.12);
-    color: var(--color-primary);
-    border-color: rgba(var(--color-primary-rgb), 0.2);
+    background-color: rgba(var(--priority-medium-rgb), 0.12);
+    color: var(--priority-medium);
+    border-color: rgba(var(--priority-medium-rgb), 0.2);
 }
 
 .priority-badge--low {
-    background-color: var(--color-surface-bg);
-    color: var(--color-text-muted);
-    border-color: var(--color-surface-border);
+    background-color: rgba(var(--priority-low-rgb), 0.1);
+    color: var(--priority-low);
+    border-color: rgba(var(--priority-low-rgb), 0.2);
 }
 
 .pinned-tasks__section {

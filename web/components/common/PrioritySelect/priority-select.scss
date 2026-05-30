@@ -48,61 +48,52 @@
         // We scope these to specific modifiers for clean application.
 
         &--low {
-            // Low specific icon color when NOT selected
-            color: var(--color-text-muted);
+            color: var(--priority-low);
         }
 
         &--medium {
-            color: var(--color-blue-600);
-
-            [data-theme='dark'] & {
-                color: var(--color-blue-500);
-            }
+            color: var(--priority-medium);
         }
 
         &--high {
-            color: var(--color-warning);
+            color: var(--priority-high);
         }
 
         &--urgent {
-            color: var(--color-error);
+            color: var(--priority-urgent);
         }
 
         // Selected State Overrides (Solid/Tinted Backgrounds)
         &--selected.priority-select__option--low {
-            @include priority-style(var(--color-text-main),
-                var(--color-surface-hover),
-                rgba(255, 255, 255, 0.1),
-                var(--color-surface-border),
-                rgba(255, 255, 255, 0.2));
+            @include priority-style(var(--priority-low),
+                rgba(var(--priority-low-rgb), 0.1),
+                rgba(var(--priority-low-rgb), 0.15),
+                rgba(var(--priority-low-rgb), 0.25),
+                rgba(var(--priority-low-rgb), 0.35));
         }
 
         &--selected.priority-select__option--medium {
-            @include priority-style(var(--color-blue-600),
-                var(--color-blue-100),
-                rgba(59, 130, 246, 0.2),
-                var(--color-blue-500),
-                rgba(59, 130, 246, 0.5));
-
-            [data-theme='dark'] & {
-                color: #60a5fa;
-            }
+            @include priority-style(var(--priority-medium),
+                rgba(var(--priority-medium-rgb), 0.1),
+                rgba(var(--priority-medium-rgb), 0.2),
+                rgba(var(--priority-medium-rgb), 0.3),
+                rgba(var(--priority-medium-rgb), 0.5));
         }
 
         &--selected.priority-select__option--high {
-            @include priority-style(var(--color-warning),
-                #fffbeb,
-                rgba(245, 158, 11, 0.2),
-                var(--color-warning),
-                rgba(245, 158, 11, 0.5));
+            @include priority-style(var(--priority-high),
+                rgba(var(--priority-high-rgb), 0.1),
+                rgba(var(--priority-high-rgb), 0.2),
+                rgba(var(--priority-high-rgb), 0.3),
+                rgba(var(--priority-high-rgb), 0.5));
         }
 
         &--selected.priority-select__option--urgent {
-            @include priority-style(var(--color-error),
-                #fef2f2,
-                rgba(239, 68, 68, 0.2),
-                var(--color-error),
-                rgba(239, 68, 68, 0.5));
+            @include priority-style(var(--priority-urgent),
+                rgba(var(--priority-urgent-rgb), 0.1),
+                rgba(var(--priority-urgent-rgb), 0.2),
+                rgba(var(--priority-urgent-rgb), 0.3),
+                rgba(var(--priority-urgent-rgb), 0.5));
         }
     }
 
@@ -131,39 +122,35 @@
 
         // Apply EXACT same styles as selected options
         &--low {
-            @include priority-style(var(--color-text-main),
-                var(--color-surface-hover),
-                rgba(255, 255, 255, 0.1),
-                var(--color-surface-border),
-                rgba(255, 255, 255, 0.2));
+            @include priority-style(var(--priority-low),
+                rgba(var(--priority-low-rgb), 0.1),
+                rgba(var(--priority-low-rgb), 0.15),
+                rgba(var(--priority-low-rgb), 0.25),
+                rgba(var(--priority-low-rgb), 0.35));
         }
 
         &--medium {
-            @include priority-style(var(--color-blue-600),
-                var(--color-blue-100),
-                rgba(59, 130, 246, 0.2),
-                var(--color-blue-500),
-                rgba(59, 130, 246, 0.5));
-
-            [data-theme='dark'] & {
-                color: #60a5fa;
-            }
+            @include priority-style(var(--priority-medium),
+                rgba(var(--priority-medium-rgb), 0.1),
+                rgba(var(--priority-medium-rgb), 0.2),
+                rgba(var(--priority-medium-rgb), 0.3),
+                rgba(var(--priority-medium-rgb), 0.5));
         }
 
         &--high {
-            @include priority-style(var(--color-warning),
-                #fffbeb,
-                rgba(245, 158, 11, 0.2),
-                var(--color-warning),
-                rgba(245, 158, 11, 0.5));
+            @include priority-style(var(--priority-high),
+                rgba(var(--priority-high-rgb), 0.1),
+                rgba(var(--priority-high-rgb), 0.2),
+                rgba(var(--priority-high-rgb), 0.3),
+                rgba(var(--priority-high-rgb), 0.5));
         }
 
         &--urgent {
-            @include priority-style(var(--color-error),
-                #fef2f2,
-                rgba(239, 68, 68, 0.2),
-                var(--color-error),
-                rgba(239, 68, 68, 0.5));
+            @include priority-style(var(--priority-urgent),
+                rgba(var(--priority-urgent-rgb), 0.1),
+                rgba(var(--priority-urgent-rgb), 0.2),
+                rgba(var(--priority-urgent-rgb), 0.3),
+                rgba(var(--priority-urgent-rgb), 0.5));
         }
     }
 
@@ -267,19 +254,24 @@
                 color: var(--color-text-main);
             }
 
+            &--selected.priority-select__option--low {
+                background: rgba(var(--priority-low-rgb), 0.12);
+                color: var(--priority-low);
+            }
+
             &--selected.priority-select__option--medium {
-                background: rgba(59, 130, 246, 0.16);
-                color: var(--color-blue-500);
+                background: rgba(var(--priority-medium-rgb), 0.16);
+                color: var(--priority-medium);
             }
 
             &--selected.priority-select__option--high {
-                background: rgba(var(--color-warning-rgb), 0.16);
-                color: var(--color-warning);
+                background: rgba(var(--priority-high-rgb), 0.16);
+                color: var(--priority-high);
             }
 
             &--selected.priority-select__option--urgent {
-                background: rgba(var(--color-error-rgb), 0.16);
-                color: var(--color-error);
+                background: rgba(var(--priority-urgent-rgb), 0.16);
+                color: var(--priority-urgent);
             }
 
             &--disabled {

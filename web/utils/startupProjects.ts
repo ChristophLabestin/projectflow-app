@@ -1,6 +1,9 @@
-import type { CompanyProjectRole, Initiative, Milestone, Project, StartupTrackId, Task } from '../types';
+import type { CompanyProjectRole, Initiative, Milestone, Project, StartupReadiness, StartupTrackId, Task } from '../types';
 
-const STARTUP_READINESS_KEYS: Array<keyof NonNullable<Project['startupReadiness']>> = [
+type StartupReadinessKey = keyof StartupReadiness;
+type StartupStage = NonNullable<Project['startupProfile']>['formationStatus'];
+
+const STARTUP_READINESS_KEYS: StartupReadinessKey[] = [
     'legalStructureDecided',
     'founderAgreementReady',
     'ipAssignmentReady',
@@ -14,6 +17,86 @@ const STARTUP_READINESS_KEYS: Array<keyof NonNullable<Project['startupReadiness'
     'launchOfferReady',
     'firstChannelReady'
 ];
+
+// Each readiness item can be satisfied automatically when one of its mapped seed tasks
+// (matched by `templateSeedId`) is completed. This keeps readiness in sync with the real
+// work instead of being a parallel, dead source of truth. Manual overrides still win.
+const READINESS_TASK_SEED_MAP: Partial<Record<StartupReadinessKey, string[]>> = {
+    legalStructureDecided: ['legal-structure', 'de-choose-legal-form', 'us-entity-state-registration'],
+    founderAgreementReady: ['legal-founder-agreement'],
+    registrationSubmitted: ['legal-registration', 'de-register-business-and-tax', 'us-entity-state-registration'],
+    taxSetupReady: ['finance-bank-tax', 'de-register-business-and-tax', 'us-ein-and-tax-setup'],
+    bankAccountReady: ['finance-bank-tax'],
+    bookkeepingReady: ['finance-bookkeeping'],
+    privacyDocsReady: ['compliance-privacy'],
+    requiredPermitsKnown: ['compliance-permits', 'de-authorities-and-permits', 'us-licenses-permits-insurance'],
+    launchOfferReady: ['product-offer'],
+    firstChannelReady: ['marketing-channel']
+};
+
+const STAGE_ORDER: StartupStage[] = ['idea', 'validating', 'preparing', 'filed', 'registered', 'operating'];
+
+// Readiness items that are logically already complete once a company reaches a given stage.
+// Lets a founder register an already-operating company without showing 0% readiness.
+const STAGE_READINESS_DEFAULTS: Record<NonNullable<StartupStage>, StartupReadinessKey[]> = {
+    idea: [],
+    validating: [],
+    preparing: ['legalStructureDecided'],
+    filed: ['legalStructureDecided', 'founderAgreementReady', 'registrationSubmitted'],
+    registered: [
+        'legalStructureDecided',
+        'founderAgreementReady',
+        'registrationSubmitted',
+        'registrationConfirmed',
+        'taxSetupReady',
+        'bankAccountReady'
+    ],
+    operating: [...STARTUP_READINESS_KEYS]
+};
+
+export type StartupStagePhase = 'discover' | 'form' | 'operate';
+
+export const getStartupStagePhase = (stage?: StartupStage): StartupStagePhase => {
+    switch (stage) {
+        case 'operating':
+            return 'operate';
+        case 'preparing':
+        case 'filed':
+        case 'registered':
+            return 'form';
+        case 'idea':
+        case 'validating':
+        default:
+            return 'discover';
+    }
+};
+
+export const getStageReadinessDefaults = (stage?: StartupStage): StartupReadiness => {
+    const keys = STAGE_READINESS_DEFAULTS[stage || 'idea'] || [];
+    return keys.reduce<StartupReadiness>((acc, key) => {
+        acc[key] = true;
+        return acc;
+    }, {});
+};
+
+// Effective readiness = stored override OR any mapped seed task completed.
+export const resolveStartupReadiness = (
+    project: Pick<Project, 'startupReadiness'>,
+    tasks: Task[] = []
+): StartupReadiness => {
+    const stored = project.startupReadiness || {};
+    const completedSeedIds = new Set(
+        tasks
+            .filter(task => (task.isCompleted || task.status === 'Done') && typeof task.templateSeedId === 'string')
+            .map(task => task.templateSeedId as string)
+    );
+    return STARTUP_READINESS_KEYS.reduce<StartupReadiness>((acc, key) => {
+        const seedIds = READINESS_TASK_SEED_MAP[key];
+        const derivedComplete = Boolean(seedIds && seedIds.some(seedId => completedSeedIds.has(seedId)));
+        acc[key] = stored[key] === true || derivedComplete;
+        return acc;
+    }, {});
+};
 
 const isDone = (task: Task) => task.isCompleted || task.status === 'Done';
 
@@ -35,6 +118,8 @@ const trackProgress = (tasks: Task[], trackId: StartupTrackId) => {
 
 export type StartupReadinessSnapshot = {
     stage: NonNullable<Project['startupProfile']>['formationStatus'];
+    phase: StartupStagePhase;
+    readiness: StartupReadiness;
     formationPercent: number;
     launchGate: 'blocked' | 'watch' | 'ready';
     financePercent: number;
@@ -69,7 +154,7 @@ export const calculateStartupReadinessSnapshot = (
     milestones: Milestone[] = [],
     initiatives: Initiative[] = []
 ): StartupReadinessSnapshot => {
-    const readiness = project.startupReadiness || {};
+    const readiness = resolveStartupReadiness(project, tasks);
     const readyCount = STARTUP_READINESS_KEYS.filter(key => readiness[key] === true).length;
     const formationPercent = Math.round((readyCount / STARTUP_READINESS_KEYS.length) * 100);
     const selectedTrackIds = project.startupProfile?.selectedTrackIds || [];
@@ -91,11 +176,13 @@ export const calculateStartupReadinessSnapshot = (
     const productProgress = trackProgress(startupTasks, 'product_delivery');
     const marketingProgress = trackProgress(startupTasks, 'marketing_sales');
     const complianceProgress = trackProgress(startupTasks, 'compliance');
+    const stage = project.startupProfile?.formationStatus || 'idea';
+    const phase = getStartupStagePhase(stage);
     const complianceReady = readiness.privacyDocsReady === true && readiness.requiredPermitsKnown === true;
     const launchReady = readiness.launchOfferReady === true && readiness.firstChannelReady === true;
     const launchGate = (blockedStartupTasks.length > 0 || overdueMilestones.length > 0)
         ? 'blocked'
-        : (launchReady || (productProgress >= 75 && marketingProgress >= 60 && complianceReady))
+        : (phase === 'operate' || launchReady || (productProgress >= 75 && marketingProgress >= 60 && complianceReady))
             ? 'ready'
             : 'watch';
 
@@ -105,7 +192,9 @@ export const calculateStartupReadinessSnapshot = (
     }, {});
 
     return {
-        stage: project.startupProfile?.formationStatus || 'idea',
+        stage,
+        phase,
+        readiness,
         formationPercent,
         launchGate,
         financePercent: Math.round(([

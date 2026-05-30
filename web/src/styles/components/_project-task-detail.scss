@@ -1561,3 +1561,24 @@
     background-color: var(--color-surface-hover);
     color: var(--color-text-muted);
 }
+
+/* Priority-specific tones used by getPriorityTone() */
+.task-detail__tone--urgent {
+    background-color: rgba(var(--priority-urgent-rgb), 0.12);
+    color: var(--priority-urgent);
+}
+
+.task-detail__tone--high {
+    background-color: rgba(var(--priority-high-rgb), 0.12);
+    color: var(--priority-high);
+}
+
+.task-detail__tone--medium {
+    background-color: rgba(var(--priority-medium-rgb), 0.12);
+    color: var(--priority-medium);
+}
+
+.task-detail__tone--low {
+    background-color: rgba(var(--priority-low-rgb), 0.1);
+    color: var(--priority-low);
+}

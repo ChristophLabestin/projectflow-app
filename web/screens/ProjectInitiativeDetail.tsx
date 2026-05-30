@@ -274,9 +274,14 @@ export const ProjectInitiativeDetail = () => {
 
     const getTone = (value?: string) => {
         if (value === 'Done' || value === 'On Track') return 'success';
-        if (value === 'In Progress' || value === 'Open' || value === 'Medium') return 'primary';
-        if (value === 'Review' || value === 'On Hold' || value === 'High' || value === 'At Risk') return 'warning';
-        if (value === 'Blocked' || value === 'Urgent' || value === 'Off Track') return 'error';
+        if (value === 'In Progress' || value === 'Open') return 'primary';
+        if (value === 'Review' || value === 'On Hold' || value === 'At Risk') return 'warning';
+        if (value === 'Blocked' || value === 'Off Track') return 'error';
+        // Priority levels get their own dedicated tones
+        if (value === 'Urgent') return 'urgent';
+        if (value === 'High') return 'high';
+        if (value === 'Medium') return 'medium';
+        if (value === 'Low') return 'low';
         return 'neutral';
     };
 

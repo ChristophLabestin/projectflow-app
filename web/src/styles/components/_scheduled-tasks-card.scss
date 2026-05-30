@@ -100,7 +100,7 @@
 
             .bug-icon {
                 font-size: 0.875rem;
-                color: #f43f5e;
+                color: var(--priority-high);
             }
 
             .task-title {
@@ -127,20 +127,19 @@
                 letter-spacing: 0.05em;
 
                 &.urgent {
-                    color: #f43f5e;
+                    color: var(--priority-urgent);
                 }
 
                 &.high {
-                    color: #f97316;
+                    color: var(--priority-high);
                 }
 
-                // orange-500
                 &.medium {
-                    color: #3b82f6;
+                    color: var(--priority-medium);
                 }
 
                 &.low {
-                    color: var(--color-text-muted);
+                    color: var(--priority-low);
                 }
             }
 

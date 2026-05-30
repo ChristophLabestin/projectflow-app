@@ -42,10 +42,10 @@ const getTaskStatusStyle = (status?: string) => {
 };
 
 const getPriorityTone = (priority?: string) => {
-    if (priority === 'Urgent') return 'task-detail__tone--error';
-    if (priority === 'High') return 'task-detail__tone--warning';
-    if (priority === 'Medium') return 'task-detail__tone--primary';
-    if (priority === 'Low') return 'task-detail__tone--neutral';
+    if (priority === 'Urgent') return 'task-detail__tone--urgent';
+    if (priority === 'High') return 'task-detail__tone--high';
+    if (priority === 'Medium') return 'task-detail__tone--medium';
+    if (priority === 'Low') return 'task-detail__tone--low';
     return 'task-detail__tone--neutral';
 };
 

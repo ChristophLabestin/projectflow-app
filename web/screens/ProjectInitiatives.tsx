@@ -24,6 +24,7 @@ export const ProjectInitiatives = () => {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [view, setView] = useState<'grid' | 'list'>('grid');
     const [showCreateModal, setShowCreateModal] = useState(false);
     const { can, hasPermission } = useProjectPermissions(project);
     const canCreateInitiatives = can('canManageTasks') || hasPermission('project.initiatives.create');
@@ -132,11 +133,12 @@ export const ProjectInitiatives = () => {
                 {canCreateInitiatives && id && (
                     <Button
                         variant="primary"
+                        size="icon"
                         onClick={() => setShowCreateModal(true)}
                         icon={<span className="material-symbols-outlined">add</span>}
-                    >
-                        {t('initiatives.create.action')}
-                    </Button>
+                        aria-label={t('initiatives.create.action')}
+                        title={t('initiatives.create.action')}
+                    />
                 )}
             </header>
 
@@ -154,6 +156,21 @@ export const ProjectInitiatives = () => {
                     options={statusOptions}
                     className="project-initiatives__status-filter"
                 />
+                <div className="project-initiatives__view-toggle" role="group" aria-label={t('initiatives.view.label')}>
+                    {(['grid', 'list'] as const).map((mode) => (
+                        <button
+                            key={mode}
+                            type="button"
+                            className={`project-initiatives__view-btn ${view === mode ? 'is-active' : ''}`}
+                            onClick={() => setView(mode)}
+                            aria-pressed={view === mode}
+                            title={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
+                            aria-label={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
+                        >
+                            <span className="material-symbols-outlined">{mode === 'grid' ? 'grid_view' : 'view_list'}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="project-initiatives__summary">
@@ -185,7 +202,7 @@ export const ProjectInitiatives = () => {
                     <p>{t('initiatives.empty.description')}</p>
                 </div>
             ) : (
-                <div className="project-initiatives__grid">
+                <div className={`project-initiatives__grid ${view === 'list' ? 'is-list' : ''}`}>
                     {filteredInitiatives.map((initiative) => {
                         const stats = initiativeStats[initiative.id] || { total: 0, completed: 0, blocked: 0 };
                         const health = initiativeHealthMap[initiative.id];
@@ -194,7 +211,7 @@ export const ProjectInitiatives = () => {
                             <button
                                 key={initiative.id}
                                 type="button"
-                                className="project-initiatives__card"
+                                className={`project-initiatives__card ${view === 'list' ? 'is-row' : ''}`}
                                 onClick={() => navigate(`/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
                             >
                                 <div className="project-initiatives__card-header">

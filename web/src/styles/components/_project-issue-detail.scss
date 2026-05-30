@@ -206,23 +206,23 @@
 }
 
 .issue-detail__priority-pill[data-priority="urgent"] {
-    background-color: rgba(var(--color-error-rgb), 0.15);
-    color: var(--color-error);
+    background-color: rgba(var(--priority-urgent-rgb), 0.12);
+    color: var(--priority-urgent);
 }
 
 .issue-detail__priority-pill[data-priority="high"] {
-    background-color: rgba(var(--color-warning-rgb), 0.15);
-    color: var(--color-warning);
+    background-color: rgba(var(--priority-high-rgb), 0.12);
+    color: var(--priority-high);
 }
 
 .issue-detail__priority-pill[data-priority="medium"] {
-    background-color: rgba(var(--color-primary-rgb), 0.12);
-    color: var(--color-primary);
+    background-color: rgba(var(--priority-medium-rgb), 0.12);
+    color: var(--priority-medium);
 }
 
 .issue-detail__priority-pill[data-priority="low"] {
-    background-color: var(--color-surface-hover);
-    color: var(--color-text-muted);
+    background-color: rgba(var(--priority-low-rgb), 0.1);
+    color: var(--priority-low);
 }
 
 .issue-detail__title {
@@ -865,19 +865,19 @@
 }
 
 .issue-detail__priority-option[data-priority="urgent"] .issue-detail__priority-option-icon {
-    color: var(--color-error);
+    color: var(--priority-urgent);
 }
 
 .issue-detail__priority-option[data-priority="high"] .issue-detail__priority-option-icon {
-    color: var(--color-warning);
+    color: var(--priority-high);
 }
 
 .issue-detail__priority-option[data-priority="medium"] .issue-detail__priority-option-icon {
-    color: var(--color-primary);
+    color: var(--priority-medium);
 }
 
 .issue-detail__priority-option[data-priority="low"] .issue-detail__priority-option-icon {
-    color: var(--color-text-subtle);
+    color: var(--priority-low);
 }
 
 .issue-detail__priority-option-check {

@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import '../src/styles/components/_project-overview.scss';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { addActivityEntry, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
+import { addActivityEntry, createInitiativeTask, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
+import { addTask } from '../services/domain/tasksService';
 import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
@@ -30,6 +32,7 @@ import {
     ProjectOverviewCardId,
     ProjectOverviewCardPlacement,
     ProjectStatus,
+    StartupReadiness,
     StartupTrackId
 } from '../types';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
@@ -61,8 +64,8 @@ import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
 import { ProjectTriageModal } from '../components/project/ProjectTriageModal';
-import { getStartupJurisdictionTemplate, isCompanyProject, isSoftwareProject, STARTUP_TRACK_DEFINITIONS } from '../config/projectTemplates';
-import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStartupStageKey } from '../utils/startupProjects';
+import { getStartupJurisdictionTemplate, getStartupSourceReferences, isCompanyProject, isSoftwareProject, STARTUP_JURISDICTION_SEED_TASKS, STARTUP_TRACK_DEFINITIONS } from '../config/projectTemplates';
+import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStageReadinessDefaults, getStartupStagePhase, getStartupStageKey } from '../utils/startupProjects';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateIssueModal = lazy(() => import('../components/CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
@@ -137,6 +140,94 @@ const STARTUP_TRACK_DISPLAY_ORDER: StartupTrackId[] = [
 const STARTUP_TRACK_DEFINITION_BY_ID = new Map(
     STARTUP_TRACK_DEFINITIONS.map(definition => [definition.id, definition])
 );
+const STARTUP_STAGE_STEPPER: Array<NonNullable<NonNullable<Project['startupProfile']>['formationStatus']>> = [
+    'idea',
+    'validating',
+    'preparing',
+    'filed',
+    'registered',
+    'operating'
+];
+
+const BRIEFING_READINESS_STEP_INDEX = 3;
+
+const BriefingField: React.FC<{ label: string; infoLabel: string; onInfo: () => void; children: React.ReactNode }> = ({ label, infoLabel, onInfo, children }) => (
+    <div className="startup-brief-wizard__field">
+        <div className="startup-brief-wizard__field-head">
+            <span className="startup-brief-wizard__field-label">{label}</span>
+            <button
+                type="button"
+                className="startup-brief-wizard__field-info-btn"
+                onClick={onInfo}
+                aria-label={infoLabel}
+                title={infoLabel}
+            >
+                <span className="material-symbols-outlined">info</span>
+            </button>
+        </div>
+        {children}
+    </div>
+);
+
+interface BriefingHelpContent {
+    title: string;
+    body: string;
+    options?: Array<{ label: string; desc: string }>;
+}
+
+const BriefingHelpDrawer: React.FC<{
+    content: BriefingHelpContent;
+    subtitle: string;
+    optionsTitle: string;
+    closeLabel: string;
+    onClose: () => void;
+}> = ({ content, subtitle, optionsTitle, closeLabel, onClose }) => {
+    useEffect(() => {
+        const handleKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') onClose();
+        };
+        document.addEventListener('keydown', handleKey);
+        return () => document.removeEventListener('keydown', handleKey);
+    }, [onClose]);
+
+    return createPortal(
+        <div className="fixed inset-0 z-[1100]" role="dialog" aria-modal="true" aria-label={content.title}>
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+            <div className="absolute right-0 top-0 h-full w-[28rem] max-w-[92vw] bg-card border-l border-surface shadow-2xl flex flex-col animate-in slide-in-from-right duration-200">
+                <div className="flex items-start justify-between px-5 py-4 border-b border-surface">
+                    <div>
+                        <div className="text-lg font-bold text-main">{content.title}</div>
+                        <div className="text-xs text-muted">{subtitle}</div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
+                        aria-label={closeLabel}
+                    >
+                        <span className="material-symbols-outlined text-[20px]">close</span>
+                    </button>
+                </div>
+                <div className="flex-1 overflow-y-auto px-5 py-5 space-y-5">
+                    <p className="text-sm text-muted leading-relaxed whitespace-pre-line">{content.body}</p>
+                    {content.options && content.options.length > 0 && (
+                        <div className="space-y-3">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{optionsTitle}</div>
+                            <div className="space-y-2">
+                                {content.options.map((option, index) => (
+                                    <div key={index} className="rounded-2xl border border-surface bg-surface p-4">
+                                        <div className="text-sm font-semibold text-main">{option.label}</div>
+                                        <div className="text-xs text-muted mt-1 leading-relaxed whitespace-pre-line">{option.desc}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+};
 
 const isProjectHeaderDisplayMode = (value: string | null): value is ProjectHeaderDisplayMode => (
     value === 'compact' || value === 'showcase'
@@ -321,8 +412,9 @@ export const ProjectOverview = () => {
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showTriageModal, setShowTriageModal] = useState(false);
     const [showStartupBriefingModal, setShowStartupBriefingModal] = useState(false);
-    const [showStartupWorkstreamsModal, setShowStartupWorkstreamsModal] = useState(false);
-    const [selectedStartupTrackId, setSelectedStartupTrackId] = useState<StartupTrackId | null>(null);
+    const [briefingStep, setBriefingStep] = useState(0);
+    const [initiativesView, setInitiativesView] = useState<'grid' | 'list'>('grid');
+    const [briefingHelpId, setBriefingHelpId] = useState<string | null>(null);
     const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [showFlowModal, setShowFlowModal] = useState(false);
     const [showIssueModal, setShowIssueModal] = useState(false);
@@ -339,6 +431,7 @@ export const ProjectOverview = () => {
     const [startupBriefRegulatedIndustryStatus, setStartupBriefRegulatedIndustryStatus] = useState<StartupRegulatedIndustryStatus>('unknown');
     const [startupBriefHasCoFounders, setStartupBriefHasCoFounders] = useState(false);
     const [startupBriefHasEmployeesPlanned, setStartupBriefHasEmployeesPlanned] = useState(false);
+    const [startupBriefReadiness, setStartupBriefReadiness] = useState<StartupReadiness>({});
     const [savingStartupBriefing, setSavingStartupBriefing] = useState(false);
 
     // Permission system
@@ -700,7 +793,8 @@ export const ProjectOverview = () => {
         setStartupBriefRegulatedIndustryStatus(project.startupProfile?.regulatedIndustryStatus || (project.startupProfile?.regulatedIndustry === true ? 'yes' : 'unknown'));
         setStartupBriefHasCoFounders(project.startupProfile?.hasCoFounders || false);
         setStartupBriefHasEmployeesPlanned(project.startupProfile?.hasEmployeesPlanned || false);
-    }, [project?.id, project?.startupProfile]);
+        setStartupBriefReadiness(project.startupReadiness || {});
+    }, [project?.id, project?.startupProfile, project?.startupReadiness]);
 
     useEffect(() => {
         if (!project) {
@@ -873,10 +967,55 @@ export const ProjectOverview = () => {
         }
     };
 
+    const seedStartupJurisdictionTasks = async (
+        jurisdictionTemplateId: NonNullable<Project['startupProfile']>['jurisdictionTemplateId'],
+        selectedTrackIds: StartupTrackId[]
+    ) => {
+        if (!project || !id || !jurisdictionTemplateId || jurisdictionTemplateId === 'global_generic') return;
+        const selectedTracks = new Set(
+            selectedTrackIds.length > 0 ? selectedTrackIds : STARTUP_TRACK_DEFINITIONS.map(track => track.id)
+        );
+        const existingKeys = new Set(
+            tasks.map(task => task.externalKey).filter((key): key is string => Boolean(key))
+        );
+        const pendingTasks = STARTUP_JURISDICTION_SEED_TASKS.filter(task => (
+            task.jurisdictionTemplateId === jurisdictionTemplateId
+            && selectedTracks.has(task.trackId)
+            && !existingKeys.has(`startup_company_formation:${task.id}`)
+        ));
+        for (const task of pendingTasks) {
+            const track = STARTUP_TRACK_DEFINITIONS.find(item => item.id === task.trackId);
+            const sourceReferences = getStartupSourceReferences(task.jurisdictionTemplateId, task.sourceReferenceIds || []);
+            const trackInitiative = initiatives.find(initiative => (
+                initiative.templateId === 'startup_company_formation'
+                && initiative.templateTrack === task.trackId
+            ));
+            const taskOptions = {
+                description: t(task.descriptionKey),
+                priority: task.priority,
+                status: 'Open' as const,
+                category: ['Startup', track ? t(track.labelKey) : 'Startup'],
+                source: sourceReferences.length > 0 ? 'official_template' : 'template',
+                templateId: 'startup_company_formation' as const,
+                templateTrack: task.trackId,
+                templateSeedId: task.id,
+                sourceReferences,
+                externalKey: `startup_company_formation:${task.id}`
+            };
+            if (trackInitiative) {
+                await createInitiativeTask(id, trackInitiative.id, t(task.titleKey), taskOptions);
+            } else {
+                await addTask(id, t(task.titleKey), undefined, undefined, task.priority, taskOptions);
+            }
+        }
+    };
+
     const handleSaveStartupBriefing = async () => {
         if (!project || !id) return;
 
         const jurisdictionTemplate = getStartupJurisdictionTemplate(startupBriefJurisdictionCountry, startupBriefJurisdictionRegion);
+        const previousJurisdictionTemplateId = project.startupProfile?.jurisdictionTemplateId;
+        const selectedTrackIds = project.startupProfile?.selectedTrackIds || [];
         const startupProfile: Project['startupProfile'] = {
             ...(project.startupProfile || {}),
             workingName: project.title,
@@ -895,12 +1034,24 @@ export const ProjectOverview = () => {
             hasCoFounders: startupBriefHasCoFounders,
             hasEmployeesPlanned: startupBriefHasEmployeesPlanned
         };
+        // Readiness can only be added here: advancing the stage marks its baseline items, and
+        // the checklist lets founders confirm anything else. Completing linked tasks adds the rest.
+        const stageDefaults = getStageReadinessDefaults(startupBriefFormationStatus);
+        const readinessKeys = [
+            ...Object.keys(project.startupReadiness || {}),
+            ...Object.keys(stageDefaults),
+            ...Object.keys(startupBriefReadiness)
+        ] as Array<keyof StartupReadiness>;
+        const startupReadiness = Array.from(new Set(readinessKeys)).reduce<StartupReadiness>((acc, key) => {
+            acc[key] = startupBriefReadiness[key] === true || stageDefaults[key] === true;
+            return acc;
+        }, {});
 
         setSavingStartupBriefing(true);
         try {
             await updateProjectFields(
                 id,
-                { startupProfile },
+                { startupProfile, startupReadiness },
                 {
                     action: `updated founding briefing for "${project.title}"`,
                     target: 'Founding Briefing',
@@ -908,7 +1059,14 @@ export const ProjectOverview = () => {
                 },
                 project.tenantId
             );
-            setProject(prev => prev ? { ...prev, startupProfile } : prev);
+            setProject(prev => prev ? { ...prev, startupProfile, startupReadiness } : prev);
+            if (jurisdictionTemplate.id !== previousJurisdictionTemplateId) {
+                try {
+                    await seedStartupJurisdictionTasks(jurisdictionTemplate.id, selectedTrackIds);
+                } catch (seedError) {
+                    console.error('Failed to seed jurisdiction tasks after briefing update', seedError);
+                }
+            }
             setShowStartupBriefingModal(false);
         } catch (error) {
             console.error('Error updating founding briefing:', error);
@@ -1366,7 +1524,6 @@ export const ProjectOverview = () => {
     const linkedProjectRollup = projectIsCompanyProject
         ? calculateCompanyLinkedProjectRollup(linkedCompanyProjects)
         : null;
-    const startupSourceReferences = project.startupProfile?.jurisdictionSources || [];
     const startupBriefingMissingItems = projectIsCompanyProject
         ? [
             !project.startupProfile?.targetCustomer?.trim() ? t('projectOverview.startup.briefing.field.targetCustomer') : '',
@@ -1520,6 +1677,12 @@ export const ProjectOverview = () => {
         { id: 'compliance', icon: 'verified_user', label: t('projectOverview.startup.complianceReadiness'), value: startupReadiness.compliancePercent },
         { id: 'market', icon: 'campaign', label: t('projectOverview.startup.marketReadiness'), value: startupReadiness.marketingPercent }
     ] : [];
+    const startupPhase = startupReadiness?.phase || 'discover';
+    const startupPhaseMeta = {
+        readinessTitle: t(`projectOverview.startup.phase.${startupPhase}.readinessTitle`),
+        readinessSubtitle: t(`projectOverview.startup.phase.${startupPhase}.readinessSubtitle`),
+        meterLabel: t(`projectOverview.startup.phase.${startupPhase}.meterLabel`).replace('{percent}', String(startupLaunchReadinessPercent))
+    };
     const startupJurisdictionLabel = [project.startupProfile?.jurisdictionCountry, project.startupProfile?.jurisdictionRegion]
         .filter(Boolean)
         .join(' / ') || t('projectOverview.company.contextMissing');
@@ -1581,30 +1744,9 @@ export const ProjectOverview = () => {
                 icon: 'check_circle',
                 title: t('projectOverview.startup.noNextAction'),
                 meta: t('projectOverview.startup.action.clearMeta'),
-                actionLabel: t('projectOverview.startup.updateReadiness')
+                actionLabel: t('projectOverview.startup.briefing.editAction')
             };
     const linkedCompanyProjectPreview = linkedCompanyProjects.slice(0, 6);
-    const startupBriefingCompletionPercent = projectIsCompanyProject
-        ? Math.round(((4 - startupBriefingMissingItems.length) / 4) * 100)
-        : 0;
-    const startupWorkstreamOpenTaskCount = startupTrackSummaries.reduce((sum, track) => sum + track.openTasks, 0);
-    const startupWorkstreamBlockedCount = startupTrackSummaries.reduce((sum, track) => sum + track.blockedCount, 0);
-    const selectedStartupTrack = selectedStartupTrackId
-        ? startupTrackSummaries.find(track => track.id === selectedStartupTrackId) || null
-        : startupTrackSummaries[0] || null;
-    const selectedStartupTrackTasks = selectedStartupTrack
-        ? tasks
-            .filter(task => !task.legacyInitiativeRoot && task.templateTrack === selectedStartupTrack.id)
-            .sort((a, b) => {
-                const statusA = isOpenProjectTask(a) ? 0 : 1;
-                const statusB = isOpenProjectTask(b) ? 0 : 1;
-                if (statusA !== statusB) return statusA - statusB;
-                const priorityA = priorityMap[a.priority || 'Medium'] || 0;
-                const priorityB = priorityMap[b.priority || 'Medium'] || 0;
-                if (priorityA !== priorityB) return priorityB - priorityA;
-                return (a.dueDate || '').localeCompare(b.dueDate || '');
-            })
-        : [];
     const startupBusinessModelOptions = [
         { value: '', label: t('createProjectWizard.startup.businessModel.unknown') },
         { value: 'saas', label: t('createProjectWizard.startup.businessModel.saas') },
@@ -1672,29 +1814,14 @@ export const ProjectOverview = () => {
         || triageSummary.highPriorityNoDate > 0
         || triageNeedsVolumeCleanup
     ));
-    const triageReasonItems = [
-        triageSummary.overdue > 0
-            ? t('projectOverview.triage.signal.reason.overdue').replace('{count}', String(triageSummary.overdue))
-            : '',
-        triageSummary.blocked > 0
-            ? t('projectOverview.triage.signal.reason.blocked').replace('{count}', String(triageSummary.blocked))
-            : '',
-        triageSummary.unassigned > 0
-            ? t('projectOverview.triage.signal.reason.unassigned').replace('{count}', String(triageSummary.unassigned))
-            : '',
-        triageSummary.highPriorityNoDate > 0
-            ? t('projectOverview.triage.signal.reason.highNoDate').replace('{count}', String(triageSummary.highPriorityNoDate))
-            : '',
-        triageSummary.dueSoon >= 3
-            ? t('projectOverview.triage.signal.reason.dueSoon').replace('{count}', String(triageSummary.dueSoon))
-            : '',
-        triageSummary.noDate >= 3
-            ? t('projectOverview.triage.signal.reason.noDate').replace('{count}', String(triageSummary.noDate))
-            : ''
-    ].filter(Boolean).slice(0, 3);
-    const triageReasonText = triageReasonItems.length > 0
-        ? triageReasonItems.join(' / ')
-        : t('projectOverview.triage.signal.reason.fallback').replace('{count}', String(triageOpenTasks.length));
+    const triageSignalStats = ([
+        { key: 'overdue', count: triageSummary.overdue, label: t('projectOverview.triage.queues.overdue'), tone: 'critical' as const },
+        { key: 'blocked', count: triageSummary.blocked, label: t('projectOverview.triage.queues.blocked'), tone: 'critical' as const },
+        { key: 'unassigned', count: triageSummary.unassigned, label: t('projectOverview.triage.queues.unassigned'), tone: 'warning' as const },
+        { key: 'highNoDate', count: triageSummary.highPriorityNoDate, label: t('projectOverview.triage.queues.urgent'), tone: 'warning' as const },
+        { key: 'dueSoon', count: triageSummary.dueSoon, label: t('projectOverview.triage.queues.dueSoon'), tone: 'neutral' as const },
+        { key: 'noDate', count: triageSummary.noDate, label: t('projectOverview.triage.queues.noDate'), tone: 'neutral' as const }
+    ]).filter(stat => stat.count > 0);
     const formatAttentionDueLabel = (dateValue: string | undefined, overdue: boolean) => {
         const dueDate = dateKeyToDate(dateValue);
         if (!dueDate) return '';
@@ -2165,22 +2292,38 @@ export const ProjectOverview = () => {
                                 <span className="initiatives-count">({activeInitiatives.length})</span>
                             </h3>
                             <div className="flex items-center gap-2">
+                                <div className="initiatives-view-toggle" role="group" aria-label={t('initiatives.view.label')}>
+                                    {(['grid', 'list'] as const).map((mode) => (
+                                        <button
+                                            key={mode}
+                                            type="button"
+                                            className={`initiatives-view-btn ${initiativesView === mode ? 'is-active' : ''}`}
+                                            onClick={() => setInitiativesView(mode)}
+                                            aria-pressed={initiativesView === mode}
+                                            title={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
+                                            aria-label={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
+                                        >
+                                            <span className="material-symbols-outlined">{mode === 'grid' ? 'grid_view' : 'view_list'}</span>
+                                        </button>
+                                    ))}
+                                </div>
                                 {can('canManageTasks') && (
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
+                                    <button
+                                        type="button"
                                         onClick={() => setShowInitiativeModal(true)}
-                                        icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                                        className="header-action-btn"
+                                        aria-label={t('initiatives.create.action')}
+                                        title={t('initiatives.create.action')}
                                     >
-                                        {t('initiatives.create.action')}
-                                    </Button>
+                                        <span className="material-symbols-outlined">add</span>
+                                    </button>
                                 )}
-                                <Link to={`/project/${id}/initiatives`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
+                                <Link to={`/project/${id}/initiatives`} className="header-action-btn" aria-label={t('projectOverview.initiatives.title')}>
                                     <span className="material-symbols-outlined">arrow_forward</span>
                                 </Link>
                             </div>
                         </div>
-                        <div className="initiatives-grid">
+                        <div className={`initiatives-grid ${initiativesView === 'list' ? 'is-list' : ''}`}>
                             {activeInitiatives.map(initiative => {
                                 const initiativeTasks = tasks.filter((task) => task.initiativeId === initiative.id);
                                 const doneSub = initiativeTasks.filter((task) => task.isCompleted || task.status === 'Done').length;
@@ -2225,7 +2368,7 @@ export const ProjectOverview = () => {
                                     <div
                                         key={initiative.id}
                                         onClick={() => navigate(`/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                        className={`initiative-card ${statusClass}`}
+                                        className={`initiative-card ${statusClass} ${initiativesView === 'list' ? 'is-row' : ''}`}
                                     >
                                         {/* Priority indicator */}
                                         <div className={`initiative-priority-indicator ${priorityClass}`} />
@@ -3283,460 +3426,618 @@ export const ProjectOverview = () => {
     const renderCompanyOverviewSection = () => {
         if (!projectIsCompanyProject || !startupReadiness) return null;
 
-        const openFoundingBrief = () => {
+        const openFoundingBrief = (step = 0) => {
+            setBriefingStep(step);
+            setBriefingHelpId(null);
+            if (startupReadiness?.readiness) {
+                setStartupBriefReadiness(startupReadiness.readiness);
+            }
             setShowStartupBriefingModal(true);
         };
+        const openReadinessChecklist = () => openFoundingBrief(BRIEFING_READINESS_STEP_INDEX);
         const launchGateVariant = startupReadiness.launchGate === 'ready'
             ? 'success'
             : startupReadiness.launchGate === 'blocked'
                 ? 'error'
                 : 'warning';
 
-        return (
-            <section className="project-overview__company-command">
-                <div className="project-overview__company-command-header">
-                    <div>
-                        <span>{t('projectOverview.company.commandTitle')}</span>
-                        <h2>{t('projectOverview.company.commandMeta')
-                            .replace('{tracks}', String(startupTrackSummaries.length))
-                            .replace('{linked}', String(linkedCompanyProjects.length))}
-                        </h2>
-                    </div>
-                    <Badge variant={launchGateVariant}>
-                        {t(`projectOverview.startup.launchGate.${startupReadiness.launchGate}`)}
-                    </Badge>
+        const renderActionCard = () => (
+            <div className={`project-overview__company-card project-overview__company-action is-${startupPrimaryAction.mode}`}>
+                <div className="project-overview__company-action-icon">
+                    <span className="material-symbols-outlined">{startupPrimaryAction.icon}</span>
                 </div>
-                <div className="project-overview__company-command-main">
-                    <div className={`project-overview__company-action is-${startupPrimaryAction.mode}`}>
-                        <div className="project-overview__company-action-icon">
-                            <span className="material-symbols-outlined">{startupPrimaryAction.icon}</span>
-                        </div>
-                        <div className="project-overview__company-action-copy">
-                            <span>{t('projectOverview.startup.nextFounderAction')}</span>
-                            <h2>{startupPrimaryAction.title}</h2>
-                            <p>{startupPrimaryAction.meta}</p>
-                            {showStartupBriefingPrompt && (
-                                <div className="project-overview__company-action-missing">
-                                    {startupBriefingMissingItems.slice(0, 4).map(item => (
-                                        <small key={item}>{item}</small>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                        {startupPrimaryAction.mode === 'task' && startupFounderAction ? (
-                            <Link to={`/project/${project.id}/tasks/${startupFounderAction.id}`} className="project-overview__company-action-button">
-                                <span className="material-symbols-outlined">arrow_forward</span>
-                                {startupPrimaryAction.actionLabel}
-                            </Link>
-                        ) : (
-                            <button
-                                type="button"
-                                className="project-overview__company-action-button"
-                                onClick={openFoundingBrief}
-                            >
-                                <span className="material-symbols-outlined">{startupPrimaryAction.mode === 'clear' ? 'fact_check' : 'edit_note'}</span>
-                                {startupPrimaryAction.actionLabel}
-                            </button>
-                        )}
-                    </div>
+                <div className="project-overview__company-action-copy">
+                    <span>{t('projectOverview.startup.nextFounderAction')}</span>
+                    <h2>{startupPrimaryAction.title}</h2>
+                    <p>{startupPrimaryAction.meta}</p>
+                </div>
+                {startupPrimaryAction.mode === 'task' && startupFounderAction ? (
+                    <Link to={`/project/${project.id}/tasks/${startupFounderAction.id}`} className="project-overview__company-action-button">
+                        <span className="material-symbols-outlined">arrow_forward</span>
+                        {startupPrimaryAction.actionLabel}
+                    </Link>
+                ) : (
+                    <button
+                        type="button"
+                        className="project-overview__company-action-button"
+                        onClick={() => openFoundingBrief()}
+                    >
+                        <span className="material-symbols-outlined">{startupPrimaryAction.mode === 'clear' ? 'fact_check' : 'edit_note'}</span>
+                        {startupPrimaryAction.actionLabel}
+                    </button>
+                )}
+            </div>
+        );
 
-                    <div className="project-overview__company-readiness">
-                        <div className="project-overview__company-readiness-header">
-                            <div>
-                                <h2>{t('projectOverview.startup.readinessTitle')}</h2>
-                                <p>{t('projectOverview.startup.launchGateLabel')}</p>
-                            </div>
-                            <span>{startupLaunchReadinessPercent}%</span>
-                        </div>
-                        <div className="project-overview__company-launch-meter">
-                            <span>{t('projectOverview.startup.goToLaunch').replace('{percent}', String(startupLaunchReadinessPercent))}</span>
-                            <div>
-                                <i style={{ width: `${startupLaunchReadinessPercent}%` }} />
-                            </div>
-                        </div>
-                        <div className="project-overview__company-readiness-grid">
-                            {startupReadinessMetrics.map(metric => (
-                                <div key={metric.id} className="project-overview__company-readiness-tile">
-                                    <span className="material-symbols-outlined">{metric.icon}</span>
-                                    <strong>{metric.label}</strong>
-                                    <em>{metric.value}%</em>
-                                    <div>
-                                        <i style={{ width: `${metric.value}%` }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+        const renderReadinessCard = () => (
+            <div className="project-overview__company-card project-overview__company-readiness">
+                <div className="project-overview__company-readiness-header">
+                    <div>
+                        <h2>{startupPhaseMeta.readinessTitle}</h2>
+                        <p>{startupPhaseMeta.readinessSubtitle}</p>
                     </div>
-
-                    <div className="project-overview__company-workstreams">
-                        <div className="project-overview__company-section-header">
-                            <h2>
-                                <span className="material-symbols-outlined">schema</span>
-                                {t('projectOverview.startup.workstreamsTitle')}
-                            </h2>
-                            <span>{t('projectOverview.startup.workstreamsCount').replace('{count}', String(startupTrackSummaries.length))}</span>
-                        </div>
-                        <div className="project-overview__company-workstream-summary">
-                            <div>
-                                <span>{t('projectOverview.startup.workstreamSummaryTracks')}</span>
-                                <strong>{startupTrackSummaries.length}</strong>
-                            </div>
-                            <div>
-                                <span>{t('projectOverview.startup.workstreamSummaryOpen')}</span>
-                                <strong>{startupWorkstreamOpenTaskCount}</strong>
-                            </div>
-                            <div>
-                                <span>{t('projectOverview.startup.workstreamSummaryBlocked')}</span>
-                                <strong>{startupWorkstreamBlockedCount}</strong>
-                            </div>
-                            <button
-                                type="button"
-                                className="project-overview__company-secondary-button"
-                                onClick={() => {
-                                    setSelectedStartupTrackId(startupTrackSummaries[0]?.id || null);
-                                    setShowStartupWorkstreamsModal(true);
-                                }}
-                            >
-                                <span className="material-symbols-outlined">open_in_new</span>
-                                {t('projectOverview.startup.openWorkstreams')}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="project-overview__company-briefing-status">
-                        <div className="project-overview__company-section-header">
-                            <h2>
-                                <span className="material-symbols-outlined">assignment</span>
-                                {t('projectOverview.startup.briefing.title')}
-                            </h2>
-                            <span>{startupBriefingCompletionPercent}%</span>
-                        </div>
-                        <div className="project-overview__company-briefing-meter">
-                            <div>
-                                <i style={{ width: `${startupBriefingCompletionPercent}%` }} />
-                            </div>
-                            <span>{showStartupBriefingPrompt
-                                ? t('projectOverview.startup.action.briefingMeta').replace('{count}', String(startupBriefingMissingItems.length))
-                                : t('projectOverview.startup.briefing.complete')}
-                            </span>
-                        </div>
-                        {showStartupBriefingPrompt && (
-                            <div className="project-overview__company-action-missing">
-                                {startupBriefingMissingItems.slice(0, 4).map(item => (
-                                    <small key={item}>{item}</small>
-                                ))}
-                            </div>
-                        )}
+                    <div className="project-overview__company-readiness-header-actions">
+                        <span className="project-overview__company-readiness-percent">{startupLaunchReadinessPercent}%</span>
                         <button
                             type="button"
-                            className="project-overview__company-secondary-button"
-                            onClick={openFoundingBrief}
+                            className="project-overview__company-context-action-icon"
+                            onClick={openReadinessChecklist}
+                            title={t('projectOverview.startup.briefing.manageChecklist')}
+                            aria-label={t('projectOverview.startup.briefing.manageChecklist')}
                         >
-                            <span className="material-symbols-outlined">edit_note</span>
-                            {t('projectOverview.startup.briefing.action')}
+                            <span className="material-symbols-outlined">checklist</span>
                         </button>
                     </div>
                 </div>
-
-                <aside className="project-overview__company-side">
-                    <div className="project-overview__company-context-card">
-                        <div className="project-overview__company-section-header">
-                            <h2>{t('projectOverview.company.contextTitle')}</h2>
-                        </div>
-                        <div className="project-overview__company-context-list">
-                            {startupContextItems.map(item => (
-                                <div key={item.id} className="project-overview__company-context-item">
-                                    <span className="material-symbols-outlined">{item.icon}</span>
-                                    <div>
-                                        <small>{item.label}</small>
-                                        <strong>{item.value}</strong>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        {project.startupProfile?.advisorReviewRequired && (
-                            <div className="project-overview__company-advisor-note">
-                                <span className="material-symbols-outlined">info</span>
-                                <span>{t('projectOverview.startup.advisorReviewRequired')}</span>
-                            </div>
-                        )}
-                        {startupSourceReferences.length > 0 && (
-                            <div className="project-overview__company-source-list">
-                                <span>{t('projectOverview.startup.sources')}</span>
-                                {startupSourceReferences.slice(0, 3).map(reference => (
-                                    <a key={reference.id} href={reference.url} target="_blank" rel="noopener noreferrer">
-                                        {t(reference.labelKey)}
-                                    </a>
-                                ))}
-                            </div>
-                        )}
+                <div className="project-overview__company-launch-meter">
+                    <div className="project-overview__company-launch-meter-label">
+                        <span>{startupPhaseMeta.meterLabel}</span>
                     </div>
-                </aside>
-
-                <div className="project-overview__company-linked">
-                    <div className="project-overview__company-section-header">
-                        <h2>
-                            <span className="material-symbols-outlined">account_tree</span>
-                            {t('projectOverview.company.linkedProjectsTitle')}
-                        </h2>
-                        {linkedProjectRollup && (
-                            <span>{t('projectOverview.company.linkedSummary').replace('{active}', String(linkedProjectRollup.activeCount)).replace('{risk}', String(linkedProjectRollup.atRiskCount))}</span>
-                        )}
+                    <div className="project-overview__company-launch-meter-track">
+                        <i style={{ width: `${startupLaunchReadinessPercent}%` }} />
                     </div>
+                </div>
+                <div className="project-overview__company-readiness-grid">
+                    {startupReadinessMetrics.map(metric => (
+                        <div key={metric.id} className="project-overview__company-readiness-tile">
+                            <div className="project-overview__company-readiness-tile-header">
+                                <span className="material-symbols-outlined">{metric.icon}</span>
+                                <strong>{metric.label}</strong>
+                                <em>{metric.value}%</em>
+                            </div>
+                            <div className="project-overview__company-readiness-tile-track">
+                                <i style={{ width: `${metric.value}%` }} />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+
+        const renderContextCard = () => (
+            <div className="project-overview__company-card project-overview__company-context-card">
+                <div className="project-overview__company-section-header">
+                    <h2>
+                        <span className="material-symbols-outlined">domain</span>
+                        {t('projectOverview.company.contextTitle')}
+                    </h2>
+                    <button
+                        type="button"
+                        className="project-overview__company-context-action-icon"
+                        onClick={() => openFoundingBrief()}
+                        title={t('projectOverview.startup.briefing.editAction')}
+                    >
+                        <span className="material-symbols-outlined">edit</span>
+                    </button>
+                </div>
+                <div className="project-overview__company-context-list">
+                    {startupContextItems.map(item => (
+                        <div key={item.id} className="project-overview__company-context-item">
+                            <span className="material-symbols-outlined">{item.icon}</span>
+                            <div>
+                                <small>{item.label}</small>
+                                <strong>{item.value}</strong>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {project.startupProfile?.advisorReviewRequired && (
+                    <div className="project-overview__company-advisor-note">
+                        <span className="material-symbols-outlined">info</span>
+                        <span>{t('projectOverview.startup.advisorReviewRequired')}</span>
+                    </div>
+                )}
+            </div>
+        );
+
+        const renderLinkedProjectsCard = () => (
+            <div className="project-overview__company-card project-overview__company-linked">
+                <div className="project-overview__company-section-header">
+                    <h2>
+                        <span className="material-symbols-outlined">account_tree</span>
+                        {t('projectOverview.company.linkedProjectsTitle')}
+                    </h2>
                     {linkedProjectRollup && (
-                        <div className="project-overview__company-rollup">
-                            <div>
-                                <span>{t('projectOverview.company.rollup.total')}</span>
-                                <strong>{linkedProjectRollup.total}</strong>
-                            </div>
-                            <div>
-                                <span>{t('projectOverview.company.rollup.active')}</span>
-                                <strong>{linkedProjectRollup.activeCount}</strong>
-                            </div>
-                            <div>
-                                <span>{t('projectOverview.company.rollup.progress')}</span>
-                                <strong>{linkedProjectRollup.averageProgress}%</strong>
-                            </div>
-                            <div>
-                                <span>{t('projectOverview.company.rollup.risk')}</span>
-                                <strong>{linkedProjectRollup.atRiskCount}</strong>
-                            </div>
-                        </div>
+                        <span className="project-overview__company-linked-badge">{t('projectOverview.company.linkedSummary').replace('{active}', String(linkedProjectRollup.activeCount)).replace('{risk}', String(linkedProjectRollup.atRiskCount))}</span>
                     )}
-                    {linkedCompanyProjectPreview.length > 0 ? (
-                        <div className="project-overview__company-linked-list">
-                            {linkedCompanyProjectPreview.map(linkedProject => {
-                                const linkedProgress = linkedProject.progress || 0;
-                                const linkedHealthScore = typeof linkedProject.healthSnapshot?.score === 'number'
-                                    ? `${linkedProject.healthSnapshot.score}/100`
-                                    : t('projectOverview.company.contextMissing');
+                </div>
+                {linkedProjectRollup && (
+                    <div className="project-overview__company-rollup">
+                        <div className="project-overview__company-rollup-stat">
+                            <span>{t('projectOverview.company.rollup.total')}</span>
+                            <strong>{linkedProjectRollup.total}</strong>
+                        </div>
+                        <div className="project-overview__company-rollup-stat">
+                            <span>{t('projectOverview.company.rollup.active')}</span>
+                            <strong className="is-success">{linkedProjectRollup.activeCount}</strong>
+                        </div>
+                        <div className="project-overview__company-rollup-stat">
+                            <span>{t('projectOverview.company.rollup.progress')}</span>
+                            <strong>{linkedProjectRollup.averageProgress}%</strong>
+                        </div>
+                        <div className="project-overview__company-rollup-stat">
+                            <span>{t('projectOverview.company.rollup.risk')}</span>
+                            <strong className={linkedProjectRollup.atRiskCount > 0 ? 'is-danger' : ''}>{linkedProjectRollup.atRiskCount}</strong>
+                        </div>
+                    </div>
+                )}
+                {linkedCompanyProjectPreview.length > 0 ? (
+                    <div className="project-overview__company-linked-list">
+                        {linkedCompanyProjectPreview.map(linkedProject => {
+                            const linkedProgress = linkedProject.progress || 0;
+                            const linkedHealthScore = typeof linkedProject.healthSnapshot?.score === 'number'
+                                ? `${linkedProject.healthSnapshot.score}/100`
+                                : t('projectOverview.company.contextMissing');
 
-                                return (
-                                    <Link
-                                        key={linkedProject.id}
-                                        to={`/project/${linkedProject.id}`}
-                                        className="project-overview__company-linked-row"
-                                    >
+                            return (
+                                <Link
+                                    key={linkedProject.id}
+                                    to={`/project/${linkedProject.id}`}
+                                    className="project-overview__company-linked-row"
+                                >
+                                    <div className="project-overview__company-linked-row-main">
                                         <span className="project-overview__company-linked-icon material-symbols-outlined">folder</span>
-                                        <span className="project-overview__company-linked-title">{linkedProject.title}</span>
-                                        <small>{t(`projectCompanyRoles.${linkedProject.companyProjectRole || 'other'}`)}</small>
+                                        <div className="project-overview__company-linked-title-wrap">
+                                            <span className="project-overview__company-linked-title">{linkedProject.title}</span>
+                                            <small>{t(`projectCompanyRoles.${linkedProject.companyProjectRole || 'other'}`)}</small>
+                                        </div>
+                                    </div>
+                                    <div className="project-overview__company-linked-row-meta">
                                         <Badge variant={linkedProject.status === 'Active' ? 'success' : linkedProject.status === 'In Testing' ? 'warning' : 'neutral'}>
                                             {projectStatusLabels[linkedProject.status] || linkedProject.status}
                                         </Badge>
-                                        <small>{linkedHealthScore}</small>
                                         <div className="project-overview__company-linked-progress">
-                                            <div><i style={{ width: `${linkedProgress}%` }} /></div>
+                                            <div className="project-overview__company-linked-progress-track"><i style={{ width: `${linkedProgress}%` }} /></div>
                                             <strong>{linkedProgress}%</strong>
                                         </div>
-                                        <span className="material-symbols-outlined">chevron_right</span>
-                                    </Link>
-                                );
-                            })}
+                                        <span className="material-symbols-outlined chevron">chevron_right</span>
+                                    </div>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="project-overview__company-linked-empty">
+                        <span className="material-symbols-outlined">hub</span>
+                        <strong>{t('projectOverview.company.emptyLinkedTitle')}</strong>
+                        <p>{t('projectOverview.company.emptyLinkedDescription')}</p>
+                    </div>
+                )}
+            </div>
+        );
+
+        return (
+            <section className="project-overview__company-command">
+                <div className="project-overview__company-command-header-wrapper">
+                    <div className="project-overview__company-command-header">
+                        <div className="project-overview__company-command-titles">
+                            <span>{t('projectOverview.company.commandTitle')}</span>
+                            <h2>{t('projectOverview.company.commandMeta')
+                                .replace('{tracks}', String(startupTrackSummaries.length))
+                                .replace('{linked}', String(linkedCompanyProjects.length))}
+                            </h2>
                         </div>
+                        {startupPhase !== 'operate' && (
+                            <div className="project-overview__company-command-badge">
+                                <Badge variant={launchGateVariant}>
+                                    {t(`projectOverview.startup.launchGate.${startupReadiness.launchGate}`)}
+                                </Badge>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="project-overview__company-stage" role="list" aria-label={t('projectOverview.startup.stage')}>
+                        {STARTUP_STAGE_STEPPER.map((stage, index) => {
+                            const currentIndex = STARTUP_STAGE_STEPPER.indexOf(startupReadiness.stage || 'idea');
+                            const state = index < currentIndex ? 'done' : index === currentIndex ? 'current' : 'upcoming';
+                            return (
+                                <div
+                                    key={stage}
+                                    role="listitem"
+                                    aria-current={state === 'current' ? 'step' : undefined}
+                                    className={`project-overview__company-stage-step is-${state}`}
+                                >
+                                    <span className="project-overview__company-stage-dot">
+                                        {state === 'done' ? <span className="material-symbols-outlined">check</span> : index + 1}
+                                    </span>
+                                    <span className="project-overview__company-stage-label">{t(getStartupStageKey(stage))}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className={`project-overview__company-dashboard is-phase-${startupPhase}`}>
+                    {startupPhase === 'operate' ? (
+                        <>
+                            <div className="project-overview__company-main-panel">
+                                {renderLinkedProjectsCard()}
+                            </div>
+                            <div className="project-overview__company-side-panel">
+                                {renderReadinessCard()}
+                                {renderActionCard()}
+                                {renderContextCard()}
+                            </div>
+                        </>
                     ) : (
-                        <div className="project-overview__company-linked-empty">
-                            <span className="material-symbols-outlined">hub</span>
-                            <strong>{t('projectOverview.company.emptyLinkedTitle')}</strong>
-                            <p>{t('projectOverview.company.emptyLinkedDescription')}</p>
-                        </div>
+                        <>
+                            <div className="project-overview__company-main-panel">
+                                {renderReadinessCard()}
+                                {renderActionCard()}
+                            </div>
+                            <div className="project-overview__company-side-panel">
+                                {renderContextCard()}
+                                {startupPhase === 'form' && linkedCompanyProjects.length > 0 && renderLinkedProjectsCard()}
+                            </div>
+                        </>
                     )}
                 </div>
             </section>
         );
     };
-    const renderStartupWorkstreamsModal = () => (
-        <Modal
-            isOpen={showStartupWorkstreamsModal}
-            onClose={() => setShowStartupWorkstreamsModal(false)}
-            title={t('projectOverview.startup.workstreamsModalTitle')}
-            size="xl"
-        >
-            <div className="startup-workstreams-modal">
-                <div className="startup-workstreams-modal__intro">
-                    <p>{t('projectOverview.startup.workstreamsModalDescription')}</p>
-                </div>
-                <div className="startup-workstreams-modal__layout">
-                    <div className="startup-workstreams-modal__list" aria-label={t('projectOverview.startup.workstreamsTitle')}>
-                        {startupTrackSummaries.map(track => (
-                            <button
-                                key={track.id}
-                                type="button"
-                                className={`startup-workstreams-modal__track is-${track.tone} ${selectedStartupTrack?.id === track.id ? 'is-active' : ''}`.trim()}
-                                onClick={() => setSelectedStartupTrackId(track.id)}
-                            >
-                                <span className="startup-workstreams-modal__track-icon material-symbols-outlined">{track.icon}</span>
-                                <span className="startup-workstreams-modal__track-copy">
-                                    <strong>{t(track.labelKey, track.id)}</strong>
-                                    <span>
-                                        {t('projectOverview.startup.workstreamTasks').replace('{count}', String(track.totalTasks))}
-                                        {track.blockedCount > 0 && ` / ${t('projectOverview.startup.workstreamBlocked').replace('{count}', String(track.blockedCount))}`}
-                                        {track.overdueCount > 0 && ` / ${t('projectOverview.startup.workstreamOverdue').replace('{count}', String(track.overdueCount))}`}
-                                    </span>
-                                </span>
-                                <span className="startup-workstreams-modal__track-progress">
-                                    <span><i style={{ width: `${track.progress}%` }} /></span>
-                                    <strong>{track.progress}%</strong>
-                                </span>
-                            </button>
-                        ))}
-                    </div>
+    const renderStartupBriefingModal = () => {
+        const briefingSteps = [
+            {
+                id: 'profile',
+                icon: 'storefront',
+                titleKey: 'projectOverview.startup.briefing.wizard.step1Title',
+                subtitleKey: 'projectOverview.startup.briefing.wizard.step1Subtitle',
+                descKey: 'projectOverview.startup.briefing.wizard.step1Desc',
+            },
+            {
+                id: 'stage',
+                icon: 'trending_up',
+                titleKey: 'projectOverview.startup.briefing.wizard.step2Title',
+                subtitleKey: 'projectOverview.startup.briefing.wizard.step2Subtitle',
+                descKey: 'projectOverview.startup.briefing.wizard.step2Desc',
+            },
+            {
+                id: 'legal',
+                icon: 'gavel',
+                titleKey: 'projectOverview.startup.briefing.wizard.step3Title',
+                subtitleKey: 'projectOverview.startup.briefing.wizard.step3Subtitle',
+                descKey: 'projectOverview.startup.briefing.wizard.step3Desc',
+            },
+            {
+                id: 'readiness',
+                icon: 'checklist',
+                titleKey: 'projectOverview.startup.briefing.wizard.step4Title',
+                subtitleKey: 'projectOverview.startup.briefing.wizard.step4Subtitle',
+                descKey: 'projectOverview.startup.briefing.readinessDescription',
+            },
+        ];
+        const totalSteps = briefingSteps.length;
+        const currentStep = Math.min(Math.max(briefingStep, 0), totalSteps - 1);
+        const activeStep = briefingSteps[currentStep];
+        const isLastStep = currentStep === totalSteps - 1;
+        const jurisdiction = getStartupJurisdictionTemplate(startupBriefJurisdictionCountry, startupBriefJurisdictionRegion);
+        const readinessGroups: Array<{ titleKey: string; keys: Array<keyof StartupReadiness> }> = [
+            {
+                titleKey: 'projectOverview.startup.briefing.readinessGroup.legal',
+                keys: ['legalStructureDecided', 'founderAgreementReady', 'ipAssignmentReady', 'registrationSubmitted', 'registrationConfirmed'],
+            },
+            {
+                titleKey: 'projectOverview.startup.briefing.readinessGroup.finance',
+                keys: ['taxSetupReady', 'bankAccountReady', 'bookkeepingReady'],
+            },
+            {
+                titleKey: 'projectOverview.startup.briefing.readinessGroup.launch',
+                keys: ['privacyDocsReady', 'requiredPermitsKnown', 'launchOfferReady', 'firstChannelReady'],
+            },
+        ];
 
-                    <aside className="startup-workstreams-modal__drawer">
-                        {selectedStartupTrack ? (
-                            <>
-                                <div className="startup-workstreams-modal__drawer-header">
-                                    <span className="startup-workstreams-modal__drawer-icon material-symbols-outlined">{selectedStartupTrack.icon}</span>
-                                    <div>
-                                        <span>{t('projectOverview.startup.selectedWorkstream')}</span>
-                                        <h3>{t(selectedStartupTrack.labelKey, selectedStartupTrack.id)}</h3>
+        const briefingHelpContent: Record<string, BriefingHelpContent> = {
+            businessModel: {
+                title: t('createProjectWizard.startup.businessModel.label'),
+                body: t('projectOverview.startup.briefing.help.businessModel.body'),
+                options: startupBusinessModelOptions.map(option => ({
+                    label: option.label,
+                    desc: t(`projectOverview.startup.briefing.help.businessModel.option.${option.value || 'unknown'}`),
+                })),
+            },
+            targetCustomer: {
+                title: t('createProjectWizard.startup.targetCustomer.label'),
+                body: t('projectOverview.startup.briefing.help.targetCustomer.body'),
+            },
+            stage: {
+                title: t('createProjectWizard.startup.stage.label'),
+                body: t('projectOverview.startup.briefing.help.stage.body'),
+                options: startupFormationStatusOptions.map(option => ({
+                    label: option.label,
+                    desc: t(`projectOverview.startup.briefing.help.stage.option.${option.value}`),
+                })),
+            },
+            funding: {
+                title: t('createProjectWizard.startup.funding.label'),
+                body: t('projectOverview.startup.briefing.help.funding.body'),
+                options: startupFundingRouteOptions.map(option => ({
+                    label: option.label,
+                    desc: t(`projectOverview.startup.briefing.help.funding.option.${option.value}`),
+                })),
+            },
+            jurisdictionCountry: {
+                title: t('createProjectWizard.startup.jurisdictionCountry.label'),
+                body: t('projectOverview.startup.briefing.help.jurisdictionCountry.body'),
+            },
+            jurisdictionRegion: {
+                title: t('createProjectWizard.startup.jurisdictionRegion.label'),
+                body: t('projectOverview.startup.briefing.help.jurisdictionRegion.body'),
+            },
+            regulated: {
+                title: t('createProjectWizard.startup.regulated.label'),
+                body: t('projectOverview.startup.briefing.help.regulated.body'),
+                options: startupRegulatedIndustryOptions.map(option => ({
+                    label: option.label,
+                    desc: t(`projectOverview.startup.briefing.help.regulated.option.${option.value}`),
+                })),
+            },
+        };
+        const activeHelp = briefingHelpId ? briefingHelpContent[briefingHelpId] : null;
+
+        return (
+            <>
+            <Modal
+                isOpen={showStartupBriefingModal}
+                onClose={() => setShowStartupBriefingModal(false)}
+                title={t('projectOverview.startup.briefing.modalTitle')}
+                size="xl"
+                closeOnOutsideClick={!savingStartupBriefing}
+                footer={
+                    <div className="startup-brief-wizard__footer">
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowStartupBriefingModal(false)}
+                            disabled={savingStartupBriefing}
+                        >
+                            {t('common.cancel')}
+                        </Button>
+                        <div className="startup-brief-wizard__footer-actions">
+                            {currentStep > 0 && (
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setBriefingStep(currentStep - 1)}
+                                    disabled={savingStartupBriefing}
+                                    icon={<span className="material-symbols-outlined">arrow_back</span>}
+                                >
+                                    {t('projectOverview.startup.briefing.wizard.back')}
+                                </Button>
+                            )}
+                            {isLastStep ? (
+                                <Button
+                                    variant="primary"
+                                    onClick={handleSaveStartupBriefing}
+                                    isLoading={savingStartupBriefing}
+                                    icon={<span className="material-symbols-outlined">save</span>}
+                                >
+                                    {t('common.saveChanges')}
+                                </Button>
+                            ) : (
+                                <Button
+                                    variant="primary"
+                                    onClick={() => setBriefingStep(currentStep + 1)}
+                                    disabled={savingStartupBriefing}
+                                >
+                                    {t('projectOverview.startup.briefing.wizard.next')}
+                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                }
+            >
+                <div className="startup-brief-wizard">
+                    <ol className="startup-brief-wizard__rail">
+                        {briefingSteps.map((step, index) => {
+                            const stateClass = index === currentStep
+                                ? 'is-current'
+                                : index < currentStep
+                                    ? 'is-done'
+                                    : '';
+                            return (
+                                <li key={step.id} className={`startup-brief-wizard__rail-item ${stateClass}`.trim()}>
+                                    <button
+                                        type="button"
+                                        className="startup-brief-wizard__rail-btn"
+                                        onClick={() => setBriefingStep(index)}
+                                    >
+                                        <span className="startup-brief-wizard__rail-dot">
+                                            {index < currentStep
+                                                ? <span className="material-symbols-outlined">check</span>
+                                                : index + 1}
+                                        </span>
+                                        <span className="startup-brief-wizard__rail-text">
+                                            <strong>{t(step.titleKey)}</strong>
+                                            <span>{t(step.subtitleKey)}</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ol>
+
+                    <div className="startup-brief-wizard__panel">
+                        <header className="startup-brief-wizard__head">
+                            <span className="startup-brief-wizard__head-icon material-symbols-outlined">{activeStep.icon}</span>
+                            <div>
+                                <span className="startup-brief-wizard__head-counter">
+                                    {t('projectOverview.startup.briefing.wizard.stepCounter')
+                                        .replace('{current}', String(currentStep + 1))
+                                        .replace('{total}', String(totalSteps))}
+                                </span>
+                                <h3>{t(activeStep.titleKey)}</h3>
+                                <p>{t(activeStep.descKey)}</p>
+                            </div>
+                        </header>
+
+                        <div className="startup-brief-wizard__content">
+                            {currentStep === 0 && (
+                                <div className="startup-brief-wizard__fields">
+                                    <BriefingField
+                                        label={t('createProjectWizard.startup.businessModel.label')}
+                                        onInfo={() => setBriefingHelpId('businessModel')}
+                                        infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                    >
+                                        <Select
+                                            value={startupBriefBusinessModel || ''}
+                                            onChange={(value) => setStartupBriefBusinessModel(String(value) as StartupBusinessModel | '')}
+                                            options={startupBusinessModelOptions}
+                                        />
+                                    </BriefingField>
+                                    <BriefingField
+                                        label={t('createProjectWizard.startup.targetCustomer.label')}
+                                        onInfo={() => setBriefingHelpId('targetCustomer')}
+                                        infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                    >
+                                        <TextInput
+                                            placeholder={t('createProjectWizard.startup.targetCustomer.placeholder')}
+                                            value={startupBriefTargetCustomer}
+                                            onChange={(event) => setStartupBriefTargetCustomer(event.target.value)}
+                                        />
+                                    </BriefingField>
+                                </div>
+                            )}
+
+                            {currentStep === 1 && (
+                                <div className="startup-brief-wizard__fields">
+                                    <BriefingField
+                                        label={t('createProjectWizard.startup.stage.label')}
+                                        onInfo={() => setBriefingHelpId('stage')}
+                                        infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                    >
+                                        <Select
+                                            value={startupBriefFormationStatus}
+                                            onChange={(value) => setStartupBriefFormationStatus(value as StartupFormationStatus)}
+                                            options={startupFormationStatusOptions}
+                                        />
+                                    </BriefingField>
+                                    <BriefingField
+                                        label={t('createProjectWizard.startup.funding.label')}
+                                        onInfo={() => setBriefingHelpId('funding')}
+                                        infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                    >
+                                        <Select
+                                            value={startupBriefFundingRoute}
+                                            onChange={(value) => setStartupBriefFundingRoute(value as StartupFundingRoute)}
+                                            options={startupFundingRouteOptions}
+                                        />
+                                    </BriefingField>
+                                </div>
+                            )}
+
+                            {currentStep === 2 && (
+                                <div className="startup-brief-wizard__fields">
+                                    <div className="startup-brief-wizard__field-row">
+                                        <BriefingField
+                                            label={t('createProjectWizard.startup.jurisdictionCountry.label')}
+                                            onInfo={() => setBriefingHelpId('jurisdictionCountry')}
+                                            infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                        >
+                                            <TextInput
+                                                placeholder={t('createProjectWizard.startup.jurisdictionCountry.placeholder')}
+                                                value={startupBriefJurisdictionCountry}
+                                                onChange={(event) => setStartupBriefJurisdictionCountry(event.target.value)}
+                                            />
+                                        </BriefingField>
+                                        <BriefingField
+                                            label={t('createProjectWizard.startup.jurisdictionRegion.label')}
+                                            onInfo={() => setBriefingHelpId('jurisdictionRegion')}
+                                            infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                        >
+                                            <TextInput
+                                                placeholder={t('createProjectWizard.startup.jurisdictionRegion.placeholder')}
+                                                value={startupBriefJurisdictionRegion}
+                                                onChange={(event) => setStartupBriefJurisdictionRegion(event.target.value)}
+                                            />
+                                        </BriefingField>
+                                    </div>
+                                    <BriefingField
+                                        label={t('createProjectWizard.startup.regulated.label')}
+                                        onInfo={() => setBriefingHelpId('regulated')}
+                                        infoLabel={t('projectOverview.startup.briefing.info.toggle')}
+                                    >
+                                        <Select
+                                            value={startupBriefRegulatedIndustryStatus}
+                                            onChange={(value) => setStartupBriefRegulatedIndustryStatus(value as StartupRegulatedIndustryStatus)}
+                                            options={startupRegulatedIndustryOptions}
+                                        />
+                                    </BriefingField>
+                                    <div className="startup-brief-wizard__checks">
+                                        <Checkbox
+                                            checked={startupBriefHasCoFounders}
+                                            onChange={(event) => setStartupBriefHasCoFounders(event.target.checked)}
+                                            label={t('createProjectWizard.startup.hasCoFounders')}
+                                        />
+                                        <Checkbox
+                                            checked={startupBriefHasEmployeesPlanned}
+                                            onChange={(event) => setStartupBriefHasEmployeesPlanned(event.target.checked)}
+                                            label={t('createProjectWizard.startup.hasEmployees')}
+                                        />
+                                    </div>
+                                    <div className="startup-brief-wizard__hint">
+                                        <span className="material-symbols-outlined">verified</span>
+                                        <div>
+                                            <strong>{t(jurisdiction.labelKey)}</strong>
+                                            <p>{t(jurisdiction.descriptionKey)}</p>
+                                        </div>
                                     </div>
                                 </div>
-                                {selectedStartupTrackTasks.length > 0 ? (
-                                    <div className="startup-workstreams-modal__task-list">
-                                        {selectedStartupTrackTasks.map(task => {
-                                            const taskDone = task.isCompleted || task.status === 'Done';
-                                            const taskDueDate = dateKeyToDate(task.dueDate);
-                                            const taskDueLabel = taskDueDate
-                                                ? format(taskDueDate, dateFormat, { locale: dateLocale })
-                                                : t('projectOverview.triage.task.noDate');
+                            )}
 
-                                            return (
-                                                <Link
-                                                    key={task.id}
-                                                    to={`/project/${project.id}/tasks/${task.id}`}
-                                                    className={`startup-workstreams-modal__task-row ${taskDone ? 'is-done' : ''}`.trim()}
-                                                    onClick={() => setShowStartupWorkstreamsModal(false)}
-                                                >
-                                                    <span className="material-symbols-outlined">{taskDone ? 'check_circle' : task.status === 'Blocked' ? 'block' : 'radio_button_unchecked'}</span>
-                                                    <span>
-                                                        <strong>{task.title}</strong>
-                                                        <em>{taskStatusLabels[task.status] || task.status || t('tasks.status.open')} / {taskDueLabel}</em>
-                                                    </span>
-                                                    <span className="material-symbols-outlined">chevron_right</span>
-                                                </Link>
-                                            );
-                                        })}
-                                    </div>
-                                ) : (
-                                    <div className="startup-workstreams-modal__empty">
-                                        <span className="material-symbols-outlined">task_alt</span>
-                                        <strong>{t('projectOverview.startup.workstreamEmptyTitle')}</strong>
-                                        <p>{t('projectOverview.startup.workstreamEmptyDescription')}</p>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="startup-workstreams-modal__empty">
-                                <span className="material-symbols-outlined">schema</span>
-                                <strong>{t('projectOverview.startup.workstreamNoSelection')}</strong>
-                            </div>
-                        )}
-                    </aside>
-                </div>
-            </div>
-        </Modal>
-    );
-    const renderStartupBriefingModal = () => (
-        <Modal
-            isOpen={showStartupBriefingModal}
-            onClose={() => setShowStartupBriefingModal(false)}
-            title={t('projectOverview.startup.briefing.modalTitle')}
-            size="lg"
-            closeOnOutsideClick={!savingStartupBriefing}
-            footer={
-                <>
-                    <Button
-                        variant="ghost"
-                        onClick={() => setShowStartupBriefingModal(false)}
-                        disabled={savingStartupBriefing}
-                    >
-                        {t('common.cancel')}
-                    </Button>
-                    <Button
-                        variant="primary"
-                        onClick={handleSaveStartupBriefing}
-                        isLoading={savingStartupBriefing}
-                        icon={<span className="material-symbols-outlined">save</span>}
-                    >
-                        {t('common.save')}
-                    </Button>
-                </>
-            }
-        >
-            <div className="startup-briefing-modal">
-                <div className="startup-briefing-modal__hero">
-                    <span className="material-symbols-outlined">domain_add</span>
-                    <div>
-                        <h3>{t('projectOverview.startup.briefing.modalHeading')}</h3>
-                        <p>{t('projectOverview.startup.briefing.modalDescription')}</p>
+                            {currentStep === 3 && (
+                                <div className="startup-brief-wizard__readiness">
+                                    {readinessGroups.map(group => (
+                                        <div key={group.titleKey} className="startup-brief-wizard__readiness-group">
+                                            <span className="startup-brief-wizard__readiness-group-title">{t(group.titleKey)}</span>
+                                            <div className="startup-brief-wizard__readiness-list">
+                                                {group.keys.map(key => (
+                                                    <Checkbox
+                                                        key={key}
+                                                        checked={startupBriefReadiness[key] === true}
+                                                        onChange={(event) => setStartupBriefReadiness(prev => ({ ...prev, [key]: event.target.checked }))}
+                                                        label={t(`projectSettings.startup.readiness.${key}`)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
-                <div className="startup-briefing-modal__grid">
-                    <TextInput
-                        label={t('createProjectWizard.startup.targetCustomer.label')}
-                        placeholder={t('createProjectWizard.startup.targetCustomer.placeholder')}
-                        value={startupBriefTargetCustomer}
-                        onChange={(event) => setStartupBriefTargetCustomer(event.target.value)}
-                    />
-                    <Select
-                        label={t('createProjectWizard.startup.businessModel.label')}
-                        value={startupBriefBusinessModel || ''}
-                        onChange={(value) => setStartupBriefBusinessModel(String(value) as StartupBusinessModel | '')}
-                        options={startupBusinessModelOptions}
-                    />
-                    <Select
-                        label={t('createProjectWizard.startup.stage.label')}
-                        value={startupBriefFormationStatus}
-                        onChange={(value) => setStartupBriefFormationStatus(value as StartupFormationStatus)}
-                        options={startupFormationStatusOptions}
-                    />
-                    <Select
-                        label={t('createProjectWizard.startup.funding.label')}
-                        value={startupBriefFundingRoute}
-                        onChange={(value) => setStartupBriefFundingRoute(value as StartupFundingRoute)}
-                        options={startupFundingRouteOptions}
-                    />
-                    <TextInput
-                        label={t('createProjectWizard.startup.jurisdictionCountry.label')}
-                        placeholder={t('createProjectWizard.startup.jurisdictionCountry.placeholder')}
-                        value={startupBriefJurisdictionCountry}
-                        onChange={(event) => setStartupBriefJurisdictionCountry(event.target.value)}
-                    />
-                    <TextInput
-                        label={t('createProjectWizard.startup.jurisdictionRegion.label')}
-                        placeholder={t('createProjectWizard.startup.jurisdictionRegion.placeholder')}
-                        value={startupBriefJurisdictionRegion}
-                        onChange={(event) => setStartupBriefJurisdictionRegion(event.target.value)}
-                    />
-                    <Select
-                        label={t('createProjectWizard.startup.regulated.label')}
-                        value={startupBriefRegulatedIndustryStatus}
-                        onChange={(value) => setStartupBriefRegulatedIndustryStatus(value as StartupRegulatedIndustryStatus)}
-                        options={startupRegulatedIndustryOptions}
-                    />
-                    <div className="startup-briefing-modal__checks">
-                        <Checkbox
-                            checked={startupBriefHasCoFounders}
-                            onChange={(event) => setStartupBriefHasCoFounders(event.target.checked)}
-                            label={t('createProjectWizard.startup.hasCoFounders')}
-                        />
-                        <Checkbox
-                            checked={startupBriefHasEmployeesPlanned}
-                            onChange={(event) => setStartupBriefHasEmployeesPlanned(event.target.checked)}
-                            label={t('createProjectWizard.startup.hasEmployees')}
-                        />
-                    </div>
-                </div>
-                <div className="startup-briefing-modal__source">
-                    <span className="material-symbols-outlined">verified</span>
-                    <div>
-                        <strong>{t(getStartupJurisdictionTemplate(startupBriefJurisdictionCountry, startupBriefJurisdictionRegion).labelKey)}</strong>
-                        <p>{t(getStartupJurisdictionTemplate(startupBriefJurisdictionCountry, startupBriefJurisdictionRegion).descriptionKey)}</p>
-                    </div>
-                </div>
-            </div>
-        </Modal>
-    );
+            </Modal>
+            {activeHelp && (
+                <BriefingHelpDrawer
+                    content={activeHelp}
+                    subtitle={t('projectOverview.startup.briefing.help.subtitle')}
+                    optionsTitle={t('projectOverview.startup.briefing.help.optionsTitle')}
+                    closeLabel={t('common.close')}
+                    onClose={() => setBriefingHelpId(null)}
+                />
+            )}
+            </>
+        );
+    };
     const hasVisibleCover = !coverRemoved && Boolean(project.coverImage);
 
 
@@ -3987,27 +4288,40 @@ export const ProjectOverview = () => {
                                             {isTriageNeeded && (
                                                 <button
                                                     type="button"
-                                                    className="project-triage-entry"
+                                                    className="project-triage-card"
                                                     onClick={() => setShowTriageModal(true)}
                                                     aria-label={t('projectOverview.triage.signal.open')}
                                                 >
-                                                    <span className="project-triage-entry__icon material-symbols-outlined" aria-hidden="true">rule</span>
-                                                    <span className="project-triage-entry__copy">
-                                                        <span className="project-triage-entry__eyebrow">
-                                                            {t('projectOverview.triage.signal.eyebrow')}
+                                                    <span className="project-triage-card__header">
+                                                        <span className="project-triage-card__icon material-symbols-outlined" aria-hidden="true">rule</span>
+                                                        <span className="project-triage-card__heading">
+                                                            <span className="project-triage-card__eyebrow">
+                                                                {t('projectOverview.triage.signal.eyebrow')}
+                                                            </span>
+                                                            <strong className="project-triage-card__title">
+                                                                {t('projectOverview.triage.signal.title')}
+                                                            </strong>
                                                         </span>
-                                                        <strong>{t('projectOverview.triage.signal.title')}</strong>
-                                                        <span>{triageReasonText}</span>
                                                     </span>
-                                                    <span className="project-triage-entry__side">
-                                                        <span className="project-triage-entry__count">
-                                                            {t('projectOverview.triage.summaryOpen').replace('{count}', String(triageOpenTasks.length))}
+                                                    {triageSignalStats.length > 0 && (
+                                                        <span className="project-triage-card__stats">
+                                                            {triageSignalStats.map(stat => (
+                                                                <span
+                                                                    key={stat.key}
+                                                                    className={`project-triage-stat project-triage-stat--${stat.tone}`}
+                                                                >
+                                                                    <span className="project-triage-stat__count">{stat.count}</span>
+                                                                    <span className="project-triage-stat__label">{stat.label}</span>
+                                                                </span>
+                                                            ))}
                                                         </span>
-                                                        <span className="project-triage-entry__action">
+                                                    )}
+                                                    <span className="project-triage-card__cta">
+                                                        <span className="project-triage-card__cta-label">
                                                             {t('projectOverview.triage.signal.open')}
                                                         </span>
+                                                        <span className="project-triage-card__cta-arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
                                                     </span>
-                                                    <span className="project-triage-entry__chevron" aria-hidden="true" />
                                                 </button>
                                             )}
                                             {secondaryCardsToRender.map(renderOverviewCard)}
@@ -4016,7 +4330,6 @@ export const ProjectOverview = () => {
                                 </div>
                             </div>
 
-                            {projectIsCompanyProject && renderStartupWorkstreamsModal()}
                             {projectIsCompanyProject && renderStartupBriefingModal()}
 
                             {/* Gallery Modal */}

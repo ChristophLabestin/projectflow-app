@@ -56,6 +56,16 @@
   --color-warning-rgb: 245, 158, 11;
   --color-error-rgb: 239, 68, 68;
 
+  /* Priority */
+  --priority-urgent: #7c3aed;
+  --priority-urgent-rgb: 124, 58, 237;
+  --priority-high: #ef4444;
+  --priority-high-rgb: 239, 68, 68;
+  --priority-medium: #3b82f6;
+  --priority-medium-rgb: 59, 130, 246;
+  --priority-low: #94a3b8;
+  --priority-low-rgb: 148, 163, 184;
+
   /* Pre-beta blue palette */
   --color-blue-100: #dbeafe;
   --color-blue-500: #3b82f6;
@@ -142,4 +152,14 @@ html.dark {
 
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+  /* Priority — slightly brighter on dark backgrounds */
+  --priority-urgent: #a78bfa;
+  --priority-urgent-rgb: 167, 139, 250;
+  --priority-high: #f87171;
+  --priority-high-rgb: 248, 113, 113;
+  --priority-medium: #60a5fa;
+  --priority-medium-rgb: 96, 165, 250;
+  --priority-low: #94a3b8;
+  --priority-low-rgb: 148, 163, 184;
 }
