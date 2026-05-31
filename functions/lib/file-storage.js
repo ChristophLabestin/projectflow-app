@@ -255,12 +255,38 @@ const createS3Client = (s3) => {
         },
     });
 };
-const fileBucket = () => {
-    const bucket = admin.storage().bucket();
-    if (!(bucket === null || bucket === void 0 ? void 0 : bucket.name)) {
-        throw new functions.https.HttpsError('failed-precondition', 'Firebase storage bucket is not configured.');
+const resolveDefaultFirebaseBucketName = () => {
+    const appOptions = admin.app().options;
+    const explicitBucket = normalizeString(appOptions.storageBucket);
+    if (explicitBucket) {
+        return explicitBucket;
     }
-    return bucket;
+    const projectId = normalizeString(appOptions.projectId)
+        || normalizeString(process.env.GCLOUD_PROJECT)
+        || normalizeString(process.env.GCP_PROJECT);
+    if (!projectId) {
+        return '';
+    }
+    // New Firebase projects default to *.firebasestorage.app, while legacy
+    // projects may still use *.appspot.com. Prefer the modern default.
+    return `${projectId}.firebasestorage.app`;
+};
+const fileBucket = () => {
+    const bucketName = resolveDefaultFirebaseBucketName();
+    try {
+        const bucket = bucketName
+            ? admin.storage().bucket(bucketName)
+            : admin.storage().bucket();
+        if (!(bucket === null || bucket === void 0 ? void 0 : bucket.name)) {
+            throw new Error('empty-bucket-name');
+        }
+        return bucket;
+    }
+    catch (error) {
+        const details = normalizeString(error === null || error === void 0 ? void 0 : error.message);
+        const suffix = details ? ` ${details}` : '';
+        throw new functions.https.HttpsError('failed-precondition', `Firebase storage bucket is not configured for file uploads.${suffix}`.trim());
+    }
 };
 const firstDownloadToken = (value) => normalizeString(value)
     .split(',')

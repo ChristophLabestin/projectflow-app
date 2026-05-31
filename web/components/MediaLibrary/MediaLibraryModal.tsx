@@ -14,6 +14,7 @@ import { Button } from '../ui/Button';
 import { downloadFile } from '../../utils/download';
 import { useLanguage } from '../../context/LanguageContext';
 import { deleteTenantFile, listTenantFiles, uploadTenantFile } from '../../services/fileStorageService';
+import { getCachedTenantId } from '../../services/internal/workspaceDataCore';
 
 
 interface MediaAsset {
@@ -98,6 +99,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const confirm = useConfirm();
     const { t } = useLanguage();
     const canBrowseTenantMedia = collectionType === 'project' && !deferredUpload && !storagePath;
+    const resolveTenantIdForMedia = useCallback(() => {
+        return tenantId || getCachedTenantId() || auth.currentUser?.uid || '';
+    }, [tenantId]);
+    const resolveUserIdForMedia = useCallback(() => {
+        return userId || auth.currentUser?.uid || '';
+    }, [userId]);
     const aiStyles = [
         { value: 'Photographic', label: t('mediaLibrary.ai.styles.photographic') },
         { value: 'Digital Art', label: t('mediaLibrary.ai.styles.digitalArt') },
@@ -143,7 +150,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         let cancelled = false;
         const loadProjectNames = async () => {
-            const resolvedTenantId = tenantId || auth.currentUser?.uid;
+            const resolvedTenantId = resolveTenantIdForMedia();
             if (!resolvedTenantId) return;
 
             try {
@@ -164,7 +171,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         return () => {
             cancelled = true;
         };
-    }, [canBrowseTenantMedia, isOpen, showTenantMedia, tenantId]);
+    }, [canBrowseTenantMedia, isOpen, resolveTenantIdForMedia, showTenantMedia]);
 
     const loadStockImages = async (query?: string) => {
         setIsStockLoading(true);
@@ -235,10 +242,13 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         const fetchExistingAssets = async () => {
             setIsLoading(true);
-            const resolvedTenantId = tenantId || auth.currentUser?.uid;
-            const resolvedUserId = userId || auth.currentUser?.uid;
+            const resolvedTenantId = resolveTenantIdForMedia();
+            const resolvedUserId = resolveUserIdForMedia();
 
-            if (!resolvedTenantId || deferredUpload) return;
+            if (!resolvedTenantId || deferredUpload) {
+                setIsLoading(false);
+                return;
+            }
 
             try {
                 let allItems: any[] = [];
@@ -361,7 +371,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         };
 
         fetchExistingAssets();
-    }, [canBrowseTenantMedia, collectionType, isOpen, projectId, showTenantMedia, storagePath, tenantId, userId]);
+    }, [canBrowseTenantMedia, collectionType, isOpen, projectId, resolveTenantIdForMedia, resolveUserIdForMedia, showTenantMedia, storagePath]);
 
     // Combine existing assets with newly uploaded ones, filtered by current project or uncategorized.
     const allAssets = useMemo(() => {
@@ -435,8 +445,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         setIsUploading(true);
 
         // Resolve tenant ID - use provided, or fall back to current user
-        const resolvedTenantId = tenantId || auth.currentUser?.uid;
-        const resolvedUserId = userId || auth.currentUser?.uid;
+        const resolvedTenantId = resolveTenantIdForMedia();
+        const resolvedUserId = resolveUserIdForMedia();
 
         if (!resolvedTenantId && !deferredUpload) {
             showError(t('mediaLibrary.upload.authRequired'));
@@ -559,8 +569,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         if (!editingImage) return;
         setIsUploading(true);
         try {
-            const resolvedTenantId = tenantId || auth.currentUser?.uid;
-            const resolvedUserId = userId || auth.currentUser?.uid;
+            const resolvedTenantId = resolveTenantIdForMedia();
+            const resolvedUserId = resolveUserIdForMedia();
             if (!resolvedTenantId) {
                 throw new Error(t('mediaLibrary.upload.authRequired'));
             }
@@ -708,7 +718,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         );
         if (!confirmed) return;
 
-        const resolvedTenantId = tenantId || auth.currentUser?.uid;
+        const resolvedTenantId = resolveTenantIdForMedia();
+        const resolvedUserId = resolveUserIdForMedia();
         if (!resolvedTenantId) return;
 
         try {
@@ -720,7 +731,6 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             }
 
             // Delete from Storage
-            const resolvedUserId = userId || auth.currentUser?.uid;
             let path = '';
 
             if (storagePath) {

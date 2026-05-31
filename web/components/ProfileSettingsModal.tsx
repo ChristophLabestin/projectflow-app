@@ -7,6 +7,7 @@ import { useToast } from '../context/UIContext';
 import { auth } from '../services/firebase';
 import { linkWithGithub } from '../services/dataService';
 import { getUserProfile, updateUserData, updateUserProfile } from '../services/domain/usersService';
+import { getCachedTenantId } from '../services/internal/workspaceDataCore';
 import { MediaLibrary } from './MediaLibrary/MediaLibraryModal';
 import { PrivacySettings, PrivacyScope } from '../types';
 
@@ -387,7 +388,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 projectId="uncategorized"
                 collectionType="user"
                 userId={auth.currentUser?.uid}
-                tenantId={auth.currentUser?.uid}
+                tenantId={getCachedTenantId() || auth.currentUser?.uid}
                 onSelect={(asset) => {
                     if (mediaTarget === 'avatar') {
                         setPhotoURL(asset.url);

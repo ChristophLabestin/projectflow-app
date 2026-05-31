@@ -7,7 +7,7 @@ import { Select } from '../common/Select/Select';
 import { Checkbox } from '../common/Checkbox/Checkbox';
 import { Badge } from '../common/Badge/Badge';
 import { CompanyProjectRole, Project, ProjectExternalResource, ProjectResourceSensitivity, ProjectResourceType, WorkspaceGroup, CustomRole, ProjectCadence, ProjectCategory, ProjectDateConfidence, ProjectOperatingMode, ProjectTemplateId, ProjectType } from '../../types';
-import { PROJECT_TEMPLATE_DEFINITIONS, getProjectTemplateDefinition, getStartupJurisdictionTemplate, isCompanyProject, isSoftwareProject, resolveProjectTemplateId } from '../../config/projectTemplates';
+import { PROJECT_TEMPLATE_DEFINITIONS, getProjectTemplateDefinition, isCompanyProject, isSoftwareProject, resolveProjectTemplateId } from '../../config/projectTemplates';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 
 import { ProjectTeamManager } from './ProjectTeamManager';
@@ -33,11 +33,6 @@ interface ProjectEditModalProps {
 }
 
 export type Tab = 'general' | 'briefing' | 'team' | 'roles' | 'appearance' | 'modules' | 'navigation' | 'integrations' | 'resources';
-
-type StartupBusinessModel = NonNullable<Project['startupProfile']>['businessModel'];
-type StartupFormationStatus = NonNullable<Project['startupProfile']>['formationStatus'];
-type StartupFundingRoute = NonNullable<Project['startupProfile']>['fundingRoute'];
-type StartupRegulatedIndustryStatus = NonNullable<Project['startupProfile']>['regulatedIndustryStatus'];
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
@@ -66,16 +61,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [companyProjectId, setCompanyProjectId] = useState(project.companyProjectId || '');
     const [companyProjectRole, setCompanyProjectRole] = useState<CompanyProjectRole>(project.companyProjectRole || 'other');
     const [companyProjects, setCompanyProjects] = useState<Project[]>([]);
-    const [startupTargetCustomer, setStartupTargetCustomer] = useState(project.startupProfile?.targetCustomer || '');
-    const [startupBusinessModel, setStartupBusinessModel] = useState<StartupBusinessModel | ''>(project.startupProfile?.businessModel || '');
-    const [startupFormationStatus, setStartupFormationStatus] = useState<StartupFormationStatus>(project.startupProfile?.formationStatus || 'idea');
-    const [startupJurisdictionCountry, setStartupJurisdictionCountry] = useState(project.startupProfile?.jurisdictionCountry || '');
-    const [startupJurisdictionRegion, setStartupJurisdictionRegion] = useState(project.startupProfile?.jurisdictionRegion || '');
-    const [startupFundingRoute, setStartupFundingRoute] = useState<StartupFundingRoute>(project.startupProfile?.fundingRoute || 'undecided');
-    const [startupRegulatedIndustryStatus, setStartupRegulatedIndustryStatus] = useState<StartupRegulatedIndustryStatus>(project.startupProfile?.regulatedIndustryStatus || (project.startupProfile?.regulatedIndustry === true ? 'yes' : 'unknown'));
-    const [startupHasCoFounders, setStartupHasCoFounders] = useState(project.startupProfile?.hasCoFounders || false);
-    const [startupHasEmployeesPlanned, setStartupHasEmployeesPlanned] = useState(project.startupProfile?.hasEmployeesPlanned || false);
-    const [startupReadiness, setStartupReadiness] = useState(project.startupReadiness || {});
     const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>(project.operatingMode || project.operatingModel?.mode || 'build');
     const [cadence, setCadence] = useState<ProjectCadence>(project.brief?.cadence || project.operatingModel?.cadence || 'weekly');
     const [dateConfidence, setDateConfidence] = useState<ProjectDateConfidence>(project.dateConfidence || project.operatingModel?.dateConfidence || 'target');
@@ -150,16 +135,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setProjectType(project.projectType || 'standard');
             setCompanyProjectId(project.companyProjectId || '');
             setCompanyProjectRole(project.companyProjectRole || 'other');
-            setStartupTargetCustomer(project.startupProfile?.targetCustomer || '');
-            setStartupBusinessModel(project.startupProfile?.businessModel || '');
-            setStartupFormationStatus(project.startupProfile?.formationStatus || 'idea');
-            setStartupJurisdictionCountry(project.startupProfile?.jurisdictionCountry || '');
-            setStartupJurisdictionRegion(project.startupProfile?.jurisdictionRegion || '');
-            setStartupFundingRoute(project.startupProfile?.fundingRoute || 'undecided');
-            setStartupRegulatedIndustryStatus(project.startupProfile?.regulatedIndustryStatus || (project.startupProfile?.regulatedIndustry === true ? 'yes' : 'unknown'));
-            setStartupHasCoFounders(project.startupProfile?.hasCoFounders || false);
-            setStartupHasEmployeesPlanned(project.startupProfile?.hasEmployeesPlanned || false);
-            setStartupReadiness(project.startupReadiness || {});
             setOperatingMode(project.operatingMode || project.operatingModel?.mode || 'build');
             setCadence(project.brief?.cadence || project.operatingModel?.cadence || 'weekly');
             setDateConfidence(project.dateConfidence || project.operatingModel?.dateConfidence || 'target');
@@ -308,8 +283,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     ...resolvedRisks
                 ]
                 : resolvedRisks;
-            const startupJurisdictionTemplate = getStartupJurisdictionTemplate(startupJurisdictionCountry, startupJurisdictionRegion);
-
             // Save project settings
             await onSave({
                 title,
@@ -322,27 +295,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 projectType,
                 companyProjectId: isCompanyProject({ projectCategory, templateId, projectType }) ? '' : companyProjectId,
                 companyProjectRole: companyProjectId ? companyProjectRole : 'other',
-                ...(isCompanyProject({ projectCategory, templateId, projectType }) && {
-                    startupProfile: {
-                        ...(project.startupProfile || {}),
-                        workingName: title,
-                        targetCustomer: startupTargetCustomer.trim() || undefined,
-                        formationStatus: startupFormationStatus,
-                        businessModel: startupBusinessModel || undefined,
-                        fundingRoute: startupFundingRoute,
-                        jurisdictionCountry: startupJurisdictionCountry.trim() || undefined,
-                        jurisdictionRegion: startupJurisdictionRegion.trim() || undefined,
-                        jurisdictionTemplateId: startupJurisdictionTemplate.id,
-                        jurisdictionSources: startupJurisdictionTemplate.sourceReferences,
-                        jurisdictionSourcesReviewedAt: startupJurisdictionTemplate.sourceReferences[0]?.lastReviewedAt,
-                        advisorReviewRequired: startupJurisdictionTemplate.advisorReviewRequired,
-                        regulatedIndustryStatus: startupRegulatedIndustryStatus,
-                        regulatedIndustry: startupRegulatedIndustryStatus === 'yes',
-                        hasCoFounders: startupHasCoFounders,
-                        hasEmployeesPlanned: startupHasEmployeesPlanned
-                    },
-                    startupReadiness
-                }),
                 operatingMode,
                 dateConfidence,
                 brief: {
@@ -482,40 +434,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { value: 'other', label: t('projectCompanyRoles.other') }
     ];
     const currentTemplateIsCompanyProject = isCompanyProject({ projectCategory, templateId, projectType });
-    const startupBusinessModelOptions = [
-        { value: '', label: t('createProjectWizard.startup.businessModel.unknown') },
-        { value: 'saas', label: t('createProjectWizard.startup.businessModel.saas') },
-        { value: 'service', label: t('createProjectWizard.startup.businessModel.service') },
-        { value: 'marketplace', label: t('createProjectWizard.startup.businessModel.marketplace') },
-        { value: 'commerce', label: t('createProjectWizard.startup.businessModel.commerce') },
-        { value: 'content', label: t('createProjectWizard.startup.businessModel.content') },
-        { value: 'hardware', label: t('createProjectWizard.startup.businessModel.hardware') },
-        { value: 'agency', label: t('createProjectWizard.startup.businessModel.agency') },
-        { value: 'other', label: t('createProjectWizard.startup.businessModel.other') }
-    ];
-    const startupFormationStatusOptions = [
-        { value: 'idea', label: t('createProjectWizard.startup.stage.idea') },
-        { value: 'validating', label: t('createProjectWizard.startup.stage.validating') },
-        { value: 'preparing', label: t('createProjectWizard.startup.stage.preparing') },
-        { value: 'filed', label: t('createProjectWizard.startup.stage.filed') },
-        { value: 'registered', label: t('createProjectWizard.startup.stage.registered') },
-        { value: 'operating', label: t('createProjectWizard.startup.stage.operating') }
-    ];
-    const startupFundingRouteOptions = [
-        { value: 'undecided', label: t('createProjectWizard.startup.funding.undecided') },
-        { value: 'bootstrapped', label: t('createProjectWizard.startup.funding.bootstrapped') },
-        { value: 'grant', label: t('createProjectWizard.startup.funding.grant') },
-        { value: 'loan', label: t('createProjectWizard.startup.funding.loan') },
-        { value: 'angel', label: t('createProjectWizard.startup.funding.angel') },
-        { value: 'vc', label: t('createProjectWizard.startup.funding.vc') },
-        { value: 'crowdfunding', label: t('createProjectWizard.startup.funding.crowdfunding') },
-        { value: 'revenue_funded', label: t('createProjectWizard.startup.funding.revenueFunded') }
-    ];
-    const startupRegulatedIndustryOptions = [
-        { value: 'unknown', label: t('createProjectWizard.startup.regulated.unknown') },
-        { value: 'yes', label: t('createProjectWizard.startup.regulated.yes') },
-        { value: 'no', label: t('createProjectWizard.startup.regulated.no') }
-    ];
     const resourceTypeOptions: Array<{ value: ProjectResourceType; label: string }> = [
         { value: 'general', label: t('projectSettings.resources.type.general') },
         { value: 'legal', label: t('projectSettings.resources.type.legal') },
@@ -538,7 +456,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'Viewer', name: t('projectSettings.resources.role.viewer') },
         ...customRoles.map(role => ({ id: role.id, name: role.name }))
     ];
-    const selectedStartupJurisdictionTemplate = getStartupJurisdictionTemplate(startupJurisdictionCountry, startupJurisdictionRegion);
     const updateExternalResource = (idx: number, updates: Partial<ProjectExternalResource>) => {
         setExternalResources(current => current.map((resource, resourceIndex) => (
             resourceIndex === idx ? { ...resource, ...updates } : resource
@@ -556,20 +473,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             return { ...resource, restrictedToRoleIds: Array.from(selectedRoles) };
         }));
     };
-    const startupReadinessOptions: Array<{ key: keyof NonNullable<Project['startupReadiness']>; label: string }> = [
-        { key: 'legalStructureDecided', label: t('projectSettings.startup.readiness.legalStructureDecided') },
-        { key: 'founderAgreementReady', label: t('projectSettings.startup.readiness.founderAgreementReady') },
-        { key: 'ipAssignmentReady', label: t('projectSettings.startup.readiness.ipAssignmentReady') },
-        { key: 'registrationSubmitted', label: t('projectSettings.startup.readiness.registrationSubmitted') },
-        { key: 'registrationConfirmed', label: t('projectSettings.startup.readiness.registrationConfirmed') },
-        { key: 'taxSetupReady', label: t('projectSettings.startup.readiness.taxSetupReady') },
-        { key: 'bankAccountReady', label: t('projectSettings.startup.readiness.bankAccountReady') },
-        { key: 'bookkeepingReady', label: t('projectSettings.startup.readiness.bookkeepingReady') },
-        { key: 'privacyDocsReady', label: t('projectSettings.startup.readiness.privacyDocsReady') },
-        { key: 'requiredPermitsKnown', label: t('projectSettings.startup.readiness.requiredPermitsKnown') },
-        { key: 'launchOfferReady', label: t('projectSettings.startup.readiness.launchOfferReady') },
-        { key: 'firstChannelReady', label: t('projectSettings.startup.readiness.firstChannelReady') }
-    ];
     const operatingModeOptions = [
         { value: 'explore', label: t('projectSettings.brief.mode.explore') },
         { value: 'build', label: t('projectSettings.brief.mode.build') },
@@ -644,101 +547,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     </div>
                 )}
             </section>
-
-            {currentTemplateIsCompanyProject && (
-                <section className="project-edit-modal__form-section">
-                    <div className="project-edit-modal__section-header">
-                        <div>
-                            <h3 className="project-edit-modal__section-heading">{t('projectSettings.startup.title')}</h3>
-                        </div>
-                    </div>
-                    <div className="project-edit-modal__grid project-edit-modal__grid--two">
-                        <TextInput
-                            label={t('createProjectWizard.startup.targetCustomer.label')}
-                            value={startupTargetCustomer}
-                            onChange={(e) => setStartupTargetCustomer(e.target.value)}
-                        />
-                        <Select
-                            label={t('createProjectWizard.startup.businessModel.label')}
-                            value={startupBusinessModel || ''}
-                            onChange={(value) => setStartupBusinessModel(String(value) as StartupBusinessModel | '')}
-                            options={startupBusinessModelOptions}
-                        />
-                        <Select
-                            label={t('createProjectWizard.startup.stage.label')}
-                            value={startupFormationStatus}
-                            onChange={(value) => setStartupFormationStatus(value as StartupFormationStatus)}
-                            options={startupFormationStatusOptions}
-                        />
-                        <Select
-                            label={t('createProjectWizard.startup.funding.label')}
-                            value={startupFundingRoute}
-                            onChange={(value) => setStartupFundingRoute(value as StartupFundingRoute)}
-                            options={startupFundingRouteOptions}
-                        />
-                        <TextInput
-                            label={t('createProjectWizard.startup.jurisdictionCountry.label')}
-                            value={startupJurisdictionCountry}
-                            onChange={(e) => setStartupJurisdictionCountry(e.target.value)}
-                        />
-                        <TextInput
-                            label={t('createProjectWizard.startup.jurisdictionRegion.label')}
-                            value={startupJurisdictionRegion}
-                            onChange={(e) => setStartupJurisdictionRegion(e.target.value)}
-                        />
-                        <Select
-                            label={t('createProjectWizard.startup.regulated.label')}
-                            value={startupRegulatedIndustryStatus}
-                            onChange={(value) => setStartupRegulatedIndustryStatus(value as StartupRegulatedIndustryStatus)}
-                            options={startupRegulatedIndustryOptions}
-                        />
-                        <div className="project-edit-modal__checkbox-list">
-                            <Checkbox
-                                checked={startupHasCoFounders}
-                                onChange={(event) => setStartupHasCoFounders(event.target.checked)}
-                                label={t('createProjectWizard.startup.hasCoFounders')}
-                            />
-                            <Checkbox
-                                checked={startupHasEmployeesPlanned}
-                                onChange={(event) => setStartupHasEmployeesPlanned(event.target.checked)}
-                                label={t('createProjectWizard.startup.hasEmployees')}
-                            />
-                        </div>
-                    </div>
-                    <div className="project-edit-modal__source-panel">
-                        <div>
-                            <span>{t('createProjectWizard.startup.jurisdictionTemplate.label')}</span>
-                            <strong>{t(selectedStartupJurisdictionTemplate.labelKey)}</strong>
-                            <p>{t(selectedStartupJurisdictionTemplate.descriptionKey)}</p>
-                        </div>
-                        {selectedStartupJurisdictionTemplate.sourceReferences.length > 0 && (
-                            <div className="project-edit-modal__source-list">
-                                {selectedStartupJurisdictionTemplate.sourceReferences.map(reference => (
-                                    <a key={reference.id} href={reference.url} target="_blank" rel="noopener noreferrer">
-                                        {t(reference.labelKey)}
-                                    </a>
-                                ))}
-                            </div>
-                        )}
-                        <small>
-                            {t('createProjectWizard.startup.jurisdictionTemplate.reviewed').replace('{date}', selectedStartupJurisdictionTemplate.sourceReferences[0]?.lastReviewedAt || t('common.notAvailable'))}
-                        </small>
-                    </div>
-                    <div className="project-edit-modal__checkbox-list project-edit-modal__checkbox-list--grid">
-                        {startupReadinessOptions.map(option => (
-                            <Checkbox
-                                key={option.key}
-                                checked={startupReadiness[option.key] === true}
-                                onChange={(event) => setStartupReadiness(current => ({
-                                    ...current,
-                                    [option.key]: event.target.checked
-                                }))}
-                                label={option.label}
-                            />
-                        ))}
-                    </div>
-                </section>
-            )}
 
             <section className="project-edit-modal__form-section">
                 <div className="project-edit-modal__section-header">
@@ -988,11 +796,20 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             {/* Cover Image */}
                             <div className="project-edit-modal__media-block">
                                 <label className="project-edit-modal__media-label">{t('projectSettings.appearance.coverLabel')}</label>
-                                <button
-                                    type="button"
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={t('projectSettings.appearance.coverChange')}
                                     className="project-edit-modal__media-preview project-edit-modal__media-preview--cover"
                                     data-has-image={coverImage ? 'true' : 'false'}
                                     onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setMediaTarget('cover');
+                                            setShowMediaLibrary(true);
+                                        }
+                                    }}
                                 >
                                     {coverImage ? (
                                         <>
@@ -1014,17 +831,26 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             <span className="project-edit-modal__media-empty-text">{t('projectSettings.appearance.coverUpload')}</span>
                                         </div>
                                     )}
-                                </button>
+                                </div>
                             </div>
 
                             {/* Icon */}
                             <div className="project-edit-modal__media-block">
                                 <label className="project-edit-modal__media-label">{t('projectSettings.appearance.iconLabel')}</label>
-                                <button
-                                    type="button"
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    aria-label={t('projectSettings.appearance.iconChange')}
                                     className="project-edit-modal__media-preview project-edit-modal__media-preview--icon"
                                     data-has-image={squareIcon ? 'true' : 'false'}
                                     onClick={() => { setMediaTarget('icon'); setShowMediaLibrary(true); }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' || e.key === ' ') {
+                                            e.preventDefault();
+                                            setMediaTarget('icon');
+                                            setShowMediaLibrary(true);
+                                        }
+                                    }}
                                 >
                                     {squareIcon ? (
                                         <>
@@ -1046,7 +872,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             <span className="project-edit-modal__media-empty-text">{t('projectSettings.appearance.iconUpload')}</span>
                                         </div>
                                     )}
-                                </button>
+                                </div>
                             </div>
                         </div>
                     </div>
