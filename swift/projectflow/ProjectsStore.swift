@@ -41,6 +41,9 @@ final class ProjectsStore: ObservableObject {
     func stop() {
         listener?.remove()
         listener = nil
+        projects = []
+        isLoading = false
+        errorMessage = nil
     }
 
     func createProject(

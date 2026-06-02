@@ -7,6 +7,7 @@ import FirebaseStorage
 struct ProjectsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var appSession: AppSession
     @StateObject private var store = ProjectsStore()
     @StateObject private var tenantStore = TenantStore()
     @StateObject private var pinnedProjectStore = PinnedProjectStore()
@@ -46,20 +47,25 @@ struct ProjectsView: View {
         )
         let withAppear = AnyView(base.onAppear {
             tenantStore.update(for: session.user)
-            if let tenantId = tenantStore.activeTenantId {
-                startStores(tenantId: tenantId)
-            }
+            syncStoresWithTenant()
         })
         let withSessionChange = AnyView(withAppear.onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
+            syncStoresWithTenant()
         })
-        let withTenantChange = AnyView(withSessionChange.onChange(of: tenantStore.activeTenantId) { _, tenantId in
-            if let tenantId {
-                startStores(tenantId: tenantId)
-            } else {
-                stopStores()
+        let withTenantChange = AnyView(withSessionChange
+            .onChange(of: appSession.activeTenantId) { _, _ in
+                tenantStore.update(for: session.user)
+                syncStoresWithTenant()
             }
-        })
+            .onChange(of: tenantStore.activeTenantId) { _, tenantId in
+                if let tenantId {
+                    startStores(tenantId: tenantId)
+                } else {
+                    stopStores()
+                }
+            }
+        )
         let withDisappear = AnyView(withTenantChange.onDisappear {
             stopStores()
         })
@@ -170,19 +176,59 @@ struct ProjectsView: View {
 
     private var content: some View {
         AnyView(
-            VStack(alignment: .leading, spacing: PFSpacing.xl) {
-                headerSection
-                quickActionsSection
-                loadingSection
-                errorSection
-                spotlightSection
-                focusSection
-                healthHighlightsSection
-                listSection
+            Group {
+                if appSession.isLoadingTenant && appSession.activeTenantId == nil {
+                    workspaceLoadingView
+                } else if appSession.tenantBootstrapFailed {
+                    workspaceMissingView
+                } else {
+                    VStack(alignment: .leading, spacing: PFSpacing.xl) {
+                        headerSection
+                        quickActionsSection
+                        loadingSection
+                        errorSection
+                        spotlightSection
+                        focusSection
+                        healthHighlightsSection
+                        listSection
+                    }
+                }
             }
             .pfScreenPadding()
             .frame(maxWidth: .infinity, alignment: .leading)
         )
+    }
+
+    private var workspaceLoadingView: some View {
+        VStack(spacing: PFSpacing.md) {
+            ProgressView()
+            Text("Loading workspace…")
+                .font(.subheadline)
+                .foregroundStyle(colors.textMuted)
+        }
+        .frame(maxWidth: .infinity, minHeight: 280)
+    }
+
+    private var workspaceMissingView: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                Label("No workspace found", systemImage: "building.2")
+                    .font(.headline)
+                    .foregroundStyle(colors.textMain)
+                Text("Open Settings and choose a workspace, or create a project on the web first.")
+                    .font(.subheadline)
+                    .foregroundStyle(colors.textMuted)
+            }
+        }
+    }
+
+    private func syncStoresWithTenant() {
+        let tenantId = appSession.activeTenantId ?? tenantStore.activeTenantId
+        if let tenantId {
+            startStores(tenantId: tenantId)
+        } else if !appSession.isLoadingTenant {
+            stopStores()
+        }
     }
 
     private var quickActionsSection: some View {
@@ -288,13 +334,19 @@ private struct WorkspaceStatCard: View {
 
     @ViewBuilder
     private var loadingSection: some View {
-        if tenantStore.isLoading || store.isLoading || insightsStore.isLoading {
+        if let tenantId = appSession.activeTenantId ?? tenantStore.activeTenantId,
+           store.isLoading || insightsStore.isLoading {
             PFCard {
                 HStack(spacing: PFSpacing.sm) {
                     ProgressView()
-                    Text("Syncing workspace data...")
+                    Text("Syncing workspace data…")
                         .font(.footnote)
                         .foregroundStyle(colors.textMuted)
+                }
+            }
+            .onAppear {
+                if !store.isLoading && store.projects.isEmpty {
+                    startStores(tenantId: tenantId)
                 }
             }
         }
@@ -451,12 +503,15 @@ private struct WorkspaceStatCard: View {
         if store.projects.isEmpty && !store.isLoading {
             PFCard {
                 VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                    Text("No projects yet.")
+                    Label("No projects yet", systemImage: "square.stack.3d.up")
                         .font(.headline)
                         .foregroundStyle(colors.textMain)
                     Text("Create a project to start tracking tasks, flows, and issues.")
                         .font(.subheadline)
                         .foregroundStyle(colors.textMuted)
+                    if appSession.activeTenantId != nil {
+                        PFPrimaryButton(title: "Create Project") { beginCreate() }
+                    }
                 }
             }
         } else if isFiltering {
@@ -484,8 +539,21 @@ private struct WorkspaceStatCard: View {
             }
         } else {
             VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                if !companyProjects.isEmpty {
+                    ProjectGroupSection(
+                        title: L10n.tr("projects.company", fallback: "Company Projects"),
+                        subtitle: "Startup and company command centers.",
+                        tint: colors.primaryFade,
+                        projects: companyProjects,
+                        emptyTitle: "",
+                        emptyMessage: "",
+                        actionTitle: nil,
+                        onAction: nil
+                    ) { projectCards(for: companyProjects) }
+                }
+
                 ProjectGroupSection(
-                    title: "Active Projects",
+                    title: L10n.tr("projects.active", fallback: "Active Projects"),
                     subtitle: "Work in motion and priorities in progress.",
                     tint: colors.primaryFade,
                     projects: activeProjects,
@@ -495,27 +563,57 @@ private struct WorkspaceStatCard: View {
                     onAction: { beginCreate() }
                 ) { projectCards(for: activeProjects) }
 
-                ProjectGroupSection(
-                    title: "Planning & On Hold",
-                    subtitle: "Paused or preparing for the next cycle.",
-                    tint: colors.surfaceHover,
-                    projects: planningProjects,
-                    emptyTitle: "Nothing in planning right now.",
-                    emptyMessage: "Move projects here when you're outlining the next wave.",
-                    actionTitle: nil,
-                    onAction: nil
-                ) { projectCards(for: planningProjects) }
+                if !planningProjects.isEmpty {
+                    ProjectGroupSection(
+                        title: L10n.tr("projects.planning", fallback: "Planning & Backlog"),
+                        subtitle: "Preparing for the next cycle.",
+                        tint: colors.surfaceHover,
+                        projects: planningProjects,
+                        emptyTitle: nil,
+                        emptyMessage: nil,
+                        actionTitle: nil,
+                        onAction: nil
+                    ) { projectCards(for: planningProjects) }
+                }
 
-                ProjectGroupSection(
-                    title: "Completed",
-                    subtitle: "Recently finished initiatives.",
-                    tint: colors.surfaceHover,
-                    projects: completedProjects,
-                    emptyTitle: "No completed projects yet.",
-                    emptyMessage: "Completed work will show up here for celebration and review.",
-                    actionTitle: nil,
-                    onAction: nil
-                ) { projectCards(for: completedProjects) }
+                if !pausedProjects.isEmpty {
+                    ProjectGroupSection(
+                        title: L10n.tr("projects.paused", fallback: "Paused"),
+                        subtitle: "Temporarily on hold.",
+                        tint: colors.surfaceHover,
+                        projects: pausedProjects,
+                        emptyTitle: nil,
+                        emptyMessage: nil,
+                        actionTitle: nil,
+                        onAction: nil
+                    ) { projectCards(for: pausedProjects) }
+                }
+
+                if !completedProjects.isEmpty {
+                    ProjectGroupSection(
+                        title: L10n.tr("projects.completed", fallback: "Completed"),
+                        subtitle: "Recently finished initiatives.",
+                        tint: colors.surfaceHover,
+                        projects: completedProjects,
+                        emptyTitle: nil,
+                        emptyMessage: nil,
+                        actionTitle: nil,
+                        onAction: nil
+                    ) { projectCards(for: completedProjects) }
+                }
+
+                if !canceledProjects.isEmpty {
+                    ProjectGroupSection(
+                        title: L10n.tr("projects.canceled", fallback: "Canceled"),
+                        subtitle: "Stopped work kept for reference.",
+                        tint: colors.surfaceHover,
+                        projects: canceledProjects,
+                        emptyTitle: nil,
+                        emptyMessage: nil,
+                        actionTitle: nil,
+                        onAction: nil
+                    ) { projectCards(for: canceledProjects) }
+                }
 
                 if !otherProjects.isEmpty {
                     ProjectGroupSection(
@@ -544,7 +642,6 @@ private struct WorkspaceStatCard: View {
 
     private func stopStores() {
         store.stop()
-        tenantStore.stop()
         pinnedProjectStore.stop()
         insightsStore.stop()
         focusStore.stop()
@@ -734,36 +831,56 @@ private struct WorkspaceStatCard: View {
         return combined.filter { !$0.title.isEmpty && !$0.url.isEmpty }
     }
 
+    private var companyProjects: [Project] {
+        projectsForGrid.filter { $0.isCompanyProject }
+    }
+
+    private var workstreamProjects: [Project] {
+        projectsForGrid.filter { $0.isWorkstream }
+    }
+
     private var activeProjects: [Project] {
-        projectsForGrid.filter { isActiveStatus($0.status) }
+        projectsForGrid.filter { ProjectStatus.isActive($0.status) && !$0.isCompanyProject && !$0.isWorkstream }
     }
 
     private var planningProjects: [Project] {
-        projectsForGrid.filter { isPlanningStatus($0.status) }
+        projectsForGrid.filter { ProjectStatus.isPlanning($0.status) && !$0.isCompanyProject }
+    }
+
+    private var pausedProjects: [Project] {
+        projectsForGrid.filter { ProjectStatus.isPaused($0.status) }
     }
 
     private var completedProjects: [Project] {
-        projectsForGrid.filter { isCompletedStatus($0.status) }
+        projectsForGrid.filter { ProjectStatus.isCompleted($0.status) }
+    }
+
+    private var canceledProjects: [Project] {
+        projectsForGrid.filter { ProjectStatus.isCanceled($0.status) }
     }
 
     private var otherProjects: [Project] {
         projectsForGrid.filter {
-            !isActiveStatus($0.status) && !isPlanningStatus($0.status) && !isCompletedStatus($0.status)
+            !ProjectStatus.isActive($0.status)
+                && !ProjectStatus.isPlanning($0.status)
+                && !ProjectStatus.isPaused($0.status)
+                && !ProjectStatus.isCompleted($0.status)
+                && !ProjectStatus.isCanceled($0.status)
+                && !$0.isCompanyProject
+                && !$0.isWorkstream
         }
     }
 
     private func isActiveStatus(_ status: String) -> Bool {
-        let key = status.lowercased()
-        return key == "active" || key == "in progress" || key == "in-progress"
+        ProjectStatus.isActive(status)
     }
 
     private func isPlanningStatus(_ status: String) -> Bool {
-        let key = status.lowercased()
-        return key == "on hold" || key == "on-hold" || key == "planning"
+        ProjectStatus.isPlanning(status)
     }
 
     private func isCompletedStatus(_ status: String) -> Bool {
-        status.lowercased() == "completed"
+        ProjectStatus.isCompleted(status)
     }
 
     @ViewBuilder
@@ -1772,7 +1889,7 @@ private struct ProjectDeadlineSummaryView: View {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: PFSpacing.sm) {
                     if workload.urgentTasks > 0 {
                         ProjectSignalChip(
-                            title: "Urgent Tasks",
+                            title: L10n.tr("deadline.urgentTasks", fallback: "Urgent Tasks"),
                             value: workload.urgentTasks,
                             systemImage: "exclamationmark.triangle.fill",
                             tint: colors.error
@@ -1781,7 +1898,7 @@ private struct ProjectDeadlineSummaryView: View {
 
                     if workload.urgentIssues > 0 {
                         ProjectSignalChip(
-                            title: "Urgent Issues",
+                            title: L10n.tr("deadline.urgentIssues", fallback: "Urgent Issues"),
                             value: workload.urgentIssues,
                             systemImage: "ladybug",
                             tint: colors.warning
@@ -1790,7 +1907,7 @@ private struct ProjectDeadlineSummaryView: View {
 
                     if workload.overdueCount > 0 {
                         ProjectSignalChip(
-                            title: "Overdue",
+                            title: L10n.tr("deadline.overdue", fallback: "Overdue"),
                             value: workload.overdueCount,
                             systemImage: "calendar.badge.exclamationmark",
                             tint: colors.error
@@ -1799,9 +1916,27 @@ private struct ProjectDeadlineSummaryView: View {
 
                     if workload.dueSoonCount > 0 {
                         ProjectSignalChip(
-                            title: "Due Soon",
+                            title: L10n.tr("deadline.dueSoon", fallback: "Due Soon"),
                             value: workload.dueSoonCount,
                             systemImage: "calendar",
+                            tint: accent
+                        )
+                    }
+
+                    if workload.milestoneDueSoonCount > 0 {
+                        ProjectSignalChip(
+                            title: L10n.tr("deadline.milestones", fallback: "Milestones"),
+                            value: workload.milestoneDueSoonCount,
+                            systemImage: "flag.checkered",
+                            tint: accent
+                        )
+                    }
+
+                    if workload.sprintEndingSoonCount > 0 {
+                        ProjectSignalChip(
+                            title: L10n.tr("deadline.sprints", fallback: "Sprints"),
+                            value: workload.sprintEndingSoonCount,
+                            systemImage: "figure.run",
                             tint: accent
                         )
                     }
@@ -1811,7 +1946,7 @@ private struct ProjectDeadlineSummaryView: View {
                     ProjectDeadlineRow(item: nextDue)
                 }
             } else {
-                Text("No urgent workload signals.")
+                Text(L10n.tr("deadline.noSignals", fallback: "No urgent workload signals."))
                     .font(.caption)
                     .foregroundStyle(colors.textMuted)
             }
@@ -1847,6 +1982,8 @@ private struct ProjectSignalChip: View {
         .padding(.vertical, PFSpacing.xs)
         .background(colors.surfacePaper)
         .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), \(value)")
     }
 }
 
@@ -1862,7 +1999,7 @@ private struct ProjectDeadlineRow: View {
                 Image(systemName: "calendar")
                     .font(.caption)
                     .foregroundStyle(dueTone(for: item.dueDate))
-                Text("Next due")
+                Text(L10n.tr("deadline.nextDue", fallback: "Next due"))
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(colors.textMuted)
                 Spacer()

@@ -1,17 +1,21 @@
 import SwiftUI
 import FirebaseCore // For Timestamp
 import FirebaseStorage
+import FirebaseFirestore
 
 
 struct ProjectOverviewView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var appSession: AppSession
     let project: Project
     let tenantId: String?
     @StateObject private var store = ProjectOverviewStore()
     @StateObject private var tenantStore = TenantStore()
     @State private var showingTeamManagement = false
     @State private var showingReport = false
+    @State private var navSelection: ProjectNavDestination = .overview
+    @State private var linkedProjects: [Project] = []
 
     init(project: Project, tenantId: String? = nil) {
         self.project = project
@@ -34,7 +38,7 @@ struct ProjectOverviewView: View {
         tenantId ?? project.tenantId
     }
     private var permissionContext: PermissionContext {
-        tenantStore.permissionContext(projectOwnerId: project.ownerId)
+        appSession.permissionContext(project: project)
     }
     private var healthSnapshot: ProjectHealthSnapshot {
         HealthService.calculateProjectHealth(
@@ -53,14 +57,19 @@ struct ProjectOverviewView: View {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 14) {
                     ProjectDetailHeaderCard(project: project, coverImageURL: store.coverImageURL)
-                    ProjectDetailAttentionCard(
-                        health: healthSnapshot,
-                        tasks: store.tasks,
-                        issues: store.issues,
-                        milestones: store.milestones,
-                        onOpenReport: { showingReport = true }
-                    )
-                    content
+                    ProjectModuleNavBar(project: project, permissions: permissionContext, selection: $navSelection)
+                    moduleDestination
+                    if navSelection == .overview {
+                        CompanyProjectOverviewSection(project: project, linkedProjects: linkedProjects)
+                        ProjectDetailAttentionCard(
+                            health: healthSnapshot,
+                            tasks: store.tasks,
+                            issues: store.issues,
+                            milestones: store.milestones,
+                            onOpenReport: { showingReport = true }
+                        )
+                        content
+                    }
                 }
                 .pfScreenPadding(vertical: PFSpacing.md)
                 .padding(.bottom, PFSpacing.xl)
@@ -97,6 +106,7 @@ struct ProjectOverviewView: View {
             tenantStore.update(for: session.user)
             guard let tenantId = resolvedTenantId else { return }
             store.start(tenantId: tenantId, projectId: project.id)
+            loadLinkedProjects(tenantId: tenantId)
         }
         .onChange(of: session.user) { _, user in
             tenantStore.update(for: user)
@@ -107,7 +117,46 @@ struct ProjectOverviewView: View {
         }
     }
 
-    private var content: some View {
+    @ViewBuilder
+    private var moduleDestination: some View {
+        if let tenantId = resolvedTenantId {
+            switch navSelection {
+            case .overview:
+                EmptyView()
+            case .initiatives:
+                InitiativesProjectListView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
+            case .tasks:
+                ProjectTaskListEmbed(tenantId: tenantId, projectId: project.id, tasks: store.tasks, permissions: permissionContext)
+            case .sprints:
+                ProjectSprintsView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
+            case .issues:
+                ProjectIssueListEmbed(tenantId: tenantId, issues: store.issues, permissions: permissionContext)
+            case .flows:
+                ProjectFlowListEmbed(tenantId: tenantId, flows: store.flows, permissions: permissionContext)
+            case .milestones:
+                ProjectMilestonesView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
+            case .activity:
+                ProjectActivityView(tenantId: tenantId, projectId: project.id)
+            case .codex:
+                ProjectCodexView(tenantId: tenantId, projectId: project.id)
+            case .details:
+                ProjectDetailsView(project: project, tenantId: tenantId, permissions: permissionContext)
+            }
+        }
+    }
+
+    private func loadLinkedProjects(tenantId: String) {
+        guard project.isCompanyProject else { return }
+        let db = Firestore.firestore()
+        db.collection(FirestorePath.tenants).document(tenantId)
+            .collection(FirestorePath.projects)
+            .whereField("companyProjectId", isEqualTo: project.id)
+            .getDocuments { snapshot, _ in
+                linkedProjects = snapshot?.documents.map { Project(id: $0.documentID, data: $0.data()) } ?? []
+            }
+    }
+
+    private var overviewContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             if let _ = resolvedTenantId {
                 if store.isLoading {
@@ -131,6 +180,10 @@ struct ProjectOverviewView: View {
                 }
             }
         }
+    }
+
+    private var content: some View {
+        overviewContent
     }
 
     @ViewBuilder
@@ -621,6 +674,7 @@ struct SnapshotSection: View {
 struct HealthWidget: View {
     let health: ProjectHealthSnapshot
     let history: [ProjectHealthSnapshotEntry]
+    @State private var showHealthDetail = false
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
     
@@ -695,6 +749,15 @@ struct HealthWidget: View {
             .padding(12)
         }
         .frame(minHeight: 120)
+        .contentShape(Rectangle())
+        .onTapGesture { showHealthDetail = true }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(L10n.tr("health.title", fallback: "Project Health")), score \(Int(health.score))")
+        .accessibilityHint("Double tap for health details and history")
+        .sheet(isPresented: $showHealthDetail) {
+            HealthDetailPopover(health: health, history: history)
+                .presentationDetents([.medium, .large])
+        }
     }
     
     func getTrendIcon(_ trend: HealthTrend) -> String {

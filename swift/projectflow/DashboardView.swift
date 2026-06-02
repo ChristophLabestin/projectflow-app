@@ -7,6 +7,7 @@ struct DashboardView: View {
     @Binding var selectedTab: MainTab
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
+    @EnvironmentObject private var appSession: AppSession
     @StateObject private var store = DashboardStore()
     @StateObject private var projectsStore = ProjectsStore()
     @StateObject private var pinnedProjectStore = PinnedProjectStore()
@@ -28,8 +29,24 @@ struct DashboardView: View {
             ZStack {
                 AppBackground()
 
-                ScrollView(showsIndicators: false) {
-                    content
+                if appSession.isLoadingTenant && appSession.activeTenantId == nil {
+                    VStack(spacing: PFSpacing.md) {
+                        ProgressView()
+                        Text("Loading workspace…")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                    }
+                } else if store.isLoading && store.projectCount == 0 {
+                    VStack(spacing: PFSpacing.md) {
+                        ProgressView()
+                        Text("Loading dashboard…")
+                            .font(.subheadline)
+                            .foregroundStyle(colors.textMuted)
+                    }
+                } else {
+                    ScrollView(showsIndicators: false) {
+                        content
+                    }
                 }
             }
 
@@ -42,17 +59,28 @@ struct DashboardView: View {
             store.start()
             pinnedTasksStore.start()
             tenantStore.update(for: session.user)
-            if let user = Auth.auth().currentUser,
-               let tenantId = TenantResolver.resolveTenantId(for: user) {
-                pinnedProjectStore.start(tenantId: tenantId)
-                projectsStore.start(tenantId: tenantId)
-            }
+            syncDashboardStores()
+        }
+        .onChange(of: appSession.activeTenantId) { _, _ in
+            tenantStore.update(for: session.user)
+            syncDashboardStores()
         }
         .onDisappear {
             store.stop()
             projectsStore.stop()
             pinnedProjectStore.stop()
             pinnedTasksStore.stop()
+        }
+    }
+
+    private func syncDashboardStores() {
+        let tenantId = appSession.activeTenantId ?? tenantStore.activeTenantId
+        if let tenantId {
+            pinnedProjectStore.start(tenantId: tenantId)
+            projectsStore.start(tenantId: tenantId)
+        } else {
+            projectsStore.stop()
+            pinnedProjectStore.stop()
         }
     }
 
@@ -71,8 +99,7 @@ struct DashboardView: View {
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Go to Projects") { selectedTab = .projects }
-                Button("Go to Tasks") { selectedTab = .tasks }
-                Button("Go to Issues") { selectedTab = .issues }
+                Button("Go to Work") { selectedTab = .work }
                 Button("Go to Focus") { selectedTab = .focus }
             } label: {
                 Image(systemName: "plus.circle")
@@ -81,8 +108,17 @@ struct DashboardView: View {
         }
 
         ToolbarItem(placement: .topBarTrailing) {
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Image(systemName: "gearshape")
+                    .foregroundStyle(colors.textMain)
+            }
+        }
+
+        ToolbarItem(placement: .topBarTrailing) {
             Button {
-                selectedTab = .notifications
+                selectedTab = .inbox
             } label: {
                 Image(systemName: "bell")
                     .foregroundStyle(colors.textMain)
@@ -198,7 +234,7 @@ struct DashboardView: View {
                     PFSectionHeader(title: "Due next", subtitle: "The next few things worth seeing")
                     Spacer()
                     Button {
-                        selectedTab = .tasks
+                        selectedTab = .work
                     } label: {
                         Text("Tasks")
                             .font(.caption.weight(.semibold))
@@ -241,13 +277,13 @@ struct DashboardView: View {
                 selectedTab = .projects
             }
             DashboardJumpButton(title: "Tasks", icon: "checklist", tint: colors.warning) {
-                selectedTab = .tasks
+                selectedTab = .work
             }
             DashboardJumpButton(title: "Focus", icon: "scope", tint: colors.primaryLight) {
                 selectedTab = .focus
             }
             DashboardJumpButton(title: "Inbox", icon: "bell", tint: colors.primaryDark) {
-                selectedTab = .notifications
+                selectedTab = .inbox
             }
         }
     }
@@ -258,13 +294,13 @@ struct DashboardView: View {
                 selectedTab = .projects
             }
             DashboardMetricTile(title: "Open tasks", value: "\(store.openTaskCount)", icon: "checklist", tint: colors.warning) {
-                selectedTab = .tasks
+                selectedTab = .work
             }
             DashboardMetricTile(title: "Due today", value: "\(store.dueTodayTaskCount)", icon: "calendar", tint: colors.warning) {
-                selectedTab = .tasks
+                selectedTab = .work
             }
             DashboardMetricTile(title: "Issues", value: "\(store.openIssueCount)", icon: "exclamationmark.bubble", tint: colors.error) {
-                selectedTab = .issues
+                selectedTab = .work
             }
         }
     }
@@ -397,7 +433,7 @@ struct DashboardView: View {
                         icon: "checklist",
                         tint: colors.warning
                     ) {
-                        selectedTab = .tasks
+                        selectedTab = .work
                     }
 
                     DashboardActionButton(
@@ -405,7 +441,7 @@ struct DashboardView: View {
                         icon: "exclamationmark.bubble",
                         tint: colors.error
                     ) {
-                        selectedTab = .issues
+                        selectedTab = .work
                     }
 
                     DashboardActionButton(
@@ -413,7 +449,7 @@ struct DashboardView: View {
                         icon: "sparkles",
                         tint: colors.primaryLight
                     ) {
-                        selectedTab = .flows
+                        selectedTab = .projects
                     }
 
                     DashboardActionButton(
@@ -421,7 +457,7 @@ struct DashboardView: View {
                         icon: "bell",
                         tint: colors.primaryDark
                     ) {
-                        selectedTab = .notifications
+                        selectedTab = .inbox
                     }
                 }
             }
@@ -458,7 +494,7 @@ struct DashboardView: View {
                         icon: "checkmark.circle",
                         tint: colors.success
                     )
-                    .onTapGesture { selectedTab = .tasks }
+                    .onTapGesture { selectedTab = .work }
 
                     DashboardFocusCard(
                         title: "Open Tasks",
@@ -467,7 +503,7 @@ struct DashboardView: View {
                         icon: "checklist",
                         tint: colors.warning
                     )
-                    .onTapGesture { selectedTab = .tasks }
+                    .onTapGesture { selectedTab = .work }
 
                     DashboardFocusCard(
                         title: "Open Issues",
@@ -476,7 +512,7 @@ struct DashboardView: View {
                         icon: "exclamationmark.bubble",
                         tint: colors.error
                     )
-                    .onTapGesture { selectedTab = .issues }
+                    .onTapGesture { selectedTab = .work }
 
                     DashboardFocusCard(
                         title: "Flows",
@@ -485,7 +521,7 @@ struct DashboardView: View {
                         icon: "sparkles",
                         tint: colors.primaryLight
                     )
-                    .onTapGesture { selectedTab = .flows }
+                    .onTapGesture { selectedTab = .projects }
                 }
             }
         }
@@ -576,7 +612,7 @@ struct DashboardView: View {
                             .font(.caption)
                             .foregroundStyle(colors.textMuted)
                     }
-                    .onTapGesture { selectedTab = .tasks }
+                    .onTapGesture { selectedTab = .work }
 
                     if store.trendData.isEmpty {
                         Text("No activity data available yet.")
@@ -626,7 +662,7 @@ struct DashboardView: View {
                     }
                 }
             }
-            .onTapGesture { selectedTab = .tasks }
+            .onTapGesture { selectedTab = .work }
 
             // Project Status Donut
             PFCard {
@@ -739,7 +775,7 @@ struct DashboardView: View {
                         Spacer()
                         if !store.recentTasks.isEmpty {
                             Button {
-                                selectedTab = .tasks
+                                selectedTab = .work
                             } label: {
                                 Text("See All")
                                     .font(.caption.weight(.medium))
@@ -933,7 +969,7 @@ struct DashboardView: View {
         if pinnedTasksStore.focusItem != nil {
             selectedTab = .focus
         } else if store.overdueTaskCount > 0 || store.dueTodayTaskCount > 0 || store.urgentTaskCount > 0 || store.blockedTaskCount > 0 {
-            selectedTab = .tasks
+            selectedTab = .work
         } else {
             selectedTab = .focus
         }
@@ -1026,9 +1062,9 @@ struct DashboardView: View {
     private func handleStatTap(_ stat: DashboardStat) {
         switch stat.title {
         case "Projects": selectedTab = .projects
-        case "Open Tasks": selectedTab = .tasks
-        case "Open Issues": selectedTab = .issues
-        case "Flows": selectedTab = .flows
+        case "Open Tasks": selectedTab = .work
+        case "Open Issues": selectedTab = .work
+        case "Flows": selectedTab = .projects
         default: break
         }
     }

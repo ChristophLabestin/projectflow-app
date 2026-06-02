@@ -2,11 +2,12 @@ import SwiftUI
 
 struct CustomTabBar: View {
     @Binding var selection: MainTab
+    var unreadCount: Int = 0
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     private let tabs: [MainTab] = [
-        .dashboard, .projects, .focus, .tasks, .settings
+        .home, .projects, .focus, .work, .inbox
     ]
 
     var body: some View {
@@ -18,10 +19,20 @@ struct CustomTabBar: View {
                     }
                 } label: {
                     VStack(spacing: 1) {
-                        Image(systemName: iconName(for: tab))
-                            .font(.system(size: 16, weight: selection == tab ? .semibold : .medium))
-                            .symbolVariant(selection == tab ? .fill : .none)
-                            
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: iconName(for: tab))
+                                .font(.system(size: 16, weight: selection == tab ? .semibold : .medium))
+                                .symbolVariant(selection == tab ? .fill : .none)
+                            if tab == .inbox, unreadCount > 0 {
+                                Text("\(min(unreadCount, 99))")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(.white)
+                                    .padding(3)
+                                    .background(colors.error)
+                                    .clipShape(Circle())
+                                    .offset(x: 8, y: -6)
+                            }
+                        }
                         Text(title(for: tab))
                             .font(.system(size: 9, weight: selection == tab ? .semibold : .medium))
                             .lineLimit(1)
@@ -35,6 +46,8 @@ struct CustomTabBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(String(format: L10n.tr("accessibility.tab", fallback: "%@ tab"), title(for: tab)))
+                .accessibilityAddTraits(selection == tab ? .isSelected : [])
             }
         }
         .padding(.horizontal, 10)
@@ -61,34 +74,21 @@ struct CustomTabBar: View {
 
     private func iconName(for tab: MainTab) -> String {
         switch tab {
-        case .dashboard: return "rectangle.grid.2x2"
+        case .home: return "rectangle.grid.2x2"
         case .projects: return "square.stack.3d.down.forward"
-        case .tasks: return "checklist"
         case .focus: return "scope"
-        case .flows: return "point.3.connected.trianglepath.dotted"
-        case .issues: return "exclamationmark.bubble"
-        case .notifications: return "bell"
-        case .settings: return "gearshape"
+        case .work: return "checklist"
+        case .inbox: return "bell"
         }
     }
 
     private func title(for tab: MainTab) -> String {
         switch tab {
-        case .dashboard: return "Dashboard"
-        case .projects: return "Projects"
-        case .tasks: return "Tasks"
-        case .focus: return "Focus"
-        case .flows: return "Flows"
-        case .issues: return "Issues"
-        case .notifications: return "Inbox"
-        case .settings: return "Settings"
+        case .home: return L10n.tr("tabs.home", fallback: "Home")
+        case .projects: return L10n.tr("tabs.projects", fallback: "Projects")
+        case .focus: return L10n.tr("tabs.focus", fallback: "Focus")
+        case .work: return L10n.tr("tabs.work", fallback: "Work")
+        case .inbox: return L10n.tr("tabs.inbox", fallback: "Inbox")
         }
-    }
-}
-
-// Preview helper
-struct CustomTabBar_Previews: PreviewProvider {
-    static var previews: some View {
-        CustomTabBar(selection: .constant(.dashboard))
     }
 }

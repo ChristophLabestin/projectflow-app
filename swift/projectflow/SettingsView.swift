@@ -4,7 +4,7 @@ import FirebaseAuth
 struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
-    @AppStorage("appTheme") private var appTheme: AppTheme = .system
+    @EnvironmentObject private var appSession: AppSession
     
     @StateObject private var workspaceStore = WorkspaceStore()
     @State private var displayName: String = ""
@@ -117,8 +117,8 @@ struct SettingsView: View {
                                                     
                                                     Spacer()
                                                     
-                                                    let activeWorkspaceId = UserDefaults.standard.string(forKey: TenantResolver.activeTenantKey)
-                                                        ?? session.user?.uid
+                                                    let activeWorkspaceId = appSession.activeTenantId
+                                                        ?? UserDefaults.standard.string(forKey: TenantResolver.activeTenantKey)
 
                                                     if activeWorkspaceId == workspace.id {
                                                         Image(systemName: "checkmark.circle.fill")
@@ -145,12 +145,46 @@ struct SettingsView: View {
                                 .padding(.leading, 4)
                             
                             PFCard {
-                                Picker("Theme", selection: $appTheme) {
+                                Picker("Theme", selection: themeBinding) {
                                     ForEach(AppTheme.allCases) { theme in
                                         Text(theme.rawValue).tag(theme)
                                     }
                                 }
                                 .pickerStyle(.segmented)
+                            }
+                        }
+
+                        // Language & thresholds
+                        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                            Text(L10n.tr("settings.language", fallback: "Language"))
+                                .font(.headline)
+                                .foregroundStyle(colors.textMuted)
+                                .padding(.leading, 4)
+
+                            PFCard {
+                                Picker(L10n.tr("settings.language", fallback: "Language"), selection: languageBinding) {
+                                    Text(L10n.tr("settings.language.en", fallback: "English")).tag("en")
+                                    Text(L10n.tr("settings.language.de", fallback: "Deutsch")).tag("de")
+                                }
+                                .pickerStyle(.segmented)
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                            Text(L10n.tr("settings.thresholds", fallback: "Workload thresholds"))
+                                .font(.headline)
+                                .foregroundStyle(colors.textMuted)
+                                .padding(.leading, 4)
+
+                            PFCard {
+                                Stepper(
+                                    value: dueSoonDaysBinding,
+                                    in: 1...30,
+                                    step: 1
+                                ) {
+                                    Text("\(L10n.tr("settings.dueSoonDays", fallback: "Due soon window (days)")): \(dueSoonDaysBinding.wrappedValue)")
+                                        .foregroundStyle(colors.textMain)
+                                }
                             }
                         }
 
@@ -161,6 +195,22 @@ struct SettingsView: View {
                                 .foregroundStyle(colors.textMuted)
                                 .padding(.leading, 4)
                             
+                            NavigationLink {
+                                CalendarView()
+                            } label: {
+                                PFCard {
+                                    Label("Calendar", systemImage: "calendar")
+                                }
+                            }
+
+                            NavigationLink {
+                                TeamView()
+                            } label: {
+                                PFCard {
+                                    Label("Team", systemImage: "person.3")
+                                }
+                            }
+
                             NavigationLink {
                                 StyleGuideView()
                             } label: {
@@ -211,13 +261,41 @@ struct SettingsView: View {
         }
     }
     
+    private var themeBinding: Binding<AppTheme> {
+        Binding(
+            get: {
+                switch appSession.appTheme.lowercased() {
+                case "light": return .light
+                case "dark": return .dark
+                default: return .system
+                }
+            },
+            set: { appSession.setTheme($0.rawValue.lowercased()) }
+        )
+    }
+
+    private var languageBinding: Binding<String> {
+        Binding(
+            get: { appSession.appLanguage },
+            set: { appSession.setLanguage($0) }
+        )
+    }
+
+    private var dueSoonDaysBinding: Binding<Int> {
+        Binding(
+            get: { WorkspaceThresholds.dueSoonDays },
+            set: { WorkspaceThresholds.dueSoonDays = $0 }
+        )
+    }
+
     private func saveProfile() async {
         await session.updateProfile(displayName: displayName, bio: bio)
         isEditing = false
     }
 
-    private func switchWorkspace(to tenantId: String) {
+    private     func switchWorkspace(to tenantId: String) {
         TenantResolver.setActiveTenantId(tenantId)
+        AppSession.shared.switchWorkspace(to: tenantId)
     }
 }
 

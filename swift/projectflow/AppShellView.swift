@@ -1,7 +1,9 @@
 import SwiftUI
 
 struct AppShellView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
+    @StateObject private var appSession = AppSession.shared
     @StateObject private var networkMonitor = NetworkMonitor()
 
     var body: some View {
@@ -13,34 +15,43 @@ struct AppShellView: View {
             Group {
                 if session.isLoading {
                     ProgressView()
-                } else if let _ = session.user {
+                } else if let user = session.user {
                     if session.userProfile == nil {
                         OnboardingWizardView()
+                    } else if appSession.isLoadingTenant && appSession.activeTenantId == nil {
+                        VStack(spacing: PFSpacing.md) {
+                            ProgressView()
+                            Text("Loading workspace…")
+                                .font(.subheadline)
+                                .foregroundStyle(PFColors.palette(for: colorScheme).textMuted)
+                        }
                     } else {
                         MainTabView()
+                            .environmentObject(appSession)
                     }
                 } else {
                     LoginView()
                 }
             }
         }
+        .preferredColorScheme(appSession.preferredColorScheme())
+        .onChange(of: session.user?.uid) { _, uid in
+            if uid != nil {
+                appSession.start(for: session.user)
+            } else {
+                appSession.stop()
+            }
+        }
+        .onAppear {
+            appSession.start(for: session.user)
+        }
     }
-}
-
-enum MainTab: Hashable {
-    case dashboard
-    case projects
-    case tasks
-    case focus
-    case flows
-    case issues
-    case notifications
-    case settings
 }
 
 struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var selection: MainTab = .dashboard
+    @EnvironmentObject private var appSession: AppSession
+    @State private var selection: MainTab = .home
 
     init() {
         UITabBar.appearance().isHidden = true
@@ -49,40 +60,23 @@ struct MainTabView: View {
     var body: some View {
         TabView(selection: $selection) {
             DashboardView(selectedTab: $selection)
-                .tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2") }
-                .tag(MainTab.dashboard)
+                .tag(MainTab.home)
 
             ProjectsView()
-                .tabItem { Label("Projects", systemImage: "square.stack.3d.down.forward") }
                 .tag(MainTab.projects)
 
-            TasksView()
-                .tabItem { Label("Tasks", systemImage: "checklist") }
-                .tag(MainTab.tasks)
-
             FocusCompanionView(selectedTab: $selection)
-                .tabItem { Label("Focus", systemImage: "scope") }
                 .tag(MainTab.focus)
 
-            FlowsView()
-                .tabItem { Label("Flows", systemImage: "point.3.connected.trianglepath.dotted") }
-                .tag(MainTab.flows)
-
-            IssuesView()
-                .tabItem { Label("Issues", systemImage: "exclamationmark.bubble") }
-                .tag(MainTab.issues)
+            WorkView()
+                .tag(MainTab.work)
 
             NotificationsView()
-                .tabItem { Label("Notifications", systemImage: "bell") }
-                .tag(MainTab.notifications)
-
-            SettingsView()
-                .tabItem { Label("Settings", systemImage: "gearshape") }
-                .tag(MainTab.settings)
+                .tag(MainTab.inbox)
         }
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            CustomTabBar(selection: $selection)
+            CustomTabBar(selection: $selection, unreadCount: appSession.notificationStore.unreadCount)
         }
         .onAppear {
             consumePendingNotificationDeepLink()
@@ -102,8 +96,7 @@ struct MainTabView: View {
         guard UserDefaults.standard.dictionary(forKey: NotificationDeepLinkStorage.userDefaultsKey) != nil else {
             return
         }
-
-        selection = .notifications
+        selection = .inbox
         UserDefaults.standard.removeObject(forKey: NotificationDeepLinkStorage.userDefaultsKey)
     }
 }
@@ -124,3 +117,5 @@ private struct OfflineBanner: View {
         .background(colors.warning)
     }
 }
+
+import FirebaseAuth

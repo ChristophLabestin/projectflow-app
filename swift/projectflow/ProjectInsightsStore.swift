@@ -27,6 +27,8 @@ struct ProjectWorkloadSummary: Equatable {
     var urgentIssues: Int
     var overdueCount: Int
     var dueSoonCount: Int
+    var milestoneDueSoonCount: Int
+    var sprintEndingSoonCount: Int
     var nextDueItem: ProjectDeadlineItem?
 
     static let empty = ProjectWorkloadSummary(
@@ -34,11 +36,14 @@ struct ProjectWorkloadSummary: Equatable {
         urgentIssues: 0,
         overdueCount: 0,
         dueSoonCount: 0,
+        milestoneDueSoonCount: 0,
+        sprintEndingSoonCount: 0,
         nextDueItem: nil
     )
 
     var hasSignals: Bool {
-        urgentTasks > 0 || urgentIssues > 0 || overdueCount > 0 || dueSoonCount > 0 || nextDueItem != nil
+        urgentTasks > 0 || urgentIssues > 0 || overdueCount > 0 || dueSoonCount > 0
+            || milestoneDueSoonCount > 0 || sprintEndingSoonCount > 0 || nextDueItem != nil
     }
 }
 
@@ -265,18 +270,23 @@ final class ProjectInsightsStore: ObservableObject {
 
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let soonDate = calendar.date(byAdding: .day, value: 7, to: today) ?? today
+        let soonDays = WorkspaceThresholds.dueSoonDays
+        let soonDate = calendar.date(byAdding: .day, value: soonDays, to: today) ?? today
 
         var overdueCount = 0
         var dueSoonCount = 0
+        var milestoneDueSoonCount = 0
+        var sprintEndingSoonCount = 0
         var nextDueItem: ProjectDeadlineItem?
 
-        func considerDueItem(title: String, type: String, date: Date) {
+        func considerDueItem(title: String, type: String, date: Date, milestoneCounter: Bool = false, sprintCounter: Bool = false) {
             let dueDay = calendar.startOfDay(for: date)
             if dueDay < today {
                 overdueCount += 1
             } else if dueDay <= soonDate {
                 dueSoonCount += 1
+                if milestoneCounter { milestoneDueSoonCount += 1 }
+                if sprintCounter { sprintEndingSoonCount += 1 }
             }
 
             if let existing = nextDueItem {
@@ -298,11 +308,23 @@ final class ProjectInsightsStore: ObservableObject {
             considerDueItem(title: issue.title, type: "Issue", date: dueDate)
         }
 
+        for milestone in milestones where milestone.projectId == projectId && milestone.status != "Completed" {
+            guard let dueDate = Self.parseDate(milestone.dueDate) else { continue }
+            considerDueItem(title: milestone.title, type: "Milestone", date: dueDate, milestoneCounter: true)
+        }
+
+        for sprint in sprints where sprint.projectId == projectId && sprint.status != "Completed" && sprint.status != "Archived" {
+            guard let endDate = Self.parseDate(sprint.endDate) else { continue }
+            considerDueItem(title: sprint.name, type: "Sprint", date: endDate, sprintCounter: true)
+        }
+
         return ProjectWorkloadSummary(
             urgentTasks: urgentTasks,
             urgentIssues: urgentIssues,
             overdueCount: overdueCount,
             dueSoonCount: dueSoonCount,
+            milestoneDueSoonCount: milestoneDueSoonCount,
+            sprintEndingSoonCount: sprintEndingSoonCount,
             nextDueItem: nextDueItem
         )
     }

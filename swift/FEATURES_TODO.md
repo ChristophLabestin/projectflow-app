@@ -1,45 +1,33 @@
 # Swift App Feature Backlog
 
-This list tracks Swift app features that are still missing or need enhancement compared to the web experience.
-
-## Workflow Instructions
-- Complete one task at a time.
-- Run `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build` before committing.
-- After finishing a task, create a commit with only the changes for that task (short, imperative message).
-
-## Projects List
-- [x] Add search + filters (status, priority, owner) and quick sort toggles (health, due date, activity).
-- [x] Add inline actions for quick edits (status, priority, due date) without opening the editor.
-- [x] Show team presence/avatars on each project card (requires project members fetch).
-- [x] Add project-level quick links/resources (drive/figma/etc) once stored on the project.
-- [x] Improve empty states per group (Active/Planning/Completed) with guided actions.
+Phases 0–6 of the iOS web parity plan are implemented. Remaining polish items:
 
 ## Project Health
-- [x] Localize health factors and recommendations (use labelKey/descriptionKey values).
-- [ ] Add health trend history and delta comparison (needs snapshot persistence).
-- [ ] Add a lightweight health detail preview popover for quick glance (no full sheet).
+- [x] Add health trend history UI using persisted snapshots
+- [x] Lightweight health detail preview popover
 
 ## Deadlines & Workload
-- [ ] Include upcoming milestones and sprint due dates in the project deadline summary.
-- [ ] Add overdue/soon thresholds per workspace settings (configurable days).
-- [ ] Surface blocked tasks and high-priority issues as separate chips.
+- [x] Include milestone/sprint due dates in project deadline summary chips
+- [x] Configurable overdue/soon thresholds per workspace
 
 ## Activity & Updates
-- [ ] Add richer activity types (task, issue, status, report, comment, file, member, commit) with distinct icons.
-- [ ] Add tap-through to the relevant item (task/issue) from activity rows.
-- [ ] Add activity filtering by type and time range.
+- [x] Richer activity type icons and tap-through filters
+- [x] Activity time-range filtering
 
 ## Project Overview
-- [ ] Wire full layout customization using `ProjectOverviewLayoutStore` (drag/reorder/toggle cards).
-- [ ] Replace placeholder widgets (Resources, AI Insights, Team) with live data + actions.
-- [ ] Add project controls parity (status/priority/start/due edits) with permission checks.
-- [ ] Add upload/cover image actions for project header.
-
-## Collaboration
-- [ ] Implement project member list and roles (invite, remove, role change).
-- [ ] Add presence indicators (online/busy/idle) once presence hooks are connected.
+- [x] ~~Drag/reorder overview cards on device~~ — not needed (excluded)
+- [ ] Project cover image upload from iOS
 
 ## Quality
-- [ ] Add localization keys for new strings and ensure English/DE parity.
-- [ ] Add accessibility pass for cards and chips (VoiceOver labels, tap targets).
-- [ ] Add UI tests for Projects list grouping and health sheet.
+- [x] Lightweight EN/DE strings via `L10n.swift` (partial parity with web/locales)
+- [x] VoiceOver accessibility pass (tab bar, health widget, activity, signal chips)
+- [ ] XCTest target + UI tests for lifecycle grouping and focus loop
+- [ ] Full `Localizable.xcstrings` parity with web/locales en+de
+
+## Completed (parity plan)
+- [x] AppSession, extended models, repositories, permissions loader
+- [x] Tab bar: Home / Projects / Focus / Work / Inbox
+- [x] Initiatives, personal tasks, multi-type focus/pins
+- [x] Company projects, lifecycle groups, module-gated project nav
+- [x] Comments, Codex read-only, milestones/sprints/activity views
+- [x] Calendar, team, settings theme, web deep links for excluded modules

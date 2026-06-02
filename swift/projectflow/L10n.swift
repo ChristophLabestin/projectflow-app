@@ -1,0 +1,111 @@
+import Foundation
+
+enum L10n {
+    static var locale: AppLocale {
+        let code = UserDefaults.standard.string(forKey: "appLanguage") ?? Locale.current.languageCode ?? "en"
+        return code.lowercased().hasPrefix("de") ? .de : .en
+    }
+
+    static func tr(_ key: String, fallback: String? = nil) -> String {
+        let table = locale == .de ? de : en
+        return table[key] ?? fallback ?? key.split(separator: ".").last.map(String.init) ?? key
+    }
+
+    private static let en: [String: String] = [
+        "tabs.home": "Home",
+        "tabs.projects": "Projects",
+        "tabs.focus": "Focus",
+        "tabs.work": "Work",
+        "tabs.inbox": "Inbox",
+        "work.tasks": "Tasks",
+        "work.initiatives": "Initiatives",
+        "work.personal": "Personal",
+        "health.title": "Project Health",
+        "health.score": "Score",
+        "health.trend": "Trend",
+        "health.history": "Health History",
+        "health.delta": "Change vs prior: %+d",
+        "health.noHistory": "No history yet. Snapshots appear as health is recalculated.",
+        "health.factors": "Contributing factors",
+        "health.recommendations": "Recommendations",
+        "deadline.urgentTasks": "Urgent Tasks",
+        "deadline.urgentIssues": "Urgent Issues",
+        "deadline.overdue": "Overdue",
+        "deadline.dueSoon": "Due Soon",
+        "deadline.milestones": "Milestones",
+        "deadline.sprints": "Sprints",
+        "deadline.nextDue": "Next due",
+        "deadline.noSignals": "No urgent workload signals.",
+        "activity.all": "All",
+        "activity.tasks": "Tasks",
+        "activity.issues": "Issues",
+        "activity.flows": "Flows",
+        "activity.members": "Members",
+        "activity.reports": "Reports",
+        "activity.range.7d": "7 days",
+        "activity.range.30d": "30 days",
+        "activity.range.all": "All time",
+        "settings.thresholds": "Workload thresholds",
+        "settings.dueSoonDays": "Due soon window (days)",
+        "settings.language": "Language",
+        "settings.language.en": "English",
+        "settings.language.de": "Deutsch",
+        "projects.company": "Company Projects",
+        "projects.active": "Active Projects",
+        "projects.planning": "Planning & Backlog",
+        "projects.paused": "Paused",
+        "projects.completed": "Completed",
+        "projects.canceled": "Canceled",
+        "accessibility.tab": "%@ tab",
+        "accessibility.unread": "%d unread notifications"
+    ]
+
+    private static let de: [String: String] = [
+        "tabs.home": "Start",
+        "tabs.projects": "Projekte",
+        "tabs.focus": "Fokus",
+        "tabs.work": "Arbeit",
+        "tabs.inbox": "Posteingang",
+        "work.tasks": "Aufgaben",
+        "work.initiatives": "Initiativen",
+        "work.personal": "Persönlich",
+        "health.title": "Projektgesundheit",
+        "health.score": "Score",
+        "health.trend": "Trend",
+        "health.history": "Gesundheitsverlauf",
+        "health.delta": "Änderung zum Vorwert: %+d",
+        "health.noHistory": "Noch kein Verlauf. Snapshots erscheinen bei Neuberechnung.",
+        "health.factors": "Einflussfaktoren",
+        "health.recommendations": "Empfehlungen",
+        "deadline.urgentTasks": "Dringende Aufgaben",
+        "deadline.urgentIssues": "Dringende Probleme",
+        "deadline.overdue": "Überfällig",
+        "deadline.dueSoon": "Bald fällig",
+        "deadline.milestones": "Meilensteine",
+        "deadline.sprints": "Sprints",
+        "deadline.nextDue": "Als Nächstes fällig",
+        "deadline.noSignals": "Keine dringenden Auslastungssignale.",
+        "activity.all": "Alle",
+        "activity.tasks": "Aufgaben",
+        "activity.issues": "Probleme",
+        "activity.flows": "Flows",
+        "activity.members": "Mitglieder",
+        "activity.reports": "Berichte",
+        "activity.range.7d": "7 Tage",
+        "activity.range.30d": "30 Tage",
+        "activity.range.all": "Gesamt",
+        "settings.thresholds": "Auslastungsschwellen",
+        "settings.dueSoonDays": "Bald-fällig-Fenster (Tage)",
+        "settings.language": "Sprache",
+        "settings.language.en": "English",
+        "settings.language.de": "Deutsch",
+        "projects.company": "Unternehmensprojekte",
+        "projects.active": "Aktive Projekte",
+        "projects.planning": "Planung & Backlog",
+        "projects.paused": "Pausiert",
+        "projects.completed": "Abgeschlossen",
+        "projects.canceled": "Abgebrochen",
+        "accessibility.tab": "%@ Tab",
+        "accessibility.unread": "%d ungelesene Benachrichtigungen"
+    ]
+}
