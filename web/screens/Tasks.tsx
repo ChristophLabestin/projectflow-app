@@ -2,7 +2,7 @@
 import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { getUserProjects } from '../services/domain/projectsService';
-import { deleteTask, getSubTasks, getUserTasks, toggleTaskStatus } from '../services/domain/tasksService';
+import { addTask, deleteTask, getSubTasks, getUserTasks, toggleTaskStatus } from '../services/domain/tasksService';
 import { Project, Task } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Badge } from '../components/common/Badge/Badge';
@@ -34,6 +34,9 @@ export const Tasks = () => {
     const [search, setSearch] = useState('');
     const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [quickTitle, setQuickTitle] = useState('');
+    const [quickProjectId, setQuickProjectId] = useState(() => localStorage.getItem('projectflow_quick_add_project') || '');
+    const [quickAdding, setQuickAdding] = useState(false);
 
     // Additional Global Filters
     const [projectFilter, setProjectFilter] = useState<string>('all');
@@ -64,13 +67,51 @@ export const Tasks = () => {
         fetchData();
     }, []);
 
-    // Load Subtask Stats
+    useEffect(() => {
+        if (!projects.length) return;
+        if (!quickProjectId || !projects.some((project) => project.id === quickProjectId)) {
+            setQuickProjectId(projects[0].id);
+        }
+    }, [projects, quickProjectId]);
+
+    const handleQuickAdd = async (event?: React.FormEvent) => {
+        event?.preventDefault();
+        if (!quickTitle.trim() || !quickProjectId || quickAdding) return;
+        setQuickAdding(true);
+        try {
+            const project = projects.find((entry) => entry.id === quickProjectId);
+            await addTask(quickProjectId, quickTitle.trim(), undefined, undefined, 'Medium', undefined, project?.tenantId);
+            localStorage.setItem('projectflow_quick_add_project', quickProjectId);
+            const refreshed = await getUserTasks();
+            setTasks(refreshed);
+            setQuickTitle('');
+        } catch (error) {
+            console.error('Quick add failed', error);
+        } finally {
+            setQuickAdding(false);
+        }
+    };
+
+    // Load Subtask Stats (visible tasks only)
     useEffect(() => {
         const loadSubtaskStats = async () => {
             if (!tasks.length) return;
+            const visibleIds = new Set(
+                tasks
+                    .filter((task) => {
+                        if (filter === 'active' && task.isCompleted) return false;
+                        if (filter === 'completed' && !task.isCompleted) return false;
+                        if (search && !task.title.toLowerCase().includes(search.toLowerCase())) return false;
+                        if (projectFilter !== 'all' && task.projectId !== projectFilter) return false;
+                        if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+                        return true;
+                    })
+                    .slice(0, 40)
+                    .map((task) => task.id)
+            );
+            if (!visibleIds.size) return;
             try {
-                // Optimization: only load for visible tasks if possible, but for now load all to match project view
-                const entries = await Promise.all(tasks.map(async (task) => {
+                const entries = await Promise.all(tasks.filter((task) => visibleIds.has(task.id)).map(async (task) => {
                     const subs = await getSubTasks(task.id, task.projectId, task.tenantId);
                     const done = subs.filter(s => s.isCompleted).length;
                     return [task.id, { done, total: subs.length }] as const;
@@ -81,7 +122,7 @@ export const Tasks = () => {
             }
         };
         loadSubtaskStats();
-    }, [tasks]);
+    }, [tasks, filter, search, projectFilter, priorityFilter]);
 
     const handleToggle = async (task: Task) => {
         const currentStatus = task.isCompleted;
@@ -126,6 +167,17 @@ export const Tasks = () => {
         Backlog: t('tasks.status.backlog'),
         'On Hold': t('tasks.status.onHold'),
         Blocked: t('tasks.status.blocked')
+    }), [t]);
+
+    const filterSelectOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'active', label: t('tasks.filters.activity.active') },
+        { value: 'completed', label: t('tasks.filters.activity.completed') },
+        { value: 'all', label: t('tasks.filters.activity.all') }
+    ]), [t]);
+
+    const viewLabels = useMemo(() => ({
+        list: t('tasks.view.list'),
+        board: t('tasks.view.board')
     }), [t]);
 
     const sortOptions = useMemo<SelectOption[]>(() => ([
@@ -230,7 +282,7 @@ export const Tasks = () => {
         return (
             <div
                 onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}${task.tenantId ? `?tenant=${task.tenantId}` : ''}`)}
-                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''}`}
+                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''} priority-stripe priority-stripe--${(task.priority || 'medium').toLowerCase()}`}
             >
                 {/* Left: Status & Main Info */}
                 <div className="task-main-info">
@@ -443,149 +495,139 @@ export const Tasks = () => {
     };
 
     if (loading || !taskPageTranslationsReady) return (
-        <div className="tasks-loading">
-            <span className="material-symbols-outlined tasks-loading__icon">rotate_right</span>
+        <div className="workstream-page workstream-page--tasks">
+            <div className="workstream-page__loading">
+                <span className="material-symbols-outlined workstream-page__loading-icon">progress_activity</span>
+            </div>
         </div>
     );
 
-    return (
-        <div className="project-tasks-container">
-            {/* Header */}
-            <div className="tasks-header">
-                <div>
-                    <h1>
-                        {t('tasks.header.titlePrefix')}{' '}
-                        <span>{t('tasks.header.titleEmphasis')}</span>
-                    </h1>
-                    <p className="subtitle">
-                        {t('tasks.header.subtitle')}
-                    </p>
-                </div>
-                <Button
-                    onClick={() => setShowCreateModal(true)}
-                    icon={<span className="material-symbols-outlined">add</span>}
-                    variant="primary"
-                    size="lg"
-                    className="new-task-btn"
-                >
-                    {t('tasks.actions.newTask')}
-                </Button>
-            </div>
+    const metricCards = [
+        { label: t('tasks.stats.openTasks'), value: String(stats.open), meta: t('tasks.filters.activity.active') },
+        { label: t('tasks.stats.completed'), value: String(stats.completed), meta: `${stats.progress}%` },
+        { label: t('tasks.stats.highPriority'), value: String(stats.high), meta: t('tasks.filters.priority.label') },
+        { label: t('tasks.stats.urgent'), value: String(stats.urgent), meta: t(`tasks.view.${view}`) }
+    ];
 
-            {/* Stats Row */}
-            <div className="tasks-stats-grid">
-                {[
-                    { label: t('tasks.stats.openTasks'), val: stats.open, icon: 'list_alt', tone: 'neutral' },
-                    { label: t('tasks.stats.completed'), val: stats.completed, icon: 'check_circle', tone: 'success', progress: stats.progress },
-                    { label: t('tasks.stats.highPriority'), val: stats.high, icon: 'priority_high', tone: 'warning' },
-                    { label: t('tasks.stats.urgent'), val: stats.urgent, icon: 'warning', tone: 'error' }
-                ].map((stat, idx) => (
-                    <div key={idx} className={`stat-card stat-card--${stat.tone}`}>
-                        <div className="bg-icon">
-                            <span className="material-symbols-outlined">{stat.icon}</span>
-                        </div>
-                        <div className="content">
-                            <p className="label">{stat.label}</p>
-                            <div className="value-row">
-                                <p className="value">{stat.val}</p>
-                                {stat.progress !== undefined && (
-                                    <Badge variant="neutral" className="badge">
-                                        {stat.progress}%
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
+    return (
+        <div className="workstream-page workstream-page--tasks">
+            <header className="workstream-page__hero">
+                <div className="workstream-page__hero-copy">
+                    <h1 className="workstream-page__title">{t('tasks.header.titleEmphasis')}</h1>
+                    <p className="workstream-page__subtitle">{t('tasks.header.subtitle')}</p>
+                </div>
+                <div className="workstream-page__actions">
+                    <Button
+                        onClick={() => setShowCreateModal(true)}
+                        icon={<span className="material-symbols-outlined">add</span>}
+                        variant="primary"
+                    >
+                        {t('tasks.actions.newTask')}
+                    </Button>
+                </div>
+            </header>
+
+            <form className="workstream-page__quick-add" onSubmit={handleQuickAdd}>
+                <TextInput
+                    value={quickTitle}
+                    onChange={(e) => setQuickTitle(e.target.value)}
+                    placeholder={t('tasks.quickAdd.placeholder')}
+                    className="workstream-page__quick-add-input"
+                    disabled={quickAdding || projects.length === 0}
+                />
+                <Select
+                    value={quickProjectId}
+                    onChange={(value) => setQuickProjectId(value)}
+                    options={projectOptions.filter((option) => option.value !== 'all')}
+                    placeholder={t('tasks.quickAdd.selectProject')}
+                    className="workstream-page__quick-add-project"
+                    disabled={quickAdding || projects.length === 0}
+                />
+                <Button type="submit" variant="primary" disabled={quickAdding || !quickTitle.trim() || !quickProjectId}>
+                    {t('tasks.quickAdd.action')}
+                </Button>
+            </form>
+
+            <div className="workstream-page__metrics">
+                {metricCards.map((metric) => (
+                    <div key={metric.label} className="workstream-page__metric">
+                        <span className="workstream-page__metric-label">{metric.label}</span>
+                        <span className="workstream-page__metric-value">{metric.value}</span>
+                        <span className="workstream-page__metric-meta">{metric.meta}</span>
                     </div>
                 ))}
             </div>
 
-            {/* Controls Bar */}
-            <div className="tasks-controls-bar">
-                <div className="controls-group-wrapper">
-                    <div className="control-group">
-                        {(['active', 'completed', 'all'] as const).map((f) => (
-                            <button
-                                key={f}
-                                type="button"
-                                onClick={() => setFilter(f)}
-                                className={`control-btn ${filter === f ? 'active' : ''}`}
-                            >
-                                {t(`tasks.filters.activity.${f}`)}
-                            </button>
-                        ))}
+            <div className="workstream-page__command">
+                <div className="workstream-page__command-left">
+                    <TextInput
+                        value={search}
+                        onChange={handleSearchChange}
+                        placeholder={t('tasks.search.placeholder')}
+                        className="workstream-page__search"
+                        leftElement={<span className="material-symbols-outlined">search</span>}
+                    />
+                    <div className="workstream-page__command-filters">
+                        <Select
+                            value={filter}
+                            onChange={(value) => setFilter(value as typeof filter)}
+                            options={filterSelectOptions}
+                            className="workstream-page__select"
+                        />
+                        <Select
+                            value={sortBy}
+                            onChange={(value) => setSortBy(value as typeof sortBy)}
+                            options={sortOptions}
+                            placeholder={t('tasks.sort.label')}
+                            className="workstream-page__select"
+                        />
+                        <Select
+                            value={projectFilter}
+                            onChange={(value) => setProjectFilter(String(value))}
+                            options={projectOptions}
+                            placeholder={t('tasks.filters.project.label')}
+                            className="workstream-page__select"
+                        />
+                        <Select
+                            value={priorityFilter}
+                            onChange={(value) => setPriorityFilter(String(value))}
+                            options={priorityOptions}
+                            placeholder={t('tasks.filters.priority.label')}
+                            className="workstream-page__select"
+                        />
                     </div>
-
-                    <div className="control-group">
+                </div>
+                <div className="workstream-page__command-right">
+                    <div className="workstream-page__view-toggle" role="group" aria-label={t('tasks.view.list')}>
                         {(['list', 'board'] as const).map((v) => (
                             <button
                                 key={v}
                                 type="button"
                                 onClick={() => setView(v)}
-                                className={`control-btn ${view === v ? 'active' : ''}`}
+                                className={`workstream-page__view-btn ${view === v ? 'is-active' : ''}`}
+                                aria-pressed={view === v}
+                                title={viewLabels[v]}
+                                aria-label={viewLabels[v]}
                             >
-                                <span className="material-symbols-outlined control-btn__icon">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
-                                {t(`tasks.view.${v}`)}
+                                <span className="material-symbols-outlined">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
                             </button>
                         ))}
                     </div>
-
-                    <div className="tasks-selects">
-                        <Select
-                            label={t('tasks.sort.label')}
-                            value={sortBy}
-                            onChange={(value) => setSortBy(value as typeof sortBy)}
-                            options={sortOptions}
-                            className="tasks-select"
-                        />
-                        <Select
-                            label={t('tasks.filters.project.label')}
-                            value={projectFilter}
-                            onChange={(value) => setProjectFilter(String(value))}
-                            options={projectOptions}
-                            className="tasks-select"
-                        />
-                        <Select
-                            label={t('tasks.filters.priority.label')}
-                            value={priorityFilter}
-                            onChange={(value) => setPriorityFilter(String(value))}
-                            options={priorityOptions}
-                            className="tasks-select"
-                        />
-                    </div>
-                </div>
-
-                <div className="search-wrapper">
-                    <TextInput
-                        value={search}
-                        onChange={handleSearchChange}
-                        placeholder={t('tasks.search.placeholder')}
-                        className="tasks-search"
-                        leftElement={<span className="material-symbols-outlined">search</span>}
-                    />
                 </div>
             </div>
 
-            {/* Content using new styles */}
-            <div className="view-area-container">
+            <div className="workstream-page__body">
                 {filteredTasks.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="icon-circle">
-                            <span className="material-symbols-outlined">explore_off</span>
-                        </div>
+                    <div className="workstream-page__empty">
+                        <span className="material-symbols-outlined workstream-page__empty-icon">task_alt</span>
                         <h3>{t('tasks.empty.list.title')}</h3>
-                        <p>
-                            {t('tasks.empty.list.description')}
-                        </p>
-                        <Button
-                            variant="secondary"
-                            className="create-btn"
-                            onClick={() => setShowCreateModal(true)}
-                        >
+                        <p>{t('tasks.empty.list.description')}</p>
+                        <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
                             {t('tasks.empty.list.action')}
                         </Button>
                     </div>
                 ) : view === 'list' ? (
-                    <div className="task-list-grid">
+                    <div className="workstream-page__list">
                         {filteredTasks.map(task => (
                             <TaskCard key={task.id} task={task} />
                         ))}

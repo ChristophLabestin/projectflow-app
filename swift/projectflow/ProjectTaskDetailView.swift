@@ -21,6 +21,9 @@ struct ProjectTaskDetailView: View {
     @State private var showingLabelPicker = false
     @StateObject private var teamStore = ProjectTeamStore()
     @StateObject private var labelsStore = LabelsStore()
+    @StateObject private var commentsStore = CommentsStore()
+    @EnvironmentObject private var appSession: AppSession
+    @State private var linkedInitiative: Initiative?
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
@@ -36,6 +39,16 @@ struct ProjectTaskDetailView: View {
                     labelsSection
                     subtasksSection
                     assigneesSection
+                    initiativeSection
+                    codexSection
+                    CommentsSection(
+                        tenantId: tenantId,
+                        projectId: task.projectId ?? "",
+                        targetId: task.id,
+                        targetType: CommentTargetType.task.rawValue,
+                        permissions: permissions,
+                        store: commentsStore
+                    )
                     
                     if canEdit {
                         VStack(spacing: PFSpacing.md) {
@@ -65,7 +78,8 @@ struct ProjectTaskDetailView: View {
         .navigationTitle("Task Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button("Focus") { focusTask() }
                 if canEdit {
                     Button {
                         beginEdit()
@@ -78,6 +92,15 @@ struct ProjectTaskDetailView: View {
         }
         .onAppear {
             tasksStore.start(tenantId: tenantId, projectId: task.projectId)
+            if let projectId = task.projectId {
+                commentsStore.listen(
+                    tenantId: tenantId,
+                    projectId: projectId,
+                    targetId: task.id,
+                    targetType: CommentTargetType.task.rawValue
+                )
+                loadInitiative(tenantId: tenantId, projectId: projectId)
+            }
             teamStore.start(tenantId: tenantId)
             teamStore.ensureProfiles(for: task.assigneeIds)
             labelsStore.start(tenantId: tenantId, projectId: task.projectId)
@@ -601,6 +624,65 @@ struct ProjectTaskDetailView: View {
         draftStatus = task.status
         draftPriority = task.priority
         showingEditor = true
+    }
+
+    @ViewBuilder
+    private var initiativeSection: some View {
+        if let initiativeId = task.initiativeId, !initiativeId.isEmpty {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                    Text("Initiative").font(.caption).foregroundStyle(colors.textMuted)
+                    if let linkedInitiative {
+                        NavigationLink(linkedInitiative.title) {
+                            ProjectInitiativeDetailView(
+                                initiative: linkedInitiative,
+                                tenantId: tenantId,
+                                permissions: permissions
+                            )
+                        }
+                    } else {
+                        Text(initiativeId).font(.subheadline)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var codexSection: some View {
+        if let sessionId = task.codexSessionId, !sessionId.isEmpty {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                    Text("Codex").font(.caption).foregroundStyle(colors.textMuted)
+                    Text(task.codexSessionExternalKey ?? sessionId).font(.subheadline)
+                }
+            }
+        }
+    }
+
+    private func focusTask() {
+        guard let projectId = task.projectId else { return }
+        let item = PinnedItem(
+            id: task.id,
+            type: FocusItemType.task.rawValue,
+            title: task.title,
+            projectId: projectId,
+            tenantId: tenantId,
+            priority: task.priority,
+            isCompleted: task.isCompleted
+        )
+        appSession.pinnedTasksStore.startFocus(item: item)
+    }
+
+    private func loadInitiative(tenantId: String, projectId: String) {
+        guard let initiativeId = task.initiativeId else { return }
+        Task {
+            linkedInitiative = try? await InitiativeRepository().getInitiative(
+                tenantId: tenantId,
+                projectId: projectId,
+                initiativeId: initiativeId
+            )
+        }
     }
     
     private func saveTask() async {

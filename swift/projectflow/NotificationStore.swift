@@ -19,6 +19,7 @@ struct AppNotification: Identifiable {
     let taskId: String?
     let issueId: String?
     let flowId: String?
+    let initiativeId: String?
     let actorId: String?
 }
 
@@ -26,6 +27,10 @@ struct AppNotification: Identifiable {
 final class NotificationStore: ObservableObject {
     @Published var items: [AppNotification] = []
     @Published var isLoading = true
+
+    var unreadCount: Int {
+        items.filter { !$0.read }.count
+    }
 
     private var listener: ListenerRegistration?
     private let db = Firestore.firestore()
@@ -37,7 +42,7 @@ final class NotificationStore: ObservableObject {
             return
         }
 
-        guard let tenantId = TenantResolver.resolveTenantId(for: user) else {
+        guard let tenantId = TenantResolver.resolveTenantId(for: user) ?? AppSession.shared.activeTenantId else {
             items = []
             isLoading = false
             return
@@ -76,6 +81,7 @@ final class NotificationStore: ObservableObject {
                 let taskId = data["taskId"] as? String
                 let issueId = data["issueId"] as? String
                 let flowId = data["flowId"] as? String
+                let initiativeId = data["initiativeId"] as? String
                 let actorId = data["actorId"] as? String
 
                 return AppNotification(
@@ -90,6 +96,7 @@ final class NotificationStore: ObservableObject {
                     taskId: taskId,
                     issueId: issueId,
                     flowId: flowId,
+                    initiativeId: initiativeId,
                     actorId: actorId
                 )
             } ?? []
@@ -166,17 +173,5 @@ final class NotificationStore: ObservableObject {
         } catch {
             print("Failed to respond to invite: \(error)")
         }
-    }
-}
-
-enum TenantResolver {
-    static let activeTenantKey = "activeTenantId"
-
-    static func resolveTenantId(for user: User) -> String? {
-        UserDefaults.standard.string(forKey: activeTenantKey) ?? user.uid
-    }
-
-    static func setActiveTenantId(_ tenantId: String) {
-        UserDefaults.standard.set(tenantId, forKey: activeTenantKey)
     }
 }

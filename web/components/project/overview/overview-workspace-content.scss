@@ -1,0 +1,645 @@
+// Flat workspace surface — no nested cards inside tab panels
+
+.project-overview-workspace__panel {
+    min-height: 20rem;
+    padding: 0;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 88%, transparent);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-card);
+    overflow: hidden;
+}
+
+.overview-workspace {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+
+    // Strip legacy card chrome from embedded overview blocks
+    .updates-card,
+    .milestones-card,
+    .project-control-card,
+    .project-contract-card,
+    .execution-card-shell,
+    .execution-card,
+    .overview-card,
+    .project-triage-card,
+    .project-next-action-section-shell,
+    .ai-insights-card-compact {
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+        padding: 0 !important;
+    }
+
+    .overview-card__body {
+        padding: 0;
+    }
+
+    .section-group,
+    .updates-section,
+    .resources-section {
+        margin: 0;
+        padding: 0;
+    }
+}
+
+.overview-workspace__block {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    @media (min-width: 768px) {
+        padding: 1.1rem 1.25rem;
+    }
+}
+
+.overview-workspace__flow-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.65rem 0.85rem;
+    align-items: center;
+    padding: 0.55rem 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    text-decoration: none;
+    color: inherit;
+    transition: background var(--transition-fast);
+
+    &:hover {
+        background: rgba(var(--color-surface-hover-rgb), 0.42);
+        border-radius: var(--radius-md);
+    }
+}
+
+.overview-workspace__row-copy strong.is-done {
+    text-decoration: line-through;
+    opacity: 0.62;
+}
+
+.is-overdue {
+    color: var(--color-error);
+    font-weight: 700;
+}
+
+.overview-workspace__section--triage {
+    .project-triage-card {
+        width: 100%;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+        padding: 0;
+    }
+}
+
+.overview-workspace__section {
+    padding: 1rem 1.1rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    @media (min-width: 768px) {
+        padding: 1.1rem 1.25rem;
+    }
+}
+
+.overview-workspace__section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.overview-workspace__section-title-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.overview-workspace__section-icon {
+    font-size: 1.05rem;
+    color: var(--color-primary);
+}
+
+.overview-workspace__section-title {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 850;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.overview-workspace__section-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-primary-rgb), 0.1);
+    color: var(--color-primary);
+    font-size: 0.64rem;
+    font-weight: 850;
+}
+
+.overview-workspace__section-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+}
+
+.overview-workspace__section-body {
+    min-width: 0;
+}
+
+.overview-workspace__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 2.5rem 1rem;
+    color: var(--color-text-muted);
+    text-align: center;
+
+    .material-symbols-outlined {
+        font-size: 2rem;
+        opacity: 0.45;
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.88rem;
+    }
+}
+
+// Data list (tasks, issues, sprints list)
+.overview-workspace__table {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.overview-workspace__table-head,
+.overview-workspace__table-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    gap: 0.65rem 0.85rem;
+    align-items: center;
+    padding: 0.55rem 0.15rem;
+
+    @media (max-width: 720px) {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+}
+
+.overview-workspace__table-head {
+    padding-top: 0;
+    padding-bottom: 0.45rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 72%, transparent);
+    color: var(--color-text-muted);
+    font-size: 0.64rem;
+    font-weight: 850;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+
+    span:nth-child(n + 3) {
+        @media (max-width: 720px) {
+            display: none;
+        }
+    }
+}
+
+.overview-workspace__table-row {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    &:hover {
+        background: rgba(var(--color-surface-hover-rgb), 0.45);
+        border-radius: var(--radius-md);
+    }
+
+    .overview-workspace__cell--meta:nth-child(n + 3) {
+        @media (max-width: 720px) {
+            display: none;
+        }
+    }
+}
+
+.overview-workspace__cell--primary {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.overview-workspace__checkbox {
+    flex: 0 0 auto;
+    width: 1.35rem;
+    height: 1.35rem;
+    margin-top: 0.08rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-bg);
+    color: transparent;
+    cursor: pointer;
+    transition: border-color var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+
+    &.is-checked {
+        border-color: var(--color-success);
+        background: rgba(var(--color-success-rgb), 0.12);
+        color: var(--color-success);
+    }
+
+    .material-symbols-outlined {
+        font-size: 0.95rem;
+    }
+}
+
+.overview-workspace__row-copy {
+    min-width: 0;
+
+    strong {
+        display: block;
+        font-size: 0.88rem;
+        font-weight: 750;
+        line-height: 1.3;
+        color: var(--color-text-main);
+        overflow-wrap: anywhere;
+    }
+
+    span {
+        display: block;
+        margin-top: 0.12rem;
+        font-size: 0.72rem;
+        color: var(--color-text-muted);
+        line-height: 1.35;
+    }
+}
+
+.overview-workspace__cell--meta {
+    color: var(--color-text-muted);
+    font-size: 0.74rem;
+    white-space: nowrap;
+}
+
+.overview-workspace__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    padding: 0.18rem 0.48rem;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-surface-hover-rgb), 0.72);
+    color: var(--color-text-muted);
+    font-size: 0.68rem;
+    font-weight: 750;
+    white-space: nowrap;
+
+    &.is-urgent {
+        color: var(--color-error);
+        background: rgba(var(--color-error-rgb), 0.1);
+    }
+
+    &.is-high {
+        color: var(--color-warning);
+        background: rgba(var(--color-warning-rgb), 0.12);
+    }
+
+    &.is-initiative {
+        color: var(--color-primary);
+        background: rgba(var(--color-primary-rgb), 0.1);
+    }
+}
+
+.overview-workspace__row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+
+.overview-workspace__icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &:hover {
+        background: rgba(var(--color-surface-hover-rgb), 0.8);
+        color: var(--color-text-main);
+    }
+
+    &.is-pinned {
+        color: var(--color-warning);
+    }
+}
+
+// Initiative rows (flat list, not cards)
+.overview-workspace__initiative-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.overview-workspace__initiative-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    gap: 0.65rem 0.85rem;
+    align-items: center;
+    padding: 0.62rem 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+
+    &:last-child {
+        border-bottom: 0;
+    }
+
+    &:hover {
+        background: rgba(var(--color-surface-hover-rgb), 0.45);
+        border-radius: var(--radius-md);
+    }
+}
+
+// Steuerung: stacked blocks with subtle grouping
+.overview-workspace--steuerung {
+    .project-control-card__form,
+    .project-contract-card__body,
+    .planning-card-content,
+    .team-grid,
+    .activity-list,
+    .resources-grid {
+        gap: 0.65rem;
+    }
+
+    .resources-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        gap: 1rem;
+    }
+
+    .updates-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0;
+
+        @media (min-width: 900px) {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0 1.5rem;
+        }
+    }
+}
+
+// Kanban — open columns, minimal item chrome
+.project-overview-work-kanban {
+    gap: 0;
+    padding: 0;
+    overflow-x: auto;
+
+    .project-overview-work-kanban__column {
+        flex: 1 1 11rem;
+        min-width: 11rem;
+        padding: 0.85rem 0.75rem;
+        border-right: 1px solid color-mix(in srgb, var(--color-surface-border) 72%, transparent);
+        background: transparent;
+
+        &:last-child {
+            border-right: 0;
+        }
+    }
+
+    .project-overview-work-kanban__column-head {
+        padding: 0 0 0.55rem;
+        margin-bottom: 0.45rem;
+        border: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 65%, transparent);
+        border-radius: 0;
+        background: transparent;
+    }
+
+    .project-overview-work-kanban__card {
+        padding: 0.55rem 0;
+        border: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 50%, transparent);
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+
+        &:last-child {
+            border-bottom: 0;
+        }
+
+        &:hover {
+            transform: none;
+            background: rgba(var(--color-surface-hover-rgb), 0.42);
+            border-radius: var(--radius-sm);
+        }
+    }
+}
+
+// Board swimlanes — divider rows, not boxed lanes
+.project-overview-work-board {
+    gap: 0;
+}
+
+.project-overview-work-board__lane {
+    padding: 0.85rem 1.1rem;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+    border-radius: 0;
+    background: transparent;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.project-overview-work-board__lane-body {
+    gap: 0.45rem;
+    padding-top: 0.15rem;
+}
+
+.project-overview-work-board__task {
+    flex: 0 0 auto;
+    min-width: 12rem;
+    padding: 0.48rem 0.65rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 70%, transparent);
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-surface-hover-rgb), 0.35);
+    box-shadow: none;
+}
+
+// Sprints panel flat
+.project-overview-sprints-panel {
+    gap: 0;
+}
+
+.project-overview-sprints-panel__section {
+    padding: 1rem 1.1rem;
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+    border-radius: 0;
+    background: transparent;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.project-overview-sprints-panel__row {
+    border: 0;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    border-radius: 0;
+    background: transparent;
+    padding: 0.62rem 0;
+
+    &:last-child {
+        border-bottom: 0;
+    }
+}
+
+.project-overview-sprints-panel__empty,
+.project-overview-work-board__empty {
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+// Milestones timeline inline
+.project-overview-milestones-timeline {
+    padding: 0.25rem 0 0.5rem;
+    gap: 0;
+    overflow-x: auto;
+}
+
+.project-overview-milestones-timeline__item {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.65rem 0.85rem 0.65rem 0;
+    border: 0;
+    border-right: 1px solid color-mix(in srgb, var(--color-surface-border) 65%, transparent);
+    border-radius: 0;
+    background: transparent;
+
+    &:last-child {
+        border-right: 0;
+    }
+
+    &.is-next strong {
+        color: var(--color-primary);
+    }
+}
+
+// Activity feed flat
+.overview-workspace--activity {
+    .activity-item {
+        padding: 0.65rem 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+
+        &:last-child {
+            border-bottom: 0;
+        }
+    }
+
+    .github-card__list .github-commit-item {
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    }
+}
+
+.overview-workspace--tasks {
+    .overview-workspace__section--next-action {
+        padding-top: 1rem;
+        padding-bottom: 0.85rem;
+    }
+
+    .project-next-action-section__content {
+        gap: 0.55rem;
+    }
+}
+
+.project-overview-tasks-quick-add {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.55rem;
+    align-items: end;
+    padding: 0 1.1rem 0.85rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 78%, transparent);
+
+    @media (min-width: 768px) {
+        padding: 0 1.25rem 0.9rem;
+    }
+}
+
+.project-overview-tasks-list {
+    padding: 0.65rem 1.1rem 1rem;
+
+    @media (min-width: 768px) {
+        padding: 0.75rem 1.25rem 1.1rem;
+    }
+}
+
+.project-overview-tasks-list__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.55rem;
+}
+
+.project-overview-tasks-list__count {
+    font-size: 0.72rem;
+    font-weight: 750;
+    color: var(--color-text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.overview-workspace__link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    padding: 0.28rem 0.55rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    transition: color var(--transition-fast), background var(--transition-fast);
+
+    &:hover {
+        color: var(--color-primary);
+        background: rgba(var(--color-primary-rgb), 0.08);
+    }
+
+    .material-symbols-outlined {
+        font-size: 1rem;
+    }
+}

@@ -5,6 +5,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
+const pmCore_1 = require("./pmCore");
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
 const INITIATIVES = 'initiatives';
@@ -1150,15 +1151,39 @@ const deleteProjectCollectionItem = async (req, res, projectId, itemId, collecti
     });
 };
 const listIssues = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, ISSUES, 'issues');
-const createIssue = async (req, res, projectId) => createProjectCollectionItem(req, res, projectId, ISSUES, 'issue', 'title', 'issue', 'Issues');
+const createIssue = async (req, res, projectId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
+        return;
+    return createProjectCollectionItem(req, res, projectId, ISSUES, 'issue', 'title', 'issue', 'Issues');
+};
 const getIssue = async (req, res, projectId, issueId) => getProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue');
-const updateIssue = async (req, res, projectId, issueId) => updateProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue', 'Issues');
-const deleteIssue = async (req, res, projectId, issueId) => deleteProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'Issue', 'deletedIssueId', 'Issues');
+const updateIssue = async (req, res, projectId, issueId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
+        return;
+    return updateProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue', 'Issues');
+};
+const deleteIssue = async (req, res, projectId, issueId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
+        return;
+    return deleteProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'Issue', 'deletedIssueId', 'Issues');
+};
 const listIdeas = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, IDEAS, 'ideas');
-const createIdea = async (req, res, projectId) => createProjectCollectionItem(req, res, projectId, IDEAS, 'idea', 'title', 'idea', 'Ideas');
+const createIdea = async (req, res, projectId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
+        return;
+    return createProjectCollectionItem(req, res, projectId, IDEAS, 'idea', 'title', 'idea', 'Ideas');
+};
 const getIdea = async (req, res, projectId, ideaId) => getProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea');
-const updateIdea = async (req, res, projectId, ideaId) => updateProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea', 'Ideas');
-const deleteIdea = async (req, res, projectId, ideaId) => deleteProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'Idea', 'deletedIdeaId', 'Ideas');
+const updateIdea = async (req, res, projectId, ideaId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
+        return;
+    return updateProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea', 'Ideas');
+};
+const deleteIdea = async (req, res, projectId, ideaId) => {
+    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
+        return;
+    return deleteProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'Idea', 'deletedIdeaId', 'Ideas');
+};
 const listMilestones = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, MILESTONES, 'milestones');
 const createMilestone = async (req, res, projectId) => createProjectCollectionItem(req, res, projectId, MILESTONES, 'milestone', 'title', 'milestone', 'Milestones');
 const getMilestone = async (req, res, projectId, milestoneId) => getProjectCollectionItem(req, res, projectId, milestoneId, MILESTONES, 'milestone', 'Milestone');

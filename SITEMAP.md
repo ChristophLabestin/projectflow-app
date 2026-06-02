@@ -74,7 +74,7 @@ Base:
 
 ### 3.1 Project Core
 
-- [x] `/project/:id` (index) — Project overview (command-first layout with compact/showcase masthead modes, command strip, attention queue, conditional right-column project triage for overdue/blocked/unassigned task cleanup and team delegation, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add an action-first company command surface with founder action, launch readiness, compact workstream rows, company context, source references, and linked-project rollups)
+- [x] `/project/:id` (index) — Project overview (command-first layout with compact/showcase masthead modes, command strip, attention queue, conditional right-column project triage for overdue/blocked/unassigned task cleanup and team delegation, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add an action-first company command surface with founder action, launch readiness, a workstream modal/drawer task inspector, company context, a dedicated founding-brief modal, source references, and linked-project rollups)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
 - [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 - [x] `/project/:id/codex` — Codex session feed and Codex follow-up inbox
@@ -215,16 +215,24 @@ These are outside the Social module shell in the old routing.
 
 ---
 
-## 7) iOS App (SwiftUI) MVP Coverage
+## 7) iOS App (SwiftUI) Companion Coverage
 
 - [x] Login (email/password, MFA, passkey sign-in)
-- [x] Dashboard (summary metrics, pinned items)
-- [x] Projects list + Project Overview (status, linked tasks/flows/issues, activity feed)
-- [x] Tasks CRUD (project-scoped)
+- [x] Home dashboard command center (focus hero, work/inbox shortcuts, health excluding canceled projects)
+- [x] Projects list with company/startup grouping, lifecycle buckets (active, planning, paused, completed, canceled), linked workstreams
+- [x] Project overview command layout with module nav (initiatives, tasks, sprints, issues, flows, milestones, activity, codex, settings)
+- [x] Company project command surface (stage, readiness meters, linked workstreams)
+- [x] Initiatives CRUD + detail (child tasks, comments, focus/pin, public feedback link)
+- [x] Tasks CRUD with initiative badge, Codex metadata, comments, focus action
 - [x] Flows CRUD (project-scoped)
 - [x] Issues CRUD (project-scoped)
-- [x] Notifications list + push registration, self-test delivery diagnostics, badge count, and linked item deep links
-- [x] Pinned project + pinned tasks/issue support
-- [x] Settings (sign out, basic account state)
+- [x] Personal tasks list + detail (share extension imports)
+- [x] Work tab (tasks, initiatives, personal tasks)
+- [x] Focus loop for task/issue/initiative/personal-task with widgets/Live Activity sync
+- [x] Inbox notifications + initiative deep links
+- [x] Milestones, sprints, activity, Codex read-only project views
+- [x] Calendar (scheduled/due tasks), Team (workspace list)
+- [x] Settings via Home gear (profile, workspace switch, theme applied at root, style guide)
+- [x] AppSession + permission service + extended Firestore models/repositories
 
-MVP exclusions: Social and Marketing modules, media library, and macOS-specific UI. The macOS variant is planned after the iOS MVP.
+MVP exclusions: Finance V2, Social, Marketing modules (open in web links). macOS variant planned separately.

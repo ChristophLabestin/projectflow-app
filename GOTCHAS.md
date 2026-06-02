@@ -6,6 +6,7 @@ Living log of pitfalls, edge cases, and workflow surprises discovered while work
 - `YYYY-MM-DD | Area | Short title` - One sentence describing the gotcha and how to avoid it.
 
 ## Log
+- `2026-06-02 | PM Core | Feature flag defaults on` - `VITE_PM_CORE_ONLY` defaults to enabled; set to `false` to restore legacy module nav. Flows/issues writes are blocked in web services, Firestore rules, and ProjectFlow API (410). Deep links redirect to project tasks.
 - `YYYY-MM-DD | Area | Short title` - Description.
 - `2026-01-13 | Swift | Task name collision` - Use `Swift.Task {}` to avoid confusion with the `Task` model; `_Concurrency.Task` can produce misleading DocumentSnapshot errors.
 - `2026-01-13 | Web | Missing canvas-confetti dependency` - `npm run build` fails unless `canvas-confetti` is installed or externalized in Vite.

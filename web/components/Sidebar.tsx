@@ -2,8 +2,8 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { auth } from '../services/firebase';
-import { getUserIdeas } from '../services/domain/ideasService';
 import { getUserTasks } from '../services/domain/tasksService';
+import { isPmCoreOnly, isDeprecatedProjectNavId, PM_CORE_PROJECT_NAV_ORDER } from '../config/pmCore';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
@@ -117,9 +117,11 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const { hasPermission } = usePermissions();
     const { openProjectCreateModal } = useUIState();
     const canViewFinance = hasPermission('tenant.finance.view');
+    const pmCore = isPmCoreOnly();
+    const [advancedNavOpen, setAdvancedNavOpen] = React.useState(false);
     const isFinanceContext = location.pathname === '/finance' || location.pathname.startsWith('/finance/');
     const [useRegularNavInFinance, setUseRegularNavInFinance] = React.useState(false);
-    const showFinanceNavigation = isFinanceContext && canViewFinance && !useRegularNavInFinance;
+    const showFinanceNavigation = isFinanceContext && canViewFinance && !useRegularNavInFinance && !pmCore;
 
     React.useEffect(() => {
         if (!isFinanceContext) {
@@ -129,7 +131,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
-    const [ideaCount, setIdeaCount] = React.useState<number>(0);
 
     React.useEffect(() => {
         // Only fetch when auth is ready and user is authenticated
@@ -138,17 +139,13 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
         let mounted = true;
         const loadCounts = async () => {
             try {
-                const [tasks, ideas] = await Promise.all([
-                    getUserTasks(),
-                    getUserIdeas().catch(() => [])
-                ]);
+                const tasks = await getUserTasks();
                 if (mounted && user) {
                     const myIncompleteTasks = Array.isArray(tasks) ? tasks.filter(t =>
                         !t.isCompleted &&
                         (t.assigneeId === user.uid || (t.assigneeIds && t.assigneeIds.includes(user.uid)))
                     ) : [];
                     setTaskCount(myIncompleteTasks.length);
-                    setIdeaCount(Array.isArray(ideas) ? ideas.length : 0);
                 }
             } catch (e) {
                 console.warn('Failed to load counts', e);
@@ -268,6 +265,36 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     <NavItem to="/finance/settings" icon="tune" label={t('finance.v2.nav.settings')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/finance/calculations" icon="calculate" label={t('finance.v2.nav.planning')} onClick={isDrawer ? onClose : undefined} />
                                 </>
+                            ) : pmCore ? (
+                                <>
+                                    <NavItem to="/" icon="space_dashboard" label={t('nav.dashboard')} exact onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
+                                    <button
+                                        type="button"
+                                        onClick={() => setAdvancedNavOpen((prev) => !prev)}
+                                        className="mt-2 w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-muted hover:bg-surface-hover/40 hover:text-main transition-colors"
+                                    >
+                                        <span className="flex items-center gap-3">
+                                            <span className="material-symbols-outlined text-[20px]">more_horiz</span>
+                                            <span className="text-[14px] font-medium">{t('nav.advanced')}</span>
+                                        </span>
+                                        <span className="material-symbols-outlined text-[18px]">
+                                            {advancedNavOpen ? 'expand_less' : 'expand_more'}
+                                        </span>
+                                    </button>
+                                    {advancedNavOpen && (
+                                        <div className="grid gap-0.5 pl-1">
+                                            {canViewFinance && (
+                                                <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
+                                            )}
+                                            <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
+                                            <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
+                                            <NavItem to="/media" icon="perm_media" label={t('nav.media')} onClick={isDrawer ? onClose : undefined} />
+                                        </div>
+                                    )}
+                                </>
                             ) : (
                                 <>
                                     <NavItem to="/" icon="space_dashboard" label={t('nav.dashboard')} exact onClick={isDrawer ? onClose : undefined} />
@@ -277,7 +304,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     {canViewFinance && (
                                         <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
                                     )}
-                                    <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
+                                    <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
                                 </>
                             )}
@@ -313,9 +340,12 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                 ];
 
                                 // Get the order (custom or default)
-                                const order = workspace.navPrefs?.order?.length
-                                    ? workspace.navPrefs.order
+                                const defaultOrder = pmCore
+                                    ? [...PM_CORE_PROJECT_NAV_ORDER]
                                     : defaultNavItems.map(n => n.id);
+                                const order = workspace.navPrefs?.order?.length && !pmCore
+                                    ? workspace.navPrefs.order
+                                    : defaultOrder;
 
                                 // Sort items by the order
                                 const orderedItems = order
@@ -341,7 +371,8 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                             workspace.modules.includes(item.moduleKey);
                                         // Check if not hidden by user
                                         const notHidden = !hiddenItems.includes(item.id);
-                                        return moduleEnabled && notHidden;
+                                        const notDeprecated = !isDeprecatedProjectNavId(item.id);
+                                        return moduleEnabled && notHidden && notDeprecated;
                                     })
                                     .map(item => (
                                         <NavItem

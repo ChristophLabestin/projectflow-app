@@ -459,9 +459,10 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                                 type="button"
                                 onClick={() => setPinOnCreate(!pinOnCreate)}
                                 className={`issue-modal__pin-toggle ${pinOnCreate ? 'is-active' : ''}`}
+                                title={t('createIssue.pin.label')}
+                                aria-label={t('createIssue.pin.label')}
                             >
                                 <span className="material-symbols-outlined">{pinOnCreate ? 'keep' : 'keep_off'}</span>
-                                {t('createIssue.pin.label')}
                             </button>
 
 

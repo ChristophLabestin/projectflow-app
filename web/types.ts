@@ -504,7 +504,6 @@ export interface Task {
     dueDate?: string;
     startDate?: string;
     priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
-    effort?: 'Low' | 'Medium' | 'High';
     assignee?: string; // Legacy: Display Name or URL
     assigneeId?: string; // User UID
     assigneeIds?: string[]; // New: Multiple User UIDs

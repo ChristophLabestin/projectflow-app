@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { FocusItemType, Task, UserFocusLastAction, UserFocusState, UserFocusStatus } from '../types';
 import { auth } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -261,7 +261,22 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }, [pinnedItems]);
 
     const toggleModal = useCallback(() => setIsModalOpen(prev => !prev), []);
-    const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) || null : null;
+    const focusItem = useMemo(() => {
+        const resolvedId = focusItemId || focusState?.itemId || null;
+        if (!resolvedId) return null;
+        const pinned = pinnedItems.find((item) => item.id === resolvedId);
+        if (pinned) return pinned;
+        if (focusState?.itemId && focusState.title && focusState.itemType) {
+            return {
+                id: focusState.itemId,
+                type: focusState.itemType,
+                title: focusState.title,
+                projectId: focusState.projectId || '',
+                tenantId: focusState.tenantId
+            } satisfies PinnedItem;
+        }
+        return null;
+    }, [focusItemId, focusState, pinnedItems]);
 
     // Keyboard Shortcut Listener
     useEffect(() => {

@@ -54,25 +54,20 @@ final class TenantStore: ObservableObject {
         listener = nil
     }
 
-    func permissionContext(projectOwnerId: String? = nil) -> PermissionContext {
+    func permissionContext(projectOwnerId: String? = nil, project: Project? = nil) -> PermissionContext {
+        if let project {
+            return AppSession.shared.permissionContext(project: project)
+        }
         let role = membership?.role ?? "Member"
-        let isTenantOwner = role == "Owner" || (activeTenantId != nil && activeTenantId == currentUserId)
+        let isTenantOwner = role == "Owner"
         let isProjectOwner = projectOwnerId == currentUserId
         return PermissionContext(
             isTenantOwner: isTenantOwner,
             isProjectOwner: isProjectOwner,
-            allow: [],
-            deny: [],
-            canCreateProjects: canCreateProjects(role: role)
+            workspaceRole: role,
+            allow: Array(AppSession.shared.roles.flatMap { $0.allow }),
+            deny: Array(AppSession.shared.roles.flatMap { $0.deny }),
+            canCreateProjects: ["Owner", "Admin", "Member"].contains(role)
         )
-    }
-
-    private func canCreateProjects(role: String) -> Bool {
-        switch role {
-        case "Owner", "Admin", "Member":
-            return true
-        default:
-            return false
-        }
     }
 }

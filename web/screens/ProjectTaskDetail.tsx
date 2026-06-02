@@ -49,12 +49,7 @@ const getPriorityTone = (priority?: string) => {
     return 'task-detail__tone--neutral';
 };
 
-const getEffortTone = (effort?: string) => {
-    if (effort === 'High') return 'task-detail__tone--warning';
-    if (effort === 'Medium') return 'task-detail__tone--primary';
-    if (effort === 'Low') return 'task-detail__tone--neutral';
-    return 'task-detail__tone--neutral';
-};
+const getEffortTone = (_effort?: string) => 'task-detail__tone--neutral';
 
 const getTaskStatusIcon = (status?: string) => {
     return status === 'Done' ? 'check_circle' :
@@ -102,8 +97,6 @@ export const ProjectTaskDetail = () => {
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
-    const [effortMenuOpen, setEffortMenuOpen] = useState(false);
-    const effortMenuRef = useRef<HTMLDivElement | null>(null);
     const { pinItem, unpinItem, isPinned, focusItemId, startFocusItem } = usePinnedTasks();
 
     const buildPinnedTaskItem = () => {
@@ -155,11 +148,7 @@ export const ProjectTaskDetail = () => {
         Low: t('tasks.priority.low'),
     }), [t]);
 
-    const effortLabels = useMemo(() => ({
-        Low: t('taskDetail.effort.low'),
-        Medium: t('taskDetail.effort.medium'),
-        High: t('taskDetail.effort.high'),
-    }), [t]);
+    const effortLabels = useMemo(() => ({}), []);
 
     const flowTypeLabels = useMemo(() => ({
         Feature: t('flows.type.feature'),
@@ -268,7 +257,7 @@ export const ProjectTaskDetail = () => {
     }, [taskId, id, tenantId, navigate]);
 
     useEffect(() => {
-        if (!statusMenuOpen && !priorityMenuOpen && !effortMenuOpen) return;
+        if (!statusMenuOpen && !priorityMenuOpen) return;
         const handleClick = (event: MouseEvent) => {
             if (statusMenuOpen && !statusMenuRef.current?.contains(event.target as Node)) {
                 setStatusMenuOpen(false);
@@ -276,13 +265,10 @@ export const ProjectTaskDetail = () => {
             if (priorityMenuOpen && !priorityMenuRef.current?.contains(event.target as Node)) {
                 setPriorityMenuOpen(false);
             }
-            if (effortMenuOpen && !effortMenuRef.current?.contains(event.target as Node)) {
-                setEffortMenuOpen(false);
-            }
         };
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
-    }, [statusMenuOpen, priorityMenuOpen, effortMenuOpen]);
+    }, [statusMenuOpen, priorityMenuOpen]);
 
     // Subscribe to workspace users once we have the task's tenantId
     useEffect(() => {
@@ -504,18 +490,21 @@ export const ProjectTaskDetail = () => {
     const currentStatusLabel = statusLabels[currentStatus as keyof typeof statusLabels] || t('tasks.status.unknown');
     const taskHeroFacts = [
         {
+            icon: 'calendar_today',
             label: task.startDate && task.dueDate ? t('taskDetail.timeline.label') : t('taskDetail.timeline.dueDate'),
             value: task.startDate ? (
-                `${format(new Date(task.startDate), dateFormat, { locale: dateLocale })} - ${task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : '...'}`
+                `${format(new Date(task.startDate), dateFormat, { locale: dateLocale })} – ${task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : '...'}`
             ) : (
                 task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : t('taskDetail.timeline.noDueDate')
             )
         },
         ...(totalCount > 0 ? [{
+            icon: 'checklist',
             label: t('taskDetail.subtasks.label'),
             value: `${doneCount}/${totalCount} · ${progressPct}%`
         }] : []),
         {
+            icon: 'group',
             label: t('taskDetail.assignees.label'),
             value: taskAssignees.length > 0 ? String(taskAssignees.length) : t('assignees.unassigned')
         }
@@ -592,12 +581,11 @@ export const ProjectTaskDetail = () => {
                     <div className="task-detail__hero-layout">
                         <div className="task-detail__hero-main">
                             <div className="task-detail__badges">
-                                {/* Project Context */}
+                                {/* Back navigation to project */}
                                 {project && (
                                     <Link to={`/project/${project.id}`} className="task-detail__project-link">
-                                        <span className="task-detail__project-dot" />
+                                        <span className="material-symbols-outlined task-detail__project-icon">west</span>
                                         <span className="task-detail__project-text">{project.title}</span>
-                                        <span className="material-symbols-outlined task-detail__project-icon">arrow_forward</span>
                                     </Link>
                                 )}
                                 <span className={`task-detail__status-pill ${getTaskStatusStyle(task.status)}`}>
@@ -619,7 +607,7 @@ export const ProjectTaskDetail = () => {
                                         className="task-detail__strategic-pill"
                                     >
                                         <span className="material-symbols-outlined task-detail__strategic-icon">rocket_launch</span>
-                                        {t('taskDetail.badges.initiative')}
+                                        {initiative.title}
                                     </Link>
                                 )}
                             </div>
@@ -633,8 +621,11 @@ export const ProjectTaskDetail = () => {
                             <div className="task-detail__facts">
                                 {taskHeroFacts.map((fact) => (
                                     <div key={fact.label} className="task-detail__fact">
-                                        <span className="task-detail__fact-label">{fact.label}</span>
-                                        <span className="task-detail__fact-value">{fact.value}</span>
+                                        <span className="material-symbols-outlined task-detail__fact-icon">{fact.icon}</span>
+                                        <div className="task-detail__fact-copy">
+                                            <span className="task-detail__fact-value">{fact.value}</span>
+                                            <span className="task-detail__fact-label">{fact.label}</span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -700,7 +691,7 @@ export const ProjectTaskDetail = () => {
                 <div className="task-detail__main">
 
                     {/* Top Meta Cards: Priority, Status, Assignee */}
-                    {/* Top Meta Cards: Priority, Status, Effort, Assignee */}
+                    {/* Top Meta Cards: Priority, Status, Assignee */}
                     <div className="task-detail__meta-grid">
                         {/* Priority Card - Compact with Custom Dropdown */}
                         <div className="app-card task-detail__card">
@@ -805,66 +796,6 @@ export const ProjectTaskDetail = () => {
                                                     )}
                                                 </button>
                                             ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Effort Card (New) */}
-                        <div className="app-card task-detail__card">
-                            <div className="task-detail__card-header">
-                                <span className="material-symbols-outlined task-detail__card-icon">fitness_center</span>
-                                <span className="task-detail__card-label">{t('taskDetail.effort.label')}</span>
-                            </div>
-                            <div className="task-detail__card-body">
-                                <div ref={effortMenuRef} className="task-detail__select">
-                                    <button
-                                        type="button"
-                                        onClick={() => setEffortMenuOpen((open) => !open)}
-                                        className={`task-detail__select-trigger ${getEffortTone(task.effort || 'None')}`}
-                                        data-open={effortMenuOpen ? 'true' : 'false'}
-                                    >
-                                        <span className="task-detail__select-value">
-                                            {task.effort ? (
-                                                <>
-                                                    <EffortIcon effort={task.effort} />
-                                                    {effortLabels[task.effort as keyof typeof effortLabels] || task.effort}
-                                                </>
-                                            ) : (
-                                                <span className="task-detail__select-placeholder">{t('taskDetail.effort.placeholder')}</span>
-                                            )}
-                                        </span>
-                                        <span className="material-symbols-outlined task-detail__select-chevron">
-                                            expand_more
-                                        </span>
-                                    </button>
-
-                                    {effortMenuOpen && (
-                                        <div className="task-detail__select-menu">
-                                            {(['Low', 'Medium', 'High'] as const).map((e) => {
-                                                const isSelected = task.effort === e;
-
-                                                return (
-                                                    <button
-                                                        key={e}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setEffortMenuOpen(false);
-                                                            handleUpdateField('effort', e);
-                                                        }}
-                                                        className={`task-detail__select-item ${getEffortTone(e)} ${isSelected ? 'task-detail__select-item--selected' : ''}`}
-                                                    >
-                                                        <span className="task-detail__select-item-label">
-                                                            <EffortIcon effort={e} />
-                                                            {effortLabels[e]}
-                                                        </span>
-                                                        {isSelected && (
-                                                            <span className="material-symbols-outlined task-detail__select-item-check">check</span>
-                                                        )}
-                                                    </button>
-                                                );
-                                            })}
                                         </div>
                                     )}
                                 </div>

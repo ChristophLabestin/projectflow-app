@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';
+import { isPmCoreOnly } from '../../config/pmCore';
 import { notifySubtaskAssignment, notifyTaskAssignment } from '../notificationService';
 import {
     ensureCategory,
@@ -137,11 +138,11 @@ export const addTask = async (
         createdAt: serverTimestamp()
     };
 
-    if (extra?.linkedIssueId) {
+    if (!isPmCoreOnly() && extra?.linkedIssueId) {
         taskData.linkedIssueId = extra.linkedIssueId;
     }
 
-    if (extra?.convertedIdeaId) {
+    if (!isPmCoreOnly() && extra?.convertedIdeaId) {
         taskData.convertedIdeaId = extra.convertedIdeaId;
     }
 
@@ -318,7 +319,7 @@ export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, p
 
     await syncProjectProgress(data.projectId, resolvedTenant);
 
-    if (data.linkedIssueId) {
+    if (!isPmCoreOnly() && data.linkedIssueId) {
         try {
             const issueRef = doc(projectSubCollection(resolvedTenant || resolveTenantId(), data.projectId, ISSUES), data.linkedIssueId);
             await updateDoc(issueRef, { status: newStatus ? 'Resolved' : 'Open' });

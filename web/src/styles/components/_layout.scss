@@ -112,15 +112,27 @@
 
 .app-main-scroll {
     --topbar-overlay-clearance: 5rem;
+    --app-main-gutter-top: 1rem;
+    --app-main-scroll-padding-top: calc(var(--topbar-overlay-clearance) + var(--app-main-gutter-top));
+    /* Match bottom edge of centered topbar pills, not shell min-height. */
+    --topbar-shell-min-height: 4.5rem;
+    --topbar-pill-min-height: 2.75rem;
+    --topbar-sticky-inset: calc((var(--topbar-shell-min-height) + var(--topbar-pill-min-height)) / 2);
 
     flex: 1 1 auto;
     width: 100%;
     min-height: 0;
     overflow-y: auto;
+    scrollbar-gutter: stable;
+
+    @media (max-width: 767px) {
+        --topbar-shell-min-height: 4.25rem;
+        --topbar-sticky-inset: calc((var(--topbar-shell-min-height) + var(--topbar-pill-min-height)) / 2);
+    }
 }
 
 .app-main-scroll--standard {
-    padding: calc(var(--topbar-overlay-clearance) + 1rem) 1rem 1rem;
+    padding: var(--app-main-scroll-padding-top) 1rem 1rem;
 
     @include mixins.mq('sm') {
         padding-right: 1.5rem;
@@ -129,12 +141,15 @@
     }
 
     @include mixins.mq('lg') {
-        padding: calc(var(--topbar-overlay-clearance) + 1.25rem) 2rem 2rem;
+        --app-main-gutter-top: 1.25rem;
+        --app-main-scroll-padding-top: calc(var(--topbar-overlay-clearance) + var(--app-main-gutter-top));
+        padding: var(--app-main-scroll-padding-top) 2rem 2rem;
     }
 }
 
 .app-main-scroll--full {
-    padding-top: var(--topbar-overlay-clearance);
+    --app-main-scroll-padding-top: var(--topbar-overlay-clearance);
+    padding-top: var(--app-main-scroll-padding-top);
 }
 
 .topbar-shell {

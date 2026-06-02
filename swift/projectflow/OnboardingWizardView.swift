@@ -230,7 +230,8 @@ struct OnboardingWizardView: View {
                 let tenantId = try await repo.createTenant(ownerId: user.uid, name: workspaceName, planTier: selectedPlan)
                 
                 // 3. Set as active tenant
-                UserDefaults.standard.set(tenantId, forKey: TenantResolver.activeTenantKey)
+                TenantResolver.setActiveTenantId(tenantId)
+                AppSession.shared.setInitialTenantIfNeeded(tenantId)
                 
                 withAnimation {
                     currentStep = .complete

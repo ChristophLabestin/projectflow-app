@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects } from '../services/dataService';
 import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
 import { getWorkspaceGroups } from '../services/domain/workspaceGroupsService';
+import { filterModulesForWizardOptions, isPmCoreOnly, normalizeModulesForPmCore, PM_CORE_DEPRECATED_MODULES } from '../config/pmCore';
 import { createProject } from '../services/domain/projectAdminService';
 import { addTask } from '../services/domain/tasksService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
@@ -99,6 +100,13 @@ const MODULE_OPTIONS: ModuleOption[] = [
 
 type VisibilityMode = 'everyone' | 'groups' | 'private';
 
+const StepHeader: React.FC<{ title: string; subtitle: string }> = ({ title, subtitle }) => (
+    <div className="create-project__step-header">
+        <h2>{title}</h2>
+        <p>{subtitle}</p>
+    </div>
+);
+
 type CreateProjectWizardProps = {
     onClose?: () => void;
 };
@@ -125,7 +133,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [cadence, setCadence] = useState<ProjectCadence>('weekly');
     const dateConfidence: ProjectDateConfidence = 'target';
     const [successCriteria, setSuccessCriteria] = useState('');
-    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'ideas', 'activity']);
+    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'initiatives', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
     const [companyProjects, setCompanyProjects] = useState<Project[]>([]);
@@ -145,14 +153,16 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
-    const filterAccessibleModules = (nextModules: ProjectModule[]) => (
-        nextModules.filter(module => (
+    const filterAccessibleModules = (nextModules: ProjectModule[]) => {
+        const scopedModules = isPmCoreOnly() ? normalizeModulesForPmCore(nextModules) : nextModules;
+        return scopedModules.filter(module => (
             MODULE_OPTIONS.some(option => option.id === module)
+            && (!isPmCoreOnly() || !PM_CORE_DEPRECATED_MODULES.includes(module))
             && (module !== 'social' || isSocialAllowed)
             && (module !== 'marketing' || isMarketingAllowed)
             && (module !== 'accounting' || isAccountingAllowed)
-        ))
-    );
+        ));
+    };
 
     useEffect(() => {
         getWorkspaceMembers().then(members => {
@@ -580,7 +590,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         marketing: isMarketingAllowed,
         accounting: isAccountingAllowed
     };
-    const moduleSelectionItems = MODULE_OPTIONS.map(option => {
+    const wizardModuleOptions = MODULE_OPTIONS.filter(
+        (option) => !isPmCoreOnly() || !PM_CORE_DEPRECATED_MODULES.includes(option.id)
+    );
+    const moduleSelectionItems = wizardModuleOptions.map(option => {
         const isLocked = option.gatedBy ? !moduleAccess[option.gatedBy] : false;
         return {
             id: option.id === 'ideas' ? 'flows' : option.id,
@@ -620,7 +633,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         }
     ];
     const invalidModuleIds = modules.filter(module => (
-        !MODULE_OPTIONS.some(option => option.id === module)
+        !wizardModuleOptions.some(option => option.id === module)
         || (module === 'social' && !isSocialAllowed)
         || (module === 'marketing' && !isMarketingAllowed)
         || (module === 'accounting' && !isAccountingAllowed)
@@ -694,10 +707,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 0: Type */}
                         {currentStep === 0 && (
                             <div className="create-project__step create-project__step--start animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.typeStep.title')}</h2>
-                                    <p>{t('createProjectWizard.typeStep.subtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.typeStep.title')}
+                                    subtitle={t('createProjectWizard.typeStep.subtitle')}
+                                />
 
                                 <ModuleSelection
                                     modules={templateSelectionItems}
@@ -713,10 +726,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 1: Details */}
                         {currentStep === 1 && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.details.title')}</h2>
-                                    <p>{t('createProjectWizard.details.subtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.details.title')}
+                                    subtitle={t('createProjectWizard.details.subtitle')}
+                                />
 
                                 <div className="create-project__form-grid create-project__form-grid--details">
                                     <TextInput
@@ -780,10 +793,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 2: Setup Workstreams */}
                         {currentStep === SETUP_WORKSTREAMS_STEP_ID && isCreatingCompanyProject && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.startup.tracks.title')}</h2>
-                                    <p>{t('createProjectWizard.startup.tracks.subtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.startup.tracks.title')}
+                                    subtitle={t('createProjectWizard.startup.tracks.subtitle')}
+                                />
 
                                 <div className="create-project__startup-panel create-project__startup-panel--tracks">
                                     <ModuleSelection
@@ -816,10 +829,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 3: Modules */}
                         {currentStep === 3 && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.modules.title')}</h2>
-                                    <p>{t('createProjectWizard.modules.subtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.modules.title')}
+                                    subtitle={t('createProjectWizard.modules.subtitle')}
+                                />
 
                                 <div className="create-project__selection-container">
                                     <ModuleSelection
@@ -834,10 +847,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 4: Team */}
                         {currentStep === TEAM_STEP_ID && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.access.teamTitle')}</h2>
-                                    <p>{t('createProjectWizard.access.teamSubtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.access.teamTitle')}
+                                    subtitle={t('createProjectWizard.access.teamSubtitle')}
+                                />
 
                                 <div className="create-project__access-stack">
                                     <section className="create-project__access-section">
@@ -864,10 +877,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 5: Visibility */}
                         {currentStep === VISIBILITY_STEP_ID && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.access.visibilityTitle')}</h2>
-                                    <p>{t('createProjectWizard.access.visibilitySubtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.access.visibilityTitle')}
+                                    subtitle={t('createProjectWizard.access.visibilitySubtitle')}
+                                />
 
                                 <div className="create-project__access-stack">
                                     <section className="create-project__access-section">
@@ -926,10 +939,10 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                         {/* Step 6: Timeline */}
                         {currentStep === 6 && (
                             <div className="create-project__step animate-fade-in">
-                                <div className="create-project__step-header">
-                                    <h2>{t('createProjectWizard.timeline.title')}</h2>
-                                    <p>{t('createProjectWizard.timeline.subtitle')}</p>
-                                </div>
+                                <StepHeader
+                                    title={t('createProjectWizard.timeline.title')}
+                                    subtitle={t('createProjectWizard.timeline.subtitle')}
+                                />
 
                                 <div className="create-project__timeline-grid">
                                     <div className="create-project__timeline-control">
@@ -947,33 +960,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                             onChange={(value) => setStatus(String(value) as ProjectStatus)}
                                             options={statusOptions}
                                         />
-                                    </div>
-                                    <div className="create-project__timeline-control">
-                                        <label>{t('createProjectWizard.brief.cadence.label')}</label>
-                                        <div className="create-project__cadence-grid" role="radiogroup" aria-label={t('createProjectWizard.brief.cadence.label')}>
-                                            {cadenceOptions.map(option => {
-                                                const optionValue = option.value as ProjectCadence;
-                                                const isActive = cadence === optionValue;
-                                                return (
-                                                    <button
-                                                        key={option.value}
-                                                        type="button"
-                                                        role="radio"
-                                                        aria-checked={isActive}
-                                                        className={`create-project__cadence-option ${isActive ? 'is-active' : ''}`}
-                                                        onClick={() => setCadence(optionValue)}
-                                                    >
-                                                        <span className="material-symbols-outlined create-project__cadence-icon" aria-hidden="true">
-                                                            {cadenceIcons[optionValue]}
-                                                        </span>
-                                                        <span className="create-project__cadence-label">{option.label}</span>
-                                                        <span className="create-project__cadence-check" aria-hidden="true">
-                                                            {isActive && <span className="material-symbols-outlined">check</span>}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
                                     </div>
                                     <div className="create-project__timeline-control">
                                         <DatePicker
@@ -1012,6 +998,30 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                                     <span>{priorityLabels[option]}</span>
                                                 </button>
                                             ))}
+                                        </div>
+                                    </div>
+                                    <div className="create-project__timeline-control create-project__timeline-control--cadence">
+                                        <label>{t('createProjectWizard.brief.cadence.label')}</label>
+                                        <div className="create-project__cadence-rhythm" role="radiogroup" aria-label={t('createProjectWizard.brief.cadence.label')}>
+                                            {cadenceOptions.map(option => {
+                                                const optionValue = option.value as ProjectCadence;
+                                                const isActive = cadence === optionValue;
+                                                return (
+                                                    <button
+                                                        key={option.value}
+                                                        type="button"
+                                                        role="radio"
+                                                        aria-checked={isActive}
+                                                        className={`create-project__cadence-rhythm-option ${isActive ? 'is-active' : ''}`}
+                                                        onClick={() => setCadence(optionValue)}
+                                                    >
+                                                        <span className="create-project__cadence-rhythm-icon material-symbols-outlined" aria-hidden="true">
+                                                            {cadenceIcons[optionValue]}
+                                                        </span>
+                                                        <span className="create-project__cadence-rhythm-label">{option.label}</span>
+                                                    </button>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>

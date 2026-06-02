@@ -5,6 +5,7 @@ const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const init_1 = require("./init");
+const pmCore_1 = require("./pmCore");
 const GRAPH_API_BASE = 'https://graph.facebook.com/v19.0';
 async function publishInstagramPhoto(igAccountId, imageUrl, caption, accessToken, log) {
     var _a, _b;
@@ -280,11 +281,11 @@ exports.dailyHealthSnapshots = (0, scheduler_1.onSchedule)({ schedule: "0 0 * * 
                     const tasksSnap = await init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
-                    // Get issues for this project
-                    const issuesSnap = await init_1.db.collection('tenants').doc(tenantId)
-                        .collection('projects').doc(projectId)
-                        .collection('issues').get();
-                    // Calculate health
+                    const issuesSnap = (0, pmCore_1.isPmCoreOnly)()
+                        ? { docs: [] }
+                        : await init_1.db.collection('tenants').doc(tenantId)
+                            .collection('projects').doc(projectId)
+                            .collection('issues').get();
                     const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
                     // Save snapshot using date as document ID (prevents duplicates)
                     const snapshotRef = init_1.db.collection('tenants').doc(tenantId)
@@ -338,9 +339,11 @@ exports.debugHealthSnapshots = (0, https_1.onRequest)({ region: "europe-west3" }
                     const tasksSnap = await init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
-                    const issuesSnap = await init_1.db.collection('tenants').doc(tenantId)
-                        .collection('projects').doc(projectId)
-                        .collection('issues').get();
+                    const issuesSnap = (0, pmCore_1.isPmCoreOnly)()
+                        ? { docs: [] }
+                        : await init_1.db.collection('tenants').doc(tenantId)
+                            .collection('projects').doc(projectId)
+                            .collection('issues').get();
                     const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
                     const snapshotRef = init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)

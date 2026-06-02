@@ -251,12 +251,19 @@ These tokens define key layout constants used across the app shell.
 - Keep the page command-first: compact header, project command strip, attention queue, execution cards, project state/context, then reference modules.
 - Keep the project masthead compact by default, but use the same floating identity-box language for both `Compact` and `Showcase`. Compact mode should be the short version with a shallow cover/backdrop band behind the title box; Showcase may enlarge that cover area when media should carry more visual weight. Both modes must keep identity, status, and primary actions visible without scrolling and return to command metrics immediately after the masthead; never show a big empty image placeholder when no cover is set.
 - Combine command metrics and attention work into one `Project focus` surface. Do not render the command strip and attention queue as two separate top-level cards.
-- Startup/company overview additions should use the same neutral card, row, and metadata patterns as the rest of Project Overview. Company projects should use one unified command surface with a compact header, one founder action, launch readiness, a quiet context rail, compact workstream rows, and linked delivery projects; avoid yellow warning panels, separate cockpit cards, long explanatory paragraphs, and loud pill clusters for routine setup guidance.
+- Startup/company overview additions should use the same neutral card, row, and metadata patterns as the rest of Project Overview. Company projects should use one unified command surface with a compact header, one founder action, launch readiness, a quiet context rail, a compact workstream summary that opens a modal/drawer for task inspection, and linked delivery projects; avoid inline lists of every workstream, yellow warning panels, separate cockpit cards, long explanatory paragraphs, and loud pill clusters for routine setup guidance. The founding brief belongs in its own focused modal from the overview, not in project settings.
 - Keep the command strip to one full-width section with compact cells for health, work, timeline, and lifecycle. It must not become a second full controls card.
 - Do not render the old header metrics footer or snapshot card alongside the command strip; those signals belong to one top-level summary surface.
 - Hide the attention queue for canceled projects or projects with no attention items; do not render a success/empty next-action card in the command area.
 - Keep primary work cards in the main grid and compact project state/support cards in the side column so the overview remains predictable across sessions.
 - Move reference-heavy modules such as updates, resources, GitHub, and metadata below the operational work/status area.
+
+### Workstream list pages (Tasks + Initiatives)
+
+- Project task lists, global `/tasks`, and initiative lists share the `workstream-page` shell in `web/src/styles/components/_workstream-pages.scss`.
+- Shared structure: eyebrow hero, four-cell metrics rail, sticky command deck (search + segment filters + view/sort), then body content.
+- Tasks use flat bordered list rows with a left priority stripe inside `workstream-page__list`; board view keeps elevated cards.
+- Initiatives use `workstream-initiative-card` catalog cards with top accent, health pill, progress ring, and richer stat footer; list mode compresses to horizontal rows while keeping the same card language.
 
 ---
 

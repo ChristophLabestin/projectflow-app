@@ -65,17 +65,3 @@ final class ShareCaptureImportService {
             .setDataAsync(taskData, merge: true)
     }
 }
-
-private extension DocumentReference {
-    func setDataAsync(_ data: [String: Any], merge: Bool = false) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            setData(data, merge: merge) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
-    }
-}

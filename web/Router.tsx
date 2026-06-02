@@ -32,6 +32,14 @@ import LegalPage from './screens/LegalPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
+import { PmCoreDeprecatedRedirect } from './components/routing/PmCoreDeprecatedRedirect';
+
+const withPmCoreGuard = (
+    element: React.ReactNode,
+    fallback: 'tasks' | 'overview' = 'tasks'
+) => (
+    <PmCoreDeprecatedRedirect fallback={fallback}>{element}</PmCoreDeprecatedRedirect>
+);
 
 const ProjectOverview = React.lazy(() => import('./screens/ProjectOverview').then((module) => ({ default: module.ProjectOverview })));
 const ProjectTasks = React.lazy(() => import('./screens/ProjectTasks').then((module) => ({ default: module.ProjectTasks })));
@@ -252,13 +260,13 @@ export const AppRouter = () => {
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
                             <Route path="codex" element={withRouteSuspense(<ProjectCodex />)} />
-                            <Route path="flows" element={withRouteSuspense(<ProjectFlows />)} />
-                            <Route path="flows/:flowId" element={withRouteSuspense(<FlowDetail />)} />
-                            <Route path="ideas" element={withRouteSuspense(<ProjectFlows />)} />
-                            <Route path="ideas/:flowId" element={withRouteSuspense(<FlowDetail />)} />
-                            <Route path="issues" element={withRouteSuspense(<ProjectIssues />)} />
-                            <Route path="issues/:issueId" element={withRouteSuspense(<ProjectIssueDetail />)} />
-                            <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />
+                            <Route path="flows" element={withPmCoreGuard(withRouteSuspense(<ProjectFlows />))} />
+                            <Route path="flows/:flowId" element={withPmCoreGuard(withRouteSuspense(<FlowDetail />))} />
+                            <Route path="ideas" element={withPmCoreGuard(withRouteSuspense(<ProjectFlows />))} />
+                            <Route path="ideas/:flowId" element={withPmCoreGuard(withRouteSuspense(<FlowDetail />))} />
+                            <Route path="issues" element={withPmCoreGuard(withRouteSuspense(<ProjectIssues />))} />
+                            <Route path="issues/:issueId" element={withPmCoreGuard(withRouteSuspense(<ProjectIssueDetail />))} />
+                            <Route path="milestones" element={withPmCoreGuard(withRouteSuspense(<ProjectMilestones />), 'overview')} />
                             <Route
                                 path="sprints"
                                 element={
@@ -270,11 +278,12 @@ export const AppRouter = () => {
 
                             <Route
                                 path="social"
-                                element={
+                                element={withPmCoreGuard(
                                     <RequireModuleAccess module="social">
                                         {withRouteSuspense(<SocialLayout />)}
-                                    </RequireModuleAccess>
-                                }
+                                    </RequireModuleAccess>,
+                                    'overview'
+                                )}
                             >
                                 <Route index element={withRouteSuspense(<SocialDashboard />)} />
                                 <Route path="campaigns" element={withRouteSuspense(<CampaignList />)} />
@@ -323,11 +332,12 @@ export const AppRouter = () => {
 
                             <Route
                                 path="marketing"
-                                element={
+                                element={withPmCoreGuard(
                                     <RequireModuleAccess module="marketing">
                                         {withRouteSuspense(<MarketingLayout />)}
-                                    </RequireModuleAccess>
-                                }
+                                    </RequireModuleAccess>,
+                                    'overview'
+                                )}
                             >
                                 <Route index element={withRouteSuspense(<MarketingDashboard />)} />
                                 <Route path="ads" element={withRouteSuspense(<PaidAdsList />)} />

@@ -45,7 +45,7 @@ struct ProjectOverviewView: View {
             project: project,
             tasks: store.tasks,
             milestones: store.milestones,
-            issues: store.issues,
+            issues: PmCoreConfig.isPmCoreOnly ? [] : store.issues,
             sprints: store.sprints,
             activities: store.activity
         )

@@ -75,9 +75,9 @@ final class DashboardStore: ObservableObject {
 
         projectListener = projectRepository.listenProjects(tenantId: tenantId) { [weak self] projects in
             guard let self else { return }
-            print("DashboardStore: Projects updated. Count: \(projects.count)")
-            self.projectCount = projects.count
-            self.updateProjectStats(projects)
+            let activeProjects = projects.filter { !ProjectStatus.excludesFromHealth($0.status) }
+            self.projectCount = activeProjects.count
+            self.updateProjectStats(activeProjects)
             self.isLoading = false
         }
 

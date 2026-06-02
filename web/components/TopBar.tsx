@@ -14,10 +14,11 @@ const UserProfileDropdown = lazy(() => import('./UserProfileDropdown').then((mod
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
-    const { toggleModal, pinnedItems, focusItemId, focusState } = usePinnedTasks();
+    const { toggleModal, pinnedItems, focusItemId, focusState, focusItem: activeFocusItem } = usePinnedTasks();
     const { t } = useLanguage();
     const hasItems = pinnedItems.length > 0;
-    const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null;
+    const focusItem = activeFocusItem
+        ?? (focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null);
     const [subtaskStats, setSubtaskStats] = useState<{ done: number; total: number } | null>(null);
 
     useEffect(() => {

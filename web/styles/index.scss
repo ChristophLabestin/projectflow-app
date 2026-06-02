@@ -4,6 +4,7 @@
 @use '../src/styles/components/recent-activity-card';
 @use '../src/styles/components/scheduled-tasks-card';
 @use '../src/styles/components/tasks';
+@use '../src/styles/components/workstream-pages';
 @use '../src/styles/components/project-edit-modal';
 @use '../src/styles/components/calendar';
 @use '../src/styles/components/ai-studio';
@@ -14,6 +15,7 @@
 @use '../src/styles/components/pinned-tasks';
 @use '../src/styles/components/layout';
 @use '../src/styles/components/initiatives';
+@use '../src/styles/components/public-initiative-feedback';
 @use '../src/styles/components/health-detail-modal';
 
 * {

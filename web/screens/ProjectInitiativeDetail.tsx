@@ -6,6 +6,7 @@ import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { Card } from '../components/common/Card/Card';
 import { Modal } from '../components/common/Modal/Modal';
 import { Select, type SelectOption } from '../components/common/Select/Select';
+import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { CommentSection } from '../components/CommentSection';
 import { InitiativeFeedbackModal } from '../components/InitiativeFeedbackModal';
 import { InitiativeSettingsModal } from '../components/InitiativeSettingsModal';
@@ -259,14 +260,19 @@ export const ProjectInitiativeDetail = () => {
 
     const initiativeHeroFacts = [
         {
+            icon: 'calendar_today',
             label: t('taskDetail.timeline.label'),
-            value: formatDisplayDate(initiative?.startDate) || formatDisplayDate(initiative?.dueDate) || t('taskDetail.timeline.noDueDate')
+            value: initiative?.startDate && initiative?.dueDate
+                ? `${formatDisplayDate(initiative.startDate)} – ${formatDisplayDate(initiative.dueDate)}`
+                : formatDisplayDate(initiative?.startDate || initiative?.dueDate) || t('taskDetail.timeline.noDueDate')
         },
         {
+            icon: 'update',
             label: t('initiatives.detail.lastUpdated'),
             value: initiative?.updatedAt ? timeAgo(initiative.updatedAt) : t('initiatives.detail.noActivity')
         },
         {
+            icon: 'task_alt',
             label: t('initiatives.summary.workItems'),
             value: String(tasks.length)
         }
@@ -415,6 +421,12 @@ export const ProjectInitiativeDetail = () => {
                                         {priorityLabels[initiative.priority] || initiative.priority}
                                     </span>
                                 )}
+                                {initiativeHealth && (
+                                    <span className={`initiative-detail__pill initiative-detail__pill--${getTone(initiativeHealth.status)}`}>
+                                        <span className="material-symbols-outlined">{getHealthIcon(initiativeHealth.status)}</span>
+                                        {healthLabels[initiativeHealth.status] || initiativeHealth.status}
+                                    </span>
+                                )}
                             </div>
 
                             <h1 className="initiative-detail__title">{initiative.title}</h1>
@@ -422,23 +434,13 @@ export const ProjectInitiativeDetail = () => {
                             <div className="initiative-detail__facts">
                                 {initiativeHeroFacts.map((fact) => (
                                     <div key={fact.label} className="initiative-detail__fact">
-                                        <span className="initiative-detail__fact-label">{fact.label}</span>
-                                        <span className="initiative-detail__fact-value">{fact.value}</span>
-                                    </div>
-                                ))}
-                                {initiativeHealth && (
-                                    <div className={`initiative-detail__fact initiative-detail__fact--health initiative-detail__fact--${getTone(initiativeHealth.status)}`}>
-                                        <span className="material-symbols-outlined initiative-detail__fact-health-icon">
-                                            {getHealthIcon(initiativeHealth.status)}
-                                        </span>
+                                        <span className="material-symbols-outlined initiative-detail__fact-icon">{fact.icon}</span>
                                         <div className="initiative-detail__fact-copy">
-                                            <span className="initiative-detail__fact-label">{t('initiatives.fields.health')}</span>
-                                            <span className="initiative-detail__fact-value">
-                                                {healthLabels[initiativeHealth.status] || initiativeHealth.status}
-                                            </span>
+                                            <span className="initiative-detail__fact-value">{fact.value}</span>
+                                            <span className="initiative-detail__fact-label">{fact.label}</span>
                                         </div>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </div>
 
@@ -455,6 +457,18 @@ export const ProjectInitiativeDetail = () => {
                                         {t('initiatives.detail.editAction')}
                                     </Button>
                                     <div className="initiative-detail__action-toolbar">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={handleStartInitiativeFocus}
+                                            className="initiative-detail__action-button"
+                                            data-state={focusItemId === initiative.id ? 'focused' : 'default'}
+                                        >
+                                            <span className="material-symbols-outlined initiative-detail__action-icon">
+                                                {focusItemId === initiative.id ? 'center_focus_strong' : 'center_focus_weak'}
+                                            </span>
+                                        </Button>
+                                        <span className="initiative-detail__action-divider" />
                                         <Button
                                             variant="ghost"
                                             size="icon"
@@ -590,28 +604,20 @@ export const ProjectInitiativeDetail = () => {
                             </div>
                         </div>
 
+                        {/* Assignees Card */}
                         <div className="app-card initiative-detail__card">
                             <div className="initiative-detail__card-header">
-                                <span className="material-symbols-outlined initiative-detail__card-icon">event_note</span>
-                                <span className="initiative-detail__card-label">{t('taskDetail.timeline.label')}</span>
+                                <span className="material-symbols-outlined initiative-detail__card-icon">group</span>
+                                <span className="initiative-detail__card-label">{t('taskDetail.assignees.label')}</span>
                             </div>
-                            <div className="initiative-detail__card-body initiative-detail__timeline-card">
-                                <div className="initiative-detail__timeline-field">
-                                    <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.startDate')}</span>
-                                    <DatePicker
-                                        value={initiative.startDate ? new Date(initiative.startDate) : null}
-                                        onChange={(date) => void applyInitiativeUpdates({ startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
-                                        disabled={!canManageInitiative}
-                                    />
-                                </div>
-                                <div className="initiative-detail__timeline-field">
-                                    <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.dueDate')}</span>
-                                    <DatePicker
-                                        value={initiative.dueDate ? new Date(initiative.dueDate) : null}
-                                        onChange={(date) => void applyInitiativeUpdates({ dueDate: date ? format(date, 'yyyy-MM-dd') : '' })}
-                                        disabled={!canManageInitiative}
-                                    />
-                                </div>
+                            <div className="initiative-detail__card-body initiative-detail__assignee-card">
+                                <MultiAssigneeSelector
+                                    projectId={projectId!}
+                                    assigneeIds={initiative.assigneeIds || []}
+                                    assignedGroupIds={initiative.assignedGroupIds || []}
+                                    onChange={(ids) => void applyInitiativeUpdates({ assigneeIds: ids })}
+                                    onGroupChange={(ids) => void applyInitiativeUpdates({ assignedGroupIds: ids })}
+                                />
                             </div>
                         </div>
                     </div>
@@ -778,40 +784,37 @@ export const ProjectInitiativeDetail = () => {
                                 {tasks.length === 0 ? (
                                     <p className="initiative-detail__state initiative-detail__tasks-empty">{t('initiatives.detail.noTasks')}</p>
                                 ) : tasks.map((task) => (
-                                    <div key={task.id} className="initiative-detail__task-row">
+                                    <div key={task.id} className={`initiative-detail__task-row ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
                                         <div className="initiative-detail__task-row-main">
+                                            <div className={`initiative-detail__task-check ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
+                                                <span className="material-symbols-outlined">
+                                                    {task.isCompleted || task.status === 'Done' ? 'check' : ''}
+                                                </span>
+                                            </div>
                                             <Link
                                                 to={`/project/${projectId}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`}
                                                 className="initiative-detail__task-link"
                                             >
-                                                <span className="material-symbols-outlined initiative-detail__task-icon">
-                                                    {task.isCompleted || task.status === 'Done' ? 'task_alt' : 'radio_button_unchecked'}
-                                                </span>
                                                 <div className="initiative-detail__task-copy">
-                                                    <strong className="initiative-detail__task-title">{task.title}</strong>
-                                                    <div className="initiative-detail__task-meta">
-                                                        <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.status)}`}>
-                                                            {taskStatusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
-                                                        </span>
-                                                        {task.priority && (
-                                                            <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.priority)}`}>
-                                                                {priorityLabels[task.priority] || task.priority}
+                                                    <div className="initiative-detail__task-title-row">
+                                                        <strong className={`initiative-detail__task-title ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>{task.title}</strong>
+                                                        <div className="initiative-detail__task-meta">
+                                                            <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.status)}`}>
+                                                                {taskStatusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
                                                             </span>
-                                                        )}
-                                                        {task.dueDate && (
-                                                            <span className="initiative-detail__task-pill initiative-detail__task-pill--neutral">
-                                                                {formatDisplayDate(task.dueDate)}
-                                                            </span>
-                                                        )}
+                                                            {task.priority && (
+                                                                <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.priority)}`}>
+                                                                    {priorityLabels[task.priority] || task.priority}
+                                                                </span>
+                                                            )}
+                                                            {task.dueDate && (
+                                                                <span className="initiative-detail__task-pill initiative-detail__task-pill--neutral">
+                                                                    {formatDisplayDate(task.dueDate)}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </Link>
-                                            <Link
-                                                to={`/project/${projectId}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`}
-                                                className="initiative-detail__task-open"
-                                                aria-label={task.title}
-                                            >
-                                                <span className="material-symbols-outlined">arrow_outward</span>
                                             </Link>
                                         </div>
                                         {canManageInitiativeTasks && (
@@ -864,6 +867,33 @@ export const ProjectInitiativeDetail = () => {
                         <div className="initiative-detail__section-header">
                             <div>
                                 <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.dashboardTitle')}</span>
+                                <h2>{t('taskDetail.timeline.label')}</h2>
+                            </div>
+                        </div>
+                        <div className="initiative-detail__info-list">
+                            <div className="initiative-detail__timeline-field">
+                                <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.startDate')}</span>
+                                <DatePicker
+                                    value={initiative.startDate ? new Date(initiative.startDate) : null}
+                                    onChange={(date) => void applyInitiativeUpdates({ startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
+                                    disabled={!canManageInitiative}
+                                />
+                            </div>
+                            <div className="initiative-detail__timeline-field">
+                                <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.dueDate')}</span>
+                                <DatePicker
+                                    value={initiative.dueDate ? new Date(initiative.dueDate) : null}
+                                    onChange={(date) => void applyInitiativeUpdates({ dueDate: date ? format(date, 'yyyy-MM-dd') : '' })}
+                                    disabled={!canManageInitiative}
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
+                        <div className="initiative-detail__section-header">
+                            <div>
+                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.dashboardTitle')}</span>
                                 <h2>{t('initiatives.detail.progressTitle')}</h2>
                             </div>
                         </div>
@@ -910,14 +940,6 @@ export const ProjectInitiativeDetail = () => {
                                 ) : (
                                     <strong>{t('initiatives.detail.sourceManual')}</strong>
                                 )}
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('taskDetail.timeline.startDate')}</span>
-                                <strong>{formatDisplayDate(initiative.startDate) || t('taskDetail.timeline.startPlaceholder')}</strong>
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('taskDetail.timeline.dueDate')}</span>
-                                <strong>{formatDisplayDate(initiative.dueDate) || t('taskDetail.timeline.noDueDate')}</strong>
                             </div>
                         </div>
                     </Card>

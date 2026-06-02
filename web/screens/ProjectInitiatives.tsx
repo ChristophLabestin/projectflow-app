@@ -3,7 +3,6 @@ import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import { Initiative, Project, Task } from '../types';
 import { Button } from '../components/common/Button/Button';
-import { Badge } from '../components/common/Badge/Badge';
 import { TextInput } from '../components/common/Input/TextInput';
 import { Select, type SelectOption } from '../components/common/Select/Select';
 import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
@@ -12,6 +11,13 @@ import { subscribeProjectInitiatives, subscribeProjectTasks } from '../services/
 import { calculateInitiativeHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+
+const healthToneClass = (status?: string) => {
+    if (status === 'On Track') return 'is-on-track';
+    if (status === 'At Risk') return 'is-at-risk';
+    if (status === 'Off Track') return 'is-off-track';
+    return 'is-neutral';
+};
 
 export const ProjectInitiatives = () => {
     const { id } = useParams<{ id: string }>();
@@ -111,154 +117,211 @@ export const ProjectInitiatives = () => {
         });
     }, [initiatives, search, statusFilter]);
 
+    const activeCount = initiatives.filter((initiative) => !['Done'].includes(initiative.status)).length;
+    const atRiskCount = initiatives.filter((initiative) => {
+        const health = initiativeHealthMap[initiative.id];
+        return health?.status === 'At Risk' || health?.status === 'Off Track';
+    }).length;
+
     if (loading) {
         return (
-            <div className="project-initiatives__loading">
-                <span className="material-symbols-outlined project-initiatives__loading-icon">progress_activity</span>
+            <div className="workstream-page workstream-page--initiatives">
+                <div className="workstream-page__loading">
+                    <span className="material-symbols-outlined workstream-page__loading-icon">progress_activity</span>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="project-initiatives">
-            <header className="project-initiatives__header">
-                <div>
-                    <h1 className="project-initiatives__title">{t('initiatives.list.title')}</h1>
-                    <p className="project-initiatives__subtitle">
+        <div className="workstream-page workstream-page--initiatives">
+            <header className="workstream-page__hero">
+                <div className="workstream-page__hero-copy">
+                    <h1 className="workstream-page__title">{t('initiatives.list.title')}</h1>
+                    <p className="workstream-page__subtitle">
                         {project?.title
                             ? t('initiatives.list.subtitleWithProject').replace('{project}', project.title)
                             : t('initiatives.list.subtitle')}
                     </p>
                 </div>
                 {canCreateInitiatives && id && (
-                    <Button
-                        variant="primary"
-                        size="icon"
-                        onClick={() => setShowCreateModal(true)}
-                        icon={<span className="material-symbols-outlined">add</span>}
-                        aria-label={t('initiatives.create.action')}
-                        title={t('initiatives.create.action')}
-                    />
+                    <div className="workstream-page__actions">
+                        <Button
+                            variant="primary"
+                            onClick={() => setShowCreateModal(true)}
+                            icon={<span className="material-symbols-outlined">add</span>}
+                        >
+                            {t('initiatives.create.action')}
+                        </Button>
+                    </div>
                 )}
             </header>
 
-            <div className="project-initiatives__toolbar">
-                <TextInput
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder={t('initiatives.filters.search')}
-                    leftElement={<span className="material-symbols-outlined">search</span>}
-                    className="project-initiatives__search"
-                />
-                <Select
-                    value={statusFilter}
-                    onChange={(value) => setStatusFilter(String(value))}
-                    options={statusOptions}
-                    className="project-initiatives__status-filter"
-                />
-                <div className="project-initiatives__view-toggle" role="group" aria-label={t('initiatives.view.label')}>
-                    {(['grid', 'list'] as const).map((mode) => (
-                        <button
-                            key={mode}
-                            type="button"
-                            className={`project-initiatives__view-btn ${view === mode ? 'is-active' : ''}`}
-                            onClick={() => setView(mode)}
-                            aria-pressed={view === mode}
-                            title={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
-                            aria-label={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
-                        >
-                            <span className="material-symbols-outlined">{mode === 'grid' ? 'grid_view' : 'view_list'}</span>
-                        </button>
-                    ))}
+            <div className="workstream-page__metrics">
+                <div className="workstream-page__metric">
+                    <span className="workstream-page__metric-label">{t('initiatives.summary.total')}</span>
+                    <span className="workstream-page__metric-value">{initiatives.length}</span>
+                    <span className="workstream-page__metric-meta">{t('initiatives.list.metricTotalMeta')}</span>
+                </div>
+                <div className="workstream-page__metric">
+                    <span className="workstream-page__metric-label">{t('initiatives.summary.active')}</span>
+                    <span className="workstream-page__metric-value">{activeCount}</span>
+                    <span className="workstream-page__metric-meta">{t('initiatives.list.metricActiveMeta')}</span>
+                </div>
+                <div className="workstream-page__metric">
+                    <span className="workstream-page__metric-label">{t('initiatives.summary.atRisk')}</span>
+                    <span className="workstream-page__metric-value">{atRiskCount}</span>
+                    <span className="workstream-page__metric-meta">{t('initiatives.list.metricRiskMeta')}</span>
+                </div>
+                <div className="workstream-page__metric">
+                    <span className="workstream-page__metric-label">{t('initiatives.summary.workItems')}</span>
+                    <span className="workstream-page__metric-value">
+                        {tasks.filter((task) => Boolean(task.initiativeId)).length}
+                    </span>
+                    <span className="workstream-page__metric-meta">{t('initiatives.list.metricWorkMeta')}</span>
                 </div>
             </div>
 
-            <div className="project-initiatives__summary">
-                <div className="project-initiatives__summary-card">
-                    <span className="project-initiatives__summary-label">{t('initiatives.summary.total')}</span>
-                    <span className="project-initiatives__summary-value">{initiatives.length}</span>
+            <div className="workstream-page__command">
+                <div className="workstream-page__command-left">
+                    <TextInput
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder={t('initiatives.filters.search')}
+                        leftElement={<span className="material-symbols-outlined">search</span>}
+                        className="workstream-page__search"
+                    />
+                    <Select
+                        value={statusFilter}
+                        onChange={(value) => setStatusFilter(String(value))}
+                        options={statusOptions}
+                        className="workstream-page__select"
+                    />
                 </div>
-                <div className="project-initiatives__summary-card">
-                    <span className="project-initiatives__summary-label">{t('initiatives.summary.active')}</span>
-                    <span className="project-initiatives__summary-value">
-                        {initiatives.filter((initiative) => !['Done'].includes(initiative.status)).length}
-                    </span>
-                </div>
-                <div className="project-initiatives__summary-card">
-                    <span className="project-initiatives__summary-label">{t('initiatives.summary.atRisk')}</span>
-                        <span className="project-initiatives__summary-value">
-                        {initiatives.filter((initiative) => {
-                            const health = initiativeHealthMap[initiative.id];
-                            return health?.status === 'At Risk' || health?.status === 'Off Track';
-                        }).length}
-                    </span>
-                </div>
-            </div>
-
-            {filteredInitiatives.length === 0 ? (
-                <div className="project-initiatives__empty">
-                    <span className="material-symbols-outlined project-initiatives__empty-icon">rocket_launch</span>
-                    <h2>{t('initiatives.empty.title')}</h2>
-                    <p>{t('initiatives.empty.description')}</p>
-                </div>
-            ) : (
-                <div className={`project-initiatives__grid ${view === 'list' ? 'is-list' : ''}`}>
-                    {filteredInitiatives.map((initiative) => {
-                        const stats = initiativeStats[initiative.id] || { total: 0, completed: 0, blocked: 0 };
-                        const health = initiativeHealthMap[initiative.id];
-                        const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
-                        return (
+                <div className="workstream-page__command-right">
+                    <div className="workstream-page__view-toggle" role="group" aria-label={t('initiatives.view.label')}>
+                        {(['grid', 'list'] as const).map((mode) => (
                             <button
-                                key={initiative.id}
+                                key={mode}
                                 type="button"
-                                className={`project-initiatives__card ${view === 'list' ? 'is-row' : ''}`}
-                                onClick={() => navigate(`/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                className={`workstream-page__view-btn ${view === mode ? 'is-active' : ''}`}
+                                onClick={() => setView(mode)}
+                                aria-pressed={view === mode}
+                                title={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
+                                aria-label={mode === 'grid' ? t('initiatives.view.grid') : t('initiatives.view.list')}
                             >
-                                <div className="project-initiatives__card-header">
-                                    <div>
-                                        <h2 className="project-initiatives__card-title">{initiative.title}</h2>
-                                        <p className="project-initiatives__card-description">
-                                            {initiative.description || t('initiatives.empty.description')}
-                                        </p>
-                                    </div>
-                                    <span className="material-symbols-outlined project-initiatives__card-icon">rocket_launch</span>
-                                </div>
-                                <div className="project-initiatives__badges">
-                                    <Badge variant="neutral">{initiative.status}</Badge>
-                                    {health && <Badge variant="neutral">{health.status}</Badge>}
-                                    {initiative.priority && <Badge variant="neutral">{initiative.priority}</Badge>}
-                                </div>
-                                <div className="project-initiatives__metrics">
-                                    <div className="project-initiatives__metric">
-                                        <span className="project-initiatives__metric-label">{t('initiatives.summary.workItems')}</span>
-                                        <span className="project-initiatives__metric-value">{stats.completed}/{stats.total}</span>
-                                    </div>
-                                    <div className="project-initiatives__metric">
-                                        <span className="project-initiatives__metric-label">{t('initiatives.summary.blocked')}</span>
-                                        <span className="project-initiatives__metric-value">{stats.blocked}</span>
-                                    </div>
-                                    <div className="project-initiatives__metric">
-                                        <span className="project-initiatives__metric-label">{t('initiatives.summary.progress')}</span>
-                                        <span className="project-initiatives__metric-value">{progress}%</span>
-                                    </div>
-                                </div>
-                                <div className="project-initiatives__dates">
-                                    {initiative.startDate && (
-                                        <span>
-                                            {t('initiatives.fields.startDate')}: {format(new Date(initiative.startDate), dateFormat, { locale: dateLocale })}
-                                        </span>
-                                    )}
-                                    {initiative.dueDate && (
-                                        <span>
-                                            {t('initiatives.fields.dueDate')}: {format(new Date(initiative.dueDate), dateFormat, { locale: dateLocale })}
-                                        </span>
-                                    )}
-                                </div>
+                                <span className="material-symbols-outlined">{mode === 'grid' ? 'grid_view' : 'view_list'}</span>
                             </button>
-                        );
-                    })}
+                        ))}
+                    </div>
                 </div>
-            )}
+            </div>
+
+            <div className="workstream-page__body">
+                {filteredInitiatives.length === 0 ? (
+                    <div className="workstream-page__empty">
+                        <span className="material-symbols-outlined workstream-page__empty-icon">rocket_launch</span>
+                        <h2>{t('initiatives.empty.title')}</h2>
+                        <p>{t('initiatives.empty.description')}</p>
+                        {canCreateInitiatives && id && (
+                            <Button variant="primary" onClick={() => setShowCreateModal(true)}>
+                                {t('initiatives.create.action')}
+                            </Button>
+                        )}
+                    </div>
+                ) : (
+                    <div className={`workstream-page__catalog ${view === 'list' ? 'is-list' : ''}`}>
+                        {filteredInitiatives.map((initiative) => {
+                            const stats = initiativeStats[initiative.id] || { total: 0, completed: 0, blocked: 0 };
+                            const health = initiativeHealthMap[initiative.id];
+                            const progress = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
+                            const healthClass = healthToneClass(health?.status);
+                            const ringCircumference = 2 * Math.PI * 15.5;
+                            const ringDash = (progress / 100) * ringCircumference;
+
+                            return (
+                                <button
+                                    key={initiative.id}
+                                    type="button"
+                                    className={`workstream-initiative-card ${view === 'list' ? 'is-row' : ''}`}
+                                    onClick={() => navigate(`/project/${id}/initiatives/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                >
+                                    <div className="workstream-initiative-card__main">
+                                        <div className="workstream-initiative-card__head">
+                                            <div className="workstream-initiative-card__title-block">
+                                                <span className="workstream-initiative-card__status">{initiative.status}</span>
+                                                <h2 className="workstream-initiative-card__title">{initiative.title}</h2>
+                                                <p className="workstream-initiative-card__description">
+                                                    {initiative.description || t('initiatives.empty.description')}
+                                                </p>
+                                            </div>
+                                            <div className="workstream-initiative-card__progress-ring" aria-hidden="true">
+                                                <svg viewBox="0 0 36 36">
+                                                    <circle className="workstream-initiative-card__progress-track" cx="18" cy="18" r="15.5" />
+                                                    <circle
+                                                        className="workstream-initiative-card__progress-fill"
+                                                        cx="18"
+                                                        cy="18"
+                                                        r="15.5"
+                                                        strokeDasharray={`${ringDash} ${ringCircumference}`}
+                                                    />
+                                                </svg>
+                                                <span className="workstream-initiative-card__progress-value">{progress}%</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="workstream-initiative-card__meta">
+                                            {health && (
+                                                <span className={`workstream-initiative-card__health ${healthClass}`}>
+                                                    <span className="material-symbols-outlined">monitoring</span>
+                                                    {health.status}
+                                                </span>
+                                            )}
+                                            {initiative.priority && (
+                                                <span className="workstream-initiative-card__pill">{initiative.priority}</span>
+                                            )}
+                                            {initiative.successMetric && (
+                                                <span className="workstream-initiative-card__pill workstream-initiative-card__pill--muted">
+                                                    <span className="material-symbols-outlined">flag</span>
+                                                    {initiative.successMetric}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {(initiative.startDate || initiative.dueDate) && (
+                                            <div className="workstream-initiative-card__dates">
+                                                {initiative.startDate && (
+                                                    <span>
+                                                        {t('initiatives.fields.startDate')}: {format(new Date(initiative.startDate), dateFormat, { locale: dateLocale })}
+                                                    </span>
+                                                )}
+                                                {initiative.dueDate && (
+                                                    <span>
+                                                        {t('initiatives.fields.dueDate')}: {format(new Date(initiative.dueDate), dateFormat, { locale: dateLocale })}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        <div className="workstream-initiative-card__stats">
+                                            <div className="workstream-initiative-card__stat">
+                                                <span className="workstream-initiative-card__stat-label">{t('initiatives.summary.workItems')}</span>
+                                                <span className="workstream-initiative-card__stat-value">{stats.completed}/{stats.total}</span>
+                                            </div>
+                                            <div className="workstream-initiative-card__stat">
+                                                <span className="workstream-initiative-card__stat-label">{t('initiatives.summary.blocked')}</span>
+                                                <span className="workstream-initiative-card__stat-value">{stats.blocked}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <span className="material-symbols-outlined workstream-initiative-card__chevron">arrow_forward</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
 
             {showCreateModal && id && (
                 <InitiativeCreateModal

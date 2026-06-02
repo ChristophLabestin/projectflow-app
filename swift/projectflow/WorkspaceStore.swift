@@ -29,7 +29,7 @@ final class WorkspaceStore: ObservableObject {
         // we assume 'uid' or 'userId' is a field in the member doc as per APP_CONCEPT.
         
         listener = db.collectionGroup(FirestorePath.members)
-            .whereField("userId", isEqualTo: userId)
+            .whereField("uid", isEqualTo: userId)
             .addSnapshotListener { [weak self] snapshot, error in
                 guard let self = self else { return }
                 if let error = error {

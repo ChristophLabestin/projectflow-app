@@ -135,20 +135,6 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
         return counts;
     }, [openTasks, taskFlags]);
 
-    const needsAttentionCount = useMemo(() => (
-        openTasks.filter((task) => {
-            const flags = taskFlags.get(task.id);
-            return Boolean(flags && (
-                flags.overdue
-                || flags.blocked
-                || flags.dueSoon
-                || flags.unassigned
-                || flags.noDate
-                || flags.urgent
-            ));
-        }).length
-    ), [openTasks, taskFlags]);
-
     const defaultQueue = useMemo<TriageQueueId>(() => {
         if (queueCounts.overdue > 0) return 'overdue';
         if (queueCounts.blocked > 0) return 'blocked';
@@ -394,6 +380,8 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
 
     const actionDisabled = !canManageTasks || selectedCount === 0 || Boolean(savingAction);
 
+    const hasSelection = selectedCount > 0;
+
     return (
         <Modal
             isOpen={isOpen}
@@ -403,15 +391,12 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
             closeOnOutsideClick={!savingAction}
             footer={
                 <div className="project-triage-modal__footer">
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={onClose}
-                        disabled={Boolean(savingAction)}
-                    >
-                        {t('common.cancel', 'Cancel')}
-                    </Button>
-                    <span>{t('projectOverview.triage.footerSelection').replace('{count}', String(selectedCount))}</span>
+                    <span className="project-triage-modal__footer-summary">
+                        <span className="material-symbols-outlined" aria-hidden="true">checklist</span>
+                        {hasSelection
+                            ? t('projectOverview.triage.footerSelection').replace('{count}', String(selectedCount))
+                            : t('projectOverview.triage.summaryOpen').replace('{count}', String(queueCounts.all))}
+                    </span>
                     <Button
                         type="button"
                         variant="primary"
@@ -431,72 +416,42 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
                     </div>
                 )}
 
-                <section className="project-triage-modal__brief" aria-label={t('projectOverview.triage.summaryLabel')}>
-                    <div className="project-triage-modal__brief-copy">
-                        <strong>{t('projectOverview.triage.summaryNeedsAttention').replace('{count}', String(needsAttentionCount))}</strong>
-                        <span>{t('projectOverview.triage.summaryOpen').replace('{count}', String(queueCounts.all))}</span>
-                    </div>
-                    <div className="project-triage-modal__brief-selection">
-                        <span>{t('projectOverview.triage.footerSelection').replace('{count}', String(selectedCount))}</span>
-                        {selectedCount > 0 && (
+                <div className="project-triage-modal__filters" role="tablist" aria-label={t('projectOverview.triage.queueLabel')}>
+                    {visibleQueueOptions.map((queue) => (
+                        <button
+                            key={queue.id}
+                            type="button"
+                            role="tab"
+                            aria-selected={activeQueue === queue.id}
+                            className={`project-triage-modal__filter ${activeQueue === queue.id ? 'is-active' : ''}`}
+                            onClick={() => setActiveQueue(queue.id)}
+                        >
+                            <span className="project-triage-modal__filter-icon material-symbols-outlined" aria-hidden="true">{queue.icon}</span>
+                            <span className="project-triage-modal__filter-label">{queue.label}</span>
+                            <span className="project-triage-modal__filter-count">{queue.count}</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div className={`project-triage-modal__workspace ${hasSelection ? 'has-selection' : ''}`}>
+                    <section className="project-triage-modal__queue-panel">
+                        <header className="project-triage-modal__queue-header">
+                            <div className="project-triage-modal__queue-title">
+                                <h3>{activeQueueOption.label}</h3>
+                                <p>{t('projectOverview.triage.visibleCount').replace('{count}', String(visibleTasks.length))}</p>
+                            </div>
                             <Button
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                onClick={clearSelection}
-                                disabled={!canManageTasks || Boolean(savingAction)}
+                                onClick={toggleVisibleSelection}
+                                disabled={visibleTasks.length === 0 || !canManageTasks}
                             >
-                                {t('projectOverview.triage.actions.clearSelection')}
+                                {allVisibleSelected ? t('projectOverview.triage.actions.deselectVisible') : t('projectOverview.triage.actions.selectVisible')}
                             </Button>
-                        )}
-                    </div>
-                </section>
-
-                <div className="project-triage-modal__workspace">
-                    <aside className="project-triage-modal__bucket-rail" aria-label={t('projectOverview.triage.queueLabel')}>
-                        {visibleQueueOptions.map((queue) => (
-                            <button
-                                key={queue.id}
-                                type="button"
-                                className={`project-triage-modal__bucket ${activeQueue === queue.id ? 'is-active' : ''}`}
-                                onClick={() => setActiveQueue(queue.id)}
-                            >
-                                <span className="project-triage-modal__bucket-icon material-symbols-outlined" aria-hidden="true">{queue.icon}</span>
-                                <span className="project-triage-modal__bucket-copy">
-                                    <strong>{queue.label}</strong>
-                                    <span>{queue.count}</span>
-                                </span>
-                            </button>
-                        ))}
-                    </aside>
-
-                    <section className="project-triage-modal__queue-panel">
-                        <header className="project-triage-modal__queue-header">
-                            <div>
-                                <h3>{activeQueueOption.label}</h3>
-                                <p>{t('projectOverview.triage.visibleCount').replace('{count}', String(visibleTasks.length))}</p>
-                            </div>
-                            <div className="project-triage-modal__queue-tools">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={toggleVisibleSelection}
-                                    disabled={visibleTasks.length === 0 || !canManageTasks}
-                                >
-                                    {allVisibleSelected ? t('projectOverview.triage.actions.deselectVisible') : t('projectOverview.triage.actions.selectVisible')}
-                                </Button>
-                            </div>
                         </header>
 
                         <div className="project-triage-modal__table" role="table" aria-label={t('projectOverview.triage.queueLabel')}>
-                            <div className="project-triage-modal__table-head" role="row">
-                                <span />
-                                <span>{t('projectOverview.triage.columns.task')}</span>
-                                <span>{t('projectOverview.triage.columns.reason')}</span>
-                                <span>{t('projectOverview.triage.columns.due')}</span>
-                                <span>{t('projectOverview.triage.columns.owner')}</span>
-                            </div>
                             {visibleTasks.length === 0 ? (
                                 <div className="project-triage-modal__empty">
                                     <span className="material-symbols-outlined">task_alt</span>
@@ -519,13 +474,20 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
                                                 <span className="project-triage-modal__task-check">
                                                     <span className="material-symbols-outlined">check</span>
                                                 </span>
-                                                <span className="project-triage-modal__task-title">
-                                                    <strong>{task.title}</strong>
-                                                    <em>{t(`tasks.status.${task.status.replace(/\s+/g, '').replace(/^./, (char) => char.toLowerCase())}`, task.status)}</em>
+                                                <span className="project-triage-modal__task-main">
+                                                    <span className="project-triage-modal__task-title">{task.title}</span>
+                                                    <span className="project-triage-modal__task-meta">
+                                                        <span className={`project-triage-modal__reason is-${reason.tone}`}>{reason.label}</span>
+                                                        <span className={`project-triage-modal__due is-${getDueTone(task)}`}>
+                                                            <span className="material-symbols-outlined" aria-hidden="true">event</span>
+                                                            {getDueLabel(task)}
+                                                        </span>
+                                                        <span className="project-triage-modal__owner">
+                                                            <span className="material-symbols-outlined" aria-hidden="true">person</span>
+                                                            {getAssigneeLabel(task)}
+                                                        </span>
+                                                    </span>
                                                 </span>
-                                                <span className={`project-triage-modal__reason is-${reason.tone}`}>{reason.label}</span>
-                                                <span className={`project-triage-modal__due is-${getDueTone(task)}`}>{getDueLabel(task)}</span>
-                                                <span className="project-triage-modal__owner">{getAssigneeLabel(task)}</span>
                                             </label>
                                         );
                                     })}
@@ -536,127 +498,150 @@ export const ProjectTriageModal: React.FC<ProjectTriageModalProps> = ({
 
                     <aside className="project-triage-modal__decision-panel" aria-label={t('projectOverview.triage.bulkLabel')}>
                         <header className="project-triage-modal__decision-header">
-                            <div>
-                                <h3>{t('projectOverview.triage.actions.title')}</h3>
-                                <p>
-                                    {selectedCount > 0
-                                        ? t('projectOverview.triage.selectionReady')
-                                        : t('projectOverview.triage.selectionEmpty')}
-                                </p>
+                            <div className="project-triage-modal__decision-count">
+                                <strong>{selectedCount}</strong>
+                                <span>{t('projectOverview.triage.actions.title')}</span>
                             </div>
-                            <strong>{t('projectOverview.triage.footerSelection').replace('{count}', String(selectedCount))}</strong>
+                            {hasSelection && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={clearSelection}
+                                    disabled={!canManageTasks || Boolean(savingAction)}
+                                >
+                                    {t('projectOverview.triage.actions.clearSelection')}
+                                </Button>
+                            )}
                         </header>
 
-                        <section className="project-triage-modal__decision-section">
-                            <div className="project-triage-modal__decision-heading">
-                                <strong>{t('projectOverview.triage.actions.rescheduleTitle')}</strong>
+                        {!hasSelection ? (
+                            <div className="project-triage-modal__decision-empty">
+                                <span className="material-symbols-outlined" aria-hidden="true">ads_click</span>
+                                <p>{t('projectOverview.triage.selectionEmpty')}</p>
                             </div>
-                            <div className="project-triage-modal__quick-grid">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => applyDueDate(tomorrowKey, 'reschedule-tomorrow')}
-                                    isLoading={savingAction === 'reschedule-tomorrow'}
-                                    disabled={actionDisabled}
-                                >
-                                    {t('projectOverview.triage.actions.tomorrow')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => applyDueDate(nextWeekKey, 'reschedule-week')}
-                                    isLoading={savingAction === 'reschedule-week'}
-                                    disabled={actionDisabled}
-                                >
-                                    {t('projectOverview.triage.actions.nextWeek')}
-                                </Button>
-                            </div>
-                            <div className="project-triage-modal__date-action">
-                                <DatePicker
-                                    label={t('projectOverview.triage.actions.customDate')}
-                                    value={customDueDate}
-                                    onChange={setCustomDueDate}
-                                    placeholder={t('projectOverview.controls.duePlaceholder')}
-                                    disabled={!canManageTasks || selectedCount === 0}
-                                />
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => customDueDate && applyDueDate(format(customDueDate, 'yyyy-MM-dd'), 'reschedule-custom')}
-                                    isLoading={savingAction === 'reschedule-custom'}
-                                    disabled={actionDisabled || !customDueDate}
-                                >
-                                    {t('projectOverview.triage.actions.applyDate')}
-                                </Button>
-                            </div>
-                        </section>
+                        ) : (
+                            <div className="project-triage-modal__decision-body">
+                                <section className="project-triage-modal__decision-section">
+                                    <div className="project-triage-modal__decision-heading">
+                                        <span className="material-symbols-outlined" aria-hidden="true">event_repeat</span>
+                                        <strong>{t('projectOverview.triage.actions.rescheduleTitle')}</strong>
+                                    </div>
+                                    <div className="project-triage-modal__quick-grid">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => applyDueDate(tomorrowKey, 'reschedule-tomorrow')}
+                                            isLoading={savingAction === 'reschedule-tomorrow'}
+                                            disabled={actionDisabled}
+                                        >
+                                            {t('projectOverview.triage.actions.tomorrow')}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => applyDueDate(nextWeekKey, 'reschedule-week')}
+                                            isLoading={savingAction === 'reschedule-week'}
+                                            disabled={actionDisabled}
+                                        >
+                                            {t('projectOverview.triage.actions.nextWeek')}
+                                        </Button>
+                                    </div>
+                                    <div className="project-triage-modal__date-action">
+                                        <DatePicker
+                                            label={t('projectOverview.triage.actions.customDate')}
+                                            value={customDueDate}
+                                            onChange={setCustomDueDate}
+                                            placeholder={t('projectOverview.controls.duePlaceholder')}
+                                            disabled={!canManageTasks || selectedCount === 0}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => customDueDate && applyDueDate(format(customDueDate, 'yyyy-MM-dd'), 'reschedule-custom')}
+                                            isLoading={savingAction === 'reschedule-custom'}
+                                            disabled={actionDisabled || !customDueDate}
+                                        >
+                                            {t('projectOverview.triage.actions.applyDate')}
+                                        </Button>
+                                    </div>
+                                </section>
 
-                        <section className="project-triage-modal__decision-section">
-                            <div className="project-triage-modal__decision-heading">
-                                <strong>{t('projectOverview.triage.actions.assignTitle')}</strong>
-                                {teamMemberProfiles.length === 0 && <span>{t('projectOverview.triage.noTeam')}</span>}
-                            </div>
-                            <Select
-                                value={selectedAssigneeId || null}
-                                options={assigneeOptions}
-                                placeholder={suggestedAssignee
-                                    ? t('projectOverview.triage.actions.assignPlaceholderWithSuggestion').replace('{name}', suggestedAssignee.displayName)
-                                    : t('projectOverview.triage.actions.assignPlaceholder')}
-                                onChange={(value) => setSelectedAssigneeId(String(value))}
-                                disabled={!canManageTasks || teamMemberProfiles.length === 0 || selectedCount === 0}
-                            />
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                onClick={applyAssignee}
-                                isLoading={savingAction === 'assign'}
-                                disabled={actionDisabled || !selectedAssigneeId}
-                            >
-                                {t('projectOverview.triage.actions.assign')}
-                            </Button>
-                        </section>
+                                <section className="project-triage-modal__decision-section">
+                                    <div className="project-triage-modal__decision-heading">
+                                        <span className="material-symbols-outlined" aria-hidden="true">person_add</span>
+                                        <strong>{t('projectOverview.triage.actions.assignTitle')}</strong>
+                                    </div>
+                                    {teamMemberProfiles.length === 0
+                                        ? <p className="project-triage-modal__decision-note">{t('projectOverview.triage.noTeam')}</p>
+                                        : (
+                                            <>
+                                                <Select
+                                                    value={selectedAssigneeId || null}
+                                                    options={assigneeOptions}
+                                                    placeholder={suggestedAssignee
+                                                        ? t('projectOverview.triage.actions.assignPlaceholderWithSuggestion').replace('{name}', suggestedAssignee.displayName)
+                                                        : t('projectOverview.triage.actions.assignPlaceholder')}
+                                                    onChange={(value) => setSelectedAssigneeId(String(value))}
+                                                    disabled={!canManageTasks || selectedCount === 0}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={applyAssignee}
+                                                    isLoading={savingAction === 'assign'}
+                                                    disabled={actionDisabled || !selectedAssigneeId}
+                                                >
+                                                    {t('projectOverview.triage.actions.assign')}
+                                                </Button>
+                                            </>
+                                        )}
+                                </section>
 
-                        <section className="project-triage-modal__decision-section">
-                            <div className="project-triage-modal__decision-heading">
-                                <strong>{t('projectOverview.triage.actions.statusTitle')}</strong>
+                                <section className="project-triage-modal__decision-section">
+                                    <div className="project-triage-modal__decision-heading">
+                                        <span className="material-symbols-outlined" aria-hidden="true">flag</span>
+                                        <strong>{t('projectOverview.triage.actions.statusTitle')}</strong>
+                                    </div>
+                                    <div className="project-triage-modal__status-grid">
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => applyStatusValue('In Progress', 'status-progress')}
+                                            isLoading={savingAction === 'status-progress'}
+                                            disabled={actionDisabled}
+                                        >
+                                            {t('projectOverview.triage.actions.markInProgress')}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => applyStatusValue('Blocked', 'status-blocked')}
+                                            isLoading={savingAction === 'status-blocked'}
+                                            disabled={actionDisabled}
+                                        >
+                                            {t('projectOverview.triage.actions.markBlocked')}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={markDone}
+                                            isLoading={savingAction === 'done'}
+                                            disabled={actionDisabled}
+                                        >
+                                            {t('projectOverview.triage.actions.markDone')}
+                                        </Button>
+                                    </div>
+                                </section>
                             </div>
-                            <div className="project-triage-modal__status-grid">
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => applyStatusValue('In Progress', 'status-progress')}
-                                    isLoading={savingAction === 'status-progress'}
-                                    disabled={actionDisabled}
-                                >
-                                    {t('projectOverview.triage.actions.markInProgress')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={() => applyStatusValue('Blocked', 'status-blocked')}
-                                    isLoading={savingAction === 'status-blocked'}
-                                    disabled={actionDisabled}
-                                >
-                                    {t('projectOverview.triage.actions.markBlocked')}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={markDone}
-                                    isLoading={savingAction === 'done'}
-                                    disabled={actionDisabled}
-                                >
-                                    {t('projectOverview.triage.actions.markDone')}
-                                </Button>
-                            </div>
-                        </section>
+                        )}
                     </aside>
                 </div>
             </div>

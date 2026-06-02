@@ -384,6 +384,19 @@ struct Project: FirestoreConvertible {
     var externalResources: [ProjectLink]
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
+    // Web parity fields
+    var projectCategory: String?
+    var templateId: String?
+    var companyProjectId: String?
+    var companyProjectRole: String?
+    var pausedAt: String?
+    var canceledAt: String?
+    var githubRepo: String?
+    var githubIssueSync: Bool
+    var brief: ProjectBrief?
+    var healthSnapshot: StoredProjectHealthSnapshot?
+    var startupProfile: StartupProfile?
+    var startupReadiness: StartupReadiness?
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -406,6 +419,34 @@ struct Project: FirestoreConvertible {
         externalResources = Project.parseLinks(from: data["externalResources"])
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
+        projectCategory = data["projectCategory"] as? String
+        templateId = data["templateId"] as? String
+        companyProjectId = data["companyProjectId"] as? String
+        companyProjectRole = data["companyProjectRole"] as? String
+        pausedAt = data["pausedAt"] as? String
+        canceledAt = data["canceledAt"] as? String
+        githubRepo = data["githubRepo"] as? String
+        githubIssueSync = data["githubIssueSync"] as? Bool ?? false
+        if let rawBrief = data["brief"] as? [String: Any] {
+            brief = ProjectBrief(data: rawBrief)
+        } else {
+            brief = nil
+        }
+        if let rawHealth = data["healthSnapshot"] as? [String: Any] {
+            healthSnapshot = StoredProjectHealthSnapshot(data: rawHealth)
+        } else {
+            healthSnapshot = nil
+        }
+        if let rawStartup = data["startupProfile"] as? [String: Any] {
+            startupProfile = StartupProfile(data: rawStartup)
+        } else {
+            startupProfile = nil
+        }
+        if let rawReadiness = data["startupReadiness"] as? [String: Any] {
+            startupReadiness = StartupReadiness(data: rawReadiness)
+        } else {
+            startupReadiness = nil
+        }
     }
 
     var data: [String: Any] {
@@ -587,6 +628,14 @@ struct ProjectTask: FirestoreConvertible {
     var labelIds: [String]
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
+    var initiativeId: String?
+    var dependencies: [String]
+    var sprintId: String?
+    var scheduledDate: String
+    var linkedIssueId: String?
+    var convertedIdeaId: String?
+    var codexSessionId: String?
+    var codexSessionExternalKey: String?
 
     init(id: String, data: [String: Any]) {
         self.id = id
@@ -605,6 +654,14 @@ struct ProjectTask: FirestoreConvertible {
         labelIds = data["labelIds"] as? [String] ?? []
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
+        initiativeId = data["initiativeId"] as? String
+        dependencies = data["dependencies"] as? [String] ?? []
+        sprintId = data["sprintId"] as? String
+        scheduledDate = data["scheduledDate"] as? String ?? ""
+        linkedIssueId = data["linkedIssueId"] as? String
+        convertedIdeaId = data["convertedIdeaId"] as? String
+        codexSessionId = data["codexSessionId"] as? String
+        codexSessionExternalKey = data["codexSessionExternalKey"] as? String
     }
 
     var data: [String: Any] {
@@ -631,6 +688,14 @@ struct ProjectTask: FirestoreConvertible {
         if let updatedAt {
             payload["updatedAt"] = updatedAt
         }
+        if let initiativeId { payload["initiativeId"] = initiativeId }
+        if !dependencies.isEmpty { payload["dependencies"] = dependencies }
+        if let sprintId { payload["sprintId"] = sprintId }
+        if !scheduledDate.isEmpty { payload["scheduledDate"] = scheduledDate }
+        if let linkedIssueId { payload["linkedIssueId"] = linkedIssueId }
+        if let convertedIdeaId { payload["convertedIdeaId"] = convertedIdeaId }
+        if let codexSessionId { payload["codexSessionId"] = codexSessionId }
+        if let codexSessionExternalKey { payload["codexSessionExternalKey"] = codexSessionExternalKey }
         return payload
     }
 }
@@ -651,6 +716,8 @@ struct Flow: FirestoreConvertible {
     var weaknesses: [String]
     var opportunities: [String]
     var threats: [String]
+    var convertedInitiativeId: String?
+    var convertedTaskId: String?
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
 
@@ -666,6 +733,8 @@ struct Flow: FirestoreConvertible {
         effort = data["effort"] as? String
         concept = data["concept"] as? String
         keywords = data["keywords"] as? [String] ?? []
+        convertedInitiativeId = data["convertedInitiativeId"] as? String
+        convertedTaskId = data["convertedTaskId"] as? String
         
         let analysis = data["analysis"] as? [String: Any] ?? [:]
         strengths = analysis["strengths"] as? [String] ?? []
@@ -706,6 +775,8 @@ struct Flow: FirestoreConvertible {
             "threats": threats
         ]
         payload["analysis"] = analysis
+        if let convertedInitiativeId { payload["convertedInitiativeId"] = convertedInitiativeId }
+        if let convertedTaskId { payload["convertedTaskId"] = convertedTaskId }
         
         if let createdAt {
             payload["createdAt"] = createdAt
@@ -729,6 +800,8 @@ struct Issue: FirestoreConvertible {
     var assigneeIds: [String]
     var labelIds: [String]
     var dueDate: String
+    var githubIssueNumber: Int?
+    var githubIssueUrl: String?
     var createdAt: Timestamp?
     var updatedAt: Timestamp?
 
@@ -744,6 +817,8 @@ struct Issue: FirestoreConvertible {
         assigneeIds = data["assigneeIds"] as? [String] ?? []
         labelIds = data["labelIds"] as? [String] ?? []
         dueDate = data["dueDate"] as? String ?? ""
+        githubIssueNumber = data["githubIssueNumber"] as? Int
+        githubIssueUrl = data["githubIssueUrl"] as? String
         createdAt = data["createdAt"] as? Timestamp
         updatedAt = data["updatedAt"] as? Timestamp
     }

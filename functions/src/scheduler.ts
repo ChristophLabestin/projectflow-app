@@ -2,6 +2,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { db } from "./init";
+import { isPmCoreOnly } from "./pmCore";
 
 // Types locally defined since we can't easily import from root in this setup
 type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X' | 'YouTube';
@@ -373,12 +374,12 @@ export const dailyHealthSnapshots = onSchedule(
                             .collection('projects').doc(projectId)
                             .collection('tasks').get();
 
-                        // Get issues for this project
-                        const issuesSnap = await db.collection('tenants').doc(tenantId)
-                            .collection('projects').doc(projectId)
-                            .collection('issues').get();
+                        const issuesSnap = isPmCoreOnly()
+                            ? { docs: [] as admin.firestore.QueryDocumentSnapshot[] }
+                            : await db.collection('tenants').doc(tenantId)
+                                .collection('projects').doc(projectId)
+                                .collection('issues').get();
 
-                        // Calculate health
                         const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
 
                         // Save snapshot using date as document ID (prevents duplicates)
@@ -445,9 +446,11 @@ export const debugHealthSnapshots = onRequest({ region: "europe-west3" }, async 
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
 
-                    const issuesSnap = await db.collection('tenants').doc(tenantId)
-                        .collection('projects').doc(projectId)
-                        .collection('issues').get();
+                    const issuesSnap = isPmCoreOnly()
+                        ? { docs: [] as admin.firestore.QueryDocumentSnapshot[] }
+                        : await db.collection('tenants').doc(tenantId)
+                            .collection('projects').doc(projectId)
+                            .collection('issues').get();
 
                     const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
 

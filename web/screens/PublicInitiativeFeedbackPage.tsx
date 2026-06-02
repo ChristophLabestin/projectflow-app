@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { Button } from '../components/common/Button/Button';
-import { TextArea } from '../components/common/Input/TextArea';
-import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 import type { InitiativeFeedbackField } from '../types';
 import {
@@ -13,8 +11,12 @@ import {
     type PublicInitiativeFeedbackAttachmentInput,
     type PublicInitiativeFeedbackForm,
 } from '../services/initiativeFeedbackService';
-import { ensureInitiativeFeedbackFields, feedbackFieldNeedsOptions } from '../utils/initiativeFeedbackBuilder';
-import './public-initiative-feedback.scss';
+import {
+    ensureInitiativeFeedbackFields,
+    feedbackFieldNeedsOptions,
+    localizePublicInitiativeFeedbackCopy,
+    localizePublicInitiativeFeedbackFields,
+} from '../utils/initiativeFeedbackBuilder';
 
 type SubmissionState = {
     fieldValues: Record<string, string>;
@@ -28,13 +30,22 @@ const createInitialState = (fields: InitiativeFeedbackField[]): SubmissionState 
 
 export const PublicInitiativeFeedbackPage = () => {
     const { token } = useParams<{ token: string }>();
-    const { t } = useLanguage();
+    const { t, language, setLanguage } = useLanguage();
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const [form, setForm] = useState<PublicInitiativeFeedbackForm | null>(null);
     const [state, setState] = useState<SubmissionState>(createInitialState([]));
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        const storedLanguage = localStorage.getItem('pf-language');
+        if (!storedLanguage) {
+            const browserLanguage = navigator.language.toLowerCase().startsWith('de') ? 'de' : 'en';
+            setLanguage(browserLanguage);
+        }
+    }, [setLanguage]);
 
     useEffect(() => {
         if (!token) return;
@@ -56,6 +67,16 @@ export const PublicInitiativeFeedbackPage = () => {
             })
             .finally(() => setLoading(false));
     }, [t, token]);
+
+    const localizedForm = useMemo(() => {
+        if (!form) return null;
+
+        const localizedCopy = localizePublicInitiativeFeedbackCopy(form, t);
+        return {
+            ...localizedCopy,
+            fields: localizePublicInitiativeFeedbackFields(form.fields, t),
+        };
+    }, [form, language, t]);
 
     const remainingAttachments = useMemo(() => {
         if (!form) return 0;
@@ -86,7 +107,7 @@ export const PublicInitiativeFeedbackPage = () => {
                 attachments,
             });
 
-            setSuccessMessage(result.message || form.successMessage);
+            setSuccessMessage(result.message || localizedForm?.successMessage || form.successMessage);
             setState(createInitialState(form.fields));
         } catch (submitError) {
             console.error('Failed to submit initiative feedback', submitError);
@@ -100,13 +121,14 @@ export const PublicInitiativeFeedbackPage = () => {
         return (
             <div className="public-initiative-feedback">
                 <div className="public-initiative-feedback__shell public-initiative-feedback__shell--loading">
-                    <span className="material-symbols-outlined">progress_activity</span>
+                    <span className="material-symbols-outlined public-initiative-feedback__spinner">progress_activity</span>
+                    <p>{t('initiatives.feedback.public.loading')}</p>
                 </div>
             </div>
         );
     }
 
-    if (!form) {
+    if (!form || !localizedForm) {
         return (
             <div className="public-initiative-feedback">
                 <div className="public-initiative-feedback__shell public-initiative-feedback__shell--empty">
@@ -123,8 +145,11 @@ export const PublicInitiativeFeedbackPage = () => {
             <div className="public-initiative-feedback__shell">
                 <div className="public-initiative-feedback__header">
                     <span className="public-initiative-feedback__eyebrow">{form.projectTitle}</span>
-                    <h1>{form.title || form.initiativeTitle}</h1>
-                    <p>{form.description || t('initiatives.feedback.public.descriptionFallback').replace('{initiative}', form.initiativeTitle)}</p>
+                    <h1>{localizedForm.title || form.initiativeTitle}</h1>
+                    <p>
+                        {localizedForm.description
+                            || t('initiatives.feedback.public.descriptionFallback').replace('{initiative}', form.initiativeTitle)}
+                    </p>
                 </div>
 
                 {successMessage ? (
@@ -138,20 +163,22 @@ export const PublicInitiativeFeedbackPage = () => {
                 ) : (
                     <form className="public-initiative-feedback__form" onSubmit={handleSubmit}>
                         <div className="public-initiative-feedback__grid">
-                            {form.fields
+                            {localizedForm.fields
                                 .filter((field) => field.enabled !== false)
                                 .map((field) => (
                                     <div
                                         key={field.id}
                                         className={`public-initiative-feedback__field ${field.width === 'full' ? 'public-initiative-feedback__field--full' : ''}`}
                                     >
-                                        <label className="public-initiative-feedback__field-label">
+                                        <label className="public-initiative-feedback__field-label" htmlFor={`feedback-field-${field.id}`}>
                                             {field.label}
-                                            {field.required && <span>*</span>}
+                                            {field.required && <span aria-hidden="true">*</span>}
                                         </label>
 
                                         {field.type === 'longText' ? (
-                                            <TextArea
+                                            <textarea
+                                                id={`feedback-field-${field.id}`}
+                                                className="public-initiative-feedback__preview-input public-initiative-feedback__preview-input--textarea"
                                                 value={state.fieldValues[field.id] || ''}
                                                 onChange={(event) => setState((current) => ({
                                                     ...current,
@@ -162,10 +189,11 @@ export const PublicInitiativeFeedbackPage = () => {
                                                 }))}
                                                 placeholder={field.placeholder || field.label}
                                                 required={field.required === true}
-                                                rows={6}
+                                                rows={5}
                                             />
                                         ) : feedbackFieldNeedsOptions(field.type) ? (
                                             <select
+                                                id={`feedback-field-${field.id}`}
                                                 className="public-initiative-feedback__native-select"
                                                 value={state.fieldValues[field.id] || ''}
                                                 required={field.required === true}
@@ -185,7 +213,9 @@ export const PublicInitiativeFeedbackPage = () => {
                                                 ))}
                                             </select>
                                         ) : (
-                                            <TextInput
+                                            <input
+                                                id={`feedback-field-${field.id}`}
+                                                className="public-initiative-feedback__preview-input"
                                                 value={state.fieldValues[field.id] || ''}
                                                 onChange={(event) => setState((current) => ({
                                                     ...current,
@@ -209,10 +239,19 @@ export const PublicInitiativeFeedbackPage = () => {
 
                         {form.allowAttachments && (
                             <div className="public-initiative-feedback__attachments">
-                                <label className="public-initiative-feedback__attachments-label">
-                                    {t('initiatives.feedback.public.fields.attachments')}
-                                </label>
+                                <div className="public-initiative-feedback__attachments-head">
+                                    <label className="public-initiative-feedback__attachments-label" htmlFor="feedback-attachments">
+                                        {t('initiatives.feedback.public.fields.attachments')}
+                                    </label>
+                                    <span className="public-initiative-feedback__attachments-note">
+                                        {t('initiatives.feedback.public.attachmentsHint').replace('{count}', String(form.maxAttachments))}
+                                    </span>
+                                </div>
+
                                 <input
+                                    id="feedback-attachments"
+                                    ref={fileInputRef}
+                                    className="public-initiative-feedback__file-input"
                                     type="file"
                                     accept="image/*"
                                     multiple
@@ -221,13 +260,24 @@ export const PublicInitiativeFeedbackPage = () => {
                                         setState((current) => ({ ...current, files: selected }));
                                     }}
                                 />
-                                <span className="public-initiative-feedback__attachments-note">
-                                    {t('initiatives.feedback.public.attachmentsHint').replace('{count}', String(form.maxAttachments))}
-                                </span>
+
+                                <button
+                                    type="button"
+                                    className="public-initiative-feedback__upload-trigger"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <span className="material-symbols-outlined">upload</span>
+                                    <div>
+                                        <strong>{t('initiatives.feedback.public.uploadTitle')}</strong>
+                                        <p>{t('initiatives.feedback.public.uploadHint')}</p>
+                                    </div>
+                                </button>
+
                                 {state.files.length > 0 && (
                                     <div className="public-initiative-feedback__attachment-list">
                                         {state.files.map((file) => (
                                             <span key={`${file.name}-${file.size}`} className="public-initiative-feedback__attachment-chip">
+                                                <span className="material-symbols-outlined">image</span>
                                                 {file.name}
                                             </span>
                                         ))}
@@ -236,16 +286,21 @@ export const PublicInitiativeFeedbackPage = () => {
                             </div>
                         )}
 
-                        {error && <div className="public-initiative-feedback__error">{error}</div>}
+                        {error && (
+                            <div className="public-initiative-feedback__error" role="alert">
+                                <span className="material-symbols-outlined">error</span>
+                                <span>{error}</span>
+                            </div>
+                        )}
 
                         <div className="public-initiative-feedback__footer">
-                            <span className="public-initiative-feedback__footer-note">
+                            <p className="public-initiative-feedback__footer-note">
                                 {form.allowAttachments
                                     ? t('initiatives.feedback.public.remainingAttachments').replace('{count}', String(remainingAttachments))
-                                    : t('initiatives.feedback.public.noAttachments')}
-                            </span>
-                            <Button variant="primary" type="submit" isLoading={submitting}>
-                                {form.submitLabel}
+                                    : t('initiatives.feedback.public.privacyNote')}
+                            </p>
+                            <Button variant="primary" type="submit" size="lg" isLoading={submitting}>
+                                {localizedForm.submitLabel}
                             </Button>
                         </div>
                     </form>

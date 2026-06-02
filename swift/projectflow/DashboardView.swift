@@ -299,8 +299,10 @@ struct DashboardView: View {
             DashboardMetricTile(title: "Due today", value: "\(store.dueTodayTaskCount)", icon: "calendar", tint: colors.warning) {
                 selectedTab = .work
             }
-            DashboardMetricTile(title: "Issues", value: "\(store.openIssueCount)", icon: "exclamationmark.bubble", tint: colors.error) {
-                selectedTab = .work
+            if !PmCoreConfig.isPmCoreOnly {
+                DashboardMetricTile(title: "Issues", value: "\(store.openIssueCount)", icon: "exclamationmark.bubble", tint: colors.error) {
+                    selectedTab = .work
+                }
             }
         }
     }
@@ -308,10 +310,13 @@ struct DashboardView: View {
     private var recentWorkSection: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                PFSectionHeader(title: "Recent work", subtitle: "Latest tasks and issues")
+                PFSectionHeader(
+                    title: "Recent work",
+                    subtitle: PmCoreConfig.isPmCoreOnly ? "Latest tasks" : "Latest tasks and issues"
+                )
 
                 let tasks = Array(store.recentTasks.prefix(3))
-                let issues = Array(store.recentIssues.prefix(2))
+                let issues = PmCoreConfig.isPmCoreOnly ? [] : Array(store.recentIssues.prefix(2))
                 if tasks.isEmpty && issues.isEmpty {
                     Text("Recent project activity will appear here.")
                         .font(.subheadline)

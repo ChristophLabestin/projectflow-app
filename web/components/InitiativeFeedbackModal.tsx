@@ -9,14 +9,20 @@ import type {
     InitiativeFeedbackFormSettings,
 } from '../types';
 import { useLanguage } from '../context/LanguageContext';
-import { saveInitiativeFeedbackConfig } from '../services/initiativeFeedbackService';
+import {
+    getInitiativeFeedbackConfigEndpoint,
+    getInitiativeFeedbackSubmitEndpoint,
+    saveInitiativeFeedbackConfig,
+} from '../services/initiativeFeedbackService';
 import {
     MAX_INITIATIVE_FEEDBACK_FIELDS,
+    buildInitiativeFeedbackEmbedModel,
     createCustomInitiativeFeedbackField,
     ensureInitiativeFeedbackFields,
     feedbackFieldNeedsOptions,
     getFeedbackFieldTypeIcon,
     getInitiativeFeedbackBuilderIssues,
+    localizeDefaultInitiativeFeedbackField,
     prepareInitiativeFeedbackFieldsForSave,
     type InitiativeFeedbackBuilderIssue,
 } from '../utils/initiativeFeedbackBuilder';
@@ -49,54 +55,7 @@ type DraftState = {
     fields: InitiativeFeedbackField[];
 };
 
-type Translate = (key: string) => string;
-
-const localizeDefaultField = (field: InitiativeFeedbackField, t: Translate): InitiativeFeedbackField => {
-    if (!field.isDefault) return field;
-
-    switch (field.role) {
-        case 'customerName':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.customerName'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.customerName'),
-            };
-        case 'customerEmail':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.customerEmail'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.customerEmail'),
-            };
-        case 'company':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.company'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.company'),
-            };
-        case 'sourceUrl':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.sourceUrl'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.sourceUrl'),
-            };
-        case 'title':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.title'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.title'),
-            };
-        case 'description':
-            return {
-                ...field,
-                label: t('initiatives.feedback.public.fields.description'),
-                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.description'),
-            };
-        default:
-            return field;
-    }
-};
-
-const buildDraft = (initiative: Initiative | null, t: Translate): DraftState => {
+const buildDraft = (initiative: Initiative | null, t: (key: string) => string): DraftState => {
     const hasStoredFields = Array.isArray(initiative?.feedbackForm?.fields) && initiative.feedbackForm.fields.length > 0;
     const fields = ensureInitiativeFeedbackFields(initiative?.feedbackForm?.fields).map((field) => ({
         ...field,
@@ -111,7 +70,7 @@ const buildDraft = (initiative: Initiative | null, t: Translate): DraftState => 
         successMessage: initiative?.feedbackForm?.successMessage || '',
         allowAttachments: initiative?.feedbackForm?.allowAttachments !== false,
         maxAttachments: initiative?.feedbackForm?.maxAttachments || 3,
-        fields: hasStoredFields ? fields : fields.map((field) => localizeDefaultField(field, t)),
+        fields: hasStoredFields ? fields : fields.map((field) => localizeDefaultInitiativeFeedbackField(field, t)),
     };
 };
 
@@ -165,12 +124,41 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
         return `${window.location.origin}/feedback/initiative/${initiative.feedbackForm.token}`;
     }, [initiative?.feedbackForm?.token]);
 
-    const submitEndpoint = useMemo(() => {
-        const base = import.meta.env.VITE_CLOUD_FUNCTIONS_BASE_URL
-            ? String(import.meta.env.VITE_CLOUD_FUNCTIONS_BASE_URL).replace(/\/$/, '')
-            : `https://europe-west3-${import.meta.env.VITE_FIREBASE_PROJECT_ID}.cloudfunctions.net`;
-        return `${base}/submitInitiativeFeedback`;
-    }, []);
+    const configEndpoint = useMemo(() => getInitiativeFeedbackConfigEndpoint(), []);
+    const submitEndpoint = useMemo(() => getInitiativeFeedbackSubmitEndpoint(), []);
+
+    const embedModelJson = useMemo(() => JSON.stringify(
+        buildInitiativeFeedbackEmbedModel({
+            token: initiative?.feedbackForm?.token,
+            hostedUrl: hostedUrl || undefined,
+            configEndpoint,
+            submitEndpoint,
+            projectTitle: '',
+            initiativeTitle: initiative?.title,
+            title: draft.title,
+            description: draft.description,
+            submitLabel: draft.submitLabel,
+            successMessage: draft.successMessage,
+            allowAttachments: draft.allowAttachments,
+            maxAttachments: draft.maxAttachments,
+            fields: draft.fields,
+        }),
+        null,
+        2,
+    ), [
+        configEndpoint,
+        draft.allowAttachments,
+        draft.description,
+        draft.fields,
+        draft.maxAttachments,
+        draft.submitLabel,
+        draft.successMessage,
+        draft.title,
+        hostedUrl,
+        initiative?.feedbackForm?.token,
+        initiative?.title,
+        submitEndpoint,
+    ]);
 
     const preparedFields = useMemo(
         () => prepareInitiativeFeedbackFieldsForSave(draft.fields),
@@ -476,176 +464,273 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
         </div>
     );
 
-    const renderCopyEditor = () => (
-        <>
-            <div className="title-input-section initiative-feedback-builder__title-section">
-                <TextInput
-                    value={draft.title}
-                    onChange={(event) => setDraft((current) => ({ ...current, title: event.target.value }))}
-                    placeholder={t('initiatives.feedback.fields.titlePlaceholder')}
-                    aria-label={t('initiatives.feedback.fields.title')}
-                    className="task-create__title-input"
-                />
-                <div
-                    className="initiative-feedback-builder__meta"
-                    aria-label={t('initiatives.feedback.builder.statusSummary')
-                        .replace('{visible}', String(fieldStats.visible))
-                        .replace('{total}', String(fieldStats.total))}
-                >
-                    <span className={draft.enabled ? 'is-live' : ''}>
-                        {draft.enabled ? t('initiatives.feedback.status.enabled') : t('initiatives.feedback.status.disabled')}
-                    </span>
-                    <span>{fieldStats.visible}/{fieldStats.total} {t('initiatives.feedback.stats.fields')}</span>
-                    {builderIssues.length > 0 && (
-                        <span className={blockingIssues.length > 0 ? 'is-blocked' : 'has-warnings'}>
-                            {builderIssues.length} {t('initiatives.feedback.builder.stats.issues')}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            <div className="description-section initiative-feedback-builder__description-section">
-                <TextArea
-                    value={draft.description}
-                    onChange={(event) => setDraft((current) => ({ ...current, description: event.target.value }))}
-                    placeholder={t('initiatives.feedback.fields.descriptionPlaceholder')}
-                    aria-label={t('initiatives.feedback.fields.description')}
-                    rows={2}
-                    className="task-create__description-input"
-                />
-                <details className="initiative-feedback-builder__copy-more">
-                    <summary>{t('initiatives.feedback.builder.responseCopy')}</summary>
-                    <div>
-                        <div className="task-field">
-                            <label className="section-label">{t('initiatives.feedback.fields.submitLabel')}</label>
-                            <TextInput
-                                value={draft.submitLabel}
-                                onChange={(event) => setDraft((current) => ({ ...current, submitLabel: event.target.value }))}
-                                placeholder={t('initiatives.feedback.fields.submitLabelPlaceholder')}
-                            />
-                        </div>
-                        <div className="task-field">
-                            <label className="section-label">{t('initiatives.feedback.fields.successMessage')}</label>
-                            <TextInput
-                                value={draft.successMessage}
-                                onChange={(event) => setDraft((current) => ({ ...current, successMessage: event.target.value }))}
-                                placeholder={t('initiatives.feedback.fields.successMessagePlaceholder')}
-                            />
-                        </div>
-                    </div>
-                </details>
-            </div>
-        </>
-    );
-
-    const renderFieldRow = (field: InitiativeFeedbackField, index: number) => {
+    const renderCanvasField = (field: InitiativeFeedbackField, index: number) => {
+        const isSelected = selectedFieldId === field.id;
         const issuesForField = builderIssues.filter((issue) => issue.fieldId === field.id);
         const hasBlockingIssue = issuesForField.some((issue) => issue.severity === 'blocking');
-        const isActive = selectedFieldId === field.id;
-
-        const stateLabel = field.enabled === false
-            ? t('initiatives.feedback.builder.hidden')
-            : field.required
-                ? t('initiatives.feedback.builder.required')
-                : t('initiatives.feedback.builder.optional');
 
         return (
-            <div key={field.id} className="initiative-feedback-builder__question-item">
-                <div
-                    className={[
-                        'initiative-feedback-builder__question-row',
-                        isActive ? 'is-active' : '',
-                        hasBlockingIssue ? 'has-blocking-issue' : '',
-                        field.enabled === false ? 'is-hidden' : '',
-                    ].filter(Boolean).join(' ')}
-                >
-                    <button
-                        type="button"
-                        className="initiative-feedback-builder__question-main"
-                        onClick={() => setSelectedFieldId(isActive ? null : field.id)}
-                    >
-                        <span className="initiative-feedback-builder__question-index">{index + 1}</span>
-                        <span className="initiative-feedback-builder__field-icon material-symbols-outlined">
-                            {getFeedbackFieldTypeIcon(field.type)}
-                        </span>
-                        <span className="initiative-feedback-builder__question-copy">
-                            <strong>{field.label || t('initiatives.feedback.builder.unnamedField')}</strong>
-                            <span>{getRoleLabel(field.role)} / {getFieldTypeLabel(field.type)} / {stateLabel}</span>
-                        </span>
-                        {issuesForField.length > 0 && (
-                            <span className={`initiative-feedback-builder__issue-chip ${hasBlockingIssue ? 'is-blocking' : ''}`}>
-                                {hasBlockingIssue
-                                    ? t('initiatives.feedback.builder.needsFix')
-                                    : t('initiatives.feedback.builder.warning')}
-                            </span>
-                        )}
-                    </button>
-                    <div className="initiative-feedback-builder__question-actions">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            type="button"
-                            onClick={() => setSelectedFieldId(isActive ? null : field.id)}
-                            aria-label={t('initiatives.feedback.builder.fieldSettings')}
-                            icon={<span className="material-symbols-outlined">{isActive ? 'expand_less' : 'expand_more'}</span>}
+            <div 
+                key={field.id} 
+                className={`feedback-canvas__field-wrapper ${isSelected ? 'is-selected' : ''} ${hasBlockingIssue ? 'has-error' : ''} ${field.enabled === false ? 'is-hidden' : ''} ${field.width === 'full' ? 'is-full-width' : ''}`}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedFieldId(field.id);
+                }}
+            >
+                <div className="feedback-canvas__field-overlay" />
+                <div className="feedback-canvas__field-content public-initiative-feedback__field">
+                    {isSelected && (
+                        <div className="feedback-canvas__field-actions">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveField(field.id, -1);
+                                }}
+                                disabled={index === 0}
+                                aria-label={t('initiatives.feedback.builder.moveUp')}
+                                icon={<span className="material-symbols-outlined">keyboard_arrow_up</span>}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    moveField(field.id, 1);
+                                }}
+                                disabled={index === draft.fields.length - 1}
+                                aria-label={t('initiatives.feedback.builder.moveDown')}
+                                icon={<span className="material-symbols-outlined">keyboard_arrow_down</span>}
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveField(field.id);
+                                }}
+                                aria-label={t('initiatives.feedback.builder.removeField')}
+                                icon={<span className="material-symbols-outlined">delete</span>}
+                                className="feedback-canvas__delete-btn"
+                            />
+                        </div>
+                    )}
+                    <label className="public-initiative-feedback__field-label">
+                        {field.label || t('initiatives.feedback.builder.unnamedField')}
+                        {field.required && <span>*</span>}
+                    </label>
+                    {field.type === 'longText' ? (
+                        <textarea
+                            value={sampleValueForField(field)}
+                            onChange={() => undefined}
+                            rows={4}
+                            readOnly
+                            className="public-initiative-feedback__preview-input"
                         />
-                    </div>
+                    ) : feedbackFieldNeedsOptions(field.type) ? (
+                        <select
+                            className="public-initiative-feedback__native-select"
+                            value={sampleValueForField(field)}
+                            onChange={() => undefined}
+                            disabled
+                        >
+                            <option value="">
+                                {field.placeholder || t('initiatives.feedback.builder.previewSamples.selectPlaceholder')}
+                            </option>
+                            {(field.options || []).map((option) => (
+                                <option key={option.id} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            value={sampleValueForField(field)}
+                            onChange={() => undefined}
+                            type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
+                            readOnly
+                            className="public-initiative-feedback__preview-input"
+                            placeholder={field.placeholder}
+                        />
+                    )}
+                    {field.helpText && (
+                        <p className="public-initiative-feedback__field-help">{field.helpText}</p>
+                    )}
                 </div>
-                {isActive && renderFieldEditor(field, issuesForField, index)}
             </div>
         );
     };
 
-    const renderTemplateControl = () => (
-        <div className="initiative-feedback-builder__add-control">
-            <Select
-                value={null}
-                onChange={(value) => handleAddField(String(value) as FieldTemplateId)}
-                options={addQuestionOptions}
-                placeholder={t('initiatives.feedback.builder.addQuestion')}
-                disabled={draft.fields.length >= MAX_INITIATIVE_FEEDBACK_FIELDS}
-            />
+    const renderCanvas = () => (
+        <div className="feedback-builder__canvas-area" onClick={() => setSelectedFieldId(null)}>
+            <div className="feedback-builder__canvas-container">
+                <div className="public-initiative-feedback__shell feedback-builder__live-form">
+                    <div 
+                        className={`feedback-canvas__header-wrapper ${selectedFieldId === null ? 'is-selected' : ''}`}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFieldId(null);
+                        }}
+                    >
+                        <div className="feedback-canvas__field-overlay" />
+                        <div className="feedback-canvas__field-content public-initiative-feedback__header">
+                            <span className="public-initiative-feedback__eyebrow">{initiative.title}</span>
+                            <h1>{draft.title || t('initiatives.feedback.fields.titlePlaceholder')}</h1>
+                            <p>{draft.description || t('initiatives.feedback.public.descriptionFallback').replace('{initiative}', initiative.title)}</p>
+                        </div>
+                    </div>
+
+                    <div className="public-initiative-feedback__form">
+                        <div className="public-initiative-feedback__grid feedback-canvas__grid">
+                            {draft.fields.map((field, index) => renderCanvasField(field, index))}
+                        </div>
+
+                        <div className="feedback-canvas__add-field">
+                            <Button 
+                                variant="secondary" 
+                                size="lg" 
+                                type="button"
+                                icon={<span className="material-symbols-outlined">add</span>}
+                                onClick={() => handleAddField('shortText')}
+                                disabled={draft.fields.length >= MAX_INITIATIVE_FEEDBACK_FIELDS}
+                            >
+                                {t('initiatives.feedback.builder.addQuestion')}
+                            </Button>
+                        </div>
+
+                        {draft.allowAttachments && (
+                            <div className="public-initiative-feedback__attachments">
+                                <label className="public-initiative-feedback__attachments-label">
+                                    {t('initiatives.feedback.public.fields.attachments')}
+                                </label>
+                                <div className="initiative-feedback-builder__attachment-dropzone">
+                                    <span className="material-symbols-outlined">image</span>
+                                    <div>
+                                        <strong>{t('initiatives.feedback.builder.previewAttachmentTitle')}</strong>
+                                        <p>{t('initiatives.feedback.public.attachmentsHint').replace('{count}', String(draft.maxAttachments))}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="public-initiative-feedback__footer">
+                            <span className="public-initiative-feedback__footer-note">
+                                {draft.allowAttachments
+                                    ? t('initiatives.feedback.public.attachmentsHint').replace('{count}', String(draft.maxAttachments))
+                                    : t('initiatives.feedback.public.noAttachments')}
+                            </span>
+                            <Button variant="primary" type="button" size="lg">
+                                {draft.submitLabel || t('initiatives.feedback.fields.submitLabelPlaceholder')}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderInspector = () => {
+        if (selectedFieldId === null) {
+            return renderGeneralSettings();
+        }
+        
+        const field = draft.fields.find(f => f.id === selectedFieldId);
+        if (!field) return renderGeneralSettings();
+        
+        const index = draft.fields.findIndex(f => f.id === selectedFieldId);
+        const issuesForField = builderIssues.filter(i => i.fieldId === selectedFieldId);
+        
+        return renderFieldEditor(field, issuesForField, index);
+    };
+
+    const renderGeneralSettings = () => (
+        <div className="feedback-builder__inspector-content">
+            <div className="feedback-builder__inspector-header">
+                <h3>{t('initiatives.feedback.builder.formPanel')}</h3>
+                <p>{t('initiatives.feedback.builder.formPanelDescription')}</p>
+            </div>
+            <div className="feedback-builder__inspector-body">
+                <div className="task-field">
+                    <label className="section-label">{t('initiatives.feedback.fields.title')}</label>
+                    <TextInput
+                        value={draft.title}
+                        onChange={(e) => setDraft(c => ({ ...c, title: e.target.value }))}
+                        placeholder={t('initiatives.feedback.fields.titlePlaceholder')}
+                    />
+                </div>
+                <div className="task-field">
+                    <label className="section-label">{t('initiatives.feedback.fields.description')}</label>
+                    <TextArea
+                        value={draft.description}
+                        onChange={(e) => setDraft(c => ({ ...c, description: e.target.value }))}
+                        placeholder={t('initiatives.feedback.fields.descriptionPlaceholder')}
+                        rows={3}
+                    />
+                </div>
+                
+                <div className="feedback-builder__inspector-divider" />
+                
+                <div className="task-field">
+                    <label className="section-label">{t('initiatives.feedback.fields.submitLabel')}</label>
+                    <TextInput
+                        value={draft.submitLabel}
+                        onChange={(e) => setDraft(c => ({ ...c, submitLabel: e.target.value }))}
+                        placeholder={t('initiatives.feedback.fields.submitLabelPlaceholder')}
+                    />
+                </div>
+                <div className="task-field">
+                    <label className="section-label">{t('initiatives.feedback.fields.successMessage')}</label>
+                    <TextInput
+                        value={draft.successMessage}
+                        onChange={(e) => setDraft(c => ({ ...c, successMessage: e.target.value }))}
+                        placeholder={t('initiatives.feedback.fields.successMessagePlaceholder')}
+                    />
+                </div>
+
+                <div className="feedback-builder__inspector-divider" />
+
+                <div className="initiative-feedback-builder__toggle-card">
+                    <Checkbox
+                        checked={draft.allowAttachments}
+                        onChange={(e) => setDraft(c => ({ ...c, allowAttachments: e.target.checked }))}
+                        label={t('initiatives.feedback.fields.allowAttachments')}
+                    />
+                </div>
+                {draft.allowAttachments && (
+                    <div className="task-field">
+                        <label className="section-label">{t('initiatives.feedback.fields.maxAttachments')}</label>
+                        <TextInput
+                            type="number"
+                            min={1}
+                            max={4}
+                            value={String(draft.maxAttachments)}
+                            onChange={(e) => setDraft(c => ({
+                                ...c,
+                                maxAttachments: Math.min(4, Math.max(1, Number(e.target.value) || 1)),
+                            }))}
+                        />
+                    </div>
+                )}
+            </div>
         </div>
     );
 
     const renderFieldEditor = (field: InitiativeFeedbackField, issuesForField: InitiativeFeedbackBuilderIssue[], index: number) => (
-        <div className="initiative-feedback-builder__question-editor">
-            <div className="initiative-feedback-builder__inspector-head">
-                <span className="section-label">{t('initiatives.feedback.builder.fieldSettings')}</span>
-                <div className="initiative-feedback-builder__editor-actions">
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        onClick={() => moveField(field.id, -1)}
-                        disabled={index === 0}
-                        aria-label={t('initiatives.feedback.builder.moveUp')}
-                        icon={<span className="material-symbols-outlined">keyboard_arrow_up</span>}
-                    />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        onClick={() => moveField(field.id, 1)}
-                        disabled={index === draft.fields.length - 1}
-                        aria-label={t('initiatives.feedback.builder.moveDown')}
-                        icon={<span className="material-symbols-outlined">keyboard_arrow_down</span>}
-                    />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        onClick={() => handleRemoveField(field.id)}
-                        aria-label={t('initiatives.feedback.builder.removeField')}
-                        icon={<span className="material-symbols-outlined">delete</span>}
-                    />
-                </div>
+        <div className="feedback-builder__inspector-content">
+            <div className="feedback-builder__inspector-header">
+                <h3>{t('initiatives.feedback.builder.fieldSettings')}</h3>
+                <p>{t('initiatives.feedback.builder.fieldSettingsDescription') || 'Configure the selected field.'}</p>
             </div>
 
             {issuesForField.length > 0 && renderIssueList(issuesForField)}
 
-            <div className="initiative-feedback-builder__field-form">
-                <div className="task-field initiative-feedback-builder__field initiative-feedback-builder__field--full">
+            <div className="feedback-builder__inspector-body">
+                <div className="task-field">
                     <label className="section-label">{t('initiatives.feedback.builder.fieldLabel')}</label>
                     <TextInput
                         value={field.label}
@@ -653,7 +738,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     />
                 </div>
 
-                <div className="task-field initiative-feedback-builder__field">
+                <div className="task-field">
                     <label className="section-label">{t('initiatives.feedback.builder.fieldType')}</label>
                     <Select
                         value={field.type}
@@ -662,7 +747,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     />
                 </div>
 
-                <div className="task-field initiative-feedback-builder__field">
+                <div className="task-field">
                     <label className="section-label">{t('initiatives.feedback.builder.mapping')}</label>
                     <Select
                         value={field.role || 'general'}
@@ -671,7 +756,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     />
                 </div>
 
-                <div className="task-field initiative-feedback-builder__field">
+                <div className="task-field">
                     <label className="section-label">{t('initiatives.feedback.builder.placeholder')}</label>
                     <TextInput
                         value={field.placeholder || ''}
@@ -679,7 +764,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     />
                 </div>
 
-                <div className="task-field initiative-feedback-builder__field">
+                <div className="task-field">
                     <label className="section-label">{t('initiatives.feedback.builder.helpText')}</label>
                     <TextInput
                         value={field.helpText || ''}
@@ -688,7 +773,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                 </div>
 
                 {feedbackFieldNeedsOptions(field.type) && (
-                    <div className="task-field initiative-feedback-builder__field initiative-feedback-builder__field--full">
+                    <div className="task-field">
                         <label className="section-label">{t('initiatives.feedback.builder.options')}</label>
                         <TextArea
                             value={(field.options || []).map((option) => option.label).join('\n')}
@@ -711,44 +796,52 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     </div>
                 )}
 
-                <div className="initiative-feedback-builder__field-toggles initiative-feedback-builder__field initiative-feedback-builder__field--full">
-                    <div className="initiative-feedback-builder__toggle-card">
-                        <Checkbox
-                            checked={field.required === true}
-                            onChange={(event) => updateField(field.id, (currentField) => ({ ...currentField, required: event.target.checked }))}
-                            label={t('initiatives.feedback.builder.required')}
-                        />
-                    </div>
-                    <div className="initiative-feedback-builder__toggle-card">
-                        <Checkbox
-                            checked={field.enabled !== false}
-                            onChange={(event) => updateField(field.id, (currentField) => ({ ...currentField, enabled: event.target.checked }))}
-                            label={t('initiatives.feedback.builder.visibleOnForm')}
-                        />
-                    </div>
-                    <div className="initiative-feedback-builder__toggle-card">
-                        <Checkbox
-                            checked={field.width === 'full'}
-                            onChange={(event) => updateField(field.id, (currentField) => ({ ...currentField, width: event.target.checked ? 'full' : 'half' }))}
-                            label={t('initiatives.feedback.builder.widthFull')}
-                        />
-                    </div>
+                <div className="feedback-builder__inspector-divider" />
+
+                <div className="feedback-builder__publish-toggle" onClick={() => updateField(field.id, (currentField) => ({ ...currentField, required: !currentField.required }))}>
+                    <span className="feedback-builder__publish-label">{t('initiatives.feedback.builder.required')}</span>
+                    <button
+                        type="button"
+                        className={`switch-track ${field.required === true ? 'active' : ''}`}
+                        role="switch"
+                        aria-checked={field.required === true}
+                    >
+                        <span className="switch-handle" />
+                    </button>
+                </div>
+
+                <div className="feedback-builder__publish-toggle" onClick={() => updateField(field.id, (currentField) => ({ ...currentField, enabled: currentField.enabled === false ? true : false }))}>
+                    <span className="feedback-builder__publish-label">{t('initiatives.feedback.builder.visibleOnForm')}</span>
+                    <button
+                        type="button"
+                        className={`switch-track ${field.enabled !== false ? 'active' : ''}`}
+                        role="switch"
+                        aria-checked={field.enabled !== false}
+                    >
+                        <span className="switch-handle" />
+                    </button>
+                </div>
+
+                <div className="feedback-builder__publish-toggle" onClick={() => updateField(field.id, (currentField) => ({ ...currentField, width: currentField.width === 'full' ? 'half' : 'full' }))}>
+                    <span className="feedback-builder__publish-label">{t('initiatives.feedback.builder.widthFull')}</span>
+                    <button
+                        type="button"
+                        className={`switch-track ${field.width === 'full' ? 'active' : ''}`}
+                        role="switch"
+                        aria-checked={field.width === 'full'}
+                    >
+                        <span className="switch-handle" />
+                    </button>
                 </div>
             </div>
         </div>
     );
 
     const renderQuestionsView = () => (
-        <section className="initiative-feedback-builder__canvas">
-            <div className="initiative-feedback-builder__canvas-head">
-                <div>
-                    <label className="section-label">{t('initiatives.feedback.builder.views.questions')}</label>
-                    <span>{t('initiatives.feedback.builder.questionsSummary').replace('{count}', String(fieldStats.visible))}</span>
-                </div>
-            </div>
-
-            <div className="initiative-feedback-builder__question-list" aria-label={t('initiatives.feedback.builder.fieldListLabel')}>
-                {draft.fields.map(renderFieldRow)}
+        <section className="feedback-builder__main">
+            {renderCanvas()}
+            <div className="feedback-builder__inspector-pane">
+                {renderInspector()}
             </div>
         </section>
     );
@@ -825,6 +918,22 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                 <div className="initiative-feedback-builder__share-panel">
                     <h4>{t('initiatives.feedback.builder.intakeSettings')}</h4>
                     <div className="initiative-feedback-builder__share-settings">
+                        <div className="task-field">
+                            <label className="section-label">{t('initiatives.feedback.fields.submitLabel')}</label>
+                            <TextInput
+                                value={draft.submitLabel}
+                                onChange={(event) => setDraft((current) => ({ ...current, submitLabel: event.target.value }))}
+                                placeholder={t('initiatives.feedback.fields.submitLabelPlaceholder')}
+                            />
+                        </div>
+                        <div className="task-field">
+                            <label className="section-label">{t('initiatives.feedback.fields.successMessage')}</label>
+                            <TextInput
+                                value={draft.successMessage}
+                                onChange={(event) => setDraft((current) => ({ ...current, successMessage: event.target.value }))}
+                                placeholder={t('initiatives.feedback.fields.successMessagePlaceholder')}
+                            />
+                        </div>
                         <div className="initiative-feedback-builder__toggle-card">
                             <Checkbox
                                 checked={draft.allowAttachments}
@@ -848,6 +957,26 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <div className="initiative-feedback-builder__share-panel initiative-feedback-builder__embed-panel">
+                <div className="initiative-feedback-builder__embed-head">
+                    <div>
+                        <h4>{t('initiatives.feedback.builder.embedModelTitle')}</h4>
+                        <p>{t('initiatives.feedback.builder.embedModelDescription')}</p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        type="button"
+                        onClick={() => void handleCopy(embedModelJson, 'embed-model')}
+                    >
+                        {copiedField === 'embed-model' ? t('common.copied') : t('common.copy')}
+                    </Button>
+                </div>
+                <pre className="initiative-feedback-builder__embed-json">
+                    <code>{embedModelJson}</code>
+                </pre>
             </div>
         </section>
     );
@@ -903,6 +1032,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                                         type={field.type === 'email' ? 'email' : field.type === 'url' ? 'url' : 'text'}
                                         readOnly
                                         className="public-initiative-feedback__preview-input"
+                                        placeholder={field.placeholder}
                                     />
                                 )}
                                 {field.helpText && (
@@ -933,7 +1063,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                                 ? t('initiatives.feedback.public.attachmentsHint').replace('{count}', String(draft.maxAttachments))
                                 : t('initiatives.feedback.public.noAttachments')}
                         </span>
-                        <Button variant="primary" type="button">
+                        <Button variant="primary" type="button" size="lg">
                             {draft.submitLabel || t('initiatives.feedback.fields.submitLabelPlaceholder')}
                         </Button>
                     </div>
@@ -952,19 +1082,17 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
     return createPortal(
         <div className="modal-overlay modal-overlay--open task-modal center-aligned initiative-modal" onClick={onClose}>
             <div
-                className={`modal-content initiative-feedback-modal ${showPreview ? 'has-preview' : ''}`}
+                className="modal-content initiative-feedback-modal"
                 onClick={(event) => event.stopPropagation()}
             >
                 <form
-                    className={`task-create-form initiative-feedback-builder ${showPreview ? 'has-preview' : ''}`}
+                    className="task-create-form initiative-feedback-builder"
                     onSubmit={(event) => {
                         event.preventDefault();
                         void handleSave(false);
                     }}
                 >
-                    {renderCopyEditor()}
-
-                    <div className="toolbar-row initiative-feedback-builder__toolbar">
+                    <div className="feedback-builder__topbar">
                         <div className="initiative-feedback-builder__mode-tabs" aria-label={t('initiatives.feedback.builder.navigation')}>
                             <button
                                 type="button"
@@ -981,23 +1109,46 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                                 {t('initiatives.feedback.builder.views.share')}
                             </button>
                         </div>
-                        {activeView === 'questions' && renderTemplateControl()}
-                        <div className="divider" />
-                        <button
-                            type="button"
-                            className={`initiative-feedback-builder__toolbar-button ${showPreview ? 'is-active' : ''}`}
-                            onClick={() => setShowPreview((current) => !current)}
-                        >
-                            <span className="material-symbols-outlined">{showPreview ? 'visibility_off' : 'visibility'}</span>
-                            {showPreview
-                                ? t('initiatives.feedback.builder.hidePreview')
-                                : t('initiatives.feedback.builder.showPreview')}
-                        </button>
-                        <Checkbox
-                            checked={draft.enabled}
-                            onChange={(event) => setDraft((current) => ({ ...current, enabled: event.target.checked }))}
-                            label={t('initiatives.feedback.builder.publish')}
-                        />
+                        
+                        <div className="feedback-builder__topbar-actions">
+                            <span className={`initiative-feedback-builder__footer-status ${blockingIssues.length > 0 ? 'is-blocked' : warningIssues.length > 0 ? 'has-warnings' : 'is-ready'}`}>
+                                <span className="material-symbols-outlined">
+                                    {blockingIssues.length > 0 ? 'error' : warningIssues.length > 0 ? 'info' : 'check_circle'}
+                                </span>
+                                {healthText}
+                            </span>
+                            <div className="feedback-builder__topbar-divider" />
+                            
+                            <div 
+                                className="feedback-builder__publish-toggle"
+                                onClick={() => setDraft((current) => ({ ...current, enabled: !current.enabled }))}
+                            >
+                                <span className="feedback-builder__publish-label">{t('initiatives.feedback.builder.publish')}</span>
+                                <button
+                                    type="button"
+                                    className={`switch-track ${draft.enabled ? 'active' : ''}`}
+                                    role="switch"
+                                    aria-checked={draft.enabled}
+                                >
+                                    <span className="switch-handle" />
+                                </button>
+                            </div>
+
+                            <div className="feedback-builder__topbar-divider" />
+                            
+                            <Button variant="secondary" size="md" type="button" onClick={onClose} disabled={saving}>
+                                {t('common.cancel')}
+                            </Button>
+                            <Button
+                                variant="primary"
+                                size="md"
+                                type="submit"
+                                isLoading={saving}
+                                disabled={blockingIssues.length > 0}
+                            >
+                                {t('common.saveChanges')}
+                            </Button>
+                        </div>
                     </div>
 
                     {(firstVisibleIssue || error) && (
@@ -1012,34 +1163,11 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
                     )}
 
                     <div className="initiative-feedback-builder__body">
-                        <div className="initiative-feedback-builder__workarea">
-                            {activeView === 'questions' ? renderQuestionsView() : renderShareView()}
-                        </div>
-
-                        {showPreview && renderPreviewPanel()}
-                    </div>
-
-                    <div className="modal-footer initiative-feedback-builder__footer">
-                        <span className={`initiative-feedback-builder__footer-status ${blockingIssues.length > 0 ? 'is-blocked' : warningIssues.length > 0 ? 'has-warnings' : 'is-ready'}`}>
-                            <span className="material-symbols-outlined">
-                                {blockingIssues.length > 0 ? 'error' : warningIssues.length > 0 ? 'info' : 'check_circle'}
-                            </span>
-                            {healthText}
-                        </span>
-                        <div className="actions">
-                            <Button variant="ghost" size="sm" type="button" onClick={onClose} disabled={saving}>
-                                {t('common.cancel')}
-                            </Button>
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                type="submit"
-                                isLoading={saving}
-                                disabled={blockingIssues.length > 0}
-                            >
-                                {t('common.saveChanges')}
-                            </Button>
-                        </div>
+                        {activeView === 'questions' ? renderQuestionsView() : (
+                            <div className="initiative-feedback-builder__workarea">
+                                {renderShareView()}
+                            </div>
+                        )}
                     </div>
                 </form>
             </div>

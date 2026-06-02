@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
+import { isPmCoreOnly } from '../config/pmCore';
 import { FocusItemType, Initiative, Task, SubTask, Project, Member, PersonalTask } from '../types';
 import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
 import { deleteIssue, updateIssue } from '../services/domain/issuesService';
@@ -1448,7 +1449,10 @@ export const PinnedTasksModal = () => {
 
                     {/* Filter Tabs */}
                     <div className="filter-tabs">
-                        {(['all', 'task', 'issue', 'initiative'] as const).map(tab => {
+                        {(isPmCoreOnly()
+                            ? (['all', 'task', 'initiative'] as const)
+                            : (['all', 'task', 'issue', 'initiative'] as const)
+                        ).map(tab => {
                             const count = tab === 'all'
                                 ? pinnedItems.length
                                 : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;

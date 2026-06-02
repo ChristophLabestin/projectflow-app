@@ -4,13 +4,11 @@ import { format } from 'date-fns';
 import { auth } from '../services/firebase';
 import { getAllWorkspaceProjects } from '../services/dataService';
 import { ensureActiveTenantId } from '../services/domain/authService';
-import { getUserIdeas } from '../services/domain/ideasService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
-import { getUserIssues } from '../services/domain/issuesService';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { getUserTasksForProjects } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
-import { Project, Task, Idea, Issue, Initiative } from '../types';
+import { Project, Task, Initiative } from '../types';
 import { toDate, toMillis } from '../utils/time';
 import { calculateProjectHealth, isProjectActiveForGlobalSignals, ProjectHealth } from '../services/healthService';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
@@ -38,8 +36,6 @@ interface DashboardCommandItem {
 }
 
 type DashboardStepTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
-
-const REVIEW_STAGES = new Set(['Review', 'Submit']);
 
 const cssVars = (vars: Record<string, string>) => vars as React.CSSProperties;
 
@@ -134,8 +130,7 @@ export const Dashboard = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
-    const [issues, setIssues] = useState<Issue[]>([]);
+    const [showWorkspaceInsights, setShowWorkspaceInsights] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
     const [dashboardScrollProgress, setDashboardScrollProgress] = useState(0);
@@ -203,8 +198,6 @@ export const Dashboard = () => {
             setProjects([]);
             setTasks([]);
             setInitiatives([]);
-            setIdeas([]);
-            setIssues([]);
             setUserName('');
             setLoading(false);
             return;
@@ -247,18 +240,14 @@ export const Dashboard = () => {
                 setUserName(displayName ? displayName.split(' ')[0] : '');
                 setLoading(false);
 
-                const [workspaceTasks, workspaceInitiatives, workspaceIdeas, workspaceIssues] = await Promise.all([
+                const [workspaceTasks, workspaceInitiatives] = await Promise.all([
                     getUserTasksForProjects(workspaceProjects).catch(() => []),
-                    getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
-                    getUserIdeas().catch(() => []),
-                    getUserIssues().catch(() => [])
+                    getWorkspaceInitiatives(resolvedTenantId).catch(() => [])
                 ]);
 
                 if (cancelled) return;
                 setTasks(workspaceTasks);
                 setInitiatives(workspaceInitiatives);
-                setIdeas(workspaceIdeas);
-                setIssues(workspaceIssues);
             } catch (err) {
                 console.error(err);
             } finally {
@@ -373,19 +362,9 @@ export const Dashboard = () => {
         [activeProjectIds, tasks]
     );
 
-    const activeIssues = useMemo(
-        () => issues.filter((issue) => activeProjectIds.has(issue.projectId)),
-        [activeProjectIds, issues]
-    );
-
     const activeInitiatives = useMemo(
         () => initiatives.filter((initiative) => activeProjectIds.has(initiative.projectId)),
         [activeProjectIds, initiatives]
-    );
-
-    const activeIdeas = useMemo(
-        () => ideas.filter((idea) => Boolean(idea.projectId && activeProjectIds.has(idea.projectId))),
-        [activeProjectIds, ideas]
     );
 
     const tasksByProject = useMemo(() => {
@@ -397,15 +376,6 @@ export const Dashboard = () => {
         return map;
     }, [activeTasks]);
 
-    const issuesByProject = useMemo(() => {
-        const map: Record<string, Issue[]> = {};
-        activeIssues.forEach((issue) => {
-            if (!map[issue.projectId]) map[issue.projectId] = [];
-            map[issue.projectId].push(issue);
-        });
-        return map;
-    }, [activeIssues]);
-
     const initiativesByProject = useMemo(() => {
         const map: Record<string, Initiative[]> = {};
         activeInitiatives.forEach((initiative) => {
@@ -415,16 +385,6 @@ export const Dashboard = () => {
         return map;
     }, [activeInitiatives]);
 
-    const ideasByProject = useMemo(() => {
-        const map: Record<string, Idea[]> = {};
-        activeIdeas.forEach((idea) => {
-            if (!idea.projectId) return;
-            if (!map[idea.projectId]) map[idea.projectId] = [];
-            map[idea.projectId].push(idea);
-        });
-        return map;
-    }, [activeIdeas]);
-
     const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
         activeProjects.forEach((project) => {
@@ -432,16 +392,16 @@ export const Dashboard = () => {
                 project,
                 tasksByProject[project.id] || [],
                 [],
-                issuesByProject[project.id] || [],
+                [],
                 [],
                 [],
                 [],
                 initiativesByProject[project.id] || [],
-                ideasByProject[project.id] || []
+                []
             );
         });
         return healthMap;
-    }, [activeProjects, ideasByProject, initiativesByProject, issuesByProject, tasksByProject]);
+    }, [activeProjects, initiativesByProject, tasksByProject]);
 
     const allProjectsAtRisk = useMemo(() => {
         return activeProjects
@@ -472,16 +432,6 @@ export const Dashboard = () => {
         [activeTasks]
     );
 
-    const urgentIssues = useMemo(
-        () => activeIssues.filter((issue) => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
-        [activeIssues]
-    );
-
-    const reviewIdeas = useMemo(
-        () => activeIdeas.filter((idea) => REVIEW_STAGES.has(idea.stage || '')),
-        [activeIdeas]
-    );
-
     const openTasksCount = useMemo(
         () => activeTasks.filter((task) => !task.isCompleted).length,
         [activeTasks]
@@ -493,17 +443,10 @@ export const Dashboard = () => {
     );
 
     const taskTrend = useMemo(() => bucketByDay(activeTasks), [activeTasks]);
-    const ideaTrend = useMemo(() => bucketByDay(activeIdeas), [activeIdeas]);
-    const issueTrend = useMemo(() => bucketByDay(activeIssues), [activeIssues]);
 
     const maxVelocityValue = useMemo(
-        () => Math.max(
-            ...taskTrend.map((item) => item.value),
-            ...ideaTrend.map((item) => item.value),
-            ...issueTrend.map((item) => item.value),
-            1
-        ),
-        [ideaTrend, issueTrend, taskTrend]
+        () => Math.max(...taskTrend.map((item) => item.value), 1),
+        [taskTrend]
     );
 
     const dashboardMetrics = useMemo(() => ([
@@ -522,20 +465,13 @@ export const Dashboard = () => {
             value: activeProjectsCount
         },
         {
-            key: 'reviewQueue',
-            href: '/projects',
-            icon: 'rate_review',
-            label: t('dashboard.expanded.metric.reviewQueue'),
-            value: reviewIdeas.length
-        },
-        {
             key: 'risk',
             href: '/projects',
             icon: 'warning',
             label: t('dashboard.expanded.metric.risk'),
             value: allProjectsAtRisk.length
         }
-    ]), [activeProjectsCount, allProjectsAtRisk.length, openTasksCount, reviewIdeas.length, t]);
+    ]), [activeProjectsCount, allProjectsAtRisk.length, openTasksCount, t]);
 
     const projectHealthSummary = useMemo(() => {
         return activeProjects.reduce((summary, project) => {
@@ -552,10 +488,8 @@ export const Dashboard = () => {
     }, [activeProjects, projectHealthMap]);
 
     const totalVelocity = useMemo(
-        () => taskTrend.reduce((sum, item) => sum + item.value, 0)
-            + ideaTrend.reduce((sum, item) => sum + item.value, 0)
-            + issueTrend.reduce((sum, item) => sum + item.value, 0),
-        [ideaTrend, issueTrend, taskTrend]
+        () => taskTrend.reduce((sum, item) => sum + item.value, 0),
+        [taskTrend]
     );
 
     const focusTasks = useMemo(() => {
@@ -630,19 +564,6 @@ export const Dashboard = () => {
                 }
                 : undefined
         );
-        const issueFocus = (issue: Issue): PinnedItem | undefined => (
-            issue.projectId
-                ? {
-                    id: issue.id,
-                    type: 'issue',
-                    title: issue.title,
-                    projectId: issue.projectId,
-                    tenantId: issue.tenantId,
-                    priority: issue.priority as Task['priority'],
-                    isCompleted: issue.status === 'Resolved' || issue.status === 'Closed'
-                }
-                : undefined
-        );
         const sortedByDue = (items: Task[]) => [...items].sort((a, b) => {
             const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
             const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
@@ -690,24 +611,6 @@ export const Dashboard = () => {
             addTask(task, t('dashboard.command.tag.blocked'), 'danger', 'block', 30);
         });
 
-        urgentIssues.slice(0, 2).forEach((issue) => {
-            const key = `issue:${issue.id}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            const priorityLabel = (issue.priority && taskPriorityLabels[issue.priority as keyof typeof taskPriorityLabels]) || issue.priority || '';
-            items.push({
-                id: key,
-                href: issue.projectId ? `/project/${issue.projectId}/issues/${issue.id}` : '/projects',
-                icon: 'report',
-                label: t('dashboard.command.tag.urgentIssue'),
-                meta: `${projectLabel(issue.projectId)}${priorityLabel ? ` - ${priorityLabel}` : ''}`,
-                focus: issueFocus(issue),
-                priority: 35,
-                title: issue.title,
-                tone: 'danger'
-            });
-        });
-
         projectsAtRisk.forEach(({ project, health }) => {
             const key = `project:${project.id}`;
             if (seen.has(key)) return;
@@ -727,23 +630,6 @@ export const Dashboard = () => {
             });
         });
 
-        reviewIdeas.slice(0, 2).forEach((idea) => {
-            if (!idea.projectId) return;
-            const key = `flow:${idea.id}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            items.push({
-                id: key,
-                href: `/project/${idea.projectId}/flows/${idea.id}`,
-                icon: 'rate_review',
-                label: t('dashboard.command.tag.flowReview'),
-                meta: `${projectLabel(idea.projectId)} - ${idea.stage}`,
-                priority: 55,
-                title: idea.title,
-                tone: 'info'
-            });
-        });
-
         focusTasks.forEach((task) => {
             addTask(task, t('dashboard.command.tag.upcoming'), 'neutral', 'radio_button_unchecked', 80);
         });
@@ -756,12 +642,9 @@ export const Dashboard = () => {
         overdueTasks,
         projectById,
         projectsAtRisk,
-        reviewIdeas,
         scheduledTodayTasks,
         t,
-        taskPriorityLabels,
-        tasksByProject,
-        urgentIssues
+        tasksByProject
     ]);
 
     const isFocusSnoozed = useMemo(() => (
@@ -775,11 +658,7 @@ export const Dashboard = () => {
         if (!activeProjectIds.has(focusItem.projectId)) return null;
 
         const status = isFocusSnoozed ? 'snoozed' : focusState?.status || 'active';
-        const focusPath = focusItem.type === 'issue'
-            ? 'issues'
-            : focusItem.type === 'initiative'
-                ? 'initiatives'
-                : 'tasks';
+        const focusPath = focusItem.type === 'initiative' ? 'initiatives' : 'tasks';
         return {
             id: `focus:${focusItem.id}`,
             href: `/project/${focusItem.projectId}/${focusPath}/${focusItem.id}`,
@@ -806,7 +685,7 @@ export const Dashboard = () => {
     const primaryResumeItem = primaryCommandItems[0];
 
     const dueNowCount = overdueTasks.length + dueTodayTasks.length + scheduledTodayTasks.length;
-    const blockersCount = blockedTasks.length + urgentIssues.length;
+    const blockersCount = blockedTasks.length;
 
     const commandSummaryItems = useMemo(() => ([
         {
@@ -822,13 +701,6 @@ export const Dashboard = () => {
             label: t('dashboard.step.now.summary.blockers'),
             tone: blockersCount > 0 ? 'danger' : 'success',
             value: blockersCount
-        },
-        {
-            key: 'review',
-            icon: 'rate_review',
-            label: t('dashboard.step.now.summary.review'),
-            tone: reviewIdeas.length > 0 ? 'info' : 'neutral',
-            value: reviewIdeas.length
         },
         {
             key: 'risk',
@@ -848,7 +720,6 @@ export const Dashboard = () => {
         blockersCount,
         dueNowCount,
         overdueTasks.length,
-        reviewIdeas.length,
         t
     ]);
 
@@ -871,12 +742,6 @@ export const Dashboard = () => {
             tone: blockersCount > 0 ? 'danger' : 'success',
             value: blockersCount
         },
-        {
-            key: 'review',
-            label: t('dashboard.step.today.workload.review'),
-            tone: reviewIdeas.length > 0 ? 'info' : 'neutral',
-            value: reviewIdeas.length
-        }
     ] as Array<{
         key: string;
         label: string;
@@ -887,7 +752,6 @@ export const Dashboard = () => {
         dueNowCount,
         openTasksCount,
         overdueTasks.length,
-        reviewIdeas.length,
         t
     ]);
 
@@ -1270,14 +1134,6 @@ export const Dashboard = () => {
                                                             className="dashboard-velocity-bar dashboard-velocity-bar--tasks"
                                                             style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (day.value / maxVelocityValue) * 100)}%` })}
                                                         />
-                                                        <span
-                                                            className="dashboard-velocity-bar dashboard-velocity-bar--flows"
-                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (ideaTrend[index]?.value || 0) / maxVelocityValue * 100)}%` })}
-                                                        />
-                                                        <span
-                                                            className="dashboard-velocity-bar dashboard-velocity-bar--issues"
-                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (issueTrend[index]?.value || 0) / maxVelocityValue * 100)}%` })}
-                                                        />
                                                     </div>
                                                     <span>{format(day.date, 'EEE', { locale: dateLocale })}</span>
                                                 </div>
@@ -1286,8 +1142,6 @@ export const Dashboard = () => {
 
                                         <div className="dashboard-chart-legend">
                                             <span><i className="dashboard-chart-dot dashboard-chart-dot--tasks" />{t('nav.tasks')}</span>
-                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--flows" />{t('nav.flows')}</span>
-                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--issues" />{t('nav.issues')}</span>
                                         </div>
                                     </section>
 

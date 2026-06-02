@@ -161,6 +161,17 @@ service cloud.firestore {
         allow create: if canAccessTenant(tenantId);
         allow update, delete: if canAccessProjectById(tenantId, projectId);
 
+        // PM-core: legacy flows/issues are read-only (migration window).
+        match /ideas/{ideaId} {
+          allow read: if canAccessProjectById(tenantId, projectId);
+          allow write: if false;
+        }
+
+        match /issues/{issueId} {
+          allow read: if canAccessProjectById(tenantId, projectId);
+          allow write: if false;
+        }
+
         match /{document=**} {
           allow read, write: if canAccessProjectById(tenantId, projectId);
         }

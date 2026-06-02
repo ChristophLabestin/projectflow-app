@@ -1,4 +1,5 @@
 import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative, Idea } from '../types';
+import { isPmCoreOnly } from '../config/pmCore';
 import { toMillis } from '../utils/time';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
@@ -362,6 +363,11 @@ export const calculateProjectHealth = (
     ideas: Idea[] = []
 ): ProjectHealth => {
     const now = Date.now();
+
+    if (isPmCoreOnly()) {
+        issues = [];
+        ideas = [];
+    }
 
     if (isProjectExcludedFromHealth(project)) {
         return {

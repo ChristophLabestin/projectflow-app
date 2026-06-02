@@ -17,6 +17,7 @@ import { auth, db } from '../firebase';
 import { ensureTenantAndUser, findIdeaDoc, projectSubCollection, resolveTenantId } from '../internal/workspaceDataCore';
 import { toMillis } from '../../utils/time';
 import type { Idea } from '../../types';
+import { assertPmCoreAllowsLegacyWrites } from '../../config/pmCore';
 
 const IDEAS = 'ideas';
 
@@ -34,6 +35,7 @@ export const getUserIdeas = async (): Promise<Idea[]> => {
 };
 
 export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
+    assertPmCoreAllowsLegacyWrites('ideas');
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
 
@@ -53,12 +55,14 @@ export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
 };
 
 export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
+    assertPmCoreAllowsLegacyWrites('ideas');
     const ideaSnap = await findIdeaDoc(ideaId, projectId, tenantId);
     if (!ideaSnap) throw new Error('Flow not found');
     await updateDoc(ideaSnap.ref, updates);
 };
 
 export const deleteIdea = async (ideaId: string, projectId?: string, tenantId?: string) => {
+    assertPmCoreAllowsLegacyWrites('ideas');
     const ideaSnap = await findIdeaDoc(ideaId, projectId, tenantId);
     if (!ideaSnap) return;
     await deleteDoc(ideaSnap.ref);

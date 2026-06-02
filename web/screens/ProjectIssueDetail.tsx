@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Link, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import '../src/styles/components/_project-issue-detail.scss';
 import { subscribeProjectIssues, subscribeTenantUsers } from '../services/dataService';
@@ -21,7 +21,7 @@ import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/common/Card/Card';
 import { Modal } from '../components/common/Modal/Modal';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
-import { Select, type SelectOption } from '../components/common/Select/Select';
+import { type SelectOption } from '../components/common/Select/Select';
 
 export const ProjectIssueDetail = () => {
     const { id, issueId } = useParams<{ id: string; issueId: string }>();
@@ -40,6 +40,10 @@ export const ProjectIssueDetail = () => {
     const [commentCount, setCommentCount] = useState(0);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [copiedId, setCopiedId] = useState(false);
+    const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+    const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
+    const statusMenuRef = useRef<HTMLDivElement>(null);
+    const priorityMenuRef = useRef<HTMLDivElement>(null);
 
     const priorityLabels = useMemo(() => ({
         Low: t('tasks.priority.low'),
@@ -236,6 +240,31 @@ export const ProjectIssueDetail = () => {
 
     const { pinItem, unpinItem, isPinned } = usePinnedTasks();
 
+    useEffect(() => {
+        if (!statusMenuOpen && !priorityMenuOpen) return;
+        const handleClick = (e: MouseEvent) => {
+            if (statusMenuOpen && !statusMenuRef.current?.contains(e.target as Node)) setStatusMenuOpen(false);
+            if (priorityMenuOpen && !priorityMenuRef.current?.contains(e.target as Node)) setPriorityMenuOpen(false);
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [statusMenuOpen, priorityMenuOpen]);
+
+    const getIssueStatusTone = (status?: string) => {
+        if (status === 'Resolved' || status === 'Closed') return 'issue-detail__tone--success';
+        if (status === 'In Progress') return 'issue-detail__tone--primary';
+        if (status === 'Open') return 'issue-detail__tone--warning';
+        return 'issue-detail__tone--neutral';
+    };
+
+    const getIssuePriorityTone = (priority?: string) => {
+        if (priority === 'Urgent') return 'issue-detail__tone--urgent';
+        if (priority === 'High') return 'issue-detail__tone--high';
+        if (priority === 'Medium') return 'issue-detail__tone--medium';
+        if (priority === 'Low') return 'issue-detail__tone--low';
+        return 'issue-detail__tone--neutral';
+    };
+
     if (loading) {
         return (
             <div className="issue-detail__loading">
@@ -290,6 +319,25 @@ export const ProjectIssueDetail = () => {
             meta: issue.linkedTaskId
                 ? t('issueDetail.workbench.deliveryAttached')
                 : t('issueDetail.workbench.deliveryMissing')
+        }
+    ];
+
+    const issueHeroFacts = [
+        {
+            label: t('issueDetail.hero.reported'),
+            value: issue.createdAt
+                ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale })
+                : '-'
+        },
+        ...(issue.ownerId ? [{
+            label: t('issueDetail.details.reporter'),
+            value: reporter?.displayName || t('issueDetail.details.unknownUser')
+        }] : []),
+        {
+            label: t('issueDetail.sidebar.assignees'),
+            value: assigneeIds.length > 0
+                ? t('issueDetail.workbench.assigneeCount').replace('{count}', String(assigneeIds.length))
+                : t('issueDetail.workbench.unassigned')
         }
     ];
 
@@ -375,38 +423,13 @@ export const ProjectIssueDetail = () => {
 
                             <h1 className="issue-detail__title">{issue.title}</h1>
 
-                            <div className="issue-detail__meta-row">
-                                <div className="issue-detail__meta-card">
-                                    <span className="material-symbols-outlined issue-detail__meta-icon">calendar_today</span>
-                                    <div className="issue-detail__meta-body">
-                                        <span className="issue-detail__meta-label">{t('issueDetail.hero.reported')}</span>
-                                        <span className="issue-detail__meta-value">
-                                            {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
-                                        </span>
+                            <div className="issue-detail__facts">
+                                {issueHeroFacts.map((fact) => (
+                                    <div key={fact.label} className="issue-detail__fact">
+                                        <span className="issue-detail__fact-label">{fact.label}</span>
+                                        <span className="issue-detail__fact-value">{fact.value}</span>
                                     </div>
-                                </div>
-                                <div className="issue-detail__assignees">
-                                    <span className="issue-detail__assignees-divider" />
-                                    <div className="issue-detail__assignee-stack">
-                                        {assigneeIds.filter(id => id).map((uid, i) => {
-                                            const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
-                                            return (
-                                                <img
-                                                    key={uid + i}
-                                                    src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                    alt=""
-                                                    className="issue-detail__assignee"
-                                                    title={user?.displayName || t('projectIssues.assignee.unknown')}
-                                                />
-                                            );
-                                        })}
-                                        {assigneeIds.length === 0 && (
-                                            <div className="issue-detail__assignee issue-detail__assignee--placeholder">
-                                                <span className="material-symbols-outlined">person</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
+                                ))}
                             </div>
                         </div>
 
@@ -468,34 +491,122 @@ export const ProjectIssueDetail = () => {
                         </div>
                     </div>
 
-                    <div className="issue-detail__workbench">
-                        {issueWorkbenchCards.map((card) => (
-                            <div key={card.label} className="issue-detail__workbench-card">
-                                <span className="issue-detail__workbench-label">{card.label}</span>
-                                <span className="issue-detail__workbench-value">{card.value}</span>
-                                <span className="issue-detail__workbench-meta">{card.meta}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="issue-detail__workbench-actions">
-                        <Link to={`/project/${id}/issues`} className="issue-detail__workbench-link">
-                            {t('issueDetail.workbench.actions.backlog')}
-                        </Link>
-                        <Link to={`/project/${id}`} className="issue-detail__workbench-link">
-                            {t('issueDetail.workbench.actions.workspace')}
-                        </Link>
-                        {issue.linkedTaskId && (
-                            <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="issue-detail__workbench-link">
-                                {t('issueDetail.workbench.actions.linkedTask')}
-                            </Link>
-                        )}
-                    </div>
                 </div>
             </header>
 
             <div className="issue-detail__layout">
                 <div className="issue-detail__main">
+
+                    {/* Meta cards: Status + Priority */}
+                    <div className="issue-detail__meta-grid">
+                        <div className="app-card issue-detail__card">
+                            <div className="issue-detail__card-header">
+                                <span className="material-symbols-outlined issue-detail__card-icon">timelapse</span>
+                                <span className="issue-detail__card-label">{t('issueDetail.sidebar.status')}</span>
+                            </div>
+                            <div className="issue-detail__card-body">
+                                <div ref={statusMenuRef} className="issue-detail__select">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStatusMenuOpen((o) => !o)}
+                                        className={`issue-detail__select-trigger ${getIssueStatusTone(statusValue)}`}
+                                        data-open={statusMenuOpen ? 'true' : 'false'}
+                                    >
+                                        <span className="issue-detail__select-value">
+                                            <span className="material-symbols-outlined issue-detail__select-icon">{getIssueStatusIcon(statusValue)}</span>
+                                            {statusLabel}
+                                        </span>
+                                        <span className="material-symbols-outlined issue-detail__select-chevron">expand_more</span>
+                                    </button>
+                                    {statusMenuOpen && (
+                                        <div className="issue-detail__select-menu">
+                                            {statusOptions.map((opt) => (
+                                                <button
+                                                    key={opt.value}
+                                                    type="button"
+                                                    onClick={() => { setStatusMenuOpen(false); handleUpdateStatus(opt.value as Issue['status']); }}
+                                                    className={`issue-detail__select-item ${getIssueStatusTone(opt.value)} ${opt.value === statusValue ? 'issue-detail__select-item--selected' : ''}`}
+                                                >
+                                                    <span className="issue-detail__select-item-label">
+                                                        <span className="material-symbols-outlined issue-detail__select-icon">{getIssueStatusIcon(opt.value)}</span>
+                                                        {opt.label}
+                                                    </span>
+                                                    {opt.value === statusValue && <span className="material-symbols-outlined issue-detail__select-item-check">check</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="app-card issue-detail__card">
+                            <div className="issue-detail__card-header">
+                                <span className="material-symbols-outlined issue-detail__card-icon">flag</span>
+                                <span className="issue-detail__card-label">{t('issueDetail.sidebar.priority')}</span>
+                            </div>
+                            <div className="issue-detail__card-body">
+                                <div ref={priorityMenuRef} className="issue-detail__select">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPriorityMenuOpen((o) => !o)}
+                                        className={`issue-detail__select-trigger ${getIssuePriorityTone(priorityValue)}`}
+                                        data-open={priorityMenuOpen ? 'true' : 'false'}
+                                    >
+                                        <span className="issue-detail__select-value">
+                                            <span className="material-symbols-outlined issue-detail__select-icon">{getIssuePriorityIcon(priorityValue)}</span>
+                                            {priorityLabel}
+                                        </span>
+                                        <span className="material-symbols-outlined issue-detail__select-chevron">expand_more</span>
+                                    </button>
+                                    {priorityMenuOpen && (
+                                        <div className="issue-detail__select-menu">
+                                            {(['Low', 'Medium', 'High', 'Urgent'] as const).map((p) => (
+                                                <button
+                                                    key={p}
+                                                    type="button"
+                                                    onClick={() => { setPriorityMenuOpen(false); handleUpdateField('priority', p); }}
+                                                    className={`issue-detail__select-item ${getIssuePriorityTone(p)} ${p === priorityValue ? 'issue-detail__select-item--selected' : ''}`}
+                                                >
+                                                    <span className="issue-detail__select-item-label">
+                                                        <span className="material-symbols-outlined issue-detail__select-icon">{getIssuePriorityIcon(p)}</span>
+                                                        {priorityLabels[p]}
+                                                    </span>
+                                                    {p === priorityValue && <span className="material-symbols-outlined issue-detail__select-item-check">check</span>}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Workbench summary strip + quick links */}
+                    <div>
+                        <div className="issue-detail__workbench">
+                            {issueWorkbenchCards.map((card) => (
+                                <div key={card.label} className="issue-detail__workbench-card">
+                                    <span className="issue-detail__workbench-label">{card.label}</span>
+                                    <span className="issue-detail__workbench-value">{card.value}</span>
+                                    <span className="issue-detail__workbench-meta">{card.meta}</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="issue-detail__workbench-actions">
+                            <Link to={`/project/${id}/issues`} className="issue-detail__workbench-link">
+                                {t('issueDetail.workbench.actions.backlog')}
+                            </Link>
+                            <Link to={`/project/${id}`} className="issue-detail__workbench-link">
+                                {t('issueDetail.workbench.actions.workspace')}
+                            </Link>
+                            {issue.linkedTaskId && (
+                                <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="issue-detail__workbench-link">
+                                    {t('issueDetail.workbench.actions.linkedTask')}
+                                </Link>
+                            )}
+                        </div>
+                    </div>
                     <section className="issue-detail__section">
                         <h3 className="issue-detail__section-title">
                             <span className="material-symbols-outlined issue-detail__section-icon">description</span>
@@ -615,21 +726,6 @@ export const ProjectIssueDetail = () => {
                         </Card>
                     )}
 
-                    <Card className="issue-detail__card">
-                        <div className="issue-detail__card-header">
-                            <span className="material-symbols-outlined issue-detail__card-icon">timelapse</span>
-                            <span className="issue-detail__card-label">{t('issueDetail.sidebar.status')}</span>
-                        </div>
-                        <div className="issue-detail__card-body">
-                            <Select
-                                value={statusValue}
-                                onChange={(value) => handleUpdateStatus(value as Issue['status'])}
-                                options={statusOptions}
-                                className="issue-detail__select"
-                            />
-                        </div>
-                    </Card>
-
                     <Card className="issue-detail__card issue-detail__assignee-card">
                         <div className="issue-detail__card-header">
                             <span className="material-symbols-outlined issue-detail__card-icon">group</span>
@@ -641,35 +737,6 @@ export const ProjectIssueDetail = () => {
                                 assigneeIds={assigneeIds}
                                 onChange={handleUpdateAssignees}
                             />
-                        </div>
-                    </Card>
-
-                    <Card className="issue-detail__card">
-                        <div className="issue-detail__card-header">
-                            <span className="material-symbols-outlined issue-detail__card-icon">flag</span>
-                            <span className="issue-detail__card-label">{t('issueDetail.sidebar.priority')}</span>
-                        </div>
-                        <div className="issue-detail__card-body">
-                            <div className="issue-detail__priority-list">
-                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => {
-                                    const isSelected = (issue.priority || 'Medium') === p;
-                                    return (
-                                        <button
-                                            key={p}
-                                            type="button"
-                                            onClick={() => handleUpdateField('priority', p)}
-                                            className={`issue-detail__priority-option ${isSelected ? 'is-selected' : ''}`}
-                                            data-priority={p.toLowerCase()}
-                                        >
-                                            <span className="issue-detail__priority-option-label">
-                                                <span className="material-symbols-outlined issue-detail__priority-option-icon">{getIssuePriorityIcon(p)}</span>
-                                                {priorityLabels[p]}
-                                            </span>
-                                            {isSelected && <span className="material-symbols-outlined issue-detail__priority-option-check">check</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
                     </Card>
 

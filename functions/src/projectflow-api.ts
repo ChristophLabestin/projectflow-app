@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 
 import { getAuthToken, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
+import { sendPmCoreDeprecated } from './pmCore';
 
 type ApiContext = {
     tenantId: string;
@@ -1730,25 +1731,37 @@ const deleteProjectCollectionItem = async (
 
 const listIssues = async (req: any, res: any, projectId: string) =>
     listProjectCollectionItems(req, res, projectId, ISSUES, 'issues');
-const createIssue = async (req: any, res: any, projectId: string) =>
-    createProjectCollectionItem(req, res, projectId, ISSUES, 'issue', 'title', 'issue', 'Issues');
+const createIssue = async (req: any, res: any, projectId: string) => {
+    if (sendPmCoreDeprecated(res, 'issues')) return;
+    return createProjectCollectionItem(req, res, projectId, ISSUES, 'issue', 'title', 'issue', 'Issues');
+};
 const getIssue = async (req: any, res: any, projectId: string, issueId: string) =>
     getProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue');
-const updateIssue = async (req: any, res: any, projectId: string, issueId: string) =>
-    updateProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue', 'Issues');
-const deleteIssue = async (req: any, res: any, projectId: string, issueId: string) =>
-    deleteProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'Issue', 'deletedIssueId', 'Issues');
+const updateIssue = async (req: any, res: any, projectId: string, issueId: string) => {
+    if (sendPmCoreDeprecated(res, 'issues')) return;
+    return updateProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue', 'Issues');
+};
+const deleteIssue = async (req: any, res: any, projectId: string, issueId: string) => {
+    if (sendPmCoreDeprecated(res, 'issues')) return;
+    return deleteProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'Issue', 'deletedIssueId', 'Issues');
+};
 
 const listIdeas = async (req: any, res: any, projectId: string) =>
     listProjectCollectionItems(req, res, projectId, IDEAS, 'ideas');
-const createIdea = async (req: any, res: any, projectId: string) =>
-    createProjectCollectionItem(req, res, projectId, IDEAS, 'idea', 'title', 'idea', 'Ideas');
+const createIdea = async (req: any, res: any, projectId: string) => {
+    if (sendPmCoreDeprecated(res, 'ideas')) return;
+    return createProjectCollectionItem(req, res, projectId, IDEAS, 'idea', 'title', 'idea', 'Ideas');
+};
 const getIdea = async (req: any, res: any, projectId: string, ideaId: string) =>
     getProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea');
-const updateIdea = async (req: any, res: any, projectId: string, ideaId: string) =>
-    updateProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea', 'Ideas');
-const deleteIdea = async (req: any, res: any, projectId: string, ideaId: string) =>
-    deleteProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'Idea', 'deletedIdeaId', 'Ideas');
+const updateIdea = async (req: any, res: any, projectId: string, ideaId: string) => {
+    if (sendPmCoreDeprecated(res, 'ideas')) return;
+    return updateProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea', 'Ideas');
+};
+const deleteIdea = async (req: any, res: any, projectId: string, ideaId: string) => {
+    if (sendPmCoreDeprecated(res, 'ideas')) return;
+    return deleteProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'Idea', 'deletedIdeaId', 'Ideas');
+};
 
 const listMilestones = async (req: any, res: any, projectId: string) =>
     listProjectCollectionItems(req, res, projectId, MILESTONES, 'milestones');

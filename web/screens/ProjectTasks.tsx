@@ -231,6 +231,12 @@ export const ProjectTasks = () => {
         completed: t('projectTasks.filters.completed'),
         all: t('projectTasks.filters.all')
     }), [t]);
+    const filterSelectOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'active', label: filterLabels.active },
+        { value: 'completed', label: filterLabels.completed },
+        { value: 'all', label: filterLabels.all }
+    ]), [filterLabels]);
+
     const viewLabels = useMemo(() => ({
         list: t('projectTasks.view.list'),
         board: t('projectTasks.view.board')
@@ -398,26 +404,6 @@ export const ProjectTasks = () => {
         return { total, open, completed, urgent, high, progress };
     }, [tasks]);
 
-    const workbenchCards = useMemo(() => ([
-        {
-            label: t('projectTasks.workbench.focus'),
-            value: filterLabels[filter],
-            meta: t('projectTasks.workbench.focusMeta').replace('{view}', viewLabels[view])
-        },
-        {
-            label: t('projectTasks.workbench.delivery'),
-            value: String(stats.open),
-            meta: t('projectTasks.workbench.deliveryMeta').replace('{count}', String(stats.high + stats.urgent))
-        },
-        {
-            label: t('projectTasks.workbench.completion'),
-            value: `${stats.progress}%`,
-            meta: t('projectTasks.workbench.completionMeta')
-                .replace('{done}', String(stats.completed))
-                .replace('{total}', String(stats.total))
-        }
-    ]), [filter, filterLabels, stats, t, view, viewLabels]);
-
     const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
         {
             id: 'header',
@@ -493,7 +479,7 @@ export const ProjectTasks = () => {
         return (
             <div
                 onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''}`}
+                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''} priority-stripe priority-stripe--${(task.priority || 'medium').toLowerCase()}`}
             >
                 {/* Left: Status & Main Info */}
                 <div className="task-main-info">
@@ -945,34 +931,55 @@ export const ProjectTasks = () => {
         : [];
 
     if (loading) return (
-        <div className="tasks-loading">
-            <span className="material-symbols-outlined tasks-loading__icon">rotate_right</span>
+        <div className="workstream-page workstream-page--tasks">
+            <div className="workstream-page__loading">
+                <span className="material-symbols-outlined workstream-page__loading-icon">progress_activity</span>
+            </div>
         </div>
     );
 
+    const metricCards = [
+        {
+            label: t('projectTasks.stats.open'),
+            value: String(stats.open),
+            meta: t('projectTasks.workbench.deliveryMeta').replace('{count}', String(stats.high + stats.urgent))
+        },
+        {
+            label: t('projectTasks.stats.completed'),
+            value: String(stats.completed),
+            meta: `${stats.progress}% ${t('projectTasks.workbench.completionMeta').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}`
+        },
+        {
+            label: t('projectTasks.stats.highPriority'),
+            value: String(stats.high),
+            meta: filterLabels[filter]
+        },
+        {
+            label: t('projectTasks.stats.urgent'),
+            value: String(stats.urgent),
+            meta: t('projectTasks.workbench.focusMeta').replace('{view}', viewLabels[view])
+        }
+    ];
+
     return (
         <>
-            <div className="project-tasks-container">
+            <div className="workstream-page workstream-page--tasks">
 
-                {/* Premium Header */}
-                <div data-onboarding-id="project-tasks-header" className="tasks-header">
-                    <div>
-                        <h1>
-                            {t('projectTasks.header.title')} <span>{t('projectTasks.header.titleEmphasis')}</span>
-                        </h1>
-                        <p className="subtitle">
+                <header data-onboarding-id="project-tasks-header" className="workstream-page__hero">
+                    <div className="workstream-page__hero-copy">
+                        <h1 className="workstream-page__title">{t('projectTasks.header.titleEmphasis')}</h1>
+                        <p className="workstream-page__subtitle">
                             {project?.title
                                 ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.title)
                                 : t('projectTasks.header.subtitleFallback')}
                         </p>
                     </div>
                     {can('canManageTasks') && (
-                        <div className="tasks-header__actions">
+                        <div className="workstream-page__actions">
                             <Button
                                 onClick={() => setShowInitiativeModal(true)}
                                 icon={<span className="material-symbols-outlined">rocket_launch</span>}
                                 variant="secondary"
-                                size="lg"
                             >
                                 {t('initiatives.create.action')}
                             </Button>
@@ -980,127 +987,81 @@ export const ProjectTasks = () => {
                                 onClick={() => setShowCreateModal(true)}
                                 icon={<span className="material-symbols-outlined">add</span>}
                                 variant="primary"
-                                size="lg"
-                                className="new-task-btn"
                             >
                                 {t('projectTasks.actions.newTask')}
                             </Button>
                         </div>
                     )}
-                </div>
+                </header>
 
-                <div className="tasks-workbench">
-                    {workbenchCards.map((card) => (
-                        <div key={card.label} className="tasks-workbench__card">
-                            <span className="tasks-workbench__label">{card.label}</span>
-                            <span className="tasks-workbench__value">{card.value}</span>
-                            <span className="tasks-workbench__meta">{card.meta}</span>
+                <div data-onboarding-id="project-tasks-stats" className="workstream-page__metrics">
+                    {metricCards.map((metric) => (
+                        <div key={metric.label} className="workstream-page__metric">
+                            <span className="workstream-page__metric-label">{metric.label}</span>
+                            <span className="workstream-page__metric-value">{metric.value}</span>
+                            <span className="workstream-page__metric-meta">{metric.meta}</span>
                         </div>
                     ))}
                 </div>
 
-                {/* Stats Row */}
-                <div data-onboarding-id="project-tasks-stats" className="tasks-stats-grid">
-                    {[
-                        { label: t('projectTasks.stats.open'), val: stats.open, icon: 'list_alt', color: 'indigo' },
-                        { label: t('projectTasks.stats.completed'), val: stats.completed, icon: 'check_circle', color: 'emerald', progress: stats.progress },
-                        { label: t('projectTasks.stats.highPriority'), val: stats.high, icon: 'priority_high', color: 'amber' },
-                        { label: t('projectTasks.stats.urgent'), val: stats.urgent, icon: 'warning', color: 'rose' }
-                    ].map((stat, idx) => (
-                        <div key={idx} className={`stat-card variant-${stat.color}`}>
-                            <div className="bg-icon">
-                                <span className="material-symbols-outlined">{stat.icon}</span>
-                            </div>
-                            <div className="content">
-                                <p className="label">{stat.label}</p>
-                                <div className="value-row">
-                                    <p className="value">{stat.val}</p>
-                                    {stat.progress !== undefined && (
-                                        <Badge variant="neutral" className="badge">
-                                            {stat.progress}%
-                                        </Badge>
-                                    )}
-                                </div>
-                            </div>
+                <div data-onboarding-id="project-tasks-controls" className="workstream-page__command">
+                    <div className="workstream-page__command-left">
+                        <TextInput
+                            value={search}
+                            onChange={handleSearchChange}
+                            placeholder={t('projectTasks.search.placeholder')}
+                            className="workstream-page__search"
+                            leftElement={<span className="material-symbols-outlined">search</span>}
+                        />
+                        <div className="workstream-page__command-filters">
+                            <Select
+                                value={filter}
+                                onChange={(value) => setFilter(value as typeof filter)}
+                                options={filterSelectOptions}
+                                className="workstream-page__select"
+                            />
+                            <Select
+                                value={sortBy}
+                                onChange={(value) => setSortBy(value as typeof sortBy)}
+                                options={sortOptions}
+                                placeholder={t('projectTasks.sort.label')}
+                                className="workstream-page__select"
+                            />
                         </div>
-                    ))}
-                </div>
-
-                {/* Interactive Controls Bar */}
-                <div data-onboarding-id="project-tasks-controls" className="tasks-controls-bar">
-                    <div className="controls-group-wrapper">
-                        <div className="control-group">
-                            {(['active', 'completed', 'all'] as const).map((f) => (
-                                <button
-                                    key={f}
-                                    type="button"
-                                    onClick={() => setFilter(f)}
-                                    className={`control-btn ${filter === f ? 'active' : ''}`}
-                                >
-                                    {filterLabels[f]}
-                                </button>
-                            ))}
-                        </div>
-
-                        <div className="control-group">
+                    </div>
+                    <div className="workstream-page__command-right">
+                        <div className="workstream-page__view-toggle" role="group" aria-label={t('projectTasks.view.list')}>
                             {(['list', 'board'] as const).map((v) => (
                                 <button
                                     key={v}
                                     type="button"
                                     onClick={() => setView(v)}
-                                    className={`control-btn ${view === v ? 'active' : ''}`}
+                                    className={`workstream-page__view-btn ${view === v ? 'is-active' : ''}`}
+                                    aria-pressed={view === v}
+                                    title={viewLabels[v]}
+                                    aria-label={viewLabels[v]}
                                 >
-                                    <span className="material-symbols-outlined control-btn__icon">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
-                                    {viewLabels[v]}
+                                    <span className="material-symbols-outlined">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
                                 </button>
                             ))}
                         </div>
-
-                        <div className="tasks-selects">
-                            <Select
-                                label={t('projectTasks.sort.label')}
-                                value={sortBy}
-                                onChange={(value) => setSortBy(value as typeof sortBy)}
-                                options={sortOptions}
-                                className="tasks-select"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="search-wrapper">
-                        <TextInput
-                            value={search}
-                            onChange={handleSearchChange}
-                            placeholder={t('projectTasks.search.placeholder')}
-                            className="tasks-search"
-                            leftElement={<span className="material-symbols-outlined">search</span>}
-                        />
                     </div>
                 </div>
 
-                {/* Enhanced View Area */}
-                <div data-onboarding-id="project-tasks-view" className="view-area-container">
+                <div data-onboarding-id="project-tasks-view" className="workstream-page__body">
                     {filteredTasks.length === 0 ? (
-                        <div className="empty-state">
-                            <div className="icon-circle">
-                                <span className="material-symbols-outlined">explore_off</span>
-                            </div>
+                        <div className="workstream-page__empty">
+                            <span className="material-symbols-outlined workstream-page__empty-icon">task_alt</span>
                             <h3>{t('projectTasks.empty.title')}</h3>
-                            <p>
-                                {t('projectTasks.empty.description')}
-                            </p>
+                            <p>{t('projectTasks.empty.description')}</p>
                             {can('canManageTasks') && (
-                                <Button
-                                    variant="secondary"
-                                    className="create-btn"
-                                    onClick={() => setShowCreateModal(true)}
-                                >
+                                <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
                                     {t('projectTasks.actions.createTask')}
                                 </Button>
                             )}
                         </div>
                     ) : view === 'list' ? (
-                        <div className="task-list-grid">
+                        <div className="workstream-page__list">
                             {filteredTasks.map(task => (
                                 <TaskCard key={task.id} task={task} />
                             ))}

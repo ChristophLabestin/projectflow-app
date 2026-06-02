@@ -1,7 +1,7 @@
 .project-triage-modal {
     display: flex;
     flex-direction: column;
-    gap: 0.9rem;
+    gap: 0.85rem;
     height: min(700px, calc(90vh - 176px));
     min-height: 0;
     min-width: 0;
@@ -17,68 +17,72 @@
     background: var(--color-surface-hover);
     color: var(--color-text-muted);
     font-size: 0.82rem;
-    font-weight: 700;
+    font-weight: 600;
 
     .material-symbols-outlined {
         font-size: 1rem;
     }
 }
 
-.project-triage-modal__brief {
+/* Filter chips */
+.project-triage-modal__filters {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.project-triage-modal__filter {
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.8rem 0.95rem;
+    gap: 0.45rem;
+    padding: 0.4rem 0.7rem;
     border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-lg);
-    background: color-mix(in srgb, var(--color-surface-hover) 52%, var(--color-surface-card));
-}
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 
-.project-triage-modal__brief-copy,
-.project-triage-modal__brief-selection {
-    display: flex;
-    align-items: center;
-    gap: 0.7rem;
-    min-width: 0;
-}
-
-.project-triage-modal__brief-copy {
-    strong {
+    &:hover {
+        border-color: var(--color-surface-border-hover);
         color: var(--color-text-main);
-        font-size: 0.88rem;
-        font-weight: 850;
-        line-height: 1.15;
     }
 
-    span {
-        color: var(--color-text-muted);
-        font-size: 0.78rem;
-        font-weight: 730;
-        line-height: 1.2;
+    &.is-active {
+        border-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+        background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-card));
+        color: var(--color-primary);
     }
 }
 
-.project-triage-modal__brief-selection {
-    flex: 0 0 auto;
-
-    span {
-        color: var(--color-text-muted);
-        font-size: 0.76rem;
-        font-weight: 800;
-        white-space: nowrap;
-    }
+.project-triage-modal__filter-icon {
+    font-size: 1.05rem;
 }
 
+.project-triage-modal__filter-label {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.project-triage-modal__filter-count {
+    min-width: 1.25rem;
+    padding: 0.05rem 0.35rem;
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, currentColor 14%, transparent);
+    font-size: 0.72rem;
+    font-weight: 800;
+    text-align: center;
+}
+
+/* Workspace */
 .project-triage-modal__workspace {
     display: grid;
-    grid-template-columns: 12rem minmax(0, 1fr) minmax(18rem, 0.34fr);
-    gap: 0.9rem;
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 0.36fr);
+    gap: 0.85rem;
     min-height: 0;
     flex: 1;
 }
 
-.project-triage-modal__bucket-rail,
 .project-triage-modal__queue-panel,
 .project-triage-modal__decision-panel {
     min-width: 0;
@@ -86,80 +90,6 @@
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface-card);
-}
-
-.project-triage-modal__bucket-rail {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.45rem;
-    overflow: auto;
-}
-
-.project-triage-modal__bucket {
-    display: grid;
-    grid-template-columns: 1.8rem minmax(0, 1fr);
-    align-items: center;
-    gap: 0.55rem;
-    width: 100%;
-    min-height: 3.25rem;
-    padding: 0.55rem;
-    border: 1px solid transparent;
-    border-radius: var(--radius-md);
-    background: transparent;
-    color: var(--color-text-muted);
-    cursor: pointer;
-    text-align: left;
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
-
-    &:hover,
-    &.is-active {
-        border-color: color-mix(in srgb, var(--color-primary) 28%, var(--color-surface-border));
-        background: var(--color-surface-hover);
-        color: var(--color-text-main);
-    }
-
-    &.is-active {
-        box-shadow: inset 0.18rem 0 0 var(--color-primary);
-    }
-}
-
-.project-triage-modal__bucket-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.8rem;
-    height: 1.8rem;
-    border-radius: var(--radius-sm);
-    background: color-mix(in srgb, currentColor 9%, transparent);
-    color: inherit;
-    font-size: 1rem;
-}
-
-.project-triage-modal__bucket-copy {
-    min-width: 0;
-
-    strong,
-    span {
-        display: block;
-    }
-
-    strong {
-        overflow: hidden;
-        color: inherit;
-        font-size: 0.78rem;
-        font-weight: 820;
-        line-height: 1.1;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    span {
-        margin-top: 0.18rem;
-        color: var(--color-text-muted);
-        font-size: 0.72rem;
-        font-weight: 760;
-    }
 }
 
 .project-triage-modal__queue-panel {
@@ -173,35 +103,30 @@
     align-items: center;
     justify-content: space-between;
     gap: 1rem;
-    padding: 0.85rem 0.95rem;
+    padding: 0.8rem 0.95rem;
     border-bottom: 1px solid var(--color-surface-border);
+}
 
-    h3,
-    p {
-        margin: 0;
-    }
+.project-triage-modal__queue-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    min-width: 0;
 
     h3 {
+        margin: 0;
         color: var(--color-text-main);
         font-size: 0.98rem;
-        font-weight: 880;
+        font-weight: 800;
         line-height: 1.15;
     }
 
     p {
-        margin-top: 0.18rem;
+        margin: 0;
         color: var(--color-text-muted);
-        font-size: 0.75rem;
-        font-weight: 720;
-    }
-}
-
-.project-triage-modal__queue-tools {
-    flex: 0 0 auto;
-
-    .btn {
-        border: 1px solid var(--color-surface-border);
-        box-shadow: none;
+        font-size: 0.78rem;
+        font-weight: 600;
+        white-space: nowrap;
     }
 }
 
@@ -212,25 +137,6 @@
     flex: 1;
 }
 
-.project-triage-modal__table-head,
-.project-triage-modal__task-row {
-    display: grid;
-    grid-template-columns: 1.35rem minmax(12rem, 1.55fr) minmax(7rem, 0.72fr) minmax(7.5rem, 0.78fr) minmax(7rem, 0.72fr);
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.project-triage-modal__table-head {
-    padding: 0.55rem 0.9rem;
-    border-bottom: 1px solid var(--color-surface-border);
-    color: var(--color-text-muted);
-    font-size: 0.66rem;
-    font-weight: 850;
-    letter-spacing: 0.06em;
-    line-height: 1.1;
-    text-transform: uppercase;
-}
-
 .project-triage-modal__task-list {
     flex: 1;
     min-height: 0;
@@ -238,8 +144,11 @@
 }
 
 .project-triage-modal__task-row {
-    min-height: 4rem;
-    padding: 0.72rem 0.9rem;
+    display: grid;
+    grid-template-columns: 1.2rem minmax(0, 1fr);
+    align-items: start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.95rem;
     border-bottom: 1px solid var(--color-surface-border);
     background: transparent;
     cursor: pointer;
@@ -269,15 +178,21 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.12rem;
-    height: 1.12rem;
+    width: 1.2rem;
+    height: 1.2rem;
+    margin-top: 0.05rem;
     border: 1px solid var(--color-surface-border);
     border-radius: var(--radius-sm);
     background: var(--color-surface-card);
     color: transparent;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
 
     .material-symbols-outlined {
-        font-size: 0.82rem;
+        font-size: 0.85rem;
+    }
+
+    .project-triage-modal__task-row:hover & {
+        border-color: var(--color-surface-border-hover);
     }
 
     .project-triage-modal__task-row.is-selected & {
@@ -287,69 +202,75 @@
     }
 }
 
-.project-triage-modal__task-title {
+.project-triage-modal__task-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
     min-width: 0;
-
-    strong,
-    em {
-        display: block;
-    }
-
-    strong {
-        overflow-wrap: anywhere;
-        color: var(--color-text-main);
-        font-size: 0.88rem;
-        font-weight: 840;
-        line-height: 1.25;
-    }
-
-    em {
-        margin-top: 0.18rem;
-        color: var(--color-text-muted);
-        font-size: 0.72rem;
-        font-style: normal;
-        font-weight: 720;
-        line-height: 1.15;
-    }
 }
 
-.project-triage-modal__reason,
-.project-triage-modal__due,
-.project-triage-modal__owner {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-    font-weight: 760;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.project-triage-modal__task-title {
+    overflow-wrap: anywhere;
+    color: var(--color-text-main);
+    font-size: 0.88rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.project-triage-modal__task-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.75rem;
 }
 
 .project-triage-modal__reason {
     display: inline-flex;
-    width: fit-content;
-    max-width: 100%;
-    min-height: 1.55rem;
     align-items: center;
-    padding: 0 0.48rem;
+    min-height: 1.4rem;
+    padding: 0 0.5rem;
     border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-bg);
+    border-radius: var(--radius-full);
+    color: var(--color-text-muted);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
 
     &.is-danger {
-        border-color: color-mix(in srgb, var(--color-error) 32%, var(--color-surface-border));
+        border-color: color-mix(in srgb, var(--color-error) 28%, transparent);
+        background: color-mix(in srgb, var(--color-error) 10%, var(--color-surface-card));
         color: var(--color-error);
     }
 
     &.is-warning {
-        border-color: color-mix(in srgb, var(--color-warning) 38%, var(--color-surface-border));
+        border-color: color-mix(in srgb, var(--color-warning) 32%, transparent);
+        background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface-card));
         color: var(--color-warning);
     }
 
     &.is-primary {
-        border-color: color-mix(in srgb, var(--color-primary) 35%, var(--color-surface-border));
+        border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+        background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-card));
         color: var(--color-primary);
+    }
+}
+
+.project-triage-modal__due,
+.project-triage-modal__owner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.28rem;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    .material-symbols-outlined {
+        font-size: 0.95rem;
+        opacity: 0.75;
     }
 }
 
@@ -361,62 +282,82 @@
     &.is-warning {
         color: var(--color-warning);
     }
-
-    &.is-primary {
-        color: var(--color-text-main);
-    }
 }
 
+/* Decision panel */
 .project-triage-modal__decision-panel {
     display: flex;
     flex-direction: column;
-    overflow: auto;
-}
-
-.project-triage-modal__decision-header,
-.project-triage-modal__decision-section {
-    padding: 0.9rem;
-    border-bottom: 1px solid var(--color-surface-border);
+    overflow: hidden;
 }
 
 .project-triage-modal__decision-header {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
-    align-items: start;
+    padding: 0.8rem 0.95rem;
+    border-bottom: 1px solid var(--color-surface-border);
+}
 
-    h3,
-    p {
-        margin: 0;
-    }
+.project-triage-modal__decision-count {
+    display: flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    min-width: 0;
 
-    h3 {
-        color: var(--color-text-main);
-        font-size: 0.92rem;
-        font-weight: 880;
-        line-height: 1.15;
-    }
-
-    p {
-        margin-top: 0.25rem;
-        color: var(--color-text-muted);
-        font-size: 0.74rem;
-        font-weight: 710;
-        line-height: 1.35;
-    }
-
-    > strong {
+    strong {
         color: var(--color-primary);
-        font-size: 0.72rem;
-        font-weight: 850;
-        white-space: nowrap;
+        font-size: 1.1rem;
+        font-weight: 800;
+        line-height: 1;
     }
+
+    span {
+        color: var(--color-text-main);
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+}
+
+.project-triage-modal__decision-empty {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 2rem 1.5rem;
+    color: var(--color-text-muted);
+    text-align: center;
+
+    .material-symbols-outlined {
+        font-size: 1.8rem;
+        opacity: 0.55;
+    }
+
+    p {
+        max-width: 15rem;
+        margin: 0;
+        font-size: 0.82rem;
+        font-weight: 500;
+        line-height: 1.45;
+    }
+}
+
+.project-triage-modal__decision-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
 }
 
 .project-triage-modal__decision-section {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    gap: 0.6rem;
+    padding: 0.9rem 0.95rem;
+    border-bottom: 1px solid var(--color-surface-border);
 
     &:last-child {
         border-bottom: 0;
@@ -425,22 +366,28 @@
 
 .project-triage-modal__decision-heading {
     display: flex;
-    flex-direction: column;
-    gap: 0.16rem;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--color-text-main);
+
+    .material-symbols-outlined {
+        font-size: 1.05rem;
+        color: var(--color-text-muted);
+    }
 
     strong {
-        color: var(--color-text-main);
-        font-size: 0.8rem;
-        font-weight: 850;
+        font-size: 0.82rem;
+        font-weight: 700;
         line-height: 1.15;
     }
+}
 
-    span {
-        color: var(--color-text-muted);
-        font-size: 0.72rem;
-        font-weight: 680;
-        line-height: 1.3;
-    }
+.project-triage-modal__decision-note {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.76rem;
+    font-weight: 500;
+    line-height: 1.4;
 }
 
 .project-triage-modal__quick-grid,
@@ -448,13 +395,6 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
-
-    .btn {
-        width: 100%;
-        border: 1px solid var(--color-surface-border);
-        background: var(--color-surface-hover);
-        box-shadow: none;
-    }
 }
 
 .project-triage-modal__status-grid {
@@ -488,18 +428,26 @@
     }
 }
 
+/* Footer */
 .project-triage-modal__footer {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
+    display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 1rem;
     width: 100%;
+}
 
-    span {
-        color: var(--color-text-main);
-        font-size: 0.86rem;
-        font-weight: 820;
-        text-align: left;
+.project-triage-modal__footer-summary {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: var(--color-text-main);
+    font-size: 0.84rem;
+    font-weight: 700;
+
+    .material-symbols-outlined {
+        font-size: 1.05rem;
+        color: var(--color-text-muted);
     }
 }
 
@@ -522,7 +470,7 @@
     strong {
         color: var(--color-text-main);
         font-size: 0.96rem;
-        font-weight: 820;
+        font-weight: 750;
     }
 
     p {
@@ -533,13 +481,12 @@
     }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1080px) {
     .project-triage-modal__workspace {
-        grid-template-columns: 10.5rem minmax(0, 1fr);
+        grid-template-columns: 1fr;
     }
 
     .project-triage-modal__decision-panel {
-        grid-column: 1 / -1;
         max-height: none;
     }
 
@@ -553,66 +500,35 @@
         height: auto;
     }
 
-    .project-triage-modal__brief {
-        align-items: flex-start;
-        flex-direction: column;
-    }
-
-    .project-triage-modal__workspace {
-        grid-template-columns: 1fr;
-    }
-
-    .project-triage-modal__bucket-rail {
-        flex-direction: row;
+    .project-triage-modal__filters {
+        flex-wrap: nowrap;
         overflow-x: auto;
+        padding-bottom: 0.25rem;
     }
 
-    .project-triage-modal__bucket {
-        min-width: 10rem;
-    }
-
-    .project-triage-modal__table-head {
-        display: none;
-    }
-
-    .project-triage-modal__task-row {
-        grid-template-columns: 1.2rem minmax(0, 1fr);
-        gap: 0.65rem;
-    }
-
-    .project-triage-modal__reason,
-    .project-triage-modal__due,
-    .project-triage-modal__owner {
-        grid-column: 2;
-        width: fit-content;
-        max-width: 100%;
-    }
-
-    .project-triage-modal__queue-header,
-    .project-triage-modal__date-action,
-    .project-triage-modal__status-grid {
-        grid-template-columns: 1fr;
+    .project-triage-modal__filter {
+        flex: 0 0 auto;
     }
 }
 
 @media (max-width: 560px) {
-    .project-triage-modal__brief-copy,
-    .project-triage-modal__brief-selection {
+    .project-triage-modal__queue-header {
         align-items: flex-start;
         flex-direction: column;
-        gap: 0.4rem;
+        gap: 0.5rem;
     }
 
-    .project-triage-modal__queue-header {
-        align-items: stretch;
-        flex-direction: column;
+    .project-triage-modal__date-action,
+    .project-triage-modal__status-grid {
+        grid-template-columns: 1fr;
     }
 
     .project-triage-modal__footer {
-        grid-template-columns: 1fr;
+        flex-direction: column-reverse;
+        align-items: stretch;
 
-        span {
-            order: -1;
+        .btn {
+            width: 100%;
         }
     }
 }

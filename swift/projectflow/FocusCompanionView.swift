@@ -38,7 +38,7 @@ struct FocusCompanionView: View {
                             tasks: nextDueTasks,
                             tenantId: tenantStore.activeTenantId ?? "",
                             permissions: tenantStore.permissionContext(),
-                            onOpenTasks: { selectedTab = .tasks }
+                            onOpenTasks: { selectedTab = .work }
                         )
                         PinnedItemsPreview(
                             items: pinnedTasksStore.pinnedItems,
@@ -63,7 +63,7 @@ struct FocusCompanionView: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
-                        selectedTab = .tasks
+                        selectedTab = .work
                     } label: {
                         Image(systemName: "checklist")
                             .foregroundStyle(colors.textMain)

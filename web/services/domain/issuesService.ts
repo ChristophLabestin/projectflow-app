@@ -26,6 +26,7 @@ import {
 } from '../internal/workspaceDataCore';
 import { toMillis } from '../../utils/time';
 import type { Issue, Task } from '../../types';
+import { assertPmCoreAllowsLegacyWrites } from '../../config/pmCore';
 import { getProjectById } from './projectsService';
 import { getUserProfile } from './usersService';
 
@@ -67,6 +68,7 @@ export const getUserIssues = async (): Promise<Issue[]> => {
 };
 
 export const createIssue = async (projectId: string, issue: Partial<Issue>, tenantId?: string) => {
+    assertPmCoreAllowsLegacyWrites('issues');
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
 
@@ -150,6 +152,7 @@ export const subscribeProjectIssues = (
 };
 
 export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
+    assertPmCoreAllowsLegacyWrites('issues');
     const resolvedTenant = resolveTenantId(tenantId);
     let issueData: Issue | null = null;
     let issueRef: any = null;
@@ -263,6 +266,7 @@ export const updateIssue = async (issueId: string, updates: Partial<Issue>, proj
 };
 
 export const deleteIssue = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
+    assertPmCoreAllowsLegacyWrites('issues');
     const issueSnap = await findIssueDoc(issueId, projectId, tenantId, path);
     if (!issueSnap) return;
 

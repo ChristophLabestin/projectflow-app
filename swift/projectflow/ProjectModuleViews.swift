@@ -64,13 +64,13 @@ struct ProjectModuleNavBar: View {
                 if evaluator.canViewModule(.tasks, project: project) {
                     navChip(.tasks, title: "Tasks")
                 }
-                if evaluator.canViewModule(.sprints, project: project) {
+                if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.sprints, project: project) {
                     navChip(.sprints, title: "Sprints")
                 }
-                if evaluator.canViewModule(.issues, project: project) {
+                if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.issues, project: project) {
                     navChip(.issues, title: "Issues")
                 }
-                if evaluator.canViewModule(.ideas, project: project) {
+                if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.ideas, project: project) {
                     navChip(.flows, title: "Flows")
                 }
                 if evaluator.canViewModule(.milestones, project: project) {

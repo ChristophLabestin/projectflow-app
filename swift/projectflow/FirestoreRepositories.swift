@@ -27,44 +27,6 @@ enum FirestoreError: LocalizedError {
     }
 }
 
-private extension DocumentReference {
-    func setDataAsync(_ data: [String: Any], merge: Bool = false) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            setData(data, merge: merge) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
-    }
-
-    func updateDataAsync(_ data: [String: Any]) async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            updateData(data) { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
-    }
-
-    func deleteAsync() async throws {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            delete { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume(returning: ())
-                }
-            }
-        }
-    }
-}
-
 final class TenantRepository {
     private let db: Firestore
 
@@ -95,6 +57,7 @@ final class TenantRepository {
         
         let memberRef = tenantRef.collection(FirestorePath.members).document(ownerId)
         batch.setData([
+            "uid": ownerId,
             "role": "Owner",
             "joinedAt": FieldValue.serverTimestamp(),
             "groupIds": []

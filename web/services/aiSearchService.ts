@@ -5,6 +5,7 @@ import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, g
 import { getWorkspaceInitiatives } from './domain/initiativesService';
 import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
+import { isPmCoreOnly } from '../config/pmCore';
 import { isProjectIncludedInImportantSignals } from "./healthService";
 
 /**
@@ -40,12 +41,13 @@ export const searchProjectsAndTasks = async (
 
     try {
         // Fetch all searchable entities
+        const pmCore = isPmCoreOnly();
         const [projects, initiatives, tasks, issues, ideas] = await Promise.all([
             getAllWorkspaceProjects(tenantId),
             getWorkspaceInitiatives(tenantId),
             getAllWorkspaceTasks(tenantId),
-            getAllWorkspaceIssues(tenantId),
-            getAllWorkspaceIdeas(tenantId)
+            pmCore ? Promise.resolve([]) : getAllWorkspaceIssues(tenantId),
+            pmCore ? Promise.resolve([]) : getAllWorkspaceIdeas(tenantId)
         ]);
 
         // Search projects

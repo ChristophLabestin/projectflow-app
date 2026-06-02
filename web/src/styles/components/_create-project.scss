@@ -66,10 +66,10 @@
 
 .create-project__shell {
     flex: 1;
-    display: flex; // Use flex to manage children height
+    display: flex;
     flex-direction: column;
-    height: auto; // Allow growing
-    max-height: calc(100vh - 48px); // Max capability relative to viewport
+    height: auto;
+    max-height: calc(100vh - 48px);
     width: 100%;
     max-width: 1200px;
     background: var(--color-surface-card);
@@ -77,10 +77,10 @@
     box-shadow: var(--shadow-soft);
     overflow: hidden;
     position: relative;
-    border: 1px solid rgba(0, 0, 0, 0.03);
+    border: none;
 
     @media (min-width: 1024px) {
-        display: grid; // Restore grid for desktop
+        display: grid;
         grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     }
 
@@ -93,108 +93,22 @@
     background: transparent;
     display: flex;
     flex-direction: column;
-    flex: 1; // Take available space
-    min-height: 0; // Allow scrolling internally
+    flex: 1;
+    min-height: 0;
     overflow: hidden;
 }
 
 .create-project__header {
-    padding: 32px 40px 16px;
+    padding: 24px 36px 12px;
     display: flex;
-    flex-direction: column; // Stack title and stepper
+    flex-direction: column;
     align-items: flex-start;
-    gap: 24px;
+    gap: 16px;
     background: transparent;
-    // Removed inset shadow and background mix for cleaner look
 }
 
 .create-project__header-title {
     h1 {
-        margin: 0;
-        font-size: 1.75rem; // Larger title
-        font-weight: 700;
-        color: var(--color-text-main);
-        letter-spacing: 0;
-    }
-
-    p {
-        margin: 8px 0 0;
-        font-size: 0.95rem;
-        color: var(--color-text-muted);
-    }
-}
-
-// Minimal Pill Stepper
-.create-project__stepper {
-    display: flex;
-    align-items: center;
-    gap: 6px; // Tight gap between pills
-    margin: 0; // Reset margins
-    padding: 0;
-}
-
-.create-project__step-item {
-
-    // State Modifiers
-    &.is-clickable {
-        cursor: pointer;
-        opacity: 0.8;
-
-        &:hover {
-            opacity: 1;
-        }
-    }
-
-    // Active: Highlighted
-    &.is-active .create-project__step-indicator {
-        background-color: var(--color-primary); // Black/White
-        transform: scaleX(1.1); // Subtle expansion
-    }
-
-    // Completed: Solid
-    &.is-completed .create-project__step-indicator {
-        background-color: var(--color-primary);
-        opacity: 1;
-    }
-}
-
-.create-project__step-indicator {
-    width: 24px;
-    height: 6px;
-    border-radius: var(--radius-full);
-    background-color: var(--color-surface-border); // Pending state (Grey)
-    transition: all var(--transition-normal);
-}
-
-// Remove the connecting line to reduce visual noise
-.create-project__step-line {
-    display: none;
-}
-
-.create-project__content {
-    flex: 1;
-    min-height: 0;
-    padding: 16px 40px 40px;
-    overflow-y: auto;
-    scrollbar-gutter: stable;
-}
-
-.create-project__step {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-}
-
-.create-project__step--start {
-    gap: 20px;
-}
-
-.create-project__step--type {
-    gap: 20px;
-}
-
-.create-project__step-header {
-    h2 {
         margin: 0;
         font-size: 1.5rem;
         font-weight: 700;
@@ -206,17 +120,84 @@
         margin: 8px 0 0;
         font-size: 0.95rem;
         color: var(--color-text-muted);
-        line-height: 1.5;
+    }
+}
+
+.create-project__stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+}
+
+.create-project__step-item {
+    &.is-clickable {
+        cursor: pointer;
+        opacity: 0.8;
+
+        &:hover {
+            opacity: 1;
+        }
+    }
+
+    &.is-active .create-project__step-indicator {
+        background-color: var(--color-primary);
+        transform: scaleX(1.1);
+    }
+
+    &.is-completed .create-project__step-indicator {
+        background-color: var(--color-primary);
+        opacity: 1;
+    }
+}
+
+.create-project__step-indicator {
+    width: 24px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-border);
+    transition: all var(--transition-normal);
+}
+
+.create-project__content {
+    flex: 1;
+    min-height: 0;
+    padding: 8px 36px 20px;
+    overflow: hidden;
+}
+
+.create-project__step {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-height: 0;
+}
+
+.create-project__step-header {
+    h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+        letter-spacing: 0;
+    }
+
+    p {
+        margin: 6px 0 0;
+        font-size: 0.88rem;
+        color: var(--color-text-muted);
+        line-height: 1.45;
     }
 }
 
 .create-project__form-grid {
     display: grid;
-    gap: 24px;
+    gap: 16px;
 }
 
 .create-project__form-grid--details {
-    gap: 18px;
+    gap: 14px;
 }
 
 .create-project__brief-grid {
@@ -280,15 +261,15 @@
 }
 
 .create-project__description-input .text-area {
-    min-height: 120px;
+    min-height: 96px;
 }
 
 .create-project__brief-input .text-area {
-    min-height: 112px;
+    min-height: 96px;
 }
 
 .create-project__brief-input--short .text-area {
-    min-height: 88px;
+    min-height: 72px;
 }
 
 .create-project__ai-action {
@@ -398,11 +379,18 @@
 .create-project__type-selection,
 .create-project__startup-selection,
 .create-project__selection-container .module-selection {
-    --module-selection-card-min-height: 104px;
+    --module-selection-card-min-height: 88px;
 }
 
 .create-project__visibility-selection {
-    --module-selection-card-min-height: 96px;
+    --module-selection-card-min-height: 84px;
+}
+
+.create-project {
+    .module-selection__item--selected,
+    .module-selection__item--selected:hover:not(:disabled) {
+        box-shadow: none;
+    }
 }
 
 .create-project__method-card,
@@ -1156,8 +1144,8 @@
 
 .create-project__timeline-grid {
     display: grid;
-    gap: 22px 20px;
-    padding: 4px 0;
+    gap: 14px 16px;
+    padding: 0;
 
     @media (min-width: 768px) {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1207,89 +1195,71 @@
     }
 }
 
-.create-project__timeline-control--priority {
+.create-project__timeline-control--priority,
+.create-project__timeline-control--cadence {
     @media (min-width: 768px) {
         grid-column: 1 / -1;
     }
 }
 
-.create-project__cadence-grid {
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 8px;
-
-    @media (max-width: 720px) {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+.create-project__timeline-control--cadence {
+    > label {
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--color-text-muted);
     }
 }
 
-.create-project__cadence-option {
-    position: relative;
+.create-project__cadence-rhythm {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.create-project__cadence-rhythm-option {
+    flex: 0 1 auto;
     min-width: 0;
-    min-height: 52px;
+    min-height: 36px;
     border: 0;
-    border-radius: var(--radius-lg);
-    padding: 8px 26px 8px 10px;
-    background: var(--color-surface-hover);
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    background: transparent;
     color: var(--color-text-muted);
     font: inherit;
     font-size: 0.78rem;
-    font-weight: 700;
-    display: grid;
-    grid-template-columns: 18px minmax(0, 1fr);
-    align-items: center;
-    gap: 8px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.15s ease, color 0.15s ease;
 
-    &:hover {
-        background: var(--color-surface-hover-light);
+    &:hover:not(.is-active) {
+        background: var(--color-surface-hover);
         color: var(--color-text-main);
     }
 
-    &.is-active,
-    &.is-active:hover {
-        background: var(--color-primary);
-        color: var(--color-primary-text);
-        box-shadow: var(--shadow-md);
+    &.is-active {
+        background: var(--color-surface-active);
+        color: var(--color-text-main);
+        box-shadow: none;
     }
 }
 
-.create-project__cadence-check,
-.create-project__cadence-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 0;
-}
-
-.create-project__cadence-check {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 16px;
-    height: 16px;
-    opacity: 0;
-    transition: opacity var(--transition-fast);
-}
-
-.create-project__cadence-option.is-active .create-project__cadence-check {
-    opacity: 1;
-}
-
-.create-project__cadence-check .material-symbols-outlined {
+.create-project__cadence-rhythm-icon {
     font-size: 0.95rem;
     line-height: 1;
+    opacity: 0.65;
+    transition: opacity 0.15s ease;
+
+    .create-project__cadence-rhythm-option:hover &,
+    .create-project__cadence-rhythm-option.is-active & {
+        opacity: 0.9;
+    }
 }
 
-.create-project__cadence-icon {
-    font-size: 1rem;
-    opacity: 0.78;
-}
-
-.create-project__cadence-label {
-    overflow: hidden;
-    text-overflow: ellipsis;
+.create-project__cadence-rhythm-label {
+    line-height: 1.2;
     white-space: nowrap;
 }
 
@@ -1858,13 +1828,13 @@
 }
 
 .create-project__footer {
-    padding: 24px 40px;
+    padding: 16px 36px 24px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    background: transparent; // float it at bottom with space
-    border-top: 1px solid rgba(0, 0, 0, 0.03); // Very subtle divider
+    background: transparent;
+    border-top: none;
 }
 
 .create-project__footer-actions {
@@ -1877,16 +1847,15 @@
     position: relative;
     display: flex;
     flex-direction: column;
+    justify-content: center;
     min-width: 0;
     padding: 40px;
-    // Premium dark gradient for preview panel
-    background: var(--color-surface-hover); // Use app standard hover bg
+    background: var(--color-surface-hover);
     color: var(--color-text-main);
 
     @media (max-width: 1023px) {
         padding: 24px;
         background: var(--color-surface-bg);
-        color: var(--color-text-main);
     }
 }
 

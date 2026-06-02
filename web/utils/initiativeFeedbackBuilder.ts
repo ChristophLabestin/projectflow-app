@@ -250,6 +250,101 @@ export const getInitiativeFeedbackBuilderIssues = (fields: InitiativeFeedbackFie
     return issues;
 };
 
+export type InitiativeFeedbackTranslate = (key: string) => string;
+
+const englishDefaultFieldLabels = Object.fromEntries(
+    defaultInitiativeFeedbackFields().map((field) => [field.role || 'general', field.label]),
+) as Record<InitiativeFeedbackFieldRole | 'general', string>;
+
+const ENGLISH_FORM_COPY_DEFAULTS = {
+    title: 'Share feedback',
+    submitLabel: 'Submit feedback',
+    successMessage: 'Thanks. Your feedback was submitted successfully.',
+};
+
+export const localizeDefaultInitiativeFeedbackField = (
+    field: InitiativeFeedbackField,
+    t: InitiativeFeedbackTranslate,
+): InitiativeFeedbackField => {
+    const role = field.role || 'general';
+    const englishLabel = (englishDefaultFieldLabels[role] || '').trim();
+    const shouldLocalize = role !== 'general' && field.label.trim() === englishLabel;
+
+    if (!shouldLocalize) {
+        return field;
+    }
+
+    switch (role) {
+        case 'customerName':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.customerName'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.customerName'),
+            };
+        case 'customerEmail':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.customerEmail'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.customerEmail'),
+            };
+        case 'company':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.company'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.company'),
+            };
+        case 'sourceUrl':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.sourceUrl'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.sourceUrl'),
+            };
+        case 'title':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.title'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.title'),
+            };
+        case 'description':
+            return {
+                ...field,
+                label: t('initiatives.feedback.public.fields.description'),
+                placeholder: t('initiatives.feedback.builder.defaultPlaceholders.description'),
+            };
+        default:
+            return field;
+    }
+};
+
+export const localizePublicInitiativeFeedbackFields = (
+    fields: InitiativeFeedbackField[],
+    t: InitiativeFeedbackTranslate,
+) => fields.map((field) => localizeDefaultInitiativeFeedbackField(field, t));
+
+export const localizePublicInitiativeFeedbackCopy = <T extends {
+    title: string;
+    description: string;
+    submitLabel: string;
+    successMessage: string;
+}>(
+    form: T,
+    t: InitiativeFeedbackTranslate,
+): T => ({
+    ...form,
+    title: !form.title.trim() || form.title.trim() === ENGLISH_FORM_COPY_DEFAULTS.title
+        ? t('initiatives.feedback.fields.titlePlaceholder')
+        : form.title,
+    description: !form.description.trim()
+        ? t('initiatives.feedback.fields.descriptionPlaceholder')
+        : form.description,
+    submitLabel: !form.submitLabel.trim() || form.submitLabel.trim() === ENGLISH_FORM_COPY_DEFAULTS.submitLabel
+        ? t('initiatives.feedback.fields.submitLabelPlaceholder')
+        : form.submitLabel,
+    successMessage: !form.successMessage.trim() || form.successMessage.trim() === ENGLISH_FORM_COPY_DEFAULTS.successMessage
+        ? t('initiatives.feedback.fields.successMessagePlaceholder')
+        : form.successMessage,
+});
+
 export const getFeedbackFieldTypeIcon = (type: InitiativeFeedbackFieldType) => {
     switch (type) {
         case 'longText':
@@ -263,6 +358,106 @@ export const getFeedbackFieldTypeIcon = (type: InitiativeFeedbackFieldType) => {
         default:
             return 'short_text';
     }
+};
+
+export interface InitiativeFeedbackEmbedModelInput {
+    token?: string;
+    hostedUrl?: string;
+    configEndpoint: string;
+    submitEndpoint: string;
+    projectTitle?: string;
+    initiativeTitle?: string;
+    title: string;
+    description: string;
+    submitLabel: string;
+    successMessage: string;
+    allowAttachments: boolean;
+    maxAttachments: number;
+    fields: InitiativeFeedbackField[];
+}
+
+const sampleValueForEmbedField = (field: InitiativeFeedbackField) => {
+    if (field.type === 'select') {
+        return field.options?.[0]?.value || field.placeholder || field.label;
+    }
+
+    if (field.placeholder?.trim()) {
+        return field.placeholder.trim();
+    }
+
+    switch (field.role) {
+        case 'customerEmail':
+            return 'jane@company.com';
+        case 'sourceUrl':
+            return 'https://app.example.com/page';
+        case 'description':
+            return 'Describe the feedback in more detail.';
+        default:
+            return field.label;
+    }
+};
+
+const toPublicEmbedField = (field: InitiativeFeedbackField) => ({
+    id: field.id,
+    type: field.type,
+    role: field.role || 'general',
+    label: field.label,
+    placeholder: field.placeholder || '',
+    helpText: field.helpText || '',
+    required: field.required === true,
+    width: field.width === 'full' ? 'full' : 'half',
+    ...(feedbackFieldNeedsOptions(field.type)
+        ? { options: (field.options || []).map((option) => ({
+            id: option.id,
+            label: option.label,
+            value: option.value,
+        })) }
+        : {}),
+});
+
+export const buildInitiativeFeedbackEmbedModel = (input: InitiativeFeedbackEmbedModelInput) => {
+    const preparedFields = prepareInitiativeFeedbackFieldsForSave(input.fields)
+        .filter((field) => field.enabled !== false);
+    const token = input.token?.trim() || '<save-to-generate>';
+    const fieldValues = Object.fromEntries(
+        preparedFields.map((field) => [field.id, sampleValueForEmbedField(field)]),
+    );
+
+    return {
+        configEndpoint: input.configEndpoint,
+        submitEndpoint: input.submitEndpoint,
+        token,
+        hostedUrl: input.hostedUrl || null,
+        form: {
+            token,
+            projectTitle: input.projectTitle || '',
+            initiativeTitle: input.initiativeTitle || '',
+            title: input.title.trim() || 'Share feedback',
+            description: input.description.trim(),
+            submitLabel: input.submitLabel.trim() || 'Submit feedback',
+            successMessage: input.successMessage.trim() || 'Thanks. Your feedback was submitted successfully.',
+            allowAttachments: input.allowAttachments,
+            maxAttachments: input.maxAttachments,
+            fields: preparedFields.map(toPublicEmbedField),
+            submitEndpoint: input.submitEndpoint,
+        },
+        submitExample: {
+            token,
+            source: 'embedded-endpoint',
+            fieldValues,
+            ...(input.allowAttachments
+                ? {
+                    attachments: [
+                        {
+                            fileName: 'screenshot.png',
+                            mimeType: 'image/png',
+                            dataUrl: 'data:image/png;base64,...',
+                        },
+                    ],
+                }
+                : {}),
+        },
+    };
 };
 
 export const getFeedbackFieldRoleIcon = (role?: InitiativeFeedbackFieldRole) => {

@@ -158,11 +158,11 @@
 .issue-modal__pin-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.4rem 0.75rem;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
     border-radius: var(--radius-md);
-    font-size: 0.7rem;
-    font-weight: 600;
     border: 0;
     background: transparent;
     color: var(--color-text-muted);
@@ -170,7 +170,7 @@
     transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.issue-modal__pin-toggle span {
+.issue-modal__pin-toggle .material-symbols-outlined {
     font-size: 1rem;
 }
 
