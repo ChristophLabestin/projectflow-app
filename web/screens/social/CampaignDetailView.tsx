@@ -1,9 +1,8 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getIdeaById, updateIdea } from '../../services/domain/ideasService';
 import { getProjectById } from '../../services/domain/projectsService';
 import { createSocialPost, deleteSocialPost, subscribeCampaigns, subscribeSocialPosts, updateCampaign, updateSocialPost } from '../../services/domain/socialService';
-import { SocialCampaign, SocialPost, Project, Idea, SocialPostFormat, SocialPostStatus } from '../../types';
+import { SocialCampaign, SocialPost, SocialPostFormat, SocialPostStatus } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useConfirm, useToast } from '../../context/UIContext';
@@ -17,7 +16,7 @@ const CampaignStrategyView = lazy(() => import('./tabs/CampaignStrategyView').th
 const CampaignKanbanView = lazy(() => import('./tabs/CampaignKanbanView').then((module) => ({ default: module.CampaignKanbanView })));
 const CampaignCalendarView = lazy(() => import('./tabs/CampaignCalendarView').then((module) => ({ default: module.CampaignCalendarView })));
 const CampaignDashboardView = lazy(() => import('./tabs/CampaignDashboardView').then((module) => ({ default: module.CampaignDashboardView })));
-const SocialCampaignReviewView = lazy(() => import('../../components/flows/stages/SocialCampaignReviewView').then((module) => ({ default: module.SocialCampaignReviewView })));
+const CampaignConceptReview = lazy(() => import('./components/CampaignConceptReview').then((module) => ({ default: module.CampaignConceptReview })));
 const PlannedPostsSelectModal = lazy(() => import('./components/PlannedPostsSelectModal').then((module) => ({ default: module.PlannedPostsSelectModal })));
 
 export const CampaignDetailView = () => {
@@ -26,7 +25,6 @@ export const CampaignDetailView = () => {
 
     const [campaign, setCampaign] = useState<SocialCampaign | null>(null);
     const [posts, setPosts] = useState<SocialPost[]>([]);
-    const [conceptIdea, setConceptIdea] = useState<Idea | null>(null);
     const [allProjectPosts, setAllProjectPosts] = useState<SocialPost[]>([]); // Store all posts for context
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'board' | 'calendar'>('dashboard');
@@ -74,17 +72,6 @@ export const CampaignDetailView = () => {
             unsubPosts();
         };
     }, [projectId, campaignId]);
-
-    // Fetch original idea if this is a concept
-    useEffect(() => {
-        const fetchIdea = async () => {
-            if (campaign?.status === 'Concept' && campaign.originIdeaId && projectId) {
-                const idea = await getIdeaById(campaign.originIdeaId, projectId);
-                setConceptIdea(idea);
-            }
-        };
-        fetchIdea();
-    }, [campaign?.status, campaign?.originIdeaId, projectId]);
 
     const handleOpenConfig = () => {
         if (!campaign) return;
@@ -162,8 +149,7 @@ export const CampaignDetailView = () => {
                     status: 'Draft',
                     content: {
                         caption: draft.content || '',
-                        hashtags: draft.hashtags || [],
-                        originIdeaId: campaign.originIdeaId
+                        hashtags: draft.hashtags || []
                     },
                     assets: [],
                     scheduledFor: scheduledDate.toISOString(),
@@ -201,37 +187,6 @@ export const CampaignDetailView = () => {
 
     const handleViewPlannedContent = () => {
         setShowPlannedContentModal(true);
-    };
-
-    const handleDebugSyncPlan = async () => {
-        if (!campaign || !projectId || !campaign.originIdeaId) {
-            showError(t('social.campaignDetail.syncPlan.noLinkedFlow'));
-            return;
-        }
-
-        try {
-            const idea = await getIdeaById(campaign.originIdeaId, projectId);
-            if (!idea || !idea.concept) {
-                showError(t('social.campaignDetail.syncPlan.noConcept'));
-                return;
-            }
-
-            const conceptData = JSON.parse(idea.concept);
-            if (!conceptData.planningPosts || !Array.isArray(conceptData.planningPosts)) {
-                showError(t('social.campaignDetail.syncPlan.noPlannedPosts'));
-                return;
-            }
-
-            await updateCampaign(projectId, campaign.id, {
-                plannedContent: conceptData.planningPosts
-            });
-
-            showSuccess(t('social.campaignDetail.syncPlan.synced').replace('{count}', String(conceptData.planningPosts.length)));
-            // The subscription will auto-update the UI
-        } catch (error) {
-            console.error(error);
-            showError(t('social.campaignDetail.syncPlan.error'));
-        }
     };
 
     const handleSelectPlannedPost = async (post: any) => {
@@ -546,50 +501,29 @@ export const CampaignDetailView = () => {
                 {/* Concept Review Mode */}
                 {campaign.status === 'Concept' ? (
                     <div className="flex-1 overflow-auto bg-surface">
-                        {conceptIdea ? (
-                            <Suspense fallback={sectionLoadingFallback}>
-                                <SocialCampaignReviewView
-                                    idea={conceptIdea}
-                                    onUpdate={() => { }} // No-op, we update campaign instead
-                                    mode="campaign"
-                                    isApproved={campaign.status === 'Planning' || campaign.status === 'Active'}
-                                    onApprove={async () => {
+                        <Suspense fallback={sectionLoadingFallback}>
+                            <CampaignConceptReview
+                                campaign={campaign}
+                                onApprove={async () => {
                                     if (!projectId || !campaignId) return;
 
-                                    // Extract data from Concept
-                                    let conceptData: any = {};
-                                    try {
-                                        if (conceptIdea?.concept && conceptIdea.concept.startsWith('{')) {
-                                            conceptData = JSON.parse(conceptIdea.concept);
-                                        }
-                                    } catch (e) { console.error("Failed to parse concept", e); }
+                                    // Concept fields already live on the campaign; promote it to Planning.
+                                    const normalizedPlatforms = Array.isArray(campaign.platforms)
+                                        ? [...new Set(campaign.platforms.map((p: any) => {
+                                            const id = (p && typeof p === 'object') ? (p.id || p.platform) : p;
+                                            // Normalize YouTube variants to just 'YouTube'
+                                            if (typeof id === 'string' && id.toLowerCase().includes('youtube')) return 'YouTube';
+                                            return id;
+                                        }))] as SocialCampaign['platforms']
+                                        : campaign.platforms;
 
                                     const updates: Partial<SocialCampaign> = {
                                         status: 'Planning',
-                                        bigIdea: conceptData.bigIdea,
-                                        hook: conceptData.hook,
-                                        visualDirection: conceptData.visualDirection,
-                                        mood: conceptData.mood,
-                                        phases: conceptData.phases,
-                                        kpis: conceptData.kpis,
-                                        audienceSegments: conceptData.audienceSegments,
-                                        channelStrategy: conceptData.platforms,
-                                        targetAudience: Array.isArray(conceptData.audienceSegments) ? conceptData.audienceSegments.join(', ') : conceptData.targetAudience,
-                                        platforms: Array.isArray(conceptData.platforms)
-                                            ? [...new Set(conceptData.platforms.map((p: any) => {
-                                                const id = p.id || p;
-                                                // Normalize YouTube variants to just 'YouTube'
-                                                if (typeof id === 'string' && id.toLowerCase().includes('youtube')) return 'YouTube';
-                                                return id;
-                                            }))]
-                                            : campaign.platforms,
-                                        plannedContent: conceptData.planningPosts
+                                        platforms: normalizedPlatforms,
+                                        approvedBy: 'current-user',
+                                        approvedAt: new Date().toISOString(),
+                                        lastRejectionReason: ''
                                     };
-
-                                    if (conceptIdea?.riskWinAnalysis) {
-                                        updates.risks = conceptIdea.riskWinAnalysis.risks?.map(r => ({ title: r.title, severity: r.severity, mitigation: r.mitigation || '' }));
-                                        updates.wins = conceptIdea.riskWinAnalysis.wins?.map(w => ({ title: w.title, impact: w.impact }));
-                                    }
 
                                     await updateCampaign(projectId, campaignId, updates);
                                     showSuccess(t('social.campaignDetail.approval.approved'));
@@ -598,17 +532,11 @@ export const CampaignDetailView = () => {
                                 onReject={async (reason) => {
                                     if (!projectId || !campaignId) return;
 
-                                    // 2. Move Idea back to CHANGE REQUESTED for rework
-                                    if (campaign.originIdeaId) {
-                                        await updateIdea(campaign.originIdeaId, {
-                                            stage: 'ChangeRequested', // Send to specific ChangeRequested stage
-                                            lastRejectionReason: reason || t('social.campaignDetail.approval.changesRequestedFallback')
-                                        }, projectId);
-                                    }
-
-                                    // 2. FORCE Campaign Status to remain 'Concept' (Fixing user reported issue where it moved to Backlog)
-                                    // This overrides any potential side-effects from updateIdea
-                                    await updateCampaign(projectId, campaignId, { status: 'Concept' });
+                                    // Keep the campaign in Concept for rework, record the requested changes.
+                                    await updateCampaign(projectId, campaignId, {
+                                        status: 'Concept',
+                                        lastRejectionReason: reason || t('social.campaignDetail.approval.changesRequestedFallback')
+                                    });
 
                                     showSuccess(t('social.campaignDetail.approval.changesRequested'));
                                     navigate(`../campaigns`);
@@ -622,13 +550,10 @@ export const CampaignDetailView = () => {
                                     if (!confirmed) return;
 
                                     try {
-                                        // 1. Update Campaign Status
-                                        await updateCampaign(projectId, campaignId, { status: 'Rejected' });
-
-                                        // 2. Update Original Idea if linked
-                                        if (campaign.originIdeaId) {
-                                            await updateIdea(campaign.originIdeaId, { stage: 'Rejected' }, projectId);
-                                        }
+                                        await updateCampaign(projectId, campaignId, {
+                                            status: 'Rejected',
+                                            lastRejectionReason: t('social.campaignDetail.approval.rejected')
+                                        });
 
                                         showSuccess(t('social.campaignDetail.approval.rejected'));
                                         navigate(`../campaigns`);
@@ -636,14 +561,9 @@ export const CampaignDetailView = () => {
                                         console.error("Failed to reject campaign", e);
                                         showError(t('social.campaignDetail.approval.rejectError'));
                                     }
-                                    }}
-                                />
-                            </Suspense>
-                        ) : (
-                            <div className="flex items-center justify-center h-full">
-                                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
-                            </div>
-                        )}
+                                }}
+                            />
+                        </Suspense>
                     </div>
                 ) : (
                     <>

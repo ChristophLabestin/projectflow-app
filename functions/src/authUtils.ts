@@ -124,22 +124,16 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, string[]> = {
     Owner: [
         'project.read', 'project.update', 'project.delete', 'project.invite', 'project.view_settings',
         'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
-        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
-        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
         'group.create', 'group.update', 'group.delete'
     ],
     Editor: [
         'project.read', 'project.invite', 'project.view_settings',
         'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
-        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
-        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
         'group.create', 'group.update', 'group.delete'
     ],
     Viewer: [
         'project.read',
-        'task.view', 'task.comment',
-        'issue.view',
-        'idea.view'
+        'task.view', 'task.comment'
     ]
 };
 

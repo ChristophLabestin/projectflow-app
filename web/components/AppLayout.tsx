@@ -3,7 +3,7 @@ import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
-import { subscribeProjectIdeas, subscribeUserProjectNavPrefs } from '../services/dataService';
+import { subscribeUserProjectNavPrefs } from '../services/dataService';
 import { Project, ProjectExternalResource } from '../types';
 import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
@@ -12,14 +12,11 @@ import { getProjectById, subscribeProject } from '../services/domain/projectsSer
 import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
-import { subscribeProjectIssues } from '../services/domain/issuesService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
 const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
-const CreateFlowModal = lazy(() => import('./flows/CreateFlowModal').then((module) => ({ default: module.CreateFlowModal })));
-const CreateIssueModal = lazy(() => import('./CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 const CreateProjectModal = lazy(() => import('./CreateProjectModal').then((module) => ({ default: module.CreateProjectModal })));
 
 export const AppLayout = () => {
@@ -27,14 +24,11 @@ export const AppLayout = () => {
     const { theme } = useTheme();
     const {
         isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId,
-        isIdeaCreateModalOpen, closeIdeaCreateModal, ideaCreateProjectId,
-        isIssueCreateModalOpen, closeIssueCreateModal, issueCreateProjectId,
         isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
     const location = useLocation();
     const isFullWidthRoute = location.pathname.includes('/social')
         || location.pathname.includes('/marketing')
-        || location.pathname.includes('/flows')
         || location.pathname.includes('/activity')
         || location.pathname.includes('/codex')
         || location.pathname.includes('/brainstorm');
@@ -47,21 +41,27 @@ export const AppLayout = () => {
 
     const projectId = paramProjectId || derivedProjectId;
     const resolvedTaskCreateProjectId = taskCreateProjectId || projectId || null;
-    const resolvedIdeaCreateProjectId = ideaCreateProjectId || projectId || null;
-    const resolvedIssueCreateProjectId = issueCreateProjectId || projectId || null;
 
     const [navOpen, setNavOpen] = useState(false);
     const [project, setProject] = useState<Project | null>(null);
     const [companyProject, setCompanyProject] = useState<Project | null>(null);
     const [tasksCount, setTasksCount] = useState(0);
-    const [ideasCount, setIdeasCount] = useState(0);
-    const [issuesCount, setIssuesCount] = useState(0);
     const [navPrefs, setNavPrefs] = useState<{ order: string[]; hidden: string[] } | undefined>(undefined);
     const [statusPreference, setStatusPreference] = useState<'online' | 'busy' | 'idle' | 'offline'>('online');
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [projectOptions, setProjectOptions] = useState<Project[]>([]);
     const [taskTitle, setTaskTitle] = useState<string | null>(null);
     const [campaignName, setCampaignName] = useState<string | null>(null);
+    // Full-width content mode (toggled from the project overview "stretch" button).
+    // When on, the content area uses the full available width and the sidebar
+    // collapses to icon-only.
+    const [contentWide, setContentWideState] = useState<boolean>(() => {
+        try { return window.localStorage.getItem('projectflow.projectOverview.wide') === '1'; } catch { return false; }
+    });
+    const setContentWide = (next: boolean) => {
+        setContentWideState(next);
+        try { window.localStorage.setItem('projectflow.projectOverview.wide', next ? '1' : '0'); } catch { /* ignore */ }
+    };
 
     const user = auth?.currentUser;
     const navigate = useNavigate();
@@ -133,8 +133,6 @@ export const AppLayout = () => {
         let mounted = true;
         let unsubProject: (() => void) | undefined;
         let unsubTasks: (() => void) | undefined;
-        let unsubIdeas: (() => void) | undefined;
-        let unsubIssues: (() => void) | undefined;
         let unsubNav: (() => void) | undefined;
 
         // First, find the project to get its tenant
@@ -159,21 +157,6 @@ export const AppLayout = () => {
                 }
             }, projectTenantId);
 
-            // Subscribe to ideas for real-time counts
-            unsubIdeas = subscribeProjectIdeas(projectId, (ideas) => {
-                if (mounted) {
-                    setIdeasCount(ideas.length);
-                }
-            }, projectTenantId);
-
-            // Subscribe to issues for real-time counts
-            unsubIssues = subscribeProjectIssues(projectId, (issues) => {
-                if (mounted) {
-                    const unresolvedIssues = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
-                    setIssuesCount(unresolvedIssues.length);
-                }
-            }, projectTenantId);
-
             // Subscribe to user's nav preferences for this project
             if (user) {
                 unsubNav = subscribeUserProjectNavPrefs(user.uid, projectId, (prefs) => {
@@ -191,8 +174,6 @@ export const AppLayout = () => {
             mounted = false;
             if (unsubProject) unsubProject();
             if (unsubTasks) unsubTasks();
-            if (unsubIdeas) unsubIdeas();
-            if (unsubIssues) unsubIssues();
             if (unsubNav) unsubNav();
         };
     }, [projectId, user?.uid]);
@@ -273,13 +254,6 @@ export const AppLayout = () => {
                         rawItems.push({ label: t('breadcrumbs.initiatives'), to: `/project/${parts[1]}/initiatives` });
                         if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.initiativeDetails') });
                         break;
-                    case 'flows':
-                    case 'ideas':
-                        rawItems.push({ label: t('breadcrumbs.flows'), to: `/project/${parts[1]}/flows` });
-                        break;
-                    case 'issues':
-                        rawItems.push({ label: t('breadcrumbs.issues'), to: `/project/${parts[1]}/issues` });
-                        break;
                     case 'activity':
                         rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
                         break;
@@ -359,12 +333,13 @@ export const AppLayout = () => {
             <div className="hidden md:flex flex-shrink-0 h-full">
                 <Suspense fallback={<div className="h-full w-72 border-r border-surface bg-card" />}>
                     <Sidebar
+                        collapsed={contentWide}
                         workspace={projectId ? {
                             projectId,
                             projectTitle: project?.title,
                             tasksCount: isCurrentProjectCanceled ? 0 : tasksCount,
-                            ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
-                            issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
+                            ideasCount: 0,
+                            issuesCount: 0,
                             modules: project?.modules,
                             externalResources: visibleExternalResources,
                             isLoaded: Boolean(project),
@@ -390,8 +365,8 @@ export const AppLayout = () => {
                                     projectId,
                                     projectTitle: project?.title,
                                     tasksCount: isCurrentProjectCanceled ? 0 : tasksCount,
-                                    ideasCount: isCurrentProjectCanceled ? 0 : ideasCount,
-                                    issuesCount: isCurrentProjectCanceled ? 0 : issuesCount,
+                                    ideasCount: 0,
+                                    issuesCount: 0,
                                     modules: project?.modules,
                                     externalResources: visibleExternalResources,
                                     isLoaded: Boolean(project),
@@ -416,9 +391,9 @@ export const AppLayout = () => {
                 </Suspense>
 
                 {/* Main Scroll Area */}
-                <main className={`app-main-scroll dotted-bg ${isFullWidthRoute ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
-                    <div className={isFullWidthRoute ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
-                        <Outlet context={{ setTaskTitle, statusPreference }} />
+                <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
+                    <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
+                        <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>
                 </main>
 
@@ -429,30 +404,6 @@ export const AppLayout = () => {
                     <TaskCreateModal
                         onClose={closeTaskCreateModal}
                         projectId={resolvedTaskCreateProjectId}
-                    />
-                </Suspense>
-            )}
-
-            {/* Global Flow Create Modal */}
-            {isIdeaCreateModalOpen && resolvedIdeaCreateProjectId && (
-                <Suspense fallback={null}>
-                    <CreateFlowModal
-                        isOpen={isIdeaCreateModalOpen}
-                        onClose={closeIdeaCreateModal}
-                        projectId={resolvedIdeaCreateProjectId}
-                        onCreated={closeIdeaCreateModal}
-                    />
-                </Suspense>
-            )}
-
-            {/* Global Issue Create Modal */}
-            {isIssueCreateModalOpen && resolvedIssueCreateProjectId && (
-                <Suspense fallback={null}>
-                    <CreateIssueModal
-                        isOpen={isIssueCreateModalOpen}
-                        onClose={closeIssueCreateModal}
-                        projectId={resolvedIssueCreateProjectId}
-                        tenantId={project?.id === resolvedIssueCreateProjectId ? project.tenantId : undefined}
                     />
                 </Suspense>
             )}

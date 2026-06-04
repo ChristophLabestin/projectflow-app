@@ -5,14 +5,11 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
-const pmCore_1 = require("./pmCore");
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
 const INITIATIVES = 'initiatives';
 const ACTIVITIES = 'activities';
 const SUBTASKS = 'subtasks';
-const ISSUES = 'issues';
-const IDEAS = 'ideas';
 const MILESTONES = 'milestones';
 const SPRINTS = 'sprints';
 const CATEGORIES = 'categories';
@@ -54,7 +51,6 @@ const PROJECT_WRITE_FIELDS = [
     'screenshots',
     'githubRepo',
     'githubToken',
-    'githubIssueSync',
     'overviewLayout',
     'members',
     'memberIds',
@@ -75,8 +71,6 @@ const TASK_WRITE_FIELDS = [
     'category',
     'dependencies',
     'sprintId',
-    'linkedIssueId',
-    'convertedIdeaId',
     'initiativeId',
     'legacyInitiativeRoot',
     'externalKey',
@@ -95,7 +89,6 @@ const INITIATIVE_WRITE_FIELDS = [
     'startDate',
     'assigneeIds',
     'assignedGroupIds',
-    'originIdeaId',
     'externalKey',
     'source',
     'templateId',
@@ -475,8 +468,6 @@ const createTask = async (req, res, projectId) => {
         category: Array.isArray(body.category) ? body.category : [],
         dependencies: getStringArray(body.dependencies),
         sprintId: getString(body.sprintId),
-        linkedIssueId: getString(body.linkedIssueId),
-        convertedIdeaId: getString(body.convertedIdeaId),
         initiativeId: getString(body.initiativeId),
         legacyInitiativeRoot: Boolean(body.legacyInitiativeRoot),
         externalKey: getString(body.externalKey),
@@ -606,8 +597,6 @@ const upsertTaskByExternalKey = async (req, res, projectId) => {
         category: Array.isArray(body.category) ? body.category : [],
         dependencies: getStringArray(body.dependencies),
         sprintId: getString(body.sprintId),
-        linkedIssueId: getString(body.linkedIssueId),
-        convertedIdeaId: getString(body.convertedIdeaId),
         initiativeId: getString(body.initiativeId),
         legacyInitiativeRoot: Boolean(body.legacyInitiativeRoot),
         externalKey,
@@ -699,7 +688,6 @@ const createInitiative = async (req, res, projectId) => {
         startDate: getString(body.startDate),
         assigneeIds: getStringArray(body.assigneeIds),
         assignedGroupIds: getStringArray(body.assignedGroupIds),
-        originIdeaId: getString(body.originIdeaId),
         externalKey: getString(body.externalKey),
         successMetric: getString(body.successMetric),
         outcome: getString(body.outcome),
@@ -849,7 +837,6 @@ const upsertInitiativeByExternalKey = async (req, res, projectId) => {
         startDate: getString(body.startDate),
         assigneeIds: getStringArray(body.assigneeIds),
         assignedGroupIds: getStringArray(body.assignedGroupIds),
-        originIdeaId: getString(body.originIdeaId),
         externalKey,
         successMetric: getString(body.successMetric),
         outcome: getString(body.outcome),
@@ -1038,20 +1025,6 @@ const createProjectCollectionItem = async (req, res, projectId, collectionName, 
         return;
     }
     const payload = compactObject(Object.assign(Object.assign({}, extractMutableFields(body)), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, [requiredField]: requiredValue, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
-    if (collectionName === ISSUES) {
-        payload.reporter = getString(body.reporter) || context.actorLabel;
-        payload.reporterId = getString(body.reporterId) || context.actorId;
-        payload.status = getString(body.status) || 'Open';
-        payload.priority = getString(body.priority) || 'Medium';
-        payload.description = getString(body.description);
-    }
-    if (collectionName === IDEAS) {
-        payload.description = getString(body.description);
-        payload.stage = getString(body.stage) || 'Brainstorm';
-        payload.type = getString(body.type) || 'Feature';
-        payload.votes = typeof body.votes === 'number' ? body.votes : 0;
-        payload.comments = typeof body.comments === 'number' ? body.comments : 0;
-    }
     if (collectionName === MILESTONES) {
         payload.status = getString(body.status) || 'Pending';
     }
@@ -1149,40 +1122,6 @@ const deleteProjectCollectionItem = async (req, res, projectId, itemId, collecti
         success: true,
         [deletedKey]: itemId
     });
-};
-const listIssues = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, ISSUES, 'issues');
-const createIssue = async (req, res, projectId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
-        return;
-    return createProjectCollectionItem(req, res, projectId, ISSUES, 'issue', 'title', 'issue', 'Issues');
-};
-const getIssue = async (req, res, projectId, issueId) => getProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue');
-const updateIssue = async (req, res, projectId, issueId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
-        return;
-    return updateProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'issue', 'Issue', 'Issues');
-};
-const deleteIssue = async (req, res, projectId, issueId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'issues'))
-        return;
-    return deleteProjectCollectionItem(req, res, projectId, issueId, ISSUES, 'Issue', 'deletedIssueId', 'Issues');
-};
-const listIdeas = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, IDEAS, 'ideas');
-const createIdea = async (req, res, projectId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
-        return;
-    return createProjectCollectionItem(req, res, projectId, IDEAS, 'idea', 'title', 'idea', 'Ideas');
-};
-const getIdea = async (req, res, projectId, ideaId) => getProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea');
-const updateIdea = async (req, res, projectId, ideaId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
-        return;
-    return updateProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'idea', 'Idea', 'Ideas');
-};
-const deleteIdea = async (req, res, projectId, ideaId) => {
-    if ((0, pmCore_1.sendPmCoreDeprecated)(res, 'ideas'))
-        return;
-    return deleteProjectCollectionItem(req, res, projectId, ideaId, IDEAS, 'Idea', 'deletedIdeaId', 'Ideas');
 };
 const listMilestones = async (req, res, projectId) => listProjectCollectionItems(req, res, projectId, MILESTONES, 'milestones');
 const createMilestone = async (req, res, projectId) => createProjectCollectionItem(req, res, projectId, MILESTONES, 'milestone', 'title', 'milestone', 'Milestones');
@@ -1726,16 +1665,6 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
     'GET /api/projectflow/projects/:projectId/tasks/:taskId/subtasks/:subtaskId',
     'PATCH /api/projectflow/projects/:projectId/tasks/:taskId/subtasks/:subtaskId',
     'DELETE /api/projectflow/projects/:projectId/tasks/:taskId/subtasks/:subtaskId',
-    'GET /api/projectflow/projects/:projectId/issues',
-    'POST /api/projectflow/projects/:projectId/issues',
-    'GET /api/projectflow/projects/:projectId/issues/:issueId',
-    'PATCH /api/projectflow/projects/:projectId/issues/:issueId',
-    'DELETE /api/projectflow/projects/:projectId/issues/:issueId',
-    'GET /api/projectflow/projects/:projectId/ideas',
-    'POST /api/projectflow/projects/:projectId/ideas',
-    'GET /api/projectflow/projects/:projectId/ideas/:ideaId',
-    'PATCH /api/projectflow/projects/:projectId/ideas/:ideaId',
-    'DELETE /api/projectflow/projects/:projectId/ideas/:ideaId',
     'GET /api/projectflow/projects/:projectId/milestones',
     'POST /api/projectflow/projects/:projectId/milestones',
     'GET /api/projectflow/projects/:projectId/milestones/:milestoneId',
@@ -1872,26 +1801,6 @@ const handleProjectflowApiRoute = async (req, res, path) => {
                         return true;
                     }
                 }
-                if (resource === ISSUES) {
-                    if (req.method === 'GET') {
-                        await listIssues(req, res, projectId);
-                        return true;
-                    }
-                    if (req.method === 'POST') {
-                        await createIssue(req, res, projectId);
-                        return true;
-                    }
-                }
-                if (resource === IDEAS) {
-                    if (req.method === 'GET') {
-                        await listIdeas(req, res, projectId);
-                        return true;
-                    }
-                    if (req.method === 'POST') {
-                        await createIdea(req, res, projectId);
-                        return true;
-                    }
-                }
                 if (resource === MILESTONES) {
                     if (req.method === 'GET') {
                         await listMilestones(req, res, projectId);
@@ -1983,34 +1892,6 @@ const handleProjectflowApiRoute = async (req, res, path) => {
                     }
                     if (req.method === 'DELETE') {
                         await deleteTask(req, res, projectId, resourceId);
-                        return true;
-                    }
-                }
-                if (resource === ISSUES) {
-                    if (req.method === 'GET') {
-                        await getIssue(req, res, projectId, resourceId);
-                        return true;
-                    }
-                    if (req.method === 'PATCH') {
-                        await updateIssue(req, res, projectId, resourceId);
-                        return true;
-                    }
-                    if (req.method === 'DELETE') {
-                        await deleteIssue(req, res, projectId, resourceId);
-                        return true;
-                    }
-                }
-                if (resource === IDEAS) {
-                    if (req.method === 'GET') {
-                        await getIdea(req, res, projectId, resourceId);
-                        return true;
-                    }
-                    if (req.method === 'PATCH') {
-                        await updateIdea(req, res, projectId, resourceId);
-                        return true;
-                    }
-                    if (req.method === 'DELETE') {
-                        await deleteIdea(req, res, projectId, resourceId);
                         return true;
                     }
                 }

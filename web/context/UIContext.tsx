@@ -48,18 +48,6 @@ interface UIContextType {
     openTaskCreateModal: (projectId?: string) => void;
     closeTaskCreateModal: () => void;
 
-    // Global Idea Create Modal
-    isIdeaCreateModalOpen: boolean;
-    ideaCreateProjectId: string | null;
-    openIdeaCreateModal: (projectId?: string) => void;
-    closeIdeaCreateModal: () => void;
-
-    // Global Issue Create Modal
-    isIssueCreateModalOpen: boolean;
-    issueCreateProjectId: string | null;
-    openIssueCreateModal: (projectId?: string) => void;
-    closeIssueCreateModal: () => void;
-
     // Global Project Create Modal
     isProjectCreateModalOpen: boolean;
     openProjectCreateModal: () => void;
@@ -92,14 +80,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     const [isTaskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
     const [taskCreateProjectId, setTaskCreateProjectId] = useState<string | null>(null);
 
-    // Idea Modal State
-    const [isIdeaCreateModalOpen, setIdeaCreateModalOpen] = useState(false);
-    const [ideaCreateProjectId, setIdeaCreateProjectId] = useState<string | null>(null);
-
-    // Issue Modal State
-    const [isIssueCreateModalOpen, setIssueCreateModalOpen] = useState(false);
-    const [issueCreateProjectId, setIssueCreateProjectId] = useState<string | null>(null);
-
     // Project Modal State
     const [isProjectCreateModalOpen, setProjectCreateModalOpen] = useState(false);
 
@@ -113,28 +93,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     const closeTaskCreateModal = useCallback(() => {
         setTaskCreateModalOpen(false);
         setTaskCreateProjectId(null);
-    }, []);
-
-    // Idea Modal Functions
-    const openIdeaCreateModal = useCallback((projectId?: string) => {
-        setIdeaCreateProjectId(projectId || null);
-        setIdeaCreateModalOpen(true);
-    }, []);
-
-    const closeIdeaCreateModal = useCallback(() => {
-        setIdeaCreateModalOpen(false);
-        setIdeaCreateProjectId(null);
-    }, []);
-
-    // Issue Modal Functions
-    const openIssueCreateModal = useCallback((projectId?: string) => {
-        setIssueCreateProjectId(projectId || null);
-        setIssueCreateModalOpen(true);
-    }, []);
-
-    const closeIssueCreateModal = useCallback(() => {
-        setIssueCreateModalOpen(false);
-        setIssueCreateProjectId(null);
     }, []);
 
     // Project Modal Functions
@@ -168,30 +126,11 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
 
-            // Option/Alt + I = Toggle Idea Modal
-            if (e.altKey && e.code === 'KeyI' && !e.metaKey && !e.ctrlKey) {
-                e.preventDefault();
-                if (isIdeaCreateModalOpen) {
-                    closeIdeaCreateModal();
-                } else {
-                    openIdeaCreateModal(pinnedProject.id);
-                }
-            }
-
-            // Option/Alt + B = Toggle Bug/Issue Modal
-            if (e.altKey && e.code === 'KeyB' && !e.metaKey && !e.ctrlKey) {
-                e.preventDefault();
-                if (isIssueCreateModalOpen) {
-                    closeIssueCreateModal();
-                } else {
-                    openIssueCreateModal(pinnedProject.id);
-                }
-            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [pinnedProject, isTaskCreateModalOpen, isIdeaCreateModalOpen, isIssueCreateModalOpen, openTaskCreateModal, closeTaskCreateModal, openIdeaCreateModal, closeIdeaCreateModal, openIssueCreateModal, closeIssueCreateModal]);
+    }, [pinnedProject, isTaskCreateModalOpen, openTaskCreateModal, closeTaskCreateModal]);
 
     const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; path: string }, details?: string) => {
         // Intercept Pre-Alpha Missing Key Error
@@ -255,14 +194,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             taskCreateProjectId,
             openTaskCreateModal,
             closeTaskCreateModal,
-            isIdeaCreateModalOpen,
-            ideaCreateProjectId,
-            openIdeaCreateModal,
-            closeIdeaCreateModal,
-            isIssueCreateModalOpen,
-            issueCreateProjectId,
-            openIssueCreateModal,
-            closeIssueCreateModal,
             isProjectCreateModalOpen,
             openProjectCreateModal,
             closeProjectCreateModal

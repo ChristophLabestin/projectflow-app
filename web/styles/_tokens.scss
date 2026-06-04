@@ -56,6 +56,16 @@
   --color-warning-rgb: 245, 158, 11;
   --color-error-rgb: 239, 68, 68;
 
+  /* Task status accents (used by project overview views) */
+  --status-backlog-rgb: 148, 163, 184;
+  --status-open-rgb: 59, 130, 246;
+  --status-in-progress-rgb: 14, 165, 233;
+  --status-review-rgb: 245, 158, 11;
+  --status-on-hold-rgb: 156, 163, 175;
+  --status-blocked-rgb: 239, 68, 68;
+  --status-done-rgb: 16, 185, 129;
+  --status-planning-rgb: 139, 92, 246;
+
   /* Priority */
   --priority-urgent: #7c3aed;
   --priority-urgent-rgb: 124, 58, 237;

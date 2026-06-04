@@ -5,8 +5,6 @@ import { useLanguage } from '../context/LanguageContext';
 import {
     getAllWorkspaceProjects,
     getProjectActivity,
-    getProjectIdeas,
-    getProjectIssues,
     getProjectInitiatives,
     getProjectOverviewTemplates,
     getProjectTasks,
@@ -19,7 +17,7 @@ import {
 } from '../services/dataService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
+import { Project, Member, Task, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/common/Badge/Badge';
@@ -41,7 +39,7 @@ import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useConfirm, useToast, useUIState } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
 import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
-import { getProjectMembers, getSharedProjects, getUserProjects } from '../services/domain/projectsService';
+import { getProjectMembers, getSharedProjects, getUserProjects, hydrateProjectAssets } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserProfile } from '../services/domain/usersService';
 import { isCompanyProject } from '../config/projectTemplates';
@@ -52,14 +50,10 @@ import './projects-list.scss';
 export type ProjectMetrics = {
     taskCount: number;
     taskCompleted: number;
-    flowCount: number;
-    issueCount: number;
 };
 
 type ProjectHealthInputs = {
     tasks: Task[];
-    ideas: Idea[];
-    issues: Issue[];
     activity: Activity[];
     milestones: Milestone[];
     sprints: Sprint[];
@@ -68,8 +62,6 @@ type ProjectHealthInputs = {
 
 const EMPTY_PROJECT_HEALTH_INPUTS: ProjectHealthInputs = {
     tasks: [],
-    ideas: [],
-    issues: [],
     activity: [],
     milestones: [],
     sprints: [],
@@ -78,9 +70,7 @@ const EMPTY_PROJECT_HEALTH_INPUTS: ProjectHealthInputs = {
 
 const EMPTY_PROJECT_METRICS: ProjectMetrics = {
     taskCount: 0,
-    taskCompleted: 0,
-    flowCount: 0,
-    issueCount: 0
+    taskCompleted: 0
 };
 
 const shouldLoadProjectInsights = (project: Project) => (
@@ -192,7 +182,6 @@ interface SpotlightHeroProps {
     pendingTaskCount: number;
     completedTaskCount: number;
     nextMilestone?: Milestone;
-    criticalIssuesCount?: number;
     daysRemaining?: number;
     sprintCount?: number;
     descriptionFallback: string;
@@ -203,7 +192,7 @@ interface SpotlightHeroProps {
 const SpotlightHero: React.FC<SpotlightHeroProps> = ({
     project, metrics, healthStatus, healthScore, reasons,
     pendingTaskCount, completedTaskCount, nextMilestone,
-    criticalIssuesCount = 0, daysRemaining, descriptionFallback, onClick,
+    daysRemaining, descriptionFallback, onClick,
     sprintCount = 0,
     mode = 'spotlight'
 }) => {
@@ -369,14 +358,6 @@ const SpotlightHero: React.FC<SpotlightHeroProps> = ({
                             <span className="pillar-sub">Total Cycles</span>
                         </div>
 
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Flows</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon">lightbulb</span>
-                                <span className="pillar-value">{metrics.flowCount || 0}</span>
-                            </div>
-                            <span className="pillar-sub">Ideas</span>
-                        </div>
                     </div>
 
                     <Button
@@ -524,23 +505,6 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
                         </span>
                     </div>
 
-                    {/* Flows */}
-                    <div className="metric-single">
-                        <span className="lbl">Flows</span>
-                        <span className="val">
-                            <span className="material-symbols-outlined">account_tree</span>
-                            {metrics?.flowCount || 0}
-                        </span>
-                    </div>
-
-                    {/* Issues */}
-                    <div className="metric-single">
-                        <span className="lbl">Issues</span>
-                        <span className="val">
-                            <span className="material-symbols-outlined">bug_report</span>
-                            {metrics?.issueCount || 0}
-                        </span>
-                    </div>
                 </div>
 
                 {/* Progress Bar */}
@@ -892,9 +856,7 @@ const PROJECT_IMPORT_EXAMPLE_URL = new URL('../assets/project-import-example.jso
 const PROJECT_MODULE_OPTIONS: ProjectModule[] = [
     'tasks',
     'initiatives',
-    'ideas',
     'activity',
-    'issues',
     'milestones',
     'social',
     'marketing',
@@ -972,8 +934,6 @@ export const ProjectsList: React.FC = () => {
     const { isAuthReady } = useAuth();
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
-    const [issues, setIssues] = useState<Issue[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [healthInputsByProject, setHealthInputsByProject] = useState<Record<string, ProjectHealthInputs>>({});
@@ -1731,8 +1691,6 @@ export const ProjectsList: React.FC = () => {
         if (!authUserId) {
             setProjects([]);
             setTasks([]);
-            setIdeas([]);
-            setIssues([]);
             setMilestones([]);
             setSprints([]);
             setHealthInputsByProject({});
@@ -1746,9 +1704,12 @@ export const ProjectsList: React.FC = () => {
             try {
                 const resolvedTenantId = await ensureActiveTenantId();
                 let allProjects: Project[] = [];
+                // Skip asset hydration on the critical path. Cover/icon URLs each
+                // require a Cloud Function round-trip; resolving them here blocked
+                // the list from rendering until every project's assets returned.
                 const [ownedProjects, sharedProjects] = await Promise.all([
-                    getUserProjects(undefined, { includeScreenshots: false }).catch(() => []),
-                    getSharedProjects({ includeScreenshots: false }).catch(() => [])
+                    getUserProjects(undefined, { hydrateAssets: false }).catch(() => []),
+                    getSharedProjects({ hydrateAssets: false }).catch(() => [])
                 ]);
                 const dedupedProjects = new Map<string, Project>();
                 [...ownedProjects, ...sharedProjects].forEach((project) => {
@@ -1758,7 +1719,7 @@ export const ProjectsList: React.FC = () => {
 
                 if (allProjects.length === 0) {
                     try {
-                        allProjects = await getAllWorkspaceProjects(resolvedTenantId, { includeScreenshots: false });
+                        allProjects = await getAllWorkspaceProjects(resolvedTenantId, { hydrateAssets: false });
                     } catch (error) {
                         console.warn('Projects list workspace query failed', error);
                     }
@@ -1767,9 +1728,27 @@ export const ProjectsList: React.FC = () => {
                 if (!mounted) return;
 
                 setProjects(allProjects);
+
+                // Hydrate cover/icon image URLs in the background and patch them
+                // in once resolved, so text content is interactive immediately.
+                void (async () => {
+                    try {
+                        const toHydrate = allProjects.map((project) => (
+                            project.tenantId ? project : { ...project, tenantId: resolvedTenantId }
+                        ));
+                        const hydrated = await hydrateProjectAssets(toHydrate, { includeScreenshots: false });
+                        if (!mounted) return;
+                        const hydratedById = new Map(
+                            hydrated.map((project) => [`${project.tenantId || 'none'}:${project.id}`, project])
+                        );
+                        setProjects((prev) => prev.map((project) => (
+                            hydratedById.get(`${project.tenantId || 'none'}:${project.id}`) || project
+                        )));
+                    } catch (error) {
+                        console.warn('Background project asset hydration failed', error);
+                    }
+                })();
                 setTasks([]);
-                setIdeas([]);
-                setIssues([]);
                 setMilestones([]);
                 setSprints([]);
                 setHealthInputsByProject({});
@@ -1788,16 +1767,12 @@ export const ProjectsList: React.FC = () => {
                         const tenantId = project.tenantId || resolvedTenantId;
                         const [
                             projectTasks,
-                            projectIdeas,
-                            projectIssues,
                             projectActivity,
                             projectMilestones,
                             projectSprints,
                             projectInitiatives
                         ] = await Promise.all([
                             getProjectTasks(project.id, tenantId).catch(() => []),
-                            getProjectIdeas(project.id, tenantId).catch(() => []),
-                            getProjectIssues(project.id, tenantId).catch(() => []),
                             getProjectActivity(project.id, tenantId).catch(() => []),
                             getProjectMilestonesForHealth(tenantId, project.id).catch(() => []),
                             getProjectSprintsForHealth(tenantId, project.id).catch(() => []),
@@ -1808,8 +1783,6 @@ export const ProjectsList: React.FC = () => {
                             project.id,
                             {
                                 tasks: withProjectScope(projectTasks, project.id, tenantId),
-                                ideas: withProjectScope(projectIdeas, project.id, tenantId),
-                                issues: withProjectScope(projectIssues, project.id, tenantId),
                                 activity: withProjectScope(projectActivity, project.id, tenantId),
                                 milestones: withProjectScope(projectMilestones, project.id, tenantId),
                                 sprints: withProjectScope(projectSprints, project.id, tenantId),
@@ -1826,8 +1799,6 @@ export const ProjectsList: React.FC = () => {
 
                 if (mounted) {
                     setTasks(projectInputs.flatMap((entry) => entry.tasks));
-                    setIdeas(projectInputs.flatMap((entry) => entry.ideas));
-                    setIssues(projectInputs.flatMap((entry) => entry.issues));
                     setMilestones(projectInputs.flatMap((entry) => entry.milestones));
                     setSprints(projectInputs.flatMap((entry) => entry.sprints));
                     setHealthInputsByProject(nextHealthInputsByProject);
@@ -1860,18 +1831,8 @@ export const ProjectsList: React.FC = () => {
             }
         });
 
-        ideas.forEach((idea) => {
-            if (!idea.projectId) return;
-            ensureMetrics(idea.projectId).flowCount += 1;
-        });
-
-        issues.forEach((issue) => {
-            if (!issue.projectId) return;
-            ensureMetrics(issue.projectId).issueCount += 1;
-        });
-
         return map;
-    }, [ideas, issues, tasks]);
+    }, [tasks]);
 
     const getMetrics = useCallback((projectId: string): ProjectMetrics => (
         metricsByProject[projectId] || EMPTY_PROJECT_METRICS
@@ -1980,12 +1941,12 @@ export const ProjectsList: React.FC = () => {
                 project,
                 projectInputs.tasks,
                 projectInputs.milestones,
-                projectInputs.issues,
+                [],
                 projectInputs.sprints,
                 projectInputs.activity,
                 [],
                 projectInputs.initiatives,
-                projectInputs.ideas
+                []
             );
         });
         return healthMap;
@@ -1996,29 +1957,28 @@ export const ProjectsList: React.FC = () => {
         if (!manualFocusProject) return null;
         if (isProjectExcludedFromHealth(manualFocusProject)) return null;
         const projectTasks = tasks.filter(t => t.projectId === manualFocusProject.id);
-        const projectIssues = issues.filter(i => i.projectId === manualFocusProject.id);
         const projectMilestones = milestones.filter(m => m.projectId === manualFocusProject.id);
         const projectSprints = sprints.filter(s => s.projectId === manualFocusProject.id);
         const projectInputs = healthInputsByProject[manualFocusProject.id] || EMPTY_PROJECT_HEALTH_INPUTS;
 
-        const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
+        const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, [], projectSprints);
         const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(
             manualFocusProject,
             projectInputs.tasks,
             projectInputs.milestones,
-            projectInputs.issues,
+            [],
             projectInputs.sprints,
             projectInputs.activity,
             [],
             projectInputs.initiatives,
-            projectInputs.ideas
+            []
         );
         return {
             reasons: score.reasons,
             score: score.score,
             health: health
         };
-    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints, healthInputsByProject]);
+    }, [manualFocusProject, tasks, projectHealthMap, milestones, sprints, healthInputsByProject]);
 
     // Spotlight Logic: Uses enhanced algorithm to select most critical/urgent project
     const spotlightData = useMemo(() => {
@@ -2027,11 +1987,10 @@ export const ProjectsList: React.FC = () => {
         // Calculate spotlight scores for all active projects
         const scores = activeList.map(project => {
             const projectTasks = tasks.filter(t => t.projectId === project.id);
-            const projectIssues = issues.filter(i => i.projectId === project.id);
             const projectMilestones = milestones.filter(m => m.projectId === project.id);
             const projectSprints = sprints.filter(s => s.projectId === project.id);
 
-            const score = calculateSpotlightScore(project, projectTasks, projectMilestones, projectIssues, projectSprints);
+            const score = calculateSpotlightScore(project, projectTasks, projectMilestones, [], projectSprints);
             const health = projectHealthMap[project.id];
             return { project, score, health };
         });
@@ -2050,7 +2009,7 @@ export const ProjectsList: React.FC = () => {
             milestones: milestones.filter(m => m.projectId === winner.project.id),
             sprints: sprints.filter(s => s.projectId === winner.project.id)
         };
-    }, [activeList, tasks, issues, projectHealthMap, milestones, sprints]);
+    }, [activeList, tasks, projectHealthMap, milestones, sprints]);
 
     const spotlightProject = spotlightData?.project || null;
     const spotlightProjectMilestones = useMemo(() =>
@@ -2196,7 +2155,6 @@ export const ProjectsList: React.FC = () => {
                             pendingTaskCount={getMetrics(manualFocusProject.id).taskCount - getMetrics(manualFocusProject.id).taskCompleted}
                             completedTaskCount={getMetrics(manualFocusProject.id).taskCompleted}
                             nextMilestone={nextFocusMilestone}
-                            criticalIssuesCount={getMetrics(manualFocusProject.id).issueCount}
                             sprintCount={focusSprints.length}
                             descriptionFallback={t('projectsList.spotlight.noDescription')}
                             onClick={() => navigate(`/project/${manualFocusProject.id}`)}

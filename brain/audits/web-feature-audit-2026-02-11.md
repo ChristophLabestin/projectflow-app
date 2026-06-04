@@ -84,4 +84,4 @@
 - Removed the remaining static/dynamic import conflict for `projectGroupService` by converting `MultiAssigneeSelector` to static service imports.
 - Added i18n + standardized form controls for marketing email variable management (`VariableManager`) and removed hardcoded confirmation copy.
 - Expanded role-management i18n coverage for destructive flows and role editor actions in `RoleManagement`.
-- Synced `SITEMAP.md` route implementation status to match `Router.tsx` and reduce documentation drift.
+- Synced `brain/reference/app/SITEMAP.md` route implementation status to match `Router.tsx` and reduce documentation drift.

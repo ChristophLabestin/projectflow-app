@@ -1,10 +1,10 @@
-# COMPONENTS.md — Reusable UI Components Index (Authoritative)
+# brain/reference/app/COMPONENTS.md — Reusable UI Components Index (Authoritative)
 
 This file is the **authoritative index** of reusable UI components available in this repository.
 
 Rules:
 - Prefer reusable components over one-off UI implementations.
-- All reusable components must follow tokens and rules defined in `STYLING.md`.
+- All reusable components must follow tokens and rules defined in `brain/reference/app/STYLING.md`.
 - When a new reusable component is introduced, it **must be added to this index**.
 
 ---
@@ -140,7 +140,7 @@ Example usage:
 
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
-| `PermissionGate` | UI guard wrapper | Hide/disable actions | Must respect `PERMISSIONS.md` |
+| `PermissionGate` | UI guard wrapper | Hide/disable actions | Must respect `brain/reference/app/PERMISSIONS.md` |
 | `RoleList` | Vertical role hierarchy list | Roles management UI | Must render ordered by `position` and enforce hierarchy constraints |
 
 ---
@@ -202,5 +202,5 @@ No feature should implement an isolated file picker/upload flow outside of this 
 ---
 
 ## Notes for future components
-- When adding a reusable component, update this file and ensure it uses tokens from `STYLING.md`.
+- When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

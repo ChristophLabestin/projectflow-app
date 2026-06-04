@@ -8,7 +8,7 @@ struct TrendData: Identifiable {
     let id = UUID()
     let date: Date
     let value: Int
-    let type: String // "Tasks", "Issues", "Flows"
+    let type: String // "Tasks"
 }
 
 @MainActor
@@ -17,12 +17,7 @@ final class DashboardStore: ObservableObject {
     @Published var projectCount = 0
     @Published var taskCount = 0
     @Published var openTaskCount = 0
-    @Published var issueCount = 0
-    @Published var openIssueCount = 0
-    @Published var flowCount = 0
     @Published var recentTasks: [ProjectTask] = []
-    @Published var recentIssues: [Issue] = []
-    @Published var recentFlows: [Flow] = []
     @Published var scheduledTasks: [Date: [ProjectTask]] = [:]
     
     // Focus Metrics
@@ -43,15 +38,11 @@ final class DashboardStore: ObservableObject {
     private let projectRepository = ProjectRepository()
     private var projectListener: ListenerRegistration?
     private var taskListener: ListenerRegistration?
-    private var issueListener: ListenerRegistration?
-    private var flowListener: ListenerRegistration?
-    
+
     private var currentUserId: String?
-    
+
     // Temp storage for aggregating trends
     private var rawTasks: [ProjectTask] = []
-    private var rawIssues: [Issue] = []
-    private var rawFlows: [Flow] = []
 
     func start() {
         guard let user = Auth.auth().currentUser else {
@@ -108,45 +99,6 @@ final class DashboardStore: ObservableObject {
                 self.updateTrends()
                 self.isLoading = false
             }
-
-        issueListener = db.collectionGroup(FirestorePath.issues)
-            .whereField("tenantId", isEqualTo: tenantId)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self else { return }
-                if let error = error {
-                    print("DashboardStore: Issue listener error: \(error)")
-                    return
-                }
-                guard let snapshot = snapshot else { return }
-                print("DashboardStore: Issue snapshot received. Documents: \(snapshot.documents.count)")
-                
-                let issues = snapshot.documents.map { Issue(id: $0.documentID, data: $0.data()) }
-                self.rawIssues = issues
-                self.issueCount = issues.count
-                self.openIssueCount = issues.filter { $0.status != "Resolved" && $0.status != "Closed" }.count
-                self.recentIssues = self.recentItems(from: issues, limit: 4) { $0.createdAt }
-                self.updateTrends()
-                self.isLoading = false
-            }
-
-        flowListener = db.collectionGroup(FirestorePath.flows)
-            .whereField("tenantId", isEqualTo: tenantId)
-            .addSnapshotListener { [weak self] snapshot, error in
-                guard let self else { return }
-                if let error = error {
-                    print("DashboardStore: Flow listener error: \(error)")
-                    return
-                }
-                guard let snapshot = snapshot else { return }
-                print("DashboardStore: Flow snapshot received. Documents: \(snapshot.documents.count)")
-                
-                let flows = snapshot.documents.map { Flow(id: $0.documentID, data: $0.data()) }
-                self.rawFlows = flows
-                self.flowCount = flows.count
-                self.recentFlows = self.recentItems(from: flows, limit: 4) { $0.createdAt }
-                self.updateTrends()
-                self.isLoading = false
-            }
     }
 
     func stop() {
@@ -158,13 +110,8 @@ final class DashboardStore: ObservableObject {
         projectCount = 0
         taskCount = 0
         openTaskCount = 0
-        issueCount = 0
-        openIssueCount = 0
-        flowCount = 0
         recentTasks = []
-        recentIssues = []
-        recentFlows = []
-        
+
         overdueTaskCount = 0
         dueTodayTaskCount = 0
         blockedTaskCount = 0
@@ -173,21 +120,15 @@ final class DashboardStore: ObservableObject {
         projectStatusDistribution = []
         taskPriorityDistribution = []
         trendData = []
-        
+
         rawTasks = []
-        rawIssues = []
-        rawFlows = []
     }
 
     private func removeListeners() {
         projectListener?.remove()
         taskListener?.remove()
-        issueListener?.remove()
-        flowListener?.remove()
         projectListener = nil
         taskListener = nil
-        issueListener = nil
-        flowListener = nil
     }
 
     private func recentItems<T>(from items: [T], limit: Int, timestamp: (T) -> Timestamp?) -> [T] {
@@ -316,8 +257,6 @@ final class DashboardStore: ObservableObject {
         }
         
         bucket(items: rawTasks, type: "Tasks") { $0.createdAt?.dateValue() }
-        bucket(items: rawIssues, type: "Issues") { $0.createdAt?.dateValue() }
-        bucket(items: rawFlows, type: "Flows") { $0.createdAt?.dateValue() }
         
         trendData = trends.sorted { $0.date < $1.date }
     }

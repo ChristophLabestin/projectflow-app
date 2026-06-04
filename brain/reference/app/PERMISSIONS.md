@@ -1,4 +1,4 @@
-# PERMISSIONS.md — Role & Permission System (Discord-style)
+# brain/reference/app/PERMISSIONS.md — Role & Permission System (Discord-style)
 
 This document defines the authoritative permission model for ProjectFlow.
 
@@ -20,10 +20,10 @@ This system must be enforced in:
 - Firestore rules (membership isolation + feasible checks)
 
 Related documents:
-- `APP_CONCEPT.md`
-- `STYLING.md`
-- `COMPONENTS.md` (notably: `MediaLibraryModal` requirements)
-- `FIRESTORE_STRUCTURE.md` (project `externalResources` can carry resource-level `sensitivity`, `restrictedToRoleIds`, and `advisorReviewRequired` metadata)
+- `brain/reference/app/APP_CONCEPT.md`
+- `brain/reference/app/STYLING.md`
+- `brain/reference/app/COMPONENTS.md` (notably: `MediaLibraryModal` requirements)
+- `brain/reference/app/FIRESTORE_STRUCTURE.md` (project `externalResources` can carry resource-level `sensitivity`, `restrictedToRoleIds`, and `advisorReviewRequired` metadata)
 
 ---
 

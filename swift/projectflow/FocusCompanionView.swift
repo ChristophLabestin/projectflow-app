@@ -408,7 +408,7 @@ private struct PinnedItemsPreview: View {
                     VStack(spacing: PFSpacing.xs) {
                         ForEach(items.prefix(4)) { item in
                             HStack(spacing: PFSpacing.sm) {
-                                Image(systemName: item.type == "issue" ? "exclamationmark.bubble" : "checklist")
+                                Image(systemName: "checklist")
                                     .font(.caption)
                                     .foregroundStyle(colors.textMuted)
                                     .frame(width: 28, height: 28)

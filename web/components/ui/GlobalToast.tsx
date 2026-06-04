@@ -1,19 +1,14 @@
-import React, { Suspense, lazy, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIState } from '../../context/UIContext';
-
-const CreateIssueModal = lazy(() => import('../CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 
 export const GlobalToast = () => {
     const { toast, closeToast } = useUIState();
     const navigate = useNavigate();
     const [isVisible, setIsVisible] = useState(false);
     const [copied, setCopied] = useState(false);
-    const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
 
     const [showDetails, setShowDetails] = useState(false);
-    const [modalMessage, setModalMessage] = useState('');
-    const [modalDetails, setModalDetails] = useState('');
 
     useEffect(() => {
         if (toast.show) {
@@ -28,7 +23,7 @@ export const GlobalToast = () => {
     }, [toast.show]);
 
     // Don't unmount if modal is open, so it doesn't disappear
-    if (!isVisible && !toast.show && !isIssueModalOpen) return null;
+    if (!isVisible && !toast.show) return null;
 
     const bgColor = toast.type === 'error' ? 'bg-red-500' :
         toast.type === 'success' ? 'bg-green-600' :
@@ -39,12 +34,6 @@ export const GlobalToast = () => {
         navigator.clipboard.writeText(fullMessage);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-    };
-
-    const handleOpenIssue = () => {
-        setModalMessage(toast.message);
-        setModalDetails(toast.details || '');
-        setIsIssueModalOpen(true);
     };
 
     return (
@@ -92,15 +81,6 @@ export const GlobalToast = () => {
                                 </button>
                             )}
                             <button
-                                onClick={handleOpenIssue}
-                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 flex items-center justify-center"
-                                title="Open Issue"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">
-                                    bug_report
-                                </span>
-                            </button>
-                            <button
                                 onClick={handleCopy}
                                 className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 flex items-center justify-center"
                                 title={copied ? "Copied!" : "Copy Error"}
@@ -129,15 +109,6 @@ export const GlobalToast = () => {
                 )}
             </div>
 
-            <Suspense fallback={null}>
-                <CreateIssueModal
-                    isOpen={isIssueModalOpen}
-                    onClose={() => setIsIssueModalOpen(false)}
-                    projectId="ogZ8Pyz8pwEQtv8I64nu"
-                    initialTitle="Bug Report"
-                    initialDescription={`${modalMessage}\n\nDetails:\n${modalDetails}`}
-                />
-            </Suspense>
         </>
     );
 };

@@ -1,7 +1,7 @@
 # ProjectFlow Retention Implementation Plan
 
 Date: 2026-05-26  
-Source report: `docs/projectflow-retention-and-codex-integration-report.md`  
+Source report: `brain/plans/projectflow-retention-and-codex-integration-report.md`  
 Initial implementation slice: notification reliability diagnostics, daily re-entry, focus usability, and iOS notification routing
 
 ## Goal
@@ -152,7 +152,7 @@ This pass intentionally implements a narrow end-to-end slice:
 - Web app: added `/project/:id/codex` with session status, latest validation, touched files, and Codex Inbox follow-ups; also added Codex activity filtering.
 - Navigation: added Codex to project context navigation, breadcrumbs, and project nav customization.
 - Plugin package: added `plugins/projectflow-codex` with plugin manifest, skill instructions, and a `projectflow_session.py` session client.
-- Docs: added `docs/projectflow-codex-api.md` plus Firestore, permissions, sitemap, component, styling, and gotcha updates.
+- Docs: added `brain/operations/projectflow-codex-api.md` plus Firestore, permissions, sitemap, component, styling, and gotcha updates.
 
 ## Phase 5 Production Rollout
 
@@ -167,7 +167,7 @@ This pass intentionally implements a narrow end-to-end slice:
 
 - Added `scripts/check-retention-provisioning.sh` to verify web push wiring, local VAPID configuration, iOS entitlement files, App Group membership, APNs entitlement presence, Xcode entitlement references, and optional signed `.app` release entitlements.
 - Added `web/.env.example` so Firebase web config and `VITE_FIREBASE_VAPID_KEY` are explicit without committing secrets.
-- Added `docs/projectflow-production-provisioning.md` with the concrete Firebase VAPID, Apple App Group, APNs, Firebase APNs, and signed-release verification checklist.
+- Added `brain/operations/projectflow-production-provisioning.md` with the concrete Firebase VAPID, Apple App Group, APNs, Firebase APNs, and signed-release verification checklist.
 - Verified the repo-side App Group entitlement is present for the main app, ambient extension, and share extension.
 - Verified the main app declares APNs entitlement locally, with the expected development value in the source entitlements file.
 - Confirmed local `web/.env.local` does not currently include `VITE_FIREBASE_VAPID_KEY`; web push token registration remains externally blocked until that public Firebase Web Push certificate key is provided in the build environment.
@@ -276,7 +276,7 @@ Deferred because they require external console/provisioning access or a signed r
 - [x] Phase 7: `firebase deploy --only hosting --project project-manager-9d0ad --non-interactive`
 - [x] Phase 7: `curl -i -X POST https://europe-west3-project-manager-9d0ad.cloudfunctions.net/sendTestNotification` returned JSON HTTP 401 for missing auth.
 - [x] Phase 7: `curl -I https://project-manager-9d0ad.web.app/notifications` returned HTTP 200.
-- [x] Phase 7: Playwright smoke at `http://127.0.0.1:3004/notifications`: protected route redirected to `/login`; no page errors. Existing Tailwind CDN warning remains documented in `SITEMAP.md`.
+- [x] Phase 7: Playwright smoke at `http://127.0.0.1:3004/notifications`: protected route redirected to `/login`; no page errors. Existing Tailwind CDN warning remains documented in `brain/reference/app/SITEMAP.md`.
 - [x] Phase 7: `git diff --check`
 - [x] Browser smoke at `http://127.0.0.1:3001/notifications`: app booted and protected route redirected to login. Authenticated dashboard/notification rendering was not exercised because no logged-in local browser session was available.
 - [x] Browser smoke at `http://127.0.0.1:3001/projects`: app booted and protected route redirected to `/login` without console/page errors. Authenticated create-project and project-overview rendering were not exercised because no logged-in local browser session was available.

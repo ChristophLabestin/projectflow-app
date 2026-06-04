@@ -126,33 +126,6 @@ export type ProjectPermissionNode =
     | 'project.tasks.comment'
     | 'project.tasks.attachFiles'
     | 'project.tasks.manageCustomFields'
-    // Flows
-    | 'project.flows.view'
-    | 'project.flows.create'
-    | 'project.flows.edit'
-    | 'project.flows.delete'
-    | 'project.flows.comment'
-    | 'project.flows.attachFiles'
-    | 'project.flows.advanceStep'
-    | 'project.flows.revertStep'
-    | 'project.flows.setStep'
-    | 'project.flows.requestReview'
-    | 'project.flows.approve'
-    | 'project.flows.reject'
-    | 'project.flows.handoffToTasks'
-    | 'project.flows.convertToInitiatives'
-    | 'project.flows.handoffToSocial'
-    | 'project.flows.handoffToMarketing'
-    // Issues
-    | 'project.issues.view'
-    | 'project.issues.create'
-    | 'project.issues.edit'
-    | 'project.issues.delete'
-    | 'project.issues.assign'
-    | 'project.issues.changeStatus'
-    | 'project.issues.comment'
-    | 'project.issues.linkGithub'
-    | 'project.issues.unlinkGithub'
     // Social - Accounts
     | 'project.social.accounts.view'
     | 'project.social.accounts.connect'
@@ -461,31 +434,6 @@ export const ALL_PROJECT_PERMISSIONS: ProjectPermissionNode[] = [
     'project.tasks.comment',
     'project.tasks.attachFiles',
     'project.tasks.manageCustomFields',
-    'project.flows.view',
-    'project.flows.create',
-    'project.flows.edit',
-    'project.flows.delete',
-    'project.flows.comment',
-    'project.flows.attachFiles',
-    'project.flows.advanceStep',
-    'project.flows.revertStep',
-    'project.flows.setStep',
-    'project.flows.requestReview',
-    'project.flows.approve',
-    'project.flows.reject',
-    'project.flows.handoffToTasks',
-    'project.flows.convertToInitiatives',
-    'project.flows.handoffToSocial',
-    'project.flows.handoffToMarketing',
-    'project.issues.view',
-    'project.issues.create',
-    'project.issues.edit',
-    'project.issues.delete',
-    'project.issues.assign',
-    'project.issues.changeStatus',
-    'project.issues.comment',
-    'project.issues.linkGithub',
-    'project.issues.unlinkGithub',
     'project.social.accounts.view',
     'project.social.accounts.connect',
     'project.social.accounts.disconnect',

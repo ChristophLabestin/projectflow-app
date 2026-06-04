@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -8,9 +8,7 @@ import { Select } from '../../components/ui/Select';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { SocialCampaign, SocialPlatform, CampaignPhase } from '../../types';
 import { createSocialCampaign, getSocialCampaign, updateCampaign } from '../../services/domain/socialService';
-import { updateIdea } from '../../services/domain/ideasService';
-import { auth, db } from '../../services/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { auth } from '../../services/firebase';
 import { generateCampaignDetailsAI, generateCampaignDescriptionAI } from '../../services/geminiService';
 import { format } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
@@ -22,8 +20,6 @@ const RichTextEditor = lazy(() => import('../../components/ui/RichTextEditor').t
 export const CreateCampaignPage = () => {
     const { id: projectId, campaignId } = useParams<{ id: string; campaignId?: string }>();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const ideaId = searchParams.get('ideaId');
     const { showError } = useToast();
     const { t, dateLocale, dateFormat } = useLanguage();
 
@@ -65,10 +61,9 @@ export const CreateCampaignPage = () => {
     const [wins, setWins] = useState<{ title: string, impact: string }[]>([]);
 
     const [loading, setLoading] = useState(false);
-    const [originIdeaId, setOriginIdeaId] = useState<string | null>(null);
 
-    // Derived: Is end date auto-calculated?
-    const isEndDateDerived = !!originIdeaId && phases.length > 0;
+    // Derived: Is end date auto-calculated? Campaigns set their own dates manually.
+    const isEndDateDerived = false;
 
     // Initial Load
     useEffect(() => {
@@ -103,7 +98,6 @@ export const CreateCampaignPage = () => {
                         setAudienceSegments(data.audienceSegments || []);
                         setRisks(data.risks || []);
                         setWins(data.wins || []);
-                        setOriginIdeaId(data.originIdeaId || null);
                     }
                 } catch (e) {
                     console.error("Failed to fetch campaign", e);
@@ -113,58 +107,7 @@ export const CreateCampaignPage = () => {
             };
             fetchCampaign();
         }
-
-        // If Creating from an Idea
-        else if (ideaId) {
-            setLoading(true);
-            const fetchIdea = async () => {
-                try {
-                    const snap = await getDoc(doc(db, 'ideas', ideaId));
-                    if (snap.exists()) {
-                        const idea = snap.data();
-                        setName(idea.title);
-
-                        // Parse concept if available
-                        if (idea.concept && idea.concept.startsWith('{')) {
-                            const parsed = JSON.parse(idea.concept);
-                            setGoal(parsed.goal || '');
-                            if (parsed.timelineStart) setStartDate(parsed.timelineStart);
-                            if (parsed.timelineEnd) setEndDate(parsed.timelineEnd);
-                            if (parsed.platforms && Array.isArray(parsed.platforms)) {
-                                // Platforms in concept are stored as objects with 'id' field (CampaignChannelStrategy)
-                                const rawPlatforms = parsed.platforms.map((p: any) => typeof p === 'string' ? p : p.id).filter(Boolean);
-
-                                // Normalize YouTube variants (YouTube Shorts, YouTube Video) to just YouTube
-                                const normalizedPlatforms = rawPlatforms.map((p: string) => {
-                                    if (p.toLowerCase().includes('youtube')) return 'YouTube';
-                                    return p;
-                                });
-
-                                // Deduplicate
-                                const uniquePlatforms = [...new Set(normalizedPlatforms)] as SocialPlatform[];
-                                setPlatforms(uniquePlatforms);
-                            }
-                            // Rich Fields map
-                            setBigIdea(parsed.bigIdea || '');
-                            setHook(parsed.hook || '');
-                            setVisualDirection(parsed.visualDirection || '');
-                            setMood(parsed.mood || '');
-                            if (parsed.phases) setPhases(parsed.phases);
-                            if (parsed.kpis) setKpis(parsed.kpis);
-                            if (parsed.audienceSegments) setAudienceSegments(parsed.audienceSegments);
-                        }
-                        // Mark as idea-derived
-                        setOriginIdeaId(ideaId);
-                    }
-                } catch (e) {
-                    console.error("Failed to fetch flow", e);
-                } finally {
-                    setLoading(false);
-                }
-            };
-            fetchIdea();
-        }
-    }, [projectId, campaignId, ideaId]);
+    }, [projectId, campaignId]);
 
     // Auto-calculate end date from start date + phases for idea-derived campaigns
     useEffect(() => {
@@ -300,10 +243,6 @@ export const CreateCampaignPage = () => {
                 wins
             };
 
-            if (ideaId) {
-                data.originIdeaId = ideaId;
-            }
-
             // Sanitize payload
             const payload = JSON.parse(JSON.stringify(data));
 
@@ -312,14 +251,6 @@ export const CreateCampaignPage = () => {
                 await updateCampaign(projectId, campaignId, payload);
             } else {
                 newCampaignId = await createSocialCampaign(projectId, payload);
-            }
-
-            if (ideaId && newCampaignId) {
-                await updateIdea(ideaId, {
-                    convertedCampaignId: newCampaignId,
-                    campaignType: 'social',
-                    stage: 'Scheduled'
-                }, projectId);
             }
 
             navigate(`/project/${projectId}/social/campaigns/${newCampaignId}`);

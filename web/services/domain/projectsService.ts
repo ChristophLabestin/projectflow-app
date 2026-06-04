@@ -128,6 +128,17 @@ const hydrateProjectAssetUrls = async (
     return next;
 };
 
+/**
+ * Resolve cover/icon (and optionally screenshot) asset URLs for a batch of
+ * projects. Each project may require Cloud Function round-trips, so prefer
+ * loading project lists with `{ hydrateAssets: false }` and calling this in the
+ * background to avoid blocking the initial render.
+ */
+export const hydrateProjectAssets = async (
+    projects: Project[],
+    options?: ProjectHydrationOptions
+): Promise<Project[]> => Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, options)));
+
 export const getUserProjects = async (
     tenantId?: string,
     hydrationOptions?: ProjectHydrationOptions

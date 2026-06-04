@@ -212,8 +212,6 @@ struct NotificationsView: View {
                 tenantId: notification.tenantId,
                 projectId: projectId,
                 taskId: notification.taskId,
-                issueId: notification.issueId,
-                flowId: notification.flowId,
                 initiativeId: notification.initiativeId
             )) {
                 NotificationRow(notification: notification, store: store)

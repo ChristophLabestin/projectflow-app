@@ -1,20 +1,25 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# ProjectFlow
 
-# Run and deploy your AI Studio app
+ProjectFlow is a multi-tenant project management app for execution, structured ideation, collaboration, and AI-assisted project work.
 
-This contains everything you need to run your app locally.
+## Project Brain
 
-View your app in AI Studio: https://ai.studio/apps/drive/1kEIphnyjjwVKv6UqnafzJJ33c5Q7qzbL
+The durable repository knowledge base lives in [brain/README.md](./brain/README.md). Start there for product context, architecture, commands, validation rules, handoffs, and migrated documentation.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
+Prerequisites: Node.js.
 
+1. Install dependencies: `cd web && npm install`
+2. Set `GEMINI_API_KEY` in `web/.env.local`
+3. Start the dev server: `cd web && npm run dev`
 
-1. Install dependencies:
-   `cd web && npm install`
-2. Set the `GEMINI_API_KEY` in `web/.env.local` to your Gemini API key
-3. Run the app:
-   `cd web && npm run dev`
+## Common Commands
+
+- Web build: `cd web && npm run build`
+- Web tests: `cd web && npm run test:run`
+- Theme lint: `cd web && npm run lint:theme`
+- Functions build: `cd functions && npm run build`
+- Swift simulator build: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`
+
+See [brain/commands-and-environment.md](./brain/commands-and-environment.md) for the full command and environment list.

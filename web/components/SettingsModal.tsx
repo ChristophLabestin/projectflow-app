@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
-import { collection, query, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -195,6 +195,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [passkeys, setPasskeys] = useState<any[]>([]);
     const [registeringPasskey, setRegisteringPasskey] = useState(false);
+    const [editingPasskeyId, setEditingPasskeyId] = useState<string | null>(null);
+    const [editingPasskeyLabel, setEditingPasskeyLabel] = useState('');
+    const [savingPasskeyLabel, setSavingPasskeyLabel] = useState(false);
     const [autoPromptEnabled, setAutoPromptEnabled] = useState(shouldAutoPrompt());
 
     // Account Management State
@@ -786,6 +789,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         } catch (e) {
             console.error(e);
             showError(t('settings.security.passkeys.toast.deleteError'));
+        }
+    };
+
+    const startRenamePasskey = (id: string, currentLabel: string) => {
+        setEditingPasskeyId(id);
+        setEditingPasskeyLabel(currentLabel || '');
+    };
+
+    const cancelRenamePasskey = () => {
+        setEditingPasskeyId(null);
+        setEditingPasskeyLabel('');
+    };
+
+    const handleRenamePasskey = async (id: string) => {
+        const newLabel = editingPasskeyLabel.trim();
+        if (!newLabel) {
+            showError(t('settings.security.passkeys.rename.errors.empty'));
+            return;
+        }
+        const user = auth.currentUser;
+        if (!user) return;
+        setSavingPasskeyLabel(true);
+        try {
+            await updateDoc(doc(db, 'users', user.uid, 'passkeys', id), { label: newLabel });
+            setPasskeys(prev => prev.map(p => (p.id === id ? { ...p, label: newLabel } : p)));
+            showSuccess(t('settings.security.passkeys.rename.toast.renamed'));
+            cancelRenamePasskey();
+        } catch (e) {
+            console.error(e);
+            showError(t('settings.security.passkeys.rename.errors.failed'));
+        } finally {
+            setSavingPasskeyLabel(false);
         }
     };
 
@@ -1647,26 +1682,78 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 {passkeys.length > 0 ? (
                                     <div className="space-y-2">
                                         {passkeys.map((key) => (
-                                            <div key={key.id} className="flex items-center justify-between p-3 rounded-lg border border-surface bg-surface">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                            <div key={key.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-surface bg-surface">
+                                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                    <div className="size-8 shrink-0 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
                                                         <span className="material-symbols-outlined text-lg">passkey</span>
                                                     </div>
-                                                    <div>
-                                                        <div className="font-medium text-sm text-main">{key.label || 'Passkey'}</div>
-                                                        <div className="text-xs text-muted">
-                                                            {t('settings.security.passkeys.created')}: {key.createdAt?.toDate ? format(key.createdAt.toDate(), 'PPP') : 'Unknown'}
+                                                    {editingPasskeyId === key.id ? (
+                                                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                                                            <Input
+                                                                value={editingPasskeyLabel}
+                                                                onChange={(e) => setEditingPasskeyLabel(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') { e.preventDefault(); handleRenamePasskey(key.id); }
+                                                                    if (e.key === 'Escape') { e.preventDefault(); cancelRenamePasskey(); }
+                                                                }}
+                                                                placeholder={t('settings.security.passkeys.rename.placeholder')}
+                                                                autoFocus
+                                                                className="flex-1"
+                                                            />
                                                         </div>
-                                                    </div>
+                                                    ) : (
+                                                        <div className="min-w-0">
+                                                            <div className="font-medium text-sm text-main truncate">{key.label || 'Passkey'}</div>
+                                                            <div className="text-xs text-muted">
+                                                                {t('settings.security.passkeys.created')}: {key.createdAt?.toDate ? format(key.createdAt.toDate(), 'PPP') : 'Unknown'}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-                                                    onClick={() => handleDeletePasskey(key.id, key.label)}
-                                                >
-                                                    <span className="material-symbols-outlined">delete</span>
-                                                </Button>
+                                                <div className="flex items-center gap-1 shrink-0">
+                                                    {editingPasskeyId === key.id ? (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                loading={savingPasskeyLabel}
+                                                                onClick={() => handleRenamePasskey(key.id)}
+                                                                aria-label={t('settings.security.passkeys.rename.save')}
+                                                            >
+                                                                <span className="material-symbols-outlined">check</span>
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                disabled={savingPasskeyLabel}
+                                                                onClick={cancelRenamePasskey}
+                                                                aria-label={t('common.cancel')}
+                                                            >
+                                                                <span className="material-symbols-outlined">close</span>
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() => startRenamePasskey(key.id, key.label)}
+                                                                aria-label={t('settings.security.passkeys.rename.action')}
+                                                            >
+                                                                <span className="material-symbols-outlined">edit</span>
+                                                            </Button>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
+                                                                onClick={() => handleDeletePasskey(key.id, key.label)}
+                                                                aria-label={t('settings.security.passkeys.delete.title')}
+                                                            >
+                                                                <span className="material-symbols-outlined">delete</span>
+                                                            </Button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </div>
                                         ))}
                                     </div>

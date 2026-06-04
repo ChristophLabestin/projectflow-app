@@ -74,8 +74,6 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
         let path = '';
         if (notification.taskId && notification.projectId) {
             path = `/project/${notification.projectId}/tasks/${notification.taskId}`;
-        } else if (notification.issueId && notification.projectId) {
-            path = `/project/${notification.projectId}/issues/${notification.issueId}`;
         } else if (notification.projectId) {
             path = `/project/${notification.projectId}`;
         }

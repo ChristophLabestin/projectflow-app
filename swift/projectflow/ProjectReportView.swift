@@ -48,7 +48,7 @@ struct ProjectReportView: View {
                                     .font(.title3.weight(.bold))
                                     .foregroundStyle(colors.textMain)
                                 
-                                Text("Create a comprehensive status report analyzing tasks, milestones, issues, and team activity to get tailored recommendations.")
+                                Text("Create a comprehensive status report analyzing tasks, milestones, and team activity to get tailored recommendations.")
                                     .font(.subheadline)
                                     .foregroundStyle(colors.textMuted)
                                     .multilineTextAlignment(.center)

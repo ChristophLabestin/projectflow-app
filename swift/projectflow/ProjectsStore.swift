@@ -64,7 +64,7 @@ final class ProjectsStore: ObservableObject {
         project.description = description
         project.status = status
         project.ownerId = userId
-        project.modules = ["tasks", "ideas", "issues", "activity"]
+        project.modules = ["tasks", "activity"]
         project.visibilityGroupIds = []
 
         do {

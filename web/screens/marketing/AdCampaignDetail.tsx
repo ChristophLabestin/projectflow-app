@@ -7,9 +7,8 @@ import {
     deleteAdCampaign,
     getAdPerformanceHistory
 } from '../../services/marketingService';
-import { getIdeaById } from '../../services/domain/ideasService';
 import { getSocialPostById } from '../../services/domain/socialService';
-import { AdCampaign, AdSet, Idea, SocialPost, AdPlatform, AdCampaignStatus } from '../../types';
+import { AdCampaign, AdSet, SocialPost, AdPlatform, AdCampaignStatus } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/UIContext';
 import { format } from 'date-fns';
@@ -39,7 +38,6 @@ export const AdCampaignDetail = () => {
 
     const [campaign, setCampaign] = useState<AdCampaign | null>(null);
     const [adSets, setAdSets] = useState<AdSet[]>([]);
-    const [originIdea, setOriginIdea] = useState<Idea | null>(null);
     const [linkedPosts, setLinkedPosts] = useState<SocialPost[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -49,12 +47,6 @@ export const AdCampaignDetail = () => {
         const unsubCampaign = subscribeAdCampaign(campaignId, async (data) => {
             setCampaign(data);
             setLoading(false);
-
-            // Load origin idea if linked
-            if (data?.originIdeaId && projectId) {
-                const idea = await getIdeaById(data.originIdeaId, projectId);
-                setOriginIdea(idea);
-            }
 
             // Load linked social posts
             if (data?.linkedSocialPostIds && projectId) {
@@ -288,35 +280,6 @@ export const AdCampaignDetail = () => {
 
                 {/* Sidebar */}
                 <div className="space-y-6">
-
-                    {/* Origin Flow */}
-                    {originIdea && (
-                        <div className="bg-card rounded-2xl border border-surface p-5">
-                            <h3 className="font-bold text-main mb-3 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[18px] text-purple-500">lightbulb</span>
-                                Origin Flow
-                            </h3>
-                            <Link
-                                to={`/project/${projectId}/flows/${originIdea.id}`}
-                                className="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-xl transition-colors group"
-                            >
-                                <div className="size-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600 flex items-center justify-center">
-                                    <span className="material-symbols-outlined">campaign</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-bold text-purple-700 dark:text-purple-300 truncate group-hover:text-purple-800 dark:group-hover:text-purple-200">
-                                        {originIdea.title}
-                                    </p>
-                                    <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80 uppercase font-bold">
-                                        {originIdea.stage}
-                                    </p>
-                                </div>
-                                <span className="material-symbols-outlined text-purple-400 group-hover:translate-x-1 transition-transform">
-                                    arrow_forward
-                                </span>
-                            </Link>
-                        </div>
-                    )}
 
                     {/* Linked Social Posts */}
                     {linkedPosts.length > 0 && (

@@ -19,16 +19,6 @@ enum PermissionNode {
     static let initiativesEdit = "project.initiatives.edit"
     static let initiativesDelete = "project.initiatives.delete"
 
-    static let flowsView = "project.flows.view"
-    static let flowsCreate = "project.flows.create"
-    static let flowsEdit = "project.flows.edit"
-    static let flowsDelete = "project.flows.delete"
-
-    static let issuesView = "project.issues.view"
-    static let issuesCreate = "project.issues.create"
-    static let issuesEdit = "project.issues.edit"
-    static let issuesDelete = "project.issues.delete"
-
     static let milestonesView = "project.milestones.view"
     static let milestonesCreate = "project.milestones.create"
     static let milestonesEdit = "project.milestones.edit"
@@ -121,8 +111,6 @@ struct PermissionEvaluator {
         switch module {
         case .tasks: return allows(PermissionNode.tasksView)
         case .initiatives: return allows(PermissionNode.initiativesView)
-        case .ideas: return allows(PermissionNode.flowsView)
-        case .issues: return allows(PermissionNode.issuesView)
         case .milestones: return allows(PermissionNode.milestonesView)
         case .sprints: return allows(PermissionNode.sprintsView)
         case .activity: return allows(PermissionNode.activityView)

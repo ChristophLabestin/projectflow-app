@@ -2,8 +2,6 @@ import type { HelpCenterTarget } from '../../context/HelpCenterContext';
 import type { HelpCenterPageDefinition } from './helpCenterTypes';
 import { GettingStartedPage, gettingStartedSections } from './pages/GettingStartedPage';
 import { ProjectsPage, projectsSections } from './pages/ProjectsPage';
-import { TasksIssuesPage, tasksIssuesSections } from './pages/TasksIssuesPage';
-import { FlowsPage, flowsSections } from './pages/FlowsPage';
 import { AIFeaturesPage, aiFeaturesSections } from './pages/AIFeaturesPage';
 import { MediaLibraryPage, mediaLibrarySections } from './pages/MediaLibraryPage';
 import { SocialStudioPage, socialStudioSections } from './pages/SocialStudioPage';
@@ -31,15 +29,6 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
         component: ProjectsPage
     },
     {
-        id: 'tasks-issues',
-        title: 'Tasks and Issues',
-        description: 'Track execution, risks, and ownership across the team.',
-        category: 'Workflows',
-        keywords: ['tasks', 'issues', 'status', 'priority'],
-        sections: tasksIssuesSections,
-        component: TasksIssuesPage
-    },
-    {
         id: 'sprints',
         title: 'Sprints (Agile)',
         description: 'Iterative delivery with backlogs, sprints, and boards.',
@@ -47,15 +36,6 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
         keywords: ['sprints', 'agile', 'scrum', 'backlog', 'kanban'],
         sections: sprintsSections,
         component: SprintsPage
-    },
-    {
-        id: 'ideas-ai',
-        title: 'Flows and CORA Studio',
-        description: 'Develop flows into structured, execution-ready plans.',
-        category: 'Workflows',
-        keywords: ['flows', 'cora', 'ai', 'briefs', 'pipeline'],
-        sections: flowsSections,
-        component: FlowsPage
     },
     {
         id: 'ai-features',
@@ -122,11 +102,8 @@ export const getHelpTargetForPath = (pathname: string): HelpCenterTarget => {
     if (path.includes('/brainstorm')) {
         return { pageId: 'ai-features' };
     }
-    if (path.includes('/flows') || path.includes('/ideas')) {
-        return { pageId: 'ideas-ai' };
-    }
-    if (path.includes('/tasks') || path.includes('/issues')) {
-        return { pageId: 'tasks-issues' };
+    if (path.includes('/tasks')) {
+        return { pageId: 'projects' };
     }
     if (path.includes('/team') || path.includes('/settings') || path.includes('/profile')) {
         return { pageId: 'account-settings' };

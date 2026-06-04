@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from 'react';
-import { Idea, AdCreative, AdTargetAudience, AdObjective, AdCampaign, AdPlatform } from '../types';
+import { PaidAd, AdCreative, AdTargetAudience, AdObjective, AdCampaign, AdPlatform } from '../types';
 import { createAdCampaign } from '../services/marketingService';
 import { auth } from '../services/firebase';
-import { updateIdea } from '../services/domain/ideasService';
+import { updatePaidAd } from '../services/domain/paidAdsService';
 
 export interface AdData {
     objective?: AdObjective | string;
@@ -105,81 +105,18 @@ const calculateCompleteness = (data: AdData): number => {
     return total > 0 ? Math.round((score / total) * 100) : 0;
 };
 
-export const usePaidAdsData = (idea: Idea, onUpdate: (updates: Partial<Idea>) => void) => {
+export const usePaidAdsData = (paidAd: PaidAd, onUpdate: (updates: Partial<PaidAd>) => void) => {
     const adData: AdData = useMemo(() => {
-        if (idea.adData) {
-            const merged = mergeAdData(idea.adData as AdData);
+        if (paidAd.adData) {
+            const merged = mergeAdData(paidAd.adData as AdData);
             merged.completeness = calculateCompleteness(merged);
             return merged;
-        }
-
-        try {
-            if (idea.concept && idea.concept.startsWith('{')) {
-                const parsed = JSON.parse(idea.concept);
-                const legacy: Partial<AdData> = {
-                    objective: parsed.objective,
-                    missionStatement: parsed.missionStatement,
-                    targetKPIs: parsed.targetKPIs,
-                    competitors: parsed.competitors,
-                    duration: parsed.timeline || parsed.duration,
-                    offer: parsed.offer,
-                    funnelStage: parsed.funnelStage,
-                    landingPage: parsed.landingPage,
-                    conversionEvent: parsed.conversionEvent,
-                    brandGuardrails: parsed.brandGuardrails,
-                    research: parsed.research,
-                    setup: {
-                        ...parsed.setup,
-                        platforms: parsed.setup?.platforms || parsed.platforms,
-                    },
-                    optimization: parsed.optimization,
-                    creative: {
-                        headline1: parsed.headline1,
-                        headline2: parsed.headline2,
-                        primaryText: parsed.primaryText,
-                        description: parsed.description,
-                        cta: parsed.cta,
-                        visualConcept: parsed.visualConcept,
-                        variations: parsed.variations
-                    },
-                    targeting: {
-                        locations: parsed.locations,
-                        ageMin: parsed.ageMin,
-                        ageMax: parsed.ageMax,
-                        genders: parsed.genders,
-                        interests: parsed.interests,
-                        behaviors: parsed.behaviors,
-                        customAudiences: Array.isArray(parsed.customAudiences) ? parsed.customAudiences : (parsed.customAudiences ? [parsed.customAudiences] : []),
-                        lookalikes: parsed.lookalikes,
-                        languages: parsed.languages,
-                        excludedAudiences: parsed.excludedAudiences,
-                        placements: parsed.placements
-                    },
-                    budget: {
-                        amount: Number(parsed.budget) || Number(parsed.budgetAmount) || 0,
-                        type: parsed.budgetType || 'Daily',
-                        currency: 'USD',
-                        bidStrategy: parsed.bidStrategy,
-                        startDate: parsed.startDate,
-                        endDate: parsed.endDate,
-                        pacing: parsed.pacing,
-                        notes: parsed.notes
-                    },
-                    completeness: 0
-                };
-
-                const merged = mergeAdData(legacy);
-                merged.completeness = calculateCompleteness(merged);
-                return merged;
-            }
-        } catch (e) {
-            // Ignore parse errors, fall back to defaults
         }
 
         const merged = mergeAdData({});
         merged.completeness = calculateCompleteness(merged);
         return merged;
-    }, [idea.adData, idea.concept]);
+    }, [paidAd.adData]);
 
     const updateAdData = useCallback((updates: Partial<AdData>) => {
         const next: AdData = {
@@ -197,14 +134,7 @@ export const usePaidAdsData = (idea: Idea, onUpdate: (updates: Partial<Idea>) =>
         next.lastSavedAt = new Date().toISOString();
 
         onUpdate({
-            adData: next,
-            concept: JSON.stringify({
-                ...next,
-                ...next.creative,
-                ...next.targeting,
-                ...next.budget,
-                budget: next.budget?.amount
-            })
+            adData: next
         });
     }, [adData, onUpdate]);
 
@@ -222,8 +152,8 @@ export const usePaidAdsData = (idea: Idea, onUpdate: (updates: Partial<Idea>) =>
 
         const campaign: Omit<AdCampaign, 'id'> = {
             projectId,
-            name: idea.title,
-            description: idea.description || adData.creative?.primaryText || '',
+            name: paidAd.title,
+            description: paidAd.description || adData.creative?.primaryText || '',
             platform: selectedPlatform,
             status: 'Pending',
             budgetType: budgetType,
@@ -250,27 +180,24 @@ export const usePaidAdsData = (idea: Idea, onUpdate: (updates: Partial<Idea>) =>
                 costPerConversion: 0,
                 roas: 0,
             },
-            originIdeaId: idea.id,
             createdBy: auth.currentUser.uid,
             createdAt: new Date(),
         };
 
         const campaignId = await createAdCampaign(campaign);
 
-        await updateIdea(idea.id, {
+        await updatePaidAd(paidAd.id, {
             convertedCampaignId: campaignId,
-            campaignType: 'ad',
-            stage: 'Optimization'
+            status: 'Live'
         }, projectId);
 
         onUpdate({
             convertedCampaignId: campaignId,
-            campaignType: 'ad',
-            stage: 'Optimization'
+            status: 'Live'
         });
 
         return campaignId;
-    }, [adData, idea, onUpdate]);
+    }, [adData, paidAd, onUpdate]);
 
     return {
         adData,

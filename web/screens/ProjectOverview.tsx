@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom
 import '../src/styles/components/_project-overview.scss';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { addActivityEntry, createInitiativeTask, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, subscribeProjectInitiatives } from '../services/dataService';
+import { addActivityEntry, createInitiativeTask, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectInitiatives } from '../services/dataService';
 import { addTask } from '../services/domain/tasksService';
 import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
@@ -14,7 +14,6 @@ import { getProjectById, getProjectMembers } from '../services/domain/projectsSe
 import { getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import { isPmCoreOnly } from '../config/pmCore';
-import { CreateFlowModal } from '../components/flows/CreateFlowModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { subscribeProjectSprints } from '../services/sprintService';
 import {
@@ -69,7 +68,6 @@ import { getStartupJurisdictionTemplate, getStartupSourceReferences, isCompanyPr
 import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStageReadinessDefaults, getStartupStagePhase, getStartupStageKey } from '../utils/startupProjects';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
-const CreateIssueModal = lazy(() => import('../components/CreateIssueModal').then((module) => ({ default: module.CreateIssueModal })));
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -87,6 +85,8 @@ import {
     type ProjectOverviewWorkspaceTab
 } from '../components/project/overview/ProjectOverviewWorkspace';
 import { ProjectOverviewWorkspaceSection } from '../components/project/overview/ProjectOverviewWorkspaceSection';
+import { ProjectOverviewPage } from '../components/project/overview/ProjectOverviewPage';
+import { isOverviewV2Enabled } from '../components/project/overview/overviewFlags';
 
 const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
     color: `var(${colorVar})`,
@@ -408,7 +408,19 @@ const OverviewCardShell = ({ card, children, className }: OverviewCardShellProps
     );
 };
 
+/**
+ * Entry point: routes to the redesigned overview (V2) when enabled, otherwise
+ * the legacy overview below. See overviewFlags.ts for the toggle.
+ */
 export const ProjectOverview = () => {
+    const { id } = useParams<{ id: string }>();
+    if (isOverviewV2Enabled()) {
+        return <ProjectOverviewPage projectId={id} />;
+    }
+    return <ProjectOverviewLegacy />;
+};
+
+const ProjectOverviewLegacy = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const confirm = useConfirm();
@@ -684,8 +696,6 @@ export const ProjectOverview = () => {
                 const unsubInitiatives = subscribeProjectInitiatives(id, setInitiatives, projData.tenantId);
                 const unsubGroups = subscribeProjectGroups(id, setProjectGroups, projData.tenantId);
                 const unsubActivity = subscribeProjectActivity(id, setActivity, projData.tenantId);
-                const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
-                const unsubIssues = subscribeProjectIssues(id, setIssues, projData.tenantId);
                 const unsubMilestones = subscribeProjectMilestones(id, setMilestones, projData.tenantId);
                 const unsubSprints = subscribeProjectSprints(id, setSprints, projData.tenantId);
 
@@ -697,8 +707,6 @@ export const ProjectOverview = () => {
                     unsubInitiatives();
                     unsubGroups();
                     unsubActivity();
-                    unsubIdeas();
-                    unsubIssues();
                     unsubMilestones();
                     unsubSprints();
                 };
@@ -743,12 +751,12 @@ export const ProjectOverview = () => {
             return;
         }
 
-        const health = calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
+        const health = calculateProjectHealth(project, tasks, milestones, [], sprints, activity, [], initiatives, []);
 
         // Save daily health snapshot (uses date as doc ID so won't duplicate)
         saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
             .catch(err => console.warn('Failed to save health snapshot:', err));
-    }, [id, project, tasks, milestones, issues, sprints, activity, initiatives, ideas]);
+    }, [id, project, tasks, milestones, sprints, activity, initiatives]);
 
     useEffect(() => {
         let mounted = true;
@@ -1592,7 +1600,7 @@ export const ProjectOverview = () => {
 
     const health = isProjectExcludedFromHealth(project)
         ? null
-        : calculateProjectHealth(project, tasks, milestones, issues, sprints, activity, [], initiatives, ideas);
+        : calculateProjectHealth(project, tasks, milestones, [], sprints, activity, [], initiatives, []);
     const startupReadiness = projectIsCompanyProject
         ? calculateStartupReadinessSnapshot(project, tasks, milestones, initiatives)
         : null;
@@ -4972,29 +4980,6 @@ export const ProjectOverview = () => {
                                 )
                             }
                             {
-                                showFlowModal && can('canManageIdeas') && (
-                                    <CreateFlowModal
-                                        isOpen={showFlowModal}
-                                        onClose={() => setShowFlowModal(false)}
-                                        projectId={id!}
-                                        onCreated={() => setShowFlowModal(false)}
-                                    />
-                                )
-                            }
-                            {
-                                showIssueModal && can('canManageIssues') && (
-                                    <Suspense fallback={null}>
-                                        <CreateIssueModal
-                                            isOpen={showIssueModal}
-                                            onClose={() => setShowIssueModal(false)}
-                                            projectId={id!}
-                                            tenantId={project?.tenantId}
-                                        />
-                                    </Suspense>
-                                )
-                            }
-
-                            {
                                 showInviteModal && project && can('canInvite') && (
                                     <InviteMemberModal
                                         isOpen={showInviteModal}
@@ -5019,7 +5004,7 @@ export const ProjectOverview = () => {
                                     health={health}
                                     tasks={tasks}
                                     milestones={milestones}
-                                    issues={issues}
+                                    issues={[]}
                                     projectTitle={project.title}
                                 />
                             )}

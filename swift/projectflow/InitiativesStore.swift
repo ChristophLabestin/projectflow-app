@@ -141,13 +141,6 @@ enum FocusItemResolver {
                 .collection(FirestorePath.initiatives).document(item.id).getDocumentAsync()
             let title = snap?.data()?["title"] as? String ?? item.title
             return (title, "Initiative")
-        case FocusItemType.issue.rawValue:
-            guard !item.projectId.isEmpty else { return (item.title, nil) }
-            let snap = try? await db.collection(FirestorePath.tenants).document(tenantId)
-                .collection(FirestorePath.projects).document(item.projectId)
-                .collection(FirestorePath.issues).document(item.id).getDocumentAsync()
-            let title = snap?.data()?["title"] as? String ?? item.title
-            return (title, "Issue")
         case FocusItemType.personalTask.rawValue:
             guard let userId = Auth.auth().currentUser?.uid else { return (item.title, "Personal Task") }
             let snap = try? await db.collection(FirestorePath.tenants).document(tenantId)

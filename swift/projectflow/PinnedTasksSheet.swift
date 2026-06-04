@@ -90,7 +90,7 @@ struct PinnedTasksSheet: View {
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(colors.textMain)
 
-            Text("Pin tasks or issues to access them quickly from here.")
+            Text("Pin tasks or initiatives to access them quickly from here.")
                 .font(.body)
                 .foregroundStyle(colors.textMuted)
                 .multilineTextAlignment(.center)

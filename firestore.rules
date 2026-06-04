@@ -106,6 +106,22 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if authed();
       allow write: if authed() && request.auth.uid == userId;
+
+      // Passkeys (WebAuthn credentials). They are created and verified
+      // server-side via Cloud Functions (admin SDK bypasses these rules), so
+      // the client never needs create. The owner may list and delete their own
+      // passkeys, and rename them — but a label-only update prevents tampering
+      // with the stored counter or public key.
+      match /passkeys/{passkeyId} {
+        allow read, delete: if authed() && request.auth.uid == userId;
+        allow update: if authed() && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['label']);
+      }
+
+      // WebAuthn challenges are written and consumed only by Cloud Functions.
+      match /passkey_challenges/{challengeId} {
+        allow read, write: if false;
+      }
     }
 
     match /tenants/{tenantId} {
@@ -161,17 +177,6 @@ service cloud.firestore {
         allow create: if canAccessTenant(tenantId);
         allow update, delete: if canAccessProjectById(tenantId, projectId);
 
-        // PM-core: legacy flows/issues are read-only (migration window).
-        match /ideas/{ideaId} {
-          allow read: if canAccessProjectById(tenantId, projectId);
-          allow write: if false;
-        }
-
-        match /issues/{issueId} {
-          allow read: if canAccessProjectById(tenantId, projectId);
-          allow write: if false;
-        }
-
         match /{document=**} {
           allow read, write: if canAccessProjectById(tenantId, projectId);
         }
@@ -221,14 +226,6 @@ service cloud.firestore {
     }
 
     match /{path=**}/initiatives/{initiativeId} {
-      allow read: if canAccessScopedDoc(resource.data);
-    }
-
-    match /{path=**}/ideas/{ideaId} {
-      allow read: if canAccessScopedDoc(resource.data);
-    }
-
-    match /{path=**}/issues/{issueId} {
       allow read: if canAccessScopedDoc(resource.data);
     }
 

@@ -30,8 +30,35 @@ const REGION = 'europe-west3'; // Frankfurt
 // Or use Google Cloud Run environment variables
 const RP_NAME = 'ProjectFlow';
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
-const RP_ID = process.env.RP_ID || (isEmulator ? 'localhost' : 'app.getprojectflow.com');
-const ORIGIN = process.env.ORIGIN || (isEmulator ? 'http://localhost:3000' : 'https://app.getprojectflow.com');
+const PROD_RP_ID = process.env.RP_ID || 'app.getprojectflow.com';
+const PROD_ORIGIN = process.env.ORIGIN || 'https://app.getprojectflow.com';
+
+/**
+ * Resolve the WebAuthn Relying Party ID + expected origin for a request.
+ *
+ * Production traffic always uses the configured production values. Local
+ * development hosts (localhost / 127.0.0.1) are allow-listed so passkeys work
+ * against the deployed backend without having to run the Functions emulator:
+ * the client passes its `window.location.origin` and we derive rpID/origin from
+ * it. Any non-local origin falls back to the production defaults, so a remote
+ * caller cannot inject an arbitrary relying party.
+ */
+const resolveRp = (clientOrigin?: string): { rpID: string; origin: string } => {
+    if (clientOrigin) {
+        try {
+            const { hostname } = new URL(clientOrigin);
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return { rpID: hostname, origin: clientOrigin };
+            }
+        } catch {
+            // Malformed origin — ignore and fall through to the defaults below.
+        }
+    }
+    if (isEmulator) {
+        return { rpID: 'localhost', origin: clientOrigin || 'http://localhost:3000' };
+    }
+    return { rpID: PROD_RP_ID, origin: PROD_ORIGIN };
+};
 
 /**
  * Generate Registration Options
@@ -45,6 +72,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
         }
         const userId = context.auth.uid;
         const userEmail = context.auth.token.email || 'user@example.com';
+        const { rpID, origin } = resolveRp(data?.origin);
 
         // 2. getUserPasskeys(user) - Retrieve user's existing passkeys to exclude them
         const passkeysSnapshot = await db.collection('users').doc(userId).collection('passkeys').get();
@@ -53,7 +81,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
         // 3. Generate registration options
         const options: PublicKeyCredentialCreationOptionsJSON = await generateRegistrationOptions({
             rpName: RP_NAME,
-            rpID: RP_ID,
+            rpID,
             userID: Buffer.from(userId),
             userName: userEmail,
             // Don't prompt if the user already has a passkey on this device
@@ -74,6 +102,10 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
         // We store it temporarily in a 'challenges' subcollection or just a field on the user doc
         await db.collection('users').doc(userId).collection('passkey_challenges').doc('current').set({
             challenge: options.challenge,
+            // Persist the relying party the options were generated for, so the
+            // verify step uses the exact same origin/rpID the browser saw.
+            origin,
+            rpID,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -101,7 +133,13 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
     if (!challengeDoc.exists) {
         throw new functions.https.HttpsError('failed-precondition', 'No registration flow initiated.');
     }
-    const expectedChallenge = challengeDoc.data()?.challenge;
+    const challengeData = challengeDoc.data();
+    const expectedChallenge = challengeData?.challenge;
+    // Prefer the relying party stored with the challenge; fall back to resolving
+    // from the client origin for challenges created before this was persisted.
+    const { rpID, origin } = challengeData?.origin
+        ? { rpID: challengeData.rpID as string, origin: challengeData.origin as string }
+        : resolveRp(data?.origin);
 
     // 3. Verify
     let verification;
@@ -109,8 +147,8 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
         verification = await verifyRegistrationResponse({
             response: response as RegistrationResponseJSON,
             expectedChallenge,
-            expectedOrigin: ORIGIN,
-            expectedRPID: RP_ID,
+            expectedOrigin: origin,
+            expectedRPID: rpID,
         });
     } catch (error: any) {
         console.error('Passkey registration verification failed', error);
@@ -206,8 +244,9 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
         }
 
         // 2. Generate options
+        const { rpID, origin } = resolveRp(data?.origin);
         const options = await generateAuthenticationOptions({
-            rpID: RP_ID,
+            rpID,
             allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
             userVerification: 'preferred',
         });
@@ -216,6 +255,9 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
         await db.collection('auth_challenges').doc(options.challenge).set({
             challenge: options.challenge,
             userId: userId || null, // If we knew the user
+            // Persist the relying party so verification matches what the browser saw.
+            origin,
+            rpID,
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
@@ -349,11 +391,17 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
         // 3. Verify
         let verification;
         try {
+            // Prefer the relying party stored with the challenge; fall back to
+            // resolving from the client origin for older challenges.
+            const { rpID, origin } = challengeData?.origin
+                ? { rpID: challengeData.rpID as string, origin: challengeData.origin as string }
+                : resolveRp(data?.origin);
+
             verification = await verifyAuthenticationResponse({
                 response: authResponse,
                 expectedChallenge: challengeData!.challenge,
-                expectedOrigin: ORIGIN,
-                expectedRPID: RP_ID,
+                expectedOrigin: origin,
+                expectedRPID: rpID,
                 credential: {
                     id: credentialID,
                     publicKey: dbPasskey.credentialPublicKey,

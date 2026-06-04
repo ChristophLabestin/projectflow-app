@@ -4,8 +4,6 @@ import FirebaseFirestore
 enum ActivityFeedFilter: String, CaseIterable, Identifiable {
     case all
     case task
-    case issue
-    case flow
     case member
     case report
 
@@ -15,8 +13,6 @@ enum ActivityFeedFilter: String, CaseIterable, Identifiable {
         switch self {
         case .all: return L10n.tr("activity.all", fallback: "All")
         case .task: return L10n.tr("activity.tasks", fallback: "Tasks")
-        case .issue: return L10n.tr("activity.issues", fallback: "Issues")
-        case .flow: return L10n.tr("activity.flows", fallback: "Flows")
         case .member: return L10n.tr("activity.members", fallback: "Members")
         case .report: return L10n.tr("activity.reports", fallback: "Reports")
         }
@@ -54,8 +50,6 @@ enum ActivityPresentation {
         let type = item.type.lowercased()
         let action = item.action.lowercased()
         if type.contains("task") || action.contains("task") { return "checkmark.circle" }
-        if type.contains("issue") || action.contains("issue") { return "exclamationmark.bubble" }
-        if type.contains("flow") || type.contains("idea") || action.contains("flow") { return "point.3.connected.trianglepath.dotted" }
         if type.contains("member") || action.contains("member") || action.contains("invite") { return "person.2" }
         if type.contains("report") || action.contains("report") { return "doc.text" }
         if type.contains("comment") { return "bubble.left" }
@@ -68,8 +62,6 @@ enum ActivityPresentation {
         switch filter {
         case .all: return true
         case .task: return item.type.lowercased().contains("task") || item.action.lowercased().contains("task")
-        case .issue: return item.type.lowercased().contains("issue") || item.action.lowercased().contains("issue")
-        case .flow: return item.type.lowercased().contains("flow") || item.type.lowercased().contains("idea")
         case .member: return item.type.lowercased().contains("member") || item.action.lowercased().contains("member")
         case .report: return item.type.lowercased().contains("report") || item.action.lowercased().contains("report")
         }

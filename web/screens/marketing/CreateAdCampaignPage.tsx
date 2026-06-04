@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createAdCampaign, updateAdCampaign, subscribeAdCampaign } from '../../services/marketingService';
-import { subscribeProjectIdeas } from '../../services/domain/ideasService';
-import { AdCampaign, AdPlatform, AdObjective, AdTargetAudience, Idea } from '../../types';
+import { AdCampaign, AdPlatform, AdObjective, AdTargetAudience } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -60,14 +59,9 @@ export const CreateAdCampaignPage = () => {
         genders: ['All'],
         interests: [],
     });
-    const [originIdeaId, setOriginIdeaId] = useState<string | undefined>();
-
     // Location input
     const [locationInput, setLocationInput] = useState('');
     const [interestInput, setInterestInput] = useState('');
-
-    // Ideas for linking
-    const [ideas, setIdeas] = useState<Idea[]>([]);
 
     // Load existing campaign for edit mode
     useEffect(() => {
@@ -84,26 +78,12 @@ export const CreateAdCampaignPage = () => {
                     setStartDate(data.startDate.split('T')[0]);
                     setEndDate(data.endDate?.split('T')[0] || '');
                     if (data.targetAudience) setTargeting(data.targetAudience);
-                    setOriginIdeaId(data.originIdeaId);
                 }
                 setInitialLoading(false);
             });
             return () => unsub();
         }
     }, [isEditMode, campaignId]);
-
-    // Load ideas for Flow linking
-    useEffect(() => {
-        if (!projectId) return;
-        const unsub = subscribeProjectIdeas(projectId, (data) => {
-            setIdeas(data.filter(i =>
-                i.type === 'Marketing' &&
-                (i.stage === 'Approved' || i.stage === 'Live') &&
-                i.campaignType !== 'ad'
-            ));
-        });
-        return () => unsub();
-    }, [projectId]);
 
     const handleAddLocation = () => {
         if (locationInput.trim() && !targeting.locations?.includes(locationInput.trim())) {
@@ -167,7 +147,6 @@ export const CreateAdCampaignPage = () => {
                     costPerConversion: 0,
                     roas: 0,
                 },
-                originIdeaId,
                 createdAt: new Date().toISOString(),
                 createdBy: auth.currentUser?.uid,
             };
@@ -293,30 +272,6 @@ export const CreateAdCampaignPage = () => {
                                     ))}
                                 </div>
                             </div>
-
-                            {/* Link from Flow */}
-                            {ideas.length > 0 && (
-                                <div className="space-y-3 pt-4 border-t border-surface">
-                                    <label className="text-sm font-bold text-main flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[16px] text-purple-500">lightbulb</span>
-                                        Link from Flow (Optional)
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {ideas.map(idea => (
-                                            <button
-                                                key={idea.id}
-                                                onClick={() => setOriginIdeaId(originIdeaId === idea.id ? undefined : idea.id)}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${originIdeaId === idea.id
-                                                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ring-1 ring-purple-500'
-                                                        : 'bg-surface text-muted hover:bg-surface-hover'
-                                                    }`}
-                                            >
-                                                {idea.title}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     )}
 
@@ -511,9 +466,6 @@ export const CreateAdCampaignPage = () => {
                                     <ReviewRow label="Locations" value={targeting.locations.join(', ')} />
                                 )}
                                 <ReviewRow label="Age Range" value={`${targeting.ageMin} - ${targeting.ageMax}`} />
-                                {originIdeaId && (
-                                    <ReviewRow label="Linked Flow" value={ideas.find(i => i.id === originIdeaId)?.title || 'Unknown'} />
-                                )}
                             </div>
                         </div>
                     )}

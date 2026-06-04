@@ -18,7 +18,6 @@ import { Initiative, Milestone, Project, Task } from '../types';
 import { calculateInitiativeHealth } from '../services/healthService';
 import { timeAgo, toDate } from '../utils/time';
 import { getProjectById } from '../services/domain/projectsService';
-import { getIdeaById } from '../services/domain/ideasService';
 import {
     deleteInitiative,
     ensureProjectInitiativesMigrated,
@@ -164,11 +163,7 @@ export const ProjectInitiativeDetail = () => {
 
             void getInitiativeById(initiativeId, projectId, nextProject.tenantId).then((item) => {
                 setInitiative(item);
-                if (item) {
-                    if (item.originIdeaId) {
-                        void getIdeaById(item.originIdeaId, projectId, nextProject.tenantId).then(setSourceIdea).catch(console.error);
-                    }
-                }
+                setSourceIdea(null);
             });
 
             unsubInitiativeTasks = subscribeInitiativeTasks(projectId, initiativeId, setTasks, nextProject.tenantId);

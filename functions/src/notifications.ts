@@ -44,19 +44,9 @@ const buildDeepLink = (notification: Record<string, unknown>): string => {
         return `/project/${projectId}/tasks/${taskId}`;
     }
 
-    const issueId = getString(notification.issueId);
-    if (issueId) {
-        return `/project/${projectId}/issues/${issueId}`;
-    }
-
     const initiativeId = getString(notification.initiativeId);
     if (initiativeId) {
         return `/project/${projectId}/initiatives/${initiativeId}`;
-    }
-
-    const flowId = getString(notification.flowId);
-    if (flowId) {
-        return `/project/${projectId}/flows/${flowId}`;
     }
 
     return `/project/${projectId}`;
@@ -143,9 +133,7 @@ const sendPushNotification = async (
         type: getString(notification.type),
         projectId: getString(notification.projectId),
         taskId: getString(notification.taskId),
-        issueId: getString(notification.issueId),
         initiativeId: getString(notification.initiativeId),
-        flowId: getString(notification.flowId),
         deepLink
     });
 

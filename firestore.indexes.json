@@ -111,26 +111,6 @@
       ]
     },
     {
-      "collectionGroup": "ideas",
-      "fieldPath": "ownerId",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "ideas",
-      "fieldPath": "tenantId",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
       "collectionGroup": "projects",
       "fieldPath": "memberIds",
       "indexes": [
@@ -175,26 +155,6 @@
       ]
     },
     {
-      "collectionGroup": "flows",
-      "fieldPath": "tenantId",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "issues",
-      "fieldPath": "tenantId",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
       "collectionGroup": "milestones",
       "fieldPath": "tenantId",
       "indexes": [
@@ -210,34 +170,6 @@
       "indexes": [
         {
           "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "issues",
-      "fieldPath": "assigneeId",
-      "indexes": [
-        {
-          "order": "ASCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        },
-        {
-          "order": "DESCENDING",
-          "queryScope": "COLLECTION_GROUP"
-        },
-        {
-          "arrayConfig": "CONTAINS",
-          "queryScope": "COLLECTION_GROUP"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "issues",
-      "fieldPath": "assigneeIds",
-      "indexes": [
-        {
-          "arrayConfig": "CONTAINS",
           "queryScope": "COLLECTION_GROUP"
         }
       ]

@@ -17,8 +17,6 @@ struct AppNotification: Identifiable {
     let tenantId: String
     let projectId: String?
     let taskId: String?
-    let issueId: String?
-    let flowId: String?
     let initiativeId: String?
     let actorId: String?
 }
@@ -79,8 +77,6 @@ final class NotificationStore: ObservableObject {
                 let createdAt = (data["createdAt"] as? Timestamp)?.dateValue()
                 let projectId = data["projectId"] as? String
                 let taskId = data["taskId"] as? String
-                let issueId = data["issueId"] as? String
-                let flowId = data["flowId"] as? String
                 let initiativeId = data["initiativeId"] as? String
                 let actorId = data["actorId"] as? String
 
@@ -94,8 +90,6 @@ final class NotificationStore: ObservableObject {
                     tenantId: tenantId,
                     projectId: projectId,
                     taskId: taskId,
-                    issueId: issueId,
-                    flowId: flowId,
                     initiativeId: initiativeId,
                     actorId: actorId
                 )

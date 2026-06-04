@@ -459,7 +459,7 @@ extension Project {
 
     func enabledNavModules() -> [ProjectModule] {
         let order: [ProjectModule] = [
-            .initiatives, .tasks, .sprints, .issues, .ideas, .milestones, .activity
+            .initiatives, .tasks, .sprints, .milestones, .activity
         ]
         return order.filter { hasModule($0) }
     }

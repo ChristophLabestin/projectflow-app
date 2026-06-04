@@ -14,15 +14,17 @@ import { usePermissions } from '../context/PermissionContext';
 import { useUIState } from '../context/UIContext';
 import type { ProjectExternalResource } from '../types';
 
+// When true, the sidebar renders icon-only (driven by the overview "stretch" mode).
+const SidebarCollapsedContext = React.createContext(false);
+
 type SidebarProps = {
     isDrawer?: boolean;
+    collapsed?: boolean;
     onClose?: () => void;
     workspace?: {
         projectId: string;
         projectTitle?: string;
         tasksCount?: number;
-        ideasCount?: number;
-        issuesCount?: number;
         modules?: string[];
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean; // New flag to prevent flickering
@@ -52,6 +54,7 @@ const NavItem = ({
     disabled?: boolean;
 }) => {
     const location = useLocation();
+    const collapsed = React.useContext(SidebarCollapsedContext);
     const isActive = exact
         ? location.pathname === to
         : to === '/'
@@ -60,9 +63,12 @@ const NavItem = ({
 
     if (disabled) {
         return (
-            <div className="flex items-center gap-3.5 px-3 py-2 text-muted opacity-30 cursor-not-allowed">
+            <div
+                className={`flex items-center gap-3.5 px-3 py-2 text-muted opacity-30 cursor-not-allowed ${collapsed ? 'justify-center' : ''}`}
+                title={collapsed ? label : undefined}
+            >
                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
-                <span className="text-[14px]/none font-medium text-inherit">{label}</span>
+                {!collapsed && <span className="text-[14px]/none font-medium text-inherit">{label}</span>}
             </div>
         );
     }
@@ -71,26 +77,36 @@ const NavItem = ({
         <Link
             to={to}
             onClick={onClick}
+            title={collapsed ? label : undefined}
             className={`
-                group relative flex items-center gap-3.5 px-3.5 py-2 rounded-xl transition-all duration-300
+                group relative flex items-center gap-3.5 rounded-xl transition-all duration-300
+                ${collapsed ? 'justify-center px-0 py-2.5' : 'px-3.5 py-2'}
                 ${isActive
                     ? 'bg-surface-hover text-main font-bold shadow-sm'
                     : 'text-muted hover:bg-surface-hover/40 hover:text-main'}
             `}
         >
             {/* Elegant Active Indicator */}
-            {isActive && (
+            {isActive && !collapsed && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-primary rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
             )}
 
-            <span
-                className={`material-symbols-outlined text-[20px] transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted group-hover:text-main overflow-hidden'}`}
-            >
-                {icon}
+            <span className="relative">
+                <span
+                    className={`material-symbols-outlined text-[20px] transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted group-hover:text-main overflow-hidden'}`}
+                >
+                    {icon}
+                </span>
+                {collapsed && badge !== undefined && badge > 0 && (
+                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
+                )}
             </span>
-            <span className="text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">{label}</span>
 
-            {badge !== undefined && badge > 0 && (
+            {!collapsed && (
+                <span className="text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">{label}</span>
+            )}
+
+            {!collapsed && badge !== undefined && badge > 0 && (
                 <div className={`
                     flex items-center justify-center min-w-[20px] h-5 rounded-full px-1 transition-all duration-300
                     ${isActive
@@ -108,7 +124,8 @@ const NavItem = ({
 // Sidebar Component
 // ----------------------------------------------------------------------
 
-export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) => {
+export const Sidebar = ({ isDrawer = false, collapsed = false, onClose, workspace }: SidebarProps) => {
+    const effectiveCollapsed = collapsed && !isDrawer;
     const user = auth.currentUser;
     const location = useLocation();
     const { theme } = useTheme();
@@ -165,59 +182,64 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const isProjectActive = Boolean(workspace?.projectId);
 
     return (
+      <SidebarCollapsedContext.Provider value={effectiveCollapsed}>
         <aside
             className={`
                 flex flex-col bg-card border-r border-surface
-                ${isDrawer ? 'w-full h-full' : 'hidden md:flex w-[280px]'}
+                ${isDrawer ? 'w-full h-full' : effectiveCollapsed ? 'hidden md:flex w-[72px]' : 'hidden md:flex w-[280px]'}
                 transition-all duration-300 relative z-20
             `}
         >
             {/* 1. Header Area */}
-            <div className="flex flex-col gap-4 p-4 pb-2">
-                <div className="flex items-center gap-2">
-                    <div className="flex-1 min-w-0">
-                        <ProjectSwitcher
-                            currentProjectId={workspace?.projectId}
-                            currentProjectTitle={workspace?.projectTitle}
-                            onClose={onClose}
-                        />
+            <div className={`flex flex-col gap-4 p-4 pb-2 ${effectiveCollapsed ? 'items-center px-2' : ''}`}>
+                {!effectiveCollapsed && (
+                    <div className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                            <ProjectSwitcher
+                                currentProjectId={workspace?.projectId}
+                                currentProjectTitle={workspace?.projectTitle}
+                                onClose={onClose}
+                            />
+                        </div>
+                        {isDrawer && (
+                            <button
+                                onClick={onClose}
+                                className="size-8 rounded-full hover:bg-surface-hover flex items-center justify-center text-muted shrink-0"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        )}
                     </div>
-                    {isDrawer && (
-                        <button
-                            onClick={onClose}
-                            className="size-8 rounded-full hover:bg-surface-hover flex items-center justify-center text-muted shrink-0"
-                        >
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
-                    )}
-                </div>
+                )}
 
                 {/* New Project Button - Premium Design */}
                 <button
                     type="button"
+                    title={effectiveCollapsed ? t('nav.newProject') : undefined}
                     onClick={() => {
                         if (isDrawer) onClose?.();
                         openProjectCreateModal();
                     }}
-                    className="
-                        group relative w-full flex items-center justify-center gap-3 px-4 py-2.5 
+                    className={`
+                        group relative flex items-center justify-center gap-3 py-2.5
                         bg-primary text-on-primary font-bold text-[13px]
                         rounded-xl border-none shadow-xl shadow-[var(--color-primary)]/15
                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden
-                    "
+                        ${effectiveCollapsed ? 'size-10 px-0' : 'w-full px-4'}
+                    `}
                 >
                     <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="material-symbols-outlined text-[20px]">add</span>
-                    <span className="tracking-tight">{t('nav.newProject')}</span>
+                    {!effectiveCollapsed && <span className="tracking-tight">{t('nav.newProject')}</span>}
                 </button>
             </div>
 
             {/* 2. Scrollable Navigation Area */}
-            <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-8 scrollbar-none">
+            <nav className={`flex-1 overflow-y-auto py-6 space-y-8 scrollbar-none ${effectiveCollapsed ? 'px-2' : 'px-4'}`}>
 
                 {/* Scope: Global Workspace */}
                 <div>
-                    {isFinanceContext && canViewFinance && (
+                    {isFinanceContext && canViewFinance && !effectiveCollapsed && (
                         <button
                             type="button"
                             onClick={() => setUseRegularNavInFinance((prev) => !prev)}
@@ -234,12 +256,14 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                         </button>
                     )}
 
-                    <div className="flex items-center gap-3 px-1 mb-3">
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
-                            {t('nav.workspace')}
-                        </span>
-                        <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
-                    </div>
+                    {!effectiveCollapsed && (
+                        <div className="flex items-center gap-3 px-1 mb-3">
+                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
+                                {t('nav.workspace')}
+                            </span>
+                            <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
+                        </div>
+                    )}
 
                     <AnimatePresence mode="wait" initial={false}>
                         <motion.div
@@ -271,21 +295,23 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
                                     <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
-                                    <button
-                                        type="button"
-                                        onClick={() => setAdvancedNavOpen((prev) => !prev)}
-                                        className="mt-2 w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-muted hover:bg-surface-hover/40 hover:text-main transition-colors"
-                                    >
-                                        <span className="flex items-center gap-3">
-                                            <span className="material-symbols-outlined text-[20px]">more_horiz</span>
-                                            <span className="text-[14px] font-medium">{t('nav.advanced')}</span>
-                                        </span>
-                                        <span className="material-symbols-outlined text-[18px]">
-                                            {advancedNavOpen ? 'expand_less' : 'expand_more'}
-                                        </span>
-                                    </button>
-                                    {advancedNavOpen && (
-                                        <div className="grid gap-0.5 pl-1">
+                                    {!effectiveCollapsed && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setAdvancedNavOpen((prev) => !prev)}
+                                            className="mt-2 w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-xl text-muted hover:bg-surface-hover/40 hover:text-main transition-colors"
+                                        >
+                                            <span className="flex items-center gap-3">
+                                                <span className="material-symbols-outlined text-[20px]">more_horiz</span>
+                                                <span className="text-[14px] font-medium">{t('nav.advanced')}</span>
+                                            </span>
+                                            <span className="material-symbols-outlined text-[18px]">
+                                                {advancedNavOpen ? 'expand_less' : 'expand_more'}
+                                            </span>
+                                        </button>
+                                    )}
+                                    {(advancedNavOpen || effectiveCollapsed) && (
+                                        <div className={`grid gap-0.5 ${effectiveCollapsed ? '' : 'pl-1'}`}>
                                             {canViewFinance && (
                                                 <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
                                             )}
@@ -315,12 +341,14 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 {/* Scope: Current Context (Active Project) */}
                 {isProjectActive && workspace && workspace.isLoaded && (
                     <div className="animate-fade-in-down">
-                        <div className="flex items-center gap-3 px-1 mb-3">
-                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
-                                {t('nav.projectContext')}
-                            </span>
-                            <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
-                        </div>
+                        {!effectiveCollapsed && (
+                            <div className="flex items-center gap-3 px-1 mb-3">
+                                <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
+                                    {t('nav.projectContext')}
+                                </span>
+                                <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
+                            </div>
+                        )}
 
                         <div className="grid gap-0.5">
                             {(() => {
@@ -330,11 +358,10 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     { id: 'initiatives', path: '/initiatives', icon: 'rocket_launch', label: t('nav.initiatives'), moduleKey: 'initiatives' },
                                     { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
                                     { id: 'sprints', path: '/sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
-                                    { id: 'issues', path: '/issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues', badge: workspace.issuesCount },
-                                    { id: 'ideas', path: '/flows', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas', badge: workspace.ideasCount },
                                     { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
                                     { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
                                     { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
+                                    { id: 'accounting', path: '/accounting', icon: 'receipt_long', label: t('nav.accounting'), moduleKey: 'accounting' },
                                     { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
                                     { id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') },
                                 ];
@@ -388,7 +415,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                             })()}
 
                             {/* Resources Section - Integrated as NavItems */}
-                            {workspace.externalResources && workspace.externalResources.length > 0 && (
+                            {!effectiveCollapsed && workspace.externalResources && workspace.externalResources.length > 0 && (
                                 <div className="mt-5 space-y-1">
                                     <div className="flex items-center gap-3 px-1 mb-3">
                                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
@@ -430,19 +457,24 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             </nav>
 
             {/* 3. Footer */}
-            <div className="p-4 border-t border-surface bg-card space-y-4">
-
-
-                {/* Theme Toggle + Notification Bell Row */}
-                <div className="flex items-center justify-between">
-                    <ThemeToggle />
+            {effectiveCollapsed ? (
+                <div className="p-2 border-t border-surface bg-card flex flex-col items-center gap-2">
                     <NotificationDropdown position="sidebar" />
                 </div>
+            ) : (
+                <div className="p-4 border-t border-surface bg-card space-y-4">
+                    {/* Theme Toggle + Notification Bell Row */}
+                    <div className="flex items-center justify-between">
+                        <ThemeToggle />
+                        <NotificationDropdown position="sidebar" />
+                    </div>
 
-                {/* Workspace Team Presence Indicator */}
-                <WorkspaceTeamIndicator onClose={isDrawer ? onClose : undefined} />
-            </div>
+                    {/* Workspace Team Presence Indicator */}
+                    <WorkspaceTeamIndicator onClose={isDrawer ? onClose : undefined} />
+                </div>
+            )}
         </aside>
+      </SidebarCollapsedContext.Provider>
     );
 };
 

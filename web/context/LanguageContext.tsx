@@ -133,7 +133,7 @@ export function LanguageProvider({
         }
         return !window.location.pathname.startsWith('/legal');
     });
-    const [flowStageTranslationsReady, setFlowStageTranslationsReady] = useState<boolean>(false);
+    const [flowStageTranslationsReady, setFlowStageTranslationsReady] = useState<boolean>(true);
 
     const hasLegalTranslations = Boolean(legalTranslations.en && legalTranslations.de);
     const hasFlowStageTranslations = Boolean(flowStageTranslations.en && flowStageTranslations.de);
@@ -169,22 +169,8 @@ export function LanguageProvider({
         setLegalTranslationsReady(true);
     }, [hasLegalTranslations]);
     const loadFlowStageTranslations = useCallback(async () => {
-        if (hasFlowStageTranslations) {
-            setFlowStageTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextFlowStagesEn }, { default: nextFlowStagesDe }] = await Promise.all([
-            import('../locales/flow-stages-en'),
-            import('../locales/flow-stages-de')
-        ]);
-
-        setFlowStageTranslations({
-            en: nextFlowStagesEn,
-            de: nextFlowStagesDe
-        });
         setFlowStageTranslationsReady(true);
-    }, [hasFlowStageTranslations]);
+    }, []);
     const [socialTranslationsReady, setSocialTranslationsReady] = useState<boolean>(false);
     const [settingsTranslationsReady, setSettingsTranslationsReady] = useState<boolean>(false);
     const [projectOverviewTranslationsReady, setProjectOverviewTranslationsReady] = useState<boolean>(false);

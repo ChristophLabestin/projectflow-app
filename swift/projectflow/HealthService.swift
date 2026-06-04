@@ -114,7 +114,6 @@ enum HealthService {
         project: Project,
         tasks: [ProjectTask] = [],
         milestones: [Milestone] = [],
-        issues: [Issue] = [],
         sprints: [Sprint] = [],
         activities: [ActivityItem] = []
     ) -> ProjectHealthSnapshot {
@@ -338,7 +337,7 @@ enum HealthService {
 
         }
 
-        // 3. BLOCKERS & ISSUES
+        // 3. BLOCKERS
         let blockedTasks = tasks.filter { $0.status == "Blocked" }.count
         if blockedTasks > 0 {
             let impact = min(25, blockedTasks * 5)
@@ -358,30 +357,6 @@ enum HealthService {
             addRecommendation(
                 "health.recommendations.resolveBlockers",
                 "Resolve dependencies or clear blockers for the restricted tasks."
-            )
-        }
-
-        let urgentIssues = issues.filter {
-            ($0.priority == "Urgent" || $0.priority == "High") && $0.status != "Resolved" && $0.status != "Closed"
-        }.count
-        if urgentIssues > 0 {
-            let impact = min(20, urgentIssues * 4)
-            score -= impact
-            factors.append(
-                HealthFactor(
-                    id: "unresolved_issues",
-                    label: "Critical Issues",
-                    description: "\(urgentIssues) high-priority issue(s) remain unresolved.",
-                    impact: -impact,
-                    type: .negative,
-                    labelKey: "health.factors.unresolved_issues.label",
-                    descriptionKey: "health.factors.unresolved_issues.description",
-                    meta: ["count": "\(urgentIssues)"]
-                )
-            )
-            addRecommendation(
-                "health.recommendations.addressIssues",
-                "Address critical issues to stabilize project health."
             )
         }
 
@@ -501,7 +476,7 @@ enum HealthService {
         if score > 80 && recentCompletions > 2 {
             trend = .improving
         }
-        if score < 50 && (blockedTasks > 0 || urgentIssues > 0) {
+        if score < 50 && blockedTasks > 0 {
             trend = .declining
         }
 
@@ -548,7 +523,6 @@ enum HealthService {
         project: Project,
         tasks: [ProjectTask] = [],
         milestones: [Milestone] = [],
-        issues: [Issue] = [],
         sprints: [Sprint] = [],
         activities: [ActivityItem] = []
     ) -> SpotlightScore {
@@ -692,26 +666,6 @@ enum HealthService {
                 "\(imminentMilestones) milestone\(imminentMilestones == 1 ? "" : "s") due this week",
                 imminentMilestones * 30,
                 ["count": "\(imminentMilestones)"]
-            )
-        }
-
-        let openIssues = issues.filter { $0.status != "Resolved" && $0.status != "Closed" }
-        let urgentIssueCount = openIssues.filter { $0.priority == "Urgent" }.count
-        let highPriorityIssueCount = openIssues.filter { $0.priority == "High" }.count
-
-        if urgentIssueCount > 0 {
-            addReason(
-                "health.spotlight.urgentIssues",
-                "\(urgentIssueCount) urgent issue\(urgentIssueCount == 1 ? "" : "s") open",
-                urgentIssueCount * 40,
-                ["count": "\(urgentIssueCount)"]
-            )
-        } else if highPriorityIssueCount > 0 {
-            addReason(
-                "health.spotlight.highPriorityIssues",
-                "\(highPriorityIssueCount) high-priority issue\(highPriorityIssueCount == 1 ? "" : "s") open",
-                highPriorityIssueCount * 20,
-                ["count": "\(highPriorityIssueCount)"]
             )
         }
 

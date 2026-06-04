@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects } from '../services/dataService';
 import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
 import { getWorkspaceGroups } from '../services/domain/workspaceGroupsService';
-import { filterModulesForWizardOptions, isPmCoreOnly, normalizeModulesForPmCore, PM_CORE_DEPRECATED_MODULES } from '../config/pmCore';
+import { isPmCoreOnly, normalizeModulesForPmCore, PM_CORE_DEPRECATED_MODULES } from '../config/pmCore';
 import { createProject } from '../services/domain/projectAdminService';
 import { addTask } from '../services/domain/tasksService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';

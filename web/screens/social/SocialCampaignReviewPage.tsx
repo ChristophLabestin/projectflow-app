@@ -1,15 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { createSocialCampaign, getSocialCampaign, updateCampaign } from '../../services/domain/socialService';
-import { getIdeaById, updateIdea } from '../../services/domain/ideasService';
-import { Idea, SocialCampaign } from '../../types';
+import { getSocialCampaign, updateCampaign } from '../../services/domain/socialService';
+import { SocialCampaign } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { PlatformIcon } from './components/PlatformIcon';
-import { generateRiskWinAnalysis } from '../../services/geminiService';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialCampaignStatusLabel, getSocialPostFormatLabel, getSocialPostStatusLabel } from '../../utils/socialLocalization';
@@ -32,17 +30,13 @@ const CONTENT_TYPE_STYLES: Record<string, string> = {
     Text: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
 };
 
-const formatStatusLabel = (value: string) => value.replace(/([a-z])([A-Z])/g, '$1 $2');
-
 export const SocialCampaignReviewPage = () => {
-    const { id: projectId, ideaId } = useParams<{ id: string; ideaId: string }>();
+    const { id: projectId, campaignId } = useParams<{ id: string; campaignId: string }>();
     const navigate = useNavigate();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
-    const [idea, setIdea] = useState<Idea | null>(null);
-    const [linkedCampaign, setLinkedCampaign] = useState<SocialCampaign | null>(null);
+    const [campaign, setCampaign] = useState<SocialCampaign | null>(null);
     const [loading, setLoading] = useState(true);
-    const [analyzing, setAnalyzing] = useState(false);
 
     // Approval/Rejection State
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -57,181 +51,98 @@ export const SocialCampaignReviewPage = () => {
 
     useEffect(() => {
         const load = async () => {
-            if (!projectId || !ideaId) return;
+            if (!projectId || !campaignId) return;
             try {
-                const i = await getIdeaById(ideaId, projectId);
-                setIdea(i);
-                if (i?.convertedCampaignId) {
-                    const c = await getSocialCampaign(projectId, i.convertedCampaignId);
-                    setLinkedCampaign(c);
-                }
+                const c = await getSocialCampaign(projectId, campaignId);
+                setCampaign(c);
             } catch (e) { console.error(e); }
             finally { setLoading(false); }
         };
         load();
-    }, [projectId, ideaId]);
-
-    const handleUpdate = async (updates: Partial<Idea>) => {
-        if (!idea || !projectId) return;
-        await updateIdea(idea.id, updates, projectId);
-        setIdea(prev => prev ? { ...prev, ...updates } : null);
-    };
+    }, [projectId, campaignId]);
 
     const handleApprove = async () => {
-        if (!idea || !projectId) return;
+        if (!campaign || !projectId) return;
 
-        // Re-parse concept to ensure we have the absolute latest data at moment of approval
-        let currentConcept: any = {};
-        try {
-            if (idea.concept && idea.concept.startsWith('{')) {
-                currentConcept = JSON.parse(idea.concept);
-            }
-        } catch (e) { console.error("Failed to parse concept during approval", e); }
+        // Concept data already lives on the campaign; promote it to Active.
+        const normalizedPlatforms = Array.isArray(campaign.platforms)
+            ? [...new Set(campaign.platforms.map((p: any) => {
+                const id = (p && typeof p === 'object') ? (p.id || p.platform) : p;
+                if (typeof id === 'string' && id.toLowerCase().includes('youtube')) return 'YouTube';
+                return id;
+            }))] as SocialCampaign['platforms']
+            : campaign.platforms;
 
-        const currentPlanningPosts = Array.isArray(currentConcept.planningPosts) ? currentConcept.planningPosts : [];
-        const currentPhases = Array.isArray(currentConcept.phases) ? currentConcept.phases : [];
-        const currentKpis = Array.isArray(currentConcept.kpis) ? currentConcept.kpis : [];
-        const currentAudiences = Array.isArray(currentConcept.audienceSegments) ? currentConcept.audienceSegments : [];
-
-        // Prepare rich data
-        const richPlatforms = Array.isArray(currentConcept.platforms) ? currentConcept.platforms : [];
-        const rawPlatformNames = richPlatforms.map((p: any) => p.id || p.platform);
-
-        // Normalize YouTube variants (YouTube Shorts, YouTube Video) to just YouTube
-        const normalizedPlatformNames = rawPlatformNames.map((p: string) => {
-            if (typeof p === 'string' && p.toLowerCase().includes('youtube')) return 'YouTube';
-            return p;
-        });
-        const platformNames = [...new Set(normalizedPlatformNames)]; // Deduplicate
-
-        const campaignId = await createSocialCampaign(projectId, {
-            name: idea.title,
-            description: idea.description || '',
+        await updateCampaign(projectId, campaign.id, {
             status: 'Active',
-            ownerId: idea.ownerId || '',
-            projectId: projectId,
-            originIdeaId: idea.id,
-            color: '#10b981',
-
-            // Rich Data Transfer
-            platforms: platformNames.length > 0 ? platformNames : ['Instagram'],
-            channelStrategy: richPlatforms,
-            bigIdea: currentConcept.bigIdea,
-            hook: currentConcept.hook,
-            visualDirection: currentConcept.visualDirection,
-            mood: currentConcept.mood,
-            phases: currentPhases,
-            kpis: currentKpis,
-            audienceSegments: currentAudiences,
-            targetAudience: Array.isArray(currentAudiences) ? currentAudiences.join(', ') : currentConcept.targetAudience,
-            plannedContent: currentPlanningPosts,
-
-            // AI Analysis Data
-            risks: idea.riskWinAnalysis?.risks?.map((r: any) => ({
-                title: typeof r === 'string' ? r : r.title,
-                severity: r.severity || 'Medium',
-                mitigation: r.mitigation || ''
-            })),
-            wins: idea.riskWinAnalysis?.wins?.map((w: any) => ({
-                title: typeof w === 'string' ? w : w.title,
-                impact: w.impact || 'Medium'
-            })),
-
-            assignedUserIds: idea.assignedUserIds || [],
-            approvalHistory: [{ id: Date.now().toString(), type: 'approval', date: new Date().toISOString(), actorId: 'current-user' }]
-        });
-
-        await updateIdea(idea.id, {
-            convertedCampaignId: campaignId,
-            stage: 'Approved',
+            platforms: normalizedPlatforms,
+            approvedBy: 'current-user',
             approvedAt: new Date().toISOString(),
-            approvedBy: 'current-user'
-        }, projectId);
+            lastRejectionReason: '',
+            approvalHistory: [
+                ...(campaign.approvalHistory || []),
+                { id: Date.now().toString(), type: 'approval', date: new Date().toISOString(), actorId: 'current-user' }
+            ]
+        });
 
         navigate(`/project/${projectId}/social`);
     };
 
     const handleRequestChanges = async (reason?: string) => {
-        if (!idea || !projectId) return;
-        await updateIdea(idea.id, {
-            stage: 'ChangeRequested',
+        if (!campaign || !projectId) return;
+        await updateCampaign(projectId, campaign.id, {
+            status: 'ChangesRequested',
             lastRejectionReason: reason
-        }, projectId);
+        });
         navigate(`/project/${projectId}/social`);
     };
 
     const handlePermanentReject = async (reason?: string) => {
-        if (!idea || !projectId) return;
-        if (idea.convertedCampaignId) {
-            await updateCampaign(projectId, idea.convertedCampaignId, { status: 'Rejected' });
-        }
-        await updateIdea(idea.id, {
-            stage: 'Rejected',
+        if (!campaign || !projectId) return;
+        await updateCampaign(projectId, campaign.id, {
+            status: 'Rejected',
             lastRejectionReason: reason
-        }, projectId);
+        });
         navigate(`/project/${projectId}/social`);
     };
 
-    const handleRunAnalysis = async () => {
-        if (!idea) return;
-        setAnalyzing(true);
-        try {
-            const result = await generateRiskWinAnalysis(idea);
-            handleUpdate({ riskWinAnalysis: result });
-        } catch (e) { console.error(e); }
-        finally { setAnalyzing(false); }
-    };
-
-    // Data Parsing
-    const concept = useMemo(() => {
-        try { return idea?.concept && idea.concept.startsWith('{') ? JSON.parse(idea.concept) : {}; }
-        catch { return {}; }
-    }, [idea?.concept]);
-
-    const phases = useMemo(() => Array.isArray(concept.phases) ? concept.phases : [], [concept]);
-    const platforms = useMemo(() => Array.isArray(concept.platforms) ? concept.platforms : [], [concept]);
-    const kpis = useMemo(() => Array.isArray(concept.kpis) ? concept.kpis : [], [concept]);
-    const audienceSegments = useMemo(() => Array.isArray(concept.audienceSegments) ? concept.audienceSegments : [], [concept]);
-    const themes = useMemo(() => Array.isArray(concept.themes) ? concept.themes : [], [concept]);
-    const planningPosts = useMemo(() => Array.isArray(concept.planningPosts) ? concept.planningPosts : [], [concept]);
+    // Concept data read directly off the campaign
+    const phases = useMemo(() => Array.isArray(campaign?.phases) ? campaign!.phases! : [], [campaign?.phases]);
+    const platforms = useMemo(() => {
+        if (Array.isArray(campaign?.channelStrategy) && campaign!.channelStrategy!.length > 0) return campaign!.channelStrategy!;
+        return Array.isArray(campaign?.platforms) ? campaign!.platforms! : [];
+    }, [campaign?.channelStrategy, campaign?.platforms]);
+    const kpis = useMemo(() => Array.isArray(campaign?.kpis) ? campaign!.kpis! : [], [campaign?.kpis]);
+    const audienceSegments = useMemo(() => Array.isArray(campaign?.audienceSegments) ? campaign!.audienceSegments! : [], [campaign?.audienceSegments]);
+    const themes = useMemo(() => Array.isArray(campaign?.tags) ? campaign!.tags! : [], [campaign?.tags]);
+    const planningPosts = useMemo(() => Array.isArray(campaign?.plannedContent) ? campaign!.plannedContent! : [], [campaign?.plannedContent]);
 
     // Scores
-    const score = idea?.riskWinAnalysis?.successProbability || 0;
-    const marketFit = (idea?.riskWinAnalysis?.marketFitScore || 0) * 10;
-    const feasibility = (idea?.riskWinAnalysis?.technicalFeasibilityScore || 0) * 10;
+    const score = campaign?.analysis?.successProbability || 0;
+    const marketFit = (campaign?.analysis?.marketFitScore || 0) * 10;
+    const feasibility = (campaign?.analysis?.technicalFeasibilityScore || 0) * 10;
 
-    const campaignStatus = linkedCampaign?.status;
+    const campaignStatus = campaign?.status;
     const viewMode = useMemo(() => {
-        if (campaignStatus === 'PendingReview' || idea?.stage === 'PendingReview') return 'reviewer-pending';
-        if (campaignStatus === 'ChangesRequested' || idea?.stage === 'ChangeRequested') return 'creator-changes-requested';
-        if (campaignStatus === 'Rejected' || idea?.stage === 'Rejected') return 'rejected';
+        if (campaignStatus === 'PendingReview' || campaignStatus === 'Concept') return 'reviewer-pending';
+        if (campaignStatus === 'ChangesRequested') return 'creator-changes-requested';
+        if (campaignStatus === 'Rejected') return 'rejected';
         return 'approved';
-    }, [campaignStatus, idea?.stage]);
+    }, [campaignStatus]);
 
     const statusLabel = useMemo(() => {
         if (campaignStatus) return getSocialCampaignStatusLabel(campaignStatus, t);
-        const stage = idea?.stage || 'Draft';
-        const stageKeyMap: Record<string, string> = {
-            PendingReview: 'pendingReview',
-            ChangeRequested: 'changesRequested',
-            ChangesRequested: 'changesRequested',
-            Rejected: 'rejected',
-            Approved: 'approved',
-            Draft: 'draft',
-            Concept: 'concept'
-        };
-        const key = stageKeyMap[stage] || stage.toLowerCase();
-        return t(`social.review.status.${key}`, formatStatusLabel(stage));
-    }, [campaignStatus, idea?.stage, t]);
+        return t('social.review.status.draft', 'Draft');
+    }, [campaignStatus, t]);
 
     const statusVariant = useMemo<'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'outline'>(() => {
-        const key = (campaignStatus || idea?.stage || '').toLowerCase();
+        const key = (campaignStatus || '').toLowerCase();
         if (key.includes('reject')) return 'error';
-        if (key.includes('pending') || key.includes('review') || key.includes('change')) return 'warning';
+        if (key.includes('pending') || key.includes('review') || key.includes('change') || key.includes('concept')) return 'warning';
         if (key.includes('active') || key.includes('approved')) return 'success';
-        if (key.includes('draft') || key.includes('concept')) return 'secondary';
+        if (key.includes('draft') || key.includes('planning')) return 'secondary';
         return 'default';
-    }, [campaignStatus, idea?.stage]);
+    }, [campaignStatus]);
 
     const maxPlannedDay = useMemo(() => {
         return planningPosts.reduce((max: number, post: any) => {
@@ -302,7 +213,7 @@ export const SocialCampaignReviewPage = () => {
     ];
 
     if (loading) return <div className="h-full flex items-center justify-center text-muted">{t('social.review.loading')}</div>;
-    if (!idea) return <div className="p-10 text-center text-muted">{t('social.review.notFound')}</div>;
+    if (!campaign) return <div className="p-10 text-center text-muted">{t('social.review.notFound')}</div>;
 
     return (
         <div className="min-h-full w-full pb-24">
@@ -333,13 +244,13 @@ export const SocialCampaignReviewPage = () => {
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                             </div>
                             <div className="space-y-2">
-                                <h1 className="text-xl md:text-2xl font-bold text-main">{idea.title}</h1>
-                                <div className="text-xs text-muted font-medium">{t('social.review.summary.id').replace('{id}', idea.id.slice(0, 6))}</div>
+                                <h1 className="text-xl md:text-2xl font-bold text-main">{campaign.name}</h1>
+                                <div className="text-xs text-muted font-medium">{t('social.review.summary.id').replace('{id}', campaign.id.slice(0, 6))}</div>
                             </div>
-                            {linkedCampaign && (
-                                <div className="flex items-center gap-2 text-xs text-muted border-t border-surface pt-3">
-                                    <span className="material-symbols-outlined text-[16px]">campaign</span>
-                                    <span className="font-medium text-main truncate">{linkedCampaign.name}</span>
+                            {campaign.lastRejectionReason && (
+                                <div className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300 border-t border-surface pt-3">
+                                    <span className="material-symbols-outlined text-[16px]">rate_review</span>
+                                    <span className="font-medium truncate">{campaign.lastRejectionReason}</span>
                                 </div>
                             )}
                         </Card>
@@ -350,15 +261,6 @@ export const SocialCampaignReviewPage = () => {
                                     <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.performance.title')}</div>
                                     <p className="text-xs text-muted">{t('social.review.performance.subtitle')}</p>
                                 </div>
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    onClick={handleRunAnalysis}
-                                    isLoading={analyzing}
-                                    icon={<span className="material-symbols-outlined text-[16px]">refresh</span>}
-                                >
-                                    {t('social.review.performance.refresh')}
-                                </Button>
                             </div>
 
                             <div className="flex items-center gap-3">
@@ -434,27 +336,27 @@ export const SocialCampaignReviewPage = () => {
                             <div className="space-y-2">
                                 <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('social.review.coreFlow')}</div>
                                 <h2 className="text-2xl md:text-3xl font-bold text-main">
-                                    "{concept.bigIdea || idea.description || t('social.review.coreFlowFallback')}"
+                                    "{campaign.bigIdea || campaign.description || t('social.review.coreFlowFallback')}"
                                 </h2>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface">
                                 <div>
                                     <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{t('social.review.hookLabel')}</div>
                                     <p className="text-sm font-medium italic text-main leading-relaxed">
-                                        "{concept.hook || t('social.review.hookFallback')}"
+                                        "{campaign.hook || t('social.review.hookFallback')}"
                                     </p>
                                 </div>
                                 <div className="space-y-3">
                                     <div>
                                         <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{t('social.review.visualDirection')}</div>
                                         <p className="text-sm text-muted leading-relaxed">
-                                            {concept.visualDirection || t('social.review.visualDirectionFallback')}
+                                            {campaign.visualDirection || t('social.review.visualDirectionFallback')}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        {concept.mood && (
+                                        {campaign.mood && (
                                             <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-hover border border-surface text-muted">
-                                                {concept.mood}
+                                                {campaign.mood}
                                             </span>
                                         )}
                                         {themes.map((t: string) => (
@@ -465,7 +367,7 @@ export const SocialCampaignReviewPage = () => {
                                                 #{t}
                                             </span>
                                         ))}
-                                        {!concept.mood && themes.length === 0 && (
+                                        {!campaign.mood && themes.length === 0 && (
                                             <span className="text-xs text-muted">{t('social.review.noThemes')}</span>
                                         )}
                                     </div>
@@ -788,9 +690,9 @@ export const SocialCampaignReviewPage = () => {
 
                         <Card className="space-y-4">
                             <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.riskMitigation')}</div>
-                            {idea.riskWinAnalysis ? (
+                            {campaign.risks && campaign.risks.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {idea.riskWinAnalysis.risks.slice(0, 4).map((risk: any, i) => (
+                                    {campaign.risks.slice(0, 4).map((risk: any, i) => (
                                         <div key={i} className="rounded-xl border border-surface bg-surface p-4">
                                             <div className="flex items-start gap-3 mb-3">
                                                 <span className="material-symbols-outlined text-warning text-lg">warning</span>

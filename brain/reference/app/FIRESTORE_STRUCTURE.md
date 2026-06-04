@@ -282,7 +282,8 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 > These collections exist *within* a project document.
 
 *   **`tasks`**
-    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`
+    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, nextStep, blockerNote, reminderAt, lastWorkbenchNote, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`
+        *   Full Workbench fields are optional task metadata: `nextStep` is the next concrete action, `blockerNote` explains blocked work, `reminderAt` is a visible reminder date only, and `lastWorkbenchNote` stores the latest quick-log note. They do not create notification backend behavior by themselves.
         *   Startup/company template seeds use `source: "template"` or `source: "official_template"`, `templateId: "startup_company_formation"`, `templateTrack`, `templateSeedId`, and optional `sourceReferences` to keep generated work editable, filterable, and source-auditable.
     *   📄 `Initiative`: `{ title, status, priority, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, successMetric, ... }`
     *   📄 `Milestone`: `{ title, status, dueDate, riskRating, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`

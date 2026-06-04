@@ -422,8 +422,10 @@ export const deleteProjectOverviewTemplate = async (templateId: string, tenantId
 };
 
 export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?: string): Promise<Idea | null> => {
-    const { getIdeaById: getIdeaByIdDomain } = await import('./domain/ideasService');
-    return getIdeaByIdDomain(ideaId, projectId, tenantId);
+    void ideaId;
+    void projectId;
+    void tenantId;
+    return null;
 };
 
 export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (idea: Idea) => void, tenantId?: string) => {
@@ -1797,23 +1799,28 @@ export const updateSubtaskFields = async (
 // --- Ideas ---
 
 export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
-    const { saveIdea: saveIdeaDomain } = await import('./domain/ideasService');
-    return saveIdeaDomain(idea, tenantId);
+    void idea;
+    void tenantId;
+    throw new Error('Ideas are removed in PM-core mode.');
 };
 
 export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
-    const { updateIdea: updateIdeaDomain } = await import('./domain/ideasService');
-    return updateIdeaDomain(ideaId, updates, projectId, tenantId);
+    void ideaId;
+    void updates;
+    void projectId;
+    void tenantId;
+    throw new Error('Ideas are removed in PM-core mode.');
 };
 
 export const deleteIdea = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    const { deleteIdea: deleteIdeaDomain } = await import('./domain/ideasService');
-    return deleteIdeaDomain(ideaId, projectId, tenantId);
+    void ideaId;
+    void projectId;
+    void tenantId;
+    throw new Error('Ideas are removed in PM-core mode.');
 };
 
 export const getUserIdeas = async (): Promise<Idea[]> => {
-    const { getUserIdeas: getUserIdeasDomain } = await import('./domain/ideasService');
-    return getUserIdeasDomain();
+    return [];
 };
 
 export const getProjectIdeas = async (projectId: string, tenantId?: string): Promise<Idea[]> => {
@@ -1860,8 +1867,10 @@ export const subscribeTaskActivity = (projectId: string, taskId: string, callbac
 // --- Issues ---
 
 export const createIssue = async (projectId: string, issue: Partial<Issue>, tenantId?: string) => {
-    const { createIssue: createIssueDomain } = await import('./domain/issuesService');
-    return createIssueDomain(projectId, issue, tenantId);
+    void projectId;
+    void issue;
+    void tenantId;
+    throw new Error('Issues are removed in PM-core mode.');
 };
 
 export const getProjectIssues = async (projectId: string, tenantId?: string): Promise<Issue[]> => {
@@ -1874,19 +1883,28 @@ export const getProjectIssues = async (projectId: string, tenantId?: string): Pr
 };
 
 export const getIssueById = async (issueId: string, projectId?: string, tenantId?: string): Promise<Issue | null> => {
-    const { getIssueById: getIssueByIdDomain } = await import('./domain/issuesService');
-    return getIssueByIdDomain(issueId, projectId, tenantId);
+    void issueId;
+    void projectId;
+    void tenantId;
+    return null;
 };
 
 
 export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
-    const { updateIssue: updateIssueDomain } = await import('./domain/issuesService');
-    return updateIssueDomain(issueId, updates, projectId, tenantId, path);
+    void issueId;
+    void updates;
+    void projectId;
+    void tenantId;
+    void path;
+    throw new Error('Issues are removed in PM-core mode.');
 };
 
 export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string, path?: string) => {
-    const { deleteIssue: deleteIssueDomain } = await import('./domain/issuesService');
-    return deleteIssueDomain(issueId, projectId, tenantId, path);
+    void issueId;
+    void projectId;
+    void tenantId;
+    void path;
+    throw new Error('Issues are removed in PM-core mode.');
 };
 
 export const subscribeProjectIssues = (
@@ -1894,24 +1912,10 @@ export const subscribeProjectIssues = (
     callback: (issues: Issue[]) => void,
     tenantId?: string
 ) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let isCancelled = false;
-
-    import('./domain/issuesService')
-        .then(({ subscribeProjectIssues: subscribeProjectIssuesDomain }) => {
-            if (isCancelled) {
-                return;
-            }
-            unsubscribe = subscribeProjectIssuesDomain(projectId, callback, tenantId);
-        })
-        .catch((error) => {
-            console.error('Failed to subscribe project issues', error);
-        });
-
-    return () => {
-        isCancelled = true;
-        unsubscribe();
-    };
+    void projectId;
+    void tenantId;
+    callback([]);
+    return () => undefined;
 };
 
 // --- Realtime subscriptions ---
@@ -2179,22 +2183,10 @@ export const subscribeProjectIdeas = (
     callback: (ideas: Idea[]) => void,
     tenantId?: string
 ) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/ideasService').then(({ subscribeProjectIdeas: subscribeProjectIdeasDomain }) => {
-        const nextUnsubscribe = subscribeProjectIdeasDomain(projectId, callback, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
+    void projectId;
+    void tenantId;
+    callback([]);
+    return () => undefined;
 };
 
 export const subscribeProjectActivity = (
@@ -2392,8 +2384,7 @@ export const deleteComment = async (commentId: string, projectId: string, tenant
 };
 
 export const getUserIssues = async (): Promise<Issue[]> => {
-    const { getUserIssues: getUserIssuesDomain } = await import('./domain/issuesService');
-    return getUserIssuesDomain();
+    return [];
 };
 
 export const subscribeTenantProjects = (

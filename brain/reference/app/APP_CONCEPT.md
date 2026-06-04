@@ -1,4 +1,4 @@
-# APP_CONCEPT.md — ProjectFlow Product Concept & Architecture
+# brain/reference/app/APP_CONCEPT.md — ProjectFlow Product Concept & Architecture
 
 This document defines the product concept, core functionality, and high-level architecture of the ProjectFlow project management application.  
 It is the product-level source of truth for scope, entities, relationships, subscription tiers, and entitlements.
@@ -253,7 +253,7 @@ A permission system is required and must work across:
 - **Viewer:** read-only access
 
 ### 5.2 Required Deliverable
-Create a separate document: `PERMISSIONS.md` that defines:
+Create a separate document: `brain/reference/app/PERMISSIONS.md` that defines:
 - roles
 - permission matrix (actions → allowed roles)
 - how permissions are stored (membership docs, claims if needed)
@@ -405,7 +405,7 @@ User-facing text must not be hardcoded; it must come from the language dictionar
 
 ## 11) Open Decisions / TODOs
 
-- Define `PERMISSIONS.md` (roles, actions, module gates, enforcement).
+- Define `brain/reference/app/PERMISSIONS.md` (roles, actions, module gates, enforcement).
 - Specify Organization SSO configuration structure and supported providers.
 - Define Organization custom AI limits and governance policies (exact fields + UI).
 - Define a clean code structure for tenant-specific custom Flow pipelines (Organization bespoke implementations).

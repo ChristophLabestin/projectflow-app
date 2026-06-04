@@ -25,12 +25,11 @@ API tracking: retry when ProjectFlow API accepts writes (403/500 as of 2026-06-0
 
 ## Feature flag
 
-- `VITE_PM_CORE_ONLY` — default **enabled** when unset (`true`). Set to `false` to restore legacy modules in nav (routes still redirect deprecated paths).
+- `VITE_PM_CORE_ONLY` — default **enabled** when unset (`true`). PM-core now hides only Flows (`ideas`/`flows`) and Issues; Sprints, Milestones, Social, Marketing, Accounting, Activities, Tasks, Initiatives, and Codex remain available when enabled for a project.
 
 ## Removed / deprecated routes (PM core)
 
 - `/project/:id/flows`, `/ideas`, `/issues` → redirect to `/project/:id/tasks`
-- Social/Marketing project routes → redirect to project overview when PM core
 
 ## Data migration (R6)
 

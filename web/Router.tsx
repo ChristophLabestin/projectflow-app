@@ -49,12 +49,8 @@ const ProjectTaskDetail = React.lazy(() => import('./screens/ProjectTaskDetail')
 const ProjectInitiatives = React.lazy(() => import('./screens/ProjectInitiatives').then((module) => ({ default: module.ProjectInitiatives })));
 const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitiativeDetail').then((module) => ({ default: module.ProjectInitiativeDetail })));
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
-const ProjectIssueDetail = React.lazy(() => import('./screens/ProjectIssueDetail').then((module) => ({ default: module.ProjectIssueDetail })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectCodex = React.lazy(() => import('./screens/ProjectCodex').then((module) => ({ default: module.ProjectCodex })));
-const ProjectFlows = React.lazy(() => import('./screens/ProjectFlows').then((module) => ({ default: module.ProjectFlows })));
-const FlowDetail = React.lazy(() => import('./screens/FlowDetail').then((module) => ({ default: module.FlowDetail })));
-const ProjectIssues = React.lazy(() => import('./screens/ProjectIssues').then((module) => ({ default: module.ProjectIssues })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const SocialLayout = React.lazy(() => import('./screens/social/SocialLayout').then((module) => ({ default: module.SocialLayout })));
 const SocialDashboard = React.lazy(() => import('./screens/social/SocialDashboard').then((module) => ({ default: module.SocialDashboard })));
@@ -260,13 +256,7 @@ export const AppRouter = () => {
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
                             <Route path="codex" element={withRouteSuspense(<ProjectCodex />)} />
-                            <Route path="flows" element={withPmCoreGuard(withRouteSuspense(<ProjectFlows />))} />
-                            <Route path="flows/:flowId" element={withPmCoreGuard(withRouteSuspense(<FlowDetail />))} />
-                            <Route path="ideas" element={withPmCoreGuard(withRouteSuspense(<ProjectFlows />))} />
-                            <Route path="ideas/:flowId" element={withPmCoreGuard(withRouteSuspense(<FlowDetail />))} />
-                            <Route path="issues" element={withPmCoreGuard(withRouteSuspense(<ProjectIssues />))} />
-                            <Route path="issues/:issueId" element={withPmCoreGuard(withRouteSuspense(<ProjectIssueDetail />))} />
-                            <Route path="milestones" element={withPmCoreGuard(withRouteSuspense(<ProjectMilestones />), 'overview')} />
+                            <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />
                             <Route
                                 path="sprints"
                                 element={
@@ -278,12 +268,11 @@ export const AppRouter = () => {
 
                             <Route
                                 path="social"
-                                element={withPmCoreGuard(
+                                element={
                                     <RequireModuleAccess module="social">
                                         {withRouteSuspense(<SocialLayout />)}
-                                    </RequireModuleAccess>,
-                                    'overview'
-                                )}
+                                    </RequireModuleAccess>
+                                }
                             >
                                 <Route index element={withRouteSuspense(<SocialDashboard />)} />
                                 <Route path="campaigns" element={withRouteSuspense(<CampaignList />)} />
@@ -332,12 +321,11 @@ export const AppRouter = () => {
 
                             <Route
                                 path="marketing"
-                                element={withPmCoreGuard(
+                                element={
                                     <RequireModuleAccess module="marketing">
                                         {withRouteSuspense(<MarketingLayout />)}
-                                    </RequireModuleAccess>,
-                                    'overview'
-                                )}
+                                    </RequireModuleAccess>
+                                }
                             >
                                 <Route index element={withRouteSuspense(<MarketingDashboard />)} />
                                 <Route path="ads" element={withRouteSuspense(<PaidAdsList />)} />

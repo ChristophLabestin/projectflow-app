@@ -2,7 +2,6 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { db } from "./init";
-import { isPmCoreOnly } from "./pmCore";
 
 // Types locally defined since we can't easily import from root in this setup
 type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X' | 'YouTube';
@@ -267,12 +266,11 @@ type HealthStatus = 'excellent' | 'healthy' | 'warning' | 'critical' | 'stalemat
  * This is a cloud function version - simplified from the full client-side calculation.
  */
 function calculateSimpleHealthScore(
-    tasks: admin.firestore.QueryDocumentSnapshot[],
-    issues: admin.firestore.QueryDocumentSnapshot[]
+    tasks: admin.firestore.QueryDocumentSnapshot[]
 ): { score: number; status: HealthStatus; trend: 'improving' | 'declining' | 'stable' } {
     let score = 70; // Base score
 
-    if (tasks.length === 0 && issues.length === 0) {
+    if (tasks.length === 0) {
         return { score: 50, status: 'normal', trend: 'stable' };
     }
 
@@ -308,16 +306,6 @@ function calculateSimpleHealthScore(
 
     if (urgentPending.length > 3) score -= 10;
     else if (urgentPending.length > 0) score -= 5;
-
-    // Open issues penalty
-    const openIssues = issues.filter(i => {
-        const data = i.data();
-        return data.status !== 'Resolved' && data.status !== 'Closed';
-    });
-
-    if (openIssues.length > 5) score -= 15;
-    else if (openIssues.length > 2) score -= 10;
-    else if (openIssues.length > 0) score -= 5;
 
     // Clamp score
     score = Math.max(0, Math.min(100, score));
@@ -374,13 +362,7 @@ export const dailyHealthSnapshots = onSchedule(
                             .collection('projects').doc(projectId)
                             .collection('tasks').get();
 
-                        const issuesSnap = isPmCoreOnly()
-                            ? { docs: [] as admin.firestore.QueryDocumentSnapshot[] }
-                            : await db.collection('tenants').doc(tenantId)
-                                .collection('projects').doc(projectId)
-                                .collection('issues').get();
-
-                        const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
+                        const health = calculateSimpleHealthScore(tasksSnap.docs);
 
                         // Save snapshot using date as document ID (prevents duplicates)
                         const snapshotRef = db.collection('tenants').doc(tenantId)
@@ -446,13 +428,7 @@ export const debugHealthSnapshots = onRequest({ region: "europe-west3" }, async 
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
 
-                    const issuesSnap = isPmCoreOnly()
-                        ? { docs: [] as admin.firestore.QueryDocumentSnapshot[] }
-                        : await db.collection('tenants').doc(tenantId)
-                            .collection('projects').doc(projectId)
-                            .collection('issues').get();
-
-                    const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
+                    const health = calculateSimpleHealthScore(tasksSnap.docs);
 
                     const snapshotRef = db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)

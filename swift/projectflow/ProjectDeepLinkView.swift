@@ -6,13 +6,9 @@ struct ProjectDeepLinkView: View {
     let tenantId: String
     let projectId: String
     let taskId: String?
-    let issueId: String?
-    let flowId: String?
     let initiativeId: String?
     @State private var project: Project?
     @State private var task: ProjectTask?
-    @State private var issue: Issue?
-    @State private var flow: Flow?
     @State private var initiative: Initiative?
     @State private var isLoading = true
     @State private var errorMessage: String?
@@ -20,12 +16,10 @@ struct ProjectDeepLinkView: View {
     @EnvironmentObject private var appSession: AppSession
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
-    init(tenantId: String, projectId: String, taskId: String? = nil, issueId: String? = nil, flowId: String? = nil, initiativeId: String? = nil) {
+    init(tenantId: String, projectId: String, taskId: String? = nil, initiativeId: String? = nil) {
         self.tenantId = tenantId
         self.projectId = projectId
         self.taskId = taskId
-        self.issueId = issueId
-        self.flowId = flowId
         self.initiativeId = initiativeId
     }
 
@@ -46,12 +40,8 @@ struct ProjectDeepLinkView: View {
                 errorState(message: errorMessage)
             } else if let task {
                 ProjectTaskDetailView(task: task, tenantId: tenantId, permissions: permissions)
-            } else if let issue {
-                ProjectIssueDetailView(issue: issue, tenantId: tenantId, permissions: permissions)
             } else if let initiative {
                 ProjectInitiativeDetailView(initiative: initiative, tenantId: tenantId, permissions: permissions)
-            } else if let flow {
-                FlowDetailView(flow: flow, tenantId: tenantId, permissions: permissions)
             } else if let project = project {
                 ProjectOverviewView(project: project, tenantId: tenantId)
             } else {
@@ -106,26 +96,10 @@ struct ProjectDeepLinkView: View {
             }
             return
         }
-        if let issueId {
-            fetchDoc(db: db, collection: FirestorePath.issues, id: issueId) { data in
-                if let data { self.issue = Issue(id: issueId, data: data) }
-                else { self.errorMessage = "Issue does not exist." }
-                self.isLoading = false
-            }
-            return
-        }
         if let initiativeId {
             fetchDoc(db: db, collection: FirestorePath.initiatives, id: initiativeId) { data in
                 if let data { self.initiative = Initiative(id: initiativeId, data: data) }
                 else { self.errorMessage = "Initiative does not exist." }
-                self.isLoading = false
-            }
-            return
-        }
-        if let flowId {
-            fetchDoc(db: db, collection: FirestorePath.flows, id: flowId) { data in
-                if let data { self.flow = Flow(id: flowId, data: data) }
-                else { self.errorMessage = "Flow does not exist." }
                 self.isLoading = false
             }
             return

@@ -50,6 +50,8 @@ const serializePinnedItem = (item: PinnedItem) => compactRecord({
     isCompleted: item.isCompleted
 }) as PinnedItem;
 
+const isSupportedPinnedItem = (item: PinnedItem) => item.type !== 'issue';
+
 const serializeFocusState = (state: UserFocusState) => compactRecord({
     itemId: state.itemId,
     itemType: state.itemType,
@@ -108,11 +110,15 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 setIsLoading(true);
                 try {
                     const profile = await getUserProfile(user.uid);
-                    const nextPinnedItems = (profile?.pinnedItems || []) as PinnedItem[];
-                    const nextFocusItemId = profile?.focusItemId || profile?.focusState?.itemId || null;
+                    const nextPinnedItems = ((profile?.pinnedItems || []) as PinnedItem[]).filter(isSupportedPinnedItem);
+                    const rawFocusItemId = profile?.focusItemId || profile?.focusState?.itemId || null;
+                    const nextFocusItemId = nextPinnedItems.some(item => item.id === rawFocusItemId) ? rawFocusItemId : null;
+                    const nextFocusState = nextFocusItemId && profile?.focusState?.itemType !== 'issue'
+                        ? profile.focusState
+                        : getFallbackFocusState(nextPinnedItems, nextFocusItemId);
                     setPinnedItems(nextPinnedItems);
                     setFocusItemState(nextFocusItemId);
-                    setFocusState(profile?.focusState || getFallbackFocusState(nextPinnedItems, nextFocusItemId));
+                    setFocusState(nextFocusState);
                 } catch (e) {
                     console.error("Failed to load pinned items from Firebase", e);
                 } finally {
@@ -145,9 +151,9 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
             try {
                 await updateUserData(user.uid, {
-                    pinnedItems: items.map(serializePinnedItem),
-                    focusItemId: focusId,
-                    focusState: nextFocusState ? serializeFocusState(nextFocusState) : null
+                    pinnedItems: items.filter(isSupportedPinnedItem).map(serializePinnedItem),
+                    focusItemId: nextFocusState?.itemType === 'issue' ? null : focusId,
+                    focusState: nextFocusState && nextFocusState.itemType !== 'issue' ? serializeFocusState(nextFocusState) : null
                 });
             } catch (e) {
                 console.error("Failed to save pinned items to Firebase", e);
@@ -157,7 +163,7 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const pinItem = useCallback((item: PinnedItem) => {
         setPinnedItems(prev => {
-            if (prev.some(i => i.id === item.id)) return prev;
+            if (!isSupportedPinnedItem(item) || prev.some(i => i.id === item.id)) return prev;
             const newItems = [...prev, item];
             saveToFirebase(newItems, focusItemId, focusState);
             return newItems;
@@ -190,6 +196,7 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
     const startFocusItem = useCallback((item: PinnedItem) => {
         setPinnedItems(prev => {
+            if (!isSupportedPinnedItem(item)) return prev;
             const newItems = prev.some(i => i.id === item.id)
                 ? prev.map((candidate) => candidate.id === item.id ? { ...candidate, ...item } : candidate)
                 : [...prev, item];

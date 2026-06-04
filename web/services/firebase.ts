@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,13 +27,10 @@ try {
   storage = getStorage(app);
   functions = getFunctions(app, 'europe-west3');
 
-  // Connect to emulators if running locally
-  // FIXME: This forces emulator usage even if we want to test prod from localhost.
-  // Uncomment only if you are actually running `firebase emulators:start`
-  // if (location.hostname === 'localhost') {
-  //   connectFunctionsEmulator(functions, 'localhost', 5001);
-  //   console.log('Connected to Functions Emulator');
-  // }
+  // We always call the deployed (production) Cloud Functions, including from
+  // localhost. The passkey functions are localhost-aware: they honour the
+  // client origin so WebAuthn works on `http://localhost:3000` as well as in
+  // production. No emulator is required.
 } catch (error) {
   console.error("Firebase initialization error:", error);
   // Throw error so it is visible in console if app fails to load

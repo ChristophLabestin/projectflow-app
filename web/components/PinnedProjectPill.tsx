@@ -3,16 +3,14 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useUIState } from '../context/UIContext';
-import { ProjectModule, Task, Issue, Milestone, Activity, Initiative, Idea } from '../types';
+import { ProjectModule, Task, Milestone, Activity, Initiative } from '../types';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
-import { subscribeProjectIssues } from '../services/domain/issuesService';
 import { subscribeProjectInitiatives } from '../services/domain/initiativesService';
 import { subscribeProjectMilestones } from '../services/domain/projectMetaService';
 import { subscribeProjectActivity } from '../services/domain/activityService';
-import { subscribeProjectIdeas } from '../services/domain/ideasService';
 
 const DROPDOWN_WIDTH = 376;
 const DROPDOWN_GAP = 12;
@@ -25,7 +23,7 @@ type DropdownCoords = {
 
 export const PinnedProjectPill = () => {
     const { pinnedProject, isLoading } = usePinnedProject();
-    const { openTaskCreateModal, openIdeaCreateModal, openIssueCreateModal } = useUIState();
+    const { openTaskCreateModal } = useUIState();
     const { t } = useLanguage();
     const navigate = useNavigate();
 
@@ -34,11 +32,9 @@ export const PinnedProjectPill = () => {
     const buttonRef = useRef<HTMLButtonElement>(null);
 
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [issues, setIssues] = useState<Issue[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [activity, setActivity] = useState<Activity[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
     const [health, setHealth] = useState<ProjectHealth | null>(null);
 
     const updateDropdownPosition = useCallback(() => {
@@ -99,37 +95,31 @@ export const PinnedProjectPill = () => {
     useEffect(() => {
         if (!pinnedProject) {
             setTasks([]);
-            setIssues([]);
             setInitiatives([]);
             setMilestones([]);
             setActivity([]);
-            setIdeas([]);
             setHealth(null);
             return;
         }
 
         const unsubTasks = subscribeProjectTasks(pinnedProject.id, setTasks, pinnedProject.tenantId);
-        const unsubIssues = subscribeProjectIssues(pinnedProject.id, setIssues, pinnedProject.tenantId);
         const unsubInitiatives = subscribeProjectInitiatives(pinnedProject.id, setInitiatives, pinnedProject.tenantId);
         const unsubMilestones = subscribeProjectMilestones(pinnedProject.id, setMilestones, pinnedProject.tenantId);
         const unsubActivity = subscribeProjectActivity(pinnedProject.id, setActivity, pinnedProject.tenantId);
-        const unsubIdeas = subscribeProjectIdeas(pinnedProject.id, setIdeas, pinnedProject.tenantId);
 
         return () => {
             unsubTasks();
-            unsubIssues();
             unsubInitiatives();
             unsubMilestones();
             unsubActivity();
-            unsubIdeas();
         };
     }, [pinnedProject?.id, pinnedProject?.tenantId]);
 
     useEffect(() => {
         if (!pinnedProject) return;
-        const h = calculateProjectHealth(pinnedProject, tasks, milestones, issues, [], activity, [], initiatives, ideas);
+        const h = calculateProjectHealth(pinnedProject, tasks, milestones, [], [], activity, [], initiatives, []);
         setHealth(h);
-    }, [pinnedProject, tasks, issues, initiatives, milestones, activity, ideas]);
+    }, [pinnedProject, tasks, initiatives, milestones, activity]);
 
     if (isLoading || !pinnedProject) return null;
 
@@ -137,9 +127,7 @@ export const PinnedProjectPill = () => {
     const moduleEnabled = (module: ProjectModule) => modules.length === 0 || modules.includes(module);
     const showTasks = moduleEnabled('tasks');
     const showInitiatives = moduleEnabled('initiatives');
-    const showIdeas = moduleEnabled('ideas');
     const showActivity = moduleEnabled('activity');
-    const showIssues = moduleEnabled('issues');
     const showMilestones = moduleEnabled('milestones');
     const healthStatusClass = `pinned-project-health--${health?.status ?? 'unknown'}`;
     const visibleFactors = health?.factors.slice(0, 2) ?? [];
@@ -147,8 +135,6 @@ export const PinnedProjectPill = () => {
     const stats = [
         ...(showTasks ? [{ id: 'tasks', label: t('nav.tasks'), value: tasks.length, icon: 'task_alt' }] : []),
         ...(showInitiatives ? [{ id: 'initiatives', label: t('nav.initiatives'), value: initiatives.length, icon: 'account_tree' }] : []),
-        ...(showIdeas ? [{ id: 'flows', label: t('nav.flows'), value: ideas.length, icon: 'schema' }] : []),
-        ...(showIssues ? [{ id: 'issues', label: t('nav.issues'), value: issues.length, icon: 'bug_report' }] : []),
         ...(showMilestones ? [{ id: 'milestones', label: t('nav.milestones'), value: milestones.length, icon: 'flag' }] : []),
         ...(showActivity ? [{ id: 'activity', label: t('nav.activity'), value: activity.length, icon: 'history' }] : []),
     ];
@@ -160,26 +146,12 @@ export const PinnedProjectPill = () => {
             icon: 'add_task',
             onSelect: () => openTaskCreateModal(pinnedProject.id),
         },
-        ...(showIdeas ? [{
-            id: 'flow',
-            label: t('quickActions.newFlow'),
-            icon: 'lightbulb',
-            onSelect: () => openIdeaCreateModal(pinnedProject.id),
-        }] : []),
-        ...(showIssues ? [{
-            id: 'issue',
-            label: t('quickActions.newIssue'),
-            icon: 'bug_report',
-            onSelect: () => openIssueCreateModal(pinnedProject.id),
-        }] : []),
     ];
 
     const navigationItems = [
         { id: 'overview', label: t('nav.overview'), icon: 'dashboard', path: `/project/${pinnedProject.id}` },
         ...(showTasks ? [{ id: 'tasks', label: t('nav.tasks'), icon: 'list_alt', path: `/project/${pinnedProject.id}/tasks` }] : []),
         ...(showInitiatives ? [{ id: 'initiatives', label: t('nav.initiatives'), icon: 'account_tree', path: `/project/${pinnedProject.id}/initiatives` }] : []),
-        ...(showIdeas ? [{ id: 'flows', label: t('nav.flows'), icon: 'schema', path: `/project/${pinnedProject.id}/flows` }] : []),
-        ...(showIssues ? [{ id: 'issues', label: t('nav.issues'), icon: 'bug_report', path: `/project/${pinnedProject.id}/issues` }] : []),
         ...(showMilestones ? [{ id: 'milestones', label: t('nav.milestones'), icon: 'flag', path: `/project/${pinnedProject.id}/milestones` }] : []),
     ];
 

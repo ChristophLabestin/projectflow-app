@@ -45,7 +45,6 @@ struct ProjectOverviewView: View {
             project: project,
             tasks: store.tasks,
             milestones: store.milestones,
-            issues: PmCoreConfig.isPmCoreOnly ? [] : store.issues,
             sprints: store.sprints,
             activities: store.activity
         )
@@ -64,7 +63,6 @@ struct ProjectOverviewView: View {
                         ProjectDetailAttentionCard(
                             health: healthSnapshot,
                             tasks: store.tasks,
-                            issues: store.issues,
                             milestones: store.milestones,
                             onOpenReport: { showingReport = true }
                         )
@@ -129,10 +127,6 @@ struct ProjectOverviewView: View {
                 ProjectTaskListEmbed(tenantId: tenantId, projectId: project.id, tasks: store.tasks, permissions: permissionContext)
             case .sprints:
                 ProjectSprintsView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
-            case .issues:
-                ProjectIssueListEmbed(tenantId: tenantId, issues: store.issues, permissions: permissionContext)
-            case .flows:
-                ProjectFlowListEmbed(tenantId: tenantId, flows: store.flows, permissions: permissionContext)
             case .milestones:
                 ProjectMilestonesView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
             case .activity:
@@ -199,8 +193,6 @@ struct ProjectOverviewView: View {
         case .execution:
             ExecutionSection(
                 tasks: store.tasks,
-                flows: store.flows,
-                issues: store.issues,
                 projectGroups: [],
                 resolvedTenantId: resolvedTenantId,
                 permissionContext: permissionContext,
@@ -219,8 +211,6 @@ struct ProjectOverviewView: View {
             UpdatesWidget(
                 activity: store.activity,
                 tasks: store.tasks,
-                flows: store.flows,
-                issues: store.issues,
                 resolvedTenantId: resolvedTenantId,
                 permissionContext: permissionContext
             )
@@ -408,7 +398,6 @@ private struct ProjectDetailMiniMetric: View {
 private struct ProjectDetailAttentionCard: View {
     let health: ProjectHealthSnapshot
     let tasks: [ProjectTask]
-    let issues: [Issue]
     let milestones: [Milestone]
     let onOpenReport: () -> Void
 
@@ -423,16 +412,9 @@ private struct ProjectDetailAttentionCard: View {
         tasks.filter { !$0.isCompleted && $0.priority == "Urgent" }.count
     }
 
-    private var openIssues: Int {
-        issues.filter { $0.status != "Resolved" && $0.status != "Closed" }.count
-    }
-
     private var headline: String {
         if urgentTasks > 0 {
             return "\(urgentTasks) urgent task\(urgentTasks == 1 ? "" : "s") need the next move"
-        }
-        if openIssues > 0 {
-            return "\(openIssues) open issue\(openIssues == 1 ? "" : "s") could slow delivery"
         }
         if openTasks > 0 {
             return "\(openTasks) open task\(openTasks == 1 ? "" : "s") remain"
@@ -444,7 +426,7 @@ private struct ProjectDetailAttentionCard: View {
         if urgentTasks > 0 || health.status == .critical {
             return colors.error
         }
-        if openIssues > 0 || health.status == .warning {
+        if health.status == .warning {
             return colors.warning
         }
         return colors.success
@@ -483,7 +465,6 @@ private struct ProjectDetailAttentionCard: View {
                 HStack(spacing: PFSpacing.sm) {
                     ProjectAttentionMetric(title: "Health", value: "\(Int(health.score))", tint: tint)
                     ProjectAttentionMetric(title: "Open tasks", value: "\(openTasks)", tint: colors.warning)
-                    ProjectAttentionMetric(title: "Issues", value: "\(openIssues)", tint: colors.error)
                     ProjectAttentionMetric(title: "Milestones", value: "\(milestones.count)", tint: colors.primary)
                 }
 
@@ -932,8 +913,6 @@ struct ActivityWidget: View {
 // MARK: - Execution Section
 struct ExecutionSection: View {
     let tasks: [ProjectTask]
-    let flows: [Flow]
-    let issues: [Issue]
     let projectGroups: [String] // Simplified for now
     let resolvedTenantId: String?
     let permissionContext: PermissionContext
@@ -956,25 +935,6 @@ struct ExecutionSection: View {
                     permissions: permissionContext,
                     onToggle: onToggleTask
                 )
-                
-                if !flows.isEmpty {
-                    NavigationLink(destination: FlowDetailView(
-                        flow: flows.first!,
-                        tenantId: resolvedTenantId ?? "",
-                        permissions: permissionContext
-                    )) {
-                        FlowSpotlight(flow: flows.first!)
-                    }
-                    .buttonStyle(.plain)
-                }
-                
-                if !issues.isEmpty {
-                    IssueFocus(
-                        issues: Array(issues.prefix(5)),
-                        tenantId: resolvedTenantId ?? "",
-                        permissions: permissionContext
-                    )
-                }
             }
         }
     }
@@ -1131,112 +1091,6 @@ struct TaskRowView: View {
     }
 }
 
-struct FlowSpotlight: View {
-    let flow: Flow
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack {
-                    Label("Flow Spotlight", systemImage: "lightbulb.fill")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                }
-                
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text(flow.type.uppercased())
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(colors.primary)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(colors.primary.opacity(0.1))
-                            .cornerRadius(4)
-                        
-                        Label("AI Generated", systemImage: "sparkles")
-                            .font(.caption2)
-                            .foregroundStyle(.purple)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 2)
-                            .background(Color.purple.opacity(0.1))
-                            .cornerRadius(4)
-                        
-                        Spacer()
-                    }
-                    
-                    Text(flow.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(colors.textMain)
-                        .lineLimit(2)
-                    
-                    Text(flow.description)
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                        .lineLimit(2)
-                }
-            }
-            .padding(12)
-        }
-    }
-}
-
-struct IssueFocus: View {
-    let issues: [Issue]
-    let tenantId: String
-    let permissions: PermissionContext
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack {
-                    Label("Issue Focus", systemImage: "ant.fill")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                }
-                
-                VStack(spacing: 12) {
-                    ForEach(issues) { issue in
-                        NavigationLink(destination: ProjectIssueDetailView(
-                            issue: issue,
-                            tenantId: tenantId,
-                            permissions: permissions
-                        )) {
-                            HStack {
-                                Circle()
-                                    .fill(colors.error)
-                                    .frame(width: 8, height: 8)
-                                Text(issue.title)
-                                    .font(.subheadline)
-                                    .foregroundStyle(colors.textMain)
-                                    .lineLimit(1)
-                                Spacer()
-                                Text(issue.status)
-                                    .font(.caption2)
-                                    .foregroundStyle(colors.textMuted)
-                            }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding(12)
-        }
-    }
-}
-
-
 private struct StatusPill: View {
     @Environment(\.colorScheme) private var colorScheme
     let text: String
@@ -1258,8 +1112,6 @@ private struct StatusPill: View {
 struct UpdatesWidget: View {
     let activity: [ActivityItem]
     let tasks: [ProjectTask]
-    let flows: [Flow]
-    let issues: [Issue]
     let resolvedTenantId: String?
     let permissionContext: PermissionContext
     @Environment(\.colorScheme) private var colorScheme
@@ -1307,18 +1159,6 @@ struct UpdatesWidget: View {
                 )) {
                     rowContent(for: item)
                 }
-            } else if let issue = findIssue(for: item) {
-                NavigationLink(destination: ProjectIssueDetailView(
-                    issue: issue,
-                    tenantId: tenantId,
-                    permissions: permissions
-                )) {
-                    rowContent(for: item)
-                }
-            } else if let flow = findFlow(for: item) {
-                NavigationLink(destination: FlowDetailView(flow: flow, tenantId: tenantId, permissions: permissions)) {
-                    rowContent(for: item)
-                }
             } else {
                 rowContent(for: item)
             }
@@ -1355,20 +1195,9 @@ struct UpdatesWidget: View {
         return tasks.first { $0.id == relatedId }
     }
 
-    private func findIssue(for activity: ActivityItem) -> Issue? {
-        guard activity.type == "issue", let relatedId = activity.relatedId else { return nil }
-        return issues.first { $0.id == relatedId }
-    }
-
-    private func findFlow(for activity: ActivityItem) -> Flow? {
-        guard activity.type == "idea" || activity.type == "flow", let relatedId = activity.relatedId else { return nil }
-        return flows.first { $0.id == relatedId }
-    }
-
     private func icon(for type: String) -> String {
         switch type {
         case "task": return "checklist"
-        case "issue": return "ant.fill"
         case "comment": return "bubble.left.fill"
         case "file": return "doc.fill"
         case "report": return "sparkles"

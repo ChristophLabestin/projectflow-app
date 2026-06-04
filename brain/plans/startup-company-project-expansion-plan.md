@@ -28,7 +28,7 @@ ProjectFlow already has strong primitives for this expansion:
 - `web/screens/CreateProjectWizard.tsx` already captures project type, objective, success criteria, modules, dates, priority, status, media, GitHub, and optional AI blueprint output.
 - Existing modules include `tasks`, `initiatives`, `issues`, `ideas`/Flows, `milestones`, `activity`, `groups`, `social`, `marketing`, and `accounting`.
 - `web/services/healthService.ts` already penalizes missing Project Brief fields and can be extended with founding-specific health factors.
-- `APP_CONCEPT.md` still positions the product primarily around B2B software and digital-sector teams, so a broader company-building direction should be reflected there once accepted.
+- `brain/reference/app/APP_CONCEPT.md` still positions the product primarily around B2B software and digital-sector teams, so a broader company-building direction should be reflected there once accepted.
 
 The correct product move is therefore:
 
@@ -801,8 +801,8 @@ Outcome: the startup expansion is described clearly before code changes.
 Tasks:
 
 - Add this plan.
-- Link it from `APP_DOCS_INDEX.md`.
-- Once approved, update `APP_CONCEPT.md` to broaden the product audience beyond software/digital delivery.
+- Link it from `brain/reference/app/APP_DOCS_INDEX.md`.
+- Once approved, update `brain/reference/app/APP_CONCEPT.md` to broaden the product audience beyond software/digital delivery.
 - Create ProjectFlow initiative when API permissions allow it; current initiative checkpoint returned `HTTP 403`, so task `LiWcc33tYMWtTuiWh2iR` tracks this planning pass.
 
 Acceptance:
@@ -821,7 +821,7 @@ Tasks:
 - Add startup/company template i18n keys to `web/locales/en.ts` and `web/locales/de.ts`.
 - Update create wizard type cards to use templates.
 - Preserve existing records with compatibility mapping.
-- Update `FIRESTORE_STRUCTURE.md`.
+- Update `brain/reference/app/FIRESTORE_STRUCTURE.md`.
 
 Acceptance:
 
@@ -985,10 +985,10 @@ Likely implementation files:
 - `web/services/domain/projectAdminService.ts` - allow startup fields through create/update.
 - `functions/src/projectflow-api.ts` - allow startup fields through API field allowlist if API create/update supports project payloads.
 - `firestore.indexes.json` - add a `companyProjectId` query index if Firestore requires it.
-- `FIRESTORE_STRUCTURE.md` - data model docs.
-- `APP_CONCEPT.md` - product positioning update after approval.
-- `SITEMAP.md`, `COMPONENTS.md`, `STYLING.md` - update only when routes/components/styles change.
-- `PERMISSIONS.md` - update when restricted resources/advisor permissions are implemented.
+- `brain/reference/app/FIRESTORE_STRUCTURE.md` - data model docs.
+- `brain/reference/app/APP_CONCEPT.md` - product positioning update after approval.
+- `brain/reference/app/SITEMAP.md`, `brain/reference/app/COMPONENTS.md`, `brain/reference/app/STYLING.md` - update only when routes/components/styles change.
+- `brain/reference/app/PERMISSIONS.md` - update when restricted resources/advisor permissions are implemented.
 
 ## UX Details
 

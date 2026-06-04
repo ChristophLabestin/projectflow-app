@@ -7,11 +7,13 @@ import { Modal } from '../components/common/Modal/Modal';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getUnassignedTasks, getUsersTasks } from '../services/dataService';
-import { getUserIssues, updateIssue } from '../services/domain/issuesService';
 import { getUserTasks, updateTask } from '../services/domain/tasksService';
 import { Task, Issue } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
 import { auth } from '../services/firebase';
+
+const getUserIssues = async (): Promise<Issue[]> => [];
+const updateIssue = async () => undefined;
 
 export const Calendar = () => {
     const { t, dateLocale, calendarTranslationsReady, loadCalendarTranslations } = useLanguage();

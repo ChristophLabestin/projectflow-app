@@ -111,8 +111,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'initiatives', icon: 'rocket_launch', label: t('nav.initiatives'), moduleKey: 'initiatives' },
         { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
         { id: 'sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
-        { id: 'issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues' },
-        { id: 'ideas', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas' },
         { id: 'milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
         { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
         { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
@@ -360,8 +358,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         tasks: t('nav.tasks'),
         initiatives: t('nav.initiatives'),
         milestones: t('nav.milestones'),
-        issues: t('nav.issues'),
-        ideas: t('nav.flows'),
 
         activity: t('nav.activity'),
         social: t('nav.social'),
@@ -882,7 +878,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="project-edit-modal__panel project-edit-modal__panel--modules animate-fade-in">
                         <p className="project-edit-modal__hint">{t('projectSettings.modules.description')}</p>
                         <div className="project-edit-modal__modules-grid">
-                            {['tasks', 'initiatives', 'sprints', 'issues', 'ideas', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
+                            {['tasks', 'initiatives', 'sprints', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
                                 if (mod === 'social' && !isSocialAllowed) return null;
                                 if (mod === 'marketing' && !isMarketingAllowed) return null;
                                 if (mod === 'accounting' && !isAccountingAllowed) return null;
@@ -907,13 +903,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             <span className="material-symbols-outlined">
                                                 {mod === 'tasks' ? 'check_circle' :
                                                     mod === 'initiatives' ? 'rocket_launch' :
-                                                    mod === 'ideas' ? 'lightbulb' :
-                                                        mod === 'milestones' ? 'flag' :
-                                                            mod === 'social' ? 'campaign' :
-                                                                mod === 'marketing' ? 'ads_click' :
-                                                                    mod === 'accounting' ? 'receipt_long' :
-                                                                        mod === 'sprints' ? 'directions_run' :
-                                                                            mod === 'activity' ? 'history' : 'bug_report'}
+                                                    mod === 'milestones' ? 'flag' :
+                                                        mod === 'social' ? 'campaign' :
+                                                            mod === 'marketing' ? 'ads_click' :
+                                                                mod === 'accounting' ? 'receipt_long' :
+                                                                    mod === 'sprints' ? 'directions_run' :
+                                                                        mod === 'activity' ? 'history' : 'apps'}
                                             </span>
                                         </div>
                                         <div className="project-edit-modal__module-body">

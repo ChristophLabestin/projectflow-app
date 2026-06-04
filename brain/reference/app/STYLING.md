@@ -1,4 +1,4 @@
-# STYLING.md — ProjectFlow Design System (SCSS Tokens)
+# brain/reference/app/STYLING.md — ProjectFlow Design System (SCSS Tokens)
 
 This document defines the **design tokens** that must be used throughout the application to ensure a consistent, professional, monochrome UI.
 
@@ -257,6 +257,13 @@ These tokens define key layout constants used across the app shell.
 - Hide the attention queue for canceled projects or projects with no attention items; do not render a success/empty next-action card in the command area.
 - Keep primary work cards in the main grid and compact project state/support cards in the side column so the overview remains predictable across sessions.
 - Move reference-heavy modules such as updates, resources, GitHub, and metadata below the operational work/status area.
+
+## 6.6) Task Detail Full Workbench Pattern
+
+- Project task detail uses a workspace pattern, not a card-heavy document page: compact command header, editable command rail, Work/Discussion/History tabs, main workbench, and sticky inspector.
+- Keep Full Workbench controls additive and reversible: next step, blocker note, reminder date, quick log, focus start/snooze/block, and completion should update existing task state without introducing a new backend workflow.
+- Use flat rails, rows, and lightly outlined sections. Avoid nested cards, oversized hero wrappers, decorative gradients, and duplicated metadata between header, rail, and inspector.
+- On mobile, stack the command rail and move the inspector below the workbench; all icon-only actions need accessible labels and stable hit areas.
 
 ### Workstream list pages (Tasks + Initiatives)
 

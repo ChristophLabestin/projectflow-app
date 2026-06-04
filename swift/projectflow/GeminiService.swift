@@ -47,23 +47,18 @@ class GeminiService {
         project: Project,
         tasks: [ProjectTask],
         milestones: [Milestone],
-        issues: [Issue],
-        flows: [Flow],
         activity: [ActivityItem],
         members: [ProjectMember]
     ) -> String {
         let openTasks = tasks.filter { !$0.isCompleted }
         let completedTasks = tasks.filter { $0.isCompleted }
         let highPriorityTasks = openTasks.filter { $0.priority == "High" || $0.priority == "Urgent" }
-        
+
         let pendingMilestones = milestones.filter { $0.status != "Achieved" }
         let nextMilestone = pendingMilestones.sorted { a, b in
             (a.dueDate) < (b.dueDate)
         }.first
-        
-        let openIssues = issues.filter { $0.status != "Closed" && $0.status != "Resolved" }
-        let highPriorityIssues = openIssues.filter { $0.priority == "High" || $0.priority == "Urgent" }
-        
+
         let recentActivity = activity.prefix(5).map { "\($0.user) \($0.action) \($0.target)" }.joined(separator: "; ")
         
         return """
@@ -79,8 +74,6 @@ class GeminiService {
         **Key Metrics:**
         - Tasks: \(openTasks.count) open (\(highPriorityTasks.count) high priority), \(completedTasks.count) completed.
         - Milestones: \(milestones.filter { $0.status == "Achieved" }.count)/\(milestones.count) achieved. Next up: \(nextMilestone != nil ? "\(nextMilestone!.title) (Due: \(nextMilestone!.dueDate))" : "None").
-        - Issues/Bugs: \(openIssues.count) open (\(highPriorityIssues.count) critical).
-        - Idea Pipeline: \(flows.count) flows captured.
 
         **Recent Activity:**
         \(recentActivity)
@@ -99,8 +92,8 @@ class GeminiService {
         ## 🏗 Work in Progress
         Highlight key high-priority tasks and recent progress. Do NOT list every task, just the strategic focus.
 
-        ## 🐛 Issues & Risks
-        Summary of open issues. If there are high-priority issues, flag them.
+        ## 🚧 Risks & Blockers
+        Summary of open risks and blockers. If there are high-priority concerns, flag them.
 
         ## 💡 Recommendations
         2-3 actionable next steps for the team to maintain momentum or fix problems.

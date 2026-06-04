@@ -3,8 +3,13 @@ import { functions } from './firebase';
 import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
 import { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON, RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/browser';
 
-const isLocalhost = location.hostname === 'localhost';
+const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
 const FUNCTIONS_DOMAIN = 'https://app.getprojectflow.com';
+
+// The relying party (rpID/origin) WebAuthn is bound to is the page's own origin.
+// We forward it so the backend can verify against the exact origin the browser
+// used — this is what lets passkeys work on localhost as well as production.
+const CLIENT_ORIGIN = location.origin;
 
 // Helper to get callable based on environment
 const getFunction = <RequestData = unknown, ResponseData = unknown>(name: string) => {
@@ -21,15 +26,15 @@ const getFunction = <RequestData = unknown, ResponseData = unknown>(name: string
 export const registerPasskey = async (deviceName?: string) => {
     try {
         // 1. Get options from server
-        const generateOptionsFn = getFunction<void, PublicKeyCredentialCreationOptionsJSON>('generatePasskeyRegistrationOptions');
-        const optionsResp = await generateOptionsFn();
+        const generateOptionsFn = getFunction<{ origin: string }, PublicKeyCredentialCreationOptionsJSON>('generatePasskeyRegistrationOptions');
+        const optionsResp = await generateOptionsFn({ origin: CLIENT_ORIGIN });
         const options = optionsResp.data;
 
         // 2. Start registration on browser
         const registrationResponse = await startRegistration({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = getFunction<{ response: RegistrationResponseJSON, navigatorDetails: any, deviceName?: string }, { success: boolean }>('verifyPasskeyRegistration');
+        const verifyFn = getFunction<{ response: RegistrationResponseJSON, navigatorDetails: any, deviceName?: string, origin: string }, { success: boolean }>('verifyPasskeyRegistration');
         const verificationResp = await verifyFn({
             response: registrationResponse,
             navigatorDetails: {
@@ -37,7 +42,8 @@ export const registerPasskey = async (deviceName?: string) => {
                 platform: navigator.platform,
                 language: navigator.language
             },
-            deviceName
+            deviceName,
+            origin: CLIENT_ORIGIN
         });
 
         if (verificationResp.data.success) {
@@ -61,18 +67,19 @@ export const registerPasskey = async (deviceName?: string) => {
 export const loginWithPasskey = async (email?: string) => {
     try {
         // 1. Get options from server
-        const generateOptionsFn = getFunction<{ email?: string }, PublicKeyCredentialRequestOptionsJSON>('generatePasskeyAuthenticationOptions');
-        const optionsResp = await generateOptionsFn({ email });
+        const generateOptionsFn = getFunction<{ email?: string, origin: string }, PublicKeyCredentialRequestOptionsJSON>('generatePasskeyAuthenticationOptions');
+        const optionsResp = await generateOptionsFn({ email, origin: CLIENT_ORIGIN });
         const options = optionsResp.data;
 
         // 2. Start authentication on browser
         const authenticationResponse = await startAuthentication({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = getFunction<{ response: AuthenticationResponseJSON, email?: string }, { success: boolean, token: string }>('verifyPasskeyAuthentication');
+        const verifyFn = getFunction<{ response: AuthenticationResponseJSON, email?: string, origin: string }, { success: boolean, token: string }>('verifyPasskeyAuthentication');
         const verificationResp = await verifyFn({
             response: authenticationResponse,
-            email // Send email back just in case
+            email, // Send email back just in case
+            origin: CLIENT_ORIGIN
         });
 
         if (verificationResp.data.success && verificationResp.data.token) {

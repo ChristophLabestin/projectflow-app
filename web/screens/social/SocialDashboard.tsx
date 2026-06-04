@@ -1,12 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { subscribeProjectIdeas } from '../../services/domain/ideasService';
 import { subscribeCampaigns, subscribeSocialPosts } from '../../services/domain/socialService';
-import { SocialPost, SocialCampaign, Idea } from '../../types';
-import { subDays, format, isSameDay, differenceInDays } from 'date-fns';
+import { SocialPost, SocialCampaign } from '../../types';
+import { format, differenceInDays } from 'date-fns';
 import { PlatformIcon } from './components/PlatformIcon';
-import { DashboardFlowCard } from './components/DashboardFlowCard';
+import { DashboardCampaignCard } from './components/DashboardCampaignCard';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 import { Button } from '../../components/ui/Button';
@@ -17,7 +16,6 @@ export const SocialDashboard = () => {
     const { t, dateLocale } = useLanguage();
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -25,18 +23,17 @@ export const SocialDashboard = () => {
 
         const unsubPosts = subscribeSocialPosts(projectId, (data) => setPosts(data));
         const unsubCampaigns = subscribeCampaigns(projectId, (data) => setCampaigns(data));
-        const unsubIdeas = subscribeProjectIdeas(projectId, (data) => {
-            setIdeas(data.filter(i => i.campaignType === 'social' || i.type === 'Social' || (i.type === 'Marketing' && i.stage === 'Ideation')));
-        });
 
         setLoading(false);
 
         return () => {
             unsubPosts();
             unsubCampaigns();
-            unsubIdeas();
         };
     }, [projectId]);
+
+    // Campaigns awaiting concept review / still in ideation.
+    const conceptCampaigns = campaigns.filter(c => c.status === 'Concept');
 
     // Stats
     const stats = {
@@ -46,8 +43,7 @@ export const SocialDashboard = () => {
         drafts: posts.filter(p => p.status === 'Draft').length,
         inReview: posts.filter(p => p.status === 'In Review' || p.status === 'PendingReview').length,
         activeCampaigns: campaigns.filter(c => c.status === 'Active' || c.status === 'Planning').length,
-        pendingIdeas: ideas.filter(i => i.stage === 'Ideation' || i.stage === 'Drafting').length,
-        pendingReview: ideas.filter(i => i.stage === 'PendingReview' && i.type === 'Social').length,
+        conceptCampaigns: conceptCampaigns.length,
     };
 
     // Platform breakdown
@@ -69,11 +65,8 @@ export const SocialDashboard = () => {
         .filter(c => c.status === 'Active' || c.status === 'Planning')
         .slice(0, 4);
 
-    // Ideas needing review (Pending Approval)
-    const pendingReviewIdeas = ideas.filter(i => i.stage === 'PendingReview' && i.type === 'Social');
-
-    // Raw Ideas (Ideation/Drafting)
-    const rawIdeas = ideas.filter(i => i.stage === 'Ideation' || i.stage === 'Drafting').slice(0, 4);
+    // Campaign concepts awaiting review (in Concept status)
+    const conceptCampaignsList = conceptCampaigns.slice(0, 4);
 
     // Filter Posts missing assets (Approved/Scheduled but no assets)
     const missingAssetsPosts = posts.filter(p =>
@@ -101,13 +94,6 @@ export const SocialDashboard = () => {
                     <p className="text-muted font-medium">{t('socialDashboard.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate(`/project/${projectId}/flows?pipeline=Social`)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-surface-hover text-main hover:bg-card rounded-xl text-sm font-bold transition-all border border-surface"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                        {t('socialDashboard.actions.flowsPipeline')}
-                    </button>
                     <Button
                         onClick={() => navigate(`/project/${projectId}/social/create`)}
                         className="px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-all gap-2"
@@ -181,7 +167,7 @@ export const SocialDashboard = () => {
                     )}
 
                     {/* SECTION 1: APPROVALS & REVIEW (High Priority) */}
-                    {(pendingReviewIdeas.length > 0 || stats.inReview > 0) && (
+                    {(conceptCampaignsList.length > 0 || stats.inReview > 0) && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b border-surface">
                                 <span className="material-symbols-outlined text-amber-500">priority_high</span>
@@ -190,10 +176,10 @@ export const SocialDashboard = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Campaign Concepts Pending Review */}
-                                {pendingReviewIdeas.map(idea => (
+                                {conceptCampaignsList.map(campaign => (
                                     <Link
-                                        key={idea.id}
-                                        to={`/project/${projectId}/social/review/${idea.id}`}
+                                        key={campaign.id}
+                                        to={`/project/${projectId}/social/campaigns/${campaign.id}`}
                                         className="group relative bg-card rounded-2xl border border-amber-200 dark:border-amber-900/40 p-5 transition-all hover:shadow-lg hover:border-amber-400 overflow-hidden"
                                     >
                                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -205,7 +191,7 @@ export const SocialDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">{t('socialDashboard.cards.campaignConcept')}</div>
-                                                    <h3 className="font-bold text-main truncate max-w-[200px]">{idea.title}</h3>
+                                                    <h3 className="font-bold text-main truncate max-w-[200px]">{campaign.name}</h3>
                                                 </div>
                                             </div>
                                             <div className="flex items-center justify-between text-xs font-bold text-amber-600 relative z-10 pl-13">
@@ -237,27 +223,27 @@ export const SocialDashboard = () => {
                         </div>
                     )}
 
-                    {/* SECTION 2: RAW FLOWS (Backlog/Ideation) */}
+                    {/* SECTION 2: CAMPAIGN CONCEPTS (Ideation) */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pb-2 border-b border-surface">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-purple-500">tips_and_updates</span>
                                 <h2 className="text-lg font-black text-main uppercase tracking-wide">{t('socialDashboard.sections.flowPipeline')}</h2>
                             </div>
-                            <Link to={`/project/${projectId}/flows?pipeline=Social`} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
+                            <Link to={`/project/${projectId}/social/campaigns`} className="text-xs font-bold text-primary hover:underline flex items-center gap-1">
                                 {t('socialDashboard.actions.viewFullPipeline')} <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </Link>
                         </div>
 
-                        {rawIdeas.length === 0 ? (
+                        {conceptCampaignsList.length === 0 ? (
                             <div className="p-8 text-center bg-card rounded-2xl border-2 border-dashed border-surface">
                                 <span className="material-symbols-outlined text-4xl text-muted opacity-50 mb-2">lightbulb</span>
                                 <p className="text-sm font-medium text-muted">{t('socialDashboard.empty.flows')}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {rawIdeas.map(idea => (
-                                    <DashboardFlowCard key={idea.id} idea={idea} projectId={projectId!} />
+                                {conceptCampaignsList.map(campaign => (
+                                    <DashboardCampaignCard key={campaign.id} campaign={campaign} posts={posts} projectId={projectId!} />
                                 ))}
                             </div>
                         )}

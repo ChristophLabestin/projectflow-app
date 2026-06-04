@@ -22,7 +22,7 @@ import { useConfirm } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialPostFormatLabel } from '../../utils/socialLocalization';
 
-import { PIPELINE_CONFIGS, PLATFORM_FORMATS } from '../../components/flows/constants';
+import { PLATFORM_FORMATS } from './platformFormats';
 
 export const CreateSocialPost = () => {
     const { id: projectId, postId } = useParams<{ id: string; postId?: string }>();

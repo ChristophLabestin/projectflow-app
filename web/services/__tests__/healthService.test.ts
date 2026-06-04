@@ -7,7 +7,7 @@ import {
     isProjectExcludedFromHealth,
     type ProjectHealth
 } from '../healthService';
-import type { Activity, Idea, Initiative, Issue, Milestone, Project, Sprint, Task } from '../../types';
+import type { Activity, Initiative, Milestone, Project, Sprint, Task } from '../../types';
 
 const baseProject = (overrides: Partial<Project> = {}): Project => ({
     id: 'project-1',
@@ -19,7 +19,7 @@ const baseProject = (overrides: Partial<Project> = {}): Project => ({
     dueDate: '2026-06-15',
     ownerId: 'user-1',
     tenantId: 'tenant-1',
-    modules: ['tasks', 'issues', 'milestones', 'sprints', 'initiatives', 'ideas', 'activity'],
+    modules: ['tasks', 'milestones', 'sprints', 'initiatives', 'activity'],
     createdAt: '2026-05-01T08:00:00.000Z',
     updatedAt: '2026-05-24T08:00:00.000Z',
     ...overrides
@@ -33,20 +33,6 @@ const task = (overrides: Partial<Task>): Task => ({
     isCompleted: false,
     status: 'In Progress',
     createdAt: '2026-05-15T08:00:00.000Z',
-    ...overrides
-});
-
-const issue = (overrides: Partial<Issue>): Issue => ({
-    id: overrides.id || 'issue-1',
-    projectId: 'project-1',
-    tenantId: 'tenant-1',
-    ownerId: 'user-1',
-    title: overrides.title || 'Issue',
-    description: '',
-    status: 'Open',
-    priority: 'Medium',
-    reporter: 'Reporter',
-    createdAt: '2026-05-10T08:00:00.000Z',
     ...overrides
 });
 
@@ -88,20 +74,6 @@ const initiative = (overrides: Partial<Initiative>): Initiative => ({
     ...overrides
 });
 
-const idea = (overrides: Partial<Idea>): Idea => ({
-    id: overrides.id || 'idea-1',
-    projectId: 'project-1',
-    ownerId: 'user-1',
-    title: overrides.title || 'Flow',
-    description: '',
-    type: 'Feature',
-    stage: 'Review',
-    votes: 0,
-    comments: 0,
-    createdAt: '2026-05-20T08:00:00.000Z',
-    ...overrides
-});
-
 const activity = (overrides: Partial<Activity>): Activity => ({
     id: overrides.id || 'activity-1',
     projectId: 'project-1',
@@ -134,7 +106,7 @@ describe('calculateProjectHealth', () => {
         vi.useRealTimers();
     });
 
-    it('caps health when schedule, execution, sprint, initiative, and flow risks stack up', () => {
+    it('caps health when schedule, execution, sprint, and initiative risks stack up', () => {
         const health = calculateProjectHealth(
             baseProject({ dueDate: '2026-05-22', progress: 25 }),
             [
@@ -144,9 +116,7 @@ describe('calculateProjectHealth', () => {
             [
                 milestone({ status: 'Pending', dueDate: '2026-05-18', riskRating: 'High' })
             ],
-            [
-                issue({ priority: 'High', dueDate: '2026-05-19' })
-            ],
+            [],
             [
                 sprint({ status: 'Active', startDate: '2026-05-01', endDate: '2026-05-20' })
             ],
@@ -155,18 +125,7 @@ describe('calculateProjectHealth', () => {
             [
                 initiative({ status: 'Blocked', dueDate: '2026-05-22' })
             ],
-            [
-                idea({
-                    riskWinAnalysis: {
-                        successProbability: 30,
-                        marketFitScore: 4,
-                        technicalFeasibilityScore: 5,
-                        risks: [{ title: 'Unclear feasibility', severity: 'High' }],
-                        wins: [],
-                        recommendation: 'Pause'
-                    }
-                })
-            ]
+            []
         );
 
         expect(health.score).toBeLessThanOrEqual(34);
@@ -177,15 +136,13 @@ describe('calculateProjectHealth', () => {
             'tasks_overdue',
             'blocked_tasks',
             'dependency_pressure',
-            'issue_deadlines',
             'missed_milestones',
             'sprint_overdue',
-            'initiative_health_risk',
-            'flow_risk'
+            'initiative_health_risk'
         ]));
     });
 
-    it('rewards completed execution, clean issues, milestones, sprints, converted flows, and engagement', () => {
+    it('rewards completed execution, milestones, sprints, initiatives, and engagement', () => {
         const completedTasks = Array.from({ length: 4 }, (_, index) => task({
             id: `done-${index}`,
             isCompleted: true,
@@ -204,9 +161,7 @@ describe('calculateProjectHealth', () => {
             [
                 milestone({ status: 'Achieved', dueDate: '2026-05-10' })
             ],
-            [
-                issue({ status: 'Resolved', priority: 'High', completedAt: '2026-05-21T08:00:00.000Z' })
-            ],
+            [],
             [
                 sprint({ id: 'sprint-1', status: 'Active', startDate: '2026-05-10', endDate: '2026-06-10' })
             ],
@@ -218,9 +173,7 @@ describe('calculateProjectHealth', () => {
             [
                 initiative({ status: 'Done', completedAt: '2026-05-23T08:00:00.000Z' })
             ],
-            [
-                idea({ stage: 'Approved', convertedTaskId: 'done-1', approvedAt: '2026-05-22T08:00:00.000Z' })
-            ]
+            []
         );
 
         expect(health.score).toBeGreaterThanOrEqual(88);
@@ -229,10 +182,9 @@ describe('calculateProjectHealth', () => {
         expect(health.factors.map((factor) => factor.id)).toEqual(expect.arrayContaining([
             'strong_task_completion',
             'high_velocity',
-            'no_open_issues',
             'milestone_progress',
             'active_sprint_progress',
-            'flow_conversion_strength',
+            'initiative_health_strength',
             'comment_engagement'
         ]));
     });
@@ -282,9 +234,7 @@ describe('calculateProjectHealth', () => {
             [
                 milestone({ status: 'Pending', dueDate: '2026-05-18', riskRating: 'High' })
             ],
-            [
-                issue({ priority: 'High', dueDate: '2026-05-19' })
-            ]
+            []
         );
 
         expect(isProjectExcludedFromHealth(canceledProject)).toBe(true);

@@ -5,7 +5,6 @@ const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const init_1 = require("./init");
-const pmCore_1 = require("./pmCore");
 const GRAPH_API_BASE = 'https://graph.facebook.com/v19.0';
 async function publishInstagramPhoto(igAccountId, imageUrl, caption, accessToken, log) {
     var _a, _b;
@@ -183,9 +182,9 @@ exports.autoStartSprints = (0, scheduler_1.onSchedule)({ schedule: "every 1 hour
  * Calculate a simplified health score for a project based on task data.
  * This is a cloud function version - simplified from the full client-side calculation.
  */
-function calculateSimpleHealthScore(tasks, issues) {
+function calculateSimpleHealthScore(tasks) {
     let score = 70; // Base score
-    if (tasks.length === 0 && issues.length === 0) {
+    if (tasks.length === 0) {
         return { score: 50, status: 'normal', trend: 'stable' };
     }
     // Task completion rate
@@ -222,17 +221,6 @@ function calculateSimpleHealthScore(tasks, issues) {
     if (urgentPending.length > 3)
         score -= 10;
     else if (urgentPending.length > 0)
-        score -= 5;
-    // Open issues penalty
-    const openIssues = issues.filter(i => {
-        const data = i.data();
-        return data.status !== 'Resolved' && data.status !== 'Closed';
-    });
-    if (openIssues.length > 5)
-        score -= 15;
-    else if (openIssues.length > 2)
-        score -= 10;
-    else if (openIssues.length > 0)
         score -= 5;
     // Clamp score
     score = Math.max(0, Math.min(100, score));
@@ -281,12 +269,7 @@ exports.dailyHealthSnapshots = (0, scheduler_1.onSchedule)({ schedule: "0 0 * * 
                     const tasksSnap = await init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
-                    const issuesSnap = (0, pmCore_1.isPmCoreOnly)()
-                        ? { docs: [] }
-                        : await init_1.db.collection('tenants').doc(tenantId)
-                            .collection('projects').doc(projectId)
-                            .collection('issues').get();
-                    const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
+                    const health = calculateSimpleHealthScore(tasksSnap.docs);
                     // Save snapshot using date as document ID (prevents duplicates)
                     const snapshotRef = init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
@@ -339,12 +322,7 @@ exports.debugHealthSnapshots = (0, https_1.onRequest)({ region: "europe-west3" }
                     const tasksSnap = await init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
                         .collection('tasks').get();
-                    const issuesSnap = (0, pmCore_1.isPmCoreOnly)()
-                        ? { docs: [] }
-                        : await init_1.db.collection('tenants').doc(tenantId)
-                            .collection('projects').doc(projectId)
-                            .collection('issues').get();
-                    const health = calculateSimpleHealthScore(tasksSnap.docs, issuesSnap.docs);
+                    const health = calculateSimpleHealthScore(tasksSnap.docs);
                     const snapshotRef = init_1.db.collection('tenants').doc(tenantId)
                         .collection('projects').doc(projectId)
                         .collection('healthSnapshots').doc(today);

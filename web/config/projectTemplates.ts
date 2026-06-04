@@ -84,7 +84,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'folder_open',
         projectCategory: 'general',
         legacyProjectType: 'standard',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'ideas', 'milestones', 'activity']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity']),
         defaultOperatingMode: 'build',
         defaultCadence: 'weekly'
     },
@@ -95,7 +95,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'terminal',
         projectCategory: 'software',
         legacyProjectType: 'software',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'issues', 'activity']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'activity']),
         defaultOperatingMode: 'build',
         defaultCadence: 'weekly'
     },
@@ -106,7 +106,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'palette',
         projectCategory: 'creative',
         legacyProjectType: 'creative',
-        defaultModules: normalizeModulesForPmCore(['ideas', 'initiatives', 'tasks', 'activity']),
+        defaultModules: normalizeModulesForPmCore(['initiatives', 'tasks', 'activity']),
         defaultOperatingMode: 'explore',
         defaultCadence: 'weekly'
     },
@@ -128,7 +128,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'domain_add',
         projectCategory: 'startup_company',
         legacyProjectType: 'standard',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'ideas', 'milestones', 'activity', 'accounting', 'marketing']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'accounting', 'marketing']),
         defaultOperatingMode: 'explore',
         defaultCadence: 'weekly',
         isCompanyProject: true,
@@ -148,7 +148,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'campaign',
         projectCategory: 'marketing',
         legacyProjectType: 'standard',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'ideas', 'milestones', 'activity', 'marketing', 'social']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'marketing', 'social']),
         defaultOperatingMode: 'ship',
         defaultCadence: 'weekly'
     },

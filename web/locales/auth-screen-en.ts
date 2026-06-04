@@ -5,8 +5,6 @@ export default {
     'login.hero.subtitle': 'The minimalist workspace for creators. No clutter, just clarity.',
     'login.hero.feature.tasks.title': 'Streamlined Tasks',
     'login.hero.feature.tasks.detail': 'Kanban, lists, and focus modes.',
-    'login.hero.feature.flows.title': 'Flow Pipelines',
-    'login.hero.feature.flows.detail': 'Move ideas through stages.',
     'login.heading.register': 'Join ProjectFlow',
     'login.heading.login': 'Welcome back',
     'login.subheading.register': 'Create your workspace today.',

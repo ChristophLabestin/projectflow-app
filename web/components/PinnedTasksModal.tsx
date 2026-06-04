@@ -4,7 +4,6 @@ import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { isPmCoreOnly } from '../config/pmCore';
 import { FocusItemType, Initiative, Task, SubTask, Project, Member, PersonalTask } from '../types';
 import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
-import { deleteIssue, updateIssue } from '../services/domain/issuesService';
 import { updateInitiative } from '../services/domain/initiativesService';
 import { getProjectById } from '../services/domain/projectsService';
 import {
@@ -26,6 +25,9 @@ import { useLanguage } from '../context/LanguageContext';
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
 const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
 const INITIATIVE_STATUS_OPTIONS = ['Planning', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
+
+const updateIssue = async () => undefined;
+const deleteIssue = async () => undefined;
 
 type StatusKind = 'task' | 'issue' | 'initiative';
 

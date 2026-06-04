@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { subscribeAdCampaigns, updateAdCampaignStatus } from '../../services/marketingService';
-import { subscribeProjectIdeas } from '../../services/domain/ideasService';
-import { AdCampaign, Idea, AdPlatform, AdCampaignStatus } from '../../types';
+import { subscribeProjectPaidAds } from '../../services/domain/paidAdsService';
+import { AdCampaign, PaidAd, AdPlatform, AdCampaignStatus } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
 import { Button } from '../../components/ui/Button';
@@ -31,7 +31,7 @@ export const PaidAdsList = () => {
     const { t, dateLocale, dateFormat } = useLanguage();
 
     const [campaigns, setCampaigns] = useState<AdCampaign[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
+    const [paidAds, setPaidAds] = useState<PaidAd[]>([]);
     const [loading, setLoading] = useState(true);
     const [filterPlatform, setFilterPlatform] = useState<AdPlatform | 'All'>('All');
     const [filterStatus, setFilterStatus] = useState<AdCampaignStatus | 'All'>('All');
@@ -45,18 +45,14 @@ export const PaidAdsList = () => {
             setLoading(false);
         });
 
-        // Subscribe to marketing ideas that are approved and could become campaigns
-        const unsubIdeas = subscribeProjectIdeas(projectId, (data) => {
-            setIdeas(data.filter(i =>
-                i.type === 'Marketing' &&
-                (i.stage === 'Approved' || i.stage === 'Live') &&
-                i.campaignType !== 'ad' // Not already converted
-            ));
+        // Subscribe to paid ads (drafts in the ad builder, not yet published as campaigns)
+        const unsubPaidAds = subscribeProjectPaidAds(projectId, (data) => {
+            setPaidAds(data);
         });
 
         return () => {
             unsubCampaigns();
-            unsubIdeas();
+            unsubPaidAds();
         };
     }, [projectId]);
 
@@ -87,6 +83,12 @@ export const PaidAdsList = () => {
                 : 0
         };
     }, [campaigns]);
+
+    // Draft paid ads not yet published as live campaigns
+    const draftPaidAds = useMemo(
+        () => paidAds.filter(ad => ad.status !== 'Live' && !ad.convertedCampaignId),
+        [paidAds]
+    );
 
     // Platform breakdown
     const platformBreakdown = useMemo(() => {
@@ -124,13 +126,6 @@ export const PaidAdsList = () => {
                     <p className="text-muted font-medium">Manage campaigns across Google, Meta, LinkedIn, and TikTok.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => navigate(`/project/${projectId}/flows?pipeline=Marketing`)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-surface-hover text-main hover:bg-card rounded-xl text-sm font-bold transition-all border border-surface"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                        Flow Pipeline
-                    </button>
                     <Button
                         onClick={() => navigate(`/project/${projectId}/marketing/ads/create`)}
                         className="px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-all gap-2"
@@ -241,7 +236,7 @@ export const PaidAdsList = () => {
                         {filteredCampaigns.length === 0 ? (
                             <EmptyState
                                 onCreateClick={() => navigate(`/project/${projectId}/marketing/ads/create`)}
-                                hasIdeas={ideas.length > 0}
+                                hasPaidAds={paidAds.length > 0}
                             />
                         ) : (
                             filteredCampaigns.map(campaign => (
@@ -301,48 +296,36 @@ export const PaidAdsList = () => {
                         </div>
                     </div>
 
-                    {/* Ready to Convert from Flow */}
-                    {ideas.length > 0 && (
+                    {/* Draft Paid Ads ready to launch */}
+                    {draftPaidAds.length > 0 && (
                         <div className="bg-card rounded-2xl border border-surface p-5">
                             <h3 className="text-sm font-bold text-main mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-amber-500">lightbulb</span>
                                 Ready to Launch
                             </h3>
                             <p className="text-xs text-muted mb-4">
-                                Approved marketing flows ready to become ad campaigns.
+                                Draft paid ads ready to become campaigns.
                             </p>
                             <div className="space-y-2">
-                                {ideas.slice(0, 4).map(idea => (
-                                    <Link
-                                        key={idea.id}
-                                        to={`/project/${projectId}/flows/${idea.id}`}
-                                        className="flex items-center gap-3 p-3 bg-surface hover:bg-surface-hover rounded-xl transition-colors group"
+                                {draftPaidAds.slice(0, 4).map(paidAd => (
+                                    <div
+                                        key={paidAd.id}
+                                        className="flex items-center gap-3 p-3 bg-surface rounded-xl"
                                     >
                                         <div className="size-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center shrink-0">
                                             <span className="material-symbols-outlined text-[16px]">campaign</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-main truncate group-hover:text-primary">
-                                                {idea.title}
+                                            <p className="text-sm font-bold text-main truncate">
+                                                {paidAd.title}
                                             </p>
                                             <p className="text-[10px] text-muted uppercase font-bold">
-                                                {idea.stage}
+                                                {paidAd.status}
                                             </p>
                                         </div>
-                                        <span className="material-symbols-outlined text-muted group-hover:text-primary group-hover:translate-x-1 transition-all text-[18px]">
-                                            arrow_forward
-                                        </span>
-                                    </Link>
+                                    </div>
                                 ))}
                             </div>
-                            {ideas.length > 4 && (
-                                <Link
-                                    to={`/project/${projectId}/flows?pipeline=Marketing`}
-                                    className="block text-center text-xs font-bold text-primary mt-3 hover:underline"
-                                >
-                                    View all {ideas.length} ideas →
-                                </Link>
-                            )}
                         </div>
                     )}
 
@@ -443,15 +426,6 @@ const CampaignCard = ({
                             </span>
                             <span>•</span>
                             <span>{campaign.objective}</span>
-                            {campaign.originIdeaId && (
-                                <>
-                                    <span>•</span>
-                                    <span className="flex items-center gap-1 text-purple-600">
-                                        <span className="material-symbols-outlined text-[14px]">lightbulb</span>
-                                        From Flow
-                                    </span>
-                                </>
-                            )}
                         </div>
                     </div>
                 </div>
@@ -520,15 +494,15 @@ const MetricCell = ({ label, value, highlight }: { label: string; value: string 
     </div>
 );
 
-const EmptyState = ({ onCreateClick, hasIdeas }: { onCreateClick: () => void; hasIdeas: boolean }) => (
+const EmptyState = ({ onCreateClick, hasPaidAds }: { onCreateClick: () => void; hasPaidAds: boolean }) => (
     <div className="text-center py-16 bg-card rounded-2xl border-2 border-dashed border-surface">
         <div className="inline-flex p-4 rounded-full bg-surface text-muted mb-4">
             <span className="material-symbols-outlined text-4xl">campaign</span>
         </div>
         <h3 className="text-lg font-bold text-main mb-2">No ad campaigns yet</h3>
         <p className="text-sm text-muted max-w-md mx-auto mb-6">
-            {hasIdeas
-                ? "Convert your approved marketing flows into ad campaigns, or create a new one from scratch."
+            {hasPaidAds
+                ? "Publish your draft paid ads into campaigns, or create a new one from scratch."
                 : "Create your first ad campaign to start tracking performance across platforms."
             }
         </p>

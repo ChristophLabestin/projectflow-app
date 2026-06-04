@@ -1,5 +1,4 @@
 import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative, Idea } from '../types';
-import { isPmCoreOnly } from '../config/pmCore';
 import { toMillis } from '../utils/time';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
@@ -53,8 +52,6 @@ const getDaysUntil = (value?: string) => {
 };
 
 const clampScore = (value: number) => Math.max(0, Math.min(100, Math.round(value)));
-
-const isIssueOpen = (issue: Issue) => issue.status !== 'Resolved' && issue.status !== 'Closed';
 
 export const isProjectCanceled = (project?: Pick<Project, 'status'> | null) => project?.status === 'Canceled';
 
@@ -355,19 +352,17 @@ export const calculateProjectHealth = (
     project: Project,
     tasks: Task[] = [],
     milestones: Milestone[] = [],
-    issues: Issue[] = [],
+    _issues: Issue[] = [],
     sprints: Sprint[] = [],
     activities: Activity[] = [],
     comments: Comment[] = [],
     initiatives: Initiative[] = [],
-    ideas: Idea[] = []
+    _ideas: Idea[] = []
 ): ProjectHealth => {
     const now = Date.now();
 
-    if (isPmCoreOnly()) {
-        issues = [];
-        ideas = [];
-    }
+    void _issues;
+    void _ideas;
 
     if (isProjectExcludedFromHealth(project)) {
         return {
@@ -407,22 +402,14 @@ export const calculateProjectHealth = (
     const incompleteTasks = tasks.filter((task) => !isTaskDone(task));
     const completedTasks = tasks.length - incompleteTasks.length;
     const taskProgress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : (project.progress || 0);
-    const openIssues = issues.filter(isIssueOpen);
     const pendingMilestones = milestones.filter((milestone) => milestone.status !== 'Achieved');
     const activeInitiatives = initiatives.filter((initiative) => initiative.status !== 'Done');
-    const activeIdeas = ideas.filter((idea) => (
-        !idea.convertedTaskId
-        && !idea.convertedInitiativeId
-        && !idea.convertedCampaignId
-    ));
-    const openWorkCount = incompleteTasks.length + openIssues.length + pendingMilestones.length + activeInitiatives.length;
+    const openWorkCount = incompleteTasks.length + pendingMilestones.length + activeInitiatives.length;
     const hasTrackedWork = (
         tasks.length
-        + issues.length
         + milestones.length
         + sprints.length
         + initiatives.length
-        + ideas.length
         + activities.length
         + comments.length
     ) > 0;
@@ -436,10 +423,8 @@ export const calculateProjectHealth = (
     let urgentOverdueTaskCount = 0;
     let dueSoonTaskCount = 0;
     let urgentDueSoonTaskCount = 0;
-    let overdueIssueCount = 0;
     let missedMilestones = 0;
     let blockedTasks = 0;
-    let urgentIssues = 0;
     let idleDays = 0;
 
     if (project.status === 'Completed') {
@@ -826,72 +811,7 @@ export const calculateProjectHealth = (
         );
     }
 
-    // 3. ISSUES AND BLOCKERS
-    if (openIssues.length > 0) {
-        urgentIssues = openIssues.filter((issue) => issue.priority === 'Urgent' || issue.priority === 'High').length;
-        const issuePressure = openIssues.reduce((total, issue) => total + priorityWeight(issue.priority), 0);
-
-        openIssues.forEach((issue) => {
-            const daysUntilIssue = getDaysUntil(issue.dueDate || issue.scheduledDate);
-            if (daysUntilIssue !== null && daysUntilIssue < 0) {
-                overdueIssueCount += 1;
-            }
-        });
-
-        if (urgentIssues > 0) {
-            const impact = -Math.min(30, Math.round(6 + (issuePressure * 4)));
-            addFactor({
-                id: 'unresolved_issues',
-                label: 'Critical Issues',
-                labelKey: 'health.factors.unresolved_issues.label',
-                description: `${urgentIssues} high-priority issue(s) remain unresolved.`,
-                descriptionKey: 'health.factors.unresolved_issues.description',
-                meta: { count: urgentIssues },
-                impact,
-                type: 'negative'
-            });
-            addRecommendation(
-                'health.recommendations.addressIssues',
-                'Address critical issues to stabilize project health.'
-            );
-        } else {
-            addFactor({
-                id: 'issue_backlog',
-                label: 'Open Issue Backlog',
-                labelKey: 'health.factors.issue_backlog.label',
-                description: `${openIssues.length} issue(s) are still open.`,
-                descriptionKey: 'health.factors.issue_backlog.description',
-                meta: { count: openIssues.length },
-                impact: -Math.min(14, openIssues.length * 2),
-                type: 'neutral'
-            });
-        }
-
-        if (overdueIssueCount > 0) {
-            addFactor({
-                id: 'issue_deadlines',
-                label: 'Overdue Issues',
-                labelKey: 'health.factors.issue_deadlines.label',
-                description: `${overdueIssueCount} issue(s) are past their due date.`,
-                descriptionKey: 'health.factors.issue_deadlines.description',
-                meta: { count: overdueIssueCount },
-                impact: -Math.min(22, 6 + (overdueIssueCount * 5)),
-                type: 'negative'
-            });
-        }
-    } else if (issues.length > 0) {
-        addFactor({
-            id: 'no_open_issues',
-            label: 'Issue Backlog Clear',
-            labelKey: 'health.factors.no_open_issues.label',
-            description: 'All tracked issues are resolved or closed.',
-            descriptionKey: 'health.factors.no_open_issues.description',
-            impact: 4,
-            type: 'positive'
-        });
-    }
-
-    // 4. INITIATIVE HEALTH
+    // 3. INITIATIVE HEALTH
     if (initiatives.length > 0) {
         const initiativeHealth = initiatives.map((initiative) => {
             const linkedTasks = tasks.filter((task) => task.initiativeId === initiative.id);
@@ -1119,113 +1039,14 @@ export const calculateProjectHealth = (
         });
     }
 
-    // 7. FLOWS / IDEAS
-    if (ideas.length > 0) {
-        const reviewQueue = activeIdeas.filter((idea) => idea.stage === 'Review' || idea.stage === 'Submit');
-        const approvedUnconverted = ideas.filter((idea) => (
-            (idea.stage === 'Approved' || idea.approvedAt)
-            && !idea.convertedTaskId
-            && !idea.convertedInitiativeId
-            && !idea.convertedCampaignId
-        ));
-        const convertedIdeas = ideas.filter((idea) => (
-            idea.convertedTaskId || idea.convertedInitiativeId || idea.convertedCampaignId
-        ));
-        const highRiskIdeas = activeIdeas.filter((idea) => {
-            const analysis = idea.riskWinAnalysis;
-            if (!analysis) return false;
-            return analysis.successProbability < 45 || analysis.risks.some((risk) => risk.severity === 'High');
-        });
-        const recentIdeas = ideas.filter((idea) => createdRecently(idea.createdAt || idea.approvedAt, now));
-
-        if (highRiskIdeas.length > 0) {
-            addFactor({
-                id: 'flow_risk',
-                label: 'Flow Risk Detected',
-                labelKey: 'health.factors.flow_risk.label',
-                description: `${highRiskIdeas.length} active flow(s) carry high risk or low success probability.`,
-                descriptionKey: 'health.factors.flow_risk.description',
-                meta: { count: highRiskIdeas.length },
-                impact: -Math.min(16, 5 + (highRiskIdeas.length * 4)),
-                type: 'negative'
-            });
-            addRecommendation(
-                'health.recommendations.triageFlowRisks',
-                'Triage high-risk flows before converting them into execution work.'
-            );
-        }
-
-        if (reviewQueue.length > 3) {
-            addFactor({
-                id: 'flow_review_queue',
-                label: 'Flow Review Queue',
-                labelKey: 'health.factors.flow_review_queue.label',
-                description: `${reviewQueue.length} flows are waiting in review or submit stages.`,
-                descriptionKey: 'health.factors.flow_review_queue.description',
-                meta: { count: reviewQueue.length },
-                impact: -Math.min(12, (reviewQueue.length - 2) * 3),
-                type: 'neutral'
-            });
-            addRecommendation(
-                'health.recommendations.focusReviewQueue',
-                'Reduce the flow review queue before adding more exploratory work.'
-            );
-        }
-
-        if (approvedUnconverted.length > 2) {
-            addFactor({
-                id: 'flow_conversion_gap',
-                label: 'Approved Flows Not Executed',
-                labelKey: 'health.factors.flow_conversion_gap.label',
-                description: `${approvedUnconverted.length} approved flow(s) have not been converted into execution yet.`,
-                descriptionKey: 'health.factors.flow_conversion_gap.description',
-                meta: { count: approvedUnconverted.length },
-                impact: -Math.min(12, approvedUnconverted.length * 3),
-                type: 'negative'
-            });
-            addRecommendation(
-                'health.recommendations.convertApprovedFlows',
-                'Convert approved flows into initiatives, tasks, or campaigns.'
-            );
-        }
-
-        if (convertedIdeas.length > 0) {
-            addFactor({
-                id: 'flow_conversion_strength',
-                label: 'Flows Reaching Execution',
-                labelKey: 'health.factors.flow_conversion_strength.label',
-                description: 'Some flows have been converted into executable work.',
-                descriptionKey: 'health.factors.flow_conversion_strength.description',
-                meta: { count: convertedIdeas.length },
-                impact: Math.min(6, convertedIdeas.length * 2),
-                type: 'positive'
-            });
-        }
-
-        if (recentIdeas.length > 0 && activeIdeas.length > 0) {
-            addFactor({
-                id: 'flow_momentum',
-                label: 'Recent Flow Momentum',
-                labelKey: 'health.factors.flow_momentum.label',
-                description: 'New or recently approved flows show active planning momentum.',
-                descriptionKey: 'health.factors.flow_momentum.description',
-                meta: { count: recentIdeas.length },
-                impact: Math.min(4, recentIdeas.length),
-                type: 'positive'
-            });
-        }
-    }
-
     // 8. ENGAGEMENT AND RECENCY
     const activityMillis = [
         toMillis(project.updatedAt),
         toMillis(project.createdAt),
         ...tasks.flatMap((task) => [toMillis(task.createdAt), toMillis(task.completedAt)]),
-        ...issues.flatMap((issue) => [toMillis(issue.createdAt), toMillis(issue.completedAt)]),
         ...milestones.map((milestone) => toMillis(milestone.createdAt)),
         ...sprints.map((sprint) => toMillis(sprint.updatedAt || sprint.createdAt)),
         ...initiatives.flatMap((initiative) => [toMillis(initiative.updatedAt), toMillis(initiative.completedAt), toMillis(initiative.createdAt)]),
-        ...ideas.flatMap((idea) => [toMillis(idea.approvedAt), toMillis(idea.convertedAt), toMillis(idea.createdAt)]),
         ...activities.map((activity) => toMillis(activity.createdAt)),
         ...comments.map((comment) => toMillis(comment.createdAt))
     ].filter((millis) => millis > 0);
@@ -1341,7 +1162,7 @@ export const calculateProjectHealth = (
             id: 'project_setup_gap',
             label: 'Project Setup Gap',
             labelKey: 'health.factors.project_setup_gap.label',
-            description: 'No tracked work, milestones, flows, activity, or issues are available yet.',
+            description: 'No tracked work, milestones, initiatives, or activity are available yet.',
             descriptionKey: 'health.factors.project_setup_gap.description',
             impact: -8,
             type: 'negative'
@@ -1522,8 +1343,8 @@ export const calculateProjectHealth = (
     // Guardrails keep severe live risks from being hidden by unrelated positives.
     score = clampScore(score);
     if (!isTerminalProject && dueDays !== null && dueDays < 0 && openWorkCount > 0) score = Math.min(score, 34);
-    if (!isTerminalProject && (urgentOverdueTaskCount > 0 || overdueIssueCount > 0)) score = Math.min(score, 42);
-    if (!isTerminalProject && (blockedTasks >= 3 || urgentIssues >= 3)) score = Math.min(score, 50);
+    if (!isTerminalProject && urgentOverdueTaskCount > 0) score = Math.min(score, 42);
+    if (!isTerminalProject && blockedTasks >= 3) score = Math.min(score, 50);
     if (!isTerminalProject && urgentDueSoonTaskCount > 0 && score > 58) score = 58;
     if (!hasTrackedWork && activelyManaged) score = Math.min(score, 62);
     if (project.status === 'Completed' && openWorkCount === 0 && missedMilestones === 0) score = Math.max(score, 88);
@@ -1561,7 +1382,6 @@ export const calculateProjectHealth = (
         score < 55
         || overdueTaskCount > 0
         || blockedTasks > 0
-        || urgentIssues > 0
         || idleDays > 21
     ) {
         trend = 'declining';
@@ -1620,10 +1440,11 @@ export const calculateSpotlightScore = (
     project: Project,
     tasks: Task[] = [],
     milestones: Milestone[] = [],
-    issues: Issue[] = [],
+    _issues: Issue[] = [],
     sprints: Sprint[] = [],
     activities: Activity[] = []
 ): SpotlightScore => {
+    void _issues;
     if (isProjectExcludedFromHealth(project)) {
         const reason = {
             key: 'health.spotlight.excludedCanceled',
@@ -1801,29 +1622,7 @@ export const calculateSpotlightScore = (
         );
     }
 
-    // 5. ISSUE PRESSURE
-    const openIssues = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
-    const urgentIssues = openIssues.filter(i => i.priority === 'Urgent').length;
-    const highPriorityIssues = openIssues.filter(i => i.priority === 'High').length;
-    const criticalIssues = urgentIssues + highPriorityIssues;
-
-    if (urgentIssues > 0) {
-        addReason(
-            'health.spotlight.urgentIssues',
-            `${urgentIssues} urgent issue${urgentIssues !== 1 ? 's' : ''} open`,
-            urgentIssues * 40,
-            { count: urgentIssues }
-        );
-    } else if (highPriorityIssues > 0) {
-        addReason(
-            'health.spotlight.highPriorityIssues',
-            `${highPriorityIssues} high-priority issue${highPriorityIssues !== 1 ? 's' : ''} open`,
-            highPriorityIssues * 20,
-            { count: highPriorityIssues }
-        );
-    }
-
-    // 6. ACTIVITY & ENGAGEMENT (Recent activity indicates active work)
+    // 5. ACTIVITY & ENGAGEMENT (Recent activity indicates active work)
     if (activities.length > 0) {
         const recentActivityCount = activities.filter(a => {
             const createdAt = a.createdAt ? (typeof a.createdAt === 'object' && 'toMillis' in a.createdAt ? a.createdAt.toMillis() : toMillis(a.createdAt)) : 0;

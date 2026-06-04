@@ -279,27 +279,12 @@ struct ProjectsView: View {
                 )
                 
                 WorkspaceStatCard(
-                    title: "Critical Issues",
-                    value: "\(criticalIssueCount)",
-                    tint: colors.error
-                )
-                
-                WorkspaceStatCard(
                     title: "Avg. Completion",
                     value: "\(Int(averageCompletion))%",
                     tint: colors.success
                 )
             }
         }
-    }
-    
-    private var criticalIssueCount: Int {
-        // Approximate from store data (normally we'd need a more global fetch but let's sum project metrics)
-        var total = 0
-        for project in store.projects {
-            total += insightsStore.metrics(for: project.id).openIssueCount
-        }
-        return total
     }
     
     private var averageCompletion: Double {
@@ -506,7 +491,7 @@ private struct WorkspaceStatCard: View {
                     Label("No projects yet", systemImage: "square.stack.3d.up")
                         .font(.headline)
                         .foregroundStyle(colors.textMain)
-                    Text("Create a project to start tracking tasks, flows, and issues.")
+                    Text("Create a project to start tracking tasks and milestones.")
                         .font(.subheadline)
                         .foregroundStyle(colors.textMuted)
                     if appSession.activeTenantId != nil {
@@ -1282,8 +1267,7 @@ private struct SpotlightHeroCard<Destination: View>: View {
                     // --- Quick Stats Row ---
                     HStack(spacing: PFSpacing.md) {
                         QuickStatItem(icon: "checkmark.circle", label: "Tasks", value: "\(metrics.openTaskCount) open", colors: colors)
-                        QuickStatItem(icon: "exclamationmark.triangle", label: "Issues", value: "\(metrics.openIssueCount)", colors: colors)
-                        
+
                         Spacer()
                         
                         // Team Avatars
@@ -1606,18 +1590,6 @@ private struct ProjectListCard<Destination: View>: View {
                             .foregroundStyle(colors.textMain)
                     }
                     
-                    // Issue Count
-                    if metrics.openIssueCount > 0 {
-                        HStack(spacing: 6) {
-                            Image(systemName: "exclamationmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(colors.warning)
-                            Text("\(metrics.openIssueCount) issues")
-                                .font(.caption.weight(.medium))
-                                .foregroundStyle(colors.textMain)
-                        }
-                    }
-                    
                     Spacer()
                     
                     // Health Badge (Mini)
@@ -1896,15 +1868,6 @@ private struct ProjectDeadlineSummaryView: View {
                         )
                     }
 
-                    if workload.urgentIssues > 0 {
-                        ProjectSignalChip(
-                            title: L10n.tr("deadline.urgentIssues", fallback: "Urgent Issues"),
-                            value: workload.urgentIssues,
-                            systemImage: "ladybug",
-                            tint: colors.warning
-                        )
-                    }
-
                     if workload.overdueCount > 0 {
                         ProjectSignalChip(
                             title: L10n.tr("deadline.overdue", fallback: "Overdue"),
@@ -2129,9 +2092,6 @@ private struct ProjectActivityStrip: View {
         }
         if summary.contains("completed") || summary.contains("done") {
             return success
-        }
-        if summary.contains("issue") || summary.contains("bug") {
-            return ActivityTone(icon: "ladybug", tint: colors.error, background: colors.error.opacity(0.15))
         }
         if summary.contains("task") {
             return ActivityTone(icon: "checkmark.circle", tint: accent, background: accent.opacity(0.15))
@@ -2365,13 +2325,6 @@ private struct ProjectPulseRow: View {
                 value: metrics.openTaskCount,
                 systemImage: "checklist",
                 tint: accent
-            )
-
-            ProjectStatChip(
-                title: "Open Issues",
-                value: metrics.openIssueCount,
-                systemImage: "exclamationmark.triangle",
-                tint: colors.warning
             )
         }
     }
@@ -2719,7 +2672,6 @@ private struct HealthDetailSheet: View {
                             PFSectionHeader(title: "Workload")
                             HStack(spacing: PFSpacing.sm) {
                                 MetricChip(title: "Open Tasks", value: context.metrics.openTaskCount, tint: statusColor)
-                                MetricChip(title: "Open Issues", value: context.metrics.openIssueCount, tint: colors.warning)
                             }
                             ProjectDeadlineSummaryView(workload: context.workload, accent: statusColor)
                         }

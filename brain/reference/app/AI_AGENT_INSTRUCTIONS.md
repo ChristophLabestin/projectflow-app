@@ -92,8 +92,8 @@ This ensures future AI assistants and developers know what components exist and 
   - Use a clear title, actionable description, and include relevant file/module references.
   - Set a realistic priority and due date when possible.
 - You must also **document that new item** in repository documentation:
-  - Update the most relevant doc (`SITEMAP.md`, `COMPONENTS.md`, `STYLING.md`, `APP_CONCEPT.md`, or `PERMISSIONS.md`) when applicable.
-  - If no domain-specific doc applies, add a brief entry to `GOTCHAS.md` noting the new follow-up and the ProjectFlow task id.
+  - Update the most relevant doc (`brain/reference/app/SITEMAP.md`, `brain/reference/app/COMPONENTS.md`, `brain/reference/app/STYLING.md`, `brain/reference/app/APP_CONCEPT.md`, or `brain/reference/app/PERMISSIONS.md`) when applicable.
+  - If no domain-specific doc applies, add a brief entry to `brain/reference/app/GOTCHAS.md` noting the new follow-up and the ProjectFlow task id.
 
 - Do not leave new work only in chat output; it must be tracked in ProjectFlow and reflected in docs.
 
@@ -110,10 +110,10 @@ This ensures future AI assistants and developers know what components exist and 
 
 The project must include at least these documentation files:
 
-1. **Styling Rules डॉक**: `STYLING.md`  
-2. **Components Registry**: `COMPONENTS.md`  
-3. **Sitemap / Pages List**: `SITEMAP.md`  
-4. **This file**: `AI_AGENT_INSTRUCTIONS.md`
+1. **Styling Rules डॉक**: `brain/reference/app/STYLING.md`  
+2. **Components Registry**: `brain/reference/app/COMPONENTS.md`  
+3. **Sitemap / Pages List**: `brain/reference/app/SITEMAP.md`  
+4. **This file**: `brain/reference/app/AI_AGENT_INSTRUCTIONS.md`
 
 All AI-driven changes should keep these documents up to date.
 

@@ -56,7 +56,7 @@ This report is grounded in the current repository structure and docs.
 - `swift/projectflow/NotificationsView.swift` supports notification list, mark-read, delete, clear-all, and project deep links.
 - `swift/projectflow/DashboardView.swift` already has active projects, quick actions, focus snapshot, calendar, charts, pinned tasks, and notification navigation.
 - `swift/projectflow/SnapToFlowView.swift` exists, which means a mobile-first capture concept has already started.
-- `MOBILE_INNOVATION.md` already proposes Snap-to-Flow, Dynamic Island Focus Keeper, Walk & Log, widgets, Share Sheet, and geofenced context.
+- `brain/reference/app/MOBILE_INNOVATION.md` already proposes Snap-to-Flow, Dynamic Island Focus Keeper, Walk & Log, widgets, Share Sheet, and geofenced context.
 
 ### Existing Backend Surfaces
 
@@ -71,7 +71,7 @@ This report is grounded in the current repository structure and docs.
 - A local ProjectFlow Codex skill exists at `~/.codex/skills/projectflow/`.
 - The skill supports repo linking through `.projectflow/project.json`, API token auth, task/initiative CRUD, and deterministic checkpoint syncing through `sync checkpoint`.
 - The local repo is already linked to project `ogZ8Pyz8pwEQtv8I64nu` under tenant `l5hkY1MDnGaiKzEHlS53VfVRpLJ2`.
-- In this session, `sync checkpoint` returned HTTP 500. This matches existing `GOTCHAS.md` notes that ProjectFlow task/initiative writes can fail while app work succeeds.
+- In this session, `sync checkpoint` returned HTTP 500. This matches existing `brain/reference/app/GOTCHAS.md` notes that ProjectFlow task/initiative writes can fail while app work succeeds.
 
 ## Root Problem
 
@@ -404,7 +404,7 @@ Likely files:
 - `web/components/SettingsModal.tsx`
 - `web/screens/Notifications.tsx`
 - `functions/src/notifications.ts`
-- `FIRESTORE_STRUCTURE.md`
+- `brain/reference/app/FIRESTORE_STRUCTURE.md`
 
 ### 4. Make Notifications Actionable, Not Just Informational
 
@@ -577,7 +577,7 @@ iOS app changes:
 
 ### 2. Add Dynamic Island / Live Activity Focus Keeper
 
-`MOBILE_INNOVATION.md` already proposes this, and it is exactly aligned with the user's problem.
+`brain/reference/app/MOBILE_INNOVATION.md` already proposes this, and it is exactly aligned with the user's problem.
 
 Behavior:
 
@@ -624,7 +624,7 @@ This matters because the user may not need to open the app to keep ProjectFlow t
 
 ### 5. Add Share Sheet Capture
 
-The Share Sheet concept in `MOBILE_INNOVATION.md` is strategically correct.
+The Share Sheet concept in `brain/reference/app/MOBILE_INNOVATION.md` is strategically correct.
 
 Recommended first version:
 
@@ -762,7 +762,7 @@ Finish payload:
   "status": "done|blocked|partial",
   "summary": "Report written and tracking attempted.",
   "finalFilesChanged": [
-    "docs/projectflow-retention-and-codex-integration-report.md"
+    "brain/plans/projectflow-retention-and-codex-integration-report.md"
   ],
   "followUps": [
     {
@@ -1398,11 +1398,11 @@ Guardrails:
 
 ### Docs
 
-- `FIRESTORE_STRUCTURE.md`: notification settings, delivery logs, focus state, Codex sessions.
-- `PERMISSIONS.md`: notification management and Codex session permissions.
-- `SITEMAP.md`: Project Brief/contract surfaces and Codex sessions route if implemented.
-- `COMPONENTS.md`: new reusable focus/diagnostics components.
-- `GOTCHAS.md`: any deployment or notification delivery pitfalls.
+- `brain/reference/app/FIRESTORE_STRUCTURE.md`: notification settings, delivery logs, focus state, Codex sessions.
+- `brain/reference/app/PERMISSIONS.md`: notification management and Codex session permissions.
+- `brain/reference/app/SITEMAP.md`: Project Brief/contract surfaces and Codex sessions route if implemented.
+- `brain/reference/app/COMPONENTS.md`: new reusable focus/diagnostics components.
+- `brain/reference/app/GOTCHAS.md`: any deployment or notification delivery pitfalls.
 
 ## Final Recommendation
 

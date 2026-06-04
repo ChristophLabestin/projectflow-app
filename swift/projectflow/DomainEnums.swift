@@ -2,14 +2,12 @@ import Foundation
 
 enum FocusItemType: String, CaseIterable, Codable {
     case task
-    case issue
     case initiative
     case personalTask = "personal-task"
 
     var displayName: String {
         switch self {
         case .task: return "Task"
-        case .issue: return "Issue"
         case .initiative: return "Initiative"
         case .personalTask: return "Personal Task"
         }
@@ -18,7 +16,6 @@ enum FocusItemType: String, CaseIterable, Codable {
     var iconName: String {
         switch self {
         case .task: return "checkmark.circle"
-        case .issue: return "exclamationmark.bubble"
         case .initiative: return "flag"
         case .personalTask: return "person.crop.circle"
         }
@@ -69,9 +66,7 @@ enum ProjectStatus: String, CaseIterable {
 enum ProjectModule: String, CaseIterable {
     case tasks
     case initiatives
-    case ideas
     case activity
-    case issues
     case milestones
     case social
     case marketing
@@ -82,9 +77,7 @@ enum ProjectModule: String, CaseIterable {
         switch self {
         case .tasks: return "Tasks"
         case .initiatives: return "Initiatives"
-        case .ideas: return "Flows"
         case .activity: return "Activity"
-        case .issues: return "Issues"
         case .milestones: return "Milestones"
         case .social: return "Social"
         case .marketing: return "Marketing"
@@ -97,9 +90,7 @@ enum ProjectModule: String, CaseIterable {
         switch self {
         case .tasks: return "checklist"
         case .initiatives: return "flag"
-        case .ideas: return "point.3.connected.trianglepath.dotted"
         case .activity: return "clock.arrow.circlepath"
-        case .issues: return "exclamationmark.bubble"
         case .milestones: return "flag.checkered"
         case .social: return "bubble.left.and.bubble.right"
         case .marketing: return "megaphone"
@@ -131,8 +122,6 @@ enum StartupStage: String, CaseIterable {
 
 enum CommentTargetType: String {
     case task
-    case issue
-    case idea
     case initiative
 }
 
@@ -155,8 +144,6 @@ enum ProjectNavDestination: Hashable {
     case initiatives
     case tasks
     case sprints
-    case issues
-    case flows
     case milestones
     case activity
     case codex

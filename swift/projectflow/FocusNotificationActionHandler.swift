@@ -137,16 +137,6 @@ final class FocusNotificationActionHandler {
                     "status": "Done",
                     "isCompleted": true
                 ])
-        } else if item.type == "issue", let projectId = item.projectId {
-            try await db.collection(FirestorePath.tenants)
-                .document(tenantId)
-                .collection(FirestorePath.projects)
-                .document(projectId)
-                .collection(FirestorePath.issues)
-                .document(item.id)
-                .updateDataAsync([
-                    "status": "Resolved"
-                ])
         } else if item.type == "personal-task" {
             try await db.collection(FirestorePath.tenants)
                 .document(tenantId)
@@ -172,15 +162,14 @@ private struct FocusActionItem {
     init?(response: UNNotificationResponse, fallbackTenantId: String?) {
         let userInfo = response.notification.request.content.userInfo
         let taskId = Self.string(userInfo["taskId"])
-        let issueId = Self.string(userInfo["issueId"])
         let explicitItemId = Self.string(userInfo["itemId"])
 
-        guard let resolvedId = explicitItemId ?? taskId ?? issueId else {
+        guard let resolvedId = explicitItemId ?? taskId else {
             return nil
         }
 
         id = resolvedId
-        type = Self.string(userInfo["itemType"]) ?? (issueId != nil ? "issue" : "task")
+        type = Self.string(userInfo["itemType"]) ?? "task"
         title = Self.string(userInfo["title"]) ?? response.notification.request.content.title
         projectId = Self.string(userInfo["projectId"])
         tenantId = Self.string(userInfo["tenantId"]) ?? fallbackTenantId

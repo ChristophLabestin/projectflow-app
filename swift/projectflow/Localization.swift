@@ -10,54 +10,6 @@ enum AppLocale: String {
     }
 }
 
-enum FlowLocalization {
-    private static let en: [String: String] = [
-        "flows.stage.brainstorm": "Brainstorm",
-        "flows.stage.refining": "Refining",
-        "flows.stage.concept": "Concept",
-        "flows.stage.review": "Review",
-        "flows.stage.approved": "Approved",
-        "flows.stage.implemented": "Implemented",
-        "flows.stage.archived": "Archived",
-        "flows.type.feature": "Feature",
-        "flows.type.product": "Product",
-        "flows.type.optimization": "Optimization",
-        "flows.type.marketing": "Marketing",
-        "flows.type.moonshot": "Moonshot"
-    ]
-
-    private static let de: [String: String] = [
-        "flows.stage.brainstorm": "Brainstorming",
-        "flows.stage.refining": "Verfeinerung",
-        "flows.stage.concept": "Konzept",
-        "flows.stage.review": "Prüfung",
-        "flows.stage.approved": "Genehmigt",
-        "flows.stage.implemented": "Implementiert",
-        "flows.stage.archived": "Archiviert",
-        "flows.type.feature": "Feature",
-        "flows.type.product": "Produkt",
-        "flows.type.optimization": "Optimierung",
-        "flows.type.marketing": "Marketing",
-        "flows.type.moonshot": "Moonshot"
-    ]
-
-    static func stage(_ stage: String, locale: AppLocale = .current) -> String {
-        let key = "flows.stage.\(stage.lowercased())"
-        switch locale {
-        case .de: return de[key] ?? en[key] ?? stage
-        case .en: return en[key] ?? stage
-        }
-    }
-
-    static func type(_ type: String, locale: AppLocale = .current) -> String {
-        let key = "flows.type.\(type.lowercased())"
-        switch locale {
-        case .de: return de[key] ?? en[key] ?? type
-        case .en: return en[key] ?? type
-        }
-    }
-}
-
 enum HealthLocalization {
     private static let en: [String: String] = [
         "health.factors.deadline_overdue.label": "Deadline Overdue",
@@ -80,8 +32,6 @@ enum HealthLocalization {
         "health.factors.tasks_due_soon.description": "{count} tasks are due within 72 hours.",
         "health.factors.blocked_tasks.label": "Task Blockers",
         "health.factors.blocked_tasks.description": "{count} task(s) are currently blocked.",
-        "health.factors.unresolved_issues.label": "Critical Issues",
-        "health.factors.unresolved_issues.description": "{count} high-priority issue(s) remain unresolved.",
         "health.factors.stale_project.label": "Stale Project",
         "health.factors.stale_project.description": "No activity recorded for over {days} days.",
         "health.factors.inactive_recent.label": "Recent Inactivity",
@@ -96,7 +46,6 @@ enum HealthLocalization {
         "health.recommendations.reviewScope": "Review project scope and prioritize essential features.",
         "health.recommendations.rescheduleOverdue": "Complete or reschedule overdue tasks immediately.",
         "health.recommendations.resolveBlockers": "Resolve dependencies or clear blockers for the restricted tasks.",
-        "health.recommendations.addressIssues": "Address critical issues to stabilize project health.",
         "health.recommendations.reactivateProject": "Reactivate the project with a status update or team meeting.",
         "health.recommendations.replanMilestones": "Replan missed milestones to provide a realistic project timeline."
     ]
@@ -122,8 +71,6 @@ enum HealthLocalization {
         "health.factors.tasks_due_soon.description": "{count} Aufgaben sind innerhalb von 72 Stunden fällig.",
         "health.factors.blocked_tasks.label": "Blockierte Aufgaben",
         "health.factors.blocked_tasks.description": "{count} Aufgabe(n) sind aktuell blockiert.",
-        "health.factors.unresolved_issues.label": "Kritische Probleme",
-        "health.factors.unresolved_issues.description": "{count} hochpriorisierte Probleme sind noch ungelöst.",
         "health.factors.stale_project.label": "Inaktives Projekt",
         "health.factors.stale_project.description": "Seit über {days} Tagen wurde keine Aktivität erfasst.",
         "health.factors.inactive_recent.label": "Kürzliche Inaktivität",
@@ -138,7 +85,6 @@ enum HealthLocalization {
         "health.recommendations.reviewScope": "Projektumfang prüfen und essenzielle Funktionen priorisieren.",
         "health.recommendations.rescheduleOverdue": "Überfällige Aufgaben sofort abschließen oder neu terminieren.",
         "health.recommendations.resolveBlockers": "Abhängigkeiten auflösen oder Blocker für die betroffenen Aufgaben entfernen.",
-        "health.recommendations.addressIssues": "Kritische Probleme beheben, um die Projektgesundheit zu stabilisieren.",
         "health.recommendations.reactivateProject": "Projekt mit einem Status-Update oder Team-Meeting reaktivieren.",
         "health.recommendations.replanMilestones": "Verpasste Meilensteine neu planen, um einen realistischen Zeitplan zu sichern."
     ]

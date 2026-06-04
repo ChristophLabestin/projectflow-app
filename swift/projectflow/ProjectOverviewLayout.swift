@@ -35,7 +35,7 @@ enum ProjectOverviewCardType: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .snapshot: return "High-level overview of project health and activity."
-        case .execution: return "Active tasks, flow spotlight, and issue focus."
+        case .execution: return "Active tasks and execution focus."
         case .updates: return "Recent updates and activity stream."
         case .resources: return "Key links, files, and project resources."
         case .planning: return "Sprint planning and roadmap execution."

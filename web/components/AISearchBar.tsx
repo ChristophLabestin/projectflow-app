@@ -260,10 +260,6 @@ export const AISearchBar = () => {
             }
         } else if (result.type === 'task') {
             navigate(`/project/${result.projectId}/tasks/${result.id}`);
-        } else if (result.type === 'issue') {
-            navigate(`/project/${result.projectId}/issues?issue=${result.id}`);
-        } else if (result.type === 'idea') {
-            navigate(`/project/${result.projectId}/flows?idea=${result.id}`);
         } else if (result.type === 'help_page') {
             openHelpCenter({ pageId: result.helpPageId });
         } else if (result.type === 'help_section') {
@@ -473,30 +469,6 @@ export const AISearchBar = () => {
                                             result,
                                             'task_alt',
                                             'success',
-                                            renderProjectContext(result)
-                                        ))}
-                                    </div>
-                                )}
-
-                                {issueResults.length > 0 && (
-                                    <div className="ai-search-modal__section">
-                                        <div className="ai-search-modal__section-title">{t('nav.issues')}</div>
-                                        {issueResults.map((result) => renderResultRow(
-                                            result,
-                                            'bug_report',
-                                            'error',
-                                            renderProjectContext(result)
-                                        ))}
-                                    </div>
-                                )}
-
-                                {ideaResults.length > 0 && (
-                                    <div className="ai-search-modal__section">
-                                        <div className="ai-search-modal__section-title">{t('nav.flows')}</div>
-                                        {ideaResults.map((result) => renderResultRow(
-                                            result,
-                                            'lightbulb',
-                                            'warning',
                                             renderProjectContext(result)
                                         ))}
                                     </div>

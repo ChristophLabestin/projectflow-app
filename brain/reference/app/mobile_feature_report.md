@@ -88,4 +88,4 @@ These modules are completely absent.
 
 3.  **Mobile-First Enhancements (High Value):**
     *   **Social Media Module:** Create a "Quick Post" feature for the Social module.
-    *   **Snap-to-Flow:** Camera integration for whiteboard capture (See `MOBILE_INNOVATION.md`).
+    *   **Snap-to-Flow:** Camera integration for whiteboard capture (See `brain/reference/app/MOBILE_INNOVATION.md`).

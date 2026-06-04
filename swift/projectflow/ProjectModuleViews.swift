@@ -67,12 +67,6 @@ struct ProjectModuleNavBar: View {
                 if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.sprints, project: project) {
                     navChip(.sprints, title: "Sprints")
                 }
-                if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.issues, project: project) {
-                    navChip(.issues, title: "Issues")
-                }
-                if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.ideas, project: project) {
-                    navChip(.flows, title: "Flows")
-                }
                 if evaluator.canViewModule(.milestones, project: project) {
                     navChip(.milestones, title: "Milestones")
                 }
@@ -346,9 +340,6 @@ struct ProjectDetailsView: View {
             if let repo = project.githubRepo {
                 Section("GitHub") {
                     Text(repo)
-                    if project.githubIssueSync {
-                        Text("Issue sync enabled").font(.caption)
-                    }
                 }
             }
             Section("Web") {

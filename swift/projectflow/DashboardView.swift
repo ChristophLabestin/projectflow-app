@@ -299,11 +299,6 @@ struct DashboardView: View {
             DashboardMetricTile(title: "Due today", value: "\(store.dueTodayTaskCount)", icon: "calendar", tint: colors.warning) {
                 selectedTab = .work
             }
-            if !PmCoreConfig.isPmCoreOnly {
-                DashboardMetricTile(title: "Issues", value: "\(store.openIssueCount)", icon: "exclamationmark.bubble", tint: colors.error) {
-                    selectedTab = .work
-                }
-            }
         }
     }
 
@@ -312,12 +307,11 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
                 PFSectionHeader(
                     title: "Recent work",
-                    subtitle: PmCoreConfig.isPmCoreOnly ? "Latest tasks" : "Latest tasks and issues"
+                    subtitle: "Latest tasks"
                 )
 
                 let tasks = Array(store.recentTasks.prefix(3))
-                let issues = PmCoreConfig.isPmCoreOnly ? [] : Array(store.recentIssues.prefix(2))
-                if tasks.isEmpty && issues.isEmpty {
+                if tasks.isEmpty {
                     Text("Recent project activity will appear here.")
                         .font(.subheadline)
                         .foregroundStyle(colors.textMuted)
@@ -331,17 +325,6 @@ struct DashboardView: View {
                                 permissions: tenantStore.permissionContext()
                             )) {
                                 DashboardRecentRow(title: task.title, detail: task.status, icon: "checklist", tint: colors.warning)
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        ForEach(issues) { issue in
-                            NavigationLink(destination: ProjectIssueDetailView(
-                                issue: issue,
-                                tenantId: tenantStore.activeTenantId ?? "",
-                                permissions: tenantStore.permissionContext()
-                            )) {
-                                DashboardRecentRow(title: issue.title, detail: issue.status, icon: "exclamationmark.bubble", tint: colors.error)
                             }
                             .buttonStyle(.plain)
                         }
@@ -442,22 +425,6 @@ struct DashboardView: View {
                     }
 
                     DashboardActionButton(
-                        title: "Issues",
-                        icon: "exclamationmark.bubble",
-                        tint: colors.error
-                    ) {
-                        selectedTab = .work
-                    }
-
-                    DashboardActionButton(
-                        title: "Flows",
-                        icon: "sparkles",
-                        tint: colors.primaryLight
-                    ) {
-                        selectedTab = .projects
-                    }
-
-                    DashboardActionButton(
                         title: "Notifications",
                         icon: "bell",
                         tint: colors.primaryDark
@@ -509,24 +476,6 @@ struct DashboardView: View {
                         tint: colors.warning
                     )
                     .onTapGesture { selectedTab = .work }
-
-                    DashboardFocusCard(
-                        title: "Open Issues",
-                        value: "\(store.openIssueCount)",
-                        detail: "\(store.issueCount) total",
-                        icon: "exclamationmark.bubble",
-                        tint: colors.error
-                    )
-                    .onTapGesture { selectedTab = .work }
-
-                    DashboardFocusCard(
-                        title: "Flows",
-                        value: "\(store.flowCount)",
-                        detail: "In pipeline",
-                        icon: "sparkles",
-                        tint: colors.primaryLight
-                    )
-                    .onTapGesture { selectedTab = .projects }
                 }
             }
         }
@@ -646,9 +595,7 @@ struct DashboardView: View {
                             }
                         }
                         .chartForegroundStyleScale([
-                            "Tasks": colors.warning,
-                            "Issues": colors.error,
-                            "Flows": colors.primary
+                            "Tasks": colors.warning
                         ])
                         .chartXAxis {
                             AxisMarks(values: .stride(by: .day)) { value in
@@ -809,40 +756,6 @@ struct DashboardView: View {
                     }
                 }
             }
-
-            recentCard(
-                title: "Recent Issues",
-                emptyMessage: "No issues yet.",
-                rows: store.recentIssues.map { issue in
-                    DashboardRow(
-                        id: issue.id,
-                        title: issue.title,
-                        detail: issue.status,
-                        destination: AnyView(ProjectIssueDetailView(
-                            issue: issue,
-                            tenantId: tenantStore.activeTenantId ?? "",
-                            permissions: tenantStore.permissionContext()
-                        ))
-                    )
-                }
-            )
-
-            recentCard(
-                title: "Recent Flows",
-                emptyMessage: "No flows yet.",
-                rows: store.recentFlows.map { flow in
-                    DashboardRow(
-                        id: flow.id,
-                        title: flow.title,
-                        detail: flow.stage,
-                        destination: AnyView(FlowDetailView(
-                            flow: flow,
-                            tenantId: tenantStore.activeTenantId ?? "",
-                            permissions: tenantStore.permissionContext()
-                        ))
-                    )
-                }
-            )
         }
     }
 
@@ -995,20 +908,6 @@ struct DashboardView: View {
                 detail: "\(store.taskCount) total",
                 icon: "checklist",
                 tint: colors.warning
-            ),
-            DashboardStat(
-                title: "Open Issues",
-                value: "\(store.openIssueCount)",
-                detail: "\(store.issueCount) total",
-                icon: "exclamationmark.bubble",
-                tint: colors.error
-            ),
-            DashboardStat(
-                title: "Flows",
-                value: "\(store.flowCount)",
-                detail: "In pipeline",
-                icon: "sparkles",
-                tint: colors.primaryLight
             )
         ]
     }
@@ -1034,29 +933,7 @@ struct DashboardView: View {
             )
         }
 
-        let issueItems = store.recentIssues.map { issue in
-            DashboardHighlight(
-                id: "issue-\(issue.id)",
-                title: issue.title,
-                detail: issue.status,
-                typeLabel: "Issue",
-                icon: "exclamationmark.bubble",
-                timestamp: issue.createdAt?.dateValue()
-            )
-        }
-
-        let flowItems = store.recentFlows.map { flow in
-            DashboardHighlight(
-                id: "flow-\(flow.id)",
-                title: flow.title,
-                detail: flow.stage,
-                typeLabel: "Flow",
-                icon: "sparkles",
-                timestamp: flow.createdAt?.dateValue()
-            )
-        }
-
-        let combined = taskItems + issueItems + flowItems
+        let combined = taskItems
         return combined.sorted { left, right in
             let leftDate = left.timestamp ?? Date.distantPast
             let rightDate = right.timestamp ?? Date.distantPast
@@ -1068,8 +945,6 @@ struct DashboardView: View {
         switch stat.title {
         case "Projects": selectedTab = .projects
         case "Open Tasks": selectedTab = .work
-        case "Open Issues": selectedTab = .work
-        case "Flows": selectedTab = .projects
         default: break
         }
     }
