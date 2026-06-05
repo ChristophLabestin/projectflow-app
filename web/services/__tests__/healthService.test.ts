@@ -12,7 +12,7 @@ import type { Activity, Idea, Initiative, Issue, Milestone, Project, Sprint, Tas
 const baseProject = (overrides: Partial<Project> = {}): Project => ({
     id: 'project-1',
     title: 'Launch',
-    description: '',
+    description: 'Launch the customer beta.',
     progress: 50,
     status: 'Active',
     startDate: '2026-05-01',
@@ -20,6 +20,12 @@ const baseProject = (overrides: Partial<Project> = {}): Project => ({
     ownerId: 'user-1',
     tenantId: 'tenant-1',
     modules: ['tasks', 'issues', 'milestones', 'sprints', 'initiatives', 'ideas', 'activity'],
+    brief: {
+        successCriteria: ['Beta invite sent'],
+        scope: 'Customer beta only',
+        decisionOwner: 'Product',
+        cadence: 'weekly'
+    },
     createdAt: '2026-05-01T08:00:00.000Z',
     updatedAt: '2026-05-24T08:00:00.000Z',
     ...overrides
@@ -126,12 +132,14 @@ const workspaceHealth = (overrides: Partial<ProjectHealth> = {}): ProjectHealth 
 
 describe('calculateProjectHealth', () => {
     beforeEach(() => {
+        vi.stubEnv('VITE_PM_CORE_ONLY', 'false');
         vi.useFakeTimers();
         vi.setSystemTime(new Date('2026-05-25T12:00:00.000Z'));
     });
 
     afterEach(() => {
         vi.useRealTimers();
+        vi.unstubAllEnvs();
     });
 
     it('caps health when schedule, execution, sprint, initiative, and flow risks stack up', () => {

@@ -229,7 +229,7 @@ export const Login = () => {
                             </div>
                             <div className="login-page__feature">
                                 <div className="login-page__feature-icon">
-                                    <span className="material-symbols-outlined">flow_chart</span>
+                                    <span className="material-symbols-outlined">account_tree</span>
                                 </div>
                                 <div>
                                     <h3 className="login-page__feature-title">{t('login.hero.feature.flows.title')}</h3>

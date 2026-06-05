@@ -377,7 +377,7 @@ const createProject = async (req, res) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     const created = await init_1.db.collection('tenants').doc(context.tenantId).collection(PROJECTS).add(payload);
-    await writeProjectActivity(context.tenantId, created.id, `Created project \"${title}\" via API token ${context.actorLabel}`, 'Project', created.id, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, created.id, `Created project "${title}" via API token ${context.actorLabel}`, 'Project', created.id, context.actorId, context.actorLabel);
     const projectSnapshot = await created.get();
     res.status(201).json({
         success: true,
@@ -402,7 +402,7 @@ const updateProject = async (req, res, projectId) => {
         return;
     }
     await projectRef(context.tenantId, projectId).update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
-    await writeProjectActivity(context.tenantId, projectId, `Updated project \"${((_a = projectSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || projectId}\" via API token ${context.actorLabel}`, 'Project', projectId, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Updated project "${((_a = projectSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || projectId}" via API token ${context.actorLabel}`, 'Project', projectId, context.actorId, context.actorLabel);
     const updatedSnapshot = await projectRef(context.tenantId, projectId).get();
     res.status(200).json({
         success: true,
@@ -420,7 +420,7 @@ const deleteProject = async (req, res, projectId) => {
         notFound(res, 'Project not found.');
         return;
     }
-    await writeProjectActivity(context.tenantId, projectId, `Deleted project \"${((_a = projectSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || projectId}\" via API token ${context.actorLabel}`, 'Project', projectId, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Deleted project "${((_a = projectSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || projectId}" via API token ${context.actorLabel}`, 'Project', projectId, context.actorId, context.actorLabel);
     await projectRef(context.tenantId, projectId).delete();
     res.status(200).json({
         success: true,
@@ -485,7 +485,7 @@ const createTask = async (req, res, projectId) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
-    await writeProjectActivity(context.tenantId, projectId, `Created task \"${title}\" via API token ${context.actorLabel}`, 'Tasks', created.id, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Created task "${title}" via API token ${context.actorLabel}`, 'Tasks', created.id, context.actorId, context.actorLabel);
     await syncProjectProgress(context.tenantId, projectId);
     const taskSnapshot = await created.get();
     res.status(201).json({
@@ -514,7 +514,7 @@ const updateTask = async (req, res, projectId, taskId) => {
     await taskRef.update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
     const latestTaskSnapshot = await taskRef.get();
     const latestTaskTitle = getString((_a = latestTaskSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title);
-    await writeProjectActivity(context.tenantId, projectId, `Updated task \"${latestTaskTitle || taskId}\" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Updated task "${latestTaskTitle || taskId}" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
     await syncProjectProgress(context.tenantId, projectId);
     res.status(200).json({
         success: true,
@@ -535,7 +535,7 @@ const deleteTask = async (req, res, projectId, taskId) => {
     }
     const taskTitle = getString((_a = taskSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title);
     await taskRef.delete();
-    await writeProjectActivity(context.tenantId, projectId, `Deleted task \"${taskTitle || taskId}\" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Deleted task "${taskTitle || taskId}" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
     await syncProjectProgress(context.tenantId, projectId);
     res.status(200).json({
         success: true,
@@ -574,7 +574,7 @@ const upsertTaskByExternalKey = async (req, res, projectId) => {
         await taskSnapshot.ref.update(updates);
         const refreshed = await taskSnapshot.ref.get();
         const refreshedTitle = getString((_a = refreshed.data()) === null || _a === void 0 ? void 0 : _a.title);
-        await writeProjectActivity(context.tenantId, projectId, `Synced task \"${refreshedTitle || refreshed.id}\" via external key ${externalKey}`, 'Tasks', refreshed.id, context.actorId, context.actorLabel);
+        await writeProjectActivity(context.tenantId, projectId, `Synced task "${refreshedTitle || refreshed.id}" via external key ${externalKey}`, 'Tasks', refreshed.id, context.actorId, context.actorLabel);
         await syncProjectProgress(context.tenantId, projectId);
         res.status(200).json({
             success: true,
@@ -616,7 +616,7 @@ const upsertTaskByExternalKey = async (req, res, projectId) => {
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
     });
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
-    await writeProjectActivity(context.tenantId, projectId, `Upsert-created task \"${title}\" via external key ${externalKey}`, 'Tasks', created.id, context.actorId, context.actorLabel);
+    await writeProjectActivity(context.tenantId, projectId, `Upsert-created task "${title}" via external key ${externalKey}`, 'Tasks', created.id, context.actorId, context.actorLabel);
     await syncProjectProgress(context.tenantId, projectId);
     const taskSnapshot = await created.get();
     res.status(201).json({

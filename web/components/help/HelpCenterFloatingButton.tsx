@@ -18,9 +18,9 @@ export const HelpCenterFloatingButton = () => {
             type="button"
             onClick={handleOpen}
             className="
+                help-center-floating-button
                 fixed bottom-6 right-6 z-[80]
                 flex items-center gap-2 px-4 py-2 rounded-full
-                bg-primary text-on-primary
                 shadow-lg hover:opacity-90 transition-opacity
             "
             aria-label={t('help.openAria')}

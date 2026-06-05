@@ -37,6 +37,16 @@ body {
   overflow: hidden;
 }
 
+button {
+  font: inherit;
+  color: inherit;
+  background-color: transparent;
+  background-image: none;
+  border: 0 solid transparent;
+}
+
+@tailwind utilities;
+
 #root {
   height: 100vh;
   display: flex;
@@ -497,6 +507,17 @@ html.dark .switch-track.active {
 .help-highlight {
   box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
   background: var(--color-surface-hover);
+}
+
+.help-center-floating-button {
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  border: 1px solid color-mix(in srgb, var(--color-primary) 72%, transparent);
+}
+
+.help-center-floating-button:hover {
+  background: var(--color-primary-hover);
+  color: var(--color-primary-text);
 }
 
 html.dark .help-highlight {

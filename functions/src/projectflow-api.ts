@@ -490,7 +490,7 @@ const createProject = async (req: any, res: any) => {
     await writeProjectActivity(
         context.tenantId,
         created.id,
-        `Created project \"${title}\" via API token ${context.actorLabel}`,
+        `Created project "${title}" via API token ${context.actorLabel}`,
         'Project',
         created.id,
         context.actorId,
@@ -536,7 +536,7 @@ const updateProject = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated project \"${projectSnapshot.data()?.title || projectId}\" via API token ${context.actorLabel}`,
+        `Updated project "${projectSnapshot.data()?.title || projectId}" via API token ${context.actorLabel}`,
         'Project',
         projectId,
         context.actorId,
@@ -569,7 +569,7 @@ const deleteProject = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted project \"${projectSnapshot.data()?.title || projectId}\" via API token ${context.actorLabel}`,
+        `Deleted project "${projectSnapshot.data()?.title || projectId}" via API token ${context.actorLabel}`,
         'Project',
         projectId,
         context.actorId,
@@ -658,7 +658,7 @@ const createTask = async (req: any, res: any, projectId: string) => {
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Created task \"${title}\" via API token ${context.actorLabel}`,
+        `Created task "${title}" via API token ${context.actorLabel}`,
         'Tasks',
         created.id,
         context.actorId,
@@ -710,7 +710,7 @@ const updateTask = async (req: any, res: any, projectId: string, taskId: string)
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Updated task \"${latestTaskTitle || taskId}\" via API token ${context.actorLabel}`,
+        `Updated task "${latestTaskTitle || taskId}" via API token ${context.actorLabel}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -748,7 +748,7 @@ const deleteTask = async (req: any, res: any, projectId: string, taskId: string)
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Deleted task \"${taskTitle || taskId}\" via API token ${context.actorLabel}`,
+        `Deleted task "${taskTitle || taskId}" via API token ${context.actorLabel}`,
         'Tasks',
         taskId,
         context.actorId,
@@ -806,7 +806,7 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
         await writeProjectActivity(
             context.tenantId,
             projectId,
-            `Synced task \"${refreshedTitle || refreshed.id}\" via external key ${externalKey}`,
+            `Synced task "${refreshedTitle || refreshed.id}" via external key ${externalKey}`,
             'Tasks',
             refreshed.id,
             context.actorId,
@@ -865,7 +865,7 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
     await writeProjectActivity(
         context.tenantId,
         projectId,
-        `Upsert-created task \"${title}\" via external key ${externalKey}`,
+        `Upsert-created task "${title}" via external key ${externalKey}`,
         'Tasks',
         created.id,
         context.actorId,
