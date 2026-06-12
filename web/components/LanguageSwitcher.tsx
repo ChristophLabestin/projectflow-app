@@ -37,10 +37,10 @@ export const LanguageSwitcher = () => {
                 type="button"
                 onClick={() => setIsOpen((prev) => !prev)}
                 className={`
-                    flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-muted
+                    flex items-center gap-1.5 h-8 px-2.5 rounded-lg border bg-card text-muted shadow-sm
                     ${isOpen
                         ? 'bg-surface-hover border-surface text-main'
-                        : 'border-transparent hover:bg-surface-hover hover:text-main'
+                        : 'border-surface hover:bg-surface-hover hover:text-main'
                     }
                 `}
                 title={t('language.switch')}

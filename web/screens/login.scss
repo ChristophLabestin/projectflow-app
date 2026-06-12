@@ -30,11 +30,11 @@
 .login-page__hero-content {
     position: relative;
     z-index: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    align-items: center;
     height: 100%;
-    gap: 40px;
+    gap: 32px;
 }
 
 .login-page__brand {
@@ -60,28 +60,26 @@
 .login-page__brand-name {
     font-size: 1.2rem;
     font-weight: 700;
-    letter-spacing: -0.02em;
 }
 
 .login-page__hero-title {
-    font-size: 3rem;
+    font-size: 2.35rem;
     font-weight: 800;
     line-height: 1.05;
-    letter-spacing: -0.03em;
     margin: 0 0 16px;
 }
 
 .login-page__hero-subtitle {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: rgba(255, 255, 255, 0.7);
-    margin: 0 0 32px;
+    margin: 0 0 28px;
     line-height: 1.6;
 }
 
 .login-page__feature-list {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 18px;
 }
 
 .login-page__feature {
@@ -118,6 +116,7 @@
     text-transform: uppercase;
     letter-spacing: 0.2em;
     color: rgba(255, 255, 255, 0.5);
+    align-self: end;
 }
 
 .login-page__panel {
@@ -309,5 +308,21 @@ html.dark .login-page__social-icon--invert {
 
     .login-page__panel {
         padding: 48px;
+    }
+}
+
+@media (min-width: 1280px) {
+    .login-page__hero-title {
+        font-size: 3rem;
+    }
+
+    .login-page__hero-subtitle {
+        font-size: 1.1rem;
+    }
+}
+
+@media (min-width: 1800px) {
+    .login-page__panel-inner {
+        max-width: 440px;
     }
 }

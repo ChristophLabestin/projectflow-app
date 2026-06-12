@@ -15,7 +15,7 @@ import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 import { db } from './init';
 
 type StorageProvider = 'firebase' | 's3' | 'googleDrive';
-type UploadModule = 'media' | 'profile' | 'project' | 'finance' | (string & {});
+type UploadModule = 'media' | 'profile' | 'project' | 'finance' | string;
 
 type FileStorageSecret = {
     activeProvider?: StorageProvider;
