@@ -18,7 +18,6 @@ import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
-import { ProjectBoard } from '../components/ProjectBoard';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 
@@ -43,13 +42,14 @@ export const ProjectTasks = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
-    const [view, setView] = useState<'list' | 'board'>('list');
+    const [view, setView] = useState<'list' | 'grid'>('list');
     const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [taskPillEditor, setTaskPillEditor] = useState<{ taskId: string; type: TaskPillEditorType; anchorEl: HTMLElement } | null>(null);
     const [taskPillEditorPosition, setTaskPillEditorPosition] = useState({ top: 0, left: 0, width: 304 });
     const [savingInlineTaskId, setSavingInlineTaskId] = useState<string | null>(null);
+    const [bulkUpdating, setBulkUpdating] = useState(false);
     const location = useLocation();
     const confirm = useConfirm();
     const taskPillEditorRef = useRef<HTMLDivElement | null>(null);
@@ -136,6 +136,14 @@ export const ProjectTasks = () => {
         setTaskPillEditor((current) => {
             if (!current) return current;
             return tasks.some((task) => task.id === current.taskId) ? current : null;
+        });
+    }, [tasks]);
+
+    useEffect(() => {
+        setSelectedIds((current) => {
+            const availableIds = new Set(tasks.map((task) => task.id));
+            const next = new Set(Array.from(current).filter((taskId) => availableIds.has(taskId)));
+            return next.size === current.size ? current : next;
         });
     }, [tasks]);
 
@@ -239,7 +247,7 @@ export const ProjectTasks = () => {
 
     const viewLabels = useMemo(() => ({
         list: t('projectTasks.view.list'),
-        board: t('projectTasks.view.board')
+        grid: t('projectTasks.view.grid')
     }), [t]);
     const sortOptions = useMemo<SelectOption[]>(() => ([
         { value: 'priority', label: t('projectTasks.sort.priority') },
@@ -247,6 +255,21 @@ export const ProjectTasks = () => {
         { value: 'title', label: t('projectTasks.sort.title') },
         { value: 'createdAt', label: t('projectTasks.sort.created') },
     ]), [t]);
+    const bulkStatusOptions = useMemo<SelectOption[]>(
+        () => TASK_STATUS_OPTIONS.map((status) => ({ value: status, label: statusLabels[status] || status })),
+        [statusLabels]
+    );
+    const bulkPriorityOptions = useMemo<SelectOption[]>(
+        () => TASK_PRIORITY_OPTIONS.map((priority) => ({ value: priority, label: priorityLabels[priority] || priority })),
+        [priorityLabels]
+    );
+    const bulkInitiativeOptions = useMemo<SelectOption[]>(
+        () => [
+            { value: '__none__', label: t('projectTasks.pill.initiativeNone') },
+            ...initiatives.map((initiative) => ({ value: initiative.id, label: initiative.title }))
+        ],
+        [initiatives, t]
+    );
 
     useEffect(() => {
         if (!taskPillEditor) return;
@@ -373,6 +396,65 @@ export const ProjectTasks = () => {
         });
     };
 
+    const visibleTaskIds = filteredTasks.map((task) => task.id);
+    const selectedTasks = tasks.filter((task) => selectedIds.has(task.id));
+    const selectedVisibleCount = visibleTaskIds.filter((taskId) => selectedIds.has(taskId)).length;
+    const allVisibleSelected = visibleTaskIds.length > 0 && selectedVisibleCount === visibleTaskIds.length;
+    const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
+
+    const toggleSelectAllVisible = () => {
+        setSelectedIds((current) => {
+            const next = new Set(current);
+            if (allVisibleSelected) {
+                visibleTaskIds.forEach((taskId) => next.delete(taskId));
+            } else {
+                visibleTaskIds.forEach((taskId) => next.add(taskId));
+            }
+            return next;
+        });
+    };
+
+    const clearSelection = () => setSelectedIds(new Set());
+
+    const applyBulkUpdate = async (updatesForTask: (task: Task) => Partial<Task>) => {
+        if (!id || !selectedTasks.length || !can('canManageTasks')) return;
+        const previousTasks = tasks;
+        const selectedTaskIds = new Set(selectedTasks.map((task) => task.id));
+        setBulkUpdating(true);
+        setTasks((current) => current.map((task) => (
+            selectedTaskIds.has(task.id) ? { ...task, ...updatesForTask(task) } : task
+        )));
+
+        try {
+            await Promise.all(selectedTasks.map((task) => (
+                updateTaskFields(task.id, updatesForTask(task), id, task.tenantId || project?.tenantId)
+            )));
+        } catch (e) {
+            console.error(e);
+            setTasks(previousTasks);
+            setError(t('projectTasks.error.bulkUpdate'));
+        } finally {
+            setBulkUpdating(false);
+        }
+    };
+
+    const handleBulkStatusChange = (value: string | number) => {
+        const status = value as Task['status'];
+        void applyBulkUpdate(() => ({ status, isCompleted: status === 'Done' }));
+    };
+
+    const handleBulkPriorityChange = (value: string | number) => {
+        const priority = value as Task['priority'];
+        void applyBulkUpdate(() => ({ priority }));
+    };
+
+    const handleBulkInitiativeChange = (value: string | number) => {
+        const initiativeId = value === '__none__' ? '' : String(value);
+        void applyBulkUpdate((task) => (
+            task.legacyInitiativeRoot ? {} : { initiativeId }
+        ));
+    };
+
     const handleBulkDelete = async () => {
         if (!selectedIds.size) return;
         if (!can('canManageTasks')) return;
@@ -441,7 +523,7 @@ export const ProjectTasks = () => {
         finish
     } = useOnboardingTour('project_tasks', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
-    const TaskCard = ({ task, isBoard = false }: { task: Task; isBoard?: boolean }) => {
+    const TaskCard = ({ task, isGrid = false }: { task: Task; isGrid?: boolean }) => {
         const isActiveEditor = (type: TaskPillEditorType) => taskPillEditor?.taskId === task.id && taskPillEditor.type === type;
         const isSavingInline = savingInlineTaskId === task.id;
         const canQuickEditDates = can('canManageTasks');
@@ -479,10 +561,27 @@ export const ProjectTasks = () => {
         return (
             <div
                 onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''} priority-stripe priority-stripe--${(task.priority || 'medium').toLowerCase()}`}
+                className={`task-card ${cardVariant} ${isGrid ? 'is-grid' : ''} ${selectedIds.has(task.id) ? 'is-selected' : ''} priority-stripe priority-stripe--${(task.priority || 'medium').toLowerCase()}`}
             >
                 {/* Left: Status & Main Info */}
                 <div className="task-main-info">
+                    {can('canManageTasks') && (
+                        <button
+                            type="button"
+                            className={`task-select-btn ${selectedIds.has(task.id) ? 'is-selected' : ''}`}
+                            onClick={(event) => {
+                                event.stopPropagation();
+                                toggleSelect(task.id);
+                            }}
+                            title={selectedIds.has(task.id) ? t('projectTasks.bulk.unselectTask') : t('projectTasks.bulk.selectTask')}
+                            aria-label={selectedIds.has(task.id) ? t('projectTasks.bulk.unselectTask') : t('projectTasks.bulk.selectTask')}
+                            aria-pressed={selectedIds.has(task.id)}
+                        >
+                            <span className="material-symbols-outlined">
+                                {selectedIds.has(task.id) ? 'check_box' : 'check_box_outline_blank'}
+                            </span>
+                        </button>
+                    )}
                     <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleToggle(task); }}
@@ -518,17 +617,6 @@ export const ProjectTasks = () => {
                                     >
                                         <span className="material-symbols-outlined">rocket_launch</span>
                                         <span>{initiativeLabel}</span>
-                                    </button>
-                                )}
-                                {!task.legacyInitiativeRoot && !isInitiativeTask && can('canManageTasks') && (
-                                    <button
-                                        type="button"
-                                        className={`badge badge--interactive badge--initiative-link strategic ${isActiveEditor('initiative') ? 'badge--active' : ''}`}
-                                        onClick={togglePillEditor('initiative')}
-                                        data-task-pill-trigger={`${task.id}-initiative`}
-                                    >
-                                        <span className="material-symbols-outlined">rocket_launch</span>
-                                        <span>{t('projectTasks.pill.linkInitiative')}</span>
                                     </button>
                                 )}
                                 {task.legacyInitiativeRoot && task.initiativeId && (
@@ -685,10 +773,10 @@ export const ProjectTasks = () => {
                 </div>
 
                 {/* Right: Timeline & Actions */}
-                <div className={`task-actions-section ${isBoard ? 'is-board' : ''}`}>
+                <div className={`task-actions-section ${isGrid ? 'is-grid' : ''}`}>
                     {/* Minimal Timeline */}
                     {showStrategicTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`.trim()}>
+                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--wide'}`.trim()}>
                             <div className="timeline-header">
                                 <span className="timeline-label">
                                     <span className="material-symbols-outlined timeline-icon">timeline</span>
@@ -741,7 +829,7 @@ export const ProjectTasks = () => {
                         </div>
                     )}
                     {showTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
+                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className="timeline-simple-bar">
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
@@ -780,7 +868,7 @@ export const ProjectTasks = () => {
                     )}
 
                     {showStrategicDue && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
+                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
@@ -808,7 +896,7 @@ export const ProjectTasks = () => {
                     )}
 
                     {showDueDate && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
+                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
@@ -836,7 +924,7 @@ export const ProjectTasks = () => {
                     )}
 
                     {showDueDateSetter && (
-                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
+                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             {canQuickEditDates ? (
                                 <button
                                     type="button"
@@ -865,6 +953,18 @@ export const ProjectTasks = () => {
 
                     {/* Action Buttons */}
                     <div className="action-btn-group">
+                        {!task.legacyInitiativeRoot && !isInitiativeTask && can('canManageTasks') && (
+                            <button
+                                type="button"
+                                onClick={togglePillEditor('initiative')}
+                                data-task-pill-trigger={`${task.id}-initiative`}
+                                className={`action-btn action-btn--initiative ${isActiveEditor('initiative') ? 'is-active' : ''}`}
+                                title={t('projectTasks.pill.linkInitiative')}
+                                aria-label={t('projectTasks.pill.linkInitiative')}
+                            >
+                                <span className="material-symbols-outlined action-btn__icon">rocket_launch</span>
+                            </button>
+                        )}
                         {can('canManageTasks') && (
                             <button
                                 type="button"
@@ -1030,8 +1130,8 @@ export const ProjectTasks = () => {
                         </div>
                     </div>
                     <div className="workstream-page__command-right">
-                        <div className="workstream-page__view-toggle" role="group" aria-label={t('projectTasks.view.list')}>
-                            {(['list', 'board'] as const).map((v) => (
+                        <div className="workstream-page__view-toggle" role="group" aria-label={t('projectTasks.view.label')}>
+                            {(['list', 'grid'] as const).map((v) => (
                                 <button
                                     key={v}
                                     type="button"
@@ -1041,12 +1141,80 @@ export const ProjectTasks = () => {
                                     title={viewLabels[v]}
                                     aria-label={viewLabels[v]}
                                 >
-                                    <span className="material-symbols-outlined">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
+                                    <span className="material-symbols-outlined">{v === 'list' ? 'format_list_bulleted' : 'grid_view'}</span>
                                 </button>
                             ))}
                         </div>
                     </div>
                 </div>
+
+                {can('canManageTasks') && filteredTasks.length > 0 && (
+                    <div className={`workstream-page__bulk ${selectedIds.size > 0 ? 'has-selection' : ''}`}>
+                        <div className="workstream-page__bulk-left">
+                            <button
+                                type="button"
+                                className="workstream-page__bulk-select"
+                                onClick={toggleSelectAllVisible}
+                                disabled={bulkUpdating}
+                                aria-pressed={allVisibleSelected}
+                            >
+                                <span className="material-symbols-outlined">
+                                    {allVisibleSelected ? 'check_box' : someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank'}
+                                </span>
+                                {allVisibleSelected ? t('projectTasks.bulk.unmarkAll') : t('projectTasks.bulk.markAll')}
+                            </button>
+                            <span className="workstream-page__bulk-count">
+                                {t('projectTasks.bulk.selectedCount').replace('{count}', String(selectedIds.size))}
+                            </span>
+                        </div>
+                        <div className="workstream-page__bulk-actions" aria-disabled={selectedIds.size === 0 || bulkUpdating}>
+                            <Select
+                                value={null}
+                                onChange={handleBulkStatusChange}
+                                options={bulkStatusOptions}
+                                placeholder={t('projectTasks.bulk.status')}
+                                disabled={selectedIds.size === 0 || bulkUpdating}
+                                className="workstream-page__bulk-select-control"
+                            />
+                            <Select
+                                value={null}
+                                onChange={handleBulkPriorityChange}
+                                options={bulkPriorityOptions}
+                                placeholder={t('projectTasks.bulk.priority')}
+                                disabled={selectedIds.size === 0 || bulkUpdating}
+                                className="workstream-page__bulk-select-control"
+                            />
+                            <Select
+                                value={null}
+                                onChange={handleBulkInitiativeChange}
+                                options={bulkInitiativeOptions}
+                                placeholder={t('projectTasks.bulk.initiative')}
+                                disabled={selectedIds.size === 0 || bulkUpdating}
+                                className="workstream-page__bulk-select-control workstream-page__bulk-select-control--wide"
+                            />
+                            <button
+                                type="button"
+                                className="workstream-page__bulk-icon"
+                                onClick={clearSelection}
+                                disabled={selectedIds.size === 0 || bulkUpdating}
+                                title={t('projectTasks.bulk.clear')}
+                                aria-label={t('projectTasks.bulk.clear')}
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                            <button
+                                type="button"
+                                className="workstream-page__bulk-icon workstream-page__bulk-icon--danger"
+                                onClick={handleBulkDelete}
+                                disabled={selectedIds.size === 0 || bulkUpdating}
+                                title={t('projectTasks.bulk.delete')}
+                                aria-label={t('projectTasks.bulk.delete')}
+                            >
+                                <span className="material-symbols-outlined">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <div data-onboarding-id="project-tasks-view" className="workstream-page__body">
                     {filteredTasks.length === 0 ? (
@@ -1067,11 +1235,11 @@ export const ProjectTasks = () => {
                             ))}
                         </div>
                     ) : (
-                        <ProjectBoard
-                            tasks={filteredTasks}
-                            renderTask={(task) => <TaskCard task={task} isBoard />}
-                            stickyOffset="85px"
-                        />
+                        <div className="workstream-page__grid">
+                            {filteredTasks.map(task => (
+                                <TaskCard key={task.id} task={task} isGrid />
+                            ))}
+                        </div>
                     )}
                 </div>
 

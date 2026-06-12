@@ -386,454 +386,248 @@ export const ProjectInitiativeDetail = () => {
 
     return (
         <div className="initiative-detail">
-            <header className="initiative-detail__hero">
-                <div className="initiative-detail__hero-glow" />
-                <div className="initiative-detail__hero-content">
-                    <div className="initiative-detail__hero-layout">
-                        <div className="initiative-detail__hero-main">
-                            <div className="initiative-detail__badge-row">
-                                <Link to={`/project/${projectId}/initiatives`} className="initiative-detail__nav-pill">
-                                    <span className="material-symbols-outlined">west</span>
-                                    {t('initiatives.list.title')}
+            <div className="initiative-detail__header">
+                <div className="initiative-detail__header-top">
+                    <div className="initiative-detail__breadcrumb">
+                        <Link to={`/project/${projectId}/initiatives`} className="initiative-detail__breadcrumb-link">
+                            <span className="material-symbols-outlined">west</span>
+                            {t('initiatives.list.title')}
+                        </Link>
+                        <span>/</span>
+                        <Link to={`/project/${projectId}`} className="initiative-detail__breadcrumb-link">
+                            {project?.title || t('nav.initiatives')}
+                        </Link>
+                        {sourceIdea && (
+                            <>
+                                <span>/</span>
+                                <Link to={`/project/${projectId}/flows/${sourceIdea.id}`} className="initiative-detail__breadcrumb-link">
+                                    {t('initiatives.detail.fromFlow')}
                                 </Link>
-                                <Link to={`/project/${projectId}`} className="initiative-detail__nav-pill">
-                                    <span className="material-symbols-outlined">deployed_code</span>
-                                    {project?.title || t('nav.initiatives')}
-                                </Link>
-                                {sourceIdea && (
-                                    <Link to={`/project/${projectId}/flows/${sourceIdea.id}`} className="initiative-detail__nav-pill">
-                                        <span className="material-symbols-outlined">emoji_objects</span>
-                                        {t('initiatives.detail.fromFlow')}
-                                    </Link>
-                                )}
-                                <span className={`initiative-detail__pill initiative-detail__pill--${getTone(initiative.status)}`}>
-                                    <span className="material-symbols-outlined">track_changes</span>
-                                    {initiativeStatusLabels[initiative.status] || initiative.status}
-                                </span>
-                                {initiative.priority && (
-                                    <span className={`initiative-detail__pill initiative-detail__pill--${getTone(initiative.priority)}`}>
-                                        <span className="material-symbols-outlined">flag</span>
-                                        {priorityLabels[initiative.priority] || initiative.priority}
-                                    </span>
-                                )}
-                                {initiativeHealth && (
-                                    <span className={`initiative-detail__pill initiative-detail__pill--${getTone(initiativeHealth.status)}`}>
-                                        <span className="material-symbols-outlined">{getHealthIcon(initiativeHealth.status)}</span>
-                                        {healthLabels[initiativeHealth.status] || initiativeHealth.status}
-                                    </span>
-                                )}
-                            </div>
-
-                            <h1 className="initiative-detail__title">{initiative.title}</h1>
-
-                            <div className="initiative-detail__facts">
-                                {initiativeHeroFacts.map((fact) => (
-                                    <div key={fact.label} className="initiative-detail__fact">
-                                        <span className="material-symbols-outlined initiative-detail__fact-icon">{fact.icon}</span>
-                                        <div className="initiative-detail__fact-copy">
-                                            <span className="initiative-detail__fact-value">{fact.value}</span>
-                                            <span className="initiative-detail__fact-label">{fact.label}</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="initiative-detail__hero-actions">
-                            {canManageInitiative && (
-                                <>
-                                    <Button
-                                        variant="secondary"
-                                        size="lg"
-                                        className="initiative-detail__primary-action"
-                                        onClick={() => setShowSettingsModal(true)}
-                                        icon={<span className="material-symbols-outlined initiative-detail__action-icon">edit</span>}
-                                    >
-                                        {t('initiatives.detail.editAction')}
-                                    </Button>
-                                    <div className="initiative-detail__action-toolbar">
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={handleStartInitiativeFocus}
-                                            className="initiative-detail__action-button"
-                                            data-state={focusItemId === initiative.id ? 'focused' : 'default'}
-                                        >
-                                            <span className="material-symbols-outlined initiative-detail__action-icon">
-                                                {focusItemId === initiative.id ? 'center_focus_strong' : 'center_focus_weak'}
-                                            </span>
-                                        </Button>
-                                        <span className="initiative-detail__action-divider" />
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={handleDelete}
-                                            className="initiative-detail__action-button initiative-detail__action-button--danger"
-                                            aria-label={t('common.delete')}
-                                        >
-                                            <span className="material-symbols-outlined initiative-detail__action-icon">delete</span>
-                                        </Button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
+                            </>
+                        )}
+                        <span>/</span>
+                        <span className="initiative-detail__breadcrumb-current">
+                            {initiative.title}
+                        </span>
                     </div>
 
+                    <div className="initiative-detail__quick-actions">
+                        <button
+                            type="button"
+                            className="initiative-detail__icon-button"
+                            onClick={handleStartInitiativeFocus}
+                            data-state={focusItemId === initiative.id ? 'focused' : 'default'}
+                            title={focusItemId === initiative.id ? t('initiatives.detail.currentFocus') : t('initiatives.detail.setFocusTask')}
+                        >
+                            <span className="material-symbols-outlined">
+                                {focusItemId === initiative.id ? 'center_focus_strong' : 'center_focus_weak'}
+                            </span>
+                        </button>
+                        {canManageInitiative && (
+                            <button
+                                type="button"
+                                className="initiative-detail__icon-button initiative-detail__icon-button--danger"
+                                onClick={handleDelete}
+                                title={t('common.delete')}
+                            >
+                                <span className="material-symbols-outlined">delete</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </header>
 
-            <div className="initiative-detail__layout">
-                <section className="initiative-detail__main">
-                    <div className="initiative-detail__meta-grid">
-                        <div className="app-card initiative-detail__card">
-                            <div className="initiative-detail__card-header">
-                                <span className="material-symbols-outlined initiative-detail__card-icon">flag</span>
-                                <span className="initiative-detail__card-label">{t('taskDetail.priority.label')}</span>
-                            </div>
-                            <div className="initiative-detail__card-body">
-                                {canManageInitiative ? (
-                                    <div ref={priorityMenuRef} className="initiative-detail__select">
-                                        <button
-                                            type="button"
-                                            onClick={() => setPriorityMenuOpen((open) => !open)}
-                                            className={`initiative-detail__select-trigger initiative-detail__select-trigger--${getTone(initiative.priority)}`}
-                                            data-open={priorityMenuOpen ? 'true' : 'false'}
-                                        >
-                                            <span className="initiative-detail__select-value">
-                                                <span className="material-symbols-outlined initiative-detail__select-icon">
-                                                    {getPriorityIcon(initiative.priority)}
-                                                </span>
-                                                {initiative.priority ? (priorityLabels[initiative.priority] || initiative.priority) : t('projectDetails.notSet')}
-                                            </span>
-                                            <span className="material-symbols-outlined initiative-detail__select-chevron">expand_more</span>
-                                        </button>
-                                        {priorityMenuOpen && (
-                                            <div className="initiative-detail__select-menu">
-                                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map((priority) => (
-                                                    <button
-                                                        key={priority}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setPriorityMenuOpen(false);
-                                                            void applyInitiativeUpdates({ priority });
-                                                        }}
-                                                        className={`initiative-detail__select-item initiative-detail__select-item--${getTone(priority)} ${initiative.priority === priority ? 'initiative-detail__select-item--selected' : ''}`}
-                                                    >
-                                                        <span className="initiative-detail__select-item-label">
-                                                            <span className="material-symbols-outlined initiative-detail__select-icon">
-                                                                {getPriorityIcon(priority)}
-                                                            </span>
-                                                            {priorityLabels[priority]}
-                                                        </span>
-                                                        {initiative.priority === priority && (
-                                                            <span className="material-symbols-outlined initiative-detail__select-item-check">check</span>
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={`initiative-detail__static-pill initiative-detail__static-pill--${getTone(initiative.priority)}`}>
-                                        <span className="material-symbols-outlined initiative-detail__select-icon">{getPriorityIcon(initiative.priority)}</span>
-                                        {initiative.priority ? (priorityLabels[initiative.priority] || initiative.priority) : t('projectDetails.notSet')}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+                <div className="initiative-detail__title-group">
+                    <h1 className="initiative-detail__title">{initiative.title}</h1>
+                </div>
+            </div>
 
-                        <div className="app-card initiative-detail__card">
-                            <div className="initiative-detail__card-header">
-                                <span className="material-symbols-outlined initiative-detail__card-icon">timelapse</span>
-                                <span className="initiative-detail__card-label">{t('taskDetail.status.label')}</span>
-                            </div>
-                            <div className="initiative-detail__card-body">
-                                {canManageInitiative ? (
-                                    <div ref={statusMenuRef} className="initiative-detail__select">
-                                        <button
-                                            type="button"
-                                            onClick={() => setStatusMenuOpen((open) => !open)}
-                                            className={`initiative-detail__select-trigger initiative-detail__select-trigger--${getTone(initiative.status)}`}
-                                            data-open={statusMenuOpen ? 'true' : 'false'}
-                                        >
-                                            <span className="initiative-detail__select-value">
-                                                <span className="material-symbols-outlined initiative-detail__select-icon">
-                                                    {getInitiativeStatusIcon(initiative.status)}
-                                                </span>
-                                                {initiativeStatusLabels[initiative.status] || initiative.status}
-                                            </span>
-                                            <span className="material-symbols-outlined initiative-detail__select-chevron">expand_more</span>
-                                        </button>
-                                        {statusMenuOpen && (
-                                            <div className="initiative-detail__select-menu">
-                                                {initiativeStatusOptions.map((status) => (
-                                                    <button
-                                                        key={status}
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setStatusMenuOpen(false);
-                                                            void applyInitiativeUpdates({ status });
-                                                        }}
-                                                        className={`initiative-detail__select-item initiative-detail__select-item--${getTone(status)} ${initiative.status === status ? 'initiative-detail__select-item--selected' : ''}`}
-                                                    >
-                                                        <span className="initiative-detail__select-item-label">
-                                                            <span className="material-symbols-outlined initiative-detail__select-icon">
-                                                                {getInitiativeStatusIcon(status)}
-                                                            </span>
-                                                            {initiativeStatusLabels[status] || status}
-                                                        </span>
-                                                        {initiative.status === status && (
-                                                            <span className="material-symbols-outlined initiative-detail__select-item-check">check</span>
-                                                        )}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className={`initiative-detail__static-pill initiative-detail__static-pill--${getTone(initiative.status)}`}>
-                                        <span className="material-symbols-outlined initiative-detail__select-icon">{getInitiativeStatusIcon(initiative.status)}</span>
-                                        {initiativeStatusLabels[initiative.status] || initiative.status}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Assignees Card */}
-                        <div className="app-card initiative-detail__card">
-                            <div className="initiative-detail__card-header">
-                                <span className="material-symbols-outlined initiative-detail__card-icon">group</span>
-                                <span className="initiative-detail__card-label">{t('taskDetail.assignees.label')}</span>
-                            </div>
-                            <div className="initiative-detail__card-body initiative-detail__assignee-card">
-                                <MultiAssigneeSelector
-                                    projectId={projectId!}
-                                    assigneeIds={initiative.assigneeIds || []}
-                                    assignedGroupIds={initiative.assignedGroupIds || []}
-                                    onChange={(ids) => void applyInitiativeUpdates({ assigneeIds: ids })}
-                                    onGroupChange={(ids) => void applyInitiativeUpdates({ assignedGroupIds: ids })}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <Card className={`initiative-detail__panel initiative-detail__panel--feedback ${initiative.feedbackForm?.enabled ? 'is-enabled' : 'is-disabled'}`}>
-                        <div className="initiative-detail__feedback-header">
-                            <div className="initiative-detail__feedback-route">
-                                <span className="material-symbols-outlined">
-                                    {initiative.feedbackForm?.enabled ? 'campaign' : 'forum'}
-                                </span>
-                                <div>
-                                    <div className="initiative-detail__feedback-title-row">
-                                        <h2>{t('initiatives.feedback.sectionTitle')}</h2>
-                                        <span className={`initiative-detail__feedback-status ${initiative.feedbackForm?.enabled ? 'is-enabled' : 'is-disabled'}`}>
-                                            {initiative.feedbackForm?.enabled
-                                                ? t('initiatives.feedback.status.enabled')
-                                                : t('initiatives.feedback.status.disabled')}
-                                        </span>
-                                    </div>
-                                    <strong>
-                                        {initiative.feedbackForm?.enabled
-                                            ? t('initiatives.feedback.route.enabledTitle')
-                                            : t('initiatives.feedback.route.disabledTitle')}
-                                    </strong>
-                                </div>
-                            </div>
-
-                            <div className="initiative-detail__feedback-metrics" aria-label={t('initiatives.feedback.title')}>
-                                <div className="initiative-detail__feedback-metric">
-                                    <span className="initiative-detail__feedback-metric-value">{feedbackTasks.length}</span>
-                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.entries')}</span>
-                                </div>
-                                <div className="initiative-detail__feedback-metric">
-                                    <span className="initiative-detail__feedback-metric-value">{feedbackAttachmentCount}</span>
-                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.images')}</span>
-                                </div>
-                                <div className="initiative-detail__feedback-metric">
-                                    <span className="initiative-detail__feedback-metric-value">{feedbackVisibleFieldCount}</span>
-                                    <span className="initiative-detail__feedback-metric-label">{t('initiatives.feedback.stats.fields')}</span>
-                                </div>
-                            </div>
-                            <div className="initiative-detail__feedback-actions">
-                                {initiative.feedbackForm?.enabled ? (
-                                    <>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            icon={<span className="material-symbols-outlined">forum</span>}
-                                            onClick={() => document.getElementById('initiative-work-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                                        >
-                                            {t('initiatives.feedback.entriesAction').replace('{count}', String(feedbackTasks.length))}
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            icon={<span className="material-symbols-outlined">tune</span>}
-                                            onClick={() => setShowFeedbackModal(true)}
-                                        >
-                                            {t('initiatives.feedback.editAction')}
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <Button
-                                        variant="primary"
-                                        size="sm"
-                                        icon={<span className="material-symbols-outlined">add_link</span>}
-                                        onClick={() => setShowFeedbackModal(true)}
-                                    >
-                                        {t('initiatives.feedback.enableAction')}
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--summary">
+            <div className="initiative-detail__grid">
+                <div className="initiative-detail__main">
+                    {/* Description & Summary Panel */}
+                    <div className="initiative-detail__section">
                         <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.dashboardTitle')}</span>
-                                <h2>{t('initiatives.detail.summaryTitle')}</h2>
-                            </div>
+                            <h2 className="initiative-detail__section-title">
+                                <span className="material-symbols-outlined">notes</span>
+                                {t('initiatives.detail.summaryTitle')}
+                            </h2>
                             {canManageInitiative && (
-                                <Button variant="secondary" size="sm" onClick={() => setShowSettingsModal(true)}>
-                                    {t('initiatives.detail.editAction')}
+                                <Button variant="ghost" size="sm" onClick={() => setShowSettingsModal(true)}>
+                                    <span className="material-symbols-outlined">edit</span>
                                 </Button>
                             )}
                         </div>
-
-                        <div className="initiative-detail__summary-layout">
-                            <div className="initiative-detail__summary-block initiative-detail__summary-block--wide">
-                                <div className="initiative-detail__subsection-title">
-                                    <span className="material-symbols-outlined">notes</span>
-                                    <span>{t('initiatives.fields.description')}</span>
-                                </div>
-                                <div className="initiative-detail__summary-content">
-                                    <p className={`initiative-detail__summary-copy ${!initiative.description ? 'is-empty' : ''}`}>
-                                        {initiative.description || t('initiatives.detail.noDescription')}
-                                    </p>
-                                </div>
+                        <div className="initiative-detail__editor-box">
+                            <div>
+                                <h4>{t('initiatives.fields.description')}</h4>
+                                <p className={!initiative.description ? 'is-empty' : ''}>
+                                    {initiative.description || t('initiatives.detail.noDescription')}
+                                </p>
                             </div>
-
-                            <div className="initiative-detail__summary-block">
-                                <div className="initiative-detail__subsection-title">
-                                    <span className="material-symbols-outlined">checklist</span>
-                                    <span>{t('initiatives.fields.successMetric')}</span>
-                                </div>
-                                <div className="initiative-detail__summary-content">
-                                    <p className={`initiative-detail__summary-copy ${!initiative.successMetric ? 'is-empty' : ''}`}>
-                                        {initiative.successMetric || t('initiatives.detail.noSuccessMetric')}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="initiative-detail__summary-block">
-                                <div className="initiative-detail__subsection-title">
-                                    <span className="material-symbols-outlined">rocket_launch</span>
-                                    <span>{t('initiatives.fields.outcome')}</span>
-                                </div>
-                                <div className="initiative-detail__summary-content">
-                                    <p className={`initiative-detail__summary-copy ${!initiative.outcome ? 'is-empty' : ''}`}>
-                                        {initiative.outcome || t('initiatives.detail.noOutcome')}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--work" id="initiative-work-panel">
-                        <div className="initiative-detail__work-header">
-                            <div className="initiative-detail__subtasks-title">
-                                <h3 className="initiative-detail__section-title">
-                                    <span className="material-symbols-outlined initiative-detail__section-icon">checklist</span>
-                                    {t('initiatives.detail.workTitle')}
-                                </h3>
-                                {tasks.length > 0 && (
-                                    <span className="initiative-detail__subtasks-count">{tasks.length}</span>
-                                )}
-                            </div>
-
-                            <div className="initiative-detail__subtasks-progress">
-                                <div className="initiative-detail__subtasks-bar">
-                                    <div
-                                        className="initiative-detail__subtasks-bar-fill"
-                                        style={{ width: `${progress}%` }}
-                                    />
-                                </div>
-                                <span className="initiative-detail__subtasks-progress-label">{Math.round(progress)}%</span>
-                            </div>
-                        </div>
-
-                        <div className="initiative-detail__tasks-card">
-                            {canManageInitiativeTasks && (
-                                <div className="initiative-detail__tasks-actions">
-                                    <Button variant="primary" size="sm" onClick={() => setShowTaskCreateModal(true)}>
-                                        {t('initiatives.detail.createTask')}
-                                    </Button>
-                                    <Button variant="secondary" size="sm" onClick={() => setShowAttachTaskModal(true)}>
-                                        {t('initiatives.detail.attachTask')}
-                                    </Button>
+                            {initiative.successMetric && (
+                                <div>
+                                    <h4>{t('initiatives.fields.successMetric')}</h4>
+                                    <p>{initiative.successMetric}</p>
                                 </div>
                             )}
+                            {initiative.outcome && (
+                                <div>
+                                    <h4>{t('initiatives.fields.outcome')}</h4>
+                                    <p>{initiative.outcome}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                            <div className="initiative-detail__task-list">
-                                {tasks.length === 0 ? (
-                                    <p className="initiative-detail__state initiative-detail__tasks-empty">{t('initiatives.detail.noTasks')}</p>
-                                ) : tasks.map((task) => (
-                                    <div key={task.id} className={`initiative-detail__task-row ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
-                                        <div className="initiative-detail__task-row-main">
-                                            <div className={`initiative-detail__task-check ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
-                                                <span className="material-symbols-outlined">
-                                                    {task.isCompleted || task.status === 'Done' ? 'check' : ''}
-                                                </span>
-                                            </div>
-                                            <Link
-                                                to={`/project/${projectId}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`}
-                                                className="initiative-detail__task-link"
-                                            >
-                                                <div className="initiative-detail__task-copy">
-                                                    <div className="initiative-detail__task-title-row">
-                                                        <strong className={`initiative-detail__task-title ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>{task.title}</strong>
-                                                        <div className="initiative-detail__task-meta">
-                                                            <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.status)}`}>
-                                                                {taskStatusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
-                                                            </span>
-                                                            {task.priority && (
-                                                                <span className={`initiative-detail__task-pill initiative-detail__task-pill--${getTone(task.priority)}`}>
-                                                                    {priorityLabels[task.priority] || task.priority}
-                                                                </span>
-                                                            )}
-                                                            {task.dueDate && (
-                                                                <span className="initiative-detail__task-pill initiative-detail__task-pill--neutral">
-                                                                    {formatDisplayDate(task.dueDate)}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </Link>
-                                        </div>
-                                        {canManageInitiativeTasks && (
-                                            <div className="initiative-detail__task-row-actions">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => updateTaskInitiative(task.id, null, projectId, project?.tenantId)}
-                                                >
-                                                    {t('initiatives.detail.detachTask')}
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                    {/* Feedback Form Panel */}
+                    <div className="initiative-detail__section">
+                        <div className="initiative-detail__section-header">
+                            <h2 className="initiative-detail__section-title">
+                                <span className="material-symbols-outlined">campaign</span>
+                                {t('initiatives.feedback.sectionTitle')}
+                            </h2>
+                            <div className="initiative-detail__quick-actions">
+                                {initiative.feedbackForm?.enabled && (
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => document.getElementById('initiative-work-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                                        className="initiative-detail__icon-button"
+                                        title={t('initiatives.feedback.entriesAction').replace('{count}', String(feedbackTasks.length))}
+                                    >
+                                        <span className="material-symbols-outlined">forum</span>
+                                    </Button>
+                                )}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowFeedbackModal(true)}
+                                    className="initiative-detail__icon-button"
+                                    title={t('initiatives.feedback.editAction')}
+                                >
+                                    <span className="material-symbols-outlined">{initiative.feedbackForm?.enabled ? 'tune' : 'add'}</span>
+                                </Button>
                             </div>
                         </div>
-                    </Card>
+                        <div className="initiative-detail__editor-box" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span className="material-symbols-outlined" style={{ fontSize: '24px', color: initiative.feedbackForm?.enabled ? 'var(--color-success)' : 'var(--color-text-muted)' }}>
+                                    {initiative.feedbackForm?.enabled ? 'check_circle' : 'cancel'}
+                                </span>
+                                <div>
+                                    <p style={{ fontWeight: 600, margin: 0 }}>
+                                        {initiative.feedbackForm?.enabled
+                                            ? t('initiatives.feedback.status.enabled')
+                                            : t('initiatives.feedback.status.disabled')}
+                                    </p>
+                                    <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+                                        {initiative.feedbackForm?.enabled
+                                            ? t('initiatives.feedback.route.enabledTitle')
+                                            : t('initiatives.feedback.route.disabledTitle')}
+                                    </span>
+                                </div>
+                            </div>
+                            {initiative.feedbackForm?.enabled && (
+                                <div style={{ display: 'flex', gap: '16px' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <strong style={{ display: 'block', fontSize: '16px' }}>{feedbackTasks.length}</strong>
+                                        <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)', textTransform: 'uppercase' }}>{t('initiatives.feedback.stats.entries')}</span>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <strong style={{ display: 'block', fontSize: '16px' }}>{feedbackAttachmentCount}</strong>
+                                        <span style={{ fontSize: '11px', color: 'var(--color-text-subtle)', textTransform: 'uppercase' }}>{t('initiatives.feedback.stats.images')}</span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                    <section className="initiative-detail__section">
-                        <h3 className="initiative-detail__section-title">
-                            <span className="material-symbols-outlined initiative-detail__section-icon">chat</span>
+                    {/* Tasks Work Panel */}
+                    <div className="initiative-detail__section" id="initiative-work-panel">
+                        <div className="initiative-detail__section-header">
+                            <h2 className="initiative-detail__section-title">
+                                <span className="material-symbols-outlined">checklist</span>
+                                {t('initiatives.detail.workTitle')}
+                                {tasks.length > 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>({tasks.length})</span>}
+                            </h2>
+                            {tasks.length > 0 && (
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text-muted)' }}>
+                                    {Math.round(progress)}%
+                                </div>
+                            )}
+                        </div>
+                        
+                        {canManageInitiativeTasks && (
+                            <div className="initiative-detail__tasks-actions">
+                                <Button variant="secondary" size="sm" onClick={() => setShowTaskCreateModal(true)}>
+                                    <span className="material-symbols-outlined">add</span> {t('initiatives.detail.createTask')}
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => setShowAttachTaskModal(true)}>
+                                    <span className="material-symbols-outlined">link</span> {t('initiatives.detail.attachTask')}
+                                </Button>
+                            </div>
+                        )}
+
+                        <div className="initiative-detail__task-list">
+                            {tasks.length === 0 ? (
+                                <div className="initiative-detail__editor-box" style={{ textAlign: 'center', padding: '32px' }}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>list_alt</span>
+                                    <p className="is-empty">{t('initiatives.detail.noTasks')}</p>
+                                </div>
+                            ) : tasks.map((task) => (
+                                <div key={task.id} className={`initiative-detail__task-row ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
+                                    <div className="initiative-detail__task-row-main">
+                                        <div className={`initiative-detail__task-check ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
+                                            <span className="material-symbols-outlined">check</span>
+                                        </div>
+                                        <Link
+                                            to={`/project/${projectId}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`}
+                                            className="initiative-detail__task-link"
+                                        >
+                                            <div className="initiative-detail__task-title-row">
+                                                <h4 className={`initiative-detail__task-title ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
+                                                    {task.title}
+                                                </h4>
+                                                <div className="initiative-detail__task-meta">
+                                                    <span className={`initiative-detail__task-pill initiative-detail__status--${(task.status || 'Open').toLowerCase()}`}>
+                                                        {taskStatusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
+                                                    </span>
+                                                    {task.priority && (
+                                                        <span className={`initiative-detail__task-pill initiative-detail__priority--${(task.priority).toLowerCase()}`}>
+                                                            {priorityLabels[task.priority] || task.priority}
+                                                        </span>
+                                                    )}
+                                                    {task.dueDate && (
+                                                        <span className="initiative-detail__task-pill initiative-detail__task-pill--neutral">
+                                                            {formatDisplayDate(task.dueDate)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </div>
+                                    {canManageInitiativeTasks && (
+                                        <button
+                                            type="button"
+                                            className="initiative-detail__icon-button"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                updateTaskInitiative(task.id, null, projectId, project?.tenantId);
+                                            }}
+                                            title={t('initiatives.detail.detachTask')}
+                                        >
+                                            <span className="material-symbols-outlined">link_off</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="initiative-detail__section">
+                        <h2 className="initiative-detail__section-title" style={{ paddingBottom: '16px', borderBottom: '1px solid var(--color-surface-border)' }}>
+                            <span className="material-symbols-outlined">forum</span>
                             {t('taskDetail.comments.title').replace('{count}', String(commentCount))}
-                        </h3>
+                        </h2>
                         <CommentSection
                             projectId={projectId}
                             targetId={initiative.id}
@@ -843,159 +637,147 @@ export const ProjectInitiativeDetail = () => {
                             hideHeader
                             onCountChange={setCommentCount}
                         />
-                    </section>
-                </section>
+                    </div>
+                </div>
 
-                <aside className="initiative-detail__sidebar">
-                    <Button
-                        variant={focusItemId === initiative.id ? 'secondary' : 'primary'}
-                        size="md"
-                        className="initiative-detail__focus-action initiative-detail__focus-action--sidebar"
-                        data-state={focusItemId === initiative.id ? 'focused' : 'default'}
-                        onClick={handleStartInitiativeFocus}
-                        icon={<span className="material-symbols-outlined initiative-detail__action-icon">{focusItemId === initiative.id ? 'center_focus_strong' : 'center_focus_weak'}</span>}
-                    >
-                        {focusItemId === initiative.id ? t('initiatives.detail.currentFocus') : t('initiatives.detail.setFocusTask')}
-                    </Button>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.dashboardTitle')}</span>
-                                <h2>{t('taskDetail.timeline.label')}</h2>
-                            </div>
-                        </div>
-                        <div className="initiative-detail__info-list">
-                            <div className="initiative-detail__timeline-field">
-                                <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.startDate')}</span>
-                                <DatePicker
-                                    value={initiative.startDate ? new Date(initiative.startDate) : null}
-                                    onChange={(date) => void applyInitiativeUpdates({ startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
-                                    disabled={!canManageInitiative}
-                                />
-                            </div>
-                            <div className="initiative-detail__timeline-field">
-                                <span className="initiative-detail__timeline-label">{t('taskDetail.timeline.dueDate')}</span>
-                                <DatePicker
-                                    value={initiative.dueDate ? new Date(initiative.dueDate) : null}
-                                    onChange={(date) => void applyInitiativeUpdates({ dueDate: date ? format(date, 'yyyy-MM-dd') : '' })}
-                                    disabled={!canManageInitiative}
-                                />
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.dashboardTitle')}</span>
-                                <h2>{t('initiatives.detail.progressTitle')}</h2>
-                            </div>
-                        </div>
-                        <div className="initiative-detail__info-list">
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.summary.workItems')}</span>
-                                <strong>{tasks.length}</strong>
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.detail.activeTasks')}</span>
-                                <strong>{activeTaskCount}</strong>
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.summary.completed')}</span>
-                                <strong>{completedTaskCount}</strong>
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.summary.blocked')}</span>
-                                <strong>{blockedTaskCount}</strong>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.contextTitle')}</span>
-                                <h2>{t('initiatives.detail.detailsTitle')}</h2>
-                            </div>
-                        </div>
-                        <div className="initiative-detail__info-list">
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.detail.projectLabel')}</span>
-                                <Link to={`/project/${projectId}`} className="initiative-detail__inline-link">
-                                    {project?.title || t('nav.initiatives')}
-                                </Link>
-                            </div>
-                            <div className="initiative-detail__info-row">
-                                <span>{t('initiatives.detail.sourceLabel')}</span>
-                                {sourceIdea ? (
-                                    <Link to={`/project/${projectId}/flows/${sourceIdea.id}`} className="initiative-detail__inline-link">
-                                        {t('initiatives.detail.fromFlow')}
-                                    </Link>
-                                ) : (
-                                    <strong>{t('initiatives.detail.sourceManual')}</strong>
+                <div className="initiative-detail__sidebar">
+                    <div className="initiative-detail__sidebar-section">
+                        <span className="initiative-detail__sidebar-label">{t('taskDetail.status.label')}</span>
+                        {canManageInitiative ? (
+                            <div ref={statusMenuRef} className="initiative-detail__select">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusMenuOpen((open) => !open)}
+                                    className="initiative-detail__select-trigger"
+                                    data-open={statusMenuOpen ? 'true' : 'false'}
+                                >
+                                    <span className={`initiative-detail__select-value initiative-detail__status--${(initiative.status || 'Open').toLowerCase()}`}>
+                                        <span className="material-symbols-outlined">
+                                            {getInitiativeStatusIcon(initiative.status)}
+                                        </span>
+                                        {initiativeStatusLabels[initiative.status] || initiative.status}
+                                    </span>
+                                    <span className="material-symbols-outlined initiative-detail__select-chevron">expand_more</span>
+                                </button>
+                                {statusMenuOpen && (
+                                    <div className="initiative-detail__select-menu">
+                                        {initiativeStatusOptions.map((status) => (
+                                            <button
+                                                key={status}
+                                                type="button"
+                                                onClick={() => {
+                                                    setStatusMenuOpen(false);
+                                                    void applyInitiativeUpdates({ status });
+                                                }}
+                                                className={`initiative-detail__select-item ${initiative.status === status ? 'initiative-detail__select-item--selected' : ''}`}
+                                            >
+                                                <span className={`initiative-detail__select-item-label initiative-detail__status--${status.toLowerCase()}`}>
+                                                    <span className="material-symbols-outlined">
+                                                        {getInitiativeStatusIcon(status)}
+                                                    </span>
+                                                    {initiativeStatusLabels[status] || status}
+                                                </span>
+                                                {initiative.status === status && (
+                                                    <span className="material-symbols-outlined initiative-detail__select-item-check">check</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
-                        </div>
-                    </Card>
-
-                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.milestonesTitle')}</span>
-                                <h2>{t('initiatives.detail.milestonesTitle')}</h2>
-                            </div>
-                        </div>
-                        {linkedMilestones.length === 0 ? (
-                            <p className="initiative-detail__state">{t('initiatives.detail.noMilestones')}</p>
                         ) : (
-                            <div className="initiative-detail__milestones">
-                                {linkedMilestones.map((milestone) => (
-                                    <div key={milestone.id} className="initiative-detail__milestone-card">
-                                        <span className="material-symbols-outlined initiative-detail__milestone-icon">flag</span>
-                                        <div className="initiative-detail__milestone-copy">
-                                            <strong>{milestone.title}</strong>
-                                            <span>{formatDisplayDate(milestone.dueDate) || t('taskDetail.timeline.noDueDate')}</span>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className={`initiative-detail__select-trigger initiative-detail__status--${(initiative.status || 'Open').toLowerCase()}`}>
+                                <span className="initiative-detail__select-value">
+                                    <span className="material-symbols-outlined">{getInitiativeStatusIcon(initiative.status)}</span>
+                                    {initiativeStatusLabels[initiative.status] || initiative.status}
+                                </span>
                             </div>
                         )}
-                    </Card>
+                    </div>
 
-                    <Card className="initiative-detail__panel initiative-detail__panel--sidebar">
-                        <div className="initiative-detail__section-header">
-                            <div>
-                                <span className="initiative-detail__section-eyebrow">{t('initiatives.detail.activityTitle')}</span>
-                                <h2>{t('initiatives.detail.activityTitle')}</h2>
-                            </div>
-                        </div>
-                        {activity.length === 0 ? (
-                            <p className="initiative-detail__state">{t('initiatives.detail.noActivity')}</p>
-                        ) : (
-                            <div className="initiative-detail__activity-list">
-                                {activity.map((entry) => (
-                                    <div key={entry.id} className="initiative-detail__activity-row">
-                                        <span className="material-symbols-outlined initiative-detail__activity-icon">
-                                            {entry.type === 'comment' ? 'chat' :
-                                                entry.type === 'status' ? 'track_changes' :
-                                                    entry.type === 'priority' ? 'flag' :
-                                                        entry.type === 'initiative' ? 'rocket_launch' :
-                                                            entry.type === 'issue' ? 'bug_report' : 'bolt'}
+                    <div className="initiative-detail__sidebar-section">
+                        <span className="initiative-detail__sidebar-label">{t('taskDetail.priority.label')}</span>
+                        {canManageInitiative ? (
+                            <div ref={priorityMenuRef} className="initiative-detail__select">
+                                <button
+                                    type="button"
+                                    onClick={() => setPriorityMenuOpen((open) => !open)}
+                                    className="initiative-detail__select-trigger"
+                                    data-open={priorityMenuOpen ? 'true' : 'false'}
+                                >
+                                    <span className={`initiative-detail__select-value initiative-detail__priority--${(initiative.priority || 'Medium').toLowerCase()}`}>
+                                        <span className="material-symbols-outlined">
+                                            {getPriorityIcon(initiative.priority)}
                                         </span>
-                                        <div className="initiative-detail__activity-copy">
-                                            <strong>{entry.action}</strong>
-                                            <span>{entry.user}</span>
-                                        </div>
-                                        {entry.createdAt && (
-                                            <span className="initiative-detail__activity-time">{timeAgo(entry.createdAt)}</span>
-                                        )}
+                                        {initiative.priority ? (priorityLabels[initiative.priority] || initiative.priority) : t('projectDetails.notSet')}
+                                    </span>
+                                    <span className="material-symbols-outlined initiative-detail__select-chevron">expand_more</span>
+                                </button>
+                                {priorityMenuOpen && (
+                                    <div className="initiative-detail__select-menu">
+                                        {(['Low', 'Medium', 'High', 'Urgent'] as const).map((priority) => (
+                                            <button
+                                                key={priority}
+                                                type="button"
+                                                onClick={() => {
+                                                    setPriorityMenuOpen(false);
+                                                    void applyInitiativeUpdates({ priority });
+                                                }}
+                                                className={`initiative-detail__select-item ${initiative.priority === priority ? 'initiative-detail__select-item--selected' : ''}`}
+                                            >
+                                                <span className={`initiative-detail__select-item-label initiative-detail__priority--${priority.toLowerCase()}`}>
+                                                    <span className="material-symbols-outlined">
+                                                        {getPriorityIcon(priority)}
+                                                    </span>
+                                                    {priorityLabels[priority]}
+                                                </span>
+                                                {initiative.priority === priority && (
+                                                    <span className="material-symbols-outlined initiative-detail__select-item-check">check</span>
+                                                )}
+                                            </button>
+                                        ))}
                                     </div>
-                                ))}
+                                )}
+                            </div>
+                        ) : (
+                            <div className={`initiative-detail__select-trigger initiative-detail__priority--${(initiative.priority || 'Medium').toLowerCase()}`}>
+                                <span className="initiative-detail__select-value">
+                                    <span className="material-symbols-outlined">{getPriorityIcon(initiative.priority)}</span>
+                                    {initiative.priority ? (priorityLabels[initiative.priority] || initiative.priority) : t('projectDetails.notSet')}
+                                </span>
                             </div>
                         )}
-                    </Card>
-                </aside>
+                    </div>
+
+                    <div className="initiative-detail__sidebar-section">
+                        <span className="initiative-detail__sidebar-label">{t('taskDetail.assignees.label')}</span>
+                        <MultiAssigneeSelector
+                            projectId={projectId!}
+                            assigneeIds={initiative.assigneeIds || []}
+                            assignedGroupIds={initiative.assignedGroupIds || []}
+                            onChange={(ids) => void applyInitiativeUpdates({ assigneeIds: ids })}
+                            onGroupChange={(ids) => void applyInitiativeUpdates({ assignedGroupIds: ids })}
+                        />
+                    </div>
+
+                    <div className="initiative-detail__sidebar-section">
+                        <span className="initiative-detail__sidebar-label">{t('taskDetail.timeline.label')}</span>
+                        <div className="initiative-detail__date-grid">
+                            <DatePicker
+                                value={initiative.startDate ? new Date(initiative.startDate) : null}
+                                onChange={(date) => void applyInitiativeUpdates({ startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
+                                disabled={!canManageInitiative}
+                                placeholder={t('taskDetail.timeline.startDate')}
+                            />
+                            <DatePicker
+                                value={initiative.dueDate ? new Date(initiative.dueDate) : null}
+                                onChange={(date) => void applyInitiativeUpdates({ dueDate: date ? format(date, 'yyyy-MM-dd') : '' })}
+                                disabled={!canManageInitiative}
+                                placeholder={t('taskDetail.timeline.dueDate')}
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <InitiativeSettingsModal

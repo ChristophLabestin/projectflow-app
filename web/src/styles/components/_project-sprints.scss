@@ -31,9 +31,12 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-hover);
+    background: rgba(var(--color-surface-card-rgb), 0.6);
     box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
 .project-sprints__toggle-button {
@@ -57,7 +60,7 @@
 .project-sprints__toggle-button.is-active {
     color: var(--color-text-main);
     background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .project-sprints__content {
@@ -75,9 +78,10 @@
     text-align: center;
     gap: 0.75rem;
     padding: 3rem 2rem;
-    background-color: var(--color-surface-card);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%), var(--color-surface-card);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
 }
 
 .project-sprints__empty-icon {
@@ -115,15 +119,18 @@
     flex-direction: column;
     gap: 0.5rem;
     padding: 0.85rem 1rem;
-    background-color: var(--color-surface-card);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-sm);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sprint-task-card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%), var(--color-surface-card);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.03);
 }
 
 .sprint-task-card.is-complete {
@@ -321,15 +328,18 @@
     gap: 1rem;
     padding: 1.25rem;
     border-radius: var(--radius-2xl);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
     cursor: pointer;
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sprint-upcoming__card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%), var(--color-surface-card);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 .sprint-upcoming__card-header {
@@ -430,10 +440,11 @@
     display: flex;
     flex-direction: column;
     min-height: 420px;
-    background-color: var(--color-surface-card);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%), var(--color-surface-card);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-sm);
-    transition: box-shadow var(--transition-fast);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sprint-backlog__panel.is-over {
@@ -554,14 +565,17 @@
     gap: 1rem;
     padding: 1.25rem;
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-sm);
-    background-color: var(--color-surface-card);
-    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .sprint-backlog__sprint-card:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    border-color: color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%), var(--color-surface-card);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .sprint-backlog__sprint-header {
@@ -734,8 +748,9 @@
     gap: 0.75rem;
     padding: 1.5rem;
     border-radius: var(--radius-2xl);
-    background-color: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
 }
 
 .sprint-detail__badges {
@@ -780,9 +795,12 @@
     align-items: center;
     gap: 0.25rem;
     padding: 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     border-radius: var(--radius-full);
-    background-color: var(--color-surface-hover);
+    background: rgba(var(--color-surface-card-rgb), 0.6);
     box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
 .sprint-detail__tab {
@@ -805,7 +823,7 @@
 .sprint-detail__tab.is-active {
     background-color: var(--color-surface-card);
     color: var(--color-text-main);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 .sprint-detail__tab-indicator {

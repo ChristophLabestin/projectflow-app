@@ -4,23 +4,23 @@ import type { WorkViewContext } from './shared/viewTypes';
 type GraphNode = {
     id: string;
     refId: string;
-    kind: 'initiative' | 'task' | 'milestone' | 'issue';
+    kind: 'initiative' | 'task' | 'milestone';
     label: string;
     x: number;
     y: number;
 };
 
-type GraphEdge = { from: string; to: string; kind: 'member' | 'dependency' | 'milestone' | 'issue' };
+type GraphEdge = { from: string; to: string; kind: 'member' | 'dependency' | 'milestone' };
 
 const NODE_W = 150;
 const NODE_H = 38;
 const COL_GAP = 220;
 const ROW_GAP = 54;
 
-const kindColumn: Record<GraphNode['kind'], number> = { initiative: 0, task: 1, milestone: 2, issue: 2 };
+const kindColumn: Record<GraphNode['kind'], number> = { initiative: 0, task: 1, milestone: 2 };
 
 export const WorkViewRelationships: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
-    const { initiatives, items, milestones, issues, t } = ctx;
+    const { initiatives, items, milestones, t } = ctx;
 
     const { nodes, edges, width, height } = React.useMemo(() => {
         const tasks = items.filter((i) => i.kind === 'task' && i.task).map((i) => i.task!);
@@ -49,7 +49,6 @@ export const WorkViewRelationships: React.FC<{ ctx: WorkViewContext }> = ({ ctx 
         initiatives.forEach((initiative) => register(place('initiative', initiative.id, initiative.title)));
         tasks.forEach((task) => register(place('task', task.id, task.title)));
         milestones.forEach((milestone) => register(place('milestone', milestone.id, milestone.title)));
-        issues.forEach((issue) => register(place('issue', issue.id, issue.title)));
 
         const has = (id: string) => nodeIndex.has(id);
 
@@ -60,9 +59,6 @@ export const WorkViewRelationships: React.FC<{ ctx: WorkViewContext }> = ({ ctx 
             (task.dependencies || []).forEach((dep) => {
                 if (has(`task:${dep}`)) edgeList.push({ from: `task:${dep}`, to: `task:${task.id}`, kind: 'dependency' });
             });
-            if (task.linkedIssueId && has(`issue:${task.linkedIssueId}`)) {
-                edgeList.push({ from: `task:${task.id}`, to: `issue:${task.linkedIssueId}`, kind: 'issue' });
-            }
         });
 
         milestones.forEach((milestone) => {
@@ -74,12 +70,6 @@ export const WorkViewRelationships: React.FC<{ ctx: WorkViewContext }> = ({ ctx 
             }
         });
 
-        issues.forEach((issue) => {
-            if (issue.linkedTaskId && has(`task:${issue.linkedTaskId}`)) {
-                edgeList.push({ from: `task:${issue.linkedTaskId}`, to: `issue:${issue.id}`, kind: 'issue' });
-            }
-        });
-
         const maxRows = Math.max(colCounters[0], colCounters[1], colCounters[2], 1);
         return {
             nodes: nodeList,
@@ -87,7 +77,7 @@ export const WorkViewRelationships: React.FC<{ ctx: WorkViewContext }> = ({ ctx 
             width: 16 + 2 * COL_GAP + NODE_W + 16,
             height: 16 + maxRows * ROW_GAP + 16
         };
-    }, [initiatives, items, milestones, issues]);
+    }, [initiatives, items, milestones]);
 
     const nodeById = React.useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
 

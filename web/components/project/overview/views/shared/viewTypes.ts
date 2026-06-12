@@ -1,5 +1,5 @@
 import type { Locale } from 'date-fns';
-import type { Initiative, Issue, Milestone, Task } from '../../../../../types';
+import type { Initiative, Milestone, Task } from '../../../../../types';
 import type { WorkItem, WorkItemGroup } from './useWorkItems';
 import type { OverviewLabels } from '../../hooks/useProjectOverviewLabels';
 import type { OverviewGroupBy } from '../../config/overviewConfig';
@@ -11,7 +11,8 @@ export type WorkViewContext = {
     labels: OverviewLabels;
     milestones: Milestone[];
     initiatives: Initiative[];
-    issues: Issue[];
+    /** Map of initiativeId -> accent color (hex), for marking member tasks. */
+    initiativeColors: Record<string, string>;
     dateFormat: string;
     dateLocale: Locale;
     canManageTasks: boolean;

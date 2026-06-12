@@ -76,12 +76,12 @@
         background-color: var(--color-surface-card);
         color: var(--color-text-main);
         border: none;
-        box-shadow: var(--shadow-sm);
+        box-shadow: var(--shadow-sm), inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
 
         &:hover:not(:disabled) {
             background-color: var(--color-surface-hover);
             transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
+            box-shadow: var(--shadow-md), inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 100%, transparent);
         }
 
         &:active:not(:disabled) {

@@ -79,40 +79,33 @@ const NavItem = ({
             onClick={onClick}
             title={collapsed ? label : undefined}
             className={`
-                group relative flex items-center gap-3.5 rounded-xl transition-all duration-300
+                app-sidebar__nav-item group relative flex items-center gap-3.5 rounded-xl transition-all duration-300
                 ${collapsed ? 'justify-center px-0 py-2.5' : 'px-3.5 py-2'}
-                ${isActive
-                    ? 'bg-surface-hover text-main font-bold shadow-sm'
-                    : 'text-muted hover:bg-surface-hover/40 hover:text-main'}
+                ${isActive ? 'is-active font-bold shadow-sm' : ''}
             `}
         >
             {/* Elegant Active Indicator */}
             {isActive && !collapsed && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-primary rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
+                <div className="app-sidebar__active-indicator absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full" />
             )}
 
             <span className="relative">
                 <span
-                    className={`material-symbols-outlined text-[20px] transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted group-hover:text-main overflow-hidden'}`}
+                    className="app-sidebar__nav-icon material-symbols-outlined text-[20px] transition-all duration-300 overflow-hidden"
                 >
                     {icon}
                 </span>
                 {collapsed && badge !== undefined && badge > 0 && (
-                    <span className="absolute -top-1 -right-1 size-2 rounded-full bg-primary" />
+                    <span className="app-sidebar__collapsed-badge absolute -top-1 -right-1 size-2 rounded-full" />
                 )}
             </span>
 
             {!collapsed && (
-                <span className="text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">{label}</span>
+                <span className="app-sidebar__nav-label text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">{label}</span>
             )}
 
             {!collapsed && badge !== undefined && badge > 0 && (
-                <div className={`
-                    flex items-center justify-center min-w-[20px] h-5 rounded-full px-1 transition-all duration-300
-                    ${isActive
-                        ? 'bg-primary text-on-primary scale-100 shadow-lg shadow-[var(--color-primary)]/20'
-                        : 'bg-surface-border text-muted'}
-                `}>
+                <div className="app-sidebar__badge flex items-center justify-center min-w-[20px] h-5 rounded-full px-1 transition-all duration-300">
                     <span className={`text-[10px] font-black leading-none ${isActive ? 'scale-90' : ''}`}>{badge}</span>
                 </div>
             )}
@@ -185,7 +178,7 @@ export const Sidebar = ({ isDrawer = false, collapsed = false, onClose, workspac
       <SidebarCollapsedContext.Provider value={effectiveCollapsed}>
         <aside
             className={`
-                flex flex-col bg-card border-r border-surface
+                app-sidebar flex flex-col bg-card border-r border-surface
                 ${isDrawer ? 'w-full h-full' : effectiveCollapsed ? 'hidden md:flex w-[72px]' : 'hidden md:flex w-[280px]'}
                 transition-all duration-300 relative z-20
             `}
@@ -221,9 +214,9 @@ export const Sidebar = ({ isDrawer = false, collapsed = false, onClose, workspac
                         openProjectCreateModal();
                     }}
                     className={`
+                        app-sidebar__new-project
                         group relative flex items-center justify-center gap-3 py-2.5
-                        bg-primary text-on-primary font-bold text-[13px]
-                        rounded-xl border-none shadow-xl shadow-[var(--color-primary)]/15
+                        font-bold text-[13px] rounded-xl border-none
                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden
                         ${effectiveCollapsed ? 'size-10 px-0' : 'w-full px-4'}
                     `}

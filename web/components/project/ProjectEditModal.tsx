@@ -18,6 +18,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { RolesTab } from './RolesTab';
 import { getWorkspaceRoles } from '../../services/rolesService';
+import { useToast } from '../../context/UIContext';
 
 import { auth } from '../../services/firebase';
 import { getAllWorkspaceProjects, linkWithGithub, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
@@ -46,6 +47,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
     const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
     const { hasAccess: isSprintsAllowed } = useModuleAccess('sprints');
+    const { showError, showSuccess } = useToast();
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -91,6 +93,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     // GitHub State
     const [githubToken, setGithubToken] = useState<string | null>(null);
+    const [manualGithubToken, setManualGithubToken] = useState('');
     const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
     const [loadingGithub, setLoadingGithub] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
@@ -149,6 +152,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setModules(project.modules || []);
             setGithubRepo(project.githubRepo || '');
             setGithubIssueSync(project.githubIssueSync || false);
+            setManualGithubToken('');
             setLinks(project.links || []);
             setExternalResources(project.externalResources || []);
             setVisibilityGroupIds(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
@@ -232,11 +236,38 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             const token = await linkWithGithub();
             await updateUserData(user.uid, { githubToken: token });
             setGithubToken(token);
+            setLoadingGithub(true);
             const repos = await fetchUserRepositories(token);
             setGithubRepos(repos);
+            showSuccess(t('projectSettings.integrations.github.connected'));
         } catch (e: any) {
             console.error('Failed to link GitHub', e);
+            showError(e.message || t('projectSettings.integrations.github.connectError'));
         } finally {
+            setLoadingGithub(false);
+            setConnectingGithub(false);
+        }
+    };
+
+    const handleUseManualGithubToken = async () => {
+        const user = auth.currentUser;
+        const token = manualGithubToken.trim();
+        if (!user || !token) return;
+
+        setConnectingGithub(true);
+        setLoadingGithub(true);
+        try {
+            const repos = await fetchUserRepositories(token);
+            await updateUserData(user.uid, { githubToken: token });
+            setGithubToken(token);
+            setGithubRepos(repos);
+            setManualGithubToken('');
+            showSuccess(t('projectSettings.integrations.github.connected'));
+        } catch (e: any) {
+            console.error('Failed to use GitHub token', e);
+            showError(e.message || t('projectSettings.integrations.github.tokenError'));
+        } finally {
+            setLoadingGithub(false);
             setConnectingGithub(false);
         }
     };
@@ -1061,18 +1092,42 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             </div>
 
                             {!githubToken ? (
-                                <Button
-                                    onClick={handleConnectGithub}
-                                    disabled={connectingGithub}
-                                    isLoading={connectingGithub}
-                                    variant="secondary"
-                                    className="project-edit-modal__integration-button"
-                                    icon={<span className="material-symbols-outlined">link</span>}
-                                >
-                                    {connectingGithub
-                                        ? t('projectSettings.integrations.github.connecting')
-                                        : t('projectSettings.integrations.github.connectAccount')}
-                                </Button>
+                                <div className="project-edit-modal__integration-body">
+                                    <Button
+                                        type="button"
+                                        onClick={handleConnectGithub}
+                                        disabled={connectingGithub}
+                                        isLoading={connectingGithub}
+                                        variant="secondary"
+                                        className="project-edit-modal__integration-button"
+                                        icon={<span className="material-symbols-outlined">link</span>}
+                                    >
+                                        {connectingGithub
+                                            ? t('projectSettings.integrations.github.connecting')
+                                            : t('projectSettings.integrations.github.connectAccount')}
+                                    </Button>
+
+                                    <TextInput
+                                        type="password"
+                                        label={t('projectSettings.integrations.github.tokenLabel')}
+                                        value={manualGithubToken}
+                                        onChange={(event) => setManualGithubToken(event.target.value)}
+                                        placeholder={t('projectSettings.integrations.github.tokenPlaceholder')}
+                                        helpText={t('projectSettings.integrations.github.tokenHint')}
+                                        autoComplete="off"
+                                    />
+
+                                    <Button
+                                        type="button"
+                                        onClick={handleUseManualGithubToken}
+                                        disabled={!manualGithubToken.trim() || connectingGithub}
+                                        isLoading={connectingGithub}
+                                        variant="secondary"
+                                        className="project-edit-modal__integration-button"
+                                    >
+                                        {t('projectSettings.integrations.github.useToken')}
+                                    </Button>
+                                </div>
                             ) : (
                                 <div className="project-edit-modal__integration-body">
                                     <Select

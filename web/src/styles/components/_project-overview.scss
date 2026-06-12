@@ -84,13 +84,17 @@
     align-items: center;
     gap: 0.5rem;
     min-width: 0;
-    padding: 0.45rem 0.75rem;
-    border: 0;
-    border-radius: var(--radius-lg);
-    background-color: var(--color-surface-hover);
+    padding: 0.5rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    border-radius: var(--radius-xl);
+    background-color: rgba(var(--color-surface-bg-rgb), 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
     color: inherit;
     font: inherit;
     text-align: left;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
     &--excellent,
     &--healthy,
@@ -113,11 +117,13 @@
 
 button.project-overview-compact-hero__fact {
     cursor: pointer;
-    transition: background var(--transition-fast), transform var(--transition-fast);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
     &:hover:not(:disabled) {
-        transform: translateY(-1px);
-        background-color: rgba(var(--color-surface-hover-rgb), 0.92);
+        transform: translateY(-2px);
+        background-color: var(--color-surface-card);
+        border-color: color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
     }
 
     &:disabled {
@@ -176,10 +182,19 @@ button.project-overview-compact-hero__fact {
     display: inline-flex;
     align-items: center;
     gap: 0.15rem;
-    padding: 0.18rem;
-    border: 1px solid color-mix(in srgb, var(--color-surface-border) 76%, transparent);
-    border-radius: var(--radius-md);
-    background: rgba(var(--color-surface-card-rgb), 0.72);
+    padding: 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-surface-bg-rgb), 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.03);
+    }
 }
 
 .project-overview-compact-hero__view-toggle {
@@ -382,12 +397,19 @@ a.project-overview__company-context-chip:hover {
 
 .project-overview__company-card {
     background: var(--color-surface-card);
-    border-radius: var(--radius-lg);
-    padding: 1.25rem;
+    border-radius: var(--radius-xl);
+    padding: 1.5rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    gap: 1.25rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.02);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.03);
+    }
 }
 
 .project-overview__company-action {
@@ -3665,37 +3687,43 @@ button.project-next-action-card__primary.is-warning:hover {
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 1.25rem;
     width: 100%;
-    padding: 1.25rem;
+    padding: 1.5rem;
     overflow: hidden;
-    border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-lg);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border-radius: var(--radius-xl);
     background: var(--color-surface-card);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
     color: inherit;
     cursor: pointer;
     text-align: left;
-    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 
     &::before {
         content: '';
         position: absolute;
         inset: 0 auto 0 0;
-        width: 3px;
-        background: color-mix(in srgb, var(--color-warning) 70%, var(--color-surface-card));
-        border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+        width: 4px;
+        background: linear-gradient(to bottom, var(--color-warning), color-mix(in srgb, var(--color-warning) 60%, transparent));
+        border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+        transition: width 0.2s ease;
     }
 
     &:hover,
     &:focus-visible {
-        border-color: var(--color-surface-border-hover);
-        box-shadow: var(--shadow-md);
-        transform: translateY(-1px);
+        border-color: color-mix(in srgb, var(--color-surface-border) 100%, transparent);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.03);
+        transform: translateY(-2px);
+
+        &::before {
+            width: 6px;
+        }
     }
 
     &:active {
         transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
     }
 }
 
@@ -7820,10 +7848,13 @@ button.project-next-action-card__primary.is-warning:hover {
     display: inline-flex;
     align-items: center;
     gap: 0.2rem;
-    padding: 0.18rem;
-    border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-card);
+    padding: 0.25rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-surface-card-rgb), 0.6);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
 }
 
 .project-overview-workspace__view-btn {
@@ -7831,28 +7862,31 @@ button.project-next-action-card__primary.is-warning:hover {
     align-items: center;
     gap: 0.28rem;
     min-height: 1.85rem;
-    padding: 0.28rem 0.55rem;
+    padding: 0.35rem 0.65rem;
     border: 0;
-    border-radius: calc(var(--radius-md) - 2px);
+    border-radius: calc(var(--radius-lg) - 2px);
     background: transparent;
     color: var(--color-text-muted);
     font: inherit;
-    font-size: 0.72rem;
+    font-size: 0.75rem;
     font-weight: 700;
     cursor: pointer;
-    transition: background var(--transition-fast), color var(--transition-fast);
+    transition: all var(--transition-fast);
 
     .material-symbols-outlined {
-        font-size: 0.95rem;
+        font-size: 1rem;
     }
 
     &:hover {
         color: var(--color-text-main);
+        background: rgba(var(--color-surface-hover-rgb), 0.5);
     }
 
     &.is-active {
         color: var(--color-primary);
-        background: rgba(var(--color-primary-rgb), 0.1);
+        background: var(--color-surface-card);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+        transform: translateY(-1px);
     }
 
     @media (max-width: 640px) {
@@ -8102,4 +8136,26 @@ button.project-next-action-card__primary.is-warning:hover {
 .project-overview-panel .project-control-card,
 .project-overview-panel .project-contract-card {
     height: auto;
+}
+
+/* Project Overview visual mode: remove visible element borders in this surface only. */
+.project-overview-container,
+.project-overview-container :where(*, *::before, *::after) {
+    border-color: transparent !important;
+    box-shadow: none !important;
+}
+
+/* Project Overview modals render through portals, so scope them from the page root. */
+body:has(.project-overview-container) :where(
+    .modal-overlay,
+    .modal-overlay *,
+    .modal-overlay *::before,
+    .modal-overlay *::after,
+    .project-health-modal,
+    .project-health-modal *,
+    .project-health-modal *::before,
+    .project-health-modal *::after
+) {
+    border-color: transparent !important;
+    box-shadow: none !important;
 }

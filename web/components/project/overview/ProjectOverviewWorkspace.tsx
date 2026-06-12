@@ -3,7 +3,7 @@ import './overview-workspace-content.scss';
 
 export type ProjectOverviewWorkspaceTab = 'tasks' | 'sprints' | 'milestones' | 'steuerung' | 'aktivitaeten';
 
-export type ProjectOverviewTasksView = 'list' | 'board' | 'kanban';
+export type ProjectOverviewTasksView = 'list' | 'board';
 export type ProjectOverviewSprintsView = 'list' | 'board';
 export type ProjectOverviewMilestonesView = 'list' | 'timeline';
 export type ProjectOverviewActivityView = 'feed' | 'compact';

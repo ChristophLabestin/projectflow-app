@@ -56,8 +56,13 @@ const isTab = (value: string | null): value is OverviewTab =>
     value === 'work' || value === 'sprints' || value === 'milestones' || value === 'activity';
 
 const isWorkView = (value: string | null): value is OverviewWorkView =>
-    value === 'list' || value === 'board' || value === 'kanban'
+    value === 'list' || value === 'board'
     || value === 'timeline' || value === 'calendar' || value === 'relationships';
+
+const normalizeWorkView = (value: string | null): OverviewWorkView | null => {
+    if (value === 'kanban') return 'board';
+    return isWorkView(value) ? value : null;
+};
 
 const isSortBy = (value: string | null): value is OverviewSortBy =>
     value === 'manual' || value === 'priority' || value === 'dueDate'
@@ -110,7 +115,7 @@ export const useProjectOverviewViewState = (): ProjectOverviewViewState => {
     });
     const [view, setViewState] = useState<OverviewWorkView>(() => {
         const stored = read(STORAGE.workView) ?? read('projectflow.projectOverview.tasksView');
-        return isWorkView(stored) ? stored : DEFAULT_VIEW_FOR_TAB.work;
+        return normalizeWorkView(stored) || DEFAULT_VIEW_FOR_TAB.work;
     });
     const [sortBy, setSortByState] = useState<OverviewSortBy>(() => {
         const stored = read(STORAGE.sort);

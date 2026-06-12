@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
 import { usePinnedProject } from '../../../context/PinnedProjectContext';
@@ -24,7 +24,10 @@ import { resolveEnabledTabs, resolveViewsForTab, type OverviewTab } from './conf
 import { ProjectHero } from './hero/ProjectHero';
 import { ProjectCommandBar, type CommandOption } from './command/ProjectCommandBar';
 import { WorkViews } from './views/WorkViews';
-import { MilestonesPanel, SprintsPanel, ActivityPanel } from './sections/SecondaryPanels';
+import { ActivityPanel } from './sections/SecondaryPanels';
+import { SprintsView } from './sections/SprintsView';
+import { MilestonesView } from './sections/MilestonesView';
+import { InitiativesStrip } from './sections/InitiativesStrip';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
 import { ReferenceSection } from './sections/ReferenceSection';
 import { isCompanyProject } from '../../../config/projectTemplates';
@@ -74,6 +77,30 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     const wide = Boolean(outlet.contentWide);
     const toggleWide = () => outlet.setContentWide?.(!wide);
 
+    // Cover-enlarge toggle is persisted per project (each project remembers its own cover size).
+    const coverKey = project ? `projectflow.projectOverview.coverExpanded.${project.id}` : '';
+    const [coverExpanded, setCoverExpanded] = useState(false);
+    useEffect(() => {
+        if (!coverKey) { setCoverExpanded(false); return; }
+        try { setCoverExpanded(window.localStorage.getItem(coverKey) === '1'); } catch { setCoverExpanded(false); }
+    }, [coverKey]);
+    const toggleCoverExpand = () => setCoverExpanded((prev) => {
+        const next = !prev;
+        try { if (coverKey) window.localStorage.setItem(coverKey, next ? '1' : '0'); } catch { /* ignore */ }
+        return next;
+    });
+
+    // Focus mode: stretch the quick-add + board region to ~viewport height.
+    const [workFocus, setWorkFocus] = useState(false);
+    const workRef = useRef<HTMLDivElement>(null);
+    const toggleWorkFocus = () => setWorkFocus((prev) => {
+        const next = !prev;
+        if (next) {
+            requestAnimationFrame(() => workRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+        }
+        return next;
+    });
+
     const tenantQuery = project?.tenantId ? `?tenant=${project.tenantId}` : '';
 
     const enabledTabs = useMemo(() => resolveEnabledTabs(project), [project]);
@@ -83,12 +110,14 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     );
     const availableViews = useMemo(() => resolveViewsForTab(activeTab), [activeTab]);
 
-    // Kanban always groups by status; every other view honors the Group selector.
-    const effectiveGroupBy = viewState.view === 'kanban' ? 'status' : viewState.groupBy;
+    const effectiveGroupBy = viewState.view === 'board' ? 'status' : viewState.groupBy;
 
+    // Initiatives are containers of tasks, not flat work items — keep the work
+    // stream task-only and surface initiatives via the strip + group-by-initiative.
     const workItems = useWorkItems({
         tasks,
         initiatives,
+        includeInitiatives: false,
         filters: viewState.filters,
         sortBy: viewState.sortBy,
         groupBy: effectiveGroupBy,
@@ -116,6 +145,13 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         () => initiatives.map((initiative) => ({ value: initiative.id, label: initiative.title })),
         [initiatives]
     );
+    const initiativeColors = useMemo(() => {
+        const map: Record<string, string> = {};
+        for (const initiative of initiatives) {
+            if (initiative.color) map[initiative.id] = initiative.color;
+        }
+        return map;
+    }, [initiatives]);
 
     const navigateToItem = (item: WorkItem) => {
         if (!project) return;
@@ -185,6 +221,18 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         }
     };
 
+    const handleSetInitiativeColor = (initiativeId: string, color: string | null) => {
+        if (!project) return;
+        void updateInitiative(initiativeId, { color: color || '' }, project.id, project.tenantId);
+    };
+
+    const toggleInitiativeFilter = (initiativeId: string) => {
+        viewState.setFilters((prev) => ({
+            ...prev,
+            initiativeId: prev.initiativeId === initiativeId ? null : initiativeId
+        }));
+    };
+
     const handleGenerateReport = async () => {
         if (!project) return;
         setReportLoading(true);
@@ -251,7 +299,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         labels,
         milestones,
         initiatives,
-        issues,
+        initiativeColors,
         dateFormat,
         dateLocale,
         canManageTasks,
@@ -287,6 +335,8 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                 onComplete={() => void lifecycle.complete()}
                 isWide={wide}
                 onToggleWide={toggleWide}
+                coverExpanded={coverExpanded}
+                onToggleCoverExpand={toggleCoverExpand}
                 onOpenNext={() => {
                     const next = derived.nextItem;
                     if (!next) return;
@@ -347,20 +397,36 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
 
             {activeTab === 'work' && (
                 <>
-                    <ProjectCommandBar
-                        viewState={viewState}
-                        availableViews={availableViews}
-                        statusOptions={statusOptions}
-                        priorityOptions={priorityOptions}
-                        assigneeOptions={assigneeOptions}
-                        initiativeOptions={initiativeOptions}
-                        showQuickAdd={canManageTasks}
-                        showViewControls
-                        onQuickAdd={handleQuickAdd}
+                    <InitiativesStrip
+                        initiatives={initiatives}
+                        tasks={tasks}
+                        activeInitiativeId={viewState.filters.initiativeId}
+                        canManage={canManageTasks}
+                        statusLabels={labels.statusLabels}
+                        onSelect={toggleInitiativeFilter}
+                        onOpenInitiative={(id) => navigate(`/project/${project.id}/initiatives/${id}${tenantQuery}`)}
+                        onSetColor={handleSetInitiativeColor}
+                        onCreate={() => setModal('initiative')}
                         t={t}
                     />
-                    <div className="po-workspace">
-                        <WorkViews view={viewState.view} ctx={viewCtx} />
+                    <div className={`po-work ${workFocus ? 'is-focus' : ''}`.trim()} ref={workRef}>
+                        <ProjectCommandBar
+                            viewState={viewState}
+                            availableViews={availableViews}
+                            statusOptions={statusOptions}
+                            priorityOptions={priorityOptions}
+                            assigneeOptions={assigneeOptions}
+                            initiativeOptions={initiativeOptions}
+                            showQuickAdd={canManageTasks}
+                            showViewControls
+                            workFocus={workFocus}
+                            onToggleWorkFocus={toggleWorkFocus}
+                            onQuickAdd={handleQuickAdd}
+                            t={t}
+                        />
+                        <div className="po-workspace">
+                            <WorkViews view={viewState.view} ctx={viewCtx} />
+                        </div>
                     </div>
                     <ReferenceSection
                         project={project}
@@ -377,13 +443,23 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
 
             {activeTab === 'milestones' && (
                 <div className="po-workspace">
-                    <MilestonesPanel milestones={milestones} dateFormat={dateFormat} dateLocale={dateLocale} t={t} />
+                    <MilestonesView milestones={milestones} tasks={tasks} dateFormat={dateFormat} dateLocale={dateLocale} t={t} />
                 </div>
             )}
 
             {activeTab === 'sprints' && (
                 <div className="po-workspace">
-                    <SprintsPanel sprints={sprints} dateFormat={dateFormat} dateLocale={dateLocale} t={t} />
+                    <SprintsView
+                        sprints={sprints}
+                        tasks={tasks}
+                        members={members}
+                        labels={labels}
+                        projectId={project.id}
+                        tenantQuery={tenantQuery}
+                        dateFormat={dateFormat}
+                        dateLocale={dateLocale}
+                        t={t}
+                    />
                 </div>
             )}
 

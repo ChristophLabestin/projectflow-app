@@ -22,15 +22,16 @@
         align-items: center;
         justify-content: space-between;
         width: 100%;
-        padding: 8px 12px;
-        background-color: var(--color-surface-hover); // Match text-input
-        border: 1px solid transparent; // Override UA border, allow hover overrides
-        border-radius: var(--radius-md);
+        padding: 8px 14px;
+        background-color: rgba(var(--color-surface-hover-rgb), 0.5);
+        border: none !important;
+        border-radius: var(--radius-lg);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
         font-size: 0.95rem;
         color: var(--color-text-main);
         cursor: pointer;
-        transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
-        height: 40px; // Match standard input height
+        transition: all var(--transition-normal);
+        height: 42px;
 
         &:hover,
         &:focus,
@@ -41,7 +42,8 @@
         &:focus {
             outline: none;
             border-color: transparent;
-            box-shadow: none;
+            background-color: var(--color-surface-bg);
+            box-shadow: inset 0 0 0 2px var(--color-primary), 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
         @media (prefers-color-scheme: light) {

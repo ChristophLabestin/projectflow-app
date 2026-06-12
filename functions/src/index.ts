@@ -16,6 +16,7 @@ import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
 import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
 import { getFacebookAuthUrl, facebookCallback } from './facebook';
+import { onProjectTaskGitHubSync } from './github-task-sync';
 import {
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
@@ -128,6 +129,7 @@ export {
     debugHealthSnapshots,
     getFacebookAuthUrl,
     facebookCallback,
+    onProjectTaskGitHubSync,
     getWorkspaceSmtpConfig,
     saveWorkspaceSmtpConfig,
     listWorkspaceApiTokens,

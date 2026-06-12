@@ -70,6 +70,32 @@ export const Login = () => {
         }
     };
 
+    const createMfaResolver = (err: any) => {
+        const serverResponse = err.customData?._serverResponse || err.customData?.serverResponse;
+        const operationType = err.customData?.operationType || 'signIn';
+
+        try {
+            return getMultiFactorResolver(auth, err);
+        } catch (resolverError) {
+            if (!serverResponse) {
+                throw resolverError;
+            }
+
+            return getMultiFactorResolver(auth, {
+                code: 'auth/multi-factor-auth-required',
+                message: err.message,
+                name: 'FirebaseError',
+                operationType,
+                customData: {
+                    operationType,
+                    _serverResponse: serverResponse,
+                    serverResponse,
+                    appName: err.customData?.appName
+                }
+            } as any);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -92,9 +118,16 @@ export const Login = () => {
         } catch (err: any) {
             console.error(err);
             if (err.code === 'auth/multi-factor-auth-required') {
-                const resolver = getMultiFactorResolver(auth, err);
-                setMfaResolver(resolver);
-                setShowMfaStep(true);
+                try {
+                    const resolver = createMfaResolver(err);
+                    setMfaResolver(resolver);
+                    setMfaCode('');
+                    setShowMfaStep(true);
+                    setError('');
+                } catch (resolverError) {
+                    console.error('Failed to prepare MFA resolver:', resolverError);
+                    setError(t('login.error.mfaSetup'));
+                }
             } else if (err.code === 'auth/invalid-credential') {
                 setError(t('login.error.invalidCredentials'));
             } else {
@@ -125,27 +158,52 @@ export const Login = () => {
         }
     };
 
+    const handleOAuthMfaError = (err: any, fallbackKey: string) => {
+        console.error(err);
+        if (err.code === 'auth/multi-factor-auth-required') {
+            try {
+                const resolver = createMfaResolver(err);
+                setMfaResolver(resolver);
+                setMfaCode('');
+                setShowMfaStep(true);
+                setError('');
+            } catch (resolverError) {
+                console.error('Failed to prepare OAuth MFA resolver:', resolverError);
+                setError(t('login.error.mfaSetup'));
+            }
+            return;
+        }
+
+        setError(t(fallbackKey));
+    };
+
     const handleGoogleSignIn = async () => {
+        setError('');
+        setIsLoading(true);
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
             await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
-        } catch (err) {
-            console.error(err);
-            setError(t('login.error.google'));
+        } catch (err: any) {
+            handleOAuthMfaError(err, 'login.error.google');
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleGithubSignIn = async () => {
+        setError('');
+        setIsLoading(true);
         try {
             const provider = new GithubAuthProvider();
             await signInWithPopup(auth, provider);
             await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
-        } catch (err) {
-            console.error(err);
-            setError(t('login.error.github'));
+        } catch (err: any) {
+            handleOAuthMfaError(err, 'login.error.github');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -376,7 +434,7 @@ export const Login = () => {
                         </div>
                     )}
 
-                    {!isRegister && (
+                    {!isRegister && !showMfaStep && (
                         <>
                             <div className="login-page__divider">{t('login.divider.orContinue')}</div>
 

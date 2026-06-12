@@ -14,6 +14,8 @@ export type ProjectCommandBarProps = {
     initiativeOptions: CommandOption[];
     showQuickAdd: boolean;
     showViewControls: boolean;
+    workFocus: boolean;
+    onToggleWorkFocus: () => void;
     onQuickAdd: (title: string) => Promise<void>;
     t: (key: string, fallback?: string) => string;
 };
@@ -69,12 +71,15 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
     initiativeOptions,
     showQuickAdd,
     showViewControls,
+    workFocus,
+    onToggleWorkFocus,
     onQuickAdd,
     t
 }) => {
     const { view, setView, sortBy, setSortBy, groupBy, setGroupBy, filters, setFilters, resetFilters, activeFilterCount } = viewState;
     const [filterOpen, setFilterOpen] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
+    const showGroupControl = view !== 'board';
 
     useEffect(() => {
         if (!filterOpen) return;
@@ -182,14 +187,16 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
                     </select>
                 </label>
 
-                <label className="po-command__select">
-                    <span className="po-command__select-label">{t('projectOverview.v2.command.group', 'Group')}</span>
-                    <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as OverviewGroupBy)}>
-                        {GROUP_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{t(option.labelKey, option.value)}</option>
-                        ))}
-                    </select>
-                </label>
+                {showGroupControl && (
+                    <label className="po-command__select">
+                        <span className="po-command__select-label">{t('projectOverview.v2.command.group', 'Group')}</span>
+                        <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as OverviewGroupBy)}>
+                            {GROUP_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>{t(option.labelKey, option.value)}</option>
+                            ))}
+                        </select>
+                    </label>
+                )}
 
                 {showViewControls && availableViews.length > 1 && (
                     <div className="po-command__views" role="group" aria-label={t('projectOverview.workspace.viewLabel', 'View')}>
@@ -213,6 +220,16 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
             {showQuickAdd && (
                 <div className="po-command__quick-add">
                     <ProjectOverviewTasksQuickAdd onSubmit={onQuickAdd} />
+                    <button
+                        type="button"
+                        className={`po-command__focus-btn ${workFocus ? 'is-active' : ''}`.trim()}
+                        onClick={onToggleWorkFocus}
+                        title={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
+                        aria-label={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
+                        aria-pressed={workFocus}
+                    >
+                        <span className="material-symbols-outlined">{workFocus ? 'fullscreen_exit' : 'height'}</span>
+                    </button>
                 </div>
             )}
         </div>

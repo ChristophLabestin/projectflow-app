@@ -25,7 +25,7 @@ import {
     deleteField
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { linkWithPopup } from "firebase/auth";
+import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
@@ -222,17 +222,26 @@ export const linkWithGithub = async (): Promise<string> => {
 
     const provider = new GithubAuthProvider();
     provider.addScope('repo');
+    provider.addScope('read:project');
     provider.addScope('user');
 
-    try {
-        const result = await linkWithPopup(user, provider);
+    const extractAccessToken = (result: any) => {
         const credential = GithubAuthProvider.credentialFromResult(result);
         if (!credential?.accessToken) {
             throw new Error("Failed to get GitHub access token");
         }
         return credential.accessToken;
+    };
+
+    try {
+        const result = await linkWithPopup(user, provider);
+        return extractAccessToken(result);
     } catch (error: any) {
         console.error("GitHub link error", error);
+        if (error.code === 'auth/provider-already-linked') {
+            const result = await reauthenticateWithPopup(user, provider);
+            return extractAccessToken(result);
+        }
         if (error.code === 'auth/credential-already-in-use') {
             throw new Error("This GitHub account is already linked to another user.");
         }

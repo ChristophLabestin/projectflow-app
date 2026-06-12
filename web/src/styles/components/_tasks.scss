@@ -8,7 +8,7 @@
     gap: 1rem;
     padding: 1rem 1.15rem 1rem 1.35rem;
     border-radius: var(--radius-lg);
-    transition: background-color var(--transition-fast), border-color var(--transition-fast);
+    transition: all var(--transition-normal);
     cursor: pointer;
     background-color: var(--color-surface-card);
     border: 1px solid transparent;
@@ -31,7 +31,7 @@
     &.priority-stripe--low::before { background: var(--priority-low); }
 
     @media (min-width: 768px) {
-        &:not(.is-board) {
+        &:not(.is-board):not(.is-grid) {
             flex-direction: row;
             align-items: center;
         }
@@ -50,6 +50,11 @@
         background-color: var(--color-surface-card);
     }
 
+    &.is-selected {
+        background-color: var(--color-surface-hover);
+        box-shadow: inset 0 0 0 1px rgba(var(--color-primary-rgb), 0.18);
+    }
+
     &.default:hover,
     &.blocked:hover,
     &.strategic:hover,
@@ -58,13 +63,139 @@
     }
 
     &.is-board {
-        border: 1px solid var(--color-surface-border);
-        border-radius: var(--radius-xl);
-        box-shadow: var(--shadow-sm);
+        gap: 0.55rem;
+        padding: 0.72rem 0.78rem;
+        border: 0;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-hover);
+        box-shadow: none;
+
+        &::before {
+            display: none;
+        }
 
         &:hover {
-            box-shadow: var(--shadow-md);
-            transform: translateY(-2px);
+            background: var(--color-surface-hover-light, var(--color-surface-hover));
+            box-shadow: none;
+            transform: translateY(-1px);
+        }
+
+        .task-main-info {
+            gap: 0.55rem;
+            align-items: flex-start;
+        }
+
+        .task-select-btn {
+            width: 1.35rem;
+            height: 1.35rem;
+            margin-top: -0.08rem;
+        }
+
+        .task-main-info .check-btn {
+            width: 1.05rem;
+            height: 1.05rem;
+            margin-top: 0.05rem;
+            border-radius: var(--radius-full);
+            background: transparent;
+            color: var(--color-text-muted);
+            box-shadow: inset 0 0 0 1.5px var(--color-text-subtle);
+
+            span {
+                font-size: 0.72rem;
+            }
+        }
+
+        .task-main-info .title-row {
+            gap: 0.35rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .task-main-info .task-title {
+            color: var(--color-text-main);
+            font-size: 0.86rem;
+            font-weight: 650;
+            line-height: 1.25;
+            white-space: normal;
+        }
+
+        .meta-row {
+            gap: 0.32rem;
+        }
+
+        .badge,
+        .task-date-chip,
+        .category-chip {
+            min-height: 1.35rem;
+            padding: 0.2rem 0.48rem;
+            border: 0;
+            background: var(--color-surface-bg);
+            color: var(--color-text-muted);
+            font-size: 0.62rem;
+            letter-spacing: 0.04em;
+        }
+
+        .badge .material-symbols-outlined,
+        .task-date-chip .material-symbols-outlined {
+            font-size: 0.78rem;
+        }
+
+        .task-actions-section {
+            display: none;
+        }
+    }
+
+    &.is-grid {
+        min-height: 100%;
+        gap: 0.72rem;
+        padding: 0.75rem 0.8rem;
+        border: 0;
+        background: var(--color-surface-card);
+        box-shadow: none;
+
+        &::before {
+            width: 2px;
+        }
+
+        &:hover {
+            background: var(--color-surface-hover);
+            box-shadow: none;
+            transform: translateY(-1px);
+        }
+
+        .task-main-info {
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .task-select-btn,
+        .check-btn {
+            margin-top: 0.05rem;
+        }
+
+        .title-row {
+            gap: 0.35rem;
+            margin-bottom: 0.35rem;
+        }
+
+        .task-title {
+            white-space: normal;
+            font-size: 0.9rem;
+            line-height: 1.28;
+        }
+
+        .meta-row {
+            gap: 0.32rem;
+        }
+
+        .badge {
+            min-height: 1.35rem;
+            padding: 0.18rem 0.46rem;
+            font-size: 0.58rem;
+            letter-spacing: 0.05em;
+
+            span {
+                font-size: 0.72rem;
+            }
         }
     }
 
@@ -74,6 +205,34 @@
         gap: 1rem;
         flex: 1;
         min-width: 0;
+
+        .task-select-btn {
+            flex-shrink: 0;
+            width: 1.75rem;
+            height: 1.75rem;
+            border: 0;
+            border-radius: var(--radius-md);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            color: var(--color-text-subtle);
+            cursor: pointer;
+            transition: background-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+
+            span {
+                font-size: 1.1rem;
+            }
+
+            &:hover {
+                background-color: var(--color-surface-hover);
+                color: var(--color-text-main);
+            }
+
+            &.is-selected {
+                color: var(--color-primary);
+            }
+        }
 
         .check-btn {
             flex-shrink: 0;
@@ -399,7 +558,7 @@
         gap: 1.5rem;
 
         @media (min-width: 768px) {
-            &:not(.is-board) {
+            &:not(.is-board):not(.is-grid) {
                 margin-left: auto;
                 align-items: center;
                 padding-left: 0;
@@ -412,7 +571,19 @@
             padding-left: 0.25rem;
         }
 
-        &:not(.is-board) {
+        &.is-grid {
+            flex-direction: column;
+            width: 100%;
+            gap: 0.65rem;
+            margin-left: 0;
+            padding-left: 0;
+
+            .action-btn-group {
+                justify-content: flex-end;
+            }
+        }
+
+        &:not(.is-board):not(.is-grid) {
             flex-direction: column;
             margin-left: 2.75rem;
 
@@ -670,6 +841,11 @@
                 &.unpinned {
                     opacity: 0.6;
                 }
+            }
+
+            &.action-btn--initiative.is-active {
+                background-color: var(--color-primary);
+                color: var(--color-primary-text);
             }
         }
 

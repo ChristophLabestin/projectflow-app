@@ -46,7 +46,12 @@ const Card: React.FC<{ item: WorkItem; ctx: WorkViewContext; draggable: boolean;
             <span className={`po-board__task-kind po-board__task-kind--${item.kind}`}>
                 <span className="material-symbols-outlined">{item.kind === 'initiative' ? 'rocket_launch' : 'task_alt'}</span>
             </span>
-            <p className="po-board__task-title">{item.title}</p>
+            <p className="po-board__task-title">
+                {item.initiativeId && ctx.initiativeColors[item.initiativeId] && (
+                    <span className="po-init-dot" style={{ background: ctx.initiativeColors[item.initiativeId] }} />
+                )}
+                {item.title}
+            </p>
             <div className="po-board__task-meta">
                 {item.priority && <Badge variant={priorityVariant(item.priority)}>{ctx.labels.priorityLabels[item.priority] || item.priority}</Badge>}
                 {ctx.groupBy !== 'status' && <span>{ctx.labels.statusLabels[item.status] || item.status}</span>}
@@ -58,11 +63,13 @@ const Card: React.FC<{ item: WorkItem; ctx: WorkViewContext; draggable: boolean;
 
 const Lane: React.FC<{ column: Column; items: WorkItem[]; ctx: WorkViewContext }> = ({ column, items, ctx }) => {
     const { setNodeRef, isOver } = useDroppable({ id: `col:${column.key}` });
+    const initiativeColor = ctx.groupBy === 'initiative' ? ctx.initiativeColors[column.key] : undefined;
     return (
         <section
             ref={setNodeRef}
             data-status={ctx.groupBy === 'status' ? column.key : undefined}
-            className={`po-board__lane ${isOver ? 'is-over' : ''}`.trim()}
+            className={`po-board__lane ${isOver ? 'is-over' : ''} ${initiativeColor ? 'has-init-color' : ''}`.trim()}
+            style={initiativeColor ? { ['--init-color' as any]: initiativeColor } : undefined}
             aria-label={column.label}
         >
             <header className="po-board__lane-head">

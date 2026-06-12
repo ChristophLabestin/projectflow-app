@@ -43,31 +43,36 @@ export type ProjectHeroProps = {
     onComplete: () => void;
     isWide: boolean;
     onToggleWide: () => void;
+    coverExpanded: boolean;
+    onToggleCoverExpand: () => void;
     t: (key: string, fallback?: string) => string;
 };
 
 const ProgressRing: React.FC<{ pct: number; label: string }> = ({ pct, label }) => {
-    const radius = 18;
+    const value = Math.max(0, Math.min(100, Math.round(pct)));
+    const radius = 21;
     const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (pct / 100) * circumference;
+    const offset = circumference - (value / 100) * circumference;
+    const tone = value >= 100 ? 'is-complete' : value > 0 ? 'is-progress' : 'is-empty';
     return (
-        <div className="po-hero__metric po-hero__metric--ring" title={label}>
-            <svg className="po-hero__ring" viewBox="0 0 44 44" aria-hidden="true">
-                <circle className="po-hero__ring-track" cx="22" cy="22" r={radius} fill="none" strokeWidth="4" />
+        <div className="po-hero__metric po-hero__metric--ring" title={`${label} · ${value}%`}>
+            <svg className={`po-hero__ring ${tone}`} viewBox="0 0 50 50" aria-hidden="true">
+                <circle className="po-hero__ring-track" cx="25" cy="25" r={radius} fill="none" strokeWidth="4.5" />
                 <circle
                     className="po-hero__ring-value"
-                    cx="22"
-                    cy="22"
+                    cx="25"
+                    cy="25"
                     r={radius}
                     fill="none"
-                    strokeWidth="4"
+                    strokeWidth="4.5"
                     strokeLinecap="round"
                     strokeDasharray={circumference}
-                    strokeDashoffset={offset}
-                    transform="rotate(-90 22 22)"
+                    strokeDashoffset={value === 0 ? circumference : offset}
+                    transform="rotate(-90 25 25)"
                 />
-                <text className="po-hero__ring-text" x="22" y="22" dominantBaseline="central" textAnchor="middle">
-                    {pct}%
+                <text className="po-hero__ring-text" x="25" y="25" textAnchor="middle" dominantBaseline="central">
+                    <tspan className="po-hero__ring-num">{value}</tspan>
+                    <tspan className="po-hero__ring-pct" dy="-3">%</tspan>
                 </text>
             </svg>
             <span className="po-hero__metric-label">{label}</span>
@@ -109,6 +114,8 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     onComplete,
     isWide,
     onToggleWide,
+    coverExpanded,
+    onToggleCoverExpand,
     t
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -137,9 +144,20 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
         : '';
 
     return (
-        <header className={`po-hero ${hasCover ? 'po-hero--has-cover' : ''}`.trim()}>
+        <header className={`po-hero ${hasCover ? 'po-hero--has-cover' : ''} ${hasCover && coverExpanded ? 'po-hero--cover-expanded' : ''}`.trim()}>
             {hasCover && (
-                <div className="po-hero__cover" style={{ backgroundImage: `url(${project.coverImage})` }} aria-hidden="true" />
+                <div className="po-hero__cover" style={{ backgroundImage: `url(${project.coverImage})` }} aria-hidden="true">
+                    <button
+                        type="button"
+                        className="po-hero__cover-toggle"
+                        onClick={onToggleCoverExpand}
+                        title={coverExpanded ? t('projectOverview.v2.hero.shrinkCover', 'Shrink cover') : t('projectOverview.v2.hero.enlargeCover', 'Enlarge cover')}
+                        aria-label={coverExpanded ? t('projectOverview.v2.hero.shrinkCover', 'Shrink cover') : t('projectOverview.v2.hero.enlargeCover', 'Enlarge cover')}
+                        aria-pressed={coverExpanded}
+                    >
+                        <span className="material-symbols-outlined">{coverExpanded ? 'unfold_less' : 'unfold_more'}</span>
+                    </button>
+                </div>
             )}
 
             <div className="po-hero__body">

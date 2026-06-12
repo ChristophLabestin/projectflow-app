@@ -2,6 +2,8 @@
 html.dark {
     --color-primary: #e5e5e5;
     --color-primary-text: #171717;
+    --color-primary-rgb: 229, 229, 229;
+    --color-primary-text-rgb: 23, 23, 23;
     --color-primary-dark: #d4d4d4;
     --color-primary-light: #a3a3a3;
     --color-primary-fade: #262626;
@@ -11,11 +13,20 @@ html.dark {
     --color-surface-paper: #151920;
     /* Reusing card color for paper in dark mode by default */
     --color-surface-hover: #1e242e;
+    --color-surface-hover-light: #212732;
     --color-surface-border: #2e3440;
+    --color-surface-bg-rgb: 11, 13, 17;
+    --color-surface-card-rgb: 21, 25, 32;
+    --color-surface-hover-rgb: 30, 36, 46;
+    --color-surface-border-rgb: 46, 52, 64;
+    --color-surface-paper-rgb: var(--color-surface-card-rgb);
 
     --color-text-main: #e5e7eb;
     --color-text-muted: #9ca3af;
     --color-text-subtle: #6b7280;
+    --color-text-main-rgb: 229, 231, 235;
+    --color-text-muted-rgb: 156, 163, 175;
+    --color-text-subtle-rgb: 107, 114, 128;
 
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
@@ -30,4 +41,5 @@ html.dark {
 :root {
     --color-surface-paper: var(--color-surface-card);
     --color-primary-text: #ffffff;
+    --color-primary-text-rgb: 255, 255, 255;
 }

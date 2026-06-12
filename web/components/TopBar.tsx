@@ -82,11 +82,12 @@ const PinnedTasksToggle = () => {
 
 interface TopBarProps {
     project: Project | null;
+    tenantId?: string;
     breadcrumbs: { label: string; to?: string }[];
     onOpenNav: () => void;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav }) => {
+export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, onOpenNav }) => {
     const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
@@ -115,7 +116,7 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
             <div className="topbar-right">
                 <div className="topbar-search-pill">
                     <Suspense fallback={<div className="h-9 rounded-lg bg-surface/60" />}>
-                        <AISearchBar />
+                        <AISearchBar tenantId={tenantId || project?.tenantId} />
                     </Suspense>
                 </div>
 

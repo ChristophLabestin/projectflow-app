@@ -9,8 +9,9 @@
     z-index: 1000;
 
     // Background & Blur
-    background-color: rgba(0, 0, 0, 0.4); // Darkened
-    backdrop-filter: blur(4px); // Blurs content behind
+    background-color: rgba(0, 0, 0, 0.35); // Darkened
+    backdrop-filter: blur(12px) saturate(120%); // Stronger blur
+    -webkit-backdrop-filter: blur(12px) saturate(120%);
 
     // Flex centering
     display: flex;
@@ -32,6 +33,7 @@
 .modal {
     background-color: var(--color-surface-card);
     border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     box-shadow: var(--shadow-soft); // Deep soft shadow for elevation
     display: flex;
     flex-direction: column;

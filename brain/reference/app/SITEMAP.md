@@ -82,7 +82,7 @@ Base:
 ### 3.2 Project Tasks
 
 - [x] `/project/:id/tasks` — Project tasks list/board (SCSS refactor, common controls + badges, tooltip + timeline alignment)
-- [x] `/project/:id/tasks/:taskId` — Project task detail (Full Workbench workspace with compact command header, editable command rail, Work/Discussion/History tabs, next-step/blocker/reminder/quick-log fields, subtasks, comments, dependencies, labels, milestone, focus actions, and sticky inspector)
+- [x] `/project/:id/tasks/:taskId` — Project task detail (Full Workbench workspace with compact command header, editable command rail, Work/Discussion/History tabs, next-step/blocker/reminder/quick-log fields, subtasks, comments, task relationships for blocked-by/is-blocking/parent/sub-task links with blocked status automation, labels, milestone, focus actions, and sticky inspector)
 
 ### 3.2.1 Project Initiatives
 

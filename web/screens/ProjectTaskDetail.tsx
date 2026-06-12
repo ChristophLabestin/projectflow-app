@@ -13,7 +13,7 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { TextArea } from '../components/common/Input/TextArea';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
-import { TaskDependenciesCard } from '../components/TaskDependenciesCard';
+import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
@@ -24,48 +24,46 @@ import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { getInitiativeById } from '../services/dataService';
+import { AdvancedEditorRuntime } from '../components/editor/AdvancedEditorRuntime';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Review', 'Blocked', 'Done'] as const;
-const TASK_WORKBENCH_TABS = ['work', 'discussion', 'history'] as const;
 
-type TaskWorkbenchTab = typeof TASK_WORKBENCH_TABS[number];
-
-const getTaskStatusStyle = (status?: string) => {
-    if (status === 'Done') return 'task-detail__tone--success';
-    if (status === 'In Progress') return 'task-detail__tone--primary';
-    if (status === 'Review') return 'task-detail__tone--warning';
-    if (status === 'Open' || status === 'Todo') return 'task-detail__tone--primary';
-    if (status === 'Backlog') return 'task-detail__tone--neutral';
-    if (status === 'On Hold') return 'task-detail__tone--warning';
-    if (status === 'Blocked') return 'task-detail__tone--error';
-    return 'task-detail__tone--neutral';
+const safeDate = (val: any): Date | null => {
+    if (!val) return null;
+    if (val instanceof Date) return val;
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
 };
 
-const getPriorityTone = (priority?: string) => {
-    if (priority === 'Urgent') return 'task-detail__tone--urgent';
-    if (priority === 'High') return 'task-detail__tone--high';
-    if (priority === 'Medium') return 'task-detail__tone--medium';
-    if (priority === 'Low') return 'task-detail__tone--low';
-    return 'task-detail__tone--neutral';
+const getTaskStatusStyle = (status: string) => {
+    const map: Record<string, string> = {
+        Backlog: 'task-detail__status--backlog',
+        Open: 'task-detail__status--open',
+        Todo: 'task-detail__status--open',
+        'In Progress': 'task-detail__status--in-progress',
+        Review: 'task-detail__status--review',
+        Done: 'task-detail__status--done',
+        Completed: 'task-detail__status--done',
+        Blocked: 'task-detail__status--blocked',
+        Canceled: 'task-detail__status--blocked',
+    };
+    return map[status] || 'task-detail__status--backlog';
 };
 
-const getTaskStatusIcon = (status?: string) => {
-    return status === 'Done' ? 'check_circle' :
-        status === 'In Progress' ? 'sync' :
-            status === 'Review' ? 'visibility' :
-                status === 'Open' || status === 'Todo' ? 'play_circle' :
-                    status === 'Backlog' ? 'inventory_2' :
-                        status === 'On Hold' ? 'pause_circle' :
-                            status === 'Blocked' ? 'dangerous' :
-                                'circle';
-};
-
-const safeDate = (value?: string) => {
-    if (!value) return null;
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+const getTaskStatusIcon = (status: string) => {
+    const map: Record<string, string> = {
+        Backlog: 'inbox',
+        Open: 'circle',
+        Todo: 'circle',
+        'In Progress': 'timelapse',
+        'On Hold': 'pause_circle',
+        Review: 'preview',
+        Blocked: 'block',
+        Done: 'check_circle',
+    };
+    return map[status] || 'circle';
 };
 
 export const ProjectTaskDetail = () => {
@@ -87,6 +85,7 @@ export const ProjectTaskDetail = () => {
     const [members, setMembers] = useState<string[]>([]);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [subTaskToDelete, setSubTaskToDelete] = useState<string | null>(null);
+    const [deletingSubTask, setDeletingSubTask] = useState(false);
     const [allUsers, setAllUsers] = useState<Member[]>([]);
     const [activeSubAssignMenu, setActiveSubAssignMenu] = useState<string | null>(null);
     const [project, setProject] = useState<Project | null>(null);
@@ -100,11 +99,9 @@ export const ProjectTaskDetail = () => {
     const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [activeMilestoneMenu, setActiveMilestoneMenu] = useState(false);
-    const [activeTab, setActiveTab] = useState<TaskWorkbenchTab>('work');
     const [nextStepDraft, setNextStepDraft] = useState('');
     const [blockerNoteDraft, setBlockerNoteDraft] = useState('');
     const [quickLogDraft, setQuickLogDraft] = useState('');
-    const [descriptionDraft, setDescriptionDraft] = useState('');
     const [savingWorkbenchField, setSavingWorkbenchField] = useState<string | null>(null);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
@@ -209,32 +206,35 @@ export const ProjectTaskDetail = () => {
         setMembers([]);
         setError(null);
         try {
-            let loadedTask = await getTaskById(taskId, id, tenantId);
+            const loadedProject = id ? await getProjectById(id, tenantId) : null;
+            const resolvedTenantId = loadedProject?.tenantId || tenantId;
+            setProject(loadedProject);
+
+            let loadedTask = await getTaskById(taskId, id, resolvedTenantId);
             if (!loadedTask && id) {
-                const projectTasks = await getProjectTasks(id, tenantId);
+                const projectTasks = await getProjectTasks(id, resolvedTenantId);
                 loadedTask = projectTasks.find((candidate) => candidate.id === taskId) || null;
             }
             if (loadedTask?.legacyInitiativeRoot && loadedTask.initiativeId && id) {
-                navigate(`/project/${id}/initiatives/${loadedTask.initiativeId}${tenantId ? `?tenant=${tenantId}` : ''}`, { replace: true });
+                navigate(`/project/${id}/initiatives/${loadedTask.initiativeId}${resolvedTenantId ? `?tenant=${resolvedTenantId}` : ''}`, { replace: true });
                 return;
             }
             setTask(loadedTask);
 
+            const taskTenantId = loadedTask?.tenantId || resolvedTenantId;
+
             if (loadedTask?.initiativeId && id) {
-                getInitiativeById(loadedTask.initiativeId, id, tenantId).then(setInitiative).catch(e => console.error('Failed to load initiative', e));
+                getInitiativeById(loadedTask.initiativeId, id, taskTenantId).then(setInitiative).catch(e => console.error('Failed to load initiative', e));
             } else {
                 setInitiative(null);
             }
 
-            const subs = await getSubTasks(taskId, id, loadedTask?.tenantId || tenantId);
+            const subs = await getSubTasks(taskId, id, taskTenantId);
             setSubTasks(subs);
 
             if (id) {
-                const projectMembers = await getProjectMembers(id, tenantId);
+                const projectMembers = await getProjectMembers(id, taskTenantId);
                 setMembers(projectMembers);
-
-                const loadedProject = await getProjectById(id, tenantId);
-                setProject(loadedProject);
             }
         } catch (err) {
             console.error('Failed to load task', err);
@@ -253,8 +253,7 @@ export const ProjectTaskDetail = () => {
         setNextStepDraft(task.nextStep || '');
         setBlockerNoteDraft(task.blockerNote || '');
         setQuickLogDraft(task.lastWorkbenchNote || '');
-        setDescriptionDraft(task.description || '');
-    }, [task?.id, task?.nextStep, task?.blockerNote, task?.lastWorkbenchNote, task?.description]);
+    }, [task?.id, task?.nextStep, task?.blockerNote, task?.lastWorkbenchNote]);
 
     useEffect(() => {
         if (!statusMenuOpen && !priorityMenuOpen) return;
@@ -283,20 +282,20 @@ export const ProjectTaskDetail = () => {
     }, [task?.tenantId]);
 
     useEffect(() => {
-        if (!taskId || !id) return;
+        if (!taskId || !id || !activeTenantId) return;
         const unsub = subscribeTaskActivity(id, taskId, (data) => {
             setActivities(data);
-        }, tenantId);
+        }, activeTenantId);
 
         const unsubMilestones = subscribeProjectMilestones(id, (data) => {
             setMilestones(data);
-        }, tenantId);
+        }, activeTenantId);
 
         return () => {
             unsub();
             unsubMilestones();
         };
-    }, [taskId, id, tenantId]);
+    }, [taskId, id, activeTenantId]);
 
     useEffect(() => {
         if (!id) return;
@@ -332,17 +331,25 @@ export const ProjectTaskDetail = () => {
     };
 
     const handleDeleteSubTask = (subId: string) => {
+        setError(null);
+        setActiveSubAssignMenu(null);
+        setActiveMilestoneMenu(false);
         setSubTaskToDelete(subId);
     };
 
     const confirmDeleteSubTask = async () => {
         if (!subTaskToDelete || !task) return;
+        setDeletingSubTask(true);
+        setError(null);
         try {
             await deleteSubTask(subTaskToDelete, task.id, id, activeTenantId);
             setSubTaskToDelete(null);
             void loadData();
         } catch (err) {
             console.error('Failed to delete subtask', err);
+            setError(t('taskDetail.subtasks.deleteError'));
+        } finally {
+            setDeletingSubTask(false);
         }
     };
 
@@ -398,7 +405,7 @@ export const ProjectTaskDetail = () => {
         await updateTaskFields(task.id, { [field]: nextValue } as Partial<Task>, id, activeTenantId);
     };
 
-    const saveWorkbenchText = async (field: keyof Pick<Task, 'nextStep' | 'blockerNote' | 'lastWorkbenchNote' | 'description'>, value: string) => {
+    const saveWorkbenchText = async (field: keyof Pick<Task, 'nextStep' | 'blockerNote' | 'lastWorkbenchNote'>, value: string) => {
         if (!task) return;
         setSavingWorkbenchField(field);
         const trimmed = value.trim();
@@ -452,12 +459,6 @@ export const ProjectTaskDetail = () => {
         if (!task || !id) return;
         setTask(prev => prev ? { ...prev, assignedGroupIds: groupIds } : null);
         await updateTaskFields(task.id, { assignedGroupIds: groupIds }, id, activeTenantId);
-    };
-
-    const handleUpdateDependencies = async (dependencyIds: string[]) => {
-        if (!task || !id) return;
-        setTask(prev => prev ? { ...prev, dependencies: dependencyIds } : null);
-        await updateTaskFields(task.id, { dependencies: dependencyIds }, id, activeTenantId);
     };
 
     const handleLinkMilestone = async (milestoneId: string) => {
@@ -584,6 +585,7 @@ export const ProjectTaskDetail = () => {
                 confirmLabel={t('taskDetail.confirm.deleteSubtask.confirm')}
                 cancelLabel={t('common.cancel')}
                 variant="danger"
+                isLoading={deletingSubTask}
             />
 
             {error && (
@@ -593,457 +595,311 @@ export const ProjectTaskDetail = () => {
                 </div>
             )}
 
-            <header className="task-detail__command-header">
-                <div className="task-detail__identity">
-                    <div className="task-detail__breadcrumb">
-                        {project && (
-                            <Link to={`/project/${project.id}${tenantQuery}`} className="task-detail__breadcrumb-link">
-                                <span className="material-symbols-outlined">west</span>
-                                {project.title}
-                            </Link>
-                        )}
-                        <span className="task-detail__breadcrumb-current">{t('breadcrumbs.taskDetails')}</span>
-                    </div>
-                    <div className="task-detail__title-row">
-                        <h1 className="task-detail__title">{task.title}</h1>
-                        <span className={`task-detail__status-pill ${getTaskStatusStyle(currentStatus)}`}>
-                            <span className="material-symbols-outlined">{getTaskStatusIcon(currentStatus)}</span>
-                            {currentStatusLabel}
-                        </span>
-                        <PriorityBadge priority={task.priority || 'Low'} />
-                        {activeFocus && (
-                            <span className="task-detail__focus-pill">
-                                <span className="material-symbols-outlined">center_focus_strong</span>
-                                {t('taskDetail.actions.currentFocus')}
-                            </span>
-                        )}
-                    </div>
-                </div>
-
-                <div className="task-detail__header-actions">
-                    <Button
-                        variant={task.isCompleted ? 'secondary' : 'primary'}
-                        onClick={handleToggleTask}
-                        size="md"
-                        isLoading={savingStatus}
-                        icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
-                    >
-                        {task.isCompleted ? t('taskDetail.actions.completed') : t('taskDetail.actions.markDone')}
-                    </Button>
-                    <div className="task-detail__icon-toolbar">
-                        <button type="button" className="task-detail__icon-button" data-state={activeFocus ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'} onClick={handleTogglePinnedTask} aria-label={t('taskDetail.actions.togglePin')}>
-                            <span className="material-symbols-outlined">push_pin</span>
-                        </button>
-                        <button type="button" className="task-detail__icon-button" onClick={() => setIsEditModalOpen(true)} aria-label={t('common.edit')}>
-                            <span className="material-symbols-outlined">edit</span>
-                        </button>
-                        <button type="button" className="task-detail__icon-button" onClick={() => setShowTaskModal(true)} aria-label={t('taskDetail.actions.newTask')}>
-                            <span className="material-symbols-outlined">add</span>
-                        </button>
-                        <button type="button" className="task-detail__icon-button task-detail__icon-button--danger" onClick={() => setShowDeleteConfirm(true)} aria-label={t('taskDetail.confirm.delete.confirm')}>
-                            <span className="material-symbols-outlined">delete</span>
-                        </button>
-                    </div>
-                </div>
-            </header>
-
-            <section className="task-detail__command-rail" aria-label={t('taskDetail.workbench.commandRail')}>
-                <CommandCell icon="timelapse" label={t('taskDetail.status.label')}>
-                    <div ref={statusMenuRef} className="task-detail__select">
-                        <button type="button" onClick={() => setStatusMenuOpen((open) => !open)} className={`task-detail__select-trigger ${getTaskStatusStyle(currentStatus)}`} data-open={statusMenuOpen ? 'true' : 'false'}>
-                            <span className="task-detail__select-value">
-                                <span className="material-symbols-outlined">{getTaskStatusIcon(currentStatus)}</span>
-                                {currentStatusLabel}
-                            </span>
-                            <span className="material-symbols-outlined task-detail__select-chevron">expand_more</span>
-                        </button>
-                        {statusMenuOpen && (
-                            <div className="task-detail__select-menu">
-                                {TASK_STATUS_OPTIONS.map((status) => (
-                                    <button
-                                        key={status}
-                                        type="button"
-                                        onClick={() => {
-                                            setStatusMenuOpen(false);
-                                            const isDone = status === 'Done';
-                                            setTask(prev => prev ? ({ ...prev, status: status as Task['status'], isCompleted: isDone }) : null);
-                                            void updateTaskFields(task.id, { status: status as Task['status'], isCompleted: isDone }, id, activeTenantId);
-                                        }}
-                                        className={`task-detail__select-item ${getTaskStatusStyle(status)} ${status === currentStatus ? 'task-detail__select-item--selected' : ''}`}
-                                    >
-                                        <span className="task-detail__select-item-label">
-                                            <span className="material-symbols-outlined">{getTaskStatusIcon(status)}</span>
-                                            {statusLabels[status] || status}
-                                        </span>
-                                        {status === currentStatus && <span className="material-symbols-outlined task-detail__select-item-check">check</span>}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </CommandCell>
-
-                <CommandCell icon="flag" label={t('taskDetail.priority.label')}>
-                    <div ref={priorityMenuRef} className="task-detail__select">
-                        <button type="button" onClick={() => setPriorityMenuOpen((open) => !open)} className={`task-detail__select-trigger ${getPriorityTone(task.priority || 'Low')}`} data-open={priorityMenuOpen ? 'true' : 'false'}>
-                            <span className="task-detail__select-value">
-                                <PriorityIcon priority={task.priority || 'Low'} />
-                                {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority || t('tasks.priority.low')}
-                            </span>
-                            <span className="material-symbols-outlined task-detail__select-chevron">expand_more</span>
-                        </button>
-
-                        {priorityMenuOpen && (
-                            <div className="task-detail__select-menu">
-                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map((priority) => {
-                                    const selected = task.priority === priority;
-                                    return (
-                                        <button
-                                            key={priority}
-                                            type="button"
-                                            onClick={() => {
-                                                setPriorityMenuOpen(false);
-                                                void handleUpdateField('priority', priority);
-                                            }}
-                                            className={`task-detail__select-item ${getPriorityTone(priority)} ${selected ? 'task-detail__select-item--selected' : ''}`}
-                                        >
-                                            <span className="task-detail__select-item-label">
-                                                <PriorityIcon priority={priority} />
-                                                {priorityLabels[priority]}
-                                            </span>
-                                            {selected && <span className="material-symbols-outlined task-detail__select-item-check">check</span>}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </CommandCell>
-
-                <CommandCell icon="group" label={t('taskDetail.assignees.label')}>
-                    <MultiAssigneeSelector
-                        projectId={id!}
-                        assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
-                        assignedGroupIds={task.assignedGroupIds || []}
-                        onChange={handleUpdateAssignees}
-                        onGroupChange={handleUpdateAssignedGroups}
-                    />
-                </CommandCell>
-
-                <CommandCell icon="event" label={t('taskDetail.timeline.label')}>
-                    <div className="task-detail__date-pair">
-                        <DatePicker value={startDate} onChange={(date) => handleUpdateField('startDate', date)} placeholder={t('taskDetail.timeline.startPlaceholder')} />
-                        <DatePicker value={dueDate} onChange={(date) => handleUpdateField('dueDate', date)} placeholder={t('taskDetail.timeline.duePlaceholder')} />
-                    </div>
-                </CommandCell>
-
-                <CommandCell icon="checklist" label={t('taskDetail.workbench.progress')}>
-                    <div className="task-detail__rail-progress">
-                        <div className="task-detail__progress-track">
-                            <span className="task-detail__progress-fill" style={{ width: `${progressPct}%` }} />
-                        </div>
-                        <span>{totalCount ? `${doneCount}/${totalCount} · ${progressPct}%` : t('taskDetail.workbench.progressZero')}</span>
-                    </div>
-                </CommandCell>
-
-                <CommandCell icon="assistant_navigation" label={t('taskDetail.workbench.reminder')}>
-                    <DatePicker value={reminderDate} onChange={(date) => handleUpdateField('reminderAt', date)} placeholder={t('taskDetail.workbench.reminderPlaceholder')} />
-                </CommandCell>
-            </section>
-
-            <div className="task-detail__workspace">
-                <main className="task-detail__workbench">
-                    <nav className="task-detail__tabs" aria-label={t('taskDetail.workbench.tabsLabel')}>
-                        {TASK_WORKBENCH_TABS.map((tab) => (
-                            <button
-                                key={tab}
-                                type="button"
-                                className="task-detail__tab"
-                                data-active={activeTab === tab ? 'true' : 'false'}
-                                onClick={() => setActiveTab(tab)}
-                            >
-                                {t(`taskDetail.tabs.${tab}`)}
-                                {tab === 'discussion' && commentCount > 0 && <span>{commentCount}</span>}
-                                {tab === 'history' && displayedActivities.length > 0 && <span>{displayedActivities.length}</span>}
-                            </button>
-                        ))}
-                    </nav>
-
-                    {activeTab === 'work' && (
-                        <div className="task-detail__tab-panel">
-                            <section className="task-detail__focus-strip" data-blocked={isBlocked ? 'true' : 'false'}>
-                                <div className="task-detail__focus-main">
-                                    <span className="material-symbols-outlined">{isBlocked ? 'dangerous' : 'center_focus_strong'}</span>
-                                    <div>
-                                        <span className="task-detail__eyebrow">{t('taskDetail.workbench.execution')}</span>
-                                        <h2>{isBlocked ? t('taskDetail.workbench.blockedTitle') : t('taskDetail.workbench.readyTitle')}</h2>
-                                        <p>{isBlocked ? (task.blockerNote || t('taskDetail.workbench.blockedEmpty')) : (task.nextStep || t('taskDetail.workbench.nextStepEmpty'))}</p>
-                                    </div>
-                                </div>
-                                <div className="task-detail__focus-actions">
-                                    <Button variant={activeFocus ? 'secondary' : 'primary'} onClick={handleStartTaskFocus} size="sm" icon={<span className="material-symbols-outlined">{activeFocus ? 'center_focus_strong' : 'center_focus_weak'}</span>}>
-                                        {activeFocus ? t('taskDetail.actions.currentFocus') : t('taskDetail.actions.setFocusTask')}
-                                    </Button>
-                                    <Button variant="ghost" onClick={() => snoozeFocusItem(60)} size="sm" icon={<span className="material-symbols-outlined">schedule</span>}>
-                                        {t('taskDetail.workbench.snooze')}
-                                    </Button>
-                                    {isBlocked ? (
-                                        <Button variant="secondary" onClick={handleClearBlocked} size="sm" icon={<span className="material-symbols-outlined">lock_open</span>}>
-                                            {t('taskDetail.workbench.clearBlocker')}
-                                        </Button>
-                                    ) : (
-                                        <Button variant="ghost" onClick={handleSetBlocked} size="sm" icon={<span className="material-symbols-outlined">block</span>}>
-                                            {t('taskDetail.workbench.markBlocked')}
-                                        </Button>
-                                    )}
-                                </div>
-                            </section>
-
-                            <section className="task-detail__section task-detail__section--split">
-                                <div className="task-detail__field-panel">
-                                    <div className="task-detail__section-header">
-                                        <span className="material-symbols-outlined">route</span>
-                                        <h3>{t('taskDetail.workbench.nextStep')}</h3>
-                                    </div>
-                                    <TextArea
-                                        value={nextStepDraft}
-                                        onChange={(event) => setNextStepDraft(event.target.value)}
-                                        placeholder={t('taskDetail.workbench.nextStepPlaceholder')}
-                                        rows={4}
-                                        className="task-detail__textarea"
-                                    />
-                                    <div className="task-detail__field-actions">
-                                        <Button size="sm" variant="secondary" onClick={() => saveWorkbenchText('nextStep', nextStepDraft)} isLoading={savingWorkbenchField === 'nextStep'}>
-                                            {t('common.save')}
-                                        </Button>
-                                    </div>
-                                </div>
-                                <div className="task-detail__field-panel">
-                                    <div className="task-detail__section-header">
-                                        <span className="material-symbols-outlined">report</span>
-                                        <h3>{t('taskDetail.workbench.blocker')}</h3>
-                                    </div>
-                                    <TextArea
-                                        value={blockerNoteDraft}
-                                        onChange={(event) => setBlockerNoteDraft(event.target.value)}
-                                        placeholder={t('taskDetail.workbench.blockerPlaceholder')}
-                                        rows={4}
-                                        className="task-detail__textarea"
-                                    />
-                                    <div className="task-detail__field-actions">
-                                        <Button size="sm" variant="secondary" onClick={() => saveWorkbenchText('blockerNote', blockerNoteDraft)} isLoading={savingWorkbenchField === 'blockerNote'}>
-                                            {t('common.save')}
-                                        </Button>
-                                        <Button size="sm" variant={isBlocked ? 'secondary' : 'ghost'} onClick={isBlocked ? handleClearBlocked : handleSetBlocked}>
-                                            {isBlocked ? t('taskDetail.workbench.clearBlocker') : t('taskDetail.workbench.markBlocked')}
-                                        </Button>
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section className="task-detail__section">
-                                <div className="task-detail__section-header">
-                                    <span className="material-symbols-outlined">notes</span>
-                                    <h3>{t('taskDetail.workbench.quickLog')}</h3>
-                                </div>
-                                <div className="task-detail__quick-log">
-                                    <TextInput
-                                        value={quickLogDraft}
-                                        onChange={(event) => setQuickLogDraft(event.target.value)}
-                                        placeholder={t('taskDetail.workbench.quickLogPlaceholder')}
-                                        leftElement={<span className="material-symbols-outlined">edit_note</span>}
-                                    />
-                                    <Button size="sm" variant="secondary" onClick={() => saveWorkbenchText('lastWorkbenchNote', quickLogDraft)} isLoading={savingWorkbenchField === 'lastWorkbenchNote'}>
-                                        {t('common.save')}
-                                    </Button>
-                                </div>
-                                {task.lastWorkbenchNote && (
-                                    <p className="task-detail__last-note">{task.lastWorkbenchNote}</p>
+            <div className="task-detail__grid">
+                <main className="task-detail__main">
+                    <header className="task-detail__header">
+                        <div className="task-detail__header-top">
+                            <div className="task-detail__breadcrumb">
+                                {project && (
+                                    <Link to={`/project/${project.id}${tenantQuery}`} className="task-detail__breadcrumb-link">
+                                        <span className="material-symbols-outlined">west</span>
+                                        {project.title}
+                                    </Link>
                                 )}
-                            </section>
+                                <span className="task-detail__breadcrumb-current">{t('breadcrumbs.taskDetails')}</span>
+                            </div>
 
-                            <section className="task-detail__section">
-                                <div className="task-detail__section-header">
-                                    <span className="material-symbols-outlined">description</span>
-                                    <h3>{t('taskDetail.description.label')}</h3>
-                                </div>
-                                <TextArea
-                                    value={descriptionDraft}
-                                    onChange={(event) => setDescriptionDraft(event.target.value)}
-                                    placeholder={t('taskDetail.description.empty')}
-                                    rows={7}
-                                    className="task-detail__textarea task-detail__textarea--document"
-                                />
-                                <div className="task-detail__field-actions">
-                                    <Button size="sm" variant="secondary" onClick={() => saveWorkbenchText('description', descriptionDraft)} isLoading={savingWorkbenchField === 'description'}>
-                                        {t('common.save')}
-                                    </Button>
-                                </div>
-                            </section>
-
-                            <section className="task-detail__section">
-                                <div className="task-detail__section-header task-detail__section-header--spread">
-                                    <div>
-                                        <span className="material-symbols-outlined">checklist</span>
-                                        <h3>{t('taskDetail.subtasks.label')}</h3>
-                                        {totalCount > 0 && <small>{doneCount}/{totalCount} · {progressPct}%</small>}
-                                    </div>
-                                    <div className="task-detail__mini-progress" aria-hidden="true">
-                                        <span style={{ width: `${progressPct}%` }} />
-                                    </div>
-                                </div>
-
-                                <div className="task-detail__subtasks-list">
-                                    {subTasks.length === 0 && (
-                                        <div className="task-detail__empty-inline">
-                                            <span className="material-symbols-outlined">splitscreen_add</span>
-                                            {t('taskDetail.workbench.progressEmpty')}
-                                        </div>
-                                    )}
-                                    {subTasks.map(sub => (
-                                        <div key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
-                                            <button type="button" onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)} className="task-detail__subtask-toggle" aria-label={sub.isCompleted ? t('common.reopen') : t('common.complete')}>
-                                                <span className="material-symbols-outlined">check</span>
-                                            </button>
-                                            <span className="task-detail__subtask-title">{sub.title}</span>
-                                            <div className="task-detail__subtask-assignee">
-                                                <button
-                                                    type="button"
-                                                    onClick={(event) => {
-                                                        event.stopPropagation();
-                                                        setActiveSubAssignMenu(activeSubAssignMenu === sub.id ? null : sub.id);
-                                                    }}
-                                                    className="task-detail__subtask-avatar"
-                                                    data-assigned={sub.assigneeId ? 'true' : 'false'}
-                                                    style={{
-                                                        backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => (u as any).id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
-                                                    }}
-                                                    title={sub.assigneeId ? t('taskDetail.subtasks.assignedTo').replace('{name}', allUsers.find(u => (u as any).id === sub.assigneeId)?.displayName || '') : t('taskDetail.subtasks.assign')}
-                                                >
-                                                    {!sub.assigneeId && <span className="material-symbols-outlined">person_add</span>}
-                                                </button>
-
-                                                {activeSubAssignMenu === sub.id && (
-                                                    <>
-                                                        <div className="task-detail__overlay" onClick={() => setActiveSubAssignMenu(null)} />
-                                                        <div className="task-detail__menu task-detail__menu--compact task-detail__menu--right">
-                                                            <div className="task-detail__menu-header">
-                                                                <p className="task-detail__menu-title">{t('taskDetail.subtasks.assignTitle')}</p>
-                                                            </div>
-                                                            <div className="task-detail__menu-body">
-                                                                <button type="button" onClick={() => handleUpdateSubTaskAssignee(sub.id, null)} className="task-detail__menu-item task-detail__menu-item--danger">
-                                                                    <span className="material-symbols-outlined task-detail__menu-icon">person_remove</span>
-                                                                    {t('taskDetail.subtasks.unassign')}
-                                                                </button>
-                                                                {taskAssignees.map(uid => {
-                                                                    const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
-                                                                    return (
-                                                                        <button key={uid} type="button" onClick={() => handleUpdateSubTaskAssignee(sub.id, uid)} className={`task-detail__menu-item ${sub.assigneeId === uid ? 'task-detail__menu-item--selected' : ''}`}>
-                                                                            <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="task-detail__menu-avatar" />
-                                                                            <span className="task-detail__menu-text">{user?.displayName || user?.email || uid.slice(0, 8)}</span>
-                                                                            {sub.assigneeId === uid && <span className="material-symbols-outlined task-detail__menu-check">check</span>}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                                {taskAssignees.length === 0 && <p className="task-detail__menu-empty">{t('taskDetail.subtasks.noneAssigned')}</p>}
-                                                            </div>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </div>
-                                            <button type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
-                                                <span className="material-symbols-outlined">close</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <form onSubmit={handleAddSubTask} className="task-detail__subtask-form-row">
-                                    <TextInput
-                                        value={newSubTitle}
-                                        onChange={(event) => setNewSubTitle(event.target.value)}
-                                        placeholder={t('taskDetail.subtasks.addPlaceholder')}
-                                        className="task-detail__subtask-input"
-                                        leftElement={<span className="material-symbols-outlined">add</span>}
-                                        disabled={adding}
-                                    />
-                                    <Button type="submit" size="sm" variant="secondary" disabled={!newSubTitle.trim() || adding} isLoading={adding}>
-                                        {t('common.add')}
-                                    </Button>
-                                </form>
-                            </section>
+                            <div className="task-detail__quick-actions">
+                                <button type="button" className="task-detail__icon-button" data-state={activeFocus ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'} onClick={handleTogglePinnedTask} aria-label={t('taskDetail.actions.togglePin')}>
+                                    <span className="material-symbols-outlined">push_pin</span>
+                                </button>
+                                <button type="button" className="task-detail__icon-button" onClick={() => setIsEditModalOpen(true)} aria-label={t('common.edit')}>
+                                    <span className="material-symbols-outlined">edit</span>
+                                </button>
+                                <button type="button" className="task-detail__icon-button task-detail__icon-button--danger" onClick={() => setShowDeleteConfirm(true)} aria-label={t('taskDetail.confirm.delete.confirm')}>
+                                    <span className="material-symbols-outlined">delete</span>
+                                </button>
+                            </div>
                         </div>
-                    )}
 
-                    {activeTab === 'discussion' && (
-                        <div className="task-detail__tab-panel">
-                            <section className="task-detail__section">
-                                <div className="task-detail__section-header">
-                                    <span className="material-symbols-outlined">chat</span>
-                                    <h3>{t('taskDetail.comments.title').replace('{count}', String(commentCount))}</h3>
-                                </div>
-                                <CommentSection
-                                    projectId={id!}
-                                    targetId={taskId!}
-                                    targetType="task"
-                                    tenantId={task?.tenantId}
-                                    isProjectOwner={isProjectOwner}
-                                    targetTitle={task?.title}
-                                    hideHeader={true}
-                                    onCountChange={setCommentCount}
-                                />
-                            </section>
+                        <div className="task-detail__title-group">
+                            <h1 className="task-detail__title">{task.title}</h1>
                         </div>
-                    )}
+                    </header>
 
-                    {activeTab === 'history' && (
-                        <div className="task-detail__tab-panel">
-                            <ActivityList activities={displayedActivities} compact={false} />
+                    <div className="task-detail__focus-banner" data-blocked={isBlocked ? 'true' : 'false'}>
+                        <div className="task-detail__focus-main">
+                            <span className="material-symbols-outlined">{isBlocked ? 'dangerous' : 'center_focus_strong'}</span>
+                            <div>
+                                <h2>{isBlocked ? t('taskDetail.workbench.blockedTitle') : t('taskDetail.workbench.readyTitle')}</h2>
+                                <p>{isBlocked ? (task.blockerNote || t('taskDetail.workbench.blockedEmpty')) : (task.nextStep || t('taskDetail.workbench.nextStepEmpty'))}</p>
+                            </div>
                         </div>
-                    )}
-                </main>
+                        <div className="task-detail__focus-actions">
+                            <Button variant={activeFocus ? 'secondary' : 'primary'} onClick={handleStartTaskFocus} size="sm" icon={<span className="material-symbols-outlined">{activeFocus ? 'center_focus_strong' : 'center_focus_weak'}</span>}>
+                                {activeFocus ? t('taskDetail.actions.currentFocus') : t('taskDetail.actions.setFocusTask')}
+                            </Button>
+                            {isBlocked ? (
+                                <Button variant="secondary" onClick={handleClearBlocked} size="sm" icon={<span className="material-symbols-outlined">lock_open</span>}>
+                                    {t('taskDetail.workbench.clearBlocker')}
+                                </Button>
+                            ) : (
+                                <Button variant="ghost" onClick={handleSetBlocked} size="sm" icon={<span className="material-symbols-outlined">block</span>}>
+                                    {t('taskDetail.workbench.markBlocked')}
+                                </Button>
+                            )}
+                        </div>
+                    </div>
 
-                <aside className="task-detail__inspector">
-                    <section className="task-detail__inspector-section">
+                    <section className="task-detail__section">
                         <div className="task-detail__section-header">
-                            <span className="material-symbols-outlined">event_note</span>
-                            <h3>{t('taskDetail.timeline.label')}</h3>
+                            <h3 className="task-detail__section-title">
+                                <span className="material-symbols-outlined">description</span>
+                                {t('taskDetail.description.label')}
+                            </h3>
                         </div>
-                        <div className="task-detail__stacked-fields">
-                            <label>
-                                <span>{t('taskDetail.timeline.startDate')}</span>
-                                <DatePicker value={startDate} onChange={(date) => handleUpdateField('startDate', date)} placeholder={t('taskDetail.timeline.startPlaceholder')} />
-                            </label>
-                            <label>
-                                <span>{t('taskDetail.timeline.dueDate')}</span>
-                                <DatePicker value={dueDate} onChange={(date) => handleUpdateField('dueDate', date)} placeholder={t('taskDetail.timeline.duePlaceholder')} />
-                            </label>
-                            <label>
-                                <span>{t('taskDetail.workbench.reminder')}</span>
-                                <DatePicker value={reminderDate} onChange={(date) => handleUpdateField('reminderAt', date)} placeholder={t('taskDetail.workbench.reminderPlaceholder')} />
-                            </label>
+                        {task.description ? (
+                            <AdvancedEditorRuntime initialContent={task.description} editable={false} />
+                        ) : (
+                            <p style={{ color: 'var(--color-text-muted)', fontSize: '15px', fontStyle: 'italic', margin: 0, padding: '12px 0' }}>
+                                {t('taskDetail.description.empty')}
+                            </p>
+                        )}
+                    </section>
+
+                    <section className="task-detail__section">
+                        <div className="task-detail__section-header">
+                            <h3 className="task-detail__section-title">
+                                <span className="material-symbols-outlined">checklist</span>
+                                {t('taskDetail.subtasks.label')}
+                            </h3>
+                            {totalCount > 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '13px', fontWeight: 600 }}>{doneCount}/{totalCount} ({progressPct}%)</span>}
+                        </div>
+
+                        <form onSubmit={handleAddSubTask} className="task-detail__subtask-form-row">
+                            <TextInput
+                                value={newSubTitle}
+                                onChange={(event) => setNewSubTitle(event.target.value)}
+                                placeholder={t('taskDetail.subtasks.addPlaceholder')}
+                                className="task-detail__subtask-input"
+                                leftElement={<span className="material-symbols-outlined">add</span>}
+                                disabled={adding}
+                            />
+                            <Button type="submit" size="sm" variant="secondary" disabled={!newSubTitle.trim() || adding} isLoading={adding}>
+                                {t('common.add')}
+                            </Button>
+                        </form>
+
+                        <div className="task-detail__subtasks-list" style={{ marginTop: '4px' }}>
+                            {subTasks.length === 0 && (
+                                <div className="task-detail__empty-inline">
+                                    <span className="material-symbols-outlined">splitscreen_add</span>
+                                    {t('taskDetail.workbench.progressEmpty')}
+                                </div>
+                            )}
+                            {subTasks.map(sub => (
+                                <div key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
+                                    <button type="button" onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)} className="task-detail__subtask-toggle" aria-label={sub.isCompleted ? t('common.reopen') : t('common.complete')}>
+                                        <span className="material-symbols-outlined">check</span>
+                                    </button>
+                                    <span className="task-detail__subtask-title">{sub.title}</span>
+                                    <div className="task-detail__subtask-assignee">
+                                        <button
+                                            type="button"
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setActiveSubAssignMenu(activeSubAssignMenu === sub.id ? null : sub.id);
+                                            }}
+                                            className="task-detail__subtask-avatar"
+                                            data-assigned={sub.assigneeId ? 'true' : 'false'}
+                                            style={{
+                                                backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => (u as any).id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
+                                            }}
+                                            title={sub.assigneeId ? t('taskDetail.subtasks.assignedTo').replace('{name}', allUsers.find(u => (u as any).id === sub.assigneeId)?.displayName || '') : t('taskDetail.subtasks.assign')}
+                                        >
+                                            {!sub.assigneeId && <span className="material-symbols-outlined">person_add</span>}
+                                        </button>
+
+                                        {activeSubAssignMenu === sub.id && (
+                                            <>
+                                                <div className="task-detail__overlay" onClick={() => setActiveSubAssignMenu(null)} />
+                                                <div className="task-detail__menu task-detail__menu--compact task-detail__menu--right">
+                                                    <div className="task-detail__menu-header">
+                                                        <p className="task-detail__menu-title">{t('taskDetail.subtasks.assignTitle')}</p>
+                                                    </div>
+                                                    <div className="task-detail__menu-body">
+                                                        <button type="button" onClick={() => handleUpdateSubTaskAssignee(sub.id, null)} className="task-detail__menu-item task-detail__menu-item--danger">
+                                                            <span className="material-symbols-outlined task-detail__menu-icon">person_remove</span>
+                                                            {t('taskDetail.subtasks.unassign')}
+                                                        </button>
+                                                        {taskAssignees.map(uid => {
+                                                            const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
+                                                            return (
+                                                                <button key={uid} type="button" onClick={() => handleUpdateSubTaskAssignee(sub.id, uid)} className={`task-detail__menu-item ${sub.assigneeId === uid ? 'task-detail__menu-item--selected' : ''}`}>
+                                                                    <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="task-detail__menu-avatar" />
+                                                                    <span className="task-detail__menu-text">{user?.displayName || user?.email || uid.slice(0, 8)}</span>
+                                                                    {sub.assigneeId === uid && <span className="material-symbols-outlined task-detail__menu-check">check</span>}
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {taskAssignees.length === 0 && <p className="task-detail__menu-empty">{t('taskDetail.subtasks.noneAssigned')}</p>}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    <button type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
+                                        <span className="material-symbols-outlined">close</span>
+                                    </button>
+                                </div>
+                            ))}
                         </div>
                     </section>
 
-                    <section className="task-detail__inspector-section">
-                        <div className="task-detail__section-header task-detail__section-header--spread">
-                            <div>
-                                <span className="material-symbols-outlined">sell</span>
-                                <h3>{t('taskDetail.labels.title')}</h3>
-                            </div>
+                    <section className="task-detail__section">
+                        <div className="task-detail__section-header">
+                            <h3 className="task-detail__section-title">
+                                <span className="material-symbols-outlined">chat</span>
+                                {t('taskDetail.comments.title').replace('{count}', String(commentCount))}
+                            </h3>
+                        </div>
+                        <CommentSection
+                            projectId={id!}
+                            targetId={taskId!}
+                            targetType="task"
+                            tenantId={task?.tenantId}
+                            isProjectOwner={isProjectOwner}
+                            targetTitle={task?.title}
+                            hideHeader={true}
+                            onCountChange={setCommentCount}
+                        />
+                    </section>
+                </main>
+
+                <aside className="task-detail__sidebar">
+                    <div className="task-detail__sidebar-section" style={{ paddingBottom: '16px', borderBottom: '1px solid var(--color-surface-border)' }}>
+                        <Button
+                            variant={task.isCompleted ? 'secondary' : 'primary'}
+                            onClick={handleToggleTask}
+                            size="md"
+                            isLoading={savingStatus}
+                            icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
+                            style={{ width: '100%', justifyContent: 'center', minHeight: '44px' }}
+                        >
+                            {task.isCompleted ? t('taskDetail.actions.completed') : t('taskDetail.actions.markDone')}
+                        </Button>
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.status.label')}</span>
+                        <div ref={statusMenuRef} className="task-detail__select">
+                            <button type="button" onClick={() => setStatusMenuOpen((open) => !open)} className={`task-detail__select-trigger`} data-open={statusMenuOpen ? 'true' : 'false'}>
+                                <span className="task-detail__select-value" style={{ color: `var(--color-${task.isCompleted ? 'success' : 'primary'})` }}>
+                                    <span className="material-symbols-outlined">{getTaskStatusIcon(currentStatus)}</span>
+                                    {currentStatusLabel}
+                                </span>
+                                <span className="material-symbols-outlined task-detail__select-chevron">expand_more</span>
+                            </button>
+                            {statusMenuOpen && (
+                                <div className="task-detail__select-menu">
+                                    {TASK_STATUS_OPTIONS.map((status) => (
+                                        <button
+                                            key={status}
+                                            type="button"
+                                            onClick={() => {
+                                                setStatusMenuOpen(false);
+                                                const isDone = status === 'Done';
+                                                setTask(prev => prev ? ({ ...prev, status: status as Task['status'], isCompleted: isDone }) : null);
+                                                void updateTaskFields(task.id, { status: status as Task['status'], isCompleted: isDone }, id, activeTenantId);
+                                            }}
+                                            className={`task-detail__select-item ${getTaskStatusStyle(status)} ${status === currentStatus ? 'task-detail__select-item--selected' : ''}`}
+                                        >
+                                            <span className="task-detail__select-item-label">
+                                                <span className="material-symbols-outlined">{getTaskStatusIcon(status)}</span>
+                                                {statusLabels[status] || status}
+                                            </span>
+                                            {status === currentStatus && <span className="material-symbols-outlined task-detail__select-item-check">check</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.priority.label')}</span>
+                        <div ref={priorityMenuRef} className="task-detail__select">
+                            <button type="button" onClick={() => setPriorityMenuOpen((open) => !open)} className="task-detail__select-trigger" data-open={priorityMenuOpen ? 'true' : 'false'}>
+                                <span className="task-detail__select-value">
+                                    <PriorityIcon priority={task.priority || 'Low'} />
+                                    {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority || t('tasks.priority.low')}
+                                </span>
+                                <span className="material-symbols-outlined task-detail__select-chevron">expand_more</span>
+                            </button>
+                            {priorityMenuOpen && (
+                                <div className="task-detail__select-menu">
+                                    {(['Low', 'Medium', 'High', 'Urgent'] as const).map((priority) => {
+                                        const selected = task.priority === priority;
+                                        const priorityToneClass = priority === 'Urgent' ? 'task-detail__priority--urgent' : priority === 'High' ? 'task-detail__priority--high' : priority === 'Medium' ? 'task-detail__priority--medium' : 'task-detail__priority--low';
+                                        return (
+                                            <button
+                                                key={priority}
+                                                type="button"
+                                                onClick={() => {
+                                                    setPriorityMenuOpen(false);
+                                                    void handleUpdateField('priority', priority);
+                                                }}
+                                                className={`task-detail__select-item ${priorityToneClass} ${selected ? 'task-detail__select-item--selected' : ''}`}
+                                            >
+                                                <span className="task-detail__select-item-label">
+                                                    <PriorityIcon priority={priority} />
+                                                    {priorityLabels[priority]}
+                                                </span>
+                                                {selected && <span className="material-symbols-outlined task-detail__select-item-check">check</span>}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.assignees.label')}</span>
+                        <MultiAssigneeSelector
+                            projectId={id!}
+                            assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
+                            assignedGroupIds={task.assignedGroupIds || []}
+                            onChange={handleUpdateAssignees}
+                            onGroupChange={handleUpdateAssignedGroups}
+                        />
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.timeline.label')}</span>
+                        <div className="task-detail__date-grid">
+                            <DatePicker value={startDate} onChange={(date) => handleUpdateField('startDate', date)} placeholder={t('taskDetail.timeline.startPlaceholder')} />
+                            <DatePicker value={dueDate} onChange={(date) => handleUpdateField('dueDate', date)} placeholder={t('taskDetail.timeline.duePlaceholder')} />
+                            <DatePicker value={reminderDate} onChange={(date) => handleUpdateField('reminderAt', date)} placeholder={t('taskDetail.workbench.reminderPlaceholder')} />
+                        </div>
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span className="task-detail__sidebar-label">{t('taskDetail.labels.title')}</span>
                             <button type="button" className="task-detail__text-button" onClick={() => setShowLabelsModal(true)}>
                                 {t('taskDetail.labels.manage')}
                             </button>
                         </div>
                         <div className="task-detail__labels-list">
-                            {filteredCats.length === 0 && <span className="task-detail__labels-empty">{t('taskDetail.labels.empty')}</span>}
+                            {filteredCats.length === 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '13px' }}>{t('taskDetail.labels.empty')}</span>}
                             {filteredCats.map(catName => {
                                 const catData = allCategories.find(c => c.name === catName);
                                 const color = catData?.color || 'var(--color-text-muted)';
                                 return (
                                     <span key={catName} className="task-detail__label-pill" style={{ color }}>
                                         <span className="task-detail__label-dot" style={{ backgroundColor: color }} />
-                                        <span className="task-detail__label-text">{catName}</span>
+                                        <span>{catName}</span>
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -1060,7 +916,7 @@ export const ProjectTaskDetail = () => {
                             })}
                         </div>
                         <div className="task-detail__label-control">
-                            <button type="button" className="task-detail__label-add">
+                            <button type="button" className="task-detail__inline-action">
                                 <span className="material-symbols-outlined">add</span>
                                 {t('taskDetail.labels.add')}
                             </button>
@@ -1089,22 +945,10 @@ export const ProjectTaskDetail = () => {
                                 </div>
                             </div>
                         </div>
-                    </section>
+                    </div>
 
-                    <section className="task-detail__inspector-section task-detail__inspector-section--dependency">
-                        <TaskDependenciesCard
-                            projectId={id!}
-                            currentTaskId={task.id}
-                            dependencies={task.dependencies || []}
-                            onUpdate={handleUpdateDependencies}
-                        />
-                    </section>
-
-                    <section className="task-detail__inspector-section">
-                        <div className="task-detail__section-header">
-                            <span className="material-symbols-outlined">flag</span>
-                            <h3>{t('taskDetail.details.milestone')}</h3>
-                        </div>
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.details.milestone')}</span>
                         {linkedMilestone ? (
                             <div className="task-detail__linked-row">
                                 <span className="material-symbols-outlined">flag</span>
@@ -1112,12 +956,12 @@ export const ProjectTaskDetail = () => {
                                     <strong>{linkedMilestone.title}</strong>
                                     {linkedMilestone.dueDate && <small>{t('taskDetail.details.milestone.duePrefix').replace('{date}', format(new Date(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}</small>}
                                 </div>
-                                <button type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')}>
+                                <button type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">link_off</span>
                                 </button>
                             </div>
                         ) : (
-                            <div className="task-detail__milestone-picker">
+                            <div className="task-detail__label-control">
                                 <button type="button" onClick={() => setActiveMilestoneMenu(!activeMilestoneMenu)} className="task-detail__inline-action">
                                     <span className="material-symbols-outlined">add_link</span>
                                     {t('taskDetail.details.milestone.link')}
@@ -1142,13 +986,19 @@ export const ProjectTaskDetail = () => {
                                 )}
                             </div>
                         )}
-                    </section>
+                    </div>
 
-                    <section className="task-detail__inspector-section">
-                        <div className="task-detail__section-header">
-                            <span className="material-symbols-outlined">account_tree</span>
-                            <h3>{t('taskDetail.workbench.context')}</h3>
-                        </div>
+                    <div className="task-detail__sidebar-section" style={{ padding: 0 }}>
+                        <TaskRelationshipsPanel
+                            projectId={id!}
+                            task={task}
+                            tenantId={activeTenantId}
+                            onTaskChange={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
+                        />
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.workbench.context')}</span>
                         <div className="task-detail__link-stack">
                             {initiative && (
                                 <Link to={`/project/${id}/initiatives/${initiative.id}${tenantQuery}`} className="task-detail__linked-row">
@@ -1157,7 +1007,7 @@ export const ProjectTaskDetail = () => {
                                         <strong>{initiative.title}</strong>
                                         <small>{t('taskDetail.details.initiativeAction')}</small>
                                     </div>
-                                    <span className="material-symbols-outlined">arrow_forward</span>
+                                    <span className="material-symbols-outlined" style={{ color: 'var(--color-text-subtle)' }}>arrow_forward</span>
                                 </Link>
                             )}
                             {task.convertedIdeaId && (
@@ -1179,62 +1029,43 @@ export const ProjectTaskDetail = () => {
                                 </div>
                             )}
                             {!initiative && !task.convertedIdeaId && !task.linkedIssueId && (
-                                <p className="task-detail__muted">{t('taskDetail.workbench.contextEmpty')}</p>
+                                <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', margin: 0 }}>{t('taskDetail.workbench.contextEmpty')}</p>
                             )}
                         </div>
-                    </section>
+                    </div>
 
-                    <section className="task-detail__inspector-section">
-                        <div className="task-detail__section-header">
-                            <span className="material-symbols-outlined">info</span>
-                            <h3>{t('taskDetail.details.title')}</h3>
+                    <div className="task-detail__sidebar-section task-detail__details-list">
+                        <div className="task-detail__detail-row">
+                            <span>{t('taskDetail.details.id')}</span>
+                            <button
+                                type="button"
+                                className="task-detail__id-button"
+                                onClick={() => {
+                                    void navigator.clipboard.writeText(task.id);
+                                    setCopiedId(true);
+                                    setTimeout(() => setCopiedId(false), 2000);
+                                }}
+                            >
+                                {task.id}
+                                <span className="material-symbols-outlined">{copiedId ? 'check' : 'content_copy'}</span>
+                            </button>
                         </div>
-                        <div className="task-detail__details-body">
-                            <div className="task-detail__detail-row">
-                                <span>{t('taskDetail.details.id')}</span>
-                                <button
-                                    type="button"
-                                    className="task-detail__id-button"
-                                    onClick={() => {
-                                        void navigator.clipboard.writeText(task.id);
-                                        setCopiedId(true);
-                                        setTimeout(() => setCopiedId(false), 2000);
-                                    }}
-                                >
-                                    {task.id}
-                                    <span className="material-symbols-outlined">{copiedId ? 'check' : 'content_copy'}</span>
-                                </button>
-                            </div>
-                            <DetailMeta label={t('taskDetail.details.created')} value={task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'} />
-                            {task.createdBy && <DetailMeta label={t('taskDetail.details.by').replace('{name}', '')} value={allUsers.find(u => (u as any).id === task.createdBy)?.displayName || t('taskDetail.details.unknownUser')} />}
-                            {task.isCompleted && <DetailMeta label={t('taskDetail.details.completed')} value={task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : t('taskDetail.details.justNow')} />}
-                        </div>
-                    </section>
+                        <DetailMeta label={t('taskDetail.details.created')} value={task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'} />
+                        {task.createdBy && <DetailMeta label={t('taskDetail.details.by').replace('{name}', '')} value={allUsers.find(u => (u as any).id === task.createdBy)?.displayName || t('taskDetail.details.unknownUser')} />}
+                        {task.isCompleted && <DetailMeta label={t('taskDetail.details.completed')} value={task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : t('taskDetail.details.justNow')} />}
+                    </div>
 
                     {displayedActivities.length > 0 && (
-                        <section className="task-detail__inspector-section">
-                            <div className="task-detail__section-header">
-                                <span className="material-symbols-outlined">history</span>
-                                <h3>{t('taskDetail.activity.title')}</h3>
-                            </div>
+                        <div className="task-detail__sidebar-section" style={{ paddingTop: '16px', borderTop: '1px solid var(--color-surface-border)' }}>
+                            <span className="task-detail__sidebar-label">{t('taskDetail.activity.title')}</span>
                             <ActivityList activities={displayedActivities.slice(0, 4)} compact />
-                        </section>
+                        </div>
                     )}
                 </aside>
             </div>
         </div>
     );
 };
-
-const CommandCell: React.FC<{ icon: string; label: string; children: React.ReactNode }> = ({ icon, label, children }) => (
-    <div className="task-detail__command-cell">
-        <div className="task-detail__command-cell-label">
-            <span className="material-symbols-outlined">{icon}</span>
-            {label}
-        </div>
-        <div className="task-detail__command-cell-body">{children}</div>
-    </div>
-);
 
 const DetailMeta: React.FC<{ label: string; value: string }> = ({ label, value }) => (
     <div className="task-detail__detail-row">
@@ -1256,20 +1087,19 @@ const ActivityList: React.FC<{ activities: Activity[]; compact: boolean }> = ({ 
     }
 
     return (
-        <div className={`task-detail__activity ${compact ? 'task-detail__activity--compact' : ''}`}>
+        <div className="task-detail__activity-list">
             {activities.map((item) => {
                 const { icon, color, bg } = activityIcon(item.type, item.action);
                 return (
                     <div key={item.id} className="task-detail__activity-item">
-                        <div className="task-detail__activity-badge" style={{ backgroundColor: bg, color }}>
+                        <div className="task-detail__activity-icon" style={{ backgroundColor: bg, color }}>
                             <span className="material-symbols-outlined">{icon}</span>
                         </div>
-                        <div className="task-detail__activity-body">
-                            <div className="task-detail__activity-meta">
-                                <span>{item.user}</span>
-                                <time>{timeAgo(item.createdAt)}</time>
+                        <div className="task-detail__activity-content">
+                            <div>
+                                <strong>{item.user}</strong> <span>{item.action}</span>
                             </div>
-                            <p>{item.action}</p>
+                            <time>{timeAgo(item.createdAt)}</time>
                         </div>
                     </div>
                 );
@@ -1286,7 +1116,7 @@ const PriorityIcon = ({ priority }: { priority: string }) => {
         Low: 'keyboard_arrow_down',
     };
     return (
-        <span className="material-symbols-outlined task-detail__priority-icon" data-priority={priority.toLowerCase()}>
+        <span className="material-symbols-outlined" style={{ fontSize: '18px', color: `var(--priority-${priority.toLowerCase()})` }}>
             {icons[priority]}
         </span>
     );
@@ -1308,9 +1138,14 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
         Low: t('tasks.priority.low'),
     };
 
+    const toneClass = priority === 'Urgent' ? 'task-detail__priority--urgent' :
+                      priority === 'High' ? 'task-detail__priority--high' :
+                      priority === 'Medium' ? 'task-detail__priority--medium' :
+                      'task-detail__priority--low';
+
     return (
-        <span className={`task-detail__priority-pill ${getPriorityTone(priority)}`}>
-            <span className="material-symbols-outlined task-detail__priority-icon">{icons[priority]}</span>
+        <span className={`task-detail__priority-pill ${toneClass}`}>
+            <span className="material-symbols-outlined">{icons[priority]}</span>
             {priorityLabels[priority] || priority}
         </span>
     );

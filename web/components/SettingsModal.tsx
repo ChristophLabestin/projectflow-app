@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
-import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, updateDoc, doc, deleteField } from 'firebase/firestore';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -21,7 +21,10 @@ import {
     GithubAuthProvider,
     GoogleAuthProvider,
     linkWithPopup,
-    sendEmailVerification
+    sendEmailVerification,
+    unlink,
+    getMultiFactorResolver,
+    MultiFactorResolver
 } from 'firebase/auth';
 import { format } from 'date-fns';
 import { linkWithGithub, resetUserOnboarding } from '../services/dataService';
@@ -30,6 +33,7 @@ import { Checkbox } from './ui/Checkbox';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
 import { RoleManagement } from './settings/RoleManagement';
+import { TwoFactorChallengeModal } from './modals/TwoFactorChallengeModal';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
 import { getActiveTenantId } from '../services/domain/authService';
@@ -203,6 +207,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     // Account Management State
     const [githubLinked, setGithubLinked] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
+    const [disconnectingGithub, setDisconnectingGithub] = useState(false);
+    const [githubMfaResolver, setGithubMfaResolver] = useState<MultiFactorResolver | null>(null);
+    const [showGithubMfaModal, setShowGithubMfaModal] = useState(false);
     const [connectingGoogle, setConnectingGoogle] = useState(false);
     const [providers, setProviders] = useState<string[]>([]);
     const [showSetPassword, setShowSetPassword] = useState(false);
@@ -277,6 +284,91 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         } finally {
             setConnectingGithub(false);
         }
+    };
+
+    const getGithubMfaResolver = (error: any): MultiFactorResolver => {
+        const serverResponse = error.customData?._serverResponse || error.customData?.serverResponse;
+        if (!serverResponse) {
+            return getMultiFactorResolver(auth, error);
+        }
+
+        return getMultiFactorResolver(auth, {
+            code: 'auth/multi-factor-auth-required',
+            message: error.message,
+            name: 'FirebaseError',
+            operationType: 'reauthenticate',
+            customData: {
+                operationType: 'reauthenticate',
+                _serverResponse: serverResponse,
+                serverResponse,
+                appName: error.customData?.appName
+            },
+            user: auth.currentUser
+        } as any);
+    };
+
+    const handleDisconnectGithub = async (skipConfirm = false) => {
+        const user = auth.currentUser;
+        if (!user) return;
+
+        if (!skipConfirm) {
+            const confirmed = await confirm({
+                title: t('settings.account.github.disconnectConfirmTitle'),
+                message: t('settings.account.github.disconnectConfirmMessage'),
+                confirmText: t('settings.account.github.disconnectConfirm'),
+                variant: 'danger'
+            });
+            if (!confirmed) return;
+        }
+
+        setDisconnectingGithub(true);
+        try {
+            const currentProviders = user.providerData.map(p => p.providerId);
+            const hasGithubAuthProvider = currentProviders.includes('github.com');
+            if (!githubLinked && hasGithubAuthProvider && currentProviders.length <= 1) {
+                showError(t('settings.account.github.disconnectOnlyProvider'));
+                return;
+            }
+
+            const canUnlinkAuthProvider = currentProviders.includes('github.com') && currentProviders.length > 1;
+            if (canUnlinkAuthProvider) {
+                await unlink(user, 'github.com');
+            }
+
+            if (githubLinked) {
+                await updateDoc(doc(db, 'users', user.uid), { githubToken: deleteField() });
+            }
+
+            await user.reload();
+            setGithubLinked(false);
+            setProviders(auth.currentUser?.providerData.map(p => p.providerId) || []);
+            showSuccess(
+                canUnlinkAuthProvider
+                    ? t('settings.account.github.disconnected')
+                    : t('settings.account.github.tokenDisconnected')
+            );
+        } catch (e: any) {
+            console.error('Failed to disconnect GitHub', e);
+            if (e.code === 'auth/multi-factor-auth-required') {
+                try {
+                    setGithubMfaResolver(getGithubMfaResolver(e));
+                    setShowGithubMfaModal(true);
+                } catch (resolverError: any) {
+                    console.error('Failed to prepare GitHub MFA resolver', resolverError);
+                    showError(resolverError.message || t('settings.account.github.disconnectError'));
+                }
+            } else {
+                showError(e.message || t('settings.account.github.disconnectError'));
+            }
+        } finally {
+            setDisconnectingGithub(false);
+        }
+    };
+
+    const handleGithubMfaSuccess = async () => {
+        setShowGithubMfaModal(false);
+        setGithubMfaResolver(null);
+        await handleDisconnectGithub(true);
     };
 
     const handleConnectGoogle = async () => {
@@ -1051,137 +1143,144 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             case 'prebeta':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.prebeta.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.prebeta.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.prebeta.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.prebeta.subtitle')}</p>
                         </div>
-                        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm">
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-xl shrink-0 mt-0.5">warning</span>
-                                <div className="space-y-1">
-                                    <p className="font-bold">{t('settings.prebeta.notice.title')}</p>
-                                    <p>{t('settings.prebeta.notice.body')}</p>
+                        <div className="space-y-6 max-w-4xl">
+                            <div className="p-6 rounded-2xl bg-warning/10 text-warning text-sm shadow-sm">
+                                <div className="flex items-start gap-4">
+                                    <span className="material-symbols-outlined text-2xl shrink-0">warning</span>
+                                    <div className="space-y-1.5">
+                                        <p className="font-bold text-base">{t('settings.prebeta.notice.title')}</p>
+                                        <p className="opacity-90">{t('settings.prebeta.notice.body')}</p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div className="space-y-8 max-w-4xl">
-                            <section className="space-y-4">
-                                <Input
-                                    label={t('settings.prebeta.apiKey.label')}
-                                    type="password"
-                                    value={geminiApiKey}
-                                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                                    placeholder={t('settings.prebeta.apiKey.placeholder')}
-                                />
-                                <p className="text-xs text-muted">
-                                    {t('settings.prebeta.apiKey.helperPrefix')}{' '}
-                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                                        {t('settings.prebeta.apiKey.helperLink')}
-                                    </a>
-                                    {t('settings.prebeta.apiKey.helperSuffix')}
-                                </p>
-                                <div className="pt-2"></div>
-                                <Input
-                                    label={t('settings.prebeta.tokenLimit.label')}
-                                    type="number"
-                                    value={geminiTokenLimit}
-                                    onChange={(e) => setGeminiTokenLimit(parseInt(e.target.value) || 0)}
-                                    placeholder={t('settings.prebeta.tokenLimit.placeholder')}
-                                />
-                                <p className="text-xs text-muted">
-                                    {t('settings.prebeta.tokenLimit.helper')}
-                                </p>
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold text-main">{t('settings.prebeta.title')} Configuration</h3>
+                                <div className="space-y-5">
+                                    <div>
+                                        <Input
+                                            label={t('settings.prebeta.apiKey.label')}
+                                            type="password"
+                                            value={geminiApiKey}
+                                            onChange={(e) => setGeminiApiKey(e.target.value)}
+                                            placeholder={t('settings.prebeta.apiKey.placeholder')}
+                                        />
+                                        <p className="text-xs text-muted mt-2">
+                                            {t('settings.prebeta.apiKey.helperPrefix')}{' '}
+                                            <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                                                {t('settings.prebeta.apiKey.helperLink')}
+                                            </a>
+                                            {t('settings.prebeta.apiKey.helperSuffix')}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <Input
+                                            label={t('settings.prebeta.tokenLimit.label')}
+                                            type="number"
+                                            value={geminiTokenLimit}
+                                            onChange={(e) => setGeminiTokenLimit(parseInt(e.target.value) || 0)}
+                                            placeholder={t('settings.prebeta.tokenLimit.placeholder')}
+                                        />
+                                        <p className="text-xs text-muted mt-2">
+                                            {t('settings.prebeta.tokenLimit.helper')}
+                                        </p>
+                                    </div>
+                                </div>
                             </section>
-                            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-surface pb-2 z-10 border-t border-surface">
+                            <div className="pt-4 flex justify-end">
                                 <Button onClick={handleSavePreBeta} loading={saving}>
                                     {t('common.saveChanges')}
                                 </Button>
                             </div>
-                        </div >
-                    </div >
+                        </div>
+                    </div>
                 );
             case 'preferences':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.preferences.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.preferences.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.preferences.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.preferences.subtitle')}</p>
                         </div>
-                        <div className="space-y-8">
-                            <section className="space-y-3">
-                                <label className="text-sm font-bold text-main block">
-                                    {t('settings.preferences.language.label')}
-                                </label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-6 max-w-4xl">
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold text-main">{t('settings.preferences.language.label')}</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <button
                                         onClick={() => setLanguage('en')}
                                         className={`
-                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
+                                            flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200
                                             ${language === 'en'
-                                                ? 'bg-primary/10 border-primary ring-1 ring-primary'
-                                                : 'bg-surface border-surface hover:bg-surface-hover'}
+                                                ? 'bg-primary/5 shadow-sm'
+                                                : 'bg-surface hover:bg-surface-hover hover:shadow-sm'}
                                         `}
                                     >
-                                        <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs shrink-0">
+                                        <div className="size-10 rounded-full bg-surface-hover flex items-center justify-center font-bold text-sm shrink-0">
                                             EN
                                         </div>
-                                        <div>
-                                            <div className={`font-medium ${language === 'en' ? 'text-primary' : 'text-main'}`}>{t('language.english')}</div>
-                                            <div className="text-xs text-muted">{t('settings.preferences.language.englishTag')}</div>
+                                        <div className="flex-1">
+                                            <div className={`font-bold ${language === 'en' ? 'text-primary' : 'text-main'}`}>{t('language.english')}</div>
+                                            <div className="text-xs text-muted mt-0.5">{t('settings.preferences.language.englishTag')}</div>
                                         </div>
                                         {language === 'en' && (
-                                            <span className="material-symbols-outlined text-primary ml-auto">check_circle</span>
+                                            <span className="material-symbols-outlined text-primary ml-auto text-xl">check_circle</span>
                                         )}
                                     </button>
                                     <button
                                         onClick={() => setLanguage('de')}
                                         className={`
-                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
+                                            flex items-center gap-4 p-4 rounded-xl text-left transition-all duration-200
                                             ${language === 'de'
-                                                ? 'bg-primary/10 border-primary ring-1 ring-primary'
-                                                : 'bg-surface border-surface hover:bg-surface-hover'}
+                                                ? 'bg-primary/5 shadow-sm'
+                                                : 'bg-surface hover:bg-surface-hover hover:shadow-sm'}
                                         `}
                                     >
-                                        <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0">
+                                        <div className="size-10 rounded-full bg-surface-hover flex items-center justify-center font-bold text-sm shrink-0">
                                             DE
                                         </div>
-                                        <div>
-                                            <div className={`font-medium ${language === 'de' ? 'text-primary' : 'text-main'}`}>{t('language.german')}</div>
-                                            <div className="text-xs text-muted">{t('settings.preferences.language.germanTag')}</div>
+                                        <div className="flex-1">
+                                            <div className={`font-bold ${language === 'de' ? 'text-primary' : 'text-main'}`}>{t('language.german')}</div>
+                                            <div className="text-xs text-muted mt-0.5">{t('settings.preferences.language.germanTag')}</div>
                                         </div>
                                         {language === 'de' && (
-                                            <span className="material-symbols-outlined text-primary ml-auto">check_circle</span>
+                                            <span className="material-symbols-outlined text-primary ml-auto text-xl">check_circle</span>
                                         )}
                                     </button>
                                 </div>
                             </section>
 
-                            <section className="space-y-3">
-                                <Select
-                                    label={t('settings.preferences.dateFormat.label')}
-                                    value={dateFormat}
-                                    onChange={(e) => setDateFormat(e.target.value as DateFormat)}
-                                    className="max-w-md"
-                                >
-                                    {[
-                                        'MM/dd/yyyy',
-                                        'dd/MM/yyyy',
-                                        'dd.MM.yyyy',
-                                        'yyyy-MM-dd',
-                                        'yyyy/MM/dd',
-                                        'd. MMM yyyy',
-                                        'MMM d, yyyy',
-                                        'MMMM d, yyyy',
-                                        'd MMMM yyyy'
-                                    ].map((fmt) => (
-                                        <option key={fmt} value={fmt}>
-                                            {fmt} — ({format(new Date(2025, 11, 28), fmt)})
-                                        </option>
-                                    ))}
-                                </Select>
-                                <p className="text-[10px] text-muted ml-1">
-                                    {t('settings.preferences.dateFormat.helper')}
-                                </p>
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-5">
+                                <h3 className="text-lg font-bold text-main">Regional formatting</h3>
+                                <div>
+                                    <Select
+                                        label={t('settings.preferences.dateFormat.label')}
+                                        value={dateFormat}
+                                        onChange={(e) => setDateFormat(e.target.value as DateFormat)}
+                                        className="max-w-md"
+                                    >
+                                        {[
+                                            'MM/dd/yyyy',
+                                            'dd/MM/yyyy',
+                                            'dd.MM.yyyy',
+                                            'yyyy-MM-dd',
+                                            'yyyy/MM/dd',
+                                            'd. MMM yyyy',
+                                            'MMM d, yyyy',
+                                            'MMMM d, yyyy',
+                                            'd MMMM yyyy'
+                                        ].map((fmt) => (
+                                            <option key={fmt} value={fmt}>
+                                                {fmt} — ({format(new Date(2025, 11, 28), fmt)})
+                                            </option>
+                                        ))}
+                                    </Select>
+                                    <p className="text-xs text-muted mt-2 ml-1">
+                                        {t('settings.preferences.dateFormat.helper')}
+                                    </p>
+                                </div>
                             </section>
                         </div>
                     </div>
@@ -1189,15 +1288,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             case 'general':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.general.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.general.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.general.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.general.subtitle')}</p>
                         </div>
 
-                        <div className="space-y-8">
-                            <section>
-                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.general.company.title')}</h3>
-                                <div className="space-y-4">
+                        <div className="space-y-6 max-w-4xl">
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold text-main">{t('settings.general.company.title')}</h3>
+                                <div className="space-y-5">
                                     <Input
                                         label={t('settings.general.company.name')}
                                         value={name}
@@ -1210,7 +1309,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         onChange={(e) => setDescription(e.target.value)}
                                         placeholder={t('settings.general.company.descriptionPlaceholder')}
                                     />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                         <Input
                                             label={t('settings.general.company.website')}
                                             value={website}
@@ -1225,14 +1324,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         />
                                     </div>
                                 </div>
-
                             </section>
 
-                            <section>
-                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.general.smtp.title')}</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-medium text-main">{t('settings.general.smtp.useCustom')}</label>
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold text-main">{t('settings.general.smtp.title')}</h3>
+                                <div className="space-y-5">
+                                    <div className="flex items-center justify-between bg-surface-hover p-4 rounded-xl">
+                                        <label className="text-sm font-medium text-main cursor-pointer" onClick={() => setUseCustomSmtp(!useCustomSmtp)}>
+                                            {t('settings.general.smtp.useCustom')}
+                                        </label>
                                         <Checkbox
                                             checked={useCustomSmtp}
                                             onChange={(checked) => setUseCustomSmtp(checked)}
@@ -1241,8 +1341,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
                                     <AnimatePresence>
                                         {useCustomSmtp && (
-                                            <div className="space-y-4 pt-2">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-5 pt-2">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <Input
                                                         label={t('settings.general.smtp.host')}
                                                         value={smtpHost}
@@ -1257,7 +1357,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                         placeholder="587"
                                                     />
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <Input
                                                         label={t('settings.general.smtp.user')}
                                                         value={smtpUser}
@@ -1280,7 +1380,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     hint={t('settings.general.smtp.fromEmailHint')}
                                                 />
 
-                                                <div className="flex items-center gap-3 pt-2">
+                                                <div className="flex items-center gap-4 pt-2">
                                                     <Button
                                                         variant="secondary"
                                                         onClick={handleTestConnection}
@@ -1308,12 +1408,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         )}
                                     </AnimatePresence>
                                 </div>
-
                             </section>
 
-                            <section>
-                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.storage.title')}</h3>
-                                <div className="space-y-4">
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="text-lg font-bold text-main">{t('settings.storage.title')}</h3>
+                                <div className="space-y-5">
                                     <Select
                                         label={t('settings.storage.provider.label')}
                                         value={storageActiveProvider}
@@ -1325,7 +1424,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </Select>
 
                                     {(storageResolvedProvider !== storageActiveProvider) && (
-                                        <div className="rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                                        <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-600 font-medium">
                                             {t('settings.storage.fallbackWarning')
                                                 .replace('{requested}', storageActiveProvider)
                                                 .replace('{resolved}', storageResolvedProvider)}
@@ -1334,8 +1433,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     )}
 
                                     {storageActiveProvider === 's3' && (
-                                        <div className="space-y-4 pt-2">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-5 pt-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <Input
                                                     label={t('settings.storage.s3.endpoint')}
                                                     value={storageS3Endpoint}
@@ -1349,7 +1448,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     placeholder="us-east-1"
                                                 />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <Input
                                                     label={t('settings.storage.s3.bucket')}
                                                     value={storageS3Bucket}
@@ -1363,7 +1462,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     placeholder="projectflow"
                                                 />
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <Input
                                                     label={t('settings.storage.s3.accessKeyId')}
                                                     value={storageS3AccessKeyId}
@@ -1378,8 +1477,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     placeholder={t('settings.storage.s3.keepExistingHint')}
                                                 />
                                             </div>
-                                            <div className="flex items-center justify-between">
-                                                <label className="text-sm font-medium text-main">{t('settings.storage.s3.forcePathStyle')}</label>
+                                            <div className="flex items-center justify-between bg-surface-hover p-4 rounded-xl">
+                                                <label className="text-sm font-medium text-main cursor-pointer" onClick={() => setStorageS3ForcePathStyle(!storageS3ForcePathStyle)}>
+                                                    {t('settings.storage.s3.forcePathStyle')}
+                                                </label>
                                                 <Checkbox
                                                     checked={storageS3ForcePathStyle}
                                                     onChange={(checked) => setStorageS3ForcePathStyle(checked)}
@@ -1389,13 +1490,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     )}
 
                                     {storageActiveProvider === 'googleDrive' && (
-                                        <div className="space-y-3 pt-2">
-                                            <div className="text-xs text-muted">
+                                        <div className="space-y-4 pt-2">
+                                            <div className="text-sm font-medium text-muted bg-surface-hover p-4 rounded-xl">
                                                 {storageDriveConnected
                                                     ? t('settings.storage.googleDrive.connectedAs').replace('{email}', storageDriveEmail || t('settings.storage.googleDrive.unknownAccount'))
                                                     : t('settings.storage.googleDrive.notConnected')}
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                 <Input
                                                     label={t('settings.storage.googleDrive.folderId')}
                                                     value={storageDriveFolderId}
@@ -1409,7 +1510,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     placeholder="ProjectFlow Workspace"
                                                 />
                                             </div>
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-3">
                                                 <Button
                                                     variant="secondary"
                                                     onClick={handleConnectGoogleDriveStorage}
@@ -1448,103 +1549,107 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         </Button>
                                     </div>
                                     {storageStatusMessage && (
-                                        <p className="text-xs text-muted">{storageStatusMessage}</p>
+                                        <p className="text-sm text-muted bg-surface-hover p-3 rounded-xl">{storageStatusMessage}</p>
                                     )}
                                 </div>
                             </section>
 
-                            <section className="flex items-center justify-between p-4 bg-surface-hover rounded-xl border border-surface">
+                            <section className="flex items-center justify-between p-6 bg-surface-card shadow-sm rounded-2xl">
                                 <div>
-                                    <h3 className="font-bold text-main text-sm">{t('settings.general.onboarding.title')}</h3>
-                                    <p className="text-xs text-muted mt-1 max-w-sm">{t('settings.general.onboarding.description')}</p>
+                                    <h3 className="font-bold text-main">{t('settings.general.onboarding.title')}</h3>
+                                    <p className="text-sm text-muted mt-1 max-w-sm">{t('settings.general.onboarding.description')}</p>
                                 </div>
                                 <Button variant="secondary" onClick={handleRestartOnboarding}>
                                     {t('settings.general.onboarding.button')}
                                 </Button>
-
                             </section>
 
-                            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-surface pb-2 z-10 border-t border-surface">
+                            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-surface pb-2 z-10">
                                 <Button onClick={handleSave} loading={saving}>
                                     {t('common.saveChanges')}
                                 </Button>
                             </div>
-                        </div >
-                    </div >
+                        </div>
+                    </div>
                 );
             case 'account':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.account.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.account.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.account.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.account.subtitle')}</p>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6 max-w-4xl">
                             {/* Email Verification */}
-                            <section>
-                                <div className="p-4 rounded-xl bg-surface-hover border border-surface">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h3 className="font-bold text-main flex items-center gap-2">
-                                                {t('settings.account.emailVerification.title')}
-                                                {emailVerified ? (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium border border-emerald-500/20">
-                                                        {t('settings.account.emailVerification.verified')}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium border border-amber-500/20">
-                                                        {t('settings.account.emailVerification.unverified')}
-                                                    </span>
-                                                )}
-                                            </h3>
-                                            <p className="text-sm text-muted mt-1">{auth.currentUser?.email}</p>
-                                        </div>
-                                        {!emailVerified && (
-                                            <div className="flex flex-col gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={handleSendVerification}
-                                                    loading={sendingVerification}
-                                                >
-                                                    {t('settings.account.emailVerification.sendButton')}
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleCheckVerification}
-                                                >
-                                                    {t('settings.account.emailVerification.checkButton')}
-                                                </Button>
-                                            </div>
-                                        )}
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <h3 className="font-bold text-main flex items-center gap-3 text-lg">
+                                            {t('settings.account.emailVerification.title')}
+                                            {emailVerified ? (
+                                                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-medium tracking-wide">
+                                                    {t('settings.account.emailVerification.verified')}
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 font-medium tracking-wide">
+                                                    {t('settings.account.emailVerification.unverified')}
+                                                </span>
+                                            )}
+                                        </h3>
+                                        <p className="text-sm text-muted mt-1">{auth.currentUser?.email}</p>
                                     </div>
+                                    {!emailVerified && (
+                                        <div className="flex flex-col gap-2">
+                                            <Button
+                                                size="sm"
+                                                onClick={handleSendVerification}
+                                                loading={sendingVerification}
+                                            >
+                                                {t('settings.account.emailVerification.sendButton')}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleCheckVerification}
+                                            >
+                                                {t('settings.account.emailVerification.checkButton')}
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             </section>
 
                             {/* Connected Accounts */}
-                            <section>
-                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.account.connected.title')}</h3>
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-5">
+                                <h3 className="text-lg font-bold text-main">{t('settings.account.connected.title')}</h3>
                                 <div className="space-y-3">
                                     {/* GitHub */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl border border-surface bg-surface">
-                                        <div className="flex items-center gap-3">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                        <div className="flex items-center gap-4">
                                             <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center">
                                                 <i className="devicon-github-original text-2xl"></i>
                                             </div>
                                             <div>
                                                 <div className="font-bold text-sm text-main">GitHub</div>
-                                                <div className="text-xs text-muted">
-                                                    {providers.includes('github.com') || githubLinked
+                                                <div className="text-xs text-muted mt-0.5">
+                                                    {githubLinked
                                                         ? t('settings.account.connected.connected')
-                                                        : t('settings.account.connected.notConnected')}
+                                                        : providers.includes('github.com')
+                                                            ? t('settings.account.github.loginLinked')
+                                                            : t('settings.account.connected.notConnected')}
                                                 </div>
                                             </div>
                                         </div>
-                                        {providers.includes('github.com') || githubLinked ? (
-                                            <Button variant="ghost" disabled size="sm" className="text-emerald-500">
-                                                <span className="material-symbols-outlined mr-1 text-lg">check</span>
-                                                {t('settings.account.connected.linked')}
+                                        {githubLinked || providers.includes('github.com') ? (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                                                onClick={handleDisconnectGithub}
+                                                loading={disconnectingGithub}
+                                            >
+                                                {t('settings.account.github.disconnect')}
                                             </Button>
                                         ) : (
                                             <Button variant="secondary" size="sm" onClick={handleConnectGithub} loading={connectingGithub}>
@@ -1554,14 +1659,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
 
                                     {/* Google */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl border border-surface bg-surface">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="size-10 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0">
                                                 <img src="https://www.google.com/favicon.ico" alt="Google" className="size-5" />
                                             </div>
                                             <div>
                                                 <div className="font-bold text-sm text-main">Google</div>
-                                                <div className="text-xs text-muted">
+                                                <div className="text-xs text-muted mt-0.5">
                                                     {providers.includes('google.com')
                                                         ? t('settings.account.connected.connected')
                                                         : t('settings.account.connected.notConnected')}
@@ -1570,7 +1675,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         </div>
                                         {providers.includes('google.com') ? (
                                             <Button variant="ghost" disabled size="sm" className="text-emerald-500">
-                                                <span className="material-symbols-outlined mr-1 text-lg">check</span>
+                                                <span className="material-symbols-outlined mr-1 text-lg">check_circle</span>
                                                 {t('settings.account.connected.linked')}
                                             </Button>
                                         ) : (
@@ -1580,15 +1685,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         )}
                                     </div>
                                 </div>
-
                             </section>
 
                             {/* Password Management */}
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                                <div className="flex items-center justify-between mb-2">
                                     <div>
                                         <h3 className="text-lg font-bold text-main">{t('settings.account.password.title')}</h3>
-                                        <p className="text-xs text-muted">
+                                        <p className="text-sm text-muted mt-1">
                                             {providers.includes('password')
                                                 ? t('settings.account.password.description.manage')
                                                 : t('settings.account.password.description.set')}
@@ -1606,7 +1710,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 </div>
 
                                 {showSetPassword && (
-                                    <div className="bg-surface-hover p-4 rounded-xl border border-surface animate-fade-in space-y-4">
+                                    <div className="bg-surface-hover p-6 rounded-2xl mt-6 animate-fade-in space-y-5">
                                         <Input
                                             label={t('settings.account.password.newPassword')}
                                             type="password"
@@ -1621,33 +1725,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             onChange={(e) => setConfirmPassword(e.target.value)}
                                             placeholder="••••••••"
                                         />
-                                        <div className="flex justify-end gap-2 pt-2">
-                                            <Button variant="ghost" size="sm" onClick={() => setShowSetPassword(false)}>
+                                        <div className="flex justify-end gap-3 pt-2">
+                                            <Button variant="ghost" onClick={() => setShowSetPassword(false)}>
                                                 {t('common.cancel')}
                                             </Button>
-                                            <Button onClick={handleUpdatePassword} loading={settingPassword} size="sm">
+                                            <Button onClick={handleUpdatePassword} loading={settingPassword}>
                                                 {isChangingPassword ? t('settings.account.password.updateButton') : t('settings.account.password.setConfirmButton')}
                                             </Button>
                                         </div>
                                     </div>
                                 )}
                             </section>
-                        </div >
-                    </div >
+                        </div>
+                    </div>
                 );
             case 'security':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.security.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.security.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.security.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.security.subtitle')}</p>
                         </div>
 
-                        <div className="space-y-8">
+                        <div className="space-y-6 max-w-4xl">
                             {/* Two Factor Auth */}
-                            <section className="flex items-center justify-between p-4 bg-surface-hover rounded-xl border border-surface">
+                            <section className="flex items-center justify-between p-6 bg-surface-card shadow-sm rounded-2xl">
                                 <div>
-                                    <h3 className="font-bold text-main">{t('settings.security.2fa.title')}</h3>
+                                    <h3 className="font-bold text-main text-lg">{t('settings.security.2fa.title')}</h3>
                                     <p className="text-sm text-muted mt-1">
                                         {twoFactorEnabled
                                             ? t('settings.security.2fa.enabled')
@@ -1665,11 +1769,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Passkeys */}
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
+                            <section className="p-6 bg-surface-card shadow-sm rounded-2xl">
+                                <div className="flex items-center justify-between mb-6">
                                     <div>
                                         <h3 className="text-lg font-bold text-main">{t('settings.security.passkeys.title')}</h3>
-                                        <p className="text-xs text-muted mt-1">
+                                        <p className="text-sm text-muted mt-1">
                                             {t('settings.security.passkeys.description')}
                                         </p>
                                     </div>
@@ -1680,12 +1784,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 </div>
 
                                 {passkeys.length > 0 ? (
-                                    <div className="space-y-2">
+                                    <div className="space-y-3">
                                         {passkeys.map((key) => (
-                                            <div key={key.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-surface bg-surface">
-                                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                                    <div className="size-8 shrink-0 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-lg">passkey</span>
+                                            <div key={key.id} className="flex items-center justify-between gap-4 p-4 rounded-xl bg-surface-hover transition-colors">
+                                                <div className="flex items-center gap-4 min-w-0 flex-1">
+                                                    <div className="size-10 shrink-0 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-xl">passkey</span>
                                                     </div>
                                                     {editingPasskeyId === key.id ? (
                                                         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1703,8 +1807,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                         </div>
                                                     ) : (
                                                         <div className="min-w-0">
-                                                            <div className="font-medium text-sm text-main truncate">{key.label || 'Passkey'}</div>
-                                                            <div className="text-xs text-muted">
+                                                            <div className="font-bold text-sm text-main truncate">{key.label || 'Passkey'}</div>
+                                                            <div className="text-xs text-muted mt-0.5">
                                                                 {t('settings.security.passkeys.created')}: {key.createdAt?.toDate ? format(key.createdAt.toDate(), 'PPP') : 'Unknown'}
                                                             </div>
                                                         </div>
@@ -1758,59 +1862,59 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-8 text-center rounded-xl border border-dashed border-surface bg-surface/50">
-                                        <span className="material-symbols-outlined text-3xl text-muted mb-2">fingerprint</span>
-                                        <p className="text-sm text-muted">{t('settings.security.passkeys.empty')}</p>
+                                    <div className="p-8 text-center rounded-2xl border-2 border-dashed border-surface bg-surface-hover/30">
+                                        <span className="material-symbols-outlined text-4xl text-muted mb-3 opacity-50">fingerprint</span>
+                                        <p className="text-sm text-muted font-medium">{t('settings.security.passkeys.empty')}</p>
                                     </div>
                                 )}
                             </section>
                         </div>
                     </div>
                 );
-            case 'api': // Should match the id in tabs array, even if TS complains about SettingsTab type not including it yet
+            case 'api':
                 return (
                     <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-main">{t('settings.api.title')}</h2>
-                            <p className="text-muted text-sm">{t('settings.api.subtitle')}</p>
+                        <div className="mb-8">
+                            <h2 className="text-2xl font-display font-bold text-main">{t('settings.api.title')}</h2>
+                            <p className="text-muted text-sm mt-1">{t('settings.api.subtitle')}</p>
                         </div>
 
-                        <div className="space-y-8 max-w-4xl">
+                        <div className="space-y-6 max-w-4xl">
                             {/* Create Token Section */}
-                            <section className="p-4 rounded-xl bg-surface-hover border border-surface space-y-4">
-                                <h3 className="font-bold text-main">{t('settings.api.create.title')}</h3>
-                                <div className="space-y-4">
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
+                                <h3 className="font-bold text-main text-lg">{t('settings.api.create.title')}</h3>
+                                <div className="space-y-6">
                                     <Input
                                         value={newTokenName}
                                         onChange={(e) => setNewTokenName(e.target.value)}
                                         placeholder={t('settings.api.create.placeholder')}
-                                        className="w-full"
+                                        className="w-full max-w-md"
                                     />
 
-                                    <div className="space-y-2">
-                                        <label className="text-xs uppercase tracking-wide text-muted font-semibold">
+                                    <div className="space-y-3">
+                                        <label className="text-xs uppercase tracking-wider text-muted font-bold">
                                             {t('settings.api.create.presetLabel')}
                                         </label>
-                                        <div className="grid gap-2 md:grid-cols-3">
+                                        <div className="grid gap-3 md:grid-cols-3">
                                             {TOKEN_PRESET_KEYS.map((preset) => (
                                                 <button
                                                     key={preset.id}
                                                     onClick={() => setTokenPreset(preset.id)}
-                                                    className={`rounded-lg border p-3 text-left transition-colors ${
+                                                    className={`rounded-xl p-4 text-left transition-all duration-200 ${
                                                         tokenPreset === preset.id
-                                                            ? 'border-primary bg-primary/10'
-                                                            : 'border-surface bg-surface hover:border-primary/50'
+                                                            ? 'bg-primary/5 ring-2 ring-primary/20 shadow-sm'
+                                                            : 'bg-surface hover:bg-surface-hover shadow-sm'
                                                     }`}
                                                 >
-                                                    <div className="font-semibold text-sm text-main">
+                                                    <div className="font-bold text-sm text-main">
                                                         {t(preset.titleKey)}
                                                         {preset.recommended && (
-                                                            <span className="ml-2 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600">
+                                                            <span className="ml-2 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
                                                                 {t('settings.api.create.presets.recommended')}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <div className="text-xs text-muted mt-1">{t(preset.descriptionKey)}</div>
+                                                    <div className="text-xs text-muted mt-1.5 leading-relaxed">{t(preset.descriptionKey)}</div>
                                                 </button>
                                             ))}
                                         </div>
@@ -1820,7 +1924,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         {selectedTokenPermissions.map((permission) => (
                                             <span
                                                 key={permission}
-                                                className="rounded-full border border-primary/20 bg-primary/10 px-2 py-1 text-[11px] text-primary"
+                                                className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary"
                                             >
                                                 {permissionLabel(permission)}
                                             </span>
@@ -1828,12 +1932,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
 
                                     {hasDestructiveScope(selectedTokenPermissions) && (
-                                        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700">
+                                        <div className="rounded-xl bg-amber-500/10 px-4 py-3 text-sm text-amber-700 font-medium">
                                             {t('settings.api.create.destructiveWarning')}
                                         </div>
                                     )}
 
-                                    <div className="flex justify-end">
+                                    <div className="flex justify-end pt-2">
                                         <Button onClick={handleCreateToken} loading={creatingToken}>
                                             {t('settings.api.create.button')}
                                         </Button>
@@ -1842,8 +1946,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             {/* Token List */}
-                            <section>
-                                <h3 className="text-lg font-bold text-main mb-4 pb-2 border-b border-surface">{t('settings.api.list.title')}</h3>
+                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
+                                <h3 className="text-lg font-bold text-main mb-6">{t('settings.api.list.title')}</h3>
                                 {loadingTokens ? (
                                     <div className="flex justify-center p-8">
                                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -1851,22 +1955,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                 ) : apiTokens.length > 0 ? (
                                     <div className="space-y-3">
                                         {apiTokens.map((token) => (
-                                            <div key={token.id} className="flex items-center justify-between p-4 rounded-xl border border-surface bg-surface">
+                                            <div key={token.id} className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
                                                 <div>
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex items-center gap-3">
                                                         <div className="font-bold text-sm text-main">{token.name}</div>
-                                                        <div className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                                                        <div className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold tracking-wide">
                                                             {token.tokenPrefix}...
                                                         </div>
                                                     </div>
-                                                    <div className="text-xs text-muted mt-1">
+                                                    <div className="text-xs text-muted mt-1.5">
                                                         {t('settings.api.list.created')}: {formatTokenDate(token.createdAt)} • {t('settings.api.list.lastUsed')}: {token.lastUsedAt ? formatTokenDate(token.lastUsedAt) : t('settings.api.list.neverUsed')}
                                                     </div>
-                                                    <div className="mt-2 flex flex-wrap gap-1.5">
+                                                    <div className="mt-3 flex flex-wrap gap-2">
                                                         {(token.permissions || []).map((permission) => (
                                                             <span
                                                                 key={`${token.id}-${permission}`}
-                                                                className="rounded-full border border-surface px-2 py-0.5 text-[10px] text-muted"
+                                                                className="rounded-full bg-surface-card px-2.5 py-1 text-[10px] font-medium text-muted shadow-sm"
                                                             >
                                                                 {permissionLabel(permission)}
                                                             </span>
@@ -1885,9 +1989,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-8 text-center rounded-xl border border-dashed border-surface bg-surface/50">
-                                        <span className="material-symbols-outlined text-3xl text-muted mb-2">key_off</span>
-                                        <p className="text-sm text-muted">{t('settings.api.list.empty')}</p>
+                                    <div className="p-8 text-center rounded-2xl border-2 border-dashed border-surface bg-surface-hover/30">
+                                        <span className="material-symbols-outlined text-4xl text-muted mb-3 opacity-50">key_off</span>
+                                        <p className="text-sm text-muted font-medium">{t('settings.api.list.empty')}</p>
                                     </div>
                                 )}
                             </section>
@@ -1907,18 +2011,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         <span className="material-symbols-outlined animate-spin text-3xl text-muted">progress_activity</span>
                     </div>
                 ) : (
-                    <div className="flex h-[80vh] -m-6">
+                    <div className="flex h-[80vh] -m-6 rounded-b-2xl overflow-hidden bg-surface-bg">
                         {/* Sidebar */}
-                        <div className="w-64 shrink-0 bg-surface-hover/50 border-r border-surface p-4 flex flex-col gap-1 overflow-y-auto">
+                        <div className="w-64 shrink-0 bg-surface-hover/30 p-4 flex flex-col gap-1 overflow-y-auto">
+                            <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 px-3 pt-2">
+                                Configuration
+                            </div>
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`
-                                        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                                        flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-all duration-200
                                         ${activeTab === tab.id
                                             ? 'bg-primary text-on-primary shadow-md shadow-primary/20'
-                                            : 'text-muted hover:bg-surface-hover hover:text-main'}
+                                            : 'text-muted hover:bg-surface-card hover:text-main'}
                                     `}
                                 >
                                     <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
@@ -1928,8 +2035,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 bg-surface">
-                            <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
+                        <div className="flex-1 flex flex-col min-w-0 bg-surface-bg">
+                            <div className="flex-1 overflow-y-auto p-8 lg:p-12 scrollbar-thin">
                                 {renderContent()}
                             </div>
                         </div>
@@ -1979,6 +2086,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             <TwoFactorSetupModal
                 isOpen={showTwoFactorModal}
                 onClose={() => setShowTwoFactorModal(false)}
+            />
+
+            <TwoFactorChallengeModal
+                isOpen={showGithubMfaModal}
+                onClose={() => {
+                    setShowGithubMfaModal(false);
+                    setGithubMfaResolver(null);
+                }}
+                resolver={githubMfaResolver}
+                onSuccess={handleGithubMfaSuccess}
             />
         </React.Fragment>
     );

@@ -21,6 +21,8 @@ export default defineConfig(() => {
         rollupOptions: {
           output: {
             manualChunks(id) {
+              if (id.includes('commonjsHelpers.js')) return 'commonjs-helpers';
+
               if (id.includes('node_modules')) {
                 if (id.includes('react-router-dom')) return 'router';
                 if (/node_modules[\\/]react-dom[\\/]/.test(id)) return 'react-core';

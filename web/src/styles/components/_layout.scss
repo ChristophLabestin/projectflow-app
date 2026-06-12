@@ -19,6 +19,80 @@
     }
 }
 
+.app-sidebar {
+    color: var(--color-text-main);
+}
+
+.app-sidebar .app-sidebar__new-project {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    box-shadow: 0 18px 36px -18px rgba(var(--color-primary-rgb), 0.5);
+}
+
+.app-sidebar .app-sidebar__new-project:hover {
+    background: var(--color-primary-hover);
+}
+
+.app-sidebar .app-sidebar__new-project .material-symbols-outlined,
+.app-sidebar .app-sidebar__new-project span {
+    color: inherit;
+}
+
+.app-sidebar .app-sidebar__nav-item {
+    color: var(--color-text-muted);
+    background: transparent;
+}
+
+.app-sidebar .app-sidebar__nav-item:hover {
+    color: var(--color-text-main);
+    background: color-mix(in srgb, var(--color-surface-hover) 46%, transparent);
+}
+
+.app-sidebar .app-sidebar__nav-item.is-active {
+    color: var(--color-text-main);
+    background: color-mix(in srgb, var(--color-surface-hover-light) 86%, var(--color-surface-card));
+}
+
+.app-sidebar .app-sidebar__nav-icon {
+    color: var(--color-text-muted);
+}
+
+.app-sidebar .app-sidebar__nav-item:hover .app-sidebar__nav-icon {
+    color: var(--color-text-main);
+}
+
+.app-sidebar .app-sidebar__nav-item.is-active .app-sidebar__nav-icon {
+    color: var(--color-primary);
+}
+
+.app-sidebar .app-sidebar__active-indicator,
+.app-sidebar .app-sidebar__collapsed-badge {
+    background: var(--color-primary);
+}
+
+.app-sidebar .app-sidebar__active-indicator {
+    box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.6);
+}
+
+.app-sidebar .app-sidebar__badge {
+    color: var(--color-text-muted);
+    background: var(--color-surface-border);
+}
+
+.app-sidebar .app-sidebar__nav-item.is-active .app-sidebar__badge {
+    color: var(--color-primary-text);
+    background: var(--color-primary);
+    box-shadow: 0 10px 20px -10px rgba(var(--color-primary-rgb), 0.55);
+}
+
+html.dark .app-sidebar .app-sidebar__new-project {
+    box-shadow: 0 18px 42px -20px rgba(var(--color-primary-rgb), 0.42);
+}
+
+html.dark .app-sidebar .app-sidebar__nav-item.is-active {
+    background: color-mix(in srgb, var(--color-surface-hover-light) 78%, var(--color-surface-card));
+}
+
 .mobile-drawer-overlay {
     position: fixed;
     inset: 0;
@@ -181,11 +255,18 @@
     align-items: center;
     min-height: 2.75rem;
     border-radius: var(--radius-full);
-    background: rgba(var(--color-surface-card-rgb), 0.88);
-    box-shadow: var(--shadow-md);
-    backdrop-filter: blur(18px) saturate(150%);
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    background: rgba(var(--color-surface-card-rgb), 0.7);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 40%, transparent);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
     pointer-events: auto;
+    transition: all var(--transition-normal);
+
+    &:hover {
+        box-shadow: var(--shadow-md);
+        background: rgba(var(--color-surface-card-rgb), 0.85);
+    }
 }
 
 .topbar-context-pill {
@@ -286,6 +367,8 @@
     &.is-active {
         background: var(--color-surface-hover);
         color: var(--color-text-main);
+        transform: translateY(-1px);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     }
 
     &:active {

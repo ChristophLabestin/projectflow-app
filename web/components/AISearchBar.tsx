@@ -64,7 +64,15 @@ const buildHelpResults = (query: string): SearchResult[] => {
     return results.sort((a, b) => (b.relevance || 0) - (a.relevance || 0)).slice(0, 12);
 };
 
-export const AISearchBar = () => {
+type AISearchBarProps = {
+    tenantId?: string;
+};
+
+const withTenantQuery = (path: string, tenantId?: string) => (
+    tenantId ? `${path}?tenant=${encodeURIComponent(tenantId)}` : path
+);
+
+export const AISearchBar: React.FC<AISearchBarProps> = ({ tenantId }) => {
     const { t } = useLanguage();
     const [query, setQuery] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -150,7 +158,7 @@ export const AISearchBar = () => {
             const helpResults = buildHelpResults(query);
             try {
                 // Only do local search here
-                const searchResults = await searchProjectsAndTasks(query);
+                const searchResults = await searchProjectsAndTasks(query, tenantId);
                 setResults([...searchResults, ...helpResults]);
                 // Reset selected index when results change
                 setSelectedIndex(-1);
@@ -181,7 +189,7 @@ export const AISearchBar = () => {
         setIsModalOpen(true);
 
         try {
-            const answer = await answerQuestionWithContext(query);
+            const answer = await answerQuestionWithContext(query, tenantId);
             setAiAnswer(answer.answer);
 
             // If AI found relevant items, we could potentially merge them,
@@ -253,13 +261,13 @@ export const AISearchBar = () => {
         if (!result) return;
 
         if (result.type === 'project') {
-            navigate(`/project/${result.id}`);
+            navigate(withTenantQuery(`/project/${result.id}`, result.tenantId || tenantId));
         } else if (result.type === 'initiative') {
             if (result.projectId) {
-                navigate(`/project/${result.projectId}/initiatives/${result.id}`);
+                navigate(withTenantQuery(`/project/${result.projectId}/initiatives/${result.id}`, result.tenantId || tenantId));
             }
         } else if (result.type === 'task') {
-            navigate(`/project/${result.projectId}/tasks/${result.id}`);
+            navigate(withTenantQuery(`/project/${result.projectId}/tasks/${result.id}`, result.tenantId || tenantId));
         } else if (result.type === 'help_page') {
             openHelpCenter({ pageId: result.helpPageId });
         } else if (result.type === 'help_section') {

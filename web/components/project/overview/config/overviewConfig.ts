@@ -5,7 +5,7 @@ import { normalizeModulesForPmCore } from '../../../../config/pmCore';
 export type OverviewTab = 'work' | 'sprints' | 'milestones' | 'activity';
 
 /** Work views available for the work-item surface. */
-export type OverviewWorkView = 'list' | 'board' | 'kanban' | 'timeline' | 'calendar' | 'relationships';
+export type OverviewWorkView = 'list' | 'board' | 'timeline' | 'calendar' | 'relationships';
 
 export type OverviewGroupBy = 'status' | 'priority' | 'initiative' | 'assignee' | 'none';
 export type OverviewSortBy = 'manual' | 'priority' | 'dueDate' | 'title' | 'createdAt';
@@ -36,7 +36,6 @@ export const OVERVIEW_TABS: TabDescriptor[] = [
 export const OVERVIEW_VIEWS: ViewDescriptor[] = [
     { id: 'list', icon: 'view_list', labelKey: 'projectOverview.v2.views.list', supportedTabs: ['work', 'sprints', 'milestones'] },
     { id: 'board', icon: 'view_column', labelKey: 'projectOverview.v2.views.board', supportedTabs: ['work', 'sprints'] },
-    { id: 'kanban', icon: 'view_kanban', labelKey: 'projectOverview.v2.views.kanban', supportedTabs: ['work'] },
     { id: 'timeline', icon: 'timeline', labelKey: 'projectOverview.v2.views.timeline', supportedTabs: ['work', 'milestones'] },
     { id: 'calendar', icon: 'calendar_month', labelKey: 'projectOverview.v2.views.calendar', supportedTabs: ['work', 'milestones'] },
     { id: 'relationships', icon: 'hub', labelKey: 'projectOverview.v2.views.relationships', supportedTabs: ['work'] }
@@ -57,7 +56,7 @@ export const resolveViewsForTab = (tab: OverviewTab): ViewDescriptor[] =>
     OVERVIEW_VIEWS.filter((view) => view.supportedTabs.includes(tab));
 
 export const DEFAULT_VIEW_FOR_TAB: Record<OverviewTab, OverviewWorkView> = {
-    work: 'kanban',
+    work: 'board',
     sprints: 'board',
     milestones: 'timeline',
     activity: 'list'

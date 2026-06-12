@@ -7,7 +7,8 @@ const STATUS_VALUES = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'B
 const PRIORITY_VALUES = ['Low', 'Medium', 'High', 'Urgent'];
 
 const Row: React.FC<{ item: WorkItem; ctx: WorkViewContext }> = ({ item, ctx }) => {
-    const { labels, dateFormat, dateLocale, canManageTasks, t, onItemClick, onToggleComplete, onUpdateItemStatus } = ctx;
+    const { labels, dateFormat, dateLocale, canManageTasks, t, onItemClick, onToggleComplete, onUpdateItemStatus, initiativeColors } = ctx;
+    const initiativeColor = item.initiativeId ? initiativeColors[item.initiativeId] : undefined;
     const due = item.dueDate ? new Date(item.dueDate) : null;
     const isOverdue = Boolean(due && due < new Date() && !item.isCompleted);
     const priorityClass = item.priority === 'Urgent' ? 'is-urgent' : item.priority === 'High' ? 'is-high' : '';
@@ -25,6 +26,7 @@ const Row: React.FC<{ item: WorkItem; ctx: WorkViewContext }> = ({ item, ctx }) 
                 </button>
             )}
             <button type="button" className="po-list__title" onClick={() => onItemClick(item)}>
+                {initiativeColor && <span className="po-init-dot" style={{ background: initiativeColor }} title={t('projectOverview.v2.group.initiative', 'Initiative')} />}
                 <span className={`po-list__kind po-list__kind--${item.kind}`}>
                     <span className="material-symbols-outlined">{item.kind === 'initiative' ? 'rocket_launch' : 'task_alt'}</span>
                 </span>

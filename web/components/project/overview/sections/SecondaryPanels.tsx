@@ -99,7 +99,6 @@ export const ActivityPanel: React.FC<Common & { activity: Activity[] }> = ({ act
                 <div key={entry.id} className="po-activity__row">
                     <span className="po-activity__icon material-symbols-outlined">
                         {entry.type === 'task' ? 'task_alt'
-                            : entry.type === 'issue' ? 'bug_report'
                             : entry.type === 'comment' ? 'chat_bubble'
                             : entry.type === 'member' ? 'person_add'
                             : entry.type === 'report' ? 'auto_awesome'

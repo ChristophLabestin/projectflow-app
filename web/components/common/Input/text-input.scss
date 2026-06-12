@@ -34,14 +34,15 @@
 
 .text-input {
     width: 100%;
-    height: 40px;
-    padding: 0 12px;
+    height: 42px;
+    padding: 0 14px;
     font-size: 0.9375rem;
     font-family: inherit;
     color: var(--color-text-main);
-    background-color: var(--color-surface-hover); // Filled background
-    border-radius: var(--radius-md);
-    transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);
+    background-color: rgba(var(--color-surface-hover-rgb), 0.5);
+    border-radius: var(--radius-lg);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    transition: all var(--transition-normal);
     border: none !important;
 
     &__right-element {
@@ -96,8 +97,8 @@
     &:focus {
         outline: none;
         border: none !important;
-        box-shadow: none;
-        background-color: var(--color-surface-hover-light);
+        background-color: var(--color-surface-bg);
+        box-shadow: inset 0 0 0 2px var(--color-primary), 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
     &--error {

@@ -7,8 +7,8 @@ import { getUserProfile } from '../services/domain/usersService';
 import { auth } from '../services/firebase';
 import { toMillis } from '../utils/time';
 import { Button } from './ui/Button';
-import { Textarea } from './ui/Textarea';
 import { getProjectGroups } from '../services/projectGroupService';
+import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { getWorkspaceRoles } from '../services/rolesService';
 import { notifyMention } from '../services/notificationService';
 import { useToast } from '../context/UIContext';
@@ -259,6 +259,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         }
     };
 
+    const enhancedHandleInput = useArrowReplacement(handleInput);
+
     const insertMention = (target: MentionTarget) => {
         if (!textareaRef.current) return;
 
@@ -314,62 +316,63 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         }
     };
 
-    if (loading) return <div className="text-xs text-[var(--color-text-subtle)]">Loading comments...</div>;
+    if (loading) return <div className="text-sm text-[var(--color-text-muted)] animate-pulse py-4">Loading comments...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
+        <div className="flex flex-col gap-6">
             {!hideHeader && (
-                <div className="p-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">chat</span>
+                <div className="pb-2 border-b border-[var(--color-surface-border)]">
+                    <h3 className="text-base font-bold flex items-center gap-2 text-[var(--color-text-main)]">
+                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">chat</span>
                         Comments ({comments.length})
                     </h3>
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[400px]">
+            <div className="flex flex-col gap-6">
                 {comments.length === 0 ? (
-                    <div className="text-center py-8 text-[var(--color-text-subtle)] text-sm">
+                    <div className="flex items-center gap-2 py-4 text-[var(--color-text-muted)] text-sm font-medium">
+                        <span className="material-symbols-outlined text-[18px]">forum</span>
                         No comments yet. Be the first to start the discussion!
                     </div>
                 ) : (
                     comments.map((comment) => (
-                        <div key={comment.id} className="flex items-start gap-3 group">
+                        <div key={comment.id} className="flex items-start gap-4 group">
                             <div
-                                className="size-8 rounded-full bg-cover bg-center border border-[var(--color-surface-border)] shrink-0"
+                                className="size-9 rounded-full bg-cover bg-center shrink-0 ring-1 ring-[var(--color-surface-border)]"
                                 style={{
                                     backgroundImage: comment.userPhotoURL
                                         ? `url("${comment.userPhotoURL}")`
                                         : 'none',
-                                    backgroundColor: '#e5e7eb' // Fallback color
+                                    backgroundColor: 'var(--color-surface-hover)'
                                 }}
                             >
                                 {!comment.userPhotoURL && (
-                                    <div className="flex items-center justify-center w-full h-full text-[10px] font-bold text-gray-500">
+                                    <div className="flex items-center justify-center w-full h-full text-[12px] font-bold text-[var(--color-text-subtle)]">
                                         {(comment.userDisplayName || 'U')[0].toUpperCase()}
                                     </div>
                                 )}
                             </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-bold text-[var(--color-text-main)] truncate">
+                            <div className="flex-1 min-w-0 flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm font-bold text-[var(--color-text-main)] truncate">
                                         {comment.userDisplayName}
                                     </span>
-                                    <span className="text-[10px] text-[var(--color-text-subtle)]">
+                                    <span className="text-[12px] font-medium text-[var(--color-text-subtle)]">
                                         {timeAgo(comment.createdAt)}
                                     </span>
                                     {(isProjectOwner || user?.uid === comment.userId) && (
                                         <button
                                             onClick={() => handleDelete(comment.id)}
                                             className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-opacity"
+                                            title="Delete comment"
                                         >
-                                            <span className="material-symbols-outlined text-[14px]">delete</span>
+                                            <span className="material-symbols-outlined text-[16px]">delete</span>
                                         </button>
                                     )}
                                 </div>
-                                <div className="text-sm text-[var(--color-text-main)] whitespace-pre-wrap rounded-lg bg-[var(--color-surface-hover)] p-2.5">
+                                <div className="text-[15px] leading-relaxed text-[var(--color-text-main)] whitespace-pre-wrap">
                                     {(() => {
-                                        // Match against known target names
                                         const sortedTargets = [...mentionTargets].sort((a, b) => b.name.length - a.name.length);
                                         if (sortedTargets.length === 0) return comment.content;
 
@@ -378,7 +381,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
 
                                         return comment.content.split(regex).map((part, i) => {
                                             if (part.startsWith('@')) {
-                                                return <span key={i} className="font-bold text-indigo-600 dark:text-indigo-400">{part}</span>;
+                                                return <span key={i} className="font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-1 py-0.5 rounded-md">{part}</span>;
                                             }
                                             return part;
                                         });
@@ -391,10 +394,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 <div ref={scrollRef} />
             </div>
 
-            <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] relative">
-                {/* Mention Popover */}
+            <div className="relative mt-2">
                 {mentionMenuOpen && filteredTargets.length > 0 && (
-                    <div className="absolute bottom-full left-3 mb-2 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
+                    <div className="absolute bottom-[calc(100%+8px)] left-0 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
                         <div className="p-1">
                             {filteredTargets.map((target, idx) => (
                                 <button
@@ -403,8 +405,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                     className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-left ${idx === mentionIndex ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'}`}
                                 >
                                     {target.type === 'user' ? (
-                                        <div className="size-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
-                                            {target.photoURL ? <img src={target.photoURL} className="size-full object-cover" /> : <div className="size-full flex items-center justify-center text-[8px] font-bold">{target.name[0]}</div>}
+                                        <div className="size-5 rounded-full bg-[var(--color-surface-hover)] overflow-hidden shrink-0">
+                                            {target.photoURL ? <img src={target.photoURL} className="size-full object-cover" alt="" /> : <div className="size-full flex items-center justify-center text-[10px] font-bold">{target.name[0]}</div>}
                                         </div>
                                     ) : target.type === 'group' ? (
                                         <div className="size-5 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
@@ -427,49 +429,53 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     </div>
                 )}
 
-                <div className="flex items-end gap-2">
-                    <Textarea
+                <div className="flex flex-col gap-2 p-1.5 border border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)] transition-colors focus-within:border-[var(--color-surface-border-hover)] focus-within:bg-[var(--color-surface-card)]">
+                    <textarea
                         ref={textareaRef}
                         value={newComment}
-                        onChange={handleInput}
+                        onChange={enhancedHandleInput}
                         placeholder="Write a comment... (Type @ to mention)"
-                        className="flex-1 min-h-[40px] max-h-[120px] py-2.5 resize-none"
+                        className="flex-1 min-h-[44px] max-h-[160px] p-2.5 text-[15px] bg-transparent border-0 outline-none focus:ring-0 focus:outline-none resize-none w-full text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
                         rows={1}
                         onKeyDown={handleKeyDown}
                     />
-                    <button
-                        onClick={handleAddComment}
-                        disabled={!newComment.trim()}
-                        className={`
-                            p-2 rounded-lg flex items-center justify-center transition-colors
-                            ${newComment.trim()
-                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90'
-                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
-                        `}
-                    >
-                        <span className="material-symbols-outlined text-[20px]">send</span>
-                    </button>
+                    <div className="flex justify-between items-center px-2 pb-1">
+                        <div className="flex items-center gap-1">
+                            {/* Potential formatting tools can go here in the future */}
+                        </div>
+                        <button
+                            onClick={handleAddComment}
+                            disabled={!newComment.trim()}
+                            className={`
+                                h-8 px-4 rounded-md flex items-center justify-center transition-all text-sm font-bold
+                                ${newComment.trim()
+                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 shadow-sm'
+                                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
+                            `}
+                        >
+                            Send
+                        </button>
+                    </div>
                 </div>
             </div>
-            {
-                commentToDelete && createPortal(
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
-                            <div className="space-y-4 text-center">
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Comment?</h3>
-                                <p className="text-sm text-[var(--color-text-muted)]">
-                                    This action cannot be undone.
-                                </p>
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Button variant="ghost" onClick={() => setCommentToDelete(null)}>Cancel</Button>
-                                    <Button variant="danger" onClick={confirmDelete}>Delete</Button>
-                                </div>
+
+            {commentToDelete && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="space-y-4 text-center">
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Comment?</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">
+                                This action cannot be undone.
+                            </p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <Button variant="ghost" onClick={() => setCommentToDelete(null)}>Cancel</Button>
+                                <Button variant="danger" onClick={confirmDelete}>Delete</Button>
                             </div>
                         </div>
-                    </div>,
-                    document.body
-                )
-            }
-        </div >
+                    </div>
+                </div>,
+                document.body
+            )}
+        </div>
     );
 };

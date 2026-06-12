@@ -218,10 +218,10 @@ function DraggableRoleItem({
                     onDragLeave={onDragLeave}
                     onDrop={handleDrop}
                     className={`
-                        flex items-center gap-3 p-3 rounded-xl transition-all duration-200 cursor-pointer
+                        flex items-center gap-4 p-4 rounded-xl transition-all duration-200 cursor-pointer shadow-sm
                         bg-gradient-to-r from-amber-500/5 to-orange-500/5
-                        border-2 border-amber-500/20 hover:border-amber-500/40
-                        ${isSelected ? 'ring-2 ring-amber-500/50 border-amber-500/50' : ''}
+                        hover:shadow-md hover:-translate-y-0.5
+                        ${isSelected ? 'ring-2 ring-amber-500/50 bg-amber-500/10' : ''}
                     `}
                 >
                     <div className="size-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
@@ -261,15 +261,14 @@ function DraggableRoleItem({
                 onDrop={handleDrop}
                 onClick={onSelect}
                 className={`
-                    flex items-center gap-3 p-3 rounded-xl transition-all duration-200
-                    border-2 border-transparent
+                    flex items-center gap-4 p-4 rounded-xl transition-all duration-200 shadow-sm
                     ${isDragging
                         ? 'opacity-30 scale-95 bg-surface'
-                        : 'bg-surface hover:bg-surface-hover'
+                        : 'bg-surface-card hover:shadow-md hover:-translate-y-0.5'
                     }
                     ${isSelected
-                        ? 'ring-2 ring-primary/50 border-primary/30 bg-primary/5'
-                        : 'hover:border-surface'
+                        ? 'ring-2 ring-primary/50 bg-primary/5'
+                        : ''
                     }
                     ${dropPosition && !isDragging ? 'bg-primary/10' : ''}
                     ${canDrag ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'}
@@ -358,7 +357,7 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className={`p-4 border-b border-surface ${isOwner ? 'bg-gradient-to-r from-amber-500/10 to-transparent' : ''}`}>
+            <div className={`p-6 border-b border-surface ${isOwner ? 'bg-gradient-to-r from-amber-500/10 to-transparent' : ''}`}>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div
@@ -794,12 +793,12 @@ export function RoleManagement() {
     }
 
     return (
-        <div className="flex flex-col h-full animate-fade-in">
+        <div className="flex flex-col h-full animate-fade-in space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-4 shrink-0">
+            <div className="flex items-center justify-between shrink-0 mb-2">
                 <div>
-                    <h2 className="text-xl font-display font-bold text-main">{t('roles.force_list_title')}</h2>
-                    <p className="text-muted text-sm">{t('roles.subtitle')}</p>
+                    <h2 className="text-2xl font-display font-bold text-main">{t('roles.force_list_title')}</h2>
+                    <p className="text-muted text-sm mt-1">{t('roles.subtitle')}</p>
                 </div>
                 {canManageRoles && (
                     <Button onClick={handleOpenCreate} size="sm">
@@ -810,9 +809,9 @@ export function RoleManagement() {
             </div>
 
             {/* 2-Column Layout - takes remaining space */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 flex-1 min-h-0">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 flex-1 min-h-0">
                 {/* Left: Role hierarchy list */}
-                <div className="lg:col-span-2 space-y-2 overflow-y-auto pr-2">
+                <div className="lg:col-span-2 space-y-3 overflow-y-auto pr-2 scrollbar-thin">
                     <div className="flex items-center gap-1.5 text-[10px] text-muted uppercase tracking-wider mb-3 px-2">
                         <span className="material-symbols-outlined text-xs">arrow_upward</span>
                         <span>{t('roles.hierarchy.higher')}</span>
@@ -846,7 +845,7 @@ export function RoleManagement() {
                 </div>
 
                 {/* Right: Permission details */}
-                <div className="lg:col-span-3 border border-surface rounded-xl bg-surface overflow-hidden">
+                <div className="lg:col-span-3 rounded-2xl bg-surface-card shadow-sm overflow-hidden flex flex-col min-h-0">
                     <PermissionDisplayPanel
                         role={selectedRole}
                         onEdit={() => selectedRole && handleOpenEdit(selectedRole)}

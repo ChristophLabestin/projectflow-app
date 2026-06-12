@@ -15,6 +15,7 @@ type BoardColumn = {
     id: string;
     title: string;
     statuses: TaskStatus[];
+    status: TaskStatus;
     tone: BoardTone;
 };
 
@@ -26,30 +27,49 @@ export const ProjectBoard: React.FC<ProjectBoardProps> = ({ tasks, renderTask, s
             id: 'backlog',
             title: t('tasks.status.backlog'),
             statuses: ['Backlog'],
+            status: 'Backlog',
             tone: 'muted'
         },
         {
             id: 'todo',
             title: t('tasks.status.todo'),
-            statuses: ['Todo', 'Open', 'On Hold'],
+            statuses: ['Todo', 'Open'],
+            status: 'Open',
             tone: 'primary'
         },
         {
             id: 'inprogress',
             title: t('tasks.status.inProgress'),
             statuses: ['In Progress'],
+            status: 'In Progress',
             tone: 'primary'
         },
         {
             id: 'review',
             title: t('tasks.status.review'),
             statuses: ['Review'],
+            status: 'Review',
+            tone: 'warning'
+        },
+        {
+            id: 'onhold',
+            title: t('tasks.status.onHold'),
+            statuses: ['On Hold'],
+            status: 'On Hold',
+            tone: 'muted'
+        },
+        {
+            id: 'blocked',
+            title: t('tasks.status.blocked'),
+            statuses: ['Blocked'],
+            status: 'Blocked',
             tone: 'warning'
         },
         {
             id: 'done',
             title: t('tasks.status.done'),
             statuses: ['Done'],
+            status: 'Done',
             tone: 'success'
         }
     ]), [t]);
@@ -73,7 +93,11 @@ export const ProjectBoard: React.FC<ProjectBoardProps> = ({ tasks, renderTask, s
     return (
         <div className="project-board">
             {columnsWithTasks.map(col => (
-                <div key={col.id} className={`project-board__column project-board__column--${col.id} project-board__column--${col.tone}`}>
+                <div
+                    key={col.id}
+                    data-status={col.status}
+                    className={`project-board__column project-board__column--${col.id} project-board__column--${col.tone}`}
+                >
                     {/* Column Header */}
                     <div
                         className="project-board__column-header"
@@ -104,4 +128,3 @@ export const ProjectBoard: React.FC<ProjectBoardProps> = ({ tasks, renderTask, s
         </div>
     );
 };
-

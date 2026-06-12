@@ -73,7 +73,6 @@ import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/Onbo
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 import { ProjectOverviewWorkBoard } from '../components/project/overview/ProjectOverviewWorkBoard';
-import { ProjectOverviewWorkKanban } from '../components/project/overview/ProjectOverviewWorkKanban';
 import { ProjectOverviewTasksQuickAdd } from '../components/project/overview/ProjectOverviewTasksQuickAdd';
 import { ProjectOverviewTasksList } from '../components/project/overview/ProjectOverviewTasksList';
 import {
@@ -258,8 +257,13 @@ const isProjectHeaderDisplayMode = (value: string | null): value is ProjectHeade
 );
 
 const isProjectOverviewTasksView = (value: string | null): value is ProjectOverviewTasksView => (
-    value === 'list' || value === 'board' || value === 'kanban'
+    value === 'list' || value === 'board'
 );
+
+const normalizeProjectOverviewTasksView = (value: string | null): ProjectOverviewTasksView | null => {
+    if (value === 'kanban') return 'board';
+    return isProjectOverviewTasksView(value) ? value : null;
+};
 
 const isProjectOverviewWorkspaceTab = (
     value: string | null,
@@ -532,7 +536,7 @@ const ProjectOverviewLegacy = () => {
     const [tasksView, setTasksView] = useState<ProjectOverviewTasksView>(() => {
         if (typeof window === 'undefined') return 'board';
         const storedView = window.localStorage.getItem(PROJECT_TASKS_VIEW_STORAGE_KEY);
-        return isProjectOverviewTasksView(storedView) ? storedView : 'board';
+        return normalizeProjectOverviewTasksView(storedView) || 'board';
     });
     const [sprintsView, setSprintsView] = useState<ProjectOverviewSprintsView>('board');
     const [milestonesView, setMilestonesView] = useState<ProjectOverviewMilestonesView>('list');
@@ -3401,12 +3405,13 @@ const ProjectOverviewLegacy = () => {
                             <Badge variant="success">{activeSprint.status}</Badge>
                         </div>
                     </div>
-                    <ProjectOverviewWorkKanban
+                    <ProjectOverviewWorkBoard
                         tasks={activeSprintTasks}
                         initiatives={[]}
                         onTaskClick={navigateToTask}
                         onInitiativeClick={navigateToInitiative}
                         priorityLabels={priorityLabels}
+                        statusLabels={taskStatusLabels}
                         dateFormat={dateFormat}
                         dateLocale={dateLocale}
                     />
@@ -3545,19 +3550,6 @@ const ProjectOverviewLegacy = () => {
     const renderWorkspacePanelContent = () => {
         switch (workspaceTab) {
             case 'tasks':
-                if (tasksView === 'kanban') {
-                    return renderTasksWorkspaceChrome(
-                        <ProjectOverviewWorkKanban
-                            tasks={openProjectTasks}
-                            initiatives={activeInitiatives}
-                            onTaskClick={navigateToTask}
-                            onInitiativeClick={navigateToInitiative}
-                            priorityLabels={priorityLabels}
-                            dateFormat={dateFormat}
-                            dateLocale={dateLocale}
-                        />
-                    );
-                }
                 if (tasksView === 'board') {
                     return renderTasksWorkspaceChrome(
                         <ProjectOverviewWorkBoard
@@ -3631,7 +3623,6 @@ const ProjectOverviewLegacy = () => {
                 return {
                     options: [
                         { value: 'board', icon: 'grid_view', labelKey: 'projectOverview.workspace.views.board' },
-                        { value: 'kanban', icon: 'view_kanban', labelKey: 'projectOverview.workspace.views.kanban' },
                         { value: 'list', icon: 'format_list_bulleted', labelKey: 'projectOverview.workspace.views.list' }
                     ],
                     activeView: tasksView,
@@ -3641,7 +3632,7 @@ const ProjectOverviewLegacy = () => {
             case 'sprints':
                 return {
                     options: [
-                        { value: 'board', icon: 'view_kanban', labelKey: 'projectOverview.workspace.views.kanban' },
+                        { value: 'board', icon: 'grid_view', labelKey: 'projectOverview.workspace.views.board' },
                         { value: 'list', icon: 'format_list_bulleted', labelKey: 'projectOverview.workspace.views.list' }
                     ],
                     activeView: sprintsView,

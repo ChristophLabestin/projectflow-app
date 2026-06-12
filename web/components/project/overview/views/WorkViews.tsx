@@ -3,7 +3,6 @@ import type { OverviewWorkView } from '../config/overviewConfig';
 import type { WorkViewContext } from './shared/viewTypes';
 import { WorkViewList } from './WorkViewList';
 import { WorkViewBoard } from './WorkViewBoard';
-import { WorkViewKanban } from './WorkViewKanban';
 import { WorkViewTimeline } from './WorkViewTimeline';
 import { WorkViewCalendar } from './WorkViewCalendar';
 import { WorkViewRelationships } from './WorkViewRelationships';
@@ -14,8 +13,6 @@ export const WorkViews: React.FC<{ view: OverviewWorkView; ctx: WorkViewContext 
             return <WorkViewList ctx={ctx} />;
         case 'board':
             return <WorkViewBoard ctx={ctx} />;
-        case 'kanban':
-            return <WorkViewKanban ctx={ctx} />;
         case 'timeline':
             return <WorkViewTimeline ctx={ctx} />;
         case 'calendar':
@@ -23,6 +20,6 @@ export const WorkViews: React.FC<{ view: OverviewWorkView; ctx: WorkViewContext 
         case 'relationships':
             return <WorkViewRelationships ctx={ctx} />;
         default:
-            return <WorkViewKanban ctx={ctx} />;
+            return <WorkViewBoard ctx={ctx} />;
     }
 };

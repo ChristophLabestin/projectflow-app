@@ -30,10 +30,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <Modal isOpen={isOpen} onClose={onClose} size="sm" title={title}>
             <div className="confirm-modal__message">{message}</div>
             <div className="confirm-modal__actions">
-                <Button variant="ghost" onClick={onClose} disabled={isLoading}>
+                <Button type="button" variant="ghost" onClick={onClose} disabled={isLoading}>
                     {cancelLabel}
                 </Button>
                 <Button
+                    type="button"
                     variant={variant === 'danger' ? 'primary' : 'primary'} // For now simple, later can add danger button style
                     onClick={onConfirm}
                     isLoading={isLoading}

@@ -385,6 +385,7 @@ export const AppLayout = () => {
                 <Suspense fallback={<div className="topbar-shell" />}>
                     <TopBar
                         project={project}
+                        tenantId={project?.tenantId}
                         breadcrumbs={breadcrumbs}
                         onOpenNav={() => setNavOpen(true)}
                     />

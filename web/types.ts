@@ -499,10 +499,20 @@ export interface Task {
     createdBy?: string;
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
-    dependencies?: string[]; // IDs of tasks that this task depends on
+    dependencies?: string[]; // IDs of tasks that block this task
+    parentTaskId?: string; // Parent task in task-to-task hierarchy
     sprintId?: string; // Sprint ID
     feedbackSubmission?: InitiativeFeedbackSubmission;
     externalKey?: string;
+    githubRepo?: string;
+    githubIssueNumber?: number;
+    githubIssueUrl?: string;
+    githubIssueNodeId?: string;
+    githubIssueState?: 'open' | 'closed';
+    githubProjectV2Fields?: Record<string, unknown>;
+    githubSyncedAt?: any;
+    githubSyncError?: string;
+    githubSyncDisabled?: boolean;
     templateId?: ProjectTemplateId;
     templateTrack?: StartupTrackId | string;
     templateSeedId?: string;
@@ -603,6 +613,7 @@ export interface Initiative {
     successMetric?: string;
     outcome?: string;
     health?: InitiativeHealth;
+    color?: string; // Accent color (hex) to mark this initiative and its tasks
     feedbackForm?: InitiativeFeedbackFormSettings;
     createdAt?: any;
     updatedAt?: any;
@@ -824,6 +835,7 @@ export interface SearchResult {
     id?: string;
     title: string;
     description?: string;
+    tenantId?: string;
     projectId?: string;
     projectTitle?: string;
     companyProjectId?: string;

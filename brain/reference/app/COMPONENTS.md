@@ -49,6 +49,7 @@ Rules:
 |---|---|---|---|
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
 | `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
+| `ProjectSwitcher` | Sidebar workspace/project switcher | Sidebar project context trigger | Lazy-loads projects, supports current/pinned quick access, company/workstream grouping, search by title/status/company context, pin/unpin, dashboard switch, and create-project entry. |
 | `Breadcrumbs` | Context path | Project/module navigation | Optional on smaller screens |
 | `PinnedProjectPill` | Current pinned project shortcut and menu | Top bar project quick access | Uses portal-rendered fixed dropdown with health, project module stats, quick create actions, and project navigation. |
 | `PinnedTasksModal` | Quick-access focus workspace | Top bar focus pill, dashboard resume action, pinned task/issue/initiative shortcuts | Uses persisted `focusState` with start, snooze, block, and complete controls. |
@@ -119,6 +120,7 @@ Example usage:
 | `DataTable` | Tabular display | Members, tasks, campaigns | Sorting/paging optional |
 | `ListRow` | Consistent list item | Tasks, projects | |
 | `KeyValue` | Small metadata block | Details pages | |
+| `TaskRelationshipsPanel` | Task-to-task relationship editor | Project task detail inspector | Uses `dependencies` for blocked-by links, derives is-blocking links from inverse dependencies, edits `parentTaskId` for task hierarchy, and auto-marks blocked tasks as `Blocked`. |
 | `ProjectCodex` | Project-level Codex session and follow-up surface | `/project/:id/codex` | Subscribes to `codex_sessions` and `codex_followups`, uses shared `Button`, tokenized SCSS, and i18n strings. |
 | `ProjectTriageModal` | Project-level task cleanup and delegation workflow | Conditional `/project/:id` right-column triage card | Filters overdue/blocked/unassigned/near-term tasks, then supports bulk due-date, status, completion, and team assignment updates from a calmer triage workbench. |
 
