@@ -113,6 +113,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
             onClose={onClose}
             title={t('projectLabels.title')}
             size="md"
+            overlayClassName="modal-overlay--elevated"
         >
             <div className="project-labels">
                 {/* Add New Label Form */}

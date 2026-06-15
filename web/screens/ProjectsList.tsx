@@ -42,7 +42,7 @@ import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/auth
 import { getProjectMembers, getSharedProjects, getUserProjects, hydrateProjectAssets } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
 import { getUserProfile } from '../services/domain/usersService';
-import { isCompanyProject } from '../config/projectTemplates';
+import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';
 import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
 
@@ -74,7 +74,7 @@ const EMPTY_PROJECT_METRICS: ProjectMetrics = {
 };
 
 const shouldLoadProjectInsights = (project: Project) => (
-    !isCompanyProject(project) && (project.status === 'Active' || project.status === 'In Testing')
+    !isContainerProject(project) && (project.status === 'Active' || project.status === 'In Testing')
 );
 
 const yieldToBrowser = () => new Promise<void>((resolve) => {
@@ -1850,13 +1850,17 @@ export const ProjectsList: React.FC = () => {
         filteredProjects.filter(isCompanyProject),
         [filteredProjects]);
 
-    const ordinaryProjects = useMemo(() =>
-        filteredProjects.filter(project => !isCompanyProject(project)),
+    const clientProjects = useMemo(() =>
+        filteredProjects.filter(isClientProject),
         [filteredProjects]);
 
-    const companyProjectLookup = useMemo(() => {
+    const ordinaryProjects = useMemo(() =>
+        filteredProjects.filter(project => !isContainerProject(project)),
+        [filteredProjects]);
+
+    const containerProjectLookup = useMemo(() => {
         const lookup = new Map<string, Project>();
-        projects.filter(isCompanyProject).forEach(project => lookup.set(project.id, project));
+        projects.filter(isContainerProject).forEach(project => lookup.set(project.id, project));
         return lookup;
     }, [projects]);
 
@@ -1873,10 +1877,10 @@ export const ProjectsList: React.FC = () => {
 
     const getCompanyContextLabel = useCallback((project: Project) => {
         if (!project.companyProjectId) return '';
-        const companyProject = companyProjectLookup.get(project.companyProjectId);
-        if (!companyProject) return '';
-        return t('projects.company.partOf').replace('{company}', companyProject.title);
-    }, [companyProjectLookup, t]);
+        const containerProject = containerProjectLookup.get(project.companyProjectId);
+        if (!containerProject) return '';
+        return t('projects.company.partOf').replace('{company}', containerProject.title);
+    }, [containerProjectLookup, t]);
 
     const activeList = useMemo(() =>
         ordinaryProjects.filter(p => p.status === 'Active' || p.status === 'In Testing'),
@@ -2179,6 +2183,31 @@ export const ProjectsList: React.FC = () => {
                                         statusLabel={getProjectStatusLabel(companyProject.status)}
                                         descriptionFallback={t('projectsList.card.defaultDescription')}
                                         onOpenCompany={() => navigate(`/project/${companyProject.id}`)}
+                                        onOpenLinked={(projectId) => navigate(`/project/${projectId}`)}
+                                        getLinkedStatusLabel={getProjectStatusLabel}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </section>
+                )}
+
+                {clientProjects.length > 0 && !search && (
+                    <section id="client-projects" className="company-projects-section company-projects-section--client mb-12">
+                        <div className="company-projects-section__header">
+                            <h2 className="section-title">{t('projects.client.section.title').replace('{count}', String(clientProjects.length))}</h2>
+                        </div>
+                        <div className="company-projects-section__list">
+                            {clientProjects.map(clientProject => {
+                                const linkedProjects = linkedProjectsByCompany.get(clientProject.id) || [];
+                                return (
+                                    <CompanyProjectCard
+                                        key={clientProject.id}
+                                        companyProject={clientProject}
+                                        linkedProjects={linkedProjects}
+                                        statusLabel={getProjectStatusLabel(clientProject.status)}
+                                        descriptionFallback={t('projectsList.card.defaultDescription')}
+                                        onOpenCompany={() => navigate(`/project/${clientProject.id}`)}
                                         onOpenLinked={(projectId) => navigate(`/project/${projectId}`)}
                                         getLinkedStatusLabel={getProjectStatusLabel}
                                     />

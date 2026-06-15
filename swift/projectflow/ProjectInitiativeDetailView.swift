@@ -34,7 +34,7 @@ struct ProjectInitiativeDetailView: View {
                 )
             }
             .padding(.horizontal, PFSpacing.md)
-            .padding(.bottom, PFSpacing.xl)
+            .pfTabBarClearance()
         }
         .background(AppBackground())
         .navigationTitle(initiative.title)
@@ -77,23 +77,20 @@ struct ProjectInitiativeDetailView: View {
 
     private var heroSection: some View {
         VStack(alignment: .leading, spacing: PFSpacing.sm) {
-            HStack {
-                Text(initiative.status)
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(colors.primaryFade)
-                    .clipShape(Capsule())
-                Text(initiative.health)
-                    .font(.caption)
-                    .foregroundStyle(colors.textMuted)
+            HStack(spacing: PFSpacing.sm) {
+                PFStatusChip(status: initiative.status)
+                if !initiative.priority.isEmpty { PFPriorityChip(priority: initiative.priority) }
                 Spacer()
-                Text(initiative.priority)
-                    .font(.caption.weight(.medium))
+                if !initiative.health.isEmpty {
+                    HStack(spacing: 5) {
+                        PFDot(tint: PFSemantic.healthTint(initiative.health, colors: colors), size: 7)
+                        Text(initiative.health).font(PFFont.chip).foregroundStyle(colors.textMuted)
+                    }
+                }
             }
             if let form = initiative.feedbackForm, form.enabled, let url = URL(string: form.publicURL) {
                 Link(destination: url) {
-                    Label("Public feedback form", systemImage: "link")
-                        .font(.caption)
+                    Label("Public feedback form", systemImage: "link").font(PFFont.detail)
                 }
             }
         }
@@ -103,19 +100,25 @@ struct ProjectInitiativeDetailView: View {
     private var childTasksSection: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                Text("Tasks").font(.headline)
+                PFSectionTitle(title: L10n.tr("work.tasks", fallback: "Tasks"))
                 if childTasks.isEmpty {
-                    Text("No linked tasks yet.").font(.subheadline).foregroundStyle(colors.textMuted)
+                    Text(L10n.tr("work.empty.tasks", fallback: "No linked tasks yet."))
+                        .font(PFFont.body)
+                        .foregroundStyle(colors.textMuted)
                 } else {
-                    ForEach(childTasks, id: \.id) { task in
-                        NavigationLink {
-                            ProjectTaskDetailView(task: task, tenantId: tenantId, permissions: permissions)
-                        } label: {
-                            HStack {
-                                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                                    .foregroundStyle(task.isCompleted ? colors.success : colors.textMuted)
-                                Text(task.title).lineLimit(1)
+                    VStack(spacing: 0) {
+                        ForEach(childTasks, id: \.id) { task in
+                            NavigationLink {
+                                ProjectTaskDetailView(task: task, tenantId: tenantId, permissions: permissions)
+                            } label: {
+                                PFListRow(
+                                    title: task.title,
+                                    leadingDot: task.isCompleted ? colors.success : PFSemantic.priorityTint(task.priority, colors: colors)
+                                )
+                                .padding(.vertical, PFSpacing.sm)
                             }
+                            .buttonStyle(.plain)
+                            if task.id != childTasks.last?.id { Divider() }
                         }
                     }
                 }

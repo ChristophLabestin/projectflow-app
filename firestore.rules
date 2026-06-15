@@ -78,7 +78,9 @@ service cloud.firestore {
       return authed() &&
         request.auth.uid == userId &&
         request.resource.data.uid == resource.data.uid &&
-        request.resource.data.role == resource.data.role;
+        // A member may update their own profile fields but never escalate by
+        // changing their primary role or stacked role ids.
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'roleIds']);
     }
 
     // Public marketing intake. These remain write-only from clients.
@@ -135,9 +137,17 @@ service cloud.firestore {
         allow delete: if isOwner(tenantId) || (authed() && request.auth.uid == userId);
       }
 
-      match /presence/{presenceId} {
-        allow read, write: if canAccessTenant(tenantId);
+      // Custom role definitions (Discord-style permission model). Any tenant
+      // member may read them (needed to evaluate/display permissions); only the
+      // tenant owner may create/modify/delete them.
+      match /roles/{roleId} {
+        allow read: if canAccessTenant(tenantId);
+        allow create, update, delete: if isOwner(tenantId);
       }
+
+      // Presence/online-state moved to Realtime Database (see database.rules.json).
+      // 'presence' stays in the denied-subcollection list below so any stray
+      // Firestore writes are rejected.
 
       match /secrets/{secretId} {
         allow read, write: if false;
@@ -162,13 +172,18 @@ service cloud.firestore {
         allow write: if isOwner(tenantId);
       }
 
+      // Invite links are fetched by id during the join flow (public get), but
+      // must not be enumerable (list is owner-only) to prevent leaking all
+      // active invites across tenants.
       match /invite_links/{linkId} {
-        allow read: if true;
+        allow get: if true;
+        allow list: if isOwner(tenantId);
         allow create, update, delete: if isOwner(tenantId);
       }
 
       match /inviteLinks/{linkId} {
-        allow read: if true;
+        allow get: if true;
+        allow list: if isOwner(tenantId);
         allow create, update, delete: if isOwner(tenantId);
       }
 
@@ -201,6 +216,7 @@ service cloud.firestore {
             subcollection.matches('finance_.*') ||
             subcollection in [
               'members',
+              'roles',
               'presence',
               'secrets',
               'entitlements',

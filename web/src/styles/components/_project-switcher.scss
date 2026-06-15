@@ -252,7 +252,7 @@
     align-items: center;
     justify-content: center;
     overflow: hidden;
-    border: 1px solid var(--color-surface-border);
+    border: 0;
     border-radius: var(--radius-md);
     background: var(--color-primary);
     color: var(--color-primary-text);
@@ -283,6 +283,11 @@
 
 .project-switcher__avatar--company {
     background: var(--color-text-main);
+}
+
+.project-switcher__avatar--client {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
 }
 
 .project-switcher__avatar--workspace {

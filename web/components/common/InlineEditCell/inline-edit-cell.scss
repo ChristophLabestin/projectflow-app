@@ -1,0 +1,124 @@
+@use '../../../styles/tokens';
+
+.inline-edit-cell {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 10px 8px 12px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-surface-hover-rgb), 0.5);
+    color: var(--color-text-main);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+
+    &:hover:not(:disabled),
+    &:focus-visible {
+        background: var(--color-surface-hover-light);
+    }
+
+    &:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px var(--color-primary);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+    }
+}
+
+.inline-edit-cell__label,
+.inline-edit-cell--editing label {
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.inline-edit-cell__value {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text-main);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    &.is-empty {
+        color: var(--color-text-subtle);
+        font-weight: 500;
+    }
+}
+
+.inline-edit-cell__icon {
+    color: var(--color-text-muted);
+    font-size: 1.1rem;
+}
+
+.inline-edit-cell--editing {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    cursor: default;
+}
+
+.inline-edit-cell__editor {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 34px 34px;
+    gap: 6px;
+    align-items: center;
+
+    input {
+        width: 100%;
+        min-width: 0;
+        height: 38px;
+        padding: 0 10px;
+        border: 0;
+        border-radius: var(--radius-md);
+        outline: none;
+        background: var(--color-surface-card);
+        color: var(--color-text-main);
+        font: inherit;
+        font-size: 0.9rem;
+        box-shadow: inset 0 0 0 2px var(--color-primary);
+    }
+
+    button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-surface-card);
+        color: var(--color-text-main);
+        cursor: pointer;
+        transition: background-color var(--transition-fast), color var(--transition-fast);
+
+        &:hover:not(:disabled),
+        &:focus-visible {
+            background: var(--color-primary);
+            color: var(--color-primary-text);
+            outline: none;
+        }
+
+        &:disabled {
+            cursor: wait;
+            opacity: 0.6;
+        }
+
+        .material-symbols-outlined {
+            font-size: 1.05rem;
+        }
+    }
+}

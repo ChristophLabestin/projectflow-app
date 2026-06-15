@@ -1,23 +1,39 @@
 rules_version = '2';
 
-// Craft rules based on data in your Firestore database
-// allow write: if firestore.get(
-//    /databases/(default)/documents/users/$(request.auth.uid)).data.isAdmin;
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to read/write within their tenant namespace.
-    match /tenants/{tenantId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow users to upload their own avatars
-    match /users/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+    function authed() {
+      return request.auth != null;
     }
 
-    // Allow authenticated users to upload project media
-    match /uploads/{projectId}/{allPaths=**} {
-      allow read, write: if request.auth != null;
+    // The tenant id equals the owner's uid (mirrors firestore.rules isOwner).
+    function isTenantOwner(tenantId) {
+      return authed() && request.auth.uid == tenantId;
+    }
+
+    // Membership is sourced from Firestore so storage access matches the same
+    // tenant scope enforced in firestore.rules (isTenantMember).
+    function isTenantMember(tenantId) {
+      return authed() &&
+        firestore.exists(
+          /databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)
+        );
+    }
+
+    function canAccessTenant(tenantId) {
+      return isTenantOwner(tenantId) || isTenantMember(tenantId);
+    }
+
+    // Tenant-scoped storage (projects, media, etc.). Only the tenant owner or a
+    // member of that tenant may read/write — no cross-tenant access.
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read, write: if canAccessTenant(tenantId);
+    }
+
+    // Users may only read/write their own avatar namespace.
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if authed() && request.auth.uid == userId;
     }
   }
 }

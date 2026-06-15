@@ -1,0 +1,107 @@
+@use '../../../styles/tokens';
+
+.stepper {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stepper__item {
+    position: relative;
+
+    > div,
+    > button {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        width: 100%;
+        min-height: 56px;
+        padding: 12px;
+        border: 0;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-card);
+        box-shadow: var(--shadow-sm);
+        color: var(--color-text-main);
+        font: inherit;
+        text-align: left;
+    }
+
+    > button {
+        cursor: pointer;
+        transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+
+        &:hover,
+        &:focus-visible {
+            background: var(--color-surface-hover);
+            outline: none;
+        }
+    }
+}
+
+.stepper__marker {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    font-weight: 800;
+
+    .material-symbols-outlined {
+        font-size: 1rem;
+    }
+}
+
+.stepper__copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.stepper__label {
+    color: var(--color-text-main);
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.stepper__description {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.stepper__item--complete .stepper__marker {
+    background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface-hover));
+    color: var(--color-success);
+}
+
+.stepper__item--current {
+    > div,
+    > button {
+        background: var(--color-surface-hover);
+    }
+
+    .stepper__marker {
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+    }
+}
+
+.stepper__item--error .stepper__marker {
+    background: color-mix(in srgb, var(--color-error) 14%, var(--color-surface-hover));
+    color: var(--color-error);
+}
+
+@media (min-width: 760px) {
+    .stepper {
+        grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    }
+}

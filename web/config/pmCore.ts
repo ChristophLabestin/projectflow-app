@@ -20,6 +20,7 @@ export const PM_CORE_PROJECT_NAV_ORDER = [
     'overview',
     'tasks',
     'initiatives',
+    'intake',
     'sprints',
     'milestones',
     'social',

@@ -32,6 +32,7 @@ export const getWorkspaceMembers = async (tenantId?: string): Promise<Member[]> 
                 ...userData,
                 uid: memberDoc.id,
                 role: membership.role,
+                roleIds: membership.roleIds || [],
                 joinedAt: membership.joinedAt,
                 groupIds: membership.groupIds,
                 pinnedProjectId: membership.pinnedProjectId,
@@ -59,6 +60,7 @@ export const subscribeTenantUsers = (
         photoURL?: string;
         joinedAt?: any;
         role?: WorkspaceRole;
+        roleIds?: string[];
         groupIds?: string[];
         title?: string;
         bio?: string;
@@ -85,6 +87,7 @@ export const subscribeTenantUsers = (
                 ...userData,
                 joinedAt: membership.joinedAt,
                 role: membership.role,
+                roleIds: membership.roleIds || [],
                 groupIds: membership.groupIds,
             };
         });
@@ -140,6 +143,24 @@ export const updateUserRole = async (
     if (legacyTenantUserSnap.exists()) {
         await updateDoc(legacyTenantUserRef, { role: newRole });
     }
+};
+
+/**
+ * Assign the set of custom role IDs to a workspace member (Discord-style role
+ * stacking). System roles (Owner/Member/Guest) are NOT stored here — Member is
+ * implicit and Owner is derived from tenant ownership. Only custom role doc IDs
+ * belong in `roleIds`.
+ */
+export const setMemberRoleIds = async (
+    targetUserId: string,
+    roleIds: string[],
+    tenantId?: string
+) => {
+    const resolvedTenant = tenantId || getActiveTenantId();
+    if (!resolvedTenant) {
+        throw new Error('Tenant not available');
+    }
+    await updateDoc(tenantMemberDocRef(resolvedTenant, targetUserId), { roleIds });
 };
 
 export const removeUserFromWorkspace = async (userId: string, tenantId?: string) => {

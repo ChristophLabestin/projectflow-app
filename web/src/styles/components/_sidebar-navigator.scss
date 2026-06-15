@@ -1,0 +1,751 @@
+@use '../mixins';
+
+// ======================================================================
+// Sidebar Navigator (sidebarV2) — a floating column that zooms between
+// the workspace and the active project/finance context, with a persistent
+// project dock for one-click switching.
+// ======================================================================
+
+.snav {
+    --snav-aside: 256px;   // layout width reserved in the app shell
+    --snav-card: 232px;    // floating card width
+    position: relative;
+    z-index: 40;           // above the topbar (z-30) so the hover-peek overlays cleanly
+    width: var(--snav-aside);
+    height: 100%;
+    padding: 12px;
+    background: var(--color-surface-bg);
+    box-sizing: border-box;
+    transition: width var(--transition-normal);
+}
+
+// The card is ALWAYS absolutely positioned (non-drawer) so collapsing and
+// the hover-peek are pure width animations — no static<->absolute jump.
+.snav-card {
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    bottom: 12px;
+    width: var(--snav-card);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface-card);
+    border: 0;
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: width var(--transition-normal), box-shadow var(--transition-normal);
+}
+
+.snav-inner {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+// Blocks that collapse away in the resting spine — animated, not snapped.
+.snav-back,
+.snav-context-head,
+.snav-section,
+.snav-group--pins,
+.snav-row--external,
+.snav-dock,
+.snav-footer {
+    max-height: 800px;
+    transition:
+        max-height var(--transition-normal),
+        opacity var(--transition-normal),
+        padding var(--transition-normal);
+}
+
+.snav-row__label,
+.snav-row__badge,
+.snav-ws__name,
+.snav-ws__chev {
+    transition: opacity var(--transition-normal);
+}
+
+// ---- Drawer (mobile) -------------------------------------------------
+.snav--drawer {
+    width: 100%;
+    padding: 0;
+    background: var(--color-surface-card);
+
+    .snav-card {
+        position: static;
+        width: 100%;
+        height: 100%;
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        transition: none;
+    }
+}
+
+// ---- Collapsed spine (project-overview stretch mode) -----------------
+.snav--collapsed {
+    --snav-aside: 76px;
+    --snav-card: 52px;
+
+    .snav-card { z-index: 40; }
+
+    &:hover,
+    &:focus-within { --snav-card: 232px; }
+
+    &:hover .snav-card,
+    &:focus-within .snav-card { box-shadow: var(--shadow-lg); }
+
+    // Resting spine: fade inline text, collapse the secondary blocks to 0 so
+    // only a tidy, centre-aligned icon column remains. Icons never move.
+    &:not(:hover):not(:focus-within) {
+        .snav-row__label,
+        .snav-row__badge,
+        .snav-ws__name,
+        .snav-ws__chev { opacity: 0; }
+
+        .snav-back,
+        .snav-context-head,
+        .snav-section,
+        .snav-group--pins,
+        .snav-row--external,
+        .snav-dock,
+        .snav-footer {
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            opacity: 0;
+            overflow: hidden;
+        }
+    }
+}
+
+// Keep the card open while the switch menu is up, even when collapsed.
+.snav--collapsed.snav--menu-open { --snav-card: 232px; }
+.snav--collapsed.snav--menu-open .snav-card { box-shadow: var(--shadow-lg); }
+
+// ---- Top: identity / full project search -----------------------------
+.snav-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 8px 8px;
+}
+
+.snav-switcher {
+    flex: 1;
+    min-width: 0;
+}
+
+.snav-icon-btn {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+}
+
+// ---- Zoom viewport ---------------------------------------------------
+.snav-viewport {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+}
+
+.snav-track {
+    display: flex;
+    width: 200%;
+    height: 100%;
+    transform: translateX(0);
+    transition: transform var(--transition-normal);
+
+    &[data-depth='1'] { transform: translateX(-50%); }
+}
+
+.snav-layer {
+    width: 50%;
+    height: 100%;
+    padding: 6px 8px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    @include mixins.no-scrollbar;
+}
+
+// ---- Groups + rows + morphing glider ---------------------------------
+.snav-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    & + & { margin-top: 6px; }
+}
+
+.snav-section {
+    padding: 14px 12px 6px;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+}
+
+.snav-glider {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 0;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-md);
+    pointer-events: none;
+    transition: transform var(--transition-normal), height var(--transition-normal);
+
+    &::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 20px;
+        border-radius: 0 3px 3px 0;
+        background: var(--color-primary);
+        box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.5);
+    }
+}
+
+.snav-row {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 38px;
+    padding: 0 8px;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: color var(--transition-fast);
+
+    &:hover { color: var(--color-text-main); }
+    &.is-active { color: var(--color-text-main); font-weight: 600; }
+}
+
+.snav-row__icon {
+    flex: 0 0 20px;
+    font-size: 20px;
+}
+
+.snav-row__label {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-row__badge {
+    flex: 0 0 auto;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 800;
+    background: var(--color-surface-border);
+    color: var(--color-text-muted);
+}
+
+.snav-row.is-active .snav-row__badge {
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+}
+
+.snav-row--project .snav-avatar--row { margin-right: -2px; }
+
+.snav-row--external {
+    .snav-row__lock { flex: 0 0 auto; font-size: 14px; color: var(--color-warning); }
+    .snav-row__ext { flex: 0 0 auto; font-size: 14px; opacity: 0; transition: opacity var(--transition-fast); }
+    &:hover .snav-row__ext { opacity: 0.4; }
+}
+
+// ---- Context layer (project / finance) -------------------------------
+.snav-back {
+    align-self: flex-start;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 6px 10px 6px 8px;
+    margin-bottom: 2px;
+    border: none;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+
+    .material-symbols-outlined { font-size: 18px; }
+    &:hover { color: var(--color-text-main); background: var(--color-surface-hover); }
+}
+
+.snav-context-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 6px 12px;
+}
+
+.snav-context-head__copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.snav-context-head__title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-context-head__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: capitalize;
+}
+
+// ---- Avatars ---------------------------------------------------------
+.snav-avatar {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-hover);
+    color: var(--color-text-main);
+    font-size: 14px;
+    font-weight: 600;
+    overflow: hidden;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+    .material-symbols-outlined { font-size: 18px; }
+}
+
+.snav-avatar--company { background: var(--color-primary); color: var(--color-primary-text); }
+.snav-avatar--client { background: var(--color-accent, var(--color-primary)); color: var(--color-primary-text); }
+.snav-avatar--row { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+.snav-avatar--dock { width: 26px; height: 26px; border-radius: 8px; font-size: 11px; }
+
+// ---- Pin / status dot ------------------------------------------------
+.snav-pin {
+    flex: 0 0 auto;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+
+    .material-symbols-outlined { font-size: 18px; }
+    &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+    &.is-pinned { color: var(--color-primary); }
+}
+
+.snav-dot {
+    flex: 0 0 auto;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--color-text-subtle);
+
+    &--success { background: var(--color-success); }
+    &--warning { background: var(--color-warning); }
+    &--error { background: var(--color-error); }
+    &--muted { background: var(--color-text-subtle); }
+}
+
+// ---- Project dock (recent / pinned quick-switch) ---------------------
+.snav-dock {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 10px;
+}
+
+.snav-dock__home,
+.snav-dock__add {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background-color var(--transition-fast), transform var(--transition-fast);
+
+    .material-symbols-outlined { font-size: 18px; }
+    &:active { transform: scale(0.92); }
+}
+
+.snav-dock__home { background: var(--color-primary); color: var(--color-primary-text); }
+
+.snav-dock__add {
+    background: var(--color-surface-hover);
+    border: 0;
+    color: var(--color-text-muted);
+
+    &:hover { background: var(--color-surface-border); color: var(--color-text-main); }
+}
+
+.snav-dock__divider {
+    flex: 0 0 auto;
+    width: 1px;
+    height: 20px;
+    background: var(--color-surface-border);
+    opacity: 0.6;
+}
+
+.snav-dock__projects {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.snav-dock__project {
+    position: relative;
+    flex: 0 0 auto;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    text-decoration: none;
+    transition: transform var(--transition-fast), border-color var(--transition-fast);
+
+    &:hover { transform: translateY(-2px); }
+    &.is-active { border-color: var(--color-primary); }
+}
+
+.snav-dock__pin {
+    position: absolute;
+    right: -3px;
+    bottom: -3px;
+    font-size: 12px;
+    color: var(--color-primary);
+    background: var(--color-surface-card);
+    border-radius: 50%;
+}
+
+// Hover tooltip showing the project name above the avatar.
+.snav-dock__tip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    max-width: 150px;
+    padding: 4px 8px;
+    border-radius: var(--radius-md);
+    background: var(--color-text-main);
+    color: var(--color-surface-card);
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    z-index: 10;
+}
+
+.snav-dock__project:hover .snav-dock__tip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+// ---- Footer ----------------------------------------------------------
+.snav-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 12px 12px;
+}
+
+.snav-footer__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.snav-theme {
+    display: inline-flex;
+    padding: 3px;
+    border: 0;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+
+    button {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 10px;
+        border: none;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--color-text-muted);
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+
+        .material-symbols-outlined { font-size: 14px; }
+        &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
+    }
+}
+
+// ---- Workspace trigger -----------------------------------------------
+.snav-ws {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 2px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--color-text-main);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+
+    &:hover { background: var(--color-surface-hover); }
+}
+
+.snav-ws__logo {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    background: var(--color-surface-hover);
+    overflow: hidden;
+
+    img { width: 100%; height: 100%; object-fit: cover; }
+}
+
+.snav-ws__name {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-ws__chev {
+    flex: 0 0 auto;
+    font-size: 18px;
+    color: var(--color-text-subtle);
+}
+
+// ---- Inline switch overlay (fits inside the card) --------------------
+.snav-ws-menu {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface-card);
+    border-radius: var(--radius-xl);
+    animation: snav-menu-in var(--transition-normal);
+}
+
+@keyframes snav-menu-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.snav-ws-menu__search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 10px 8px 14px;
+
+    > .material-symbols-outlined { flex: 0 0 auto; font-size: 20px; color: var(--color-text-subtle); }
+
+    input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: none;
+        background: transparent;
+        color: var(--color-text-main);
+        font: inherit;
+        font-size: 14px;
+        font-weight: 500;
+
+        &::placeholder { color: var(--color-text-subtle); }
+    }
+}
+
+.snav-ws-menu__list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 10px 10px;
+    @include mixins.no-scrollbar;
+}
+
+.snav-ws-group + .snav-ws-group { margin-top: 4px; }
+
+.snav-ws-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 7px 10px;
+    border: 0;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-main);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color var(--transition-fast);
+
+    &:hover,
+    &.is-active { background: var(--color-surface-hover); }
+}
+
+// Workstreams linked to a company sit indented with a guide line.
+.snav-ws-row--nested {
+    margin-left: 19px;
+    padding-left: 12px;
+    border-left: 1px solid var(--color-surface-border);
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.snav-ws-row__copy {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.snav-ws-row__title {
+    font-size: 13.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-ws-row__meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--color-text-muted);
+    text-transform: capitalize;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.snav-ws-row__check {
+    flex: 0 0 auto;
+    font-size: 18px;
+    color: var(--color-primary);
+}
+
+.snav-ws-row__pin {
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity var(--transition-fast), color var(--transition-fast), background-color var(--transition-fast);
+
+    .material-symbols-outlined { font-size: 17px; }
+    &:hover { background: var(--color-surface-border); color: var(--color-text-main); }
+    &.is-pinned { opacity: 1; color: var(--color-primary); }
+}
+
+.snav-ws-row:hover .snav-ws-row__pin,
+.snav-ws-row:focus-within .snav-ws-row__pin { opacity: 1; }
+
+.snav-ws-empty {
+    padding: 16px 10px;
+    font-size: 12px;
+    color: var(--color-text-subtle);
+    text-align: center;
+}
+
+.snav-ws-menu__create {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin: 0 12px 12px;
+    padding: 10px;
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+
+    .material-symbols-outlined { font-size: 18px; }
+    &:hover { transform: translateY(-1px); }
+    &:active { transform: scale(0.99); }
+}

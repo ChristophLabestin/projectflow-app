@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Card } from './ui/Card';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { subscribeProjectPresence, removeMember, requestJoinProject, joinProject } from '../services/dataService';
+import { removeMember, requestJoinProject, joinProject } from '../services/dataService';
 import { subscribeProject } from '../services/domain/projectsService';
+import { useProjectPresence } from '../hooks/usePresence';
 import { getUserProfile } from '../services/domain/usersService';
 import { auth } from '../services/firebase';
 import { UserHoverCard } from './ui/UserHoverCard';
@@ -32,6 +33,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
     const { isOwner } = useProjectPermissions(project);
     const { showError, showSuccess } = useToast();
     const currentUserId = auth.currentUser?.uid;
+    const projectPresence = useProjectPresence(projectId, tenantId);
 
     const handleJoin = async () => {
         if (!currentUserId || !project) return;
@@ -66,21 +68,18 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
             }
         }, tenantId);
 
-        // Subscribe to realtime presence
-        const unsubPresence = subscribeProjectPresence(projectId, (users) => {
-            if (mounted) {
-                const map: Record<string, any> = {};
-                users.forEach(u => map[u.uid] = u);
-                setActiveUsers(map);
-            }
-        }, tenantId);
-
         return () => {
             mounted = false;
             unsubProject();
-            unsubPresence();
         };
     }, [projectId, tenantId]);
+
+    // Map realtime presence (from RTDB via useProjectPresence) into a uid-keyed lookup
+    useEffect(() => {
+        const map: Record<string, any> = {};
+        projectPresence.forEach(u => { map[u.uid] = u; });
+        setActiveUsers(map);
+    }, [projectPresence]);
 
     // Fetch profiles for members who are not online (activeUsers)
     useEffect(() => {

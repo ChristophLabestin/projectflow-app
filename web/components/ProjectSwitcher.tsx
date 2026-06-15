@@ -6,7 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { useUIState } from '../context/UIContext';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
-import { isCompanyProject } from '../config/projectTemplates';
+import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';
 import logo from '../assets/logo.svg';
 
 const RECENT_PROJECTS_STORAGE_PREFIX = 'projectflow.recentProjects';
@@ -73,7 +73,6 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
-    const [hasLoadedProjects, setHasLoadedProjects] = useState(false);
     const [recentProjectAccess, setRecentProjectAccess] = useState<RecentProjectAccess>(() => readRecentProjectAccess());
     const dropdownRef = useRef<HTMLDivElement>(null);
     const lastRecordedProjectIdRef = useRef<string | undefined>(undefined);
@@ -92,11 +91,13 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     useEffect(() => {
         if (!isAuthReady || !isAuthenticated) {
             setProjects([]);
-            setHasLoadedProjects(false);
             return;
         }
 
-        if (!isOpen || hasLoadedProjects) return;
+        // Refetch every time the dropdown opens so freshly-changed project
+        // settings (e.g. switching a project to a client project) are reflected
+        // without a full page reload. Cached results stay visible while loading.
+        if (!isOpen) return;
 
         const fetchProjects = async () => {
             setLoading(true);
@@ -115,7 +116,6 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                 });
 
                 setProjects(unique);
-                setHasLoadedProjects(true);
             } catch (error) {
                 console.error("Failed to load projects", error);
             } finally {
@@ -123,7 +123,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
             }
         };
         void fetchProjects();
-    }, [hasLoadedProjects, isAuthReady, isAuthenticated, isOpen]);
+    }, [isAuthReady, isAuthenticated, isOpen]);
 
     const activeProject = projects.find(p => p.id === currentProjectId);
     const pinnedProject = projects.find(p => p.id === pinnedProjectId);
@@ -163,13 +163,18 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     };
 
     const companyProjects = useMemo(() => projects.filter(isCompanyProject), [projects]);
-    const ordinaryProjects = useMemo(() => projects.filter(project => !isCompanyProject(project)), [projects]);
-    const companyProjectMap = useMemo(() => new Map(companyProjects.map(project => [project.id, project])), [companyProjects]);
+    const clientProjects = useMemo(() => projects.filter(isClientProject), [projects]);
+    const ordinaryProjects = useMemo(() => projects.filter(project => !isContainerProject(project)), [projects]);
+    const containerProjectMap = useMemo(() => new Map(projects.filter(isContainerProject).map(project => [project.id, project])), [projects]);
     const filteredOrdinaryProjects = ordinaryProjects.filter(project => {
-        const companyProject = project.companyProjectId ? companyProjectMap.get(project.companyProjectId) : null;
-        return projectMatchesSearch(project, companyProject);
+        const containerProject = project.companyProjectId ? containerProjectMap.get(project.companyProjectId) : null;
+        return projectMatchesSearch(project, containerProject);
     });
     const filteredCompanyProjects = companyProjects.filter(project =>
+        projectMatchesSearch(project)
+        || filteredOrdinaryProjects.some(child => child.companyProjectId === project.id)
+    );
+    const filteredClientProjects = clientProjects.filter(project =>
         projectMatchesSearch(project)
         || filteredOrdinaryProjects.some(child => child.companyProjectId === project.id)
     );
@@ -180,13 +185,14 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
         return projectA.title.localeCompare(projectB.title);
     });
     const sortedCompanyProjects = sortProjectsByRecentAccess(filteredCompanyProjects);
+    const sortedClientProjects = sortProjectsByRecentAccess(filteredClientProjects);
     const sortedOrdinaryProjects = sortProjectsByRecentAccess(filteredOrdinaryProjects);
     const ungroupedProjects = sortedOrdinaryProjects.filter(project => !project.companyProjectId);
-    const hasFilteredProjects = filteredCompanyProjects.length > 0 || ungroupedProjects.length > 0;
+    const hasFilteredProjects = filteredCompanyProjects.length > 0 || filteredClientProjects.length > 0 || ungroupedProjects.length > 0;
     const highlightedProjects = [activeProject, pinnedProject]
         .filter((project): project is Project => Boolean(project))
         .filter((project, index, list) => list.findIndex(item => item.id === project.id) === index)
-        .filter(project => projectMatchesSearch(project, project.companyProjectId ? companyProjectMap.get(project.companyProjectId) : null));
+        .filter(project => projectMatchesSearch(project, project.companyProjectId ? containerProjectMap.get(project.companyProjectId) : null));
     const isWorkspaceActive = !currentProjectId && location.pathname === '/';
     const projectCountLabel = t('projectSwitcher.projectsCount').replace('{count}', String(projects.length));
 
@@ -227,16 +233,22 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
             return t('projectSwitcher.companyProject');
         }
 
+        if (isClientProject(project)) {
+            return t('projectSwitcher.clientProject');
+        }
+
         const isOwner = project.ownerId === user?.uid || project.roles?.[user?.uid || ''] === 'Owner';
         return isOwner ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member');
     };
 
     const renderProjectAvatar = (project: Project, size: 'sm' | 'md' = 'sm') => (
-        <span className={`project-switcher__avatar project-switcher__avatar--${size} ${isCompanyProject(project) ? 'project-switcher__avatar--company' : ''}`}>
+        <span className={`project-switcher__avatar project-switcher__avatar--${size} ${isCompanyProject(project) ? 'project-switcher__avatar--company' : ''} ${isClientProject(project) ? 'project-switcher__avatar--client' : ''}`}>
             {project.squareIcon ? (
                 <img src={project.squareIcon} alt="" />
             ) : isCompanyProject(project) ? (
                 <span className="material-symbols-outlined">domain</span>
+            ) : isClientProject(project) ? (
+                <span className="material-symbols-outlined">handshake</span>
             ) : (
                 <span>{project.title ? project.title.substring(0, 1).toUpperCase() : 'P'}</span>
             )}
@@ -404,6 +416,22 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                     <div className="project-switcher__company-block" key={companyProject.id}>
                                                         {renderProjectRow(companyProject)}
                                                         {linkedProjects.map(project => renderProjectRow(project, { nested: true, companyTitle: companyProject.title }))}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    {filteredClientProjects.length > 0 && (
+                                        <div className="project-switcher__group">
+                                            <div className="project-switcher__group-label">
+                                                {t('projectSwitcher.clientProjects')}
+                                            </div>
+                                            {sortedClientProjects.map(clientProject => {
+                                                const linkedProjects = sortedOrdinaryProjects.filter(project => project.companyProjectId === clientProject.id);
+                                                return (
+                                                    <div className="project-switcher__company-block" key={clientProject.id}>
+                                                        {renderProjectRow(clientProject)}
+                                                        {linkedProjects.map(project => renderProjectRow(project, { nested: true, companyTitle: clientProject.title }))}
                                                     </div>
                                                 );
                                             })}

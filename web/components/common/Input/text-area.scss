@@ -39,7 +39,7 @@
     font-family: inherit;
     line-height: 1.5;
     color: var(--color-text-main);
-    background-color: var(--color-surface-hover); // Filled background match TextInput
+    background-color: rgba(var(--color-surface-hover-rgb), 0.5); // Filled background match TextInput
     border: none !important; // Borderless strict
     border-radius: var(--radius-md);
     transition: background-color var(--transition-normal), box-shadow var(--transition-normal), color var(--transition-normal);

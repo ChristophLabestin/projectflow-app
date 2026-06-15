@@ -3,6 +3,7 @@ import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions } from "firebase/functions";
+import { getDatabase, type Database } from "firebase/database";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -11,7 +12,10 @@ const firebaseConfig = {
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+  // Realtime Database powers the presence/online-state feature (onDisconnect).
+  // Optional: when unset, presence degrades gracefully (no online indicators).
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL
 };
 
 let app;
@@ -19,6 +23,7 @@ let auth;
 let db;
 let storage;
 let functions;
+let rtdb: Database | undefined;
 
 try {
   app = initializeApp(firebaseConfig);
@@ -26,6 +31,18 @@ try {
   db = getFirestore(app);
   storage = getStorage(app);
   functions = getFunctions(app, 'europe-west3');
+
+  // Realtime Database is only initialized when a database URL is configured.
+  // Presence is the only consumer; if RTDB is not set up yet the app keeps
+  // working and online indicators simply stay empty.
+  if (firebaseConfig.databaseURL) {
+    try {
+      rtdb = getDatabase(app);
+    } catch (rtdbError) {
+      console.warn("Realtime Database not available; presence disabled.", rtdbError);
+      rtdb = undefined;
+    }
+  }
 
   // We always call the deployed (production) Cloud Functions, including from
   // localhost. The passkey functions are localhost-aware: they honour the
@@ -39,5 +56,5 @@ try {
 
 import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
-export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };
+export { auth, db, storage, functions, rtdb, GithubAuthProvider, FacebookAuthProvider };
 export { app, firebaseConfig };

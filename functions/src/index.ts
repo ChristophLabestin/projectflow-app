@@ -12,6 +12,7 @@ import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-p
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
+import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
 import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
@@ -118,6 +119,9 @@ export {
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,
+    saveProjectIntakeConfig,
+    getProjectIntakeForm,
+    submitProjectIntake,
     getTikTokAuthUrl,
     tiktokCallback,
     getYouTubeAuthUrl,

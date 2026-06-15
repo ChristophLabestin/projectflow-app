@@ -4,8 +4,9 @@ import { Button } from '../components/ui/Button';
 import { auth } from '../services/firebase';
 import { sendTeamInvitation } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
-import { removeUserFromWorkspace, subscribeTenantUsers, updateUserRole } from '../services/domain/workspaceMembersService';
+import { removeUserFromWorkspace, setMemberRoleIds, subscribeTenantUsers, updateUserRole } from '../services/domain/workspaceMembersService';
 import { getSharedProjects, subscribeTenantProjects } from '../services/domain/projectsService';
+import { subscribeTenantRoles } from '../services/dataService';
 import {
     generateWorkspaceInviteLink,
     getTenantProjectInviteLinks,
@@ -13,7 +14,6 @@ import {
     revokeProjectInviteLink,
     revokeWorkspaceInviteLink
 } from '../services/domain/inviteLinksService';
-import { getWorkspaceRoles } from '../services/rolesService';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { Project, WorkspaceRole, Member, CustomRole } from '../types';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
@@ -82,11 +82,27 @@ export const Team = () => {
 
         const unsubProjects = subscribeTenantProjects(setProjects, tenantId);
         getSharedProjects().then(setSharedProjects).catch(console.error);
-        getWorkspaceRoles(tenantId).then(setCustomRoles).catch(console.error);
+
+        // Custom roles now live in the tenant's `roles` subcollection (node model).
+        const unsubRoles = subscribeTenantRoles((firestoreRoles) => {
+            setCustomRoles(firestoreRoles
+                .filter(r => !r.isSystem)
+                .map(r => ({
+                    id: r.id,
+                    name: r.name,
+                    color: r.color || '#3b82f6',
+                    position: r.position,
+                    permissions: [],
+                    isDefault: false,
+                    createdAt: r.createdAt,
+                    createdBy: r.createdBy || ''
+                })) as CustomRole[]);
+        }, tenantId);
 
         return () => {
             unsubUsers();
             unsubProjects();
+            unsubRoles();
         };
     }, [tenantId]);
 
@@ -220,6 +236,21 @@ export const Team = () => {
         if (!can('canManageMembers')) return;
         try {
             await updateUserRole(userId, newRole as WorkspaceRole, tenantId);
+            showSuccess(t('team.members.toast.roleUpdated'));
+        } catch (error) {
+            console.error(error);
+            showError(t('team.members.errors.updateRole'));
+        }
+    };
+
+    // Toggle a stacked custom role on/off for a member (Discord-style multi-role)
+    const handleToggleRole = async (userId: string, roleId: string, currentRoleIds: string[]) => {
+        if (!can('canManageMembers')) return;
+        const next = currentRoleIds.includes(roleId)
+            ? currentRoleIds.filter(id => id !== roleId)
+            : [...currentRoleIds, roleId];
+        try {
+            await setMemberRoleIds(userId, next, tenantId);
             showSuccess(t('team.members.toast.roleUpdated'));
         } catch (error) {
             console.error(error);
@@ -388,31 +419,34 @@ export const Team = () => {
                                     {member.displayName}
                                 </h2>
                                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                                    {can('canManageMembers') && !isMe ? (
-                                        <div className="relative group">
-                                            <select
-                                                value={member.role}
-                                                onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                                className="appearance-none pl-3 pr-8 py-1.5 rounded-lg bg-[var(--color-surface-hover)] text-[13px] font-bold border border-[var(--color-surface-border)] cursor-pointer hover:border-[var(--color-primary)] transition-all outline-none"
-                                                style={{ color: role.color }}
-                                            >
-                                                {/* If current role is legacy, show it as an option so it's not hidden/lost, but only if not in customRoles */}
-                                                {!customRoles.find(cr => cr.id === member.role) && (
-                                                    <option value={member.role}>{role.label} (Legacy)</option>
-                                                )}
-                                                {customRoles.map(cr => (
-                                                    <option key={cr.id} value={cr.id}>{cr.name}</option>
-                                                ))}
-                                            </select>
-                                            <span className="material-symbols-outlined text-[16px] absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">expand_more</span>
-                                        </div>
-                                    ) : (
-                                        <Badge variant="primary" className="py-1">
-                                            {role.label}
-                                        </Badge>
-                                    )}
+                                    <Badge variant="primary" className="py-1">
+                                        {role.label}
+                                    </Badge>
                                     <span className="text-[14px] text-[var(--color-text-muted)] font-medium">{member.email}</span>
                                 </div>
+
+                                {/* Stacked custom roles (Discord-style). Owner has all access implicitly. */}
+                                {member.role !== 'Owner' && customRoles.length > 0 && (
+                                    <div className="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2">
+                                        {customRoles.map(cr => {
+                                            const assigned = (member.roleIds || []).includes(cr.id);
+                                            const canManage = can('canManageMembers');
+                                            return (
+                                                <button
+                                                    key={cr.id}
+                                                    type="button"
+                                                    disabled={!canManage}
+                                                    onClick={() => handleToggleRole(member.id, cr.id, member.roleIds || [])}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold border transition-all ${assigned ? 'border-transparent text-white' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-surface-border)]'} ${canManage ? 'cursor-pointer hover:opacity-90' : 'cursor-default opacity-80'}`}
+                                                    style={assigned ? { backgroundColor: cr.color } : undefined}
+                                                >
+                                                    <span className="material-symbols-outlined text-[14px]">{assigned ? 'check' : 'add'}</span>
+                                                    {cr.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
 
                                 <div className="mt-8 flex flex-wrap gap-4">
                                     {can('canManageMembers') && !isMe && (

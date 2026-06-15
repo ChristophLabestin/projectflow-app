@@ -24,7 +24,7 @@ These routes must remain accessible without being logged in.
 - [x] `/join/:inviteLinkId` — Join project via invite link (SCSS + i18n pass)
 - [x] `/join-workspace/:inviteLinkId` — Join workspace via invite link (SCSS + i18n pass)
 - [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
-- [x] `/ui` — Component Style Guide (Dev only)
+- [x] `/ui` — Component Style Guide (Dev only). Includes tokens, typography, buttons, cards, inputs, date/time, media library, badges, checkboxes/toggles, max-width container categories, Level of Depth guidance, and next standardization candidates.
 
 ---
 

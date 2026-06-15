@@ -28,7 +28,7 @@ import {
     getStartupJurisdictionTemplate,
     getStartupSourceReferences,
     getProjectTemplateDefinition,
-    isCompanyProject,
+    isContainerProject,
     isSoftwareProject
 } from '../config/projectTemplates';
 import { useToast } from '../context/UIContext';
@@ -170,7 +170,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         });
         getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
         getAllWorkspaceProjects()
-            .then(projects => setCompanyProjects(projects.filter(isCompanyProject)))
+            .then(projects => setCompanyProjects(projects.filter(isContainerProject)))
             .catch(error => {
                 console.warn('Failed to load company projects for project creation', error);
                 setCompanyProjects([]);
@@ -346,7 +346,11 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             };
             const hasBrief = Object.keys(brief).length > 1 || Boolean(brief.cadence);
             const selectedTemplate = getProjectTemplateDefinition(templateId);
-            const trimmedCompanyProjectId = selectedTemplate.isCompanyProject ? '' : companyProjectId.trim();
+            const trimmedCompanyProjectId = isContainerProject({
+                projectCategory: selectedTemplate.projectCategory,
+                templateId: selectedTemplate.id,
+                projectType: selectedTemplate.legacyProjectType
+            }) ? '' : companyProjectId.trim();
             const jurisdictionTemplate = getStartupJurisdictionTemplate('', '');
             const selectedSensitiveTracks = STARTUP_TRACK_DEFINITIONS.filter(track => track.sensitive && startupTrackIds.includes(track.id));
             if (selectedTemplate.isCompanyProject && selectedSensitiveTracks.length > 0 && !startupSensitiveTracksConfirmed) {
@@ -501,6 +505,11 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         projectType
     });
     const isCreatingCompanyProject = selectedTemplate.isCompanyProject === true;
+    const isCreatingContainerProject = isContainerProject({
+        projectCategory: selectedTemplate.projectCategory,
+        templateId: selectedTemplate.id,
+        projectType: selectedTemplate.legacyProjectType
+    });
     const visibleSteps = getWizardSteps(isCreatingCompanyProject);
     const finalStepId = visibleSteps[visibleSteps.length - 1]?.id ?? STEPS[STEPS.length - 1].id;
     const startupJurisdictionTemplate = getStartupJurisdictionTemplate('', '');
@@ -518,7 +527,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         )).length;
     const startupSeedInitiativeCount = STARTUP_SEED_INITIATIVES.filter(initiative => selectedStartupTrackSet.has(initiative.trackId)).length;
     const companyProjectOptions = [
-        { value: '', label: t('createProjectWizard.companyProject.none') },
+        { value: '', label: t('createProjectWizard.parentProject.none') },
         ...companyProjects.map(project => ({ value: project.id, label: project.title }))
     ];
     const companyProjectRoleOptions = [
@@ -765,14 +774,14 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                         />
                                     </div>
 
-                                    {!isCreatingCompanyProject && (
+                                    {!isCreatingContainerProject && (
                                         <div className="create-project__field create-project__field--wide">
                                             <Select
-                                                label={t('createProjectWizard.companyProject.label')}
+                                                label={t('createProjectWizard.parentProject.label')}
                                                 value={companyProjectId}
                                                 onChange={(value) => setCompanyProjectId(String(value))}
                                                 options={companyProjectOptions}
-                                                placeholder={t('createProjectWizard.companyProject.placeholder')}
+                                                placeholder={t('createProjectWizard.parentProject.placeholder')}
                                             />
                                             {companyProjectId && (
                                                 <div className="create-project__brief-options create-project__field--wide">

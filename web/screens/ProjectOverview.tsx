@@ -570,14 +570,12 @@ const ProjectOverviewLegacy = () => {
 
 
 
-    // Enhanced Presence Hook - tracks online/idle/offline states with activity detection
+    // Presence: annotate the shared presence node with the current project.
+    // State/idle/offline are owned by useWorkspacePresence (mounted in AppLayout).
     usePresence({
         projectId: id || '',
         tenantId: project?.tenantId,
-        enabled: !!id && !!project,
-        heartbeatInterval: 30000, // 30 seconds
-        idleTimeout: 600000, // 10 minutes of inactivity
-        manualStatus: statusPreference
+        enabled: !!id && !!project
     });
 
     // Subscribe to other users' presence

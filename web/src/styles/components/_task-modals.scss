@@ -49,6 +49,46 @@
     display: flex;
     flex-direction: column;
 
+    .task-create__project-select {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0 1.5rem 1rem;
+    }
+
+    // Flat, borderless filled fields — drop the inset 1px ring the shared
+    // input/select/assignee components carry, matching the title + textarea.
+    .text-input,
+    .select-input__trigger,
+    .assignee-select__trigger {
+        box-shadow: none;
+
+        &:hover,
+        &:focus,
+        &:focus-visible,
+        &:focus-within {
+            box-shadow: none;
+        }
+    }
+
+    // Align the assignee trigger with the date/text inputs (it shipped taller,
+    // pill-shaped and with a solid fill, so it looked off and sat lower).
+    .assignee-select__trigger {
+        display: flex;
+        align-items: center;
+        min-height: 42px;
+        padding: 0 14px;
+        border-radius: var(--radius-lg);
+        background: rgba(var(--color-surface-hover-rgb), 0.5);
+        font-size: 0.9375rem;
+
+        &:hover,
+        &:focus-visible,
+        &.is-open {
+            background: var(--color-surface-hover-light);
+        }
+    }
+
     .title-input-section {
         padding: 1.5rem 1.5rem 1rem;
     }
@@ -241,6 +281,67 @@
             color: var(--color-text-muted);
             font-style: italic;
             text-align: center;
+        }
+
+        .dropdown-menu--labels {
+            min-width: 240px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .dropdown-menu__search {
+            width: 100%;
+            padding: 0.6rem 0.75rem;
+            border: 0;
+            border-bottom: 1px solid var(--color-surface-border);
+            background: transparent;
+            color: var(--color-text-main);
+            font-size: 0.8rem;
+            outline: none;
+
+            &::placeholder {
+                color: var(--color-text-subtle);
+            }
+        }
+
+        .dropdown-menu__scroll {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 0.25rem 0;
+        }
+
+        .dropdown-item--create {
+            color: var(--color-primary);
+            font-weight: 700;
+
+            .material-symbols-outlined {
+                font-size: 0.95rem;
+            }
+        }
+
+        .dropdown-menu__manage {
+            width: 100%;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.75rem;
+            border: 0;
+            border-top: 1px solid var(--color-surface-border);
+            background: transparent;
+            color: var(--color-text-muted);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            cursor: pointer;
+
+            .material-symbols-outlined {
+                font-size: 0.95rem;
+            }
+
+            &:hover {
+                color: var(--color-primary);
+            }
         }
 
         .category-dot {

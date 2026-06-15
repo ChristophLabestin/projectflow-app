@@ -52,6 +52,7 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var appSession: AppSession
     @State private var selection: MainTab = .home
+    @StateObject private var tabBarScroll = TabBarScrollState()
 
     init() {
         UITabBar.appearance().isHidden = true
@@ -74,9 +75,15 @@ struct MainTabView: View {
             NotificationsView()
                 .tag(MainTab.inbox)
         }
+        .environmentObject(tabBarScroll)
         .toolbar(.hidden, for: .tabBar)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            CustomTabBar(selection: $selection, unreadCount: appSession.notificationStore.unreadCount)
+            CustomTabBar(selection: $selection, unreadCount: appSession.notificationStore.unreadCount, scrollState: tabBarScroll)
+        }
+        .onChange(of: selection) { _, _ in
+            if tabBarScroll.isCompact {
+                withAnimation(.spring(response: 0.34, dampingFraction: 0.82)) { tabBarScroll.isCompact = false }
+            }
         }
         .onAppear {
             consumePendingNotificationDeepLink()

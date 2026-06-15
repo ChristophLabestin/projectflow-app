@@ -13,6 +13,8 @@ import { PersonalTask, Project } from '../types';
 import { toMillis } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
+import { DataState } from '../components/ui/DataState';
+import { withRetry } from '../utils/retry';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
@@ -22,6 +24,7 @@ export const PersonalTasksPage = () => {
     const [tasks, setTasks] = useState<PersonalTask[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<unknown>(null);
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [saving, setSaving] = useState(false);
     const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'completed'>('open');
@@ -37,15 +40,18 @@ export const PersonalTasksPage = () => {
     }, []);
 
     const fetchData = async () => {
+        setLoading(true);
+        setError(null);
         try {
-            const [taskData, projectData] = await Promise.all([
+            const [taskData, projectData] = await withRetry(() => Promise.all([
                 getPersonalTasks(),
                 getUserProjects()
-            ]);
+            ]));
             setTasks(taskData);
             setProjects(projectData.filter(isProjectIncludedInImportantSignals));
-        } catch (error) {
-            console.error('Failed to fetch data', error);
+        } catch (err) {
+            console.error('Failed to fetch data', err);
+            setError(err);
         } finally {
             setLoading(false);
         }
@@ -142,14 +148,8 @@ export const PersonalTasksPage = () => {
             });
     }, [tasks, statusFilter]);
 
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center p-12">
-                <span className="material-symbols-outlined text-subtle animate-spin text-3xl">
-                    rotate_right
-                </span>
-            </div>
-        );
+    if (loading || error) {
+        return <DataState loading={loading} error={error} onRetry={fetchData} />;
     }
 
     return (

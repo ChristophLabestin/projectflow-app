@@ -2007,28 +2007,8 @@ export const subscribeInitiativeTasks = (
 
 
 // --- Presence ---
-
-export const updatePresence = async (projectId: string, state: 'online' | 'idle' | 'offline', tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    const resolvedTenant = resolveTenantId(tenantId);
-    // Best effort, no await needed mostly
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, 'presence'), user.uid);
-    try {
-        await setDoc(ref, {
-            uid: user.uid,
-            displayName: user.displayName || 'User',
-            photoURL: user.photoURL || '',
-            email: user.email || '',
-            state,
-            tenantId: resolvedTenant, // Add tenant ID for cross-reference
-            lastChanged: serverTimestamp()
-        }, { merge: true });
-    } catch (e) {
-        console.error("Failed to update presence", e);
-    }
-};
-
+// Presence/online-state now lives in Realtime Database (onDisconnect-backed).
+// See web/services/domain/presenceService.ts and web/hooks/usePresence.ts.
 
 export const updateUserProfile = async (data: {
     displayName?: string,
@@ -2049,94 +2029,6 @@ export const updateUserProfile = async (data: {
 export const getUserProfileStats = async (uid: string, tenantId?: string) => {
     const { getUserProfileStats: getUserProfileStatsDomain } = await import('./domain/profileService');
     return getUserProfileStatsDomain(uid, tenantId);
-};
-
-export const subscribeProjectPresence = (
-    projectId: string,
-    callback: (activeUsers: { uid: string, displayName: string, photoURL?: string, email?: string, state?: 'online' | 'idle' | 'busy' | 'offline', isOnline: boolean, isIdle?: boolean, isBusy?: boolean, lastChanged?: any }[]) => void,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const OFFLINE_TIMEOUT = 2 * 60 * 1000; // 2 minutes - reduced from 5 minutes
-
-    return onSnapshot(projectSubCollection(resolvedTenant, projectId, 'presence'), (snap) => {
-        const now = Date.now();
-        const users = snap.docs
-            .map(d => d.data() as any)
-            .filter(u => {
-                // Include users who are online/idle/busy, or were active within timeout window
-                const lastChangedMs = u.lastChanged ? toMillis(u.lastChanged) : 0;
-                const timeSinceUpdate = now - lastChangedMs;
-                return (u.state === 'online' || u.state === 'idle' || u.state === 'busy') && timeSinceUpdate < OFFLINE_TIMEOUT;
-            })
-            .map(u => ({
-                ...u,
-                isOnline: u.state === 'online',
-                isIdle: u.state === 'idle',
-                isBusy: u.state === 'busy'
-            }));
-
-        callback(users);
-    });
-};
-
-// --- Workspace Presence ---
-
-/**
- * Update the current user's presence at the workspace level (not project-specific)
- * This is stored in tenants/{tenantId}/presence/{userId}
- */
-export const updateWorkspacePresence = async (state: 'online' | 'idle' | 'busy' | 'offline', tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) return;
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const ref = doc(db, 'tenants', resolvedTenant, 'presence', user.uid);
-    try {
-        await setDoc(ref, {
-            uid: user.uid,
-            displayName: user.displayName || 'User',
-            photoURL: user.photoURL || '',
-            email: user.email || '',
-            state,
-            lastChanged: serverTimestamp()
-        }, { merge: true });
-    } catch (e) {
-        console.error("Failed to update workspace presence", e);
-    }
-};
-
-/**
- * Subscribe to all workspace members' presence
- * Returns only users who are online, idle, or busy within the timeout window
- */
-export const subscribeWorkspacePresence = (
-    callback: (activeUsers: { uid: string, displayName: string, photoURL?: string, email?: string, state?: 'online' | 'idle' | 'busy' | 'offline', isOnline: boolean, isIdle?: boolean, isBusy?: boolean, lastChanged?: any }[]) => void,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const OFFLINE_TIMEOUT = 2 * 60 * 1000; // 2 minutes
-
-    const presenceCollection = collection(db, 'tenants', resolvedTenant, 'presence');
-
-    return onSnapshot(presenceCollection, (snap) => {
-        const now = Date.now();
-        const users = snap.docs
-            .map(d => d.data() as any)
-            .filter(u => {
-                const lastChangedMs = u.lastChanged ? toMillis(u.lastChanged) : 0;
-                const timeSinceUpdate = now - lastChangedMs;
-                return (u.state === 'online' || u.state === 'idle' || u.state === 'busy') && timeSinceUpdate < OFFLINE_TIMEOUT;
-            })
-            .map(u => ({
-                ...u,
-                isOnline: u.state === 'online',
-                isIdle: u.state === 'idle',
-                isBusy: u.state === 'busy'
-            }));
-
-        callback(users);
-    });
 };
 
 /**

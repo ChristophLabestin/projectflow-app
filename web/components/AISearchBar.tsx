@@ -180,16 +180,18 @@ export const AISearchBar: React.FC<AISearchBarProps> = ({ tenantId }) => {
     }, [query]);
 
     // Handle AI Search specifically
-    const handleAiSearch = async () => {
-        if (!query.trim()) return;
+    const handleAiSearch = async (explicitQuery?: string) => {
+        const activeQuery = (explicitQuery ?? query).trim();
+        if (!activeQuery) return;
 
+        if (explicitQuery) setQuery(explicitQuery);
         setIsAiLoading(true);
         setError(null);
         setAiAnswer(null);
         setIsModalOpen(true);
 
         try {
-            const answer = await answerQuestionWithContext(query, tenantId);
+            const answer = await answerQuestionWithContext(activeQuery, tenantId);
             setAiAnswer(answer.answer);
 
             // If AI found relevant items, we could potentially merge them,
@@ -343,6 +345,12 @@ export const AISearchBar: React.FC<AISearchBarProps> = ({ tenantId }) => {
     };
 
     const hasQuery = Boolean(query.trim());
+    const coraQuickQuestions = [
+        t('search.quick.plan'),
+        t('search.quick.next'),
+        t('search.quick.overdue'),
+        t('search.quick.attention')
+    ];
 
     return (
         <div ref={searchRef} className="ai-search-bar">
@@ -504,7 +512,7 @@ export const AISearchBar: React.FC<AISearchBarProps> = ({ tenantId }) => {
                                 {hasQuery && !aiAnswer && !isAiLoading && (
                                     <button
                                         type="button"
-                                        onClick={handleAiSearch}
+                                        onClick={() => handleAiSearch()}
                                         className={`ai-search-modal__ask ${selectedIndex === -1 && results.length === 0 ? 'is-selected' : ''}`}
                                     >
                                         <span className={`ai-search-modal__ask-icon ${isQuestion ? 'is-question' : ''}`}>
@@ -525,6 +533,28 @@ export const AISearchBar: React.FC<AISearchBarProps> = ({ tenantId }) => {
                                         <span className="material-symbols-outlined ai-search-modal__result-arrow">arrow_forward</span>
                                     </button>
                                 )}
+                            </div>
+                        )}
+
+                        {!hasQuery && !aiAnswer && !isAiLoading && !error && (
+                            <div className="ai-search-modal__content">
+                                <div className="ai-search-modal__quick">
+                                    <div className="ai-search-modal__quick-title">
+                                        <span className="material-symbols-outlined">auto_awesome</span>
+                                        <span>{t('search.quick.title')}</span>
+                                    </div>
+                                    {coraQuickQuestions.map((question) => (
+                                        <button
+                                            key={question}
+                                            type="button"
+                                            className="ai-search-modal__quick-item"
+                                            onClick={() => handleAiSearch(question)}
+                                        >
+                                            <span className="material-symbols-outlined">arrow_outward</span>
+                                            <span>{question}</span>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </section>

@@ -108,10 +108,15 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
             return;
         }
 
+        // `role` is the primary/display role; `roleIds` holds stacked CUSTOM role
+        // doc ids (Member is implicit, Owner is derived from tenant ownership), so
+        // new members start with an empty roleIds set.
+        const existingMember = await getDoc(tenantMemberDocRef(tenantId, user.uid));
         await setDoc(tenantMemberDocRef(tenantId, user.uid), {
             uid: user.uid,
             joinedAt: serverTimestamp(),
-            role: role || (isOwner ? 'Owner' : 'Member')
+            role: role || (isOwner ? 'Owner' : 'Member'),
+            ...(existingMember.exists() && existingMember.data()?.roleIds ? {} : { roleIds: [] })
         }, { merge: true });
     })().catch((error) => {
         ensureTenantAndUserCache.delete(cacheKey);

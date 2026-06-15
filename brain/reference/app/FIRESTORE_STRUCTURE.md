@@ -20,6 +20,13 @@ These collections are largely public or allow unauthenticated access (e.g., for 
     *   📄 `{postId}`: Blog content
 *   📂 **`news`** (Public Read)
     *   📄 `{docId}`: News items
+*   📂 **`public_initiative_feedback`** (Functions/Admin-SDK only — not in rules)
+    *   📄 `{token}`: Public index for an initiative feedback form (tokenized)
+*   📂 **`public_project_intake`** (Functions/Admin-SDK only — not in rules)
+    *   📄 `{token}`: Public index for a **project intake** form. Holds `tenantId`, `projectId`,
+        `projectTitle`, `enabled`, copy, and sanitized `categories` (each with `fields`). Read/written
+        only by `getProjectIntakeForm`/`submitProjectIntake`/`saveProjectIntakeConfig` (Admin SDK
+        bypasses rules), exactly like `public_initiative_feedback`. Public route: `/feedback/project/{token}`.
 
 ---
 
@@ -69,9 +76,23 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 **Path:** `/tenants/{tenantId}/members/{userId}`
 **Schema:** `TenantMembership`
 - `uid`: string
-- `role`: "Owner" | "Admin" | "Member" | "Guest"
+- `role`: "Owner" | "Member" | "Guest" (primary/display role; Owner derived from tenant ownership)
+- `roleIds`: string[] (authoritative stacked CUSTOM role doc ids; Member is implicit, never stored; Owner/Guest are derived). See `roles` below.
 - `joinedAt`: Timestamp
 - `groupIds`: string[] (Workspace groups)
+
+#### ↳ 📂 **`roles`** *(Discord-style custom role definitions)*
+**Path:** `/tenants/{tenantId}/roles/{roleId}`
+**Access:** Tenant members read; tenant Owner writes (Firestore rules). 
+**Schema:** `FirestoreRole` (node-model `Role`)
+- `name`, `color`, `description`, `position` (higher = more authority)
+- `isSystem`: boolean, `systemKey`: "OWNER" | "MEMBER" | "GUEST" | null
+- `permissions`: `{ allow: PermissionNode[]; deny: PermissionNode[] }` (deny overrides allow)
+- `createdBy`, `createdAt`, `updatedAt`
+- Only **custom** roles are stored here. System roles (Owner/Member/Guest) are code-defined
+  (`SYSTEM_ROLE_DEFAULTS` in `web/services/permissionService.ts`). Evaluation: `PermissionContext`
+  loads these docs + `member.roleIds` and applies the implicit Member + Owner/Guest system roles.
+- Legacy `tenant.customRoles[]` (array on the tenant doc) is deprecated and no longer written.
 
 #### ↳ 📂 **`users/{userId}/personalTasks`**
 **Path:** `/tenants/{tenantId}/users/{userId}/personalTasks/{taskId}`
@@ -277,6 +298,7 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `squareIconFileId`: string (Optional, managed file reference)
 - `screenshots`: string[] (Legacy URLs)
 - `screenshotFileIds`: string[] (Optional, managed file references)
+- `intakeForm`: Object (optional) — public **project intake** config. `{ enabled, token, title, description, submitLabel, successMessage, allowAttachments, maxAttachments, autoCreateTask, categories: [{ id, label, icon, description, enabled, fields: IntakeField[] }] }`. Written only by the `saveProjectIntakeConfig` Cloud Function; when `enabled`, mirrored to `public_project_intake/{token}`.
 
 > **Project Subcollections**
 > These collections exist *within* a project document.
@@ -295,6 +317,8 @@ These collections are largely public or allow unauthenticated access (e.g., for 
     *   📄 `Idea`: `{ title, stage, impact, effort, ... }`
 *   **`sprints`**
     *   📄 `Sprint`: `{ name, goal, startDate, endDate, status }`
+*   **`submissions`** *(External project intake — see `intakeForm` above)*
+    *   📄 `ProjectSubmission`: `{ categoryId, categoryLabel, status: "new"|"reviewed"|"accepted"|"archived", title, description, submitter: { name, email, company }, fields: SubmittedField[], attachments: Attachment[], linkedTaskId, source: "public-form", submittedAt, createdAt }`. Created by `submitProjectIntake` (Admin SDK). Project members read/triage via the project `{document=**}` rule; status/convert/delete happen client-side. Attachments live in Storage at `project-intake/{tenantId}/{projectId}/{submissionId}/…` and are served via signed URLs.
 *   **`activities`**
     *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Audit log; Codex activity uses `type: "codex"`)
 *   **`comments`** _(Implied)_
@@ -340,6 +364,23 @@ These collections are at the root level but often contain `projectId` references
 - `type`: "image" | "video"
 
 ---
+
+## **Realtime Database (Presence — not Firestore)**
+
+User presence / online-state lives in **Firebase Realtime Database**, not Firestore,
+because RTDB `onDisconnect` reliably marks users offline on connection loss.
+
+*   **`/status/{tenantId}/{uid}`**
+    *   `uid`, `displayName`, `photoURL`, `email`
+    *   `state`: `"online" | "idle" | "busy" | "offline"`
+    *   `currentProjectId`: string | null (project the user is currently viewing)
+    *   `lastChanged`: RTDB server timestamp (ms)
+*   Rules (`database.rules.json`): `/status/{tenantId}` read = any authed user (tradeoff:
+    presence is cross-tenant readable; future upgrade gates on mirrored membership);
+    `/status/{tenantId}/{uid}` write = self only.
+*   Client: `web/services/domain/presenceService.ts` + `web/hooks/usePresence.ts`.
+    Requires `VITE_FIREBASE_DATABASE_URL`; presence is disabled (no online indicators)
+    when unset. The former Firestore `presence` subcollections are retired.
 
 ## **Collection Groups (Queries)**
 Allow querying across all workspaces regardless of hierarchy.

@@ -14,9 +14,17 @@
 @use '../src/styles/components/pinned-tasks';
 @use '../src/styles/components/layout';
 @use '../src/styles/components/project-switcher';
+@use '../src/styles/components/sidebar-navigator';
 @use '../src/styles/components/initiatives';
 @use '../src/styles/components/public-initiative-feedback';
+@use '../src/styles/components/public-project-intake';
+@use '../src/styles/components/project-intake';
 @use '../src/styles/components/health-detail-modal';
+@use '../src/styles/components/error-boundary';
+@use '../src/styles/components/global-toast';
+@use '../src/styles/components/milestone-card';
+@use '../src/styles/components/data-state';
+@use '../src/styles/components/invoices';
 
 * {
   box-sizing: border-box;

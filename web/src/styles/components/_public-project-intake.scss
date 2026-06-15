@@ -1,0 +1,572 @@
+/* ===== Public Project Intake — external form ===== */
+.pintake {
+    height: 100vh;
+    max-height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: clamp(1.25rem, 4vw, 3.5rem) 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: safe center;
+    gap: 1.25rem;
+    background:
+        radial-gradient(120% 80% at 50% -10%, rgba(var(--color-primary-rgb), 0.06), transparent 60%),
+        linear-gradient(180deg, var(--color-surface-bg) 0%, var(--color-surface-hover) 100%);
+}
+
+/* Fallback for engines without `safe` alignment: auto margins center when it
+   fits and collapse when content overflows so the card stays fully scrollable. */
+@supports not (justify-content: safe center) {
+    .pintake { justify-content: flex-start; }
+    .pintake__card { margin-top: auto; }
+    .pintake__brandline { margin-bottom: auto; }
+    .pintake__card--status { margin-bottom: auto; }
+}
+
+.pintake__card {
+    position: relative;
+    width: min(100%, 42rem);
+    padding: clamp(1.75rem, 4vw, 3rem);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-surface-border);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, var(--shadow-soft), 0 40px 80px -48px rgba(0, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 3vw, 2rem);
+
+    &--status {
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        min-height: 18rem;
+        gap: 1rem;
+
+        h1 { margin: 0; font-size: 1.4rem; color: var(--color-text-main); }
+        p { margin: 0; max-width: 26rem; line-height: 1.6; color: var(--color-text-muted); }
+    }
+}
+
+.pintake__status-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    color: var(--color-text-subtle);
+
+    .material-symbols-outlined { font-size: 1.75rem; }
+}
+
+.pintake__spinner {
+    font-size: 2.25rem;
+    color: var(--color-text-subtle);
+    animation: pintake-spin 1s linear infinite;
+}
+
+@keyframes pintake-spin { to { transform: rotate(360deg); } }
+
+/* ---- Header ---- */
+.pintake__head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+
+    h1 {
+        margin: 0;
+        font-size: clamp(1.6rem, 3.5vw, 2.1rem);
+        line-height: 1.12;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 0;
+        color: var(--color-text-muted);
+        line-height: 1.6;
+        font-size: 1rem;
+    }
+}
+
+.pintake__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    align-self: flex-start;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    padding: 0.35rem 0.7rem 0.35rem 0.55rem;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    border: 1px solid var(--color-surface-border);
+
+    .material-symbols-outlined { font-size: 0.95rem; }
+}
+
+/* ---- Stepper ---- */
+.pintake__steps {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pintake__step {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-subtle);
+
+    &.is-active { color: var(--color-text-main); }
+}
+
+.pintake__step-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.6rem;
+    height: 1.6rem;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    border: 1px solid var(--color-surface-border);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-text-subtle);
+
+    .material-symbols-outlined { font-size: 1rem; }
+}
+
+.pintake__step.is-active .pintake__step-dot {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: var(--color-text-ondark);
+}
+
+.pintake__step.is-done .pintake__step-dot {
+    background: var(--color-success);
+    border-color: var(--color-success);
+    color: #fff;
+}
+
+.pintake__step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--color-surface-border);
+}
+
+.pintake__section-hint {
+    margin: 0 0 0.25rem;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+/* ---- Step 1: choice cards ---- */
+.pintake__cards {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.pintake__choice {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    padding: 1rem 1.1rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-surface-border);
+    background: var(--color-surface-card);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s, background-color 0.15s;
+
+    &:hover {
+        border-color: rgba(var(--color-primary-rgb), 0.4);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    &:focus-visible {
+        outline: 0;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.12);
+    }
+}
+
+.pintake__choice-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    flex-shrink: 0;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-primary-rgb), 0.06);
+    color: var(--color-primary);
+
+    .material-symbols-outlined { font-size: 1.5rem; }
+}
+
+.pintake__choice-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    flex: 1;
+    min-width: 0;
+
+    strong { font-size: 0.98rem; font-weight: 700; color: var(--color-text-main); }
+    span { font-size: 0.85rem; color: var(--color-text-muted); line-height: 1.4; }
+}
+
+.pintake__choice-arrow {
+    color: var(--color-text-subtle);
+    font-size: 1.2rem;
+    transition: transform 0.15s, color 0.15s;
+}
+
+.pintake__choice:hover .pintake__choice-arrow {
+    color: var(--color-primary);
+    transform: translateX(3px);
+}
+
+/* ---- Step 2: form ---- */
+.pintake__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.pintake__active {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.pintake__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    .material-symbols-outlined { font-size: 1.1rem; }
+    &:hover { color: var(--color-text-main); }
+}
+
+.pintake__active-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-primary-rgb), 0.06);
+    color: var(--color-primary);
+    font-size: 0.82rem;
+    font-weight: 700;
+
+    .material-symbols-outlined { font-size: 1rem; }
+}
+
+.pintake__fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+
+    legend {
+        padding: 0;
+        font-size: 0.7rem;
+        font-weight: 800;
+        letter-spacing: 0.07em;
+        text-transform: uppercase;
+        color: var(--color-text-subtle);
+    }
+}
+
+.pintake__honeypot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pintake__grid {
+    display: grid;
+    gap: 1rem;
+
+    @media (min-width: 720px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.pintake__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    &--full { grid-column: 1 / -1; }
+
+    label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+}
+
+.pintake__req { color: var(--color-error); }
+
+.pintake__help {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    line-height: 1.45;
+}
+
+.pintake__input {
+    width: 100%;
+    min-height: 2.9rem;
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-md);
+    padding: 0.7rem 0.9rem;
+    background: var(--color-surface-bg);
+    color: var(--color-text-main);
+    font-size: 0.95rem;
+    outline: 0;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+
+    &:hover { border-color: var(--color-surface-border-hover); }
+
+    &:focus, &:focus-visible {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
+        background: var(--color-surface-card);
+    }
+
+    &::placeholder { color: var(--color-text-subtle); }
+}
+
+.pintake__input--textarea {
+    min-height: 8rem;
+    resize: vertical;
+    line-height: 1.55;
+}
+
+.pintake__select-wrap {
+    position: relative;
+}
+
+.pintake__select {
+    appearance: none;
+    padding-right: 2.5rem;
+    cursor: pointer;
+}
+
+.pintake__select-caret {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--color-text-subtle);
+    font-size: 1.2rem;
+}
+
+/* ---- Dropzone ---- */
+.pintake__dropzone {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 1.5rem 1rem;
+    border-radius: var(--radius-lg);
+    border: 1.5px dashed var(--color-surface-border-hover);
+    background: var(--color-surface-bg);
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.15s, background-color 0.15s;
+
+    .material-symbols-outlined { font-size: 1.75rem; color: var(--color-text-subtle); }
+    strong { font-size: 0.9rem; color: var(--color-text-main); }
+
+    &:hover, &.is-drag {
+        border-color: var(--color-primary);
+        background: rgba(var(--color-primary-rgb), 0.03);
+    }
+
+    &.is-drag .material-symbols-outlined { color: var(--color-primary); }
+}
+
+.pintake__dropzone-hint {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.pintake__file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.pintake__files {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.pintake__file {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-hover);
+    border: 1px solid var(--color-surface-border);
+
+    > .material-symbols-outlined { font-size: 1.1rem; color: var(--color-text-muted); flex-shrink: 0; }
+}
+
+.pintake__file-name {
+    flex: 1;
+    min-width: 0;
+    font-size: 0.85rem;
+    color: var(--color-text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pintake__file-size {
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
+    flex-shrink: 0;
+}
+
+.pintake__file-remove {
+    display: inline-flex;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    color: var(--color-text-subtle);
+    padding: 0.1rem;
+    border-radius: var(--radius-sm);
+
+    .material-symbols-outlined { font-size: 1rem; }
+    &:hover { color: var(--color-error); }
+}
+
+/* ---- Footer / states ---- */
+.pintake__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--color-surface-border);
+
+    .btn {
+        min-height: 2.9rem;
+        padding: 0 1.5rem;
+        border-radius: var(--radius-md);
+        gap: 0.4rem;
+
+        .material-symbols-outlined { font-size: 1.1rem; }
+    }
+}
+
+.pintake__footer-note {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+
+    .material-symbols-outlined { font-size: 0.95rem; color: var(--color-text-subtle); }
+}
+
+.pintake__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.85rem 1rem;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-error-rgb), 0.08);
+    color: var(--color-error);
+    border: 1px solid rgba(var(--color-error-rgb), 0.16);
+
+    .material-symbols-outlined { font-size: 1.15rem; flex-shrink: 0; }
+}
+
+.pintake__success {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.75rem;
+    padding: 1.5rem 0.5rem 0.5rem;
+
+    h2 { margin: 0; font-size: 1.35rem; font-weight: 800; color: var(--color-text-main); }
+    p { margin: 0; max-width: 28rem; color: var(--color-text-muted); line-height: 1.6; }
+
+    .btn { margin-top: 0.5rem; }
+}
+
+.pintake__success-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-success-rgb), 0.12);
+    color: var(--color-success);
+    animation: pintake-pop 0.3s ease;
+
+    .material-symbols-outlined { font-size: 2rem; font-weight: 700; }
+}
+
+@keyframes pintake-pop {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.pintake__brandline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-text-subtle);
+
+    .material-symbols-outlined { font-size: 0.95rem; }
+}

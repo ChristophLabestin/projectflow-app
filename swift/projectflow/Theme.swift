@@ -126,3 +126,98 @@ enum PFRadius {
     static let xl: CGFloat = 24
     static let full: CGFloat = 999
 }
+
+// MARK: - Companion V2 typography
+
+/// Central typography scale for the companion V2 UI. Uses the rounded system
+/// design for a friendlier, distinctly-V2 feel while staying neutral/monochrome.
+enum PFFont {
+    /// Large screen titles / greeting.
+    static let display = Font.system(.title, design: .rounded).weight(.bold)
+    /// Standard screen / large card title.
+    static let title = Font.system(.title2, design: .rounded).weight(.bold)
+    /// Smaller emphasis number (metric value).
+    static let metric = Font.system(.title3, design: .rounded).weight(.bold)
+    /// Section header.
+    static let section = Font.system(.headline, design: .rounded).weight(.semibold)
+    /// Card / row title.
+    static let rowTitle = Font.system(.subheadline).weight(.semibold)
+    /// Body copy.
+    static let body = Font.system(.subheadline)
+    /// Secondary detail copy.
+    static let detail = Font.system(.caption)
+    /// Eyebrow / uppercase label.
+    static let eyebrow = Font.system(.caption2).weight(.bold)
+    /// Chip / pill text.
+    static let chip = Font.system(.caption2).weight(.semibold)
+}
+
+// MARK: - Companion V2 elevation
+
+enum PFElevation {
+    case none
+    case card
+    case raised
+    case overlay
+
+    func color(for scheme: ColorScheme) -> Color {
+        switch self {
+        case .none: return .clear
+        case .card: return Color.black.opacity(scheme == .dark ? 0.30 : 0.05)
+        case .raised: return Color.black.opacity(scheme == .dark ? 0.40 : 0.08)
+        case .overlay: return Color.black.opacity(scheme == .dark ? 0.55 : 0.14)
+        }
+    }
+
+    var radius: CGFloat {
+        switch self {
+        case .none: return 0
+        case .card: return 6
+        case .raised: return 14
+        case .overlay: return 28
+        }
+    }
+
+    var y: CGFloat {
+        switch self {
+        case .none: return 0
+        case .card: return 2
+        case .raised: return 6
+        case .overlay: return 12
+        }
+    }
+}
+
+private struct PFElevationModifier: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    let elevation: PFElevation
+
+    func body(content: Content) -> some View {
+        content.shadow(
+            color: elevation.color(for: colorScheme),
+            radius: elevation.radius,
+            x: 0,
+            y: elevation.y
+        )
+    }
+}
+
+extension View {
+    func pfElevation(_ elevation: PFElevation) -> some View {
+        modifier(PFElevationModifier(elevation: elevation))
+    }
+}
+
+// MARK: - Layout constants
+
+enum PFLayout {
+    /// Bottom clearance so the last scroll element clears the floating tab bar.
+    static let tabBarClearance: CGFloat = 84
+}
+
+extension View {
+    /// Adds bottom padding so scroll content isn't covered by the floating tab bar.
+    func pfTabBarClearance() -> some View {
+        padding(.bottom, PFLayout.tabBarClearance)
+    }
+}

@@ -5,6 +5,8 @@ import FirebaseAuth
 import UserNotifications
 #endif
 
+// MARK: - NotificationsView (Inbox) — Companion V2
+
 struct NotificationsView: View {
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var session: SessionStore
@@ -22,48 +24,40 @@ struct NotificationsView: View {
         NavigationStack {
             ZStack {
                 AppBackground()
-                ScrollView {
-                    VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: PFSpacing.md) {
                         deliveryStatusCard
 
-                        if store.isLoading {
-                            PFCard {
-                                HStack(spacing: PFSpacing.sm) {
-                                    ProgressView()
-                                    Text("Loading notifications...")
-                                        .foregroundStyle(colors.textMuted)
-                                }
-                            }
+                        if store.isLoading && store.items.isEmpty {
+                            ProgressView().frame(maxWidth: .infinity).padding(.top, PFSpacing.xl)
                         } else if store.items.isEmpty {
-                            PFCard {
-                                VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                                    Text("You're all caught up.")
-                                        .font(.headline)
-                                        .foregroundStyle(colors.textMain)
-                                    Text("Project and task updates will show here.")
-                                        .font(.subheadline)
-                                        .foregroundStyle(colors.textMuted)
-                                }
-                            }
+                            PFEmptyState(
+                                icon: "bell",
+                                title: L10n.tr("inbox.empty", fallback: "You're all caught up"),
+                                message: L10n.tr("inbox.empty.message", fallback: "New notifications will show up here.")
+                            )
+                            .padding(.top, PFSpacing.lg)
                         } else {
-                            VStack(spacing: PFSpacing.md) {
+                            VStack(spacing: PFSpacing.sm) {
                                 ForEach(store.items) { notification in
                                     notificationLink(for: notification)
                                         .swipeActions(edge: .trailing) {
                                             Button(role: .destructive) {
                                                 store.deleteNotification(notification)
                                             } label: {
-                                                Label("Delete", systemImage: "trash")
+                                                Label(L10n.tr("common.delete", fallback: "Delete"), systemImage: "trash")
                                             }
                                         }
                                 }
                             }
                         }
                     }
-                    .pfScreenPadding()
+                    .pfScreenPadding(vertical: PFSpacing.md)
+                    .pfTabBarClearance()
+                    .tabBarScrollShrink()
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle(L10n.tr("inbox.title", fallback: "Inbox"))
             .toolbar {
                 if !store.items.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
@@ -71,37 +65,29 @@ struct NotificationsView: View {
                             Button {
                                 store.markAllAsRead()
                             } label: {
-                                Label("Mark all as read", systemImage: "checkmark.circle")
+                                Label(L10n.tr("inbox.markAllRead", fallback: "Mark all read"), systemImage: "checkmark.circle")
                             }
-                            
                             Button(role: .destructive) {
                                 showingClearAllConfirm = true
                             } label: {
-                                Label("Clear all", systemImage: "trash")
+                                Label(L10n.tr("inbox.clearAll", fallback: "Clear all"), systemImage: "trash")
                             }
                         } label: {
-                            Image(systemName: "ellipsis.circle")
-                                .foregroundStyle(colors.textMain)
+                            Image(systemName: "ellipsis.circle").foregroundStyle(colors.textMain)
                         }
                     }
                 }
             }
-            .confirmationDialog("Clear all notifications?", isPresented: $showingClearAllConfirm, titleVisibility: .visible) {
-                Button("Clear All", role: .destructive) {
-                    store.clearAll()
-                }
-                Button("Cancel", role: .cancel) {}
+            .confirmationDialog(L10n.tr("inbox.clearAll.confirm", fallback: "Clear all notifications?"), isPresented: $showingClearAllConfirm, titleVisibility: .visible) {
+                Button(L10n.tr("inbox.clearAll", fallback: "Clear all"), role: .destructive) { store.clearAll() }
+                Button(L10n.tr("common.cancel", fallback: "Cancel"), role: .cancel) {}
             }
         }
         .onAppear {
-            if session.user != nil {
-                store.start()
-            }
+            if session.user != nil { store.start() }
             refreshDeliveryDiagnostics()
         }
-        .onDisappear {
-            store.stop()
-        }
+        .onDisappear { store.stop() }
         .onChange(of: session.user?.uid) { _, _ in
             store.start()
             refreshDeliveryDiagnostics()
@@ -112,47 +98,39 @@ struct NotificationsView: View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.md) {
                 HStack(alignment: .top, spacing: PFSpacing.md) {
-                    Image(systemName: "bell.badge")
-                        .foregroundStyle(colors.primary)
-                        .font(.title3)
-                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                        Text("Delivery status")
-                            .font(.headline)
+                    PFIconTile(icon: "bell.badge", tint: colors.primary, size: 38)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.tr("inbox.delivery", fallback: "Delivery status"))
+                            .font(PFFont.rowTitle)
                             .foregroundStyle(colors.textMain)
-                        Text("Push readiness for this device.")
-                            .font(.subheadline)
+                        Text(L10n.tr("inbox.delivery.subtitle", fallback: "Push readiness for this device."))
+                            .font(PFFont.detail)
                             .foregroundStyle(colors.textMuted)
                     }
                     Spacer()
-                    Button {
-                        refreshDeliveryDiagnostics()
-                    } label: {
-                        Image(systemName: "arrow.clockwise")
+                    Button { refreshDeliveryDiagnostics() } label: {
+                        Image(systemName: "arrow.clockwise").foregroundStyle(colors.textMuted)
                     }
                     .buttonStyle(.plain)
-                    .foregroundStyle(colors.textMuted)
                 }
 
                 VStack(spacing: PFSpacing.sm) {
-                    diagnosticRow(label: "Permission", value: authorizationStatusLabel)
+                    diagnosticRow(label: L10n.tr("inbox.permission", fallback: "Permission"), value: authorizationStatusLabel)
                     Divider()
-                    diagnosticRow(label: "FCM token", value: pushTokenLabel)
+                    diagnosticRow(label: L10n.tr("inbox.token", fallback: "FCM token"), value: pushTokenLabel)
                     Divider()
-                    diagnosticRow(label: "Last sync", value: lastTokenSyncLabel)
+                    diagnosticRow(label: L10n.tr("inbox.lastSync", fallback: "Last sync"), value: lastTokenSyncLabel)
                 }
             }
-            .padding(PFSpacing.md)
         }
     }
 
     private func diagnosticRow(label: String, value: String) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .font(.subheadline)
-                .foregroundStyle(colors.textMuted)
+            Text(label).font(PFFont.body).foregroundStyle(colors.textMuted)
             Spacer(minLength: PFSpacing.md)
             Text(value)
-                .font(.subheadline.weight(.semibold))
+                .font(PFFont.body.weight(.semibold))
                 .foregroundStyle(colors.textMain)
                 .multilineTextAlignment(.trailing)
         }
@@ -161,18 +139,12 @@ struct NotificationsView: View {
     private var authorizationStatusLabel: String {
 #if os(iOS)
         switch authorizationStatus {
-        case .authorized:
-            return "Allowed"
-        case .denied:
-            return "Blocked"
-        case .notDetermined:
-            return "Not requested"
-        case .provisional:
-            return "Provisional"
-        case .ephemeral:
-            return "Ephemeral"
-        @unknown default:
-            return "Unknown"
+        case .authorized: return "Allowed"
+        case .denied: return "Blocked"
+        case .notDetermined: return "Not requested"
+        case .provisional: return "Provisional"
+        case .ephemeral: return "Ephemeral"
+        @unknown default: return "Unknown"
         }
 #else
         return "Unsupported"
@@ -180,16 +152,12 @@ struct NotificationsView: View {
     }
 
     private var pushTokenLabel: String {
-        guard let pushToken, !pushToken.isEmpty else {
-            return "Not synced"
-        }
+        guard let pushToken, !pushToken.isEmpty else { return "Not synced" }
         return "\(pushToken.prefix(10))..."
     }
 
     private var lastTokenSyncLabel: String {
-        guard let lastTokenSyncDate else {
-            return "Never"
-        }
+        guard let lastTokenSyncDate else { return "Never" }
         return lastTokenSyncDate.formatted(date: .abbreviated, time: .shortened)
     }
 
@@ -198,9 +166,7 @@ struct NotificationsView: View {
         lastTokenSyncDate = PushTokenManager.shared.lastSyncDate
 #if os(iOS)
         UNUserNotificationCenter.current().getNotificationSettings { settings in
-            DispatchQueue.main.async {
-                authorizationStatus = settings.authorizationStatus
-            }
+            DispatchQueue.main.async { authorizationStatus = settings.authorizationStatus }
         }
 #endif
     }
@@ -217,14 +183,10 @@ struct NotificationsView: View {
                 NotificationRow(notification: notification, store: store)
             }
             .buttonStyle(.plain)
-            .simultaneousGesture(TapGesture().onEnded {
-                store.markAsRead(notification)
-            })
+            .simultaneousGesture(TapGesture().onEnded { store.markAsRead(notification) })
         } else {
             NotificationRow(notification: notification, store: store)
-                .onTapGesture {
-                    store.markAsRead(notification)
-                }
+                .onTapGesture { store.markAsRead(notification) }
         }
     }
 }
@@ -245,46 +207,42 @@ private struct NotificationRow: View {
                         .frame(width: 8, height: 8)
                         .padding(.top, 6)
 
-                    VStack(alignment: .leading, spacing: PFSpacing.xs) {
+                    VStack(alignment: .leading, spacing: 2) {
                         HStack {
                             Text(notification.title)
-                                .font(.headline)
+                                .font(PFFont.rowTitle)
                                 .foregroundStyle(colors.textMain)
                             Spacer()
                             Text(relativeTime(notification.createdAt))
-                                .font(.caption)
+                                .font(PFFont.detail)
                                 .foregroundStyle(colors.textSubtle)
                         }
                         Text(notification.message)
-                            .font(.subheadline)
+                            .font(PFFont.body)
                             .foregroundStyle(colors.textMuted)
                     }
                 }
-                
+
                 if notification.type == "project_join_request" || notification.type == "project_invite" {
                     HStack(spacing: PFSpacing.md) {
                         Button {
-                            _Concurrency.Task {
-                                await store.respondToInvite(notification: notification, accept: true)
-                            }
+                            Task { await store.respondToInvite(notification: notification, accept: true) }
                         } label: {
-                            Text("Accept")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
+                            Text(L10n.tr("common.accept", fallback: "Accept"))
+                                .font(PFFont.chip)
+                                .foregroundStyle(colors.primaryText)
                                 .padding(.horizontal, PFSpacing.md)
                                 .padding(.vertical, 6)
                                 .background(colors.primary)
                                 .clipShape(Capsule())
                         }
                         .buttonStyle(.plain)
-                        
+
                         Button {
-                            _Concurrency.Task {
-                                await store.respondToInvite(notification: notification, accept: false)
-                            }
+                            Task { await store.respondToInvite(notification: notification, accept: false) }
                         } label: {
-                            Text("Decline")
-                                .font(.subheadline.weight(.semibold))
+                            Text(L10n.tr("common.decline", fallback: "Decline"))
+                                .font(PFFont.chip)
                                 .foregroundStyle(colors.textMuted)
                                 .padding(.horizontal, PFSpacing.md)
                                 .padding(.vertical, 6)
@@ -293,7 +251,7 @@ private struct NotificationRow: View {
                         }
                         .buttonStyle(.plain)
                     }
-                    .padding(.leading, 24)
+                    .padding(.leading, 20)
                 }
             }
         }

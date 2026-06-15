@@ -1,0 +1,56 @@
+.error-boundary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 24px;
+    background: var(--color-surface-bg);
+
+    &__card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 12px;
+        max-width: 420px;
+        padding: 40px 32px;
+        border-radius: 16px;
+        background: var(--color-surface-card);
+    }
+
+    &__icon {
+        font-size: 48px;
+        color: var(--color-error);
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    &__body {
+        margin: 0;
+        font-size: 0.9375rem;
+        line-height: 1.5;
+        color: var(--color-text-secondary);
+    }
+
+    &__button {
+        margin-top: 8px;
+        padding: 10px 24px;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--color-primary-text);
+        background: var(--color-primary);
+
+        &:hover {
+            background: var(--color-primary-hover);
+        }
+    }
+}

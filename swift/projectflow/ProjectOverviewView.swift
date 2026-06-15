@@ -1,8 +1,12 @@
 import SwiftUI
-import FirebaseCore // For Timestamp
-import FirebaseStorage
 import FirebaseFirestore
 
+// MARK: - ProjectOverviewView — Companion V2 (full redesign)
+//
+// A clean, prioritized project detail page: a bold hero header, a module switch,
+// and a glanceable overview (attention → metrics → tasks → milestones → activity
+// → team → AI → resources). The dense multi-widget dashboard grid is gone; the
+// data flow (ProjectOverviewStore, module embeds, report/team sheets) is intact.
 
 struct ProjectOverviewView: View {
     @Environment(\.colorScheme) private var colorScheme
@@ -23,23 +27,10 @@ struct ProjectOverviewView: View {
     }
 
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    private let fixedCards: [ProjectOverviewCardType] = [
-        .snapshot,
-        .execution,
-        .updates,
-        .milestones,
-        .aiInsights,
-        .team,
-        .resources,
-        .planning,
-        .controls
-    ]
-    private var resolvedTenantId: String? {
-        tenantId ?? project.tenantId
-    }
-    private var permissionContext: PermissionContext {
-        appSession.permissionContext(project: project)
-    }
+    private let twoColumns = [GridItem(.flexible(), spacing: PFSpacing.sm), GridItem(.flexible(), spacing: PFSpacing.sm)]
+
+    private var resolvedTenantId: String? { tenantId ?? project.tenantId }
+    private var permissionContext: PermissionContext { appSession.permissionContext(project: project) }
     private var healthSnapshot: ProjectHealthSnapshot {
         HealthService.calculateProjectHealth(
             project: project,
@@ -54,23 +45,14 @@ struct ProjectOverviewView: View {
         ZStack {
             AppBackground()
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 14) {
-                    ProjectDetailHeaderCard(project: project, coverImageURL: store.coverImageURL)
+                VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                    ProjectHeroHeader(project: project, coverImageURL: store.coverImageURL, health: healthSnapshot)
                     ProjectModuleNavBar(project: project, permissions: permissionContext, selection: $navSelection)
                     moduleDestination
-                    if navSelection == .overview {
-                        CompanyProjectOverviewSection(project: project, linkedProjects: linkedProjects)
-                        ProjectDetailAttentionCard(
-                            health: healthSnapshot,
-                            tasks: store.tasks,
-                            milestones: store.milestones,
-                            onOpenReport: { showingReport = true }
-                        )
-                        content
-                    }
+                    if navSelection == .overview { overviewSections }
                 }
                 .pfScreenPadding(vertical: PFSpacing.md)
-                .padding(.bottom, PFSpacing.xl)
+                .pfTabBarClearance()
             }
         }
         .navigationTitle(project.title)
@@ -88,16 +70,11 @@ struct ProjectOverviewView: View {
                     isGenerating: store.isGeneratingReport,
                     onGenerate: {
                         guard let tenantId = resolvedTenantId else { return }
-                        _Concurrency.Task {
-                            await store.generateReport(tenantId: tenantId, projectId: project.id, user: userProfile)
-                        }
+                        Task { await store.generateReport(tenantId: tenantId, projectId: project.id, user: userProfile) }
                     }
                 )
             } else {
-                VStack {
-                    ProgressView()
-                    Text("Loading Profile...")
-                }
+                VStack { ProgressView() }
             }
         }
         .onAppear {
@@ -106,14 +83,14 @@ struct ProjectOverviewView: View {
             store.start(tenantId: tenantId, projectId: project.id)
             loadLinkedProjects(tenantId: tenantId)
         }
-        .onChange(of: session.user) { _, user in
-            tenantStore.update(for: user)
-        }
+        .onChange(of: session.user) { _, user in tenantStore.update(for: user) }
         .onDisappear {
             store.stop()
             tenantStore.stop()
         }
     }
+
+    // MARK: Module destination
 
     @ViewBuilder
     private var moduleDestination: some View {
@@ -124,7 +101,7 @@ struct ProjectOverviewView: View {
             case .initiatives:
                 InitiativesProjectListView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
             case .tasks:
-                ProjectTaskListEmbed(tenantId: tenantId, projectId: project.id, tasks: store.tasks, permissions: permissionContext)
+                ProjectTaskListEmbed(project: project, tenantId: tenantId, tasks: store.tasks, permissions: permissionContext)
             case .sprints:
                 ProjectSprintsView(tenantId: tenantId, projectId: project.id, permissions: permissionContext)
             case .milestones:
@@ -139,528 +116,272 @@ struct ProjectOverviewView: View {
         }
     }
 
-    private func loadLinkedProjects(tenantId: String) {
-        guard project.isCompanyProject else { return }
-        let db = Firestore.firestore()
-        db.collection(FirestorePath.tenants).document(tenantId)
-            .collection(FirestorePath.projects)
-            .whereField("companyProjectId", isEqualTo: project.id)
-            .getDocuments { snapshot, _ in
-                linkedProjects = snapshot?.documents.map { Project(id: $0.documentID, data: $0.data()) } ?? []
-            }
-    }
-
-    private var overviewContent: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if let _ = resolvedTenantId {
-                if store.isLoading {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, minHeight: 200)
-                } else {
-                    ForEach(fixedCards, id: \.self) { card in
-                        renderCard(for: card)
-                    }
-                }
-            } else {
-                PFCard {
-                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                        Text("Select a workspace to view project data.")
-                            .font(.headline)
-                            .foregroundStyle(colors.textMain)
-                        Text("We could not resolve an active tenant for this session.")
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMuted)
-                    }
-                }
-            }
-        }
-    }
-
-    private var content: some View {
-        overviewContent
-    }
+    // MARK: Overview sections
 
     @ViewBuilder
-    private func renderCard(for type: ProjectOverviewCardType) -> some View {
-        switch type {
-        case .snapshot:
-            SnapshotSection(
+    private var overviewSections: some View {
+        if resolvedTenantId == nil {
+            PFCard {
+                PFEmptyState(icon: "building.2", title: L10n.tr("company.none", fallback: "Select a workspace"))
+            }
+        } else if store.isLoading && store.tasks.isEmpty {
+            ProgressView().frame(maxWidth: .infinity, minHeight: 160)
+        } else {
+            CompanyProjectOverviewSection(project: project, linkedProjects: linkedProjects)
+            ProjectAttentionCard(
                 health: healthSnapshot,
-                history: store.healthHistory,
-                tasks: store.tasks,
-                activity: store.activity
+                openTasks: openTaskCount,
+                urgentTasks: urgentTaskCount,
+                milestones: store.milestones.count,
+                onOpenReport: { showingReport = true }
             )
-        case .execution:
-            ExecutionSection(
-                tasks: store.tasks,
-                projectGroups: [],
-                resolvedTenantId: resolvedTenantId,
-                permissionContext: permissionContext,
-                onToggleTask: { task in
-                    _Concurrency.Task {
-                        await store.toggleTask(
-                            tenantId: resolvedTenantId ?? "",
-                            projectId: project.id,
-                            task: task,
-                            permissions: permissionContext
-                        )
-                    }
-                }
-            )
-        case .updates:
-            UpdatesWidget(
-                activity: store.activity,
-                tasks: store.tasks,
-                resolvedTenantId: resolvedTenantId,
-                permissionContext: permissionContext
-            )
-        case .resources:
-            ResourcesWidget(project: project)
-        case .planning:
-            PlanningWidget(project: project)
-        case .milestones:
-            MilestonesWidget(milestones: store.milestones)
-        case .aiInsights:
-            AiInsightsWidget(report: store.pinnedReport) {
-                showingReport = true
-            }
-        case .team:
-            TeamWidget(profiles: store.memberProfiles) {
-                showingTeamManagement = true
-            }
-        case .controls:
-            ControlsWidget(project: project)
+            metricsGrid
+            tasksCard
+            if !store.milestones.isEmpty { milestonesCard }
+            activityCard
+            teamCard
+            aiCard
+            if !resourceLinks.isEmpty { resourcesCard }
         }
     }
+
+    private var metricsGrid: some View {
+        LazyVGrid(columns: twoColumns, spacing: PFSpacing.sm) {
+            PFMetricTile(value: "\(openTaskCount)", label: L10n.tr("dashboard.metrics.open", fallback: "Open tasks"), icon: "checklist", tint: colors.warning) { navSelection = .tasks }
+            PFMetricTile(value: "\(completedTaskCount)", label: L10n.tr("work.completed", fallback: "Completed"), icon: "checkmark.circle", tint: colors.success) { navSelection = .tasks }
+            PFMetricTile(value: "\(Int(healthSnapshot.score))", label: L10n.tr("health.score", fallback: "Health"), icon: "heart.text.square", tint: healthColor(healthSnapshot.status))
+            PFMetricTile(value: "\(store.milestones.count)", label: L10n.tr("deadline.milestones", fallback: "Milestones"), icon: "flag.checkered", tint: colors.primary) { navSelection = .milestones }
+        }
+    }
+
+    private var tasksCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionTitle(
+                    title: L10n.tr("work.tasks", fallback: "Tasks"),
+                    actionTitle: L10n.tr("common.viewAll", fallback: "View all"),
+                    action: { navSelection = .tasks }
+                )
+                let tasks = activeTasks
+                if tasks.isEmpty {
+                    Text(L10n.tr("work.empty.tasks", fallback: "No active tasks."))
+                        .font(PFFont.body).foregroundStyle(colors.textMuted).padding(.vertical, PFSpacing.sm)
+                } else {
+                    VStack(spacing: 0) {
+                        ForEach(tasks) { task in
+                            HStack(spacing: PFSpacing.md) {
+                                Button { toggle(task) } label: {
+                                    Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(task.isCompleted ? colors.success : colors.textMuted)
+                                        .font(.title3)
+                                }
+                                .buttonStyle(.plain)
+                                NavigationLink {
+                                    ProjectTaskDetailView(task: task, tenantId: resolvedTenantId ?? "", permissions: permissionContext)
+                                } label: {
+                                    PFListRow(
+                                        title: task.title,
+                                        subtitle: task.dueDate.isEmpty ? nil : formatDate(task.dueDate),
+                                        leadingDot: PFSemantic.priorityTint(task.priority, colors: colors)
+                                    )
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.vertical, PFSpacing.sm)
+                            if task.id != tasks.last?.id { Divider() }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var milestonesCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionTitle(
+                    title: L10n.tr("deadline.milestones", fallback: "Milestones"),
+                    actionTitle: L10n.tr("common.viewAll", fallback: "View all"),
+                    action: { navSelection = .milestones }
+                )
+                VStack(spacing: 0) {
+                    ForEach(store.milestones.prefix(4)) { milestone in
+                        HStack(spacing: PFSpacing.sm) {
+                            PFDot(tint: milestone.status == "Achieved" ? colors.success : colors.warning, size: 9)
+                            Text(milestone.title)
+                                .font(PFFont.body)
+                                .foregroundStyle(colors.textMain)
+                                .lineLimit(1)
+                            Spacer()
+                            if !milestone.dueDate.isEmpty {
+                                Text(formatDate(milestone.dueDate))
+                                    .font(PFFont.detail)
+                                    .foregroundStyle(colors.textMuted)
+                            }
+                        }
+                        .padding(.vertical, PFSpacing.sm)
+                        if milestone.id != store.milestones.prefix(4).last?.id { Divider() }
+                    }
+                }
+            }
+        }
+    }
+
+    private var activityCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionTitle(
+                    title: L10n.tr("dashboard.recent", fallback: "Latest activity"),
+                    actionTitle: L10n.tr("common.viewAll", fallback: "View all"),
+                    action: { navSelection = .activity }
+                )
+                if store.activity.isEmpty {
+                    Text(L10n.tr("dashboard.recent.empty", fallback: "No recent updates."))
+                        .font(PFFont.body).foregroundStyle(colors.textMuted).padding(.vertical, PFSpacing.sm)
+                } else {
+                    VStack(spacing: PFSpacing.md) {
+                        ForEach(store.activity.prefix(5)) { item in
+                            HStack(alignment: .top, spacing: PFSpacing.sm) {
+                                PFIconTile(icon: activityIcon(item.type), tint: colors.textMuted, size: 30, corner: PFRadius.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(item.user) \(item.action)")
+                                        .font(PFFont.body)
+                                        .foregroundStyle(colors.textMain)
+                                        .lineLimit(2)
+                                    Text(item.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "")
+                                        .font(PFFont.detail)
+                                        .foregroundStyle(colors.textMuted)
+                                }
+                                Spacer(minLength: 0)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var teamCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionTitle(
+                    title: L10n.tr("settings.team", fallback: "Team"),
+                    actionTitle: L10n.tr("common.edit", fallback: "Manage"),
+                    action: { showingTeamManagement = true }
+                )
+                if store.memberProfiles.isEmpty {
+                    Text(L10n.tr("company.workstreams.empty", fallback: "No members listed."))
+                        .font(PFFont.body).foregroundStyle(colors.textMuted)
+                } else {
+                    HStack(spacing: -8) {
+                        ForEach(store.memberProfiles.prefix(6)) { profile in
+                            UserAvatar(name: profile.displayName, url: URL(string: profile.photoURL ?? ""), size: 36)
+                                .overlay(Circle().stroke(colors.surfaceCard, lineWidth: 2))
+                        }
+                        if store.memberProfiles.count > 6 {
+                            Text("+\(store.memberProfiles.count - 6)")
+                                .font(PFFont.chip)
+                                .foregroundStyle(colors.textMuted)
+                                .frame(width: 36, height: 36)
+                                .background(colors.surfaceHover)
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(colors.surfaceCard, lineWidth: 2))
+                        }
+                        Spacer()
+                    }
+                }
+            }
+        }
+    }
+
+    private var aiCard: some View {
+        Button { showingReport = true } label: {
+            PFCard {
+                HStack(spacing: PFSpacing.md) {
+                    PFIconTile(icon: "sparkles", tint: colors.primary, size: 42)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("CORA Intelligence")
+                            .font(PFFont.rowTitle)
+                            .foregroundStyle(colors.textMain)
+                        Text(store.pinnedReport == nil
+                             ? L10n.tr("dashboard.dueNext.subtitle", fallback: "Generate project analysis")
+                             : "Updated \(store.pinnedReport?.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "recently")")
+                            .font(PFFont.detail)
+                            .foregroundStyle(colors.textMuted)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.right").font(.caption.weight(.bold)).foregroundStyle(colors.textSubtle)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var resourcesCard: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                PFSectionTitle(title: L10n.tr("dashboard.quickActions", fallback: "Resources"))
+                VStack(spacing: PFSpacing.sm) {
+                    ForEach(resourceLinks) { link in
+                        if let url = linkURL(link.url) {
+                            Link(destination: url) {
+                                PFListRow(title: link.title, subtitle: link.url, icon: "link", iconTint: colors.primary, showsChevron: false) {
+                                    Image(systemName: "arrow.up.right").font(.caption2.weight(.bold)).foregroundStyle(colors.textMuted)
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: Toolbar
 
     @ToolbarContentBuilder
     private var overviewToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
-            Button {
-                showingReport = true
-            } label: {
-                Image(systemName: "doc.text.magnifyingglass")
-                    .foregroundStyle(colors.textMain)
+            Button { showingReport = true } label: {
+                Image(systemName: "doc.text.magnifyingglass").foregroundStyle(colors.textMain)
             }
-
-            Button {
-                showingTeamManagement = true
-            } label: {
-                Image(systemName: "person.2")
-                    .foregroundStyle(colors.textMain)
-            }
-        }
-    }
-}
-
-// MARK: - Header
-private struct ProjectDetailHeaderCard: View {
-    let project: Project
-    let coverImageURL: URL?
-
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack(alignment: .top, spacing: PFSpacing.md) {
-                    ProjectIcon(project: project, coverImageURL: coverImageURL)
-
-                    VStack(alignment: .leading, spacing: 5) {
-                        HStack(spacing: PFSpacing.xs) {
-                            Text(project.status)
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(colors.textMain)
-                                .padding(.horizontal, 7)
-                                .padding(.vertical, 3)
-                                .background(colors.surfaceHover)
-                                .clipShape(Capsule())
-
-                            if !project.priority.isEmpty {
-                                Text(project.priority)
-                                    .font(.caption2.weight(.bold))
-                                    .foregroundStyle(priorityColor)
-                                    .padding(.horizontal, 7)
-                                    .padding(.vertical, 3)
-                                    .background(priorityColor.opacity(colorScheme == .dark ? 0.18 : 0.1))
-                                    .clipShape(Capsule())
-                            }
-                        }
-
-                        Text(project.title)
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(colors.textMain)
-                            .lineLimit(2)
-
-                        Text(project.description.isEmpty ? "No description provided." : project.description)
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMuted)
-                            .lineLimit(3)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-
-                VStack(alignment: .leading, spacing: PFSpacing.xs) {
-                    HStack {
-                        Text("Progress")
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(colors.textMuted)
-                        Spacer()
-                        Text("\(Int(project.progress))%")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(colors.textMain)
-                    }
-
-                    ProgressView(value: project.progress, total: 100)
-                        .tint(colors.primary)
-                }
-
-                HStack(spacing: PFSpacing.sm) {
-                    ProjectDetailMiniMetric(title: "Start", value: project.startDate.isEmpty ? "Unset" : project.startDate)
-                    ProjectDetailMiniMetric(title: "Due", value: project.dueDate.isEmpty ? "Unset" : project.dueDate)
-                }
+            Button { showingTeamManagement = true } label: {
+                Image(systemName: "person.2").foregroundStyle(colors.textMain)
             }
         }
     }
 
-    private var priorityColor: Color {
-        switch project.priority.lowercased() {
-        case "urgent": return colors.error
-        case "high": return colors.warning
-        case "low": return colors.success
-        default: return colors.primary
-        }
-    }
-}
+    // MARK: Derived data + helpers
 
-private struct ProjectIcon: View {
-    let project: Project
-    let coverImageURL: URL?
+    private var openTaskCount: Int { store.tasks.filter { !$0.isCompleted && $0.status != "Done" }.count }
+    private var completedTaskCount: Int { store.tasks.filter { $0.isCompleted }.count }
+    private var urgentTaskCount: Int { store.tasks.filter { !$0.isCompleted && $0.priority == "Urgent" }.count }
+    private var resourceLinks: [ProjectLink] { (project.links + project.externalResources).filter { !$0.title.isEmpty } }
 
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous)
-                .fill(colors.surfaceHover)
-
-            if let coverImageURL {
-                AsyncImage(url: coverImageURL) { phase in
-                    if case .success(let image) = phase {
-                        image
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                    } else {
-                        Text(String(project.title.prefix(1)).uppercased())
-                            .font(.title2.weight(.bold))
-                            .foregroundStyle(colors.primary)
-                    }
-                }
-            } else {
-                Text(String(project.title.prefix(1)).uppercased())
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(colors.primary)
+    private var activeTasks: [ProjectTask] {
+        store.tasks
+            .filter { !$0.isCompleted }
+            .sorted {
+                let a = priorityValue($0.priority), b = priorityValue($1.priority)
+                if a != b { return a > b }
+                return $0.dueDate < $1.dueDate
             }
-        }
-        .frame(width: 58, height: 58)
-        .clipShape(RoundedRectangle(cornerRadius: PFRadius.lg, style: .continuous))
-    }
-}
-
-private struct ProjectDetailMiniMetric: View {
-    let title: String
-    let value: String
-
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(colors.textMuted)
-            Text(value)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(colors.textMain)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(PFSpacing.sm)
-        .background(colors.surfaceHover)
-        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-    }
-}
-
-private struct ProjectDetailAttentionCard: View {
-    let health: ProjectHealthSnapshot
-    let tasks: [ProjectTask]
-    let milestones: [Milestone]
-    let onOpenReport: () -> Void
-
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    private var openTasks: Int {
-        tasks.filter { !$0.isCompleted && $0.status != "Done" }.count
+            .prefix(6)
+            .map { $0 }
     }
 
-    private var urgentTasks: Int {
-        tasks.filter { !$0.isCompleted && $0.priority == "Urgent" }.count
+    private func priorityValue(_ p: String) -> Int {
+        switch p { case "Urgent": return 4; case "High": return 3; case "Medium": return 2; default: return 1 }
     }
 
-    private var headline: String {
-        if urgentTasks > 0 {
-            return "\(urgentTasks) urgent task\(urgentTasks == 1 ? "" : "s") need the next move"
-        }
-        if openTasks > 0 {
-            return "\(openTasks) open task\(openTasks == 1 ? "" : "s") remain"
-        }
-        return "Project is clear for now"
+    private func toggle(_ task: ProjectTask) {
+        guard let tenantId = resolvedTenantId else { return }
+        Task { await store.toggleTask(tenantId: tenantId, projectId: project.id, task: task, permissions: permissionContext) }
     }
 
-    private var tint: Color {
-        if urgentTasks > 0 || health.status == .critical {
-            return colors.error
-        }
-        if health.status == .warning {
-            return colors.warning
-        }
-        return colors.success
-    }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack(alignment: .top, spacing: PFSpacing.md) {
-                    Image(systemName: "target")
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(tint)
-                        .frame(width: 40, height: 40)
-                        .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
-                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("IMPORTANT NOW")
-                            .font(.caption2.weight(.bold))
-                            .foregroundStyle(colors.textMuted)
-
-                        Text(headline)
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(colors.textMain)
-                            .lineLimit(2)
-
-                        Text("Open work, risk, and project health at a glance.")
-                            .font(.caption)
-                            .foregroundStyle(colors.textMuted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-
-                    Spacer(minLength: 0)
-                }
-
-                HStack(spacing: PFSpacing.sm) {
-                    ProjectAttentionMetric(title: "Health", value: "\(Int(health.score))", tint: tint)
-                    ProjectAttentionMetric(title: "Open tasks", value: "\(openTasks)", tint: colors.warning)
-                    ProjectAttentionMetric(title: "Milestones", value: "\(milestones.count)", tint: colors.primary)
-                }
-
-                Button(action: onOpenReport) {
-                    Label("Open project report", systemImage: "doc.text.magnifyingglass")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(colors.primary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, PFSpacing.sm)
-                        .background(colors.primary.opacity(colorScheme == .dark ? 0.16 : 0.08))
-                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-}
-
-private struct ProjectAttentionMetric: View {
-    let title: String
-    let value: String
-    let tint: Color
-
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(value)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(tint)
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(colors.textMuted)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, PFSpacing.sm)
-        .padding(.horizontal, 7)
-        .background(colors.surfaceHover)
-        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-    }
-}
-
-struct CoverImageHeader: View {
-    let project: Project
-    let coverImageURL: URL? // Passed from store
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // Cover Image Area
-            GeometryReader { geo in
-                ZStack {
-                    // 1. Background Gradient / Image
-                    if let url = coverImageURL {
-                        AsyncImage(url: url) { phase in
-                            switch phase {
-                            case .empty:
-                                LinearGradient(
-                                    colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            case .success(let image):
-                                image
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                            case .failure:
-                                LinearGradient(
-                                    colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)],
-                                    startPoint: .topLeading,
-                                    endPoint: .bottomTrailing
-                                )
-                            @unknown default:
-                                EmptyView()
-                            }
-                        }
-                    } else {
-                        LinearGradient(
-                            colors: [Color.blue.opacity(0.6), Color.purple.opacity(0.6)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    }
-                    
-                    // 2. Dark Overlay for Contrast (Web style)
-                    Color.black.opacity(0.2)
-                    
-                    // 3. Bottom Gradient for Text
-                    LinearGradient(
-                        colors: [.black.opacity(0), .black.opacity(0.8)],
-                        startPoint: .center,
-                        endPoint: .bottom
-                    )
-                }
-            }
-            .aspectRatio(16/9, contentMode: .fill) // improved aspect ratio
-            .frame(maxHeight: 240)
-            .clipped()
-            .overlay(alignment: .bottomLeading) {
-                HStack(alignment: .bottom, spacing: PFSpacing.md) {
-                    // Project Icon
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(colors.surfaceCard)
-                            .shadow(color: .black.opacity(0.2), radius: 8, x: 0, y: 4)
-                        
-                        // Future: Fetch icon specific asset if available
-                        Text(String(project.title.prefix(1)).uppercased())
-                            .font(.system(size: 32, weight: .bold, design: .rounded))
-                            .foregroundStyle(colors.primary)
-                    }
-                    .frame(width: 72, height: 72)
-                    
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(project.title)
-                            .font(.system(size: 24, weight: .bold))
-                            .foregroundStyle(.white)
-                            .shadow(radius: 2)
-                        
-                        Text(project.description.isEmpty ? "No description provided" : project.description)
-                            .font(.subheadline)
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                            .shadow(radius: 2)
-                    }
-                    .padding(.bottom, 6)
-                }
-                .pfScreenPadding()
-                .offset(y: 32) 
-            }
-            .zIndex(1)
-            
-            // Status Bar
-            HStack {
-                Spacer() 
-                StatusPill(text: project.status)
-                    .scaleEffect(1.1)
-            }
-            .padding(.horizontal, PFSpacing.lg)
-            .padding(.top, PFSpacing.md)
-            .padding(.bottom, PFSpacing.md)
-            .background(colors.surfaceCard)
-        }
-    }
-}
-
-// MARK: - Snapshot Section
-struct SnapshotSection: View {
-    let health: ProjectHealthSnapshot
-    let history: [ProjectHealthSnapshotEntry]
-    let tasks: [ProjectTask]
-    let activity: [ActivityItem]
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    // Derived stats
-    private var openTasks: Int {
-        tasks.filter { !$0.isCompleted && $0.status != "Done" }.count
-    }
-    private var urgentTasks: Int {
-        tasks.filter { !$0.isCompleted && $0.priority == "Urgent" }.count
-    }
-    private var inProgressTasks: Int {
-        tasks.filter { !$0.isCompleted && $0.status == "In Progress" }.count
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            PFSectionHeader(title: "Snapshot", subtitle: "High-level overview")
-            
-            // 2x2 Grid for Snapshot items
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                HealthWidget(health: health, history: history)
-                WorkloadWidget(open: openTasks, urgent: urgentTasks, inProgress: inProgressTasks)
-                PriorityWidget(tasks: tasks)
-                ActivityWidget(activity: activity)
-            }
-        }
-    }
-}
-
-// MARK: - Snapshot Widgets
-
-struct HealthWidget: View {
-    let health: ProjectHealthSnapshot
-    let history: [ProjectHealthSnapshotEntry]
-    @State private var showHealthDetail = false
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    private var statusColor: Color {
-        switch health.status {
+    private func healthColor(_ status: HealthStatus) -> Color {
+        switch status {
         case .critical: return colors.error
         case .warning: return colors.warning
         case .healthy, .excellent: return colors.success
@@ -669,870 +390,187 @@ struct HealthWidget: View {
         }
     }
 
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Label("Health", systemImage: "monitor.heart") // Updated icon
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Image(systemName: getTrendIcon(health.trend))
-                        .font(.caption2)
-                        .foregroundStyle(colors.textMuted)
-                }
-                
-                Spacer()
-                
-                HStack(alignment: .bottom, spacing: 12) {
-                    // Gauge or Chart
-                    if history.count > 1 {
-                        TrendChart(values: history.map { $0.score }, color: statusColor)
-                            .frame(height: 40)
-                    } else {
-                        // Gauge (legacy fallback)
-                        ZStack {
-                            // Background Track
-                            Circle()
-                                .trim(from: 0.0, to: 0.5)
-                                .stroke(colors.surfaceHover, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                                .rotationEffect(.degrees(180))
-                                .frame(width: 60, height: 60)
-                            
-                            // Progress
-                            Circle()
-                                .trim(from: 0.0, to: 0.5 * min(1.0, max(0.0, Double(health.score) / 100.0)))
-                                .stroke(statusColor, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                                .rotationEffect(.degrees(180))
-                                .frame(width: 60, height: 60)
-                            
-                            Text("\(Int(health.score))")
-                                .font(.system(size: 14, weight: .bold))
-                                .foregroundStyle(colors.textMain)
-                                .offset(y: -5)
-                        }
-                        .frame(width: 60, height: 30)
-                    }
-                    
-                    // Status Details
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(health.status.label.capitalized)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(statusColor)
-                        
-                        Text("/ 100")
-                            .font(.caption2)
-                            .foregroundStyle(colors.textMuted)
-                    }
-                }
-                Spacer()
-            }
-            .padding(12)
-        }
-        .frame(minHeight: 120)
-        .contentShape(Rectangle())
-        .onTapGesture { showHealthDetail = true }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(L10n.tr("health.title", fallback: "Project Health")), score \(Int(health.score))")
-        .accessibilityHint("Double tap for health details and history")
-        .sheet(isPresented: $showHealthDetail) {
-            HealthDetailPopover(health: health, history: history)
-                .presentationDetents([.medium, .large])
-        }
-    }
-    
-    func getTrendIcon(_ trend: HealthTrend) -> String {
-        switch trend {
-        case .improving: return "arrow.up.right"
-        case .declining: return "arrow.down.right"
-        case .stable: return "minus"
-        }
-    }
-}
-
-struct WorkloadWidget: View {
-    let open: Int
-    let urgent: Int
-    let inProgress: Int
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Workload", systemImage: "inbox")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(colors.textMain)
-                
-                Spacer()
-                
-                // Stats
-                VStack(spacing: 8) {
-                    WorkloadRow(label: "Open", value: "\(open)", icon: "list.bullet", color: colors.textMain)
-                    WorkloadRow(label: "Urgent", value: "\(urgent)", icon: "exclamationmark.triangle.fill", color: colors.error)
-                    WorkloadRow(label: "In Prog", value: "\(inProgress)", icon: "hourglass", color: colors.primary)
-                }
-                
-                Spacer()
-            }
-            .padding(12)
-        }
-        .frame(minHeight: 120)
-    }
-}
-
-struct WorkloadRow: View {
-    let label: String
-    let value: String
-    let icon: String
-    let color: Color
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    var body: some View {
-         HStack {
-            Image(systemName: icon)
-                .font(.caption2)
-                .foregroundStyle(colors.textMuted)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(colors.textMuted)
-            Spacer()
-            Text(value)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(colors.textMain)
-        }
-    }
-}
-
-struct PriorityWidget: View {
-    let tasks: [ProjectTask]
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    private func count(_ priority: String) -> Int {
-        tasks.filter { !$0.isCompleted && $0.priority == priority }.count
-    }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Priority", systemImage: "flag")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(colors.textMain)
-                
-                Spacer()
-                
-                // Bars
-                HStack(alignment: .bottom, spacing: 6) {
-                    PriorityBar(label: "L", count: count("Low"), color: .gray)
-                    PriorityBar(label: "M", count: count("Medium"), color: .blue)
-                    PriorityBar(label: "H", count: count("High"), color: .orange)
-                    PriorityBar(label: "U", count: count("Urgent"), color: colors.error)
-                }
-                .frame(maxHeight: 60)
-                
-                Spacer()
-            }
-            .padding(12)
-        }
-        .frame(minHeight: 120)
-    }
-}
-
-struct PriorityBar: View {
-    let label: String
-    let count: Int
-    let color: Color
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(spacing: 2) {
-            Spacer()
-            RoundedRectangle(cornerRadius: 2)
-                .fill(color.opacity(0.8))
-                .frame(height: max(4, CGFloat(count) * 6))
-                .frame(maxHeight: 40)
-            
-            Text(label)
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(colors.textMuted)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-struct ActivityWidget: View {
-    let activity: [ActivityItem]
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    private var commentCount: Int {
-        activity.filter { $0.action.localizedCaseInsensitiveContains("comment") }.count
-    }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: 10) {
-                Label("Activity", systemImage: "chart.xyaxis.line") // Updated icon
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(colors.textMain)
-                
-                Spacer()
-                
-                // Big Stats
-                HStack(spacing: PFSpacing.md) {
-                    VStack(alignment: .leading) {
-                        Text("\(activity.count)")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(colors.textMain)
-                        Text("Events")
-                            .font(.caption2)
-                            .foregroundStyle(colors.textMuted)
-                    }
-                    Spacer()
-                    VStack(alignment: .leading) {
-                        Text("\(commentCount)")
-                            .font(.title3.weight(.bold))
-                            .foregroundStyle(colors.textMain)
-                        Text("Cmts")
-                            .font(.caption2)
-                            .foregroundStyle(colors.textMuted)
-                    }
-                }
-                
-                Spacer()
-            }
-            .padding(12)
-        }
-        .frame(minHeight: 120)
-    }
-}
-
-// MARK: - Execution Section
-struct ExecutionSection: View {
-    let tasks: [ProjectTask]
-    let projectGroups: [String] // Simplified for now
-    let resolvedTenantId: String?
-    let permissionContext: PermissionContext
-    let onToggleTask: (ProjectTask) -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PFSpacing.md) {
-            HStack {
-                PFSectionHeader(title: "Execution", subtitle: "Active Items")
-                Spacer()
-                // Header stats if needed
-            }
-            
-            VStack(spacing: PFSpacing.md) {
-                ExecutionTaskList(
-                    tasks: tasks,
-                    tenantId: resolvedTenantId ?? "",
-                    permissions: permissionContext,
-                    onToggle: onToggleTask
-                )
-            }
-        }
-    }
-}
-
-struct ExecutionTaskList: View {
-    let tasks: [ProjectTask]
-    let tenantId: String
-    let permissions: PermissionContext
-    let onToggle: (ProjectTask) -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    private var displayTasks: [ProjectTask] {
-        tasks.filter { !$0.isCompleted } // Show only open
-             .sorted {
-                 // Sort by Priority then Date
-                 let pA = priorityValue($0.priority)
-                 let pB = priorityValue($1.priority)
-                 if pA != pB { return pB < pA } // Higher priority first
-                 return $0.dueDate < $1.dueDate
-             }
-             .prefix(6)
-             .map { $0 }
-    }
-    
-    func priorityValue(_ p: String) -> Int {
-        switch p {
-        case "Urgent": return 4
-        case "High": return 3
-        case "Medium": return 2
-        default: return 1
-        }
-    }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Label("My Tasks", systemImage: "checklist")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                }
-                .padding(PFSpacing.md)
-                
-                Divider()
-                
-                if displayTasks.isEmpty {
-                    Text("No active tasks.")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                        .padding(PFSpacing.lg)
-                } else {
-                    ForEach(displayTasks) { task in
-                        NavigationLink(destination: ProjectTaskDetailView(
-                            task: task,
-                            tenantId: tenantId,
-                            permissions: permissions
-                        )) {
-                            TaskRowView(task: task, onToggle: { onToggle(task) })
-                        }
-                        .buttonStyle(.plain)
-                        
-                        if task.id != displayTasks.last?.id {
-                            Divider().padding(.leading, 16)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-struct TaskRowView: View {
-    let task: ProjectTask
-    let onToggle: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    var priorityColor: Color {
-        switch task.priority {
-        case "Urgent": return colors.error
-        case "High": return .orange
-        case "Medium": return .blue
-        default: return colors.textSubtle
-        }
-    }
-    
-    var priorityIcon: String {
-        switch task.priority {
-        case "Urgent": return "exclamationmark.triangle.fill"
-        case "High": return "chevron.up.2"
-        case "Medium": return "minus"
-        default: return "chevron.down"
-        }
-    }
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            // Checkbox
-            Button {
-                onToggle()
-            } label: {
-                Image(systemName: task.isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(task.isCompleted ? colors.success : colors.textMuted)
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2)
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(task.title)
-                    .font(.subheadline)
-                    .foregroundStyle(task.isCompleted ? colors.textMuted : colors.textMain)
-                    .strikethrough(task.isCompleted)
-                    .lineLimit(1)
-                
-                // Badges Row
-                HStack(spacing: 8) {
-                    // Priority Badge
-                    HStack(spacing: 2) {
-                        Image(systemName: priorityIcon)
-                            .font(.caption2)
-                        Text(task.priority)
-                            .font(.caption2.weight(.medium))
-                    }
-                    .foregroundStyle(priorityColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(priorityColor.opacity(0.1))
-                    .cornerRadius(4)
-                    
-                    // Due Date
-                    if !task.dueDate.isEmpty {
-                        let date = ISO8601DateFormatter().date(from: task.dueDate) ?? Date()
-                        HStack(spacing: 2) {
-                            Image(systemName: "calendar")
-                                .font(.caption2)
-                            Text(date.formatted(date: .abbreviated, time: .omitted))
-                                .font(.caption2)
-                        }
-                        .foregroundStyle(colors.textSubtle)
-                    }
-                }
-            }
-            Spacer()
-        }
-        .padding(PFSpacing.md)
-        .contentShape(Rectangle()) // Tappable area
-    }
-}
-
-private struct StatusPill: View {
-    @Environment(\.colorScheme) private var colorScheme
-    let text: String
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        Text(text)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(colors.textMain)
-            .padding(.horizontal, PFSpacing.sm)
-            .padding(.vertical, 4)
-            .background(colors.surfaceHover)
-            .clipShape(Capsule())
-    }
-}
-
-// MARK: - Missing Card Widgets
-
-struct UpdatesWidget: View {
-    let activity: [ActivityItem]
-    let tasks: [ProjectTask]
-    let resolvedTenantId: String?
-    let permissionContext: PermissionContext
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack {
-                    Label("Latest Activity", systemImage: "clock")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                }
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(activity.prefix(5)) { item in
-                        activityRow(for: item)
-                    }
-                    if activity.isEmpty {
-                        Text("No recent updates.")
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMuted)
-                    }
-                }
-            }
-            .padding(12)
-        }
-    }
-
-    @ViewBuilder
-    private func activityRow(for item: ActivityItem) -> some View {
-        let tenantId = resolvedTenantId ?? ""
-        let permissions = permissionContext
-        
-        Group {
-            if let task = findTask(for: item) {
-                NavigationLink(destination: ProjectTaskDetailView(
-                    task: task,
-                    tenantId: tenantId,
-                    permissions: permissions
-                )) {
-                    rowContent(for: item)
-                }
-            } else {
-                rowContent(for: item)
-            }
-        }
-    }
-
-    private func rowContent(for item: ActivityItem) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Circle()
-                .fill(colors.surfaceHover)
-                .frame(width: 28, height: 28)
-                .overlay(
-                    Image(systemName: icon(for: item.type))
-                        .font(.system(size: 12))
-                        .foregroundStyle(colors.textMuted)
-                )
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(item.user) \(item.action)")
-                    .font(.subheadline)
-                    .foregroundStyle(colors.textMain)
-                    .lineLimit(2)
-                
-                Text(item.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "Just now")
-                    .font(.caption2)
-                    .foregroundStyle(colors.textMuted)
-            }
-            Spacer()
-        }
-    }
-
-    private func findTask(for activity: ActivityItem) -> ProjectTask? {
-        guard activity.type == "task", let relatedId = activity.relatedId else { return nil }
-        return tasks.first { $0.id == relatedId }
-    }
-
-    private func icon(for type: String) -> String {
+    private func activityIcon(_ type: String) -> String {
         switch type {
         case "task": return "checklist"
-        case "comment": return "bubble.left.fill"
-        case "file": return "doc.fill"
+        case "comment": return "bubble.left"
+        case "file": return "doc"
         case "report": return "sparkles"
-        default: return "circle.fill"
+        default: return "clock"
         }
     }
-}
 
-struct ResourcesWidget: View {
-    let project: Project
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Label("Resources", systemImage: "folder")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                
-                let allLinks = project.links + project.externalResources
-                
-                if allLinks.isEmpty {
-                    Text("No resources added yet.")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(allLinks) { link in
-                            LinkRow(title: link.title, url: link.url)
-                        }
-                    }
-                }
-            }
-            .padding(12)
-        }
-    }
-}
-
-struct LinkRow: View {
-    let title: String
-    let url: String
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    var body: some View {
-        if let linkURL = URL(string: url.contains("://") ? url : "https://\(url)") {
-            Link(destination: linkURL) {
-                HStack {
-                    Image(systemName: "link")
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundStyle(colors.primary)
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                        .font(.caption2)
-                        .foregroundStyle(colors.textMuted)
-                }
-                .padding(.vertical, 4)
-            }
-        } else {
-            HStack {
-                Image(systemName: "link")
-                    .font(.caption)
-                    .foregroundStyle(colors.textMuted)
-                Text(title)
-                    .font(.subheadline)
-                    .foregroundStyle(colors.textMuted)
-                Spacer()
-            }
-            .padding(.vertical, 4)
-        }
-    }
-}
-
-struct PlanningWidget: View {
-    let project: Project
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-    
-    private func formatDate(_ isoString: String) -> String {
-        guard !isoString.isEmpty else { return "Not set" }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoString) {
+    private func formatDate(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: value) ?? ISO8601DateFormatter().date(from: value) {
             return date.formatted(date: .abbreviated, time: .omitted)
         }
-        return isoString.prefix(10).description
+        let df = DateFormatter(); df.dateFormat = "yyyy-MM-dd"
+        if let date = df.date(from: String(value.prefix(10))) {
+            return date.formatted(date: .abbreviated, time: .omitted)
+        }
+        return String(value.prefix(10))
     }
 
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Label("Planning", systemImage: "calendar")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text("Start Date")
-                            .font(.caption)
-                            .foregroundStyle(colors.textMuted)
-                        Text(formatDate(project.startDate))
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMain)
-                    }
-                    Spacer()
-                    VStack(alignment: .trailing) {
-                        Text("Due Date")
-                            .font(.caption)
-                            .foregroundStyle(colors.textMuted)
-                        Text(formatDate(project.dueDate))
-                            .font(.subheadline)
-                            .foregroundStyle(colors.textMain)
-                    }
-                }
-                
-                // Progress Bar
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text("Progress")
-                            .font(.caption)
-                        Spacer()
-                        Text("\(Int(project.progress))%")
-                            .font(.caption.weight(.bold))
-                    }
-                    .foregroundStyle(colors.textMuted)
-                    
-                    GeometryReader { g in
-                        ZStack(alignment: .leading) {
-                            Capsule().fill(colors.surfaceHover)
-                            Capsule()
-                                .fill(colors.primary)
-                                .frame(width: g.size.width * CGFloat(project.progress) / 100.0)
-                        }
-                    }
-                    .frame(height: 6)
-                }
+    private func linkURL(_ raw: String) -> URL? {
+        let trimmed = raw.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        return URL(string: trimmed.contains("://") ? trimmed : "https://\(trimmed)")
+    }
+
+    private func loadLinkedProjects(tenantId: String) {
+        guard project.isCompanyProject else { return }
+        Firestore.firestore().collection(FirestorePath.tenants).document(tenantId)
+            .collection(FirestorePath.projects)
+            .whereField("companyProjectId", isEqualTo: project.id)
+            .getDocuments { snapshot, _ in
+                linkedProjects = snapshot?.documents.map { Project(id: $0.documentID, data: $0.data()) } ?? []
             }
-            .padding(12)
-        }
     }
 }
 
-struct MilestonesWidget: View {
-    let milestones: [Milestone]
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+// MARK: - Hero header
 
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Label("Milestones", systemImage: "flag.checkered")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                
-                if milestones.isEmpty {
-                    Text("No milestones set.")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(milestones.prefix(3)) { milestone in
-                            HStack {
-                                Circle()
-                                    .fill(milestone.status == "Achieved" ? colors.success : colors.warning)
-                                    .frame(width: 8, height: 8)
-                                
-                                Text(milestone.title)
-                                    .font(.subheadline)
-                                    .foregroundStyle(colors.textMain)
-                                    .lineLimit(1)
-                                
-                                Spacer()
-                                
-                                Text(milestone.dueDate.prefix(10))
-                                    .font(.caption2)
-                                    .foregroundStyle(colors.textMuted)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(12)
-        }
-    }
-}
-
-struct AiInsightsWidget: View {
-    let report: GeminiReport?
-    let onTap: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        Button(action: onTap) {
-            PFCard {
-                HStack(spacing: 12) {
-                    Image(systemName: "sparkles")
-                        .font(.title2)
-                        .foregroundStyle(.purple)
-                        .frame(width: 40, height: 40)
-                        .background(Color.purple.opacity(0.1))
-                        .clipShape(Circle())
-                    
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CORA Intelligence")
-                            .font(.headline)
-                            .foregroundStyle(colors.textMain)
-                        
-                        if let report = report {
-                            Text("Updated \(report.createdAt?.dateValue().formatted(.relative(presentation: .named)) ?? "recently")")
-                                .font(.caption)
-                                .foregroundStyle(colors.textMuted)
-                        } else {
-                            Text("Generate project analysis")
-                                .font(.caption)
-                                .foregroundStyle(colors.textMuted)
-                        }
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .foregroundStyle(colors.textMuted)
-                }
-                .padding(12)
-            }
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-struct TeamWidget: View {
-    let profiles: [UserProfile]
-    let onEdit: () -> Void
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            VStack(alignment: .leading, spacing: PFSpacing.md) {
-                HStack {
-                    Label("Team", systemImage: "person.2")
-                        .font(.headline)
-                        .foregroundStyle(colors.textMain)
-                    Spacer()
-                    Button(action: onEdit) {
-                        Image(systemName: "pencil.circle")
-                            .foregroundStyle(colors.primary)
-                    }
-                }
-                
-                if profiles.isEmpty {
-                    Text("No members listed.")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                } else {
-                    HStack(spacing: -8) {
-                        ForEach(profiles.prefix(5)) { profile in
-                            ZStack {
-                                Circle()
-                                    .fill(colors.surfaceCard)
-                                    .frame(width: 34, height: 34)
-                                
-                                if let photoURL = profile.photoURL, let url = URL(string: photoURL) {
-                                    AsyncImage(url: url) { image in
-                                        image.resizable().scaledToFill()
-                                    } placeholder: {
-                                        colors.surfaceHover
-                                    }
-                                    .frame(width: 32, height: 32)
-                                    .clipShape(Circle())
-                                } else {
-                                    Circle()
-                                        .fill(colors.primary.opacity(0.2))
-                                        .frame(width: 32, height: 32)
-                                        .overlay(
-                                            Text(String(profile.displayName.prefix(1)).uppercased())
-                                                .font(.caption2.weight(.bold))
-                                                .foregroundStyle(colors.primary)
-                                        )
-                                }
-                            }
-                            .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                        }
-                        
-                        if profiles.count > 5 {
-                            Circle()
-                                .fill(colors.surfaceHover)
-                                .frame(width: 32, height: 32)
-                                .overlay(Text("+\(profiles.count - 5)").font(.caption2).foregroundStyle(colors.textMuted))
-                                .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
-                        }
-                    }
-                }
-            }
-            .padding(12)
-        }
-    }
-}
-
-struct ControlsWidget: View {
+private struct ProjectHeroHeader: View {
     let project: Project
+    let coverImageURL: URL?
+    let health: ProjectHealthSnapshot
+
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.md) {
-                Label("Controls", systemImage: "slider.horizontal.3")
-                    .font(.headline)
-                    .foregroundStyle(colors.textMain)
-                
-                HStack {
-                    Text("Status")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                    Spacer()
-                    StatusPill(text: project.status)
+                if let coverImageURL {
+                    AsyncImage(url: coverImageURL) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        default:
+                            LinearGradient(colors: [colors.surfaceHover, colors.surfacePaper], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        }
+                    }
+                    .frame(height: 120)
+                    .frame(maxWidth: .infinity)
+                    .clipped()
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
                 }
-                
-                Divider()
-                
-                HStack {
-                    Text("Priority")
-                        .font(.subheadline)
-                        .foregroundStyle(colors.textMuted)
-                    Spacer()
-                    Text(project.priority.isEmpty ? "None" : project.priority)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(colors.textMain)
+
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    icon
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: PFSpacing.xs) {
+                            PFStatusChip(status: project.status)
+                            if !project.priority.isEmpty { PFPriorityChip(priority: project.priority) }
+                        }
+                        Text(project.title)
+                            .font(PFFont.title)
+                            .foregroundStyle(colors.textMain)
+                            .lineLimit(2)
+                        if !project.description.isEmpty {
+                            Text(project.description)
+                                .font(PFFont.body)
+                                .foregroundStyle(colors.textMuted)
+                                .lineLimit(2)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                    PFCircularProgress(value: project.progress / 100, size: 58, label: "\(Int(project.progress))%")
+                }
+
+                HStack(spacing: PFSpacing.sm) {
+                    miniMetric(title: "Start", value: project.startDate.isEmpty ? "—" : shortDate(project.startDate))
+                    miniMetric(title: L10n.tr("task.due", fallback: "Due"), value: project.dueDate.isEmpty ? "—" : shortDate(project.dueDate))
                 }
             }
-            .padding(12)
+        }
+    }
+
+    private var icon: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous)
+                .fill(colors.primary.opacity(colorScheme == .dark ? 0.18 : 0.08))
+            Text(String(project.title.prefix(1)).uppercased())
+                .font(.title2.weight(.bold))
+                .foregroundStyle(colors.primary)
+        }
+        .frame(width: 52, height: 52)
+    }
+
+    private func miniMetric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased()).font(PFFont.eyebrow).foregroundStyle(colors.textMuted)
+            Text(value).font(PFFont.chip).foregroundStyle(colors.textMain).lineLimit(1).minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(PFSpacing.sm)
+        .background(colors.surfaceHover)
+        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+    }
+
+    private func shortDate(_ value: String) -> String {
+        let iso = ISO8601DateFormatter()
+        iso.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = iso.date(from: value) ?? ISO8601DateFormatter().date(from: value) {
+            return date.formatted(date: .abbreviated, time: .omitted)
+        }
+        return String(value.prefix(10))
+    }
+}
+
+// MARK: - Attention card
+
+private struct ProjectAttentionCard: View {
+    let health: ProjectHealthSnapshot
+    let openTasks: Int
+    let urgentTasks: Int
+    let milestones: Int
+    let onOpenReport: () -> Void
+
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
+    private var headline: String {
+        if urgentTasks > 0 { return "\(urgentTasks) urgent task\(urgentTasks == 1 ? "" : "s") need the next move" }
+        if openTasks > 0 { return "\(openTasks) open task\(openTasks == 1 ? "" : "s") remain" }
+        return L10n.tr("dashboard.attention.allClear", fallback: "Project is clear for now")
+    }
+
+    private var tint: Color {
+        if urgentTasks > 0 || health.status == .critical { return colors.error }
+        if health.status == .warning { return colors.warning }
+        return colors.success
+    }
+
+    var body: some View {
+        PFCard {
+            VStack(alignment: .leading, spacing: PFSpacing.md) {
+                HStack(alignment: .top, spacing: PFSpacing.md) {
+                    PFIconTile(icon: "target", tint: tint, size: 40)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(L10n.tr("dashboard.attention.title", fallback: "What matters now").uppercased())
+                            .font(PFFont.eyebrow).foregroundStyle(colors.textMuted).tracking(0.5)
+                        Text(headline)
+                            .font(PFFont.section).foregroundStyle(colors.textMain).lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                Button(action: onOpenReport) {
+                    HStack {
+                        Label("CORA report", systemImage: "doc.text.magnifyingglass").font(PFFont.rowTitle)
+                        Spacer()
+                        Image(systemName: "arrow.right").font(.caption.weight(.bold))
+                    }
+                    .foregroundStyle(colors.primary)
+                    .padding(.vertical, PFSpacing.sm)
+                    .padding(.horizontal, PFSpacing.md)
+                    .background(colors.primary.opacity(colorScheme == .dark ? 0.16 : 0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 }

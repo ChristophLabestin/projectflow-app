@@ -18,20 +18,13 @@
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback, ReactNode } from 'react';
 import { auth } from '../services/firebase';
-import { subscribeTenantUsers } from '../services/dataService';
+import { subscribeTenantUsers, subscribeTenantRoles, FirestoreRole } from '../services/dataService';
 import { getActiveTenantId } from '../services/domain/authService';
 import {
     PermissionNode,
-    TenantPermissionNode,
-    ProjectPermissionNode,
-    AIPermissionNode,
     Role,
     PermissionEvaluationContext,
     LegacyWorkspaceRole,
-    LegacyProjectRole,
-    DEFAULT_MEMBER_PERMISSIONS,
-    ALL_TENANT_PERMISSIONS,
-    ALL_AI_PERMISSIONS,
 } from '../types/permissions';
 import {
     evaluatePermission,
@@ -41,8 +34,32 @@ import {
     canManageRole,
     getHighestPosition,
     SYSTEM_ROLE_DEFAULTS,
-    getLegacyWorkspaceRolePermissions,
 } from '../services/permissionService';
+
+// =============================================================================
+// SYSTEM ROLES (code-defined; custom roles live in Firestore role docs)
+// =============================================================================
+
+const OWNER_ROLE: Role = { id: 'system-owner', name: 'Owner', systemKey: 'OWNER', ...SYSTEM_ROLE_DEFAULTS.OWNER };
+const MEMBER_ROLE: Role = { id: 'system-member', name: 'Member', systemKey: 'MEMBER', ...SYSTEM_ROLE_DEFAULTS.MEMBER };
+const GUEST_ROLE: Role = { id: 'system-guest', name: 'Guest', systemKey: 'GUEST', ...SYSTEM_ROLE_DEFAULTS.GUEST };
+
+/** Map a Firestore role doc to the in-memory Role model. */
+function firestoreRoleToRole(fr: FirestoreRole): Role {
+    return {
+        id: fr.id,
+        name: fr.name,
+        color: fr.color,
+        description: fr.description,
+        position: fr.position,
+        isSystem: fr.isSystem,
+        systemKey: fr.systemKey as Role['systemKey'],
+        permissions: {
+            allow: (fr.permissions?.allow || []) as PermissionNode[],
+            deny: (fr.permissions?.deny || []) as PermissionNode[],
+        },
+    };
+}
 
 // =============================================================================
 // TYPES
@@ -83,78 +100,6 @@ interface PermissionContextValue {
 const PermissionContext = createContext<PermissionContextValue | null>(null);
 
 // =============================================================================
-// HELPER: BUILD ROLES FROM LEGACY DATA
-// =============================================================================
-
-/**
- * Build Role objects from legacy workspace role
- * This is a compatibility layer until full role objects are stored in Firestore
- */
-function buildRolesFromLegacyWorkspaceRole(
-    legacyRole: LegacyWorkspaceRole,
-    tenantOwnerId?: string,
-    currentUserId?: string
-): Role[] {
-    const roles: Role[] = [];
-
-    // If user is the tenant owner, add Owner role
-    if (tenantOwnerId && currentUserId && tenantOwnerId === currentUserId) {
-        roles.push({
-            id: 'system-owner',
-            name: 'Owner',
-            ...SYSTEM_ROLE_DEFAULTS.OWNER,
-        });
-        return roles; // Owner already has everything
-    }
-
-    // Add role based on legacy role
-    switch (legacyRole) {
-        case 'Owner':
-            roles.push({
-                id: 'system-owner',
-                name: 'Owner',
-                ...SYSTEM_ROLE_DEFAULTS.OWNER,
-            });
-            break;
-        case 'Admin':
-            roles.push({
-                id: 'system-admin',
-                name: 'Admin',
-                position: 100,
-                isSystem: false,
-                permissions: {
-                    allow: getLegacyWorkspaceRolePermissions('Admin'),
-                    deny: [],
-                },
-            });
-            break;
-        case 'Member':
-            // Member is implicit, just use defaults
-            roles.push({
-                id: 'system-member',
-                name: 'Member',
-                ...SYSTEM_ROLE_DEFAULTS.MEMBER,
-            });
-            break;
-        case 'Guest':
-            roles.push({
-                id: 'system-guest',
-                name: 'Guest',
-                ...SYSTEM_ROLE_DEFAULTS.GUEST,
-            });
-            break;
-    }
-
-    // Always add implicit Member permissions if not Owner or Guest
-    if (legacyRole !== 'Owner' && legacyRole !== 'Guest') {
-        // Member role is implicit - already added above for 'Member' case
-        // For Admin, we still include Member baseline through the SYSTEM_ROLE_DEFAULTS
-    }
-
-    return roles;
-}
-
-// =============================================================================
 // PROVIDER
 // =============================================================================
 
@@ -163,61 +108,83 @@ interface PermissionProviderProps {
 }
 
 export function PermissionProvider({ children }: PermissionProviderProps) {
-    const [loading, setLoading] = useState(true);
+    const [loadingMembers, setLoadingMembers] = useState(true);
+    const [loadingRoles, setLoadingRoles] = useState(true);
     const [members, setMembers] = useState<any[]>([]);
+    const [customRoles, setCustomRoles] = useState<Role[]>([]);
 
     const tenantId = getActiveTenantId();
     const currentUser = auth.currentUser;
     const userId = currentUser?.uid ?? null;
+    const loading = loadingMembers || loadingRoles;
 
-    // Subscribe to tenant members for role information
+    // Subscribe to tenant members (for the current user's roleIds)
     useEffect(() => {
         if (!tenantId) {
-            setLoading(false);
+            setLoadingMembers(false);
             return;
         }
-
         const unsubscribe = subscribeTenantUsers((fetchedMembers) => {
             setMembers(fetchedMembers as any[]);
-            setLoading(false);
+            setLoadingMembers(false);
         }, tenantId);
-
         return () => unsubscribe();
     }, [tenantId]);
 
-    // Derive current user's legacy role
-    const legacyWorkspaceRole = useMemo((): LegacyWorkspaceRole | null => {
-        if (!userId || !tenantId) return null;
+    // Subscribe to the tenant's custom role documents (authoritative permissions)
+    useEffect(() => {
+        if (!tenantId) {
+            setLoadingRoles(false);
+            return;
+        }
+        const unsubscribe = subscribeTenantRoles((firestoreRoles) => {
+            setCustomRoles(firestoreRoles.map(firestoreRoleToRole));
+            setLoadingRoles(false);
+        }, tenantId);
+        return () => unsubscribe();
+    }, [tenantId]);
 
-        // Personal workspace - user is owner
-        if (userId === tenantId) return 'Owner';
-
-        // Find member record
-        const member = members.find((m: any) => m.uid === userId);
-        if (!member) return null;
-
-        // Map legacy roles
-        const role = member.role as string;
-        if (role === 'Editor') return 'Member';
-        if (role === 'Viewer') return 'Guest';
-
-        return role as LegacyWorkspaceRole;
-    }, [members, userId, tenantId]);
+    // The current user's membership record
+    const currentMember = useMemo(() => {
+        if (!userId) return null;
+        return members.find((m: any) => m.id === userId || m.uid === userId) ?? null;
+    }, [members, userId]);
 
     // Check if current user is tenant owner
     const isTenantOwner = useMemo(() => {
         if (!userId || !tenantId) return false;
-        // Personal workspace
-        if (userId === tenantId) return true;
-        // Check role
-        return legacyWorkspaceRole === 'Owner';
-    }, [userId, tenantId, legacyWorkspaceRole]);
+        if (userId === tenantId) return true; // personal workspace
+        return currentMember?.role === 'Owner';
+    }, [userId, tenantId, currentMember]);
 
-    // Build roles from legacy data
+    const isExternal = currentMember?.role === 'Guest';
+
+    // Legacy role label kept for any consumer that still reads it
+    const legacyWorkspaceRole = useMemo((): LegacyWorkspaceRole | null => {
+        if (!userId || !tenantId) return null;
+        if (isTenantOwner) return 'Owner';
+        const role = currentMember?.role as string | undefined;
+        if (!role) return 'Member';
+        if (role === 'Editor') return 'Member';
+        if (role === 'Viewer') return 'Guest';
+        return role as LegacyWorkspaceRole;
+    }, [currentMember, userId, tenantId, isTenantOwner]);
+
+    // Build the current user's effective roles from member.roleIds + system roles.
+    // System roles are code-defined; Member is always implicit; Owner short-circuits.
     const tenantRoles = useMemo((): Role[] => {
-        if (!legacyWorkspaceRole) return [];
-        return buildRolesFromLegacyWorkspaceRole(legacyWorkspaceRole, tenantId ?? undefined, userId ?? undefined);
-    }, [legacyWorkspaceRole, tenantId, userId]);
+        if (!userId || !tenantId) return [];
+        if (isTenantOwner) return [OWNER_ROLE];
+
+        const roles: Role[] = [MEMBER_ROLE];
+        const assignedIds: string[] = currentMember?.roleIds || [];
+        assignedIds.forEach((id) => {
+            const match = customRoles.find((r) => r.id === id);
+            if (match) roles.push(match);
+        });
+        if (isExternal) roles.push(GUEST_ROLE);
+        return roles;
+    }, [userId, tenantId, isTenantOwner, isExternal, currentMember, customRoles]);
 
     // Get highest position for hierarchy checks
     const highestPosition = useMemo(() => {
@@ -234,9 +201,9 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
             projectId,
             isTenantOwner,
             roles: tenantRoles,
-            isExternal: legacyWorkspaceRole === 'Guest',
+            isExternal,
         };
-    }, [userId, tenantId, isTenantOwner, tenantRoles, legacyWorkspaceRole]);
+    }, [userId, tenantId, isTenantOwner, tenantRoles, isExternal]);
 
     // Permission check functions
     const hasPermissionFn = useCallback((node: PermissionNode, projectId?: string): boolean => {

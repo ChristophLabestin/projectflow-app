@@ -16,6 +16,13 @@ import { TimePicker } from '../components/common/DateTime/TimePicker';
 import { DateTimePicker } from '../components/common/DateTime/DateTimePicker';
 import { PrioritySelect, type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Select } from '../components/common/Select/Select';
+import { Checkbox } from '../components/common/Checkbox/Checkbox';
+import { EmptyState } from '../components/common/EmptyState/EmptyState';
+import { FilterMenu } from '../components/common/FilterMenu/FilterMenu';
+import { InlineEditCell } from '../components/common/InlineEditCell/InlineEditCell';
+import { ListToolbar } from '../components/common/ListToolbar/ListToolbar';
+import { SkeletonBlock } from '../components/common/Skeleton/Skeleton';
+import { Stepper, type StepperStep } from '../components/common/Stepper/Stepper';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -71,6 +78,34 @@ const DateTimePickerExample = ({ label }: { label: string }) => {
     return <DateTimePicker label={label} value={dateTime} onChange={setDateTime} />;
 };
 
+const ToggleExample = ({
+    checked,
+    label,
+    description,
+    onChange,
+}: {
+    checked: boolean;
+    label: string;
+    description: string;
+    onChange: (checked: boolean) => void;
+}) => (
+    <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        className={`style-switch ${checked ? 'is-checked' : ''}`.trim()}
+        onClick={() => onChange(!checked)}
+    >
+        <span className="style-switch__copy">
+            <span>{label}</span>
+            <small>{description}</small>
+        </span>
+        <span className="style-switch__track" aria-hidden="true">
+            <span className="style-switch__thumb" />
+        </span>
+    </button>
+);
+
 const ColorSwatch = ({ name, token }: { name: string; token: string }) => (
     <div className="color-swatch">
         <div className="color-swatch__preview" style={{ backgroundColor: `var(${token})` }} />
@@ -95,6 +130,16 @@ export const StyleGuidePage = () => {
     const [isSettingsModalOpen, setSettingsModalOpen] = useState(false);
     const [isMediaModalOpen, setMediaModalOpen] = useState(false);
     const [actionNotice, setActionNotice] = useState<{ message: string; tone: NoticeTone } | null>(null);
+    const [isWorkspaceChecked, setWorkspaceChecked] = useState(true);
+    const [isExternalChecked, setExternalChecked] = useState(false);
+    const [isDisabledChecked] = useState(false);
+    const [isCompactMode, setCompactMode] = useState(true);
+    const [isNotificationsEnabled, setNotificationsEnabled] = useState(false);
+    const [toolbarSearch, setToolbarSearch] = useState('');
+    const [filterMineOnly, setFilterMineOnly] = useState(true);
+    const [filterBlocked, setFilterBlocked] = useState(false);
+    const [inlineOwner, setInlineOwner] = useState(t('styleGuide.primitives.inlineEdit.value'));
+    const [activeStepId, setActiveStepId] = useState('scope');
 
     // Mock Settings Tabs
     const settingsTabs = [
@@ -125,6 +170,109 @@ export const StyleGuidePage = () => {
         { label: t('styleGuide.inputs.select.option2'), value: '2' },
         { label: t('styleGuide.inputs.select.option3'), value: '3' },
         { label: t('styleGuide.inputs.select.optionDisabled'), value: '4', disabled: true },
+    ];
+
+    const depthLevels = [
+        {
+            label: t('styleGuide.depth.canvas.label'),
+            name: t('styleGuide.depth.canvas.name'),
+            usage: t('styleGuide.depth.canvas.usage'),
+            className: 'depth-card--canvas',
+            token: '--color-surface-bg',
+        },
+        {
+            label: t('styleGuide.depth.level1.label'),
+            name: t('styleGuide.depth.level1.name'),
+            usage: t('styleGuide.depth.level1.usage'),
+            className: 'depth-card--level-1',
+            token: '--color-surface-card',
+        },
+        {
+            label: t('styleGuide.depth.level2.label'),
+            name: t('styleGuide.depth.level2.name'),
+            usage: t('styleGuide.depth.level2.usage'),
+            className: 'depth-card--level-2',
+            token: '--color-surface-hover',
+        },
+        {
+            label: t('styleGuide.depth.level3.label'),
+            name: t('styleGuide.depth.level3.name'),
+            usage: t('styleGuide.depth.level3.usage'),
+            className: 'depth-card--level-3',
+            token: 'rgba(--color-surface-hover-rgb, 0.72)',
+        },
+        {
+            label: t('styleGuide.depth.overlay.label'),
+            name: t('styleGuide.depth.overlay.name'),
+            usage: t('styleGuide.depth.overlay.usage'),
+            className: 'depth-card--overlay',
+            token: '--shadow-lg',
+        },
+    ];
+
+    const containerSamples = [
+        {
+            label: t('styleGuide.containers.dense.label'),
+            width: '1680px',
+            token: 'max-width: 1680px',
+            usage: t('styleGuide.containers.dense.usage'),
+            modifier: 'dense',
+        },
+        {
+            label: t('styleGuide.containers.standard.label'),
+            width: '1480px',
+            token: 'max-width: 1480px',
+            usage: t('styleGuide.containers.standard.usage'),
+            modifier: 'standard',
+        },
+        {
+            label: t('styleGuide.containers.form.label'),
+            width: '1120px',
+            token: 'max-width: 1120px',
+            usage: t('styleGuide.containers.form.usage'),
+            modifier: 'form',
+        },
+        {
+            label: t('styleGuide.containers.readable.label'),
+            width: '720px',
+            token: 'max-width: 720px',
+            usage: t('styleGuide.containers.readable.usage'),
+            modifier: 'readable',
+        },
+    ];
+
+    const activeFilterCount = Number(filterMineOnly) + Number(filterBlocked);
+    const primitiveSteps: StepperStep[] = [
+        {
+            id: 'scope',
+            label: t('styleGuide.primitives.stepper.scope.label'),
+            description: t('styleGuide.primitives.stepper.scope.description'),
+        },
+        {
+            id: 'build',
+            label: t('styleGuide.primitives.stepper.build.label'),
+            description: t('styleGuide.primitives.stepper.build.description'),
+        },
+        {
+            id: 'review',
+            label: t('styleGuide.primitives.stepper.review.label'),
+            description: t('styleGuide.primitives.stepper.review.description'),
+        },
+        {
+            id: 'ship',
+            label: t('styleGuide.primitives.stepper.ship.label'),
+            description: t('styleGuide.primitives.stepper.ship.description'),
+        },
+    ];
+    const activeStepIndex = primitiveSteps.findIndex((step) => step.id === activeStepId);
+    const stepperSteps = primitiveSteps.map((step, index) => ({
+        ...step,
+        status: index < activeStepIndex ? 'complete' as const : index === activeStepIndex ? 'current' as const : 'upcoming' as const,
+    }));
+    const demoRows = [
+        t('styleGuide.primitives.toolbar.row1'),
+        t('styleGuide.primitives.toolbar.row2'),
+        t('styleGuide.primitives.toolbar.row3'),
     ];
 
     return (
@@ -287,6 +435,46 @@ export const StyleGuidePage = () => {
                     <Divider />
 
                     <section className="guide-section">
+                        <h2>{t('styleGuide.sections.depth')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.depth.intro')}</p>
+                        <div className="depth-grid">
+                            {depthLevels.map((item) => (
+                                <div key={item.label} className={`depth-card ${item.className}`}>
+                                    <span className="depth-card__label">{item.label}</span>
+                                    <h3>{item.name}</h3>
+                                    <p>{item.usage}</p>
+                                    <code>{item.token}</code>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="depth-rule">
+                            <span className="material-symbols-outlined" aria-hidden="true">layers</span>
+                            <p>{t('styleGuide.depth.rule')}</p>
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.containers')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.containers.intro')}</p>
+                        <div className="container-stack" aria-label={t('styleGuide.sections.containers')}>
+                            {containerSamples.map((item) => (
+                                <div key={item.label} className={`container-sample container-sample--${item.modifier}`}>
+                                    <div>
+                                        <span>{item.label}</span>
+                                        <strong>{item.width}</strong>
+                                        <p>{item.usage}</p>
+                                    </div>
+                                    <code>{item.token}</code>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
                         <h2>{t('styleGuide.sections.inputs')}</h2>
                         <div className="guide-grid">
                             <TextInput label={t('styleGuide.inputs.username.label')} placeholder={t('styleGuide.inputs.username.placeholder')} />
@@ -302,6 +490,54 @@ export const StyleGuidePage = () => {
                                 placeholder={t('styleGuide.inputs.select.placeholder')}
                                 options={selectOptions}
                             />
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.booleanControls')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.booleanControls.intro')}</p>
+                        <div className="guide-grid">
+                            <div className="control-sample">
+                                <h3>{t('styleGuide.booleanControls.checkboxes.title')}</h3>
+                                <p>{t('styleGuide.booleanControls.checkboxes.body')}</p>
+                                <div className="control-sample__stack">
+                                    <Checkbox
+                                        checked={isWorkspaceChecked}
+                                        onChange={(event) => setWorkspaceChecked(event.target.checked)}
+                                        label={t('styleGuide.booleanControls.checkboxes.workspace')}
+                                    />
+                                    <Checkbox
+                                        checked={isExternalChecked}
+                                        onChange={(event) => setExternalChecked(event.target.checked)}
+                                        label={t('styleGuide.booleanControls.checkboxes.external')}
+                                    />
+                                    <Checkbox
+                                        checked={isDisabledChecked}
+                                        disabled
+                                        label={t('styleGuide.booleanControls.checkboxes.disabled')}
+                                    />
+                                </div>
+                            </div>
+                            <div className="control-sample">
+                                <h3>{t('styleGuide.booleanControls.toggles.title')}</h3>
+                                <p>{t('styleGuide.booleanControls.toggles.body')}</p>
+                                <div className="control-sample__stack">
+                                    <ToggleExample
+                                        checked={isCompactMode}
+                                        onChange={setCompactMode}
+                                        label={t('styleGuide.booleanControls.toggles.compact.label')}
+                                        description={t('styleGuide.booleanControls.toggles.compact.description')}
+                                    />
+                                    <ToggleExample
+                                        checked={isNotificationsEnabled}
+                                        onChange={setNotificationsEnabled}
+                                        label={t('styleGuide.booleanControls.toggles.notifications.label')}
+                                        description={t('styleGuide.booleanControls.toggles.notifications.description')}
+                                    />
+                                </div>
+                            </div>
                         </div>
                     </section>
 
@@ -340,6 +576,152 @@ export const StyleGuidePage = () => {
                             <Badge variant="success">{t('styleGuide.badges.success')}</Badge>
                             <Badge variant="warning">{t('styleGuide.badges.warning')}</Badge>
                             <Badge variant="error">{t('styleGuide.badges.error')}</Badge>
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.standardizeNext')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.standardize.intro')}</p>
+                        <div className="primitive-grid">
+                            <article className="primitive-demo primitive-demo--wide">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">tune</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.toolbar.title')}</h3>
+                                        <p>{t('styleGuide.standardize.toolbar.body')}</p>
+                                    </div>
+                                </div>
+                                <ListToolbar
+                                    title={t('styleGuide.primitives.toolbar.title')}
+                                    description={t('styleGuide.primitives.toolbar.description')}
+                                    searchValue={toolbarSearch}
+                                    onSearchChange={setToolbarSearch}
+                                    searchPlaceholder={t('styleGuide.primitives.toolbar.search')}
+                                    filters={
+                                        <FilterMenu
+                                            label={t('styleGuide.primitives.filterMenu.label')}
+                                            title={t('styleGuide.primitives.filterMenu.title')}
+                                            activeCount={activeFilterCount}
+                                            onReset={() => {
+                                                setFilterMineOnly(false);
+                                                setFilterBlocked(false);
+                                            }}
+                                            resetLabel={t('styleGuide.primitives.filterMenu.reset')}
+                                        >
+                                            <Checkbox
+                                                checked={filterMineOnly}
+                                                onChange={(event) => setFilterMineOnly(event.target.checked)}
+                                                label={t('styleGuide.primitives.filterMenu.mine')}
+                                            />
+                                            <Checkbox
+                                                checked={filterBlocked}
+                                                onChange={(event) => setFilterBlocked(event.target.checked)}
+                                                label={t('styleGuide.primitives.filterMenu.blocked')}
+                                            />
+                                        </FilterMenu>
+                                    }
+                                    actions={<Button size="sm">{t('styleGuide.primitives.toolbar.action')}</Button>}
+                                />
+                                <div className="primitive-demo__rows">
+                                    {demoRows.map((row) => (
+                                        <div key={row} className="primitive-demo__row">
+                                            <span>{row}</span>
+                                            <Badge variant="neutral">{t('styleGuide.primitives.toolbar.status')}</Badge>
+                                        </div>
+                                    ))}
+                                </div>
+                            </article>
+
+                            <article className="primitive-demo">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">inbox</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.empty.title')}</h3>
+                                        <p>{t('styleGuide.standardize.empty.body')}</p>
+                                    </div>
+                                </div>
+                                <EmptyState
+                                    compact
+                                    title={t('styleGuide.primitives.empty.title')}
+                                    message={t('styleGuide.primitives.empty.message')}
+                                    actions={<Button size="sm" variant="secondary">{t('styleGuide.primitives.empty.action')}</Button>}
+                                />
+                            </article>
+
+                            <article className="primitive-demo">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">hourglass_empty</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.skeleton.title')}</h3>
+                                        <p>{t('styleGuide.standardize.skeleton.body')}</p>
+                                    </div>
+                                </div>
+                                <SkeletonBlock rows={3} label={t('styleGuide.primitives.skeleton.loading')} />
+                            </article>
+
+                            <article className="primitive-demo">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">edit_square</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.inlineEdit.title')}</h3>
+                                        <p>{t('styleGuide.standardize.inlineEdit.body')}</p>
+                                    </div>
+                                </div>
+                                <InlineEditCell
+                                    label={t('styleGuide.primitives.inlineEdit.label')}
+                                    value={inlineOwner}
+                                    emptyLabel={t('styleGuide.primitives.inlineEdit.empty')}
+                                    saveLabel={t('common.save')}
+                                    cancelLabel={t('styleGuide.modals.cancel')}
+                                    onSave={(value) => setInlineOwner(value)}
+                                />
+                            </article>
+
+                            <article className="primitive-demo">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">filter_alt</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.filters.title')}</h3>
+                                        <p>{t('styleGuide.standardize.filters.body')}</p>
+                                    </div>
+                                </div>
+                                <div className="primitive-demo__inline">
+                                    <FilterMenu
+                                        label={t('styleGuide.primitives.filterMenu.label')}
+                                        title={t('styleGuide.primitives.filterMenu.title')}
+                                        activeCount={activeFilterCount}
+                                        onReset={() => {
+                                            setFilterMineOnly(false);
+                                            setFilterBlocked(false);
+                                        }}
+                                        resetLabel={t('styleGuide.primitives.filterMenu.reset')}
+                                    >
+                                        <Checkbox
+                                            checked={filterMineOnly}
+                                            onChange={(event) => setFilterMineOnly(event.target.checked)}
+                                            label={t('styleGuide.primitives.filterMenu.mine')}
+                                        />
+                                        <Checkbox
+                                            checked={filterBlocked}
+                                            onChange={(event) => setFilterBlocked(event.target.checked)}
+                                            label={t('styleGuide.primitives.filterMenu.blocked')}
+                                        />
+                                    </FilterMenu>
+                                </div>
+                            </article>
+
+                            <article className="primitive-demo primitive-demo--wide">
+                                <div className="primitive-demo__header">
+                                    <span className="material-symbols-outlined" aria-hidden="true">linear_scale</span>
+                                    <div>
+                                        <h3>{t('styleGuide.standardize.stepper.title')}</h3>
+                                        <p>{t('styleGuide.standardize.stepper.body')}</p>
+                                    </div>
+                                </div>
+                                <Stepper steps={stepperSteps} onStepClick={(step) => setActiveStepId(step.id)} />
+                            </article>
                         </div>
                     </section>
                 </main>

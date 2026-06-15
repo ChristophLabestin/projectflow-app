@@ -6,7 +6,7 @@ import { getAllWorkspaceProjects } from '../services/dataService';
 import { ensureActiveTenantId } from '../services/domain/authService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
-import { getUserTasksForProjects } from '../services/domain/tasksService';
+import { getUserTasksForProjects, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getUserProfile } from '../services/domain/usersService';
 import { Project, Task, Initiative } from '../types';
 import { toDate, toMillis } from '../utils/time';
@@ -17,61 +17,67 @@ import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { useUIState } from '../context/UIContext';
 import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 
-type DashboardCommandTone = 'danger' | 'warning' | 'info' | 'neutral';
+type DashboardTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
 
-interface DashboardCommandItem {
-    id: string;
-    href: string;
-    icon: string;
-    label: string;
-    meta: string;
-    focus?: PinnedItem;
-    priority: number;
-    title: string;
-    tone: DashboardCommandTone;
+interface DashboardStatement {
+    template: string;
+    value: string;
 }
 
-type DashboardStepTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
+interface DashboardRouteStop {
+    id: string;
+    href: string;
+    title: string;
+    meta: string;
+    reason: string;
+    tone: DashboardTone;
+    focus?: PinnedItem;
+    proposed?: boolean;
+    taskId?: string;
+    projectId?: string;
+    tenantId?: string;
+}
+
+interface DashboardWeekDay {
+    key: string;
+    label: string;
+    dayNum: string;
+    count: number;
+    isToday: boolean;
+    isWeekend: boolean;
+}
+
+interface DashboardNightEntry {
+    key: string;
+    timeMs: number;
+    time: string;
+    symbol: string;
+    tone: DashboardTone;
+    text: string;
+}
+
+interface DashboardAttentionChip {
+    key: string;
+    label: string;
+    tone: DashboardTone;
+}
+
+interface DashboardRailListItem {
+    id: string;
+    href: string;
+    title: string;
+    meta: string;
+    tone: DashboardTone;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const cssVars = (vars: Record<string, string>) => vars as React.CSSProperties;
-
-const clampDashboardProgress = (value: number) => Math.max(0, Math.min(1, value));
-
-const smoothDashboardProgress = (value: number, start: number, end: number) => {
-    const x = clampDashboardProgress((value - start) / (end - start));
-    return x * x * (3 - (2 * x));
-};
-
-const getScrollContainer = (node: HTMLElement): HTMLElement | Window => {
-    let parent = node.parentElement;
-
-    while (parent) {
-        const style = window.getComputedStyle(parent);
-        const overflow = `${style.overflow} ${style.overflowY} ${style.overflowX}`;
-        if (/(auto|scroll|overlay)/.test(overflow) && parent.scrollHeight > parent.clientHeight) {
-            return parent;
-        }
-        parent = parent.parentElement;
-    }
-
-    return window;
-};
-
-const getScrollTop = (container: HTMLElement | Window) => {
-    if (container instanceof Window) {
-        return window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    }
-
-    return container.scrollTop;
-};
-
-const getScrollViewportHeight = (container: HTMLElement | Window) => (
-    container instanceof Window ? window.innerHeight : container.clientHeight
-);
 
 const startOfToday = () => {
     const date = new Date();
@@ -96,7 +102,7 @@ const isPastDue = (value?: any) => {
     return date ? date.getTime() < startOfToday().getTime() : false;
 };
 
-const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
+const bucketByDay = (items: Task[], days: number, getValue: (task: Task) => any) => {
     const buckets = Array.from({ length: days }, (_, index) => {
         const date = new Date();
         date.setDate(date.getDate() - (days - index - 1));
@@ -104,14 +110,13 @@ const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
         return { date, value: 0 };
     });
     const firstDay = buckets[0]?.date.getTime() ?? Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
 
     items.forEach((item) => {
-        const createdAt = toDate(item.createdAt);
-        if (!createdAt) return;
-        const normalized = new Date(createdAt);
+        const itemDate = toDate(getValue(item));
+        if (!itemDate) return;
+        const normalized = new Date(itemDate);
         normalized.setHours(0, 0, 0, 0);
-        const index = Math.floor((normalized.getTime() - firstDay) / dayMs);
+        const index = Math.floor((normalized.getTime() - firstDay) / DAY_MS);
         if (index >= 0 && index < buckets.length) {
             buckets[index].value += 1;
         }
@@ -120,22 +125,46 @@ const bucketByDay = (items: { createdAt?: any }[], days = 7) => {
     return buckets;
 };
 
+const renderDashboardStatement = (statement: DashboardStatement) => {
+    if (!statement.template.includes('{value}')) {
+        return statement.template;
+    }
+
+    const [before, after = ''] = statement.template.split('{value}');
+    return (
+        <>
+            {before}
+            <em>{statement.value}</em>
+            {after}
+        </>
+    );
+};
+
 export const Dashboard = () => {
     const { isAuthReady, user } = useAuth();
-    const { t, language, dateFormat, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
+    const { t, language, dateLocale, dashboardTranslationsReady, loadDashboardTranslations } = useLanguage();
     const { startFocusItem, toggleModal, focusItemId, focusItem, focusState, isModalOpen } = usePinnedTasks();
+    const { openTaskCreateModal } = useUIState();
     const [authUserId, setAuthUserId] = useState<string | null>(() => auth.currentUser?.uid ?? null);
     const [userName, setUserName] = useState<string>('');
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
-    const [showWorkspaceInsights, setShowWorkspaceInsights] = useState(false);
     const [loading, setLoading] = useState(true);
     const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
-    const [dashboardScrollProgress, setDashboardScrollProgress] = useState(0);
+    const [activeDashboardStep, setActiveDashboardStep] = useState(0);
     const dashboardStageRef = useRef<HTMLDivElement | null>(null);
-    const dashboardTouchYRef = useRef<number | null>(null);
+
+    // Browsers scroll overflow-hidden containers to reveal focused/clicked
+    // content; the slide transform owns the horizontal position, so pin the
+    // stage scroll offset to zero.
+    useEffect(() => {
+        const stage = dashboardStageRef.current;
+        if (!stage) return;
+        stage.scrollLeft = 0;
+        stage.scrollTop = 0;
+    }, [activeDashboardStep]);
 
     useEffect(() => {
         void loadDashboardTranslations();
@@ -233,8 +262,6 @@ export const Dashboard = () => {
                 setProjects(workspaceProjects);
                 setTasks([]);
                 setInitiatives([]);
-                setIdeas([]);
-                setIssues([]);
 
                 const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
                 setUserName(displayName ? displayName.split(' ')[0] : '');
@@ -282,65 +309,6 @@ export const Dashboard = () => {
         });
     }, []);
 
-    useEffect(() => {
-        if (loading || !dashboardTranslationsReady) return;
-
-        const stage = dashboardStageRef.current;
-        if (!stage) return;
-
-        let frame = 0;
-        const scrollContainer = getScrollContainer(stage);
-        const scrollStart = getScrollTop(scrollContainer);
-
-        const updateProgress = () => {
-            const range = Math.max(getScrollViewportHeight(scrollContainer) * 1.75, 1120);
-            const nextProgress = clampDashboardProgress((getScrollTop(scrollContainer) - scrollStart) / range);
-
-            setDashboardScrollProgress((current) => (
-                Math.abs(current - nextProgress) < 0.01 ? current : nextProgress
-            ));
-        };
-
-        const scheduleUpdate = () => {
-            window.cancelAnimationFrame(frame);
-            frame = window.requestAnimationFrame(updateProgress);
-        };
-
-        updateProgress();
-        scrollContainer.addEventListener('scroll', scheduleUpdate, { passive: true });
-        window.addEventListener('resize', scheduleUpdate);
-
-        return () => {
-            window.cancelAnimationFrame(frame);
-            scrollContainer?.removeEventListener('scroll', scheduleUpdate);
-            window.removeEventListener('resize', scheduleUpdate);
-        };
-    }, [dashboardTranslationsReady, loading]);
-
-    const handleDashboardWheel = (event: React.WheelEvent<HTMLDivElement>) => {
-        const delta = event.deltaY / 1500;
-        if (!Number.isFinite(delta) || Math.abs(delta) < 0.002) return;
-
-        setDashboardScrollProgress((current) => clampDashboardProgress(current + delta));
-    };
-
-    const handleDashboardTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-        dashboardTouchYRef.current = event.touches[0]?.clientY ?? null;
-    };
-
-    const handleDashboardTouchMove = (event: React.TouchEvent<HTMLDivElement>) => {
-        const nextY = event.touches[0]?.clientY;
-        const previousY = dashboardTouchYRef.current;
-        if (nextY === undefined || previousY === null) return;
-
-        dashboardTouchYRef.current = nextY;
-        setDashboardScrollProgress((current) => clampDashboardProgress(current + (previousY - nextY) / 1120));
-    };
-
-    const handleDashboardTouchEnd = () => {
-        dashboardTouchYRef.current = null;
-    };
-
     const projectById = useMemo(() => {
         const map = new Map<string, string>();
         projects.forEach((project) => map.set(project.id, project.title));
@@ -365,6 +333,11 @@ export const Dashboard = () => {
     const activeInitiatives = useMemo(
         () => initiatives.filter((initiative) => activeProjectIds.has(initiative.projectId)),
         [activeProjectIds, initiatives]
+    );
+
+    const openTasks = useMemo(
+        () => activeTasks.filter((task) => !task.isCompleted),
+        [activeTasks]
     );
 
     const tasksByProject = useMemo(() => {
@@ -403,154 +376,100 @@ export const Dashboard = () => {
         return healthMap;
     }, [activeProjects, initiativesByProject, tasksByProject]);
 
-    const allProjectsAtRisk = useMemo(() => {
-        return activeProjects
-            .map((project) => ({ project, health: projectHealthMap[project.id] }))
-            .filter((entry) => entry.health?.status === 'warning' || entry.health?.status === 'critical')
-            .sort((a, b) => a.health.score - b.health.score);
-    }, [activeProjects, projectHealthMap]);
-
-    const projectsAtRisk = useMemo(() => allProjectsAtRisk.slice(0, 2), [allProjectsAtRisk]);
-
     const overdueTasks = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted && isPastDue(task.dueDate)),
-        [activeTasks]
+        () => openTasks.filter((task) => isPastDue(task.dueDate)),
+        [openTasks]
     );
 
     const dueTodayTasks = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted && isToday(task.dueDate)),
-        [activeTasks]
+        () => openTasks.filter((task) => isToday(task.dueDate)),
+        [openTasks]
     );
 
     const scheduledTodayTasks = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted && isToday(task.scheduledDate)),
-        [activeTasks]
+        () => openTasks.filter((task) => isToday(task.scheduledDate) && !isToday(task.dueDate) && !isPastDue(task.dueDate)),
+        [openTasks]
     );
 
     const blockedTasks = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted && task.status === 'Blocked'),
-        [activeTasks]
+        () => openTasks.filter((task) => task.status === 'Blocked'),
+        [openTasks]
     );
 
-    const openTasksCount = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted).length,
-        [activeTasks]
-    );
+    // Everything that should realistically happen today, deduplicated.
+    const todayQueue = useMemo(() => {
+        const seen = new Set<string>();
+        return [...overdueTasks, ...dueTodayTasks, ...scheduledTodayTasks].filter((task) => {
+            if (seen.has(task.id)) return false;
+            seen.add(task.id);
+            return true;
+        });
+    }, [dueTodayTasks, overdueTasks, scheduledTodayTasks]);
 
-    const activeProjectsCount = useMemo(
-        () => activeProjects.length,
-        [activeProjects.length]
-    );
+    // How many open tasks each open task is blocking (reverse dependency count).
+    const unblocksCount = useMemo(() => {
+        const map = new Map<string, number>();
+        openTasks.forEach((task) => {
+            (task.dependencies || []).forEach((dependencyId) => {
+                map.set(dependencyId, (map.get(dependencyId) || 0) + 1);
+            });
+        });
+        return map;
+    }, [openTasks]);
 
-    const taskTrend = useMemo(() => bucketByDay(activeTasks), [activeTasks]);
-
-    const maxVelocityValue = useMemo(
-        () => Math.max(...taskTrend.map((item) => item.value), 1),
-        [taskTrend]
-    );
-
-    const dashboardMetrics = useMemo(() => ([
-        {
-            key: 'openTasks',
-            href: '/tasks',
-            icon: 'checklist',
-            label: t('dashboard.expanded.metric.openTasks'),
-            value: openTasksCount
-        },
-        {
-            key: 'activeProjects',
-            href: '/projects',
-            icon: 'folder_open',
-            label: t('dashboard.expanded.metric.activeProjects'),
-            value: activeProjectsCount
-        },
-        {
-            key: 'risk',
-            href: '/projects',
-            icon: 'warning',
-            label: t('dashboard.expanded.metric.risk'),
-            value: allProjectsAtRisk.length
-        }
-    ]), [activeProjectsCount, allProjectsAtRisk.length, openTasksCount, t]);
-
-    const projectHealthSummary = useMemo(() => {
-        return activeProjects.reduce((summary, project) => {
-            const health = projectHealthMap[project.id];
-            if (health?.status === 'critical') {
-                summary.risk += 1;
-            } else if (health?.status === 'warning') {
-                summary.watch += 1;
-            } else {
-                summary.healthy += 1;
-            }
-            return summary;
-        }, { healthy: 0, watch: 0, risk: 0 });
-    }, [activeProjects, projectHealthMap]);
-
-    const totalVelocity = useMemo(
-        () => taskTrend.reduce((sum, item) => sum + item.value, 0),
-        [taskTrend]
-    );
-
-    const focusTasks = useMemo(() => {
-        return [...activeTasks]
-            .filter((task) => !task.isCompleted)
-            .sort((a, b) => {
-                const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-                const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-                if (aDue !== bDue) return aDue - bDue;
-                return toMillis(b.createdAt) - toMillis(a.createdAt);
-            })
-            .slice(0, 3);
+    const taskById = useMemo(() => {
+        const map = new Map<string, Task>();
+        activeTasks.forEach((task) => map.set(task.id, task));
+        return map;
     }, [activeTasks]);
+
+    const completedLast7Days = useMemo(() => {
+        const threshold = Date.now() - (7 * DAY_MS);
+        return activeTasks.filter((task) => task.isCompleted && toMillis(task.completedAt) >= threshold);
+    }, [activeTasks]);
+
+    const completedPrevious7Days = useMemo(() => {
+        const now = Date.now();
+        return activeTasks.filter((task) => {
+            if (!task.isCompleted) return false;
+            const completed = toMillis(task.completedAt);
+            return completed >= now - (14 * DAY_MS) && completed < now - (7 * DAY_MS);
+        });
+    }, [activeTasks]);
+
+    const completionTrend = useMemo(
+        () => bucketByDay(activeTasks.filter((task) => task.isCompleted), 14, (task) => task.completedAt),
+        [activeTasks]
+    );
+
+    const maxCompletionValue = useMemo(
+        () => Math.max(...completionTrend.map((item) => item.value), 1),
+        [completionTrend]
+    );
 
     const todayLongLabel = useMemo(
         () => format(new Date(), 'PPPP', { locale: dateLocale }),
         [dateLocale, language]
     );
 
-    const taskPriorityLabels = useMemo(() => ({
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low')
-    }), [t]);
-
-    const formatShortDate = (value?: any) => {
-        const date = toDate(value);
-        return date ? format(date, dateFormat, { locale: dateLocale }) : '';
+    const overdueDaysOf = (task: Task) => {
+        const due = toDate(task.dueDate);
+        if (!due) return 0;
+        return Math.max(1, Math.floor((startOfToday().getTime() - due.getTime()) / DAY_MS));
     };
 
-    const formatCommandDueLabel = (value?: any) => {
-        const date = toDate(value);
-        if (!date) return t('dashboard.command.noDate');
+    // --- Step 1: day band + route ------------------------------------------
 
-        const todayStart = startOfToday();
-        const tomorrowStart = new Date(todayStart);
-        tomorrowStart.setDate(todayStart.getDate() + 1);
-        const nextDayStart = new Date(tomorrowStart);
-        nextDayStart.setDate(tomorrowStart.getDate() + 1);
+    const isFocusSnoozed = useMemo(() => (
+        focusState?.status === 'snoozed'
+            && Boolean(focusState.snoozedUntil)
+            && new Date(focusState.snoozedUntil || '').getTime() > Date.now()
+    ), [focusState?.snoozedUntil, focusState?.status]);
 
-        if (date.getTime() < todayStart.getTime()) {
-            return t('dashboard.command.dueDate').replace('{date}', formatShortDate(date));
-        }
-        if (date.getTime() < tomorrowStart.getTime()) {
-            return t('dashboard.command.dueToday');
-        }
-        if (date.getTime() < nextDayStart.getTime()) {
-            return t('dashboard.command.dueTomorrow');
-        }
-        return t('dashboard.command.dueDate').replace('{date}', formatShortDate(date));
-    };
-
-    const commandItems = useMemo<DashboardCommandItem[]>(() => {
-        const items: DashboardCommandItem[] = [];
+    const routeStops = useMemo<DashboardRouteStop[]>(() => {
+        const items: DashboardRouteStop[] = [];
         const seen = new Set<string>();
-        const projectLabel = (projectId?: string) => (
-            projectId ? (projectById.get(projectId) || t('dashboard.issues.unknownProject')) : t('dashboard.issues.unknownProject')
-        );
-        const taskHref = (task: Task) => task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks';
-        const taskMeta = (task: Task) => `${projectLabel(task.projectId)} - ${formatCommandDueLabel(task.dueDate || task.scheduledDate)}`;
+        const projectLabel = (projectId?: string) => (projectId && projectById.get(projectId)) || '';
         const taskFocus = (task: Task): PinnedItem | undefined => (
             task.projectId
                 ? {
@@ -564,296 +483,754 @@ export const Dashboard = () => {
                 }
                 : undefined
         );
-        const sortedByDue = (items: Task[]) => [...items].sort((a, b) => {
-            const aDue = toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-            const bDue = toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY;
-            if (aDue !== bDue) return aDue - bDue;
-            return toMillis(b.createdAt) - toMillis(a.createdAt);
-        });
-
-        const addTask = (task: Task, label: string, tone: DashboardCommandTone, icon: string, priority: number, meta?: string) => {
-            const key = `task:${task.id}`;
-            if (seen.has(key)) return;
-            seen.add(key);
+        const freesSuffix = (taskId: string) => {
+            const count = unblocksCount.get(taskId) || 0;
+            if (count === 0) return '';
+            const text = count === 1
+                ? t('dashboard.today.reason.unblocksOne')
+                : t('dashboard.today.reason.unblocks').replace('{count}', String(count));
+            return ` · ${text}`;
+        };
+        const pushTask = (task: Task, reason: string, tone: DashboardTone) => {
+            if (items.length >= 4 || seen.has(task.id)) return;
+            seen.add(task.id);
             items.push({
-                id: key,
-                href: taskHref(task),
-                icon,
-                label,
-                meta: meta || taskMeta(task),
-                focus: taskFocus(task),
-                priority,
+                id: task.id,
+                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
                 title: task.title,
-                tone
+                meta: projectLabel(task.projectId),
+                reason,
+                tone,
+                focus: taskFocus(task),
+                taskId: task.id,
+                projectId: task.projectId,
+                tenantId: task.tenantId
             });
         };
 
-        sortedByDue(overdueTasks).slice(0, 2).forEach((task) => {
-            addTask(task, t('dashboard.command.tag.overdue'), 'danger', 'event_busy', 10);
+        if (focusItem && focusItem.projectId && activeProjectIds.has(focusItem.projectId) && !isFocusSnoozed && !focusItem.isCompleted) {
+            const focusTask = taskById.get(focusItem.id);
+            if (!focusTask || !focusTask.isCompleted) {
+                seen.add(focusItem.id);
+                const focusPath = focusItem.type === 'initiative' ? 'initiatives' : 'tasks';
+                items.push({
+                    id: focusItem.id,
+                    href: `/project/${focusItem.projectId}/${focusPath}/${focusItem.id}`,
+                    title: focusItem.title,
+                    meta: projectById.get(focusItem.projectId) || '',
+                    reason: focusTask?.nextStep
+                        ? t('dashboard.today.reason.focusNext').replace('{next}', focusTask.nextStep)
+                        : t('dashboard.today.reason.focusResume'),
+                    tone: 'info',
+                    focus: focusItem,
+                    taskId: focusItem.id,
+                    projectId: focusItem.projectId,
+                    tenantId: focusItem.tenantId
+                });
+            }
+        }
+
+        const byDueDate = (a: Task, b: Task) => (
+            (toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY)
+                - (toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY)
+        );
+
+        [...overdueTasks].sort(byDueDate).forEach((task) => {
+            const days = overdueDaysOf(task);
+            const reason = days <= 1
+                ? t('dashboard.today.reason.overdueYesterday')
+                : t('dashboard.today.reason.overdueDays').replace('{days}', String(days));
+            pushTask(task, `${reason}${freesSuffix(task.id)}`, 'danger');
         });
 
-        sortedByDue(dueTodayTasks).slice(0, 3).forEach((task) => {
-            addTask(task, t('dashboard.command.tag.dueToday'), 'warning', 'today', 20);
+        const priorityRank = { Urgent: 0, High: 1, Medium: 2, Low: 3 } as Record<string, number>;
+        [...dueTodayTasks]
+            .sort((a, b) => (priorityRank[a.priority || 'Medium'] ?? 2) - (priorityRank[b.priority || 'Medium'] ?? 2))
+            .forEach((task) => {
+                pushTask(task, `${t('dashboard.today.reason.dueToday')}${freesSuffix(task.id)}`, 'warning');
+            });
+
+        scheduledTodayTasks.forEach((task) => {
+            pushTask(task, t('dashboard.today.reason.scheduled'), 'neutral');
         });
 
-        sortedByDue(scheduledTodayTasks).slice(0, 2).forEach((task) => {
-            addTask(
-                task,
-                t('dashboard.command.tag.scheduledToday'),
-                'info',
-                'event_available',
-                24,
-                `${projectLabel(task.projectId)} - ${t('dashboard.command.scheduledToday')}`
-            );
-        });
-
-        sortedByDue(blockedTasks).slice(0, 2).forEach((task) => {
-            addTask(task, t('dashboard.command.tag.blocked'), 'danger', 'block', 30);
-        });
-
-        projectsAtRisk.forEach(({ project, health }) => {
-            const key = `project:${project.id}`;
-            if (seen.has(key)) return;
-            seen.add(key);
-            const openTasks = (tasksByProject[project.id] || []).filter((task) => !task.isCompleted).length;
+        // Fill remaining stops with quick follow-ups on blocked work.
+        blockedTasks.forEach((task) => {
+            if (items.length >= 4 || seen.has(task.id)) return;
+            seen.add(task.id);
+            let why = task.blockerNote || '';
+            if (!why && task.dependencies && task.dependencies.length > 0) {
+                const dependency = taskById.get(task.dependencies[0]);
+                if (dependency && !dependency.isCompleted) {
+                    why = t('dashboard.today.blockedRail.dependency').replace('{title}', dependency.title);
+                }
+            }
             items.push({
-                id: key,
-                href: `/project/${project.id}`,
-                icon: health.status === 'critical' ? 'release_alert' : 'warning',
-                label: t('dashboard.command.tag.projectRisk'),
-                meta: t('dashboard.command.projectRiskMeta')
-                    .replace('{score}', String(health.score))
-                    .replace('{count}', String(openTasks)),
-                priority: 45,
-                title: project.title,
-                tone: health.status === 'critical' ? 'danger' : 'warning'
+                id: `follow:${task.id}`,
+                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
+                title: t('dashboard.route.followUp').replace('{title}', task.title),
+                meta: projectLabel(task.projectId),
+                reason: why || t('dashboard.today.blockedRail.fallback'),
+                tone: 'neutral',
+                taskId: task.id,
+                projectId: task.projectId,
+                tenantId: task.tenantId
             });
         });
 
-        focusTasks.forEach((task) => {
-            addTask(task, t('dashboard.command.tag.upcoming'), 'neutral', 'radio_button_unchecked', 80);
-        });
+        // Quiet day: nothing dated drove the route. Propose a plan from the
+        // backlog so the route is never empty — ranked by priority, then age.
+        const datedCount = items.length;
+        if (datedCount < 3) {
+            const ageDays = (task: Task) => {
+                const created = toDate(task.createdAt);
+                return created ? Math.max(0, Math.floor((Date.now() - created.getTime()) / DAY_MS)) : 0;
+            };
+            const backlog = openTasks
+                .filter((task) => (
+                    !seen.has(task.id)
+                        && task.status !== 'Blocked'
+                        && !task.dueDate
+                        && !task.scheduledDate
+                ))
+                .sort((a, b) => {
+                    const rank = (priorityRank[a.priority || 'Medium'] ?? 2) - (priorityRank[b.priority || 'Medium'] ?? 2);
+                    if (rank !== 0) return rank;
+                    return toMillis(a.createdAt) - toMillis(b.createdAt);
+                });
 
-        return items.sort((a, b) => a.priority - b.priority).slice(0, 4);
+            backlog.forEach((task) => {
+                if (items.length >= 3 || seen.has(task.id)) return;
+                seen.add(task.id);
+                const age = ageDays(task);
+                let reason: string;
+                if (task.priority === 'Urgent' || task.priority === 'High') {
+                    reason = t('dashboard.route.suggest.important');
+                } else if (age >= 7) {
+                    reason = t('dashboard.route.suggest.aged').replace('{days}', String(age));
+                } else {
+                    reason = t('dashboard.route.suggest.pick');
+                }
+                items.push({
+                    id: `suggest:${task.id}`,
+                    href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
+                    title: task.title,
+                    meta: projectLabel(task.projectId),
+                    reason,
+                    tone: 'neutral',
+                    proposed: true,
+                    focus: taskFocus(task),
+                    taskId: task.id,
+                    projectId: task.projectId,
+                    tenantId: task.tenantId
+                });
+            });
+        }
+
+        return items;
     }, [
+        activeProjectIds,
         blockedTasks,
         dueTodayTasks,
-        focusTasks,
+        focusItem,
+        isFocusSnoozed,
+        openTasks,
         overdueTasks,
         projectById,
-        projectsAtRisk,
         scheduledTodayTasks,
         t,
-        tasksByProject
+        taskById,
+        unblocksCount
     ]);
 
-    const isFocusSnoozed = useMemo(() => (
-        focusState?.status === 'snoozed'
-            && Boolean(focusState.snoozedUntil)
-            && new Date(focusState.snoozedUntil || '').getTime() > Date.now()
-    ), [focusState?.snoozedUntil, focusState?.status]);
+    const routeRealCount = useMemo(() => routeStops.filter((stop) => !stop.proposed).length, [routeStops]);
+    const routeIsSuggested = routeStops.length > 0 && routeRealCount === 0;
 
-    const focusResumeItem = useMemo<DashboardCommandItem | null>(() => {
-        if (!focusItem || !focusItem.projectId) return null;
-        if (!activeProjectIds.has(focusItem.projectId)) return null;
+    const undatedOpenCount = useMemo(() => (
+        openTasks.filter((task) => !task.dueDate && !task.scheduledDate && task.status !== 'Blocked').length
+    ), [openTasks]);
 
-        const status = isFocusSnoozed ? 'snoozed' : focusState?.status || 'active';
-        const focusPath = focusItem.type === 'initiative' ? 'initiatives' : 'tasks';
-        return {
-            id: `focus:${focusItem.id}`,
-            href: `/project/${focusItem.projectId}/${focusPath}/${focusItem.id}`,
-            icon: status === 'blocked' ? 'block' : status === 'snoozed' ? 'snooze' : 'center_focus_strong',
-            label: status === 'blocked'
-                ? t('dashboard.command.tag.blockedFocus')
-                : status === 'snoozed'
-                    ? t('dashboard.command.tag.snoozedFocus')
-                    : t('dashboard.command.tag.currentFocus'),
-            meta: projectById.get(focusItem.projectId) || t('dashboard.issues.unknownProject'),
-            focus: focusItem,
-            priority: status === 'blocked' ? 5 : 0,
-            title: focusItem.title,
-            tone: status === 'blocked' ? 'danger' : status === 'snoozed' ? 'neutral' : 'info'
-        };
-    }, [activeProjectIds, focusItem, focusState?.status, isFocusSnoozed, projectById, t]);
-
-    const primaryCommandItems = useMemo(() => {
-        const merged = focusResumeItem
-            ? [focusResumeItem, ...commandItems.filter((item) => item.focus?.id !== focusResumeItem.focus?.id)]
-            : commandItems;
-        return merged.slice(0, 3);
-    }, [commandItems, focusResumeItem]);
-    const primaryResumeItem = primaryCommandItems[0];
-
-    const dueNowCount = overdueTasks.length + dueTodayTasks.length + scheduledTodayTasks.length;
-    const blockersCount = blockedTasks.length;
-
-    const commandSummaryItems = useMemo(() => ([
-        {
-            key: 'dueNow',
-            icon: dueNowCount > 0 ? 'event_busy' : 'event_available',
-            label: t('dashboard.step.now.summary.dueNow'),
-            tone: overdueTasks.length > 0 ? 'danger' : 'warning',
-            value: dueNowCount
-        },
-        {
-            key: 'blockers',
-            icon: blockersCount > 0 ? 'block' : 'check_circle',
-            label: t('dashboard.step.now.summary.blockers'),
-            tone: blockersCount > 0 ? 'danger' : 'success',
-            value: blockersCount
-        },
-        {
-            key: 'risk',
-            icon: allProjectsAtRisk.length > 0 ? 'warning' : 'shield',
-            label: t('dashboard.step.now.summary.risk'),
-            tone: allProjectsAtRisk.length > 0 ? 'warning' : 'success',
-            value: allProjectsAtRisk.length
+    const routeStatement = useMemo<DashboardStatement>(() => {
+        if (routeStops.length === 0) {
+            return {
+                template: t('dashboard.route.statement.clear'),
+                value: t('dashboard.route.statement.clearValue')
+            };
         }
-    ] as Array<{
-        key: string;
-        icon: string;
-        label: string;
-        tone: DashboardStepTone;
-        value: number;
-    }>), [
-        allProjectsAtRisk.length,
-        blockersCount,
-        dueNowCount,
-        overdueTasks.length,
-        t
+        if (routeIsSuggested) {
+            return {
+                template: t(routeStops.length === 1 ? 'dashboard.route.statement.suggestOne' : 'dashboard.route.statement.suggest'),
+                value: String(routeStops.length)
+            };
+        }
+        if (todayQueue.length === 0 && blockedTasks.length > 0) {
+            return {
+                template: t(blockedTasks.length === 1 ? 'dashboard.route.statement.waitingOne' : 'dashboard.route.statement.waiting'),
+                value: String(blockedTasks.length)
+            };
+        }
+        if (routeStops.length === 1) {
+            return { template: t('dashboard.route.statement.one'), value: routeStops[0].title };
+        }
+        if (overdueTasks.length > 0) {
+            return {
+                template: t(routeStops[0].tone === 'danger' ? 'dashboard.route.statement.behind' : 'dashboard.route.statement.behindLater'),
+                value: String(routeStops.length)
+            };
+        }
+        return { template: t('dashboard.route.statement.clean'), value: String(routeStops.length) };
+    }, [blockedTasks.length, overdueTasks.length, routeIsSuggested, routeStops, t, todayQueue.length]);
+
+    // "Diese Woche": always-on 7-day strip (Mon–Sun) with a count of dated work
+    // per day. Structural even when quiet, so the rail never reads as empty.
+    const weekStrip = useMemo<DashboardWeekDay[]>(() => {
+        const today = startOfToday();
+        const monday = new Date(today);
+        const offset = (today.getDay() + 6) % 7; // Mon = 0
+        monday.setDate(today.getDate() - offset);
+
+        const dayCounts = new Map<number, number>();
+        const bump = (value: any) => {
+            const date = toDate(value);
+            if (!date) return;
+            const d = new Date(date);
+            d.setHours(0, 0, 0, 0);
+            dayCounts.set(d.getTime(), (dayCounts.get(d.getTime()) || 0) + 1);
+        };
+        openTasks.forEach((task) => {
+            bump(task.dueDate);
+            if (task.scheduledDate) bump(task.scheduledDate);
+        });
+        activeProjects.forEach((project) => bump(project.dueDate));
+
+        return Array.from({ length: 7 }, (_, index) => {
+            const date = new Date(monday);
+            date.setDate(monday.getDate() + index);
+            const key = date.getTime();
+            return {
+                key: String(key),
+                label: format(date, 'EEEEE', { locale: dateLocale }),
+                dayNum: format(date, 'd', { locale: dateLocale }),
+                count: dayCounts.get(key) || 0,
+                isToday: key === today.getTime(),
+                isWeekend: index >= 5
+            };
+        });
+    }, [activeProjects, dateLocale, openTasks]);
+
+    const weekStripTotal = useMemo(() => weekStrip.reduce((sum, day) => sum + day.count, 0), [weekStrip]);
+
+    const dayShape = useMemo(() => {
+        if (todayQueue.length === 0 && blockedTasks.length > 0) return 'waiting';
+        if (todayQueue.length === 0) return 'clear';
+        if (overdueTasks.length > 0) return 'behind';
+        if (todayQueue.length >= 6) return 'heavy';
+        return 'doable';
+    }, [blockedTasks.length, overdueTasks.length, todayQueue.length]);
+
+    const oldestOverdueTask = useMemo(() => {
+        if (overdueTasks.length === 0) return null;
+        return [...overdueTasks].sort((a, b) => (
+            (toDate(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY) - (toDate(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY)
+        ))[0];
+    }, [overdueTasks]);
+
+    const todayLoadLeader = useMemo(() => {
+        const counts = new Map<string, number>();
+        todayQueue.forEach((task) => {
+            if (!task.projectId) return;
+            counts.set(task.projectId, (counts.get(task.projectId) || 0) + 1);
+        });
+        let leader: { title: string; count: number } | null = null;
+        counts.forEach((count, projectId) => {
+            const title = projectById.get(projectId);
+            if (!title) return;
+            if (!leader || count > leader.count) {
+                leader = { title, count };
+            }
+        });
+        return { leader, projectCount: counts.size };
+    }, [projectById, todayQueue]);
+
+    const causeLine = useMemo(() => {
+        if (dayShape === 'behind' && oldestOverdueTask) {
+            const days = overdueDaysOf(oldestOverdueTask);
+            if (days <= 1) {
+                return t('dashboard.today.insight.oldestOverdueOne').replace('{title}', oldestOverdueTask.title);
+            }
+            return t('dashboard.today.insight.oldestOverdue')
+                .replace('{days}', String(days))
+                .replace('{title}', oldestOverdueTask.title);
+        }
+        if (dayShape === 'waiting' && blockedTasks.length > 0) {
+            const first = blockedTasks[0];
+            if (first.blockerNote) {
+                return t('dashboard.today.insight.blockedNote')
+                    .replace('{title}', first.title)
+                    .replace('{note}', first.blockerNote);
+            }
+            return t('dashboard.today.insight.blockedPlain').replace('{title}', first.title);
+        }
+        if ((dayShape === 'heavy' || dayShape === 'doable') && todayLoadLeader.leader && todayLoadLeader.leader.count > 1) {
+            return t('dashboard.today.insight.loadCenter')
+                .replace('{project}', todayLoadLeader.leader.title)
+                .replace('{count}', String(todayLoadLeader.leader.count));
+        }
+        if ((dayShape === 'heavy' || dayShape === 'doable') && todayLoadLeader.projectCount > 1) {
+            return t('dashboard.today.insight.spread').replace('{count}', String(todayLoadLeader.projectCount));
+        }
+        if (dayShape === 'clear' && focusItem && activeProjectIds.has(focusItem.projectId || '')) {
+            return t('dashboard.today.insight.focusOpen').replace('{title}', focusItem.title);
+        }
+        if (completedLast7Days.length > 0) {
+            return t('dashboard.today.insight.momentum').replace('{count}', String(completedLast7Days.length));
+        }
+        return t('dashboard.today.insight.fresh');
+    }, [
+        activeProjectIds,
+        blockedTasks,
+        completedLast7Days.length,
+        dayShape,
+        focusItem,
+        oldestOverdueTask,
+        t,
+        todayLoadLeader
     ]);
 
-    const todayWorkloadItems = useMemo(() => ([
+    // Day band: one segment per piece of today's work, plus the free rest.
+    const bandSegments = useMemo(() => {
+        const segments: Array<{ key: string; type: 'overdue' | 'due' | 'waiting' | 'rest'; flex: number }> = [];
+        const cap = (count: number) => Math.min(count, 6);
+        const dueCount = todayQueue.length - overdueTasks.length;
+
+        for (let i = 0; i < cap(overdueTasks.length); i += 1) {
+            segments.push({ key: `overdue-${i}`, type: 'overdue', flex: 1.3 });
+        }
+        for (let i = 0; i < cap(dueCount); i += 1) {
+            segments.push({ key: `due-${i}`, type: 'due', flex: 1 });
+        }
+        for (let i = 0; i < cap(blockedTasks.length); i += 1) {
+            segments.push({ key: `waiting-${i}`, type: 'waiting', flex: 0.8 });
+        }
+        const used = segments.reduce((sum, segment) => sum + segment.flex, 0);
+        segments.push({ key: 'rest', type: 'rest', flex: Math.max(used > 0 ? 2 : 8, 8 - used) });
+        return segments;
+    }, [blockedTasks.length, overdueTasks.length, todayQueue.length]);
+
+    const bandCaptionParts = useMemo(() => {
+        const parts: Array<{ key: string; tone: DashboardTone; label: string }> = [];
+        if (overdueTasks.length > 0) {
+            parts.push({
+                key: 'overdue',
+                tone: 'danger',
+                label: t('dashboard.band.overdue').replace('{count}', String(overdueTasks.length))
+            });
+        }
+        const dueCount = todayQueue.length - overdueTasks.length;
+        if (dueCount > 0) {
+            parts.push({
+                key: 'due',
+                tone: 'warning',
+                label: t('dashboard.band.due').replace('{count}', String(dueCount))
+            });
+        }
+        if (blockedTasks.length > 0) {
+            parts.push({
+                key: 'waiting',
+                tone: 'neutral',
+                label: t('dashboard.band.waiting').replace('{count}', String(blockedTasks.length))
+            });
+        }
+        return parts;
+    }, [blockedTasks.length, overdueTasks.length, t, todayQueue.length]);
+
+    const weekBadge = useMemo(() => {
+        const current = completedLast7Days.length;
+        const previous = completedPrevious7Days.length;
+        if (current === 0) {
+            return t('dashboard.week.none');
+        }
+        if (current > previous) {
+            return t('dashboard.week.more')
+                .replace('{count}', String(current))
+                .replace('{diff}', String(current - previous));
+        }
+        if (current < previous) {
+            return t('dashboard.week.fewer')
+                .replace('{count}', String(current))
+                .replace('{diff}', String(previous - current));
+        }
+        return t('dashboard.week.same').replace('{count}', String(current));
+    }, [completedLast7Days.length, completedPrevious7Days.length, t]);
+
+    // "Overnight": real movement from the last 24 hours.
+    const nightEntries = useMemo<DashboardNightEntry[]>(() => {
+        const dayAgo = Date.now() - DAY_MS;
+        const todayStart = startOfToday().getTime();
+        const entries: DashboardNightEntry[] = [];
+
+        activeTasks.forEach((task) => {
+            const completedMs = toMillis(task.completedAt);
+            if (task.isCompleted && completedMs >= dayAgo) {
+                const date = toDate(task.completedAt);
+                entries.push({
+                    key: `done:${task.id}`,
+                    timeMs: completedMs,
+                    time: date ? format(date, 'HH:mm') : '',
+                    symbol: '✓',
+                    tone: 'success',
+                    text: task.title
+                });
+                return;
+            }
+            const createdMs = toMillis(task.createdAt);
+            if (!task.isCompleted && createdMs >= dayAgo) {
+                const date = toDate(task.createdAt);
+                entries.push({
+                    key: `new:${task.id}`,
+                    timeMs: createdMs,
+                    time: date ? format(date, 'HH:mm') : '',
+                    symbol: '+',
+                    tone: 'info',
+                    text: task.title
+                });
+            }
+        });
+
+        overdueTasks.forEach((task) => {
+            const due = toDate(task.dueDate)?.getTime() ?? 0;
+            if (due >= todayStart - DAY_MS && due < todayStart) {
+                entries.push({
+                    key: `overdue:${task.id}`,
+                    timeMs: todayStart,
+                    time: '00:00',
+                    symbol: '!',
+                    tone: 'warning',
+                    text: t('dashboard.night.becameOverdue').replace('{title}', task.title)
+                });
+            }
+        });
+
+        return entries.sort((a, b) => a.timeMs - b.timeMs).slice(-4);
+    }, [activeTasks, overdueTasks, t]);
+
+    // --- Portfolio pulse (step 2) and shared project diagnostics ------------
+
+    const projectPulse = useMemo(() => {
+        const now = Date.now();
+        return activeProjects.map((project) => {
+            const projectTasks = tasksByProject[project.id] || [];
+            const open = projectTasks.filter((task) => !task.isCompleted);
+            const overdue = open.filter((task) => isPastDue(task.dueDate));
+            const blocked = open.filter((task) => task.status === 'Blocked');
+            const health = projectHealthMap[project.id];
+            const completedWeek = projectTasks.filter((task) => (
+                task.isCompleted && toMillis(task.completedAt) >= now - (7 * DAY_MS)
+            )).length;
+
+            let lastActivity = 0;
+            projectTasks.forEach((task) => {
+                lastActivity = Math.max(lastActivity, toMillis(task.createdAt), toMillis(task.completedAt));
+            });
+            const stalledDays = lastActivity > 0 ? Math.floor((now - lastActivity) / DAY_MS) : null;
+
+            const projectDue = toDate(project.dueDate)?.getTime();
+            const deadlineDays = projectDue !== undefined && projectDue > now
+                ? Math.ceil((projectDue - now) / DAY_MS)
+                : null;
+
+            const declining = health?.trend === 'declining';
+            const critical = health?.status === 'critical';
+            const warning = health?.status === 'warning';
+
+            let score = (overdue.length * 3) + (blocked.length * 2);
+            if (critical) score += 6;
+            else if (warning) score += 3;
+            if (declining) score += 3;
+            if (stalledDays !== null && stalledDays >= 7 && open.length > 0) score += 3;
+            if (deadlineDays !== null && deadlineDays <= 7 && open.length > 3) score += 2;
+
+            const chips: DashboardAttentionChip[] = [];
+            if (overdue.length > 0) {
+                chips.push({ key: 'overdue', tone: 'danger', label: t('dashboard.pulse.chip.overdue').replace('{count}', String(overdue.length)) });
+            }
+            if (blocked.length > 0) {
+                chips.push({ key: 'blocked', tone: 'danger', label: t('dashboard.pulse.chip.blocked').replace('{count}', String(blocked.length)) });
+            }
+            if (stalledDays !== null && stalledDays >= 7 && open.length > 0) {
+                chips.push({ key: 'stalled', tone: 'warning', label: t('dashboard.pulse.chip.stalled').replace('{days}', String(stalledDays)) });
+            }
+            if (declining) {
+                chips.push({ key: 'declining', tone: 'warning', label: t('dashboard.pulse.chip.declining') });
+            } else if (critical) {
+                chips.push({ key: 'critical', tone: 'danger', label: t('dashboard.pulse.chip.critical') });
+            } else if (warning) {
+                chips.push({ key: 'warning', tone: 'warning', label: t('dashboard.pulse.chip.warning') });
+            }
+            if (deadlineDays !== null && deadlineDays <= 14) {
+                chips.push({ key: 'deadline', tone: 'info', label: t('dashboard.pulse.chip.deadline').replace('{days}', String(deadlineDays)) });
+            }
+
+            return {
+                project,
+                openCount: open.length,
+                overdueCount: overdue.length,
+                stalledDays,
+                deadlineDays,
+                completedWeek,
+                score,
+                chips: chips.slice(0, 3)
+            };
+        });
+    }, [activeProjects, projectHealthMap, t, tasksByProject]);
+
+    const projectsRail = useMemo(() => (
+        projectPulse
+            .filter((entry) => entry.openCount > 0)
+            .sort((a, b) => b.openCount - a.openCount)
+            .slice(0, 4)
+    ), [projectPulse]);
+
+    const projectRailSignal = (entry: typeof projectPulse[number]): { label: string; tone: DashboardTone } => {
+        if (entry.overdueCount > 0) {
+            return { label: t('dashboard.projectsRail.overdue').replace('{count}', String(entry.overdueCount)), tone: 'danger' };
+        }
+        if (entry.stalledDays !== null && entry.stalledDays >= 7) {
+            return { label: t('dashboard.projectsRail.stalled').replace('{days}', String(entry.stalledDays)), tone: 'warning' };
+        }
+        return { label: t('dashboard.projectsRail.steady'), tone: 'neutral' };
+    };
+
+    const accentInsight = useMemo(() => {
+        const stalled = projectPulse
+            .filter((entry) => entry.stalledDays !== null && entry.stalledDays >= 7 && entry.openCount > 0)
+            .sort((a, b) => (b.stalledDays || 0) - (a.stalledDays || 0))[0];
+        if (stalled) {
+            if (stalled.deadlineDays !== null) {
+                return t('dashboard.accent.stalledDeadline')
+                    .replace('{project}', stalled.project.title)
+                    .replace('{deadline}', String(stalled.deadlineDays))
+                    .replace('{days}', String(stalled.stalledDays));
+            }
+            return t('dashboard.accent.stalled')
+                .replace('{project}', stalled.project.title)
+                .replace('{days}', String(stalled.stalledDays));
+        }
+        const unlocker = [...openTasks]
+            .filter((task) => (unblocksCount.get(task.id) || 0) > 0)
+            .sort((a, b) => (unblocksCount.get(b.id) || 0) - (unblocksCount.get(a.id) || 0))[0];
+        if (unlocker) {
+            return t('dashboard.accent.unlock')
+                .replace('{title}', unlocker.title)
+                .replace('{count}', String(unblocksCount.get(unlocker.id) || 0));
+        }
+        return '';
+    }, [openTasks, projectPulse, t, unblocksCount]);
+
+    const attentionProjects = useMemo(
+        () => projectPulse.filter((entry) => entry.score >= 3).sort((a, b) => b.score - a.score).slice(0, 3),
+        [projectPulse]
+    );
+
+    const quietProjectCount = Math.max(activeProjects.length - attentionProjects.length, 0);
+
+    const bestRunProject = useMemo(() => {
+        const sorted = [...projectPulse].sort((a, b) => b.completedWeek - a.completedWeek);
+        const best = sorted[0];
+        return best && best.completedWeek > 0 ? best : null;
+    }, [projectPulse]);
+
+    const pulseStatement = useMemo<DashboardStatement>(() => {
+        if (activeProjects.length === 0) {
+            return {
+                template: t('dashboard.pulse.statement.none'),
+                value: t('dashboard.pulse.statement.noneValue')
+            };
+        }
+        if (attentionProjects.length > 0) {
+            const template = t(attentionProjects.length === 1 ? 'dashboard.pulse.statement.driftingOne' : 'dashboard.pulse.statement.drifting')
+                .replace('{total}', String(activeProjects.length));
+            return { template, value: String(attentionProjects.length) };
+        }
+        return {
+            template: t(activeProjects.length === 1 ? 'dashboard.pulse.statement.steadyOne' : 'dashboard.pulse.statement.steady'),
+            value: String(activeProjects.length)
+        };
+    }, [activeProjects.length, attentionProjects.length, t]);
+
+    const pulseInsight = useMemo(() => {
+        const worst = attentionProjects[0];
+        if (worst && worst.chips.length > 0) {
+            return t('dashboard.pulse.insight.worst')
+                .replace('{project}', worst.project.title)
+                .replace('{reasons}', worst.chips.map((chip) => chip.label).join(', '));
+        }
+        if (bestRunProject) {
+            return t('dashboard.pulse.insight.bestRun')
+                .replace('{project}', bestRunProject.project.title)
+                .replace('{count}', String(bestRunProject.completedWeek));
+        }
+        return t('dashboard.pulse.insight.quietAll');
+    }, [attentionProjects, bestRunProject, t]);
+
+    const momentumCaption = useMemo(() => {
+        const current = completedLast7Days.length;
+        const previous = completedPrevious7Days.length;
+        if (previous === 0 && current > 0) {
+            return t('dashboard.pulse.momentum.firstWeek');
+        }
+        if (current > previous) {
+            return t('dashboard.pulse.momentum.up').replace('{diff}', String(current - previous));
+        }
+        if (current < previous) {
+            return t('dashboard.pulse.momentum.down').replace('{diff}', String(previous - current));
+        }
+        return t('dashboard.pulse.momentum.flat');
+    }, [completedLast7Days.length, completedPrevious7Days.length, t]);
+
+    const horizonItems = useMemo<DashboardRailListItem[]>(() => {
+        const todayEnd = startOfToday().getTime() + DAY_MS;
+        const horizon = todayEnd + (14 * DAY_MS);
+        const dateLabel = (date: Date) => format(date, 'EEE d. MMM', { locale: dateLocale });
+
+        const taskEntries = openTasks
+            .map((task) => ({ task, due: toDate(task.dueDate) }))
+            .filter((entry): entry is { task: Task; due: Date } => (
+                entry.due !== null && entry.due.getTime() >= todayEnd && entry.due.getTime() < horizon
+            ))
+            .map(({ task, due }) => ({
+                id: `task:${task.id}`,
+                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
+                title: task.title,
+                meta: `${dateLabel(due)} · ${projectById.get(task.projectId) || ''}`,
+                tone: 'neutral' as DashboardTone,
+                dateMs: due.getTime()
+            }));
+
+        const projectEntries = activeProjects
+            .map((project) => ({ project, due: toDate(project.dueDate) }))
+            .filter((entry): entry is { project: Project; due: Date } => (
+                entry.due !== null && entry.due.getTime() >= todayEnd && entry.due.getTime() < horizon
+            ))
+            .map(({ project, due }) => ({
+                id: `project:${project.id}`,
+                href: `/project/${project.id}`,
+                title: t('dashboard.pulse.horizon.projectDeadline').replace('{project}', project.title),
+                meta: dateLabel(due),
+                tone: 'info' as DashboardTone,
+                dateMs: due.getTime()
+            }));
+
+        return [...taskEntries, ...projectEntries]
+            .sort((a, b) => a.dateMs - b.dateMs)
+            .slice(0, 4)
+            .map(({ dateMs: _dateMs, ...item }) => item);
+    }, [activeProjects, dateLocale, openTasks, projectById, t]);
+
+    const winItems = useMemo(() => {
+        const items: string[] = [];
+        if (completedLast7Days.length > 0) {
+            items.push(t('dashboard.pulse.wins.completedWeek').replace('{count}', String(completedLast7Days.length)));
+        }
+        if (bestRunProject) {
+            items.push(
+                t('dashboard.pulse.wins.bestProject')
+                    .replace('{project}', bestRunProject.project.title)
+                    .replace('{count}', String(bestRunProject.completedWeek))
+            );
+        }
+        if (quietProjectCount > 0 && activeProjects.length > 0) {
+            items.push(
+                t(quietProjectCount === 1 ? 'dashboard.pulse.wins.quietProjectsOne' : 'dashboard.pulse.wins.quietProjects')
+                    .replace('{count}', String(quietProjectCount))
+            );
+        }
+        return items.slice(0, 3);
+    }, [activeProjects.length, bestRunProject, completedLast7Days.length, quietProjectCount, t]);
+
+    // Portfolio at a glance: the workspace in four numbers.
+    const portfolioStats = useMemo(() => ([
         {
-            key: 'dueNow',
-            label: t('dashboard.step.today.workload.dueNow'),
-            tone: overdueTasks.length > 0 ? 'danger' : 'warning',
-            value: dueNowCount
+            key: 'projects',
+            value: activeProjects.length,
+            label: t('dashboard.pulse.stat.projects'),
+            tone: 'neutral' as DashboardTone
         },
         {
             key: 'open',
-            label: t('dashboard.step.today.workload.open'),
-            tone: 'neutral',
-            value: openTasksCount
+            value: openTasks.length,
+            label: t('dashboard.pulse.stat.open'),
+            tone: 'neutral' as DashboardTone
         },
         {
-            key: 'blockers',
-            label: t('dashboard.step.today.workload.blockers'),
-            tone: blockersCount > 0 ? 'danger' : 'success',
-            value: blockersCount
+            key: 'overdue',
+            value: overdueTasks.length,
+            label: t('dashboard.pulse.stat.overdue'),
+            tone: 'danger' as DashboardTone
         },
-    ] as Array<{
-        key: string;
-        label: string;
-        tone: DashboardStepTone;
-        value: number;
-    }>), [
-        blockersCount,
-        dueNowCount,
-        openTasksCount,
-        overdueTasks.length,
-        t
-    ]);
+        {
+            key: 'doneWeek',
+            value: completedLast7Days.length,
+            label: t('dashboard.pulse.stat.doneWeek'),
+            tone: 'success' as DashboardTone
+        }
+    ]), [activeProjects.length, completedLast7Days.length, openTasks.length, overdueTasks.length, t]);
 
-    const todayPlanLabels = useMemo(() => [
-        t('dashboard.step.today.route.start'),
-        t('dashboard.step.today.route.next'),
-        t('dashboard.step.today.route.after')
-    ], [t]);
-
-    const todayPlanItems = useMemo(() => (
-        primaryCommandItems.map((item, index) => ({
-            ...item,
-            stepLabel: todayPlanLabels[index] || t('dashboard.command.tag.upcoming')
-        }))
-    ), [primaryCommandItems, t, todayPlanLabels]);
-
-    const maxTodayWorkloadValue = useMemo(
-        () => Math.max(...todayWorkloadItems.map((item) => item.value), 1),
-        [todayWorkloadItems]
+    // Where the open work actually sits — volume per project, with bars.
+    const workloadProjects = useMemo(
+        () => projectPulse.filter((entry) => entry.openCount > 0).sort((a, b) => b.openCount - a.openCount).slice(0, 5),
+        [projectPulse]
     );
 
-    const workloadProjectItems = useMemo(() => {
-        return activeProjects
-            .map((project) => ({
-                health: projectHealthMap[project.id],
-                openTasks: (tasksByProject[project.id] || []).filter((task) => !task.isCompleted).length,
-                project
-            }))
-            .filter((item) => item.openTasks > 0)
-            .sort((a, b) => {
-                const scoreA = a.health?.score ?? 100;
-                const scoreB = b.health?.score ?? 100;
-                if (scoreA !== scoreB) return scoreA - scoreB;
-                return b.openTasks - a.openTasks;
-            })
-            .slice(0, 3);
-    }, [activeProjects, projectHealthMap, tasksByProject]);
-
-    const todayWatchProject = workloadProjectItems[0];
-
-    const healthTotal = Math.max(projectHealthSummary.healthy + projectHealthSummary.watch + projectHealthSummary.risk, 1);
-    const portfolioHealthSegments = useMemo(() => ([
-        {
-            key: 'healthy',
-            label: t('dashboard.expanded.health.healthy'),
-            tone: 'success',
-            value: projectHealthSummary.healthy
-        },
-        {
-            key: 'watch',
-            label: t('dashboard.expanded.health.watch'),
-            tone: 'warning',
-            value: projectHealthSummary.watch
-        },
-        {
-            key: 'risk',
-            label: t('dashboard.expanded.health.risk'),
-            tone: 'danger',
-            value: projectHealthSummary.risk
-        }
-    ] as Array<{
-        key: string;
-        label: string;
-        tone: DashboardStepTone;
-        value: number;
-    }>), [projectHealthSummary.healthy, projectHealthSummary.risk, projectHealthSummary.watch, t]);
-
-    const dashboardScrollStyle = useMemo(() => {
-        const greetingExit = smoothDashboardProgress(dashboardScrollProgress, 0.12, 0.30);
-        const todayEnter = smoothDashboardProgress(dashboardScrollProgress, 0.24, 0.42);
-        const todayExit = smoothDashboardProgress(dashboardScrollProgress, 0.58, 0.74);
-        const portfolioEnter = smoothDashboardProgress(dashboardScrollProgress, 0.66, 0.84);
-
-        const greetingOpacity = 1 - greetingExit;
-        const todayOpacity = todayEnter * (1 - todayExit);
-        const portfolioOpacity = portfolioEnter;
-
-        return cssVars({
-            '--dashboard-greeting-opacity': greetingOpacity.toFixed(3),
-            '--dashboard-greeting-transform': `translate3d(0, ${(-70 * greetingExit).toFixed(1)}px, 0) scale(${(1 - (greetingExit * 0.035)).toFixed(3)})`,
-            '--dashboard-today-opacity': todayOpacity.toFixed(3),
-            '--dashboard-today-transform': `translate3d(0, ${(54 * (1 - todayEnter) - (42 * todayExit)).toFixed(1)}px, 0) scale(${(0.985 + (0.015 * todayEnter) - (0.012 * todayExit)).toFixed(3)})`,
-            '--dashboard-portfolio-opacity': portfolioOpacity.toFixed(3),
-            '--dashboard-portfolio-transform': `translate3d(0, ${(54 * (1 - portfolioEnter)).toFixed(1)}px, 0) scale(${(0.985 + (0.015 * portfolioEnter)).toFixed(3)})`
-        });
-    }, [dashboardScrollProgress]);
-
-    const activeDashboardStep = dashboardScrollProgress < 0.34
-        ? 0
-        : dashboardScrollProgress < 0.68
-            ? 1
-            : 2;
+    const maxWorkload = useMemo(
+        () => Math.max(...workloadProjects.map((entry) => entry.openCount), 1),
+        [workloadProjects]
+    );
 
     const getStepTabIndex = (step: number) => activeDashboardStep === step ? undefined : -1;
 
-    const handleStartDashboardFocus = (item: DashboardCommandItem) => {
-        if (!item.focus) return;
+    const handleStartDashboardFocus = (stop: DashboardRouteStop) => {
+        if (!stop.focus) return;
 
-        startFocusItem(item.focus);
+        startFocusItem(stop.focus);
 
         if (!isModalOpen) {
             toggleModal();
+        }
+    };
+
+    const todayIso = () => format(new Date(), 'yyyy-MM-dd');
+
+    const handleToggleComplete = async (stop: DashboardRouteStop) => {
+        if (!stop.taskId) return;
+        const { taskId, projectId, tenantId } = stop;
+        setTasks((prev) => prev.map((task) => (
+            task.id === taskId ? { ...task, isCompleted: true, completedAt: new Date(), completedBy: authUserId || undefined } : task
+        )));
+        try {
+            await toggleTaskStatus(taskId, false, projectId, tenantId);
+        } catch (error) {
+            console.error('Dashboard complete failed', error);
+            setTasks((prev) => prev.map((task) => (
+                task.id === taskId ? { ...task, isCompleted: false, completedAt: undefined, completedBy: undefined } : task
+            )));
+        }
+    };
+
+    const handleScheduleToday = async (stop: DashboardRouteStop) => {
+        if (!stop.taskId) return;
+        const { taskId, projectId, tenantId } = stop;
+        const iso = todayIso();
+        setTasks((prev) => prev.map((task) => (
+            task.id === taskId ? { ...task, scheduledDate: iso } : task
+        )));
+        try {
+            await updateTaskFields(taskId, { scheduledDate: iso }, projectId, tenantId);
+        } catch (error) {
+            console.error('Dashboard schedule failed', error);
+            setTasks((prev) => prev.map((task) => (
+                task.id === taskId ? { ...task, scheduledDate: undefined } : task
+            )));
         }
     };
 
@@ -874,304 +1251,374 @@ export const Dashboard = () => {
             />
             <div className="dashboard-page">
                 <div
+                    className="dashboard-stage"
                     ref={dashboardStageRef}
-                    className="dashboard-scroll-stage"
-                    onTouchCancel={handleDashboardTouchEnd}
-                    onTouchEnd={handleDashboardTouchEnd}
-                    onTouchMove={handleDashboardTouchMove}
-                    onTouchStart={handleDashboardTouchStart}
-                    onWheel={handleDashboardWheel}
-                    style={dashboardScrollStyle}
+                    onScroll={(event) => {
+                        event.currentTarget.scrollLeft = 0;
+                        event.currentTarget.scrollTop = 0;
+                    }}
                 >
-                    <div className="dashboard-scroll-viewport">
-                        <div className="dashboard-step-rail" aria-hidden="true">
-                            {[0, 1, 2].map((step) => (
-                                <span key={step} className={activeDashboardStep === step ? 'is-active' : ''} />
-                            ))}
-                        </div>
-
+                    <div className={`dashboard-track ${activeDashboardStep === 1 ? 'dashboard-track--pulse' : ''}`}>
+                        {/* Slide 1 — Today: day band + route to end of day. */}
                         <section
-                            className={`dashboard-step-layer dashboard-greeting-layer ${activeDashboardStep === 0 ? 'is-active' : ''}`}
+                            className="dashboard-slide"
                             aria-hidden={activeDashboardStep !== 0}
                         >
-                            <div data-onboarding-id="dashboard-header" className="dashboard-command-hero">
-                                <p className="dashboard-command-hero__date">{todayLongLabel}</p>
-                                <h1 className="dashboard-command-hero__title">
-                                    {greeting}, {userName || t('dashboard.userFallback')}.
-                                </h1>
+                            <div className="dashboard-today" data-onboarding-id="dashboard-header">
+                                <div className="dashboard-today__top">
+                                    <p>{todayLongLabel} · {greeting}, {userName || t('dashboard.userFallback')}</p>
+                                    <p className="dashboard-today__week">{weekBadge}</p>
+                                </div>
 
-                                <div className={`dashboard-resume-card ${primaryResumeItem ? `dashboard-resume-card--${primaryResumeItem.tone}` : 'dashboard-resume-card--empty'}`}>
-                                    <span className="material-symbols-outlined dashboard-resume-card__icon">
-                                        {primaryResumeItem?.icon || 'check_circle'}
-                                    </span>
-                                    <div className="dashboard-resume-card__content">
-                                        <p>{t('dashboard.resume.eyebrow')}</p>
-                                        <h2>{primaryResumeItem?.title || t('dashboard.resume.emptyTitle')}</h2>
-                                        <span>
-                                            {primaryResumeItem
-                                                ? t('dashboard.resume.meta')
-                                                    .replace('{label}', primaryResumeItem.label)
-                                                    .replace('{meta}', primaryResumeItem.meta)
-                                                : t('dashboard.resume.emptyBody')}
-                                        </span>
+                                <h1 className="dashboard-today__headline">
+                                    {renderDashboardStatement(routeStatement)}
+                                </h1>
+                                <p className="dashboard-today__cause">{causeLine}</p>
+
+                                <div className="dashboard-band-wrap" data-onboarding-id="dashboard-kpis">
+                                    <div className="dashboard-band" aria-hidden="true">
+                                        {bandSegments.map((segment) => (
+                                            <span
+                                                key={segment.key}
+                                                className={`dashboard-band__seg dashboard-band__seg--${segment.type}`}
+                                                style={cssVars({ '--dashboard-seg-flex': String(segment.flex) })}
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="dashboard-resume-card__actions">
-                                        {primaryResumeItem?.focus && (
-                                            <button
-                                                type="button"
-                                                className="dashboard-resume-action dashboard-resume-action--primary"
-                                                onClick={() => handleStartDashboardFocus(primaryResumeItem)}
-                                                tabIndex={getStepTabIndex(0)}
-                                            >
-                                                <span className="material-symbols-outlined">target</span>
-                                                {focusItemId === primaryResumeItem.focus.id
-                                                    ? t('dashboard.resume.alreadyFocus')
-                                                    : t('dashboard.resume.focusAction')}
-                                            </button>
-                                        )}
-                                        {primaryResumeItem && (
-                                            <Link
-                                                to={primaryResumeItem.href}
-                                                className="dashboard-resume-action"
-                                                tabIndex={getStepTabIndex(0)}
-                                            >
-                                                {t('dashboard.resume.openAction')}
-                                                <span className="material-symbols-outlined">arrow_forward</span>
-                                            </Link>
-                                        )}
+                                    <div className="dashboard-band__caption">
+                                        <p>
+                                            {bandCaptionParts.length === 0
+                                                ? t('dashboard.band.allFree')
+                                                : bandCaptionParts.map((part, index) => (
+                                                    <React.Fragment key={part.key}>
+                                                        {index > 0 && <span className="dashboard-band__sep"> · </span>}
+                                                        <span className={`dashboard-band__part dashboard-band__part--${part.tone}`}>{part.label}</span>
+                                                    </React.Fragment>
+                                                ))}
+                                        </p>
+                                        {bandCaptionParts.length > 0 && <p>{t('dashboard.band.free')}</p>}
                                     </div>
                                 </div>
 
-                                <div data-onboarding-id="dashboard-kpis" className="dashboard-hero-priority" aria-label={t('dashboard.step.now.title')}>
-                                    <div className="dashboard-hero-priority__header">
-                                        <h2>{t('dashboard.step.now.title')}</h2>
-                                        <Link to="/tasks" className="dashboard-step-link" tabIndex={getStepTabIndex(0)}>
-                                            {t('dashboard.command.openTasks')}
-                                            <span className="material-symbols-outlined">arrow_forward</span>
-                                        </Link>
-                                    </div>
-
-                                    <div className="dashboard-hero-priority__body">
-                                        <div className="dashboard-hero-command-list">
-                                            {primaryCommandItems.length === 0 ? (
-                                                <div className="dashboard-command-empty">
-                                                    <span className="material-symbols-outlined">check_circle</span>
-                                                    <div>
-                                                        <h3>{t('dashboard.command.empty.title')}</h3>
-                                                        <p>{t('dashboard.command.empty.body')}</p>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                primaryCommandItems.map((item) => (
-                                                    <Link
-                                                        key={item.id}
-                                                        to={item.href}
-                                                        className={`dashboard-command-item dashboard-command-item--hero dashboard-command-item--${item.tone}`}
-                                                        tabIndex={getStepTabIndex(0)}
-                                                    >
-                                                        <span className="material-symbols-outlined dashboard-command-item__icon">{item.icon}</span>
-                                                        <div className="dashboard-command-item__content">
-                                                            <div className="dashboard-command-item__header">
-                                                                <span className="dashboard-command-item__label">{item.label}</span>
-                                                                <span className="dashboard-command-item__meta">{item.meta}</span>
-                                                            </div>
-                                                            <p>{item.title}</p>
-                                                        </div>
-                                                        <span className="material-symbols-outlined dashboard-command-item__arrow">chevron_right</span>
-                                                    </Link>
-                                                ))
-                                            )}
+                                <div className={`dashboard-today__grid ${routeIsSuggested || dayShape === 'clear' || dayShape === 'waiting' ? 'dashboard-today__grid--calm' : ''}`}>
+                                    <div className="dashboard-plan" aria-label={t('dashboard.route.title')}>
+                                        <div className="dashboard-plan__head">
+                                            <h2 className="dashboard-side-title">
+                                                {routeIsSuggested ? t('dashboard.route.suggestTitle') : t('dashboard.route.title')}
+                                            </h2>
+                                            <button
+                                                type="button"
+                                                className="dashboard-plan__add"
+                                                onClick={() => openTaskCreateModal(undefined, { allowProjectSelect: true })}
+                                                tabIndex={getStepTabIndex(0)}
+                                            >
+                                                <span className="material-symbols-outlined">add</span>
+                                                {t('dashboard.route.addTask')}
+                                            </button>
                                         </div>
+                                        {routeIsSuggested && (
+                                            <p className="dashboard-plan__intro">{t('dashboard.route.suggestIntro')}</p>
+                                        )}
 
-                                        <div className="dashboard-hero-signals">
-                                            {commandSummaryItems.map((item) => (
-                                                <div key={item.key} className={`dashboard-signal dashboard-signal--compact dashboard-signal--${item.tone}`}>
-                                                    <span className="material-symbols-outlined">{item.icon}</span>
-                                                    <strong>{item.value}</strong>
-                                                    <p>{item.label}</p>
+                                        <div className="dashboard-plan__list">
+                                            {routeStops.map((stop, index) => (
+                                                <div
+                                                    key={stop.id}
+                                                    className={`dashboard-plan__item dashboard-plan__item--${stop.tone} ${index === 0 && !stop.proposed ? 'dashboard-plan__item--lead' : ''} ${stop.proposed ? 'dashboard-plan__item--proposed' : ''}`}
+                                                >
+                                                    <button
+                                                        type="button"
+                                                        className="dashboard-plan__check"
+                                                        onClick={() => handleToggleComplete(stop)}
+                                                        tabIndex={getStepTabIndex(0)}
+                                                        aria-label={t('dashboard.route.complete')}
+                                                        title={t('dashboard.route.complete')}
+                                                    >
+                                                        <span className="material-symbols-outlined">check</span>
+                                                    </button>
+                                                    <Link to={stop.href} className="dashboard-plan__copy" tabIndex={getStepTabIndex(0)}>
+                                                        <span className="dashboard-plan__title">{stop.title}</span>
+                                                        <span className="dashboard-plan__reason">
+                                                            {stop.reason}{stop.meta ? ` · ${stop.meta}` : ''}
+                                                        </span>
+                                                    </Link>
+                                                    <div className="dashboard-plan__actions">
+                                                        {stop.proposed && stop.taskId && (
+                                                            <button
+                                                                type="button"
+                                                                className="dashboard-plan__act"
+                                                                onClick={() => handleScheduleToday(stop)}
+                                                                tabIndex={getStepTabIndex(0)}
+                                                                aria-label={t('dashboard.route.scheduleToday')}
+                                                                title={t('dashboard.route.scheduleToday')}
+                                                            >
+                                                                <span className="material-symbols-outlined">event_available</span>
+                                                            </button>
+                                                        )}
+                                                        {index === 0 && stop.focus && (
+                                                            <button
+                                                                type="button"
+                                                                className={`dashboard-plan__act dashboard-plan__act--focus ${focusItemId === stop.focus.id ? 'is-active' : ''}`}
+                                                                onClick={() => handleStartDashboardFocus(stop)}
+                                                                tabIndex={getStepTabIndex(0)}
+                                                                aria-label={focusItemId === stop.focus.id ? t('dashboard.resume.alreadyFocus') : t('dashboard.resume.focusAction')}
+                                                                title={focusItemId === stop.focus.id ? t('dashboard.resume.alreadyFocus') : t('dashboard.resume.focusAction')}
+                                                            >
+                                                                <span className="material-symbols-outlined">
+                                                                    {focusItemId === stop.focus.id ? 'center_focus_strong' : 'target'}
+                                                                </span>
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             ))}
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
 
-                        <section
-                            className={`dashboard-step-layer dashboard-today-layer ${activeDashboardStep === 1 ? 'is-active' : ''}`}
-                            aria-label={t('dashboard.step.today.title')}
-                            aria-hidden={activeDashboardStep !== 1}
-                        >
-                            <div className="dashboard-step-panel dashboard-step-panel--today">
-                                <div className="dashboard-step-header dashboard-step-header--split">
-                                    <div>
-                                        <p>{t('dashboard.step.today.subtitle')}</p>
-                                        <h2>{t('dashboard.step.today.title')}</h2>
-                                    </div>
-                                    <Link to="/tasks" className="dashboard-step-link" tabIndex={getStepTabIndex(1)}>
-                                        {t('dashboard.step.today.viewTasks')}
-                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                    </Link>
-                                </div>
-
-                                <div className="dashboard-today-plan">
-                                    <section className="dashboard-today-route" aria-label={t('dashboard.step.today.route.title')}>
-                                        <div className="dashboard-today-route__header">
-                                            <p>{t('dashboard.step.today.route.subtitle')}</p>
-                                            <h3>{t('dashboard.step.today.route.title')}</h3>
-                                        </div>
-
-                                        {todayPlanItems.length === 0 ? (
-                                            <div className="dashboard-today-route__empty">
-                                                <span className="material-symbols-outlined">check_circle</span>
-                                                <p>{t('dashboard.step.today.route.empty')}</p>
-                                            </div>
-                                        ) : (
-                                            <div className="dashboard-today-route__items">
-                                                {todayPlanItems.map((item, index) => (
-                                                    <Link
-                                                        key={item.id}
-                                                        to={item.href}
-                                                        className={`dashboard-today-route-item dashboard-today-route-item--${item.tone}`}
-                                                        tabIndex={getStepTabIndex(1)}
-                                                    >
-                                                        <span className="dashboard-today-route-item__index">
-                                                            {String(index + 1).padStart(2, '0')}
-                                                        </span>
-                                                        <div className="dashboard-today-route-item__content">
-                                                            <span>{item.stepLabel} · {item.label}</span>
-                                                            <strong>{item.title}</strong>
-                                                            <small>{item.meta}</small>
-                                                        </div>
-                                                        <span className="material-symbols-outlined dashboard-today-route-item__arrow">arrow_forward</span>
-                                                    </Link>
-                                                ))}
-                                            </div>
+                                        {undatedOpenCount > 0 && (
+                                            <Link to="/tasks" className="dashboard-plan__footer" tabIndex={getStepTabIndex(0)}>
+                                                {t('dashboard.route.end.backlog').replace('{count}', String(undatedOpenCount))}
+                                            </Link>
                                         )}
-                                    </section>
+                                    </div>
 
-                                    <aside className="dashboard-today-context">
-                                        <section className="dashboard-today-watch" aria-label={t('dashboard.step.today.watch.title')}>
-                                            <div className="dashboard-today-watch__header">
-                                                <span className="material-symbols-outlined">visibility</span>
-                                                <h3>{t('dashboard.step.today.watch.title')}</h3>
-                                            </div>
-
-                                            {todayWatchProject ? (
-                                                <Link to={`/project/${todayWatchProject.project.id}`} className="dashboard-today-watch__project" tabIndex={getStepTabIndex(1)}>
-                                                    <strong>{todayWatchProject.project.title}</strong>
-                                                    <span>
-                                                        {t('dashboard.step.today.watch.score').replace('{score}', String(todayWatchProject.health?.score ?? 100))}
-                                                        {' · '}
-                                                        {t('dashboard.step.today.watch.openTasks').replace('{count}', String(todayWatchProject.openTasks))}
-                                                    </span>
-                                                    <i style={cssVars({ '--dashboard-watch-width': `${todayWatchProject.health?.score ?? 100}%` })} />
-                                                </Link>
-                                            ) : (
-                                                <p className="dashboard-today-watch__empty">{t('dashboard.step.today.watch.empty')}</p>
-                                            )}
-                                        </section>
-
-                                        <section className="dashboard-today-load" aria-label={t('dashboard.step.today.load.title')}>
-                                            <h3>{t('dashboard.step.today.load.title')}</h3>
-                                            <div className="dashboard-today-load__items">
-                                                {todayWorkloadItems.map((item) => (
-                                                    <div key={item.key} className={`dashboard-today-load-item dashboard-today-load-item--${item.tone}`}>
-                                                        <span>{item.label}</span>
-                                                        <strong>{item.value}</strong>
-                                                        <i style={cssVars({ '--dashboard-load-width': `${(item.value / maxTodayWorkloadValue) * 100}%` })} />
+                                    <aside className="dashboard-today__rail">
+                                        <section aria-label={t('dashboard.thisWeek.title')}>
+                                            <h2 className="dashboard-side-title">{t('dashboard.thisWeek.title')}</h2>
+                                            <div className="dashboard-week" aria-hidden="true">
+                                                {weekStrip.map((day) => (
+                                                    <div
+                                                        key={day.key}
+                                                        className={`dashboard-week__day ${day.isToday ? 'is-today' : ''} ${day.isWeekend ? 'is-weekend' : ''} ${day.count > 0 ? 'has-work' : ''}`}
+                                                    >
+                                                        <span className="dashboard-week__label">{day.label}</span>
+                                                        <span className="dashboard-week__num">{day.dayNum}</span>
+                                                        <span className="dashboard-week__dot">{day.count > 0 ? day.count : ''}</span>
                                                     </div>
                                                 ))}
                                             </div>
+                                            <p className="dashboard-week__caption">
+                                                {weekStripTotal === 0
+                                                    ? t('dashboard.thisWeek.empty')
+                                                    : t('dashboard.thisWeek.count').replace('{count}', String(weekStripTotal))}
+                                            </p>
                                         </section>
+
+                                        <section aria-label={t('dashboard.night.title')}>
+                                            <h2 className="dashboard-side-title">{t('dashboard.night.title')}</h2>
+                                            {nightEntries.length === 0 ? (
+                                                <p className="dashboard-editorial__empty">{t('dashboard.night.quiet')}</p>
+                                            ) : (
+                                                <div className="dashboard-night">
+                                                    {nightEntries.map((entry) => (
+                                                        <p key={entry.key} className="dashboard-night__entry">
+                                                            <span className="dashboard-night__time">{entry.time}</span>
+                                                            <span className={`dashboard-night__symbol dashboard-night__symbol--${entry.tone}`}>{entry.symbol}</span>
+                                                            <span className="dashboard-night__text">{entry.text}</span>
+                                                        </p>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </section>
+
+                                        <section aria-label={t('dashboard.projectsRail.title')}>
+                                            <h2 className="dashboard-side-title">{t('dashboard.projectsRail.title')}</h2>
+                                            {projectsRail.length === 0 ? (
+                                                <p className="dashboard-editorial__empty">{t('dashboard.projectsRail.empty')}</p>
+                                            ) : (
+                                                <div className="dashboard-proj">
+                                                    {projectsRail.map((entry) => {
+                                                        const signal = projectRailSignal(entry);
+                                                        return (
+                                                            <Link
+                                                                key={entry.project.id}
+                                                                to={`/project/${entry.project.id}`}
+                                                                className="dashboard-proj__row"
+                                                                tabIndex={getStepTabIndex(0)}
+                                                            >
+                                                                <span className="dashboard-proj__name">{entry.project.title}</span>
+                                                                <span className="dashboard-proj__meta">
+                                                                    {t('dashboard.projectsRail.open').replace('{count}', String(entry.openCount))}
+                                                                    {' · '}
+                                                                    <i className={`dashboard-proj__signal dashboard-proj__signal--${signal.tone}`}>{signal.label}</i>
+                                                                </span>
+                                                            </Link>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </section>
+
+                                        {accentInsight && (
+                                            <p className="dashboard-accent">{accentInsight}</p>
+                                        )}
                                     </aside>
                                 </div>
                             </div>
                         </section>
 
+                        {/* Slide 2 — Pulse: catch drift across the portfolio. */}
                         <section
-                            className={`dashboard-step-layer dashboard-portfolio-layer ${activeDashboardStep === 2 ? 'is-active' : ''}`}
-                            aria-label={t('dashboard.step.portfolio.title')}
-                            aria-hidden={activeDashboardStep !== 2}
+                            className="dashboard-slide"
+                            aria-label={t('dashboard.pulse.eyebrow')}
+                            aria-hidden={activeDashboardStep !== 1}
                         >
-                            <div className="dashboard-step-panel dashboard-step-panel--portfolio">
-                                <div className="dashboard-step-header dashboard-step-header--split">
-                                    <div>
-                                        <p>{t('dashboard.step.portfolio.subtitle')}</p>
-                                        <h2>{t('dashboard.step.portfolio.title')}</h2>
-                                    </div>
-                                    <Link to="/projects" className="dashboard-step-link" tabIndex={getStepTabIndex(2)}>
-                                        {t('dashboard.projects.viewAll')}
-                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                    </Link>
-                                </div>
+                            <div className="dashboard-editorial">
+                                <div className="dashboard-editorial__main">
+                                    <p className="dashboard-editorial__eyebrow">{t('dashboard.pulse.eyebrow')}</p>
+                                    <h1 className="dashboard-editorial__headline">
+                                        {renderDashboardStatement(pulseStatement)}
+                                    </h1>
+                                    <p className="dashboard-editorial__insight">
+                                        <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                                        {pulseInsight}
+                                    </p>
 
-                                <div className="dashboard-portfolio-grid">
-                                    <section className="dashboard-metric-strip">
-                                        {dashboardMetrics.map((metric) => (
-                                            <Link key={metric.key} to={metric.href} className="dashboard-metric-link" tabIndex={getStepTabIndex(2)}>
-                                                <span className="material-symbols-outlined">{metric.icon}</span>
-                                                <strong>{metric.value}</strong>
-                                                <p>{metric.label}</p>
-                                            </Link>
-                                        ))}
+                                    <section className="dashboard-editorial__section" aria-label={t('dashboard.pulse.numbers.title')}>
+                                        <div className="dashboard-pulse-stats">
+                                            {portfolioStats.map((stat) => (
+                                                <div key={stat.key} className={`dashboard-pulse-stat dashboard-pulse-stat--${stat.tone}`}>
+                                                    <strong>{stat.value}</strong>
+                                                    <span><i aria-hidden="true" />{stat.label}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </section>
 
-                                    <section className="dashboard-velocity-panel">
-                                        <div className="dashboard-velocity-panel__header">
-                                            <div>
-                                                <h3>{t('dashboard.expanded.velocity.title')}</h3>
-                                                <p>{t('dashboard.expanded.velocity.subtitle')}</p>
+                                    <section className="dashboard-editorial__section" aria-label={t('dashboard.pulse.attention.title')}>
+                                        <h2 className="dashboard-editorial__section-title">{t('dashboard.pulse.attention.title')}</h2>
+                                        {attentionProjects.length === 0 ? (
+                                            <p className="dashboard-editorial__empty">{t('dashboard.pulse.attention.empty')}</p>
+                                        ) : (
+                                            <div className="dashboard-attention">
+                                                {attentionProjects.map((entry) => (
+                                                    <Link
+                                                        key={entry.project.id}
+                                                        to={`/project/${entry.project.id}`}
+                                                        className="dashboard-attention__item"
+                                                        tabIndex={getStepTabIndex(1)}
+                                                    >
+                                                        <strong>{entry.project.title}</strong>
+                                                        <span className="dashboard-attention__chips">
+                                                            {entry.chips.map((chip, index) => (
+                                                                <span key={chip.key} className={`dashboard-attention__chip dashboard-attention__chip--${chip.tone}`}>
+                                                                    {index > 0 && <i aria-hidden="true">·</i>}
+                                                                    {chip.label}
+                                                                </span>
+                                                            ))}
+                                                        </span>
+                                                        <span className="material-symbols-outlined dashboard-attention__arrow" aria-hidden="true">arrow_forward</span>
+                                                    </Link>
+                                                ))}
                                             </div>
-                                            <strong>{totalVelocity}</strong>
-                                        </div>
-
-                                        <div className="dashboard-velocity-chart" aria-hidden="true">
-                                            {taskTrend.map((day, index) => (
-                                                <div key={day.date.toISOString()} className="dashboard-velocity-day">
-                                                    <div className="dashboard-velocity-bars">
-                                                        <span
-                                                            className="dashboard-velocity-bar dashboard-velocity-bar--tasks"
-                                                            style={cssVars({ '--dashboard-bar-height': `${Math.max(8, (day.value / maxVelocityValue) * 100)}%` })}
-                                                        />
-                                                    </div>
-                                                    <span>{format(day.date, 'EEE', { locale: dateLocale })}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="dashboard-chart-legend">
-                                            <span><i className="dashboard-chart-dot dashboard-chart-dot--tasks" />{t('nav.tasks')}</span>
-                                        </div>
+                                        )}
+                                        {quietProjectCount > 0 && attentionProjects.length > 0 && (
+                                            <p className="dashboard-attention__quiet">
+                                                {t(quietProjectCount === 1 ? 'dashboard.pulse.attention.quietOne' : 'dashboard.pulse.attention.quiet')
+                                                    .replace('{count}', String(quietProjectCount))}
+                                            </p>
+                                        )}
                                     </section>
 
-                                    <section className="dashboard-health-panel">
-                                        <div className="dashboard-health-panel__header">
-                                            <h3>{t('dashboard.expanded.health.title')}</h3>
-                                            <span>{activeProjects.length}</span>
-                                        </div>
-                                        <div className="dashboard-health-meter" aria-hidden="true">
-                                            {portfolioHealthSegments.map((item) => (
-                                                <span
-                                                    key={item.key}
-                                                    className={`dashboard-health-meter__segment dashboard-health-meter__segment--${item.tone}`}
-                                                    style={cssVars({ '--dashboard-health-width': `${(item.value / healthTotal) * 100}%` })}
-                                                />
-                                            ))}
-                                        </div>
-                                        <div className="dashboard-health-list">
-                                            {portfolioHealthSegments.map((item) => (
-                                                <div key={item.key} className={`dashboard-health-chip dashboard-health-chip--${item.tone}`}>
-                                                    <span>{item.label}</span>
-                                                    <strong>{item.value}</strong>
-                                                </div>
-                                            ))}
+                                    <section className="dashboard-editorial__section" aria-label={t('dashboard.pulse.momentum.title')}>
+                                        <h2 className="dashboard-editorial__section-title">{t('dashboard.pulse.momentum.title')}</h2>
+                                        <div className="dashboard-momentum">
+                                            <div className="dashboard-momentum__figure">
+                                                <strong>{completedLast7Days.length}</strong>
+                                                <span>{t('dashboard.pulse.momentum.completed')}</span>
+                                                <small>{momentumCaption}</small>
+                                            </div>
+                                            <div className="dashboard-momentum__chart" aria-hidden="true">
+                                                {completionTrend.map((day) => (
+                                                    <span
+                                                        key={day.date.toISOString()}
+                                                        className="dashboard-momentum__bar"
+                                                        style={cssVars({ '--dashboard-bar-height': `${Math.max(5, (day.value / maxCompletionValue) * 100)}%` })}
+                                                    />
+                                                ))}
+                                            </div>
                                         </div>
                                     </section>
                                 </div>
+
+                                <aside className="dashboard-rail">
+                                    <section className="dashboard-rail-block" aria-label={t('dashboard.pulse.workload.title')}>
+                                        <h3>
+                                            <span className="material-symbols-outlined" aria-hidden="true">stacked_bar_chart</span>
+                                            {t('dashboard.pulse.workload.title')}
+                                        </h3>
+                                        {workloadProjects.length === 0 ? (
+                                            <p className="dashboard-editorial__empty">{t('dashboard.pulse.workload.empty')}</p>
+                                        ) : (
+                                            <div className="dashboard-workload">
+                                                {workloadProjects.map((entry) => (
+                                                    <Link
+                                                        key={entry.project.id}
+                                                        to={`/project/${entry.project.id}`}
+                                                        className="dashboard-workload__row"
+                                                        tabIndex={getStepTabIndex(1)}
+                                                    >
+                                                        <span className="dashboard-workload__name">{entry.project.title}</span>
+                                                        <span className="dashboard-workload__count">{entry.openCount}</span>
+                                                        <span className="dashboard-workload__bar" aria-hidden="true">
+                                                            <i style={cssVars({ '--dashboard-bar-width': `${(entry.openCount / maxWorkload) * 100}%` })} />
+                                                        </span>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section className="dashboard-rail-block" aria-label={t('dashboard.pulse.horizon.title')}>
+                                        <h3>
+                                            <span className="material-symbols-outlined" aria-hidden="true">event_upcoming</span>
+                                            {t('dashboard.pulse.horizon.title')}
+                                        </h3>
+                                        {horizonItems.length === 0 ? (
+                                            <p className="dashboard-editorial__empty">{t('dashboard.pulse.horizon.empty')}</p>
+                                        ) : (
+                                            <div className="dashboard-rail-list">
+                                                {horizonItems.map((item) => (
+                                                    <Link key={item.id} to={item.href} className="dashboard-rail-list__item" tabIndex={getStepTabIndex(1)}>
+                                                        <strong>{item.title}</strong>
+                                                        <small>{item.meta}</small>
+                                                    </Link>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+
+                                    <section className="dashboard-rail-block" aria-label={t('dashboard.pulse.wins.title')}>
+                                        <h3>
+                                            <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                                            {t('dashboard.pulse.wins.title')}
+                                        </h3>
+                                        {winItems.length === 0 ? (
+                                            <p className="dashboard-editorial__empty">{t('dashboard.pulse.wins.empty')}</p>
+                                        ) : (
+                                            <div className="dashboard-insights">
+                                                {winItems.map((win, index) => (
+                                                    <p key={index} className="dashboard-insights__item">
+                                                        <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+                                                        {win}
+                                                    </p>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </section>
+                                </aside>
                             </div>
                         </section>
                     </div>
+                    <button
+                        type="button"
+                        className="dashboard-stage__nav"
+                        onClick={() => setActiveDashboardStep((step) => (step === 0 ? 1 : 0))}
+                        aria-label={activeDashboardStep === 0 ? t('dashboard.nav.toPulse') : t('dashboard.nav.toToday')}
+                    >
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                            {activeDashboardStep === 0 ? 'arrow_forward' : 'arrow_back'}
+                        </span>
+                    </button>
                 </div>
             </div>
             <OnboardingWelcomeModal

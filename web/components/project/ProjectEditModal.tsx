@@ -7,7 +7,7 @@ import { Select } from '../common/Select/Select';
 import { Checkbox } from '../common/Checkbox/Checkbox';
 import { Badge } from '../common/Badge/Badge';
 import { CompanyProjectRole, Project, ProjectExternalResource, ProjectResourceSensitivity, ProjectResourceType, WorkspaceGroup, CustomRole, ProjectCadence, ProjectCategory, ProjectDateConfidence, ProjectOperatingMode, ProjectTemplateId, ProjectType } from '../../types';
-import { PROJECT_TEMPLATE_DEFINITIONS, getProjectTemplateDefinition, isCompanyProject, isSoftwareProject, resolveProjectTemplateId } from '../../config/projectTemplates';
+import { PROJECT_TEMPLATE_DEFINITIONS, getProjectTemplateDefinition, isContainerProject, isSoftwareProject, resolveProjectTemplateId } from '../../config/projectTemplates';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 
 import { ProjectTeamManager } from './ProjectTeamManager';
@@ -161,7 +161,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
             getAllWorkspaceProjects(project.tenantId)
                 .then(projects => {
-                    setCompanyProjects(projects.filter(item => item.id !== project.id && isCompanyProject(item)));
+                    setCompanyProjects(projects.filter(item => item.id !== project.id && isContainerProject(item)));
                 })
                 .catch(error => {
                     console.warn('Failed to load company projects for settings', error);
@@ -284,7 +284,11 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         }) && status === 'In Testing') {
             setStatus('Planning');
         }
-        if (nextTemplate.isCompanyProject) {
+        if (isContainerProject({
+            projectCategory: nextTemplate.projectCategory,
+            templateId: nextTemplate.id,
+            projectType: nextTemplate.legacyProjectType
+        })) {
             setCompanyProjectId('');
             setCompanyProjectRole('other');
         }
@@ -322,7 +326,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 templateId,
                 projectCategory,
                 projectType,
-                companyProjectId: isCompanyProject({ projectCategory, templateId, projectType }) ? '' : companyProjectId,
+                companyProjectId: isContainerProject({ projectCategory, templateId, projectType }) ? '' : companyProjectId,
                 companyProjectRole: companyProjectId ? companyProjectRole : 'other',
                 operatingMode,
                 dateConfidence,
@@ -447,7 +451,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         label: t(template.labelKey)
     }));
     const companyProjectOptions = [
-        { value: '', label: t('projectSettings.companyProject.none') },
+        { value: '', label: t('projectSettings.parentProject.none') },
         ...companyProjects.map(companyProject => ({ value: companyProject.id, label: companyProject.title }))
     ];
     const companyProjectRoleOptions = [
@@ -460,7 +464,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { value: 'research', label: t('projectCompanyRoles.research') },
         { value: 'other', label: t('projectCompanyRoles.other') }
     ];
-    const currentTemplateIsCompanyProject = isCompanyProject({ projectCategory, templateId, projectType });
+    const currentTemplateIsContainerProject = isContainerProject({ projectCategory, templateId, projectType });
     const resourceTypeOptions: Array<{ value: ProjectResourceType; label: string }> = [
         { value: 'general', label: t('projectSettings.resources.type.general') },
         { value: 'legal', label: t('projectSettings.resources.type.legal') },
@@ -555,14 +559,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         options={dateConfidenceOptions}
                     />
                 </div>
-                {!currentTemplateIsCompanyProject && (
+                {!currentTemplateIsContainerProject && (
                     <div className="project-edit-modal__grid project-edit-modal__grid--two">
                         <Select
-                            label={t('projectSettings.companyProject.label')}
+                            label={t('projectSettings.parentProject.label')}
                             value={companyProjectId}
                             onChange={(value) => setCompanyProjectId(String(value))}
                             options={companyProjectOptions}
-                            placeholder={t('projectSettings.companyProject.placeholder')}
+                            placeholder={t('projectSettings.parentProject.placeholder')}
                         />
                         <Select
                             label={t('projectSettings.companyProject.roleLabel')}

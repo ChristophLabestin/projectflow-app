@@ -1,183 +1,186 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { auth } from '../services/firebase';
-import { updatePresence, subscribeProjectPresence } from '../services/dataService';
+import { useEffect, useRef, useState } from 'react';
+import {
+    connectPresence,
+    subscribeTenantPresence,
+    presenceEnabled,
+    type PresenceState,
+    type PresenceRecord,
+    type PresenceHandle
+} from '../services/domain/presenceService';
 import { subscribeWorkspaceMembers } from '../services/domain/workspaceMembersService';
 
-export type PresenceState = 'online' | 'idle' | 'busy' | 'offline';
+export type { PresenceState } from '../services/domain/presenceService';
 
-interface PresenceData {
+export interface PresenceData {
     uid: string;
     displayName: string;
     photoURL?: string;
     email?: string;
     state: PresenceState;
-    lastChanged: any;
+    currentProjectId?: string | null;
+    lastChanged?: number;
     isOnline: boolean;
     isIdle: boolean;
+    isBusy: boolean;
 }
 
-interface UsePresenceOptions {
-    projectId: string;
+/**
+ * Records older than this (no `lastChanged` refresh) are treated as offline even
+ * if their stored state says otherwise. onDisconnect normally handles offline
+ * instantly; this is a safety net for frozen tabs / clock skew.
+ */
+const STALE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * The single active presence owner for the current user. `useWorkspacePresence`
+ * owns the RTDB write (state + onDisconnect); `usePresence` only annotates which
+ * project the user is currently viewing on that same node.
+ */
+let activeOwner: PresenceHandle | null = null;
+
+const toPresenceData = (record: PresenceRecord, now: number): PresenceData => {
+    const lastChanged = typeof record.lastChanged === 'number' ? record.lastChanged : 0;
+    const fresh = lastChanged > 0 && now - lastChanged < STALE_TIMEOUT;
+    const state: PresenceState = fresh ? record.state : 'offline';
+    return {
+        uid: record.uid,
+        displayName: record.displayName || 'User',
+        photoURL: record.photoURL,
+        email: record.email,
+        state,
+        currentProjectId: record.currentProjectId ?? null,
+        lastChanged,
+        isOnline: state === 'online',
+        isIdle: state === 'idle',
+        isBusy: state === 'busy'
+    };
+};
+
+interface UseWorkspacePresenceOptions {
     tenantId?: string;
-    /** Heartbeat interval in ms (default: 30000 - 30 seconds) */
-    heartbeatInterval?: number;
     /** Time before marking user as idle in ms (default: 600000 - 10 minutes) */
     idleTimeout?: number;
-    /** Whether to enable the presence tracking (default: true) */
+    /** Whether to enable presence tracking (default: true) */
     enabled?: boolean;
-    /** Manual status selection (e.g. from user profile) */
+    /** Manual status from the user profile ('online' means automatic mode) */
     manualStatus?: PresenceState;
 }
 
 /**
- * Custom hook for managing user presence in a project
- * - Tracks online/idle/offline states
- * - Detects tab visibility changes
- * - Detects user activity (mouse movement, keyboard, scroll)
- * - Handles beforeunload cleanup
+ * Owns the current user's presence for the whole session. Mount once near the
+ * app root. Handles idle detection, tab visibility, and the manual status
+ * override; reliable offline is handled server-side via onDisconnect.
  */
-export const usePresence = ({
-    projectId,
+export const useWorkspacePresence = ({
     tenantId,
-    heartbeatInterval = 30000, // 30 seconds
-    idleTimeout = 600000, // 10 minutes of no activity
+    idleTimeout = 600000,
     enabled = true,
     manualStatus
-}: UsePresenceOptions) => {
+}: UseWorkspacePresenceOptions) => {
+    const handleRef = useRef<PresenceHandle | null>(null);
     const lastActivityRef = useRef<number>(Date.now());
-    const currentStateRef = useRef<PresenceState>('online');
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const idleCheckRef = useRef<NodeJS.Timeout | null>(null);
+    const stateRef = useRef<PresenceState>('online');
+    const manualRef = useRef<PresenceState | undefined>(manualStatus);
+    manualRef.current = manualStatus;
 
-    // Update presence with current state
-    const sendPresenceUpdate = useCallback(async (state: PresenceState) => {
-        if (!projectId || !auth.currentUser) return;
-
-        // If manualStatus is set and NOT 'online', fixate that status
-        // manualStatus === 'online' means automatic mode
-        const targetState = manualStatus && manualStatus !== 'online' && state !== 'offline' ? manualStatus : state;
-        currentStateRef.current = targetState;
-
-        try {
-            await updatePresence(projectId, targetState === 'offline' ? 'offline' : 'online', tenantId);
-        } catch (e) {
-            console.error('Failed to send presence update', e);
-        }
-    }, [projectId, tenantId, manualStatus]);
-
-    // Mark user as having activity
-    const markActivity = useCallback(() => {
-        lastActivityRef.current = Date.now();
-
-        // If was idle, mark as online again (only if in auto mode)
-        if (currentStateRef.current === 'idle' && (!manualStatus || manualStatus === 'online')) {
-            sendPresenceUpdate('online');
-        }
-    }, [sendPresenceUpdate, manualStatus]);
-
-    // Check if user has been idle
-    const checkIdleState = useCallback(() => {
-        // Skip idle check if manual status is set (Busy, Away, Offline)
-        if (manualStatus && manualStatus !== 'online') return;
-
-        const timeSinceActivity = Date.now() - lastActivityRef.current;
-
-        if (timeSinceActivity > idleTimeout && currentStateRef.current === 'online') {
-            sendPresenceUpdate('idle');
-        }
-    }, [idleTimeout, sendPresenceUpdate, manualStatus]);
-
-    // Handle visibility change
-    const handleVisibilityChange = useCallback(() => {
-        if (document.hidden) {
-            // Tab is hidden - mark as idle immediately (unless manual status set to Busy/Away/Offline)
-            if (!manualStatus || manualStatus === 'online') sendPresenceUpdate('idle');
-        } else {
-            // Tab is visible again - mark as online (or restored manual status)
-            lastActivityRef.current = Date.now();
-            const restorationStatus = (manualStatus && manualStatus !== 'online') ? manualStatus : 'online';
-            sendPresenceUpdate(restorationStatus);
-        }
-    }, [sendPresenceUpdate, manualStatus]);
-
-    // Handle before unload
-    const handleBeforeUnload = useCallback(() => {
-        // Use sendBeacon for reliable offline update
-        if (projectId && auth.currentUser) {
-            // Note: We can't use async/await here, so we do a best-effort sync call
-            // The backend timeout will handle cases where this doesn't fire
-            sendPresenceUpdate('offline');
-        }
-    }, [projectId, sendPresenceUpdate]);
+    // Apply manual status changes without re-establishing the connection.
+    useEffect(() => {
+        if (!handleRef.current) return;
+        const fixed = manualStatus && manualStatus !== 'online' ? manualStatus : 'online';
+        stateRef.current = fixed;
+        handleRef.current.setState(fixed);
+    }, [manualStatus]);
 
     useEffect(() => {
-        if (!enabled || !projectId) return;
+        if (!enabled || !presenceEnabled()) return;
 
-        // Initial online update
-        sendPresenceUpdate('online');
+        const desired = (): PresenceState =>
+            manualRef.current && manualRef.current !== 'online' ? manualRef.current : 'online';
 
-        // Set up heartbeat
-        intervalRef.current = setInterval(() => {
-            if (currentStateRef.current !== 'offline') {
-                sendPresenceUpdate(currentStateRef.current);
-            }
-        }, heartbeatInterval);
+        const handle = connectPresence(tenantId, { state: desired() });
+        handleRef.current = handle;
+        activeOwner = handle;
+        stateRef.current = desired();
 
-        // Set up idle check
-        idleCheckRef.current = setInterval(checkIdleState, 10000); // Check every 10 seconds
-
-        // Activity listeners
-        const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
-        activityEvents.forEach(event => {
-            window.addEventListener(event, markActivity, { passive: true });
-        });
-
-        // Visibility change listener
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        // Before unload listener
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        // Also handle page hide for mobile browsers
-        window.addEventListener('pagehide', handleBeforeUnload);
-
-        // Cleanup
-        return () => {
-            // Clear intervals
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            if (idleCheckRef.current) clearInterval(idleCheckRef.current);
-
-            // Remove event listeners
-            activityEvents.forEach(event => {
-                window.removeEventListener(event, markActivity);
-            });
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            window.removeEventListener('pagehide', handleBeforeUnload);
-
-            // Send offline status
-            sendPresenceUpdate('offline');
+        const setState = (next: PresenceState) => {
+            stateRef.current = next;
+            handle.setState(next);
         };
-    }, [enabled, projectId, heartbeatInterval, sendPresenceUpdate, markActivity, checkIdleState, handleVisibilityChange, handleBeforeUnload]);
 
-    return {
-        markActivity,
-        goOnline: () => sendPresenceUpdate('online'),
-        goOffline: () => sendPresenceUpdate('offline'),
-        goIdle: () => sendPresenceUpdate('idle')
-    };
+        const markActivity = () => {
+            lastActivityRef.current = Date.now();
+            const manual = manualRef.current;
+            if (stateRef.current === 'idle' && (!manual || manual === 'online')) {
+                setState('online');
+            }
+        };
+
+        const checkIdle = () => {
+            const manual = manualRef.current;
+            if (manual && manual !== 'online') return; // fixed manual state
+            if (
+                stateRef.current === 'online' &&
+                Date.now() - lastActivityRef.current > idleTimeout
+            ) {
+                setState('idle');
+            }
+        };
+
+        const handleVisibility = () => {
+            const manual = manualRef.current;
+            if (document.hidden) {
+                if (!manual || manual === 'online') setState('idle');
+            } else {
+                lastActivityRef.current = Date.now();
+                setState(manual && manual !== 'online' ? manual : 'online');
+            }
+        };
+
+        const idleInterval = setInterval(checkIdle, 10000);
+        const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
+        activityEvents.forEach((e) => window.addEventListener(e, markActivity, { passive: true }));
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        return () => {
+            clearInterval(idleInterval);
+            activityEvents.forEach((e) => window.removeEventListener(e, markActivity));
+            document.removeEventListener('visibilitychange', handleVisibility);
+            handle.stop();
+            if (activeOwner === handle) activeOwner = null;
+            handleRef.current = null;
+        };
+    }, [enabled, tenantId, idleTimeout]);
+
+    return { markActivity: () => (lastActivityRef.current = Date.now()) };
+};
+
+interface UsePresenceOptions {
+    projectId: string;
+    tenantId?: string;
+    enabled?: boolean;
+}
+
+/**
+ * Annotates the active presence node with the project the user is currently
+ * viewing. Does not own the connection — `useWorkspacePresence` must be mounted.
+ */
+export const usePresence = ({ projectId, enabled = true }: UsePresenceOptions) => {
+    useEffect(() => {
+        if (!enabled || !projectId || !presenceEnabled()) return;
+        activeOwner?.setProject(projectId);
+        return () => {
+            activeOwner?.setProject(null);
+        };
+    }, [enabled, projectId]);
+
+    return {};
 };
 
 /**
- * Custom hook for subscribing to project presence data
- * Returns enhanced presence data with proper online/idle/offline detection
+ * Subscribe to the users currently active in a given project. Returns only
+ * online/idle/busy users whose presence is fresh.
  */
-export const useProjectPresence = (
-    projectId: string,
-    tenantId?: string,
-    /** Timeout in ms after which a user is considered offline (default: 120000 - 2 minutes) */
-    offlineTimeout: number = 120000
-) => {
+export const useProjectPresence = (projectId: string, tenantId?: string): PresenceData[] => {
     const [activeUsers, setActiveUsers] = useState<PresenceData[]>([]);
 
     useEffect(() => {
@@ -185,183 +188,17 @@ export const useProjectPresence = (
             setActiveUsers([]);
             return;
         }
-
-        const unsubscribe = subscribeProjectPresence(projectId, (users) => {
+        const unsubscribe = subscribeTenantPresence((records) => {
             const now = Date.now();
-
-            // Process presence data with timeout checks
-            const processedUsers = users
-                .filter(u => u && u.uid)
-                .map(u => {
-                    const lastChangedMs = u.lastChanged ?
-                        (typeof u.lastChanged.toMillis === 'function' ? u.lastChanged.toMillis() : u.lastChanged)
-                        : 0;
-
-                    const timeSinceUpdate = now - lastChangedMs;
-
-                    // Determine actual state based on time and reported state
-                    let isOnline = false;
-                    let isIdle = false;
-                    let isBusy = false;
-
-                    if (timeSinceUpdate < offlineTimeout) {
-                        if (u.state === 'online') {
-                            isOnline = true;
-                        } else if (u.state === 'idle') {
-                            isIdle = true;
-                        } else if (u.state === 'busy') {
-                            isBusy = true;
-                        }
-                    }
-                    // If time since update exceeds timeout, user is offline regardless of reported state
-
-                    return {
-                        uid: u.uid,
-                        displayName: u.displayName || 'User',
-                        photoURL: u.photoURL,
-                        email: u.email,
-                        state: (isOnline ? 'online' : isIdle ? 'idle' : isBusy ? 'busy' : 'offline') as PresenceState,
-                        lastChanged: u.lastChanged,
-                        isOnline,
-                        isIdle,
-                        isBusy
-                    };
-                })
-                // Only include users who are online, idle, or busy
-                .filter(u => u.isOnline || u.isIdle || u.isBusy);
-
-            setActiveUsers(processedUsers);
+            const users = records
+                .map((r) => toPresenceData(r, now))
+                .filter((u) => u.currentProjectId === projectId && (u.isOnline || u.isIdle || u.isBusy));
+            setActiveUsers(users);
         }, tenantId);
-
         return () => unsubscribe();
-    }, [projectId, tenantId, offlineTimeout]);
+    }, [projectId, tenantId]);
 
     return activeUsers;
-};
-
-// Import workspace presence functions
-import { updateWorkspacePresence, subscribeWorkspacePresence } from '../services/dataService';
-
-interface UseWorkspacePresenceOptions {
-    tenantId?: string;
-    /** Heartbeat interval in ms (default: 30000 - 30 seconds) */
-    heartbeatInterval?: number;
-    /** Time before marking user as idle in ms (default: 600000 - 10 minutes) */
-    idleTimeout?: number;
-    /** Whether to enable the presence tracking (default: true) */
-    enabled?: boolean;
-    /** Manual status selection */
-    manualStatus?: 'online' | 'busy' | 'idle' | 'offline';
-}
-
-/**
- * Custom hook for managing user presence at the workspace level
- * Similar to usePresence but for workspace-wide tracking
- */
-export const useWorkspacePresence = ({
-    tenantId,
-    heartbeatInterval = 30000,
-    idleTimeout = 600000, // 10 minutes
-    enabled = true,
-    manualStatus
-}: UseWorkspacePresenceOptions) => {
-    const lastActivityRef = useRef<number>(Date.now());
-    const currentStateRef = useRef<PresenceState>('online');
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const idleCheckRef = useRef<NodeJS.Timeout | null>(null);
-
-    const sendPresenceUpdate = useCallback(async (state: PresenceState) => {
-        if (!auth.currentUser) return;
-
-        // Respect manual status if provided
-        // If manualStatus is 'online', it means "Auto Online/Idle"
-        const targetState = manualStatus && manualStatus !== 'online' && state !== 'offline' ? manualStatus : state;
-        currentStateRef.current = targetState;
-
-        try {
-            // If manual status is offline, we force offline, but we still heartbeat the state 
-            // to ensure it doesn't get cleared by backend timeout (or just send offline once and stop)
-            // For "Appear Offline", we send 'offline' to the DB.
-            await updateWorkspacePresence(targetState, tenantId);
-        } catch (e) {
-            console.error('Failed to send workspace presence update', e);
-        }
-    }, [tenantId, manualStatus]);
-
-    const markActivity = useCallback(() => {
-        lastActivityRef.current = Date.now();
-        // Only auto-restore to online if not in a manual fixed state (Busy/Away/Offline)
-        // 'online' preference is the only one that allows auto-transitions
-        if (currentStateRef.current === 'idle' && (!manualStatus || manualStatus === 'online')) {
-            sendPresenceUpdate('online');
-        }
-    }, [sendPresenceUpdate, manualStatus]);
-
-    const checkIdleState = useCallback(() => {
-        // Skip auto-idle if manual status set (Busy, Away, Offline)
-        if (manualStatus && manualStatus !== 'online') return;
-
-        const timeSinceActivity = Date.now() - lastActivityRef.current;
-        if (timeSinceActivity > idleTimeout && currentStateRef.current === 'online') {
-            sendPresenceUpdate('idle');
-        }
-    }, [idleTimeout, sendPresenceUpdate, manualStatus]);
-
-    const handleVisibilityChange = useCallback(() => {
-        if (document.hidden) {
-            // Tab is hidden - mark as idle immediately (unless manual status set to Busy/Away/Offline)
-            if (!manualStatus || manualStatus === 'online') sendPresenceUpdate('idle');
-        } else {
-            lastActivityRef.current = Date.now();
-            const restorationStatus = (manualStatus && manualStatus !== 'online') ? manualStatus : 'online';
-            sendPresenceUpdate(restorationStatus);
-        }
-    }, [sendPresenceUpdate, manualStatus]);
-
-    const handleBeforeUnload = useCallback(() => {
-        if (auth.currentUser) {
-            sendPresenceUpdate('offline');
-        }
-    }, [sendPresenceUpdate]);
-
-    useEffect(() => {
-        if (!enabled) return;
-
-        sendPresenceUpdate('online');
-
-        intervalRef.current = setInterval(() => {
-            if (currentStateRef.current !== 'offline') {
-                sendPresenceUpdate(currentStateRef.current);
-            }
-        }, heartbeatInterval);
-
-        idleCheckRef.current = setInterval(checkIdleState, 10000);
-
-        const activityEvents = ['mousemove', 'keydown', 'mousedown', 'touchstart', 'scroll'];
-        activityEvents.forEach(event => {
-            window.addEventListener(event, markActivity, { passive: true });
-        });
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        window.addEventListener('pagehide', handleBeforeUnload);
-
-        return () => {
-            if (intervalRef.current) clearInterval(intervalRef.current);
-            if (idleCheckRef.current) clearInterval(idleCheckRef.current);
-
-            activityEvents.forEach(event => {
-                window.removeEventListener(event, markActivity);
-            });
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-            window.removeEventListener('pagehide', handleBeforeUnload);
-
-            sendPresenceUpdate('offline');
-        };
-    }, [enabled, heartbeatInterval, sendPresenceUpdate, markActivity, checkIdleState, handleVisibilityChange, handleBeforeUnload]);
-
-    return { markActivity };
 };
 
 interface WorkspaceTeamMember extends PresenceData {
@@ -370,8 +207,7 @@ interface WorkspaceTeamMember extends PresenceData {
 }
 
 /**
- * Hook to get workspace team members with their presence status
- * Filters out guests (users who are only in projects but not workspace members)
+ * Workspace team members joined with their presence status (guests excluded).
  */
 export const useWorkspaceTeamPresence = (tenantId?: string): {
     members: WorkspaceTeamMember[];
@@ -384,9 +220,8 @@ export const useWorkspaceTeamPresence = (tenantId?: string): {
     busyCount: number;
 } => {
     const [workspaceMembers, setWorkspaceMembers] = useState<any[]>([]);
-    const [presenceData, setPresenceData] = useState<PresenceData[]>([]);
+    const [presenceByUid, setPresenceByUid] = useState<Record<string, PresenceData>>({});
 
-    // Subscribe to workspace members
     useEffect(() => {
         const unsubscribe = subscribeWorkspaceMembers((members) => {
             setWorkspaceMembers(members);
@@ -394,30 +229,33 @@ export const useWorkspaceTeamPresence = (tenantId?: string): {
         return () => unsubscribe();
     }, [tenantId]);
 
-    // Subscribe to presence
     useEffect(() => {
-        const unsubscribe = subscribeWorkspacePresence((users) => {
-            setPresenceData(users as PresenceData[]);
+        const unsubscribe = subscribeTenantPresence((records) => {
+            const now = Date.now();
+            const map: Record<string, PresenceData> = {};
+            records.forEach((r) => {
+                map[r.uid] = toPresenceData(r, now);
+            });
+            setPresenceByUid(map);
         }, tenantId);
         return () => unsubscribe();
     }, [tenantId]);
 
-    // Combine members with presence, filtering out guests
-    const combinedMembers = workspaceMembers
-        // Filter out guests - only include actual workspace team members
-        .filter(member => {
+    const combinedMembers: WorkspaceTeamMember[] = workspaceMembers
+        .filter((member) => {
             const role = (member.role || '').toLowerCase();
             return role !== 'guest' && role !== 'viewer';
         })
-        .map(member => {
-            const presence = presenceData.find(p => p.uid === member.uid);
+        .map((member) => {
+            const presence = presenceByUid[member.uid];
             return {
                 uid: member.uid,
                 displayName: member.displayName || 'User',
                 photoURL: member.photoURL,
                 email: member.email,
                 role: member.role,
-                state: presence?.state || 'offline' as PresenceState,
+                state: presence?.state || 'offline',
+                currentProjectId: presence?.currentProjectId ?? null,
                 lastChanged: presence?.lastChanged,
                 isOnline: presence?.isOnline || false,
                 isIdle: presence?.isIdle || false,
@@ -426,11 +264,10 @@ export const useWorkspaceTeamPresence = (tenantId?: string): {
             };
         });
 
-    // Filter by status
-    const onlineMembers = combinedMembers.filter(m => m.isOnline);
-    const idleMembers = combinedMembers.filter(m => m.isIdle);
-    const busyMembers = combinedMembers.filter(m => m.isBusy);
-    const offlineMembers = combinedMembers.filter(m => !m.isOnline && !m.isIdle && !m.isBusy);
+    const onlineMembers = combinedMembers.filter((m) => m.isOnline);
+    const idleMembers = combinedMembers.filter((m) => m.isIdle);
+    const busyMembers = combinedMembers.filter((m) => m.isBusy);
+    const offlineMembers = combinedMembers.filter((m) => !m.isOnline && !m.isIdle && !m.isBusy);
 
     return {
         members: combinedMembers,

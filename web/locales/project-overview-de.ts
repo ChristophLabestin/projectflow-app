@@ -694,6 +694,7 @@ const deProjectOverview = {
     'projectOverview.v2.reference.teamEmpty': 'Noch keine Mitglieder',
     'projectOverview.v2.reference.codex': 'Codex-Sitzungen',
     'projectOverview.v2.reference.codexOpen': 'Codex öffnen',
+    'projectOverview.team.status.offline': 'Offline',
 };
 
 export default deProjectOverview;

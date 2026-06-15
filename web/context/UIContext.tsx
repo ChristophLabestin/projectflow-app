@@ -45,7 +45,8 @@ interface UIContextType {
     // Global Task Create Modal
     isTaskCreateModalOpen: boolean;
     taskCreateProjectId: string | null;
-    openTaskCreateModal: (projectId?: string) => void;
+    taskCreateAllowProjectSelect: boolean;
+    openTaskCreateModal: (projectId?: string, options?: { allowProjectSelect?: boolean }) => void;
     closeTaskCreateModal: () => void;
 
     // Global Project Create Modal
@@ -79,20 +80,23 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     // Task Modal State
     const [isTaskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
     const [taskCreateProjectId, setTaskCreateProjectId] = useState<string | null>(null);
+    const [taskCreateAllowProjectSelect, setTaskCreateAllowProjectSelect] = useState(false);
 
     // Project Modal State
     const [isProjectCreateModalOpen, setProjectCreateModalOpen] = useState(false);
 
     // Task Modal Functions
-    const openTaskCreateModal = useCallback((projectId?: string) => {
+    const openTaskCreateModal = useCallback((projectId?: string, options?: { allowProjectSelect?: boolean }) => {
         const resolvedProjectId = projectId || pinnedProject?.id || null;
         setTaskCreateProjectId(resolvedProjectId);
+        setTaskCreateAllowProjectSelect(options?.allowProjectSelect ?? false);
         setTaskCreateModalOpen(true);
     }, [pinnedProject]);
 
     const closeTaskCreateModal = useCallback(() => {
         setTaskCreateModalOpen(false);
         setTaskCreateProjectId(null);
+        setTaskCreateAllowProjectSelect(false);
     }, []);
 
     // Project Modal Functions
@@ -192,6 +196,7 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
             isTaskCreateModalOpen,
             taskCreateProjectId,
+            taskCreateAllowProjectSelect,
             openTaskCreateModal,
             closeTaskCreateModal,
             isProjectCreateModalOpen,

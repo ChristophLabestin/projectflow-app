@@ -25,9 +25,9 @@ export const GlobalToast = () => {
     // Don't unmount if modal is open, so it doesn't disappear
     if (!isVisible && !toast.show) return null;
 
-    const bgColor = toast.type === 'error' ? 'bg-red-500' :
-        toast.type === 'success' ? 'bg-green-600' :
-            'bg-blue-600';
+    const toneClass = toast.type === 'error' ? 'global-toast--error' :
+        toast.type === 'success' ? 'global-toast--success' :
+            'global-toast--info';
 
     const handleCopy = () => {
         const fullMessage = toast.details ? `${toast.message}\n\nDetails:\n${toast.details}` : toast.message;
@@ -38,21 +38,14 @@ export const GlobalToast = () => {
 
     return (
         <>
-            <div className={`
-                 fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[2147483647]
-                 flex flex-col rounded-xl shadow-2xl
-                 text-white font-medium max-w-xl w-full
-                 transition-all duration-300 ease-out
-                 ${toast.show ? 'translate-y-0 opacity-100 scale-100 pointer-events-auto' : 'translate-y-4 opacity-0 scale-95 pointer-events-none'}
-                 ${bgColor}
-            `}>
-                <div className="flex items-center gap-3 px-4 py-3">
-                    <span className="material-symbols-outlined text-[20px] shrink-0">
+            <div className={`global-toast ${toneClass} ${toast.show ? 'global-toast--visible' : ''}`}>
+                <div className="global-toast__row">
+                    <span className="material-symbols-outlined global-toast__icon">
                         {toast.type === 'error' ? 'error' :
                             toast.type === 'success' ? 'check_circle' :
                                 'info'}
                     </span>
-                    <div className={`flex-1 text-sm ${toast.type === 'error' ? 'font-mono' : ''} break-all`}>
+                    <div className={`global-toast__message ${toast.type === 'error' ? 'global-toast__message--mono' : ''}`}>
                         {toast.message}
                     </div>
 
@@ -61,10 +54,10 @@ export const GlobalToast = () => {
                             {toast.details && (
                                 <button
                                     onClick={() => setShowDetails(!showDetails)}
-                                    className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 flex items-center justify-center"
+                                    className="global-toast__btn"
                                     title={showDetails ? "Hide Details" : "Show Details"}
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">
+                                    <span className="material-symbols-outlined">
                                         {showDetails ? 'expand_less' : 'expand_more'}
                                     </span>
                                 </button>
@@ -75,17 +68,17 @@ export const GlobalToast = () => {
                                         navigate(toast.action!.path);
                                         closeToast();
                                     }}
-                                    className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-xs font-bold shrink-0"
+                                    className="global-toast__btn global-toast__btn--action"
                                 >
                                     {toast.action.label}
                                 </button>
                             )}
                             <button
                                 onClick={handleCopy}
-                                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 flex items-center justify-center"
+                                className="global-toast__btn"
                                 title={copied ? "Copied!" : "Copy Error"}
                             >
-                                <span className="material-symbols-outlined text-[16px]">
+                                <span className="material-symbols-outlined">
                                     {copied ? 'check' : 'content_copy'}
                                 </span>
                             </button>
@@ -94,15 +87,15 @@ export const GlobalToast = () => {
 
                     <button
                         onClick={closeToast}
-                        className="p-1 bg-white/20 hover:bg-white/30 rounded-full transition-colors shrink-0"
+                        className="global-toast__btn global-toast__btn--close"
                     >
-                        <span className="material-symbols-outlined text-[14px] block">close</span>
+                        <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {showDetails && toast.details && (
-                    <div className="px-4 pb-4 pt-1 border-t border-white/10">
-                        <pre className="text-[10px] font-mono whitespace-pre-wrap break-all opacity-80 max-h-40 overflow-y-auto">
+                    <div className="global-toast__details">
+                        <pre className="global-toast__pre">
                             {toast.details}
                         </pre>
                     </div>

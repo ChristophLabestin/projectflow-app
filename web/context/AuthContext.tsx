@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { User, onIdTokenChanged } from 'firebase/auth';
 import { auth } from '../services/firebase';
+import { setErrorUser } from '../services/errorReporting';
 
 interface AuthContextType {
     user: User | null;
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             }
 
             setUser(currentUser);
+            setErrorUser(currentUser ? currentUser.uid : null);
             setIsAuthReady(true);
             initRef.current = true;
         });

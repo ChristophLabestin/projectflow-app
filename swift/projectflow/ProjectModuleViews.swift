@@ -12,25 +12,34 @@ struct CompanyProjectOverviewSection: View {
         if project.isCompanyProject {
             PFCard {
                 VStack(alignment: .leading, spacing: PFSpacing.md) {
-                    Text("Company Command").font(.headline)
-                    if let profile = project.startupProfile {
-                        Text("Stage: \(StartupProjects.stageLabel(profile.stage))")
-                            .font(.subheadline.weight(.semibold))
-                    }
+                    PFSectionTitle(
+                        title: L10n.tr("company.entry", fallback: "Company command"),
+                        subtitle: project.startupProfile.map { "\(L10n.tr("company.stage", fallback: "Stage")): \(StartupProjects.stageLabel($0.stage))" }
+                    )
                     if let readiness = project.startupReadiness {
                         let percents = StartupProjects.readinessPercent(readiness)
-                        HStack {
-                            metric(label: "Formation", value: percents.formation)
-                            metric(label: "Launch", value: percents.launch)
+                        HStack(spacing: PFSpacing.lg) {
+                            ring(label: L10n.tr("company.formation", fallback: "Formation"), value: percents.formation, tint: colors.primary)
+                            ring(label: L10n.tr("company.launch", fallback: "Launch"), value: percents.launch, tint: colors.success)
+                            Spacer(minLength: 0)
                         }
                     }
                     if !linkedProjects.isEmpty {
-                        Text("Linked workstreams").font(.subheadline.weight(.semibold))
+                        Divider()
+                        PFFieldLabel(text: L10n.tr("company.workstreams", fallback: "Workstreams"))
                         ForEach(linkedProjects, id: \.id) { linked in
-                            NavigationLink(linked.title) {
+                            NavigationLink {
                                 ProjectOverviewView(project: linked, tenantId: linked.tenantId ?? project.tenantId ?? "")
+                            } label: {
+                                PFListRow(
+                                    title: linked.title,
+                                    subtitle: "\(Int(linked.progress))%",
+                                    icon: "square.stack.3d.up",
+                                    iconTint: PFSemantic.statusTint(linked.status, colors: colors)
+                                )
+                                .padding(.vertical, 2)
                             }
-                            .font(.subheadline)
+                            .buttonStyle(.plain)
                         }
                     }
                 }
@@ -38,12 +47,11 @@ struct CompanyProjectOverviewSection: View {
         }
     }
 
-    private func metric(label: String, value: Int) -> some View {
-        VStack(alignment: .leading) {
-            Text(label).font(.caption).foregroundStyle(colors.textMuted)
-            Text("\(value)%").font(.title3.weight(.bold))
+    private func ring(label: String, value: Int, tint: Color) -> some View {
+        VStack(spacing: PFSpacing.xs) {
+            PFCircularProgress(value: Double(value) / 100, tint: tint, size: 60, label: "\(value)%")
+            Text(label).font(PFFont.chip).foregroundStyle(colors.textMuted)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -51,48 +59,50 @@ struct ProjectModuleNavBar: View {
     let project: Project
     let permissions: PermissionContext
     @Binding var selection: ProjectNavDestination
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     private var evaluator: PermissionEvaluator { PermissionEvaluator(context: permissions) }
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: PFSpacing.sm) {
-                navChip(.overview, title: "Overview")
+            HStack(spacing: PFSpacing.xs) {
+                navChip(.overview, title: L10n.tr("tabs.home", fallback: "Overview"))
                 if evaluator.canViewModule(.initiatives, project: project) {
-                    navChip(.initiatives, title: "Initiatives")
+                    navChip(.initiatives, title: L10n.tr("work.initiatives", fallback: "Initiatives"))
                 }
                 if evaluator.canViewModule(.tasks, project: project) {
-                    navChip(.tasks, title: "Tasks")
+                    navChip(.tasks, title: L10n.tr("work.tasks", fallback: "Tasks"))
                 }
                 if !PmCoreConfig.isPmCoreOnly && evaluator.canViewModule(.sprints, project: project) {
-                    navChip(.sprints, title: "Sprints")
+                    navChip(.sprints, title: L10n.tr("deadline.sprints", fallback: "Sprints"))
                 }
                 if evaluator.canViewModule(.milestones, project: project) {
-                    navChip(.milestones, title: "Milestones")
+                    navChip(.milestones, title: L10n.tr("deadline.milestones", fallback: "Milestones"))
                 }
                 if evaluator.canViewModule(.activity, project: project) {
-                    navChip(.activity, title: "Activity")
+                    navChip(.activity, title: L10n.tr("module.activity", fallback: "Activity"))
                 }
                 navChip(.codex, title: "Codex")
-                navChip(.details, title: "Settings")
+                navChip(.details, title: L10n.tr("settings.title", fallback: "Settings"))
             }
-            .padding(.horizontal, PFSpacing.md)
+            .padding(.horizontal, 2)
         }
     }
 
     private func navChip(_ destination: ProjectNavDestination, title: String) -> some View {
-        Button {
-            selection = destination
+        let isSelected = selection == destination
+        return Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.8)) { selection = destination }
         } label: {
             Text(title)
-                .font(.caption.weight(.semibold))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(selection == destination ? Color.accentColor.opacity(0.15) : Color.clear)
-                .overlay(
-                    Capsule().stroke(Color.secondary.opacity(0.3), lineWidth: 1)
-                )
+                .font(.system(.subheadline, design: .rounded).weight(.semibold))
+                .foregroundStyle(isSelected ? colors.primaryText : colors.textMuted)
+                .padding(.horizontal, PFSpacing.md)
+                .padding(.vertical, PFSpacing.sm + 1)
+                .background(isSelected ? colors.primary : colors.surfaceHover)
                 .clipShape(Capsule())
+                .pfElevation(isSelected ? .card : .none)
         }
         .buttonStyle(.plain)
     }
@@ -109,22 +119,29 @@ struct ProjectActivityView: View {
         ActivityPresentation.filter(store.items, type: typeFilter, range: timeRange)
     }
 
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            PFSectionTitle(title: L10n.tr("module.activity", fallback: "Activity"))
+
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: PFSpacing.sm) {
+                HStack(spacing: PFSpacing.xs) {
                     ForEach(ActivityFeedFilter.allCases) { filter in
-                        Button(filter.label) { typeFilter = filter }
-                            .font(.caption.weight(.semibold))
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(typeFilter == filter ? Color.accentColor.opacity(0.15) : Color.clear)
-                            .clipShape(Capsule())
-                            .overlay(Capsule().stroke(Color.secondary.opacity(0.25)))
+                        let isSelected = typeFilter == filter
+                        Button { typeFilter = filter } label: {
+                            Text(filter.label)
+                                .font(PFFont.chip)
+                                .foregroundStyle(isSelected ? colors.primaryText : colors.textMuted)
+                                .padding(.horizontal, PFSpacing.md)
+                                .padding(.vertical, PFSpacing.sm)
+                                .background(isSelected ? colors.primary : colors.surfaceHover)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, PFSpacing.md)
-                .padding(.vertical, PFSpacing.sm)
             }
 
             Picker("Range", selection: $timeRange) {
@@ -133,30 +150,34 @@ struct ProjectActivityView: View {
                 }
             }
             .pickerStyle(.segmented)
-            .padding(.horizontal, PFSpacing.md)
-            .padding(.bottom, PFSpacing.sm)
 
-            List(filteredItems, id: \.id) { item in
-                HStack(alignment: .top, spacing: PFSpacing.sm) {
-                    Image(systemName: ActivityPresentation.icon(for: item))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24)
-                        .accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.action).font(.subheadline.weight(.semibold))
-                        Text(item.details).font(.caption).foregroundStyle(.secondary)
-                        if let created = item.createdAt?.dateValue() {
-                            Text(created.formatted(date: .abbreviated, time: .shortened))
-                                .font(.caption2)
-                                .foregroundStyle(.tertiary)
+            if filteredItems.isEmpty {
+                PFCard { PFEmptyState(icon: "clock.arrow.circlepath", title: L10n.tr("module.activity.empty", fallback: "No activity yet.")) }
+            } else {
+                PFCard {
+                    VStack(spacing: 0) {
+                        ForEach(filteredItems, id: \.id) { item in
+                            HStack(alignment: .top, spacing: PFSpacing.sm) {
+                                PFIconTile(icon: ActivityPresentation.icon(for: item), tint: colors.textMuted, size: 30, corner: PFRadius.sm)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.action).font(PFFont.rowTitle).foregroundStyle(colors.textMain)
+                                    if !item.details.isEmpty {
+                                        Text(item.details).font(PFFont.detail).foregroundStyle(colors.textMuted)
+                                    }
+                                    if let created = item.createdAt?.dateValue() {
+                                        Text(created.formatted(date: .abbreviated, time: .shortened))
+                                            .font(.caption2).foregroundStyle(colors.textSubtle)
+                                    }
+                                }
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.vertical, PFSpacing.sm)
+                            if item.id != filteredItems.last?.id { Divider() }
                         }
                     }
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("\(item.action). \(item.details)")
             }
         }
-        .navigationTitle(L10n.tr("activity.all", fallback: "Activity"))
         .onAppear { store.start(tenantId: tenantId, projectId: projectId) }
         .onDisappear { store.stop() }
     }
@@ -185,37 +206,52 @@ struct ProjectCodexView: View {
     private let repository = CodexRepository()
     @State private var sessionListener: ListenerRegistration?
     @State private var followUpListener: ListenerRegistration?
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        List {
-            Section("Sessions") {
-                if sessions.isEmpty {
-                    Text("No Codex sessions yet.").foregroundStyle(.secondary)
-                } else {
-                    ForEach(sessions, id: \.id) { session in
-                        VStack(alignment: .leading) {
-                            Text(session.title).font(.headline)
-                            if !session.summary.isEmpty {
-                                Text(session.summary).font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: PFSpacing.md) {
+            if sessions.isEmpty && followUps.isEmpty {
+                PFCard { PFEmptyState(icon: "terminal", title: L10n.tr("module.codex.empty", fallback: "No Codex sessions yet.")) }
+            } else {
+                if !sessions.isEmpty {
+                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                        PFSectionTitle(title: L10n.tr("module.codex.sessions", fallback: "Sessions"))
+                        VStack(spacing: PFSpacing.sm) {
+                            ForEach(sessions, id: \.id) { session in
+                                PFCard {
+                                    PFListRow(
+                                        title: session.title,
+                                        subtitle: session.summary.isEmpty ? nil : session.summary,
+                                        icon: "terminal",
+                                        iconTint: PFSemantic.statusTint(session.status, colors: colors),
+                                        showsChevron: false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+                if !followUps.isEmpty {
+                    VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                        PFSectionTitle(title: L10n.tr("module.codex.followups", fallback: "Follow-ups"))
+                        VStack(spacing: PFSpacing.sm) {
+                            ForEach(followUps, id: \.id) { item in
+                                PFCard {
+                                    PFListRow(
+                                        title: item.title,
+                                        subtitle: item.description.isEmpty ? nil : item.description,
+                                        icon: "arrow.turn.down.right",
+                                        iconTint: colors.textMuted,
+                                        showsChevron: false
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-            Section("Follow-ups") {
-                if followUps.isEmpty {
-                    Text("No follow-ups.").foregroundStyle(.secondary)
-                } else {
-                    ForEach(followUps, id: \.id) { item in
-                        VStack(alignment: .leading) {
-                            Text(item.title).font(.subheadline.weight(.semibold))
-                            Text(item.description).font(.caption)
-                        }
-                    }
-                }
-            }
         }
-        .navigationTitle("Codex")
         .onAppear {
             sessionListener = repository.listenSessions(tenantId: tenantId, projectId: projectId) { sessions = $0 }
             followUpListener = repository.listenFollowUps(tenantId: tenantId, projectId: projectId) { followUps = $0 }
@@ -234,15 +270,34 @@ struct ProjectMilestonesView: View {
     @State private var milestones: [Milestone] = []
     private let repository = MilestoneRepository()
     @State private var listener: ListenerRegistration?
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        List(milestones, id: \.id) { milestone in
-            VStack(alignment: .leading) {
-                Text(milestone.title).font(.headline)
-                Text(milestone.status).font(.caption)
+        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            PFSectionTitle(title: L10n.tr("deadline.milestones", fallback: "Milestones"))
+            if milestones.isEmpty {
+                PFCard { PFEmptyState(icon: "flag.checkered", title: L10n.tr("module.milestones.empty", fallback: "No milestones yet.")) }
+            } else {
+                VStack(spacing: PFSpacing.sm) {
+                    ForEach(milestones, id: \.id) { milestone in
+                        PFCard {
+                            HStack(spacing: PFSpacing.sm) {
+                                PFDot(tint: milestone.status == "Achieved" ? colors.success : colors.warning, size: 9)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(milestone.title).font(PFFont.rowTitle).foregroundStyle(colors.textMain).lineLimit(1)
+                                    Text(milestone.status).font(PFFont.detail).foregroundStyle(colors.textMuted)
+                                }
+                                Spacer()
+                                if !milestone.dueDate.isEmpty {
+                                    Text(String(milestone.dueDate.prefix(10))).font(PFFont.detail).foregroundStyle(colors.textMuted)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        .navigationTitle("Milestones")
         .onAppear {
             listener = repository.listenMilestones(tenantId: tenantId, projectId: projectId) { milestones = $0 }
         }
@@ -257,16 +312,34 @@ struct ProjectSprintsView: View {
     @State private var sprints: [Sprint] = []
     private let repository = SprintRepository()
     @State private var listener: ListenerRegistration?
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        List(sprints, id: \.id) { sprint in
-            VStack(alignment: .leading) {
-                Text(sprint.name).font(.headline)
-                Text("\(sprint.startDate) – \(sprint.endDate)").font(.caption)
-                Text(sprint.status).font(.caption2)
+        VStack(alignment: .leading, spacing: PFSpacing.sm) {
+            PFSectionTitle(title: L10n.tr("deadline.sprints", fallback: "Sprints"))
+            if sprints.isEmpty {
+                PFCard { PFEmptyState(icon: "figure.run", title: L10n.tr("module.sprints.empty", fallback: "No sprints yet.")) }
+            } else {
+                VStack(spacing: PFSpacing.sm) {
+                    ForEach(sprints, id: \.id) { sprint in
+                        PFCard {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text(sprint.name).font(PFFont.rowTitle).foregroundStyle(colors.textMain)
+                                    Spacer()
+                                    PFStatusChip(status: sprint.status)
+                                }
+                                if !sprint.startDate.isEmpty || !sprint.endDate.isEmpty {
+                                    Text("\(String(sprint.startDate.prefix(10))) – \(String(sprint.endDate.prefix(10)))")
+                                        .font(PFFont.detail).foregroundStyle(colors.textMuted)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
-        .navigationTitle("Sprints")
         .onAppear {
             listener = repository.listenSprints(tenantId: tenantId, projectId: projectId) { sprints = $0 }
         }
@@ -329,26 +402,51 @@ struct ProjectDetailsView: View {
     let tenantId: String
     let permissions: PermissionContext
     @Environment(\.openURL) private var openURL
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
-        Form {
-            Section("Modules") {
-                ForEach(project.modules, id: \.self) { module in
-                    Text(module)
+        VStack(alignment: .leading, spacing: PFSpacing.md) {
+            PFCard {
+                VStack(alignment: .leading, spacing: PFSpacing.sm) {
+                    PFSectionTitle(title: L10n.tr("module.settings.modules", fallback: "Modules"))
+                    if project.modules.isEmpty {
+                        Text(L10n.tr("common.none", fallback: "None")).font(PFFont.body).foregroundStyle(colors.textMuted)
+                    } else if #available(iOS 16.0, *) {
+                        FlowLayout(spacing: PFSpacing.sm) {
+                            ForEach(project.modules, id: \.self) { module in
+                                PFTag(text: module.capitalized)
+                            }
+                        }
+                    } else {
+                        HStack { ForEach(project.modules, id: \.self) { PFTag(text: $0.capitalized) } }
+                    }
                 }
             }
-            if let repo = project.githubRepo {
-                Section("GitHub") {
-                    Text(repo)
+
+            if let repo = project.githubRepo, !repo.isEmpty {
+                PFCard {
+                    PFListRow(title: repo, icon: "chevron.left.slash.chevron.right", iconTint: colors.textMuted, showsChevron: false)
                 }
             }
-            Section("Web") {
-                if let url = OpenInWebLink.project(project.id, path: "/details") {
-                    Button("Open full settings in web") { openURL(url) }
+
+            if let url = OpenInWebLink.project(project.id, path: "/details") {
+                Button { openURL(url) } label: {
+                    HStack {
+                        Label(L10n.tr("module.settings.web", fallback: "Open full settings on the web"), systemImage: "safari")
+                            .font(PFFont.rowTitle)
+                        Spacer()
+                        Image(systemName: "arrow.up.right").font(.caption.weight(.bold))
+                    }
+                    .foregroundStyle(colors.primary)
+                    .padding(.vertical, PFSpacing.sm)
+                    .padding(.horizontal, PFSpacing.md)
+                    .background(colors.primary.opacity(colorScheme == .dark ? 0.16 : 0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
         }
-        .navigationTitle("Project Settings")
     }
 }
 

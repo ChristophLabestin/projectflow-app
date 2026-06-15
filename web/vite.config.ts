@@ -3,7 +3,8 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { configDefaults } from 'vitest/config';
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+    const isProd = mode === 'production';
     return {
       cacheDir: '.vite',
       server: {
@@ -11,6 +12,11 @@ export default defineConfig(() => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      // Strip noisy debug logging from production bundles. console.warn/error are
+      // kept so genuine problems still surface (and feed Sentry breadcrumbs).
+      esbuild: isProd
+        ? { drop: ['debugger'], pure: ['console.log', 'console.debug', 'console.info'] }
+        : undefined,
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

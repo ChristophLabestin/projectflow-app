@@ -13,6 +13,7 @@ import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
+import { isClientProject } from '../config/projectTemplates';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -23,7 +24,7 @@ export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
     const { theme } = useTheme();
     const {
-        isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId,
+        isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId, taskCreateAllowProjectSelect,
         isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
     const location = useLocation();
@@ -341,6 +342,7 @@ export const AppLayout = () => {
                             ideasCount: 0,
                             issuesCount: 0,
                             modules: project?.modules,
+                            isClientProject: project ? isClientProject(project) : false,
                             externalResources: visibleExternalResources,
                             isLoaded: Boolean(project),
                             navPrefs: navPrefs
@@ -368,6 +370,7 @@ export const AppLayout = () => {
                                     ideasCount: 0,
                                     issuesCount: 0,
                                     modules: project?.modules,
+                                    isClientProject: project ? isClientProject(project) : false,
                                     externalResources: visibleExternalResources,
                                     isLoaded: Boolean(project),
                                     navPrefs: navPrefs
@@ -400,11 +403,12 @@ export const AppLayout = () => {
 
             </div>
             {/* Global Task Create Modal */}
-            {isTaskCreateModalOpen && resolvedTaskCreateProjectId && (
+            {isTaskCreateModalOpen && (resolvedTaskCreateProjectId || taskCreateAllowProjectSelect) && (
                 <Suspense fallback={null}>
                     <TaskCreateModal
                         onClose={closeTaskCreateModal}
-                        projectId={resolvedTaskCreateProjectId}
+                        projectId={resolvedTaskCreateProjectId || undefined}
+                        allowProjectSelect={taskCreateAllowProjectSelect}
                     />
                 </Suspense>
             )}

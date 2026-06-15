@@ -508,6 +508,20 @@ export const isCompanyProject = (project: Pick<Project, 'projectCategory' | 'tem
     || project.templateId === 'startup_company_formation'
 );
 
+// Client projects ("Kundenprojekte") are grouped separately like company projects
+// and can collect linked workstreams underneath them. They intentionally do NOT
+// receive the startup/company-formation overview — that stays gated on isCompanyProject.
+export const isClientProject = (project: Pick<Project, 'projectCategory' | 'templateId' | 'projectType'>): boolean => (
+    project.projectCategory === 'client_delivery'
+    || project.templateId === 'client_delivery'
+);
+
+// Container projects act as grouping parents (company OR client) that other projects
+// can be linked under via companyProjectId. They never link to a parent themselves.
+export const isContainerProject = (project: Pick<Project, 'projectCategory' | 'templateId' | 'projectType'>): boolean => (
+    isCompanyProject(project) || isClientProject(project)
+);
+
 export const isSoftwareProject = (project: Pick<Project, 'projectCategory' | 'templateId' | 'projectType'>): boolean => (
     project.projectCategory === 'software'
     || project.templateId === 'software_release'

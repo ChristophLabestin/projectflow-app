@@ -10,6 +10,13 @@
 
 ## Recent Sessions
 
+- Date: 2026-06-14
+  - Goal: expand the ProjectFlow UI Style Guide with additional standardization candidates inspired by Mossandl Mobility.
+  - Actions: reviewed Mossandl Mobility's design-system brief and developer UI library, especially max-width categories, relative depth levels, checkbox/toggle primitives, and reusable operational UI patterns; extended `web/screens/StyleGuidePage.tsx` with Level of Depth, max-width containers, checkbox/toggle examples, and next standardization candidates for list toolbars, empty states, skeletons, inline edit cells, filter menus, and steppers; added responsive SCSS and EN/DE locale keys.
+  - Validation: `cd web && npm run build` passed.
+  - ProjectFlow tracking: not created because `PROJECTFLOW_API_TOKEN` is missing in the current shell.
+  - Next: visually QA `/ui` in an authenticated browser session and create the missing ProjectFlow task once the API token is available.
+
 - Date: 2026-06-04
   - Goal: make the GitHub connect action work when a user is already linked to GitHub through Firebase Auth but ProjectFlow has no stored repo API token.
   - Actions: changed GitHub linking to request `repo`, `read:project`, and `user` scopes and fall back to `reauthenticateWithPopup` when the provider is already linked; changed the account UI to distinguish account-level GitHub integration tokens from Firebase sign-in links; added a GitHub disconnect action that removes the ProjectFlow token and unlinks the Firebase GitHub provider when another login method exists; added project settings success/error toasts, repo loading feedback, and a manual token fallback for accounts already linked to another Firebase user; changed task GitHub sync to use project repo settings plus the project owner's account-level token when no project token exists; hardened OAuth popup MFA sign-in so GitHub/Google login opens the 2FA code step or shows a localized setup error instead of leaking the raw Firebase error; hotfixed the deployed blank screen by moving Rollup `commonjsHelpers.js` into a neutral Vite chunk so `vendor` no longer circularly evaluates through `data-tools` before React is initialized; added missing auth-screen flow hero translations.
@@ -132,3 +139,9 @@
   - Actions: rebound Tailwind CDN utility colors in `web/index.html` to theme RGB CSS variables; added missing RGB theme tokens across both style token entrypoints; gave Sidebar controls explicit token-based classes for the new-project button, active nav state, icons, indicators, and badges.
   - Validation: `cd web && npm run build` passed; `cd web && npm run lint:theme` passed; targeted `git diff --check` passed; Playwright verified production preview and deployed Firebase Hosting dark-mode computed colors/screenshots for the affected sidebar slice.
   - Next: repeat visual QA on the authenticated production app with real sidebar data.
+
+- Date: 2026-06-14
+  - Goal: create first-version shared standards for the six `/ui` primitive candidates.
+  - Actions: added v1 common components for `ListToolbar`, `EmptyState`, `Skeleton`/`SkeletonBlock`, `InlineEditCell`, `FilterMenu`, and `Stepper`; replaced the `/ui` "standardize next" cards with live demos for all six; added EN/DE demo copy and updated component/style Brain docs.
+  - Validation: `cd web && npm run build` passed; `cd web && npm run lint:theme` passed.
+  - Next: review the six primitives visually in an authenticated `/ui` session, then iterate through them one by one and adopt them in real feature screens.

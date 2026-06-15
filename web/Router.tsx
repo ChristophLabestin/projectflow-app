@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { GlobalToast } from './components/ui/GlobalToast';
+import { OfflineBanner } from './components/OfflineBanner';
 import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal';
 import { Dashboard } from './screens/Dashboard';
 import { ProjectsList } from './screens/ProjectsList';
@@ -49,6 +50,10 @@ const ProjectTaskDetail = React.lazy(() => import('./screens/ProjectTaskDetail')
 const ProjectInitiatives = React.lazy(() => import('./screens/ProjectInitiatives').then((module) => ({ default: module.ProjectInitiatives })));
 const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitiativeDetail').then((module) => ({ default: module.ProjectInitiativeDetail })));
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
+const PublicProjectIntakePage = React.lazy(() => import('./screens/PublicProjectIntakePage').then((module) => ({ default: module.PublicProjectIntakePage })));
+const ProjectIntake = React.lazy(() => import('./screens/ProjectIntake').then((module) => ({ default: module.ProjectIntake })));
+const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').then((module) => ({ default: module.ProjectInvoices })));
+const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectCodex = React.lazy(() => import('./screens/ProjectCodex').then((module) => ({ default: module.ProjectCodex })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
@@ -162,6 +167,7 @@ const RootLayout = () => {
     return (
         <>
             <GlobalToast />
+            <OfflineBanner />
             <GlobalConfirmationModal />
             <PinnedTasksModal />
             <HelpCenterDrawer />
@@ -218,6 +224,7 @@ export const AppRouter = () => {
                     <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
                     <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
+                    <Route path="/feedback/project/:token" element={withRouteSuspense(<PublicProjectIntakePage />)} />
 
                     <Route
                         path="/ui"
@@ -253,6 +260,9 @@ export const AppRouter = () => {
                             <Route path="tasks/:taskId" element={withRouteSuspense(<ProjectTaskDetail />)} />
                             <Route path="initiatives" element={withRouteSuspense(<ProjectInitiatives />)} />
                             <Route path="initiatives/:initiativeId" element={withRouteSuspense(<ProjectInitiativeDetail />)} />
+                            <Route path="intake" element={withRouteSuspense(<ProjectIntake />)} />
+                            <Route path="invoices" element={withRouteSuspense(<ProjectInvoices />)} />
+                            <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
                             <Route path="codex" element={withRouteSuspense(<ProjectCodex />)} />

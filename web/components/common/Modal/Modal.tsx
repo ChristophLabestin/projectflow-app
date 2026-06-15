@@ -9,6 +9,7 @@ export interface ModalProps {
     title?: string;
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
     className?: string;
+    overlayClassName?: string;
     children: React.ReactNode;
     footer?: React.ReactNode;
     closeOnOutsideClick?: boolean;
@@ -20,6 +21,7 @@ export const Modal: React.FC<ModalProps> = ({
     title,
     size = 'md',
     className = '',
+    overlayClassName = '',
     children,
     footer,
     closeOnOutsideClick = true,
@@ -61,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
 
     return createPortal(
         <div
-            className={`modal-overlay ${isOpen ? 'modal-overlay--open' : ''}`}
+            className={`modal-overlay ${overlayClassName} ${isOpen ? 'modal-overlay--open' : ''}`.trim()}
             onClick={handleBackdropClick}
             aria-modal="true"
             role="dialog"

@@ -31,8 +31,8 @@ Rules:
 | `TextArea` | Multi-line input | Descriptions, notes | Matches `TextInput` styling. Supports label, error, help text. |
 | `Select` | Single select dropdown | Plan selection, enums | Custom UI with Portal rendering. Keyboard accessible. |
 | `MultiSelect` | Multi-select control | Labels, members | Searchable recommended |
-| `Checkbox` | Boolean multi-choice | Forms, filters | |
-| `Switch` | Boolean toggle | Settings | |
+| `Checkbox` | Boolean multi-choice | Forms, filters, batch selection, opt-in confirmation | Standardized in `/ui`; use when choices are independent or multiple values can be selected. |
+| `Switch` | Boolean toggle | Settings and immediately applied on/off preferences | Standardized in `/ui`; use when the setting takes effect immediately. |
 | `RadioGroup` | Exclusive selection | Onboarding/config | |
 | `DatePicker` | Date selection | Due dates, scheduling | Month/Year navigation, clearable, custom formats |
 | `TimePicker` | Time selection | Schedules, appointments | Manual input + selection defaults, clearable |
@@ -57,6 +57,8 @@ Rules:
 | `Tabs` | Section switching | Settings, modal tabs | Keyboard-accessible |
 | `DropdownMenu` | Menus | Action menus, user menu | |
 | `CommandPalette` (optional) | Quick navigation/actions | Power user flows | |
+| `ListToolbar` | Shared search/filter/action row | List and table pages | V1 primitive in `web/components/common/ListToolbar`; first demo in `/ui`. Add sorting when a consuming screen needs it. |
+| `FilterMenu` | Compact filter dropdown | Dense lists, tables, work queues | V1 primitive in `web/components/common/FilterMenu`; use instead of ad-hoc chip clusters when filters need a panel. |
 
 ---
 
@@ -79,13 +81,15 @@ Rules:
 | `Drawer` | Side overlay | Mobile/detail panels | |
 | `ConfirmDialog` | Destructive confirmations | Deletes, irreversible actions | |
 | `Toast` / `Notifications` | Non-blocking feedback | Success/error/info | |
-| `EmptyState` | No data guidance | Empty lists | |
+| `EmptyState` | No data guidance | Empty lists | V1 primitive in `web/components/common/EmptyState`; supports icon, copy, optional actions, and compact mode. |
 | `StatusCard` | Status messaging panel | Invite flows, async states | Variants: `info`, `success`, `error`. Optional icon + extra actions. |
 | `InitiativeCreateModal` | Lightweight initiative creation modal | Project overview, project tasks, initiative list | Focuses on title, description, status, priority, and dates. |
 | `InitiativeFeedbackModal` | Build and configure public initiative feedback intake | Initiative detail | Task-modal-style form editor with title/description first, compact Questions/Share toolbar, fully customizable default and custom fields, inline row editing, schema validation, opt-in preview, and hosted/embed access controls. |
 | `CreateProjectModal` | Global wrapper for the full project creation wizard | Sidebar, project switcher, projects list, `/create` deep link | Uses the existing wizard layout without resizing it. The wizard favors low-friction creation: method, compact type selection, then required details with a single project purpose field; optional company-project assignment for normal projects, company-project setup workstreams as a quiet checklist step with sensitive-track confirmation, optional success criteria plus cadence, operating mode in the timeline step, and optional finish assets/links. Company-project founding context is completed after creation from the project overview. |
 | `ProjectOverview` company command surface | Action-first Unternehmensprojekt overview | `/project/:id` for company/startup projects | Replaces the old text-heavy founding cockpit with one founder action, launch-readiness meter, a compact workstream summary that opens a modal/drawer task inspector, company context with a dedicated founding-brief modal, source links, and linked-project rollups using the same neutral Project Overview surface language. |
-| `Skeleton` | Loading placeholder | List/table loading | |
+| `Skeleton` | Loading placeholder | List/table loading | V1 primitive in `web/components/common/Skeleton`; includes single blocks and a composed `SkeletonBlock`. |
+| `InlineEditCell` | Reusable read/edit state | Task tables, settings rows, metadata fields | V1 primitive in `web/components/common/InlineEditCell`; supports save/cancel labels for i18n. |
+| `Stepper` | Flow progress and setup steps | Creation flows, onboarding, setup checklists | V1 primitive in `web/components/common/Stepper`; supports complete/current/upcoming/error states and optional click handling. |
 
 ### `StatusCard`
 

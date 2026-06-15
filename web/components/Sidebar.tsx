@@ -12,6 +12,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { usePermissions } from '../context/PermissionContext';
 import { useUIState } from '../context/UIContext';
+import { isSidebarV2Enabled } from '../config/sidebarV2';
+import { SidebarNavigator } from './SidebarNavigator';
 import type { ProjectExternalResource } from '../types';
 
 // When true, the sidebar renders icon-only (driven by the overview "stretch" mode).
@@ -25,7 +27,10 @@ type SidebarProps = {
         projectId: string;
         projectTitle?: string;
         tasksCount?: number;
+        ideasCount?: number;
+        issuesCount?: number;
         modules?: string[];
+        isClientProject?: boolean;
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean; // New flag to prevent flickering
         navPrefs?: { order: string[]; hidden: string[] }; // User-specific nav preferences
@@ -117,7 +122,16 @@ const NavItem = ({
 // Sidebar Component
 // ----------------------------------------------------------------------
 
-export const Sidebar = ({ isDrawer = false, collapsed = false, onClose, workspace }: SidebarProps) => {
+// Switch between the redesigned "Navigator" sidebar (sidebarV2) and the legacy
+// sidebar below. Props are identical so AppLayout needs no changes.
+export const Sidebar = (props: SidebarProps) => {
+    if (isSidebarV2Enabled()) {
+        return <SidebarNavigator {...props} />;
+    }
+    return <LegacySidebar {...props} />;
+};
+
+const LegacySidebar = ({ isDrawer = false, collapsed = false, onClose, workspace }: SidebarProps) => {
     const effectiveCollapsed = collapsed && !isDrawer;
     const user = auth.currentUser;
     const location = useLocation();
@@ -355,6 +369,10 @@ export const Sidebar = ({ isDrawer = false, collapsed = false, onClose, workspac
                                     { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
                                     { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
                                     { id: 'accounting', path: '/accounting', icon: 'receipt_long', label: t('nav.accounting'), moduleKey: 'accounting' },
+                                    ...(workspace.isClientProject ? [
+                                        { id: 'effort', path: '/effort', icon: 'schedule', label: t('nav.effort') },
+                                        { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
+                                    ] : []),
                                     { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
                                     { id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') },
                                 ];

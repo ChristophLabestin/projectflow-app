@@ -344,6 +344,8 @@ export interface Project {
     visibilityGroupIds?: string[]; // IDs of groups that can view this project
     visibilityGroupId?: string; // @deprecated Use visibilityGroupIds instead
     overviewLayout?: ProjectOverviewLayout;
+    intakeForm?: ProjectIntakeFormSettings;
+    billingCustomer?: InvoiceParty; // Gespeicherte Kundenanschrift für Rechnungen (Kundenprojekte)
 }
 
 export interface ProjectExternalResource {
@@ -422,7 +424,8 @@ export interface User {
  */
 export interface TenantMembership {
     uid: string;
-    role: WorkspaceRole;
+    role: WorkspaceRole; // Primary/display role (Owner derived from tenant ownership)
+    roleIds?: string[]; // Stacked custom role doc ids (Discord-style); Member is implicit
     joinedAt: any;
     groupIds?: string[];
     pinnedProjectId?: string;
@@ -435,6 +438,7 @@ export interface TenantMembership {
  */
 export interface Member extends User {
     role: WorkspaceRole;
+    roleIds?: string[]; // Stacked custom role doc ids
     groupIds?: string[];
     joinedAt?: any;
     githubToken?: string;
@@ -588,6 +592,89 @@ export interface InitiativeFeedbackFormSettings {
     fields?: InitiativeFeedbackField[];
     updatedAt?: any;
     updatedBy?: string;
+}
+
+// --- Project Intake (external contributions) ---
+export type ProjectIntakeFieldType = 'shortText' | 'longText' | 'email' | 'url' | 'select';
+export type ProjectIntakeFieldRole = 'title' | 'description' | 'sourceUrl' | 'general';
+
+export interface ProjectIntakeFieldOption {
+    id: string;
+    label: string;
+    value: string;
+}
+
+export interface ProjectIntakeField {
+    id: string;
+    type: ProjectIntakeFieldType;
+    role?: ProjectIntakeFieldRole;
+    label: string;
+    placeholder?: string;
+    helpText?: string;
+    required?: boolean;
+    enabled?: boolean;
+    width?: 'full' | 'half';
+    options?: ProjectIntakeFieldOption[];
+    isDefault?: boolean;
+}
+
+export interface ProjectIntakeCategory {
+    id: string;
+    label: string;
+    icon?: string;
+    description?: string;
+    enabled?: boolean;
+    fields: ProjectIntakeField[];
+}
+
+export interface ProjectIntakeFormSettings {
+    enabled: boolean;
+    token: string;
+    title?: string;
+    description?: string;
+    submitLabel?: string;
+    successMessage?: string;
+    allowAttachments?: boolean;
+    maxAttachments?: number;
+    autoCreateTask?: boolean;
+    categories?: ProjectIntakeCategory[];
+    updatedAt?: any;
+    updatedBy?: string;
+}
+
+export interface ProjectIntakeAttachment {
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+    downloadUrl: string;
+}
+
+export interface ProjectIntakeSubmittedField {
+    fieldId: string;
+    label: string;
+    value: string;
+    type: ProjectIntakeFieldType;
+    role?: ProjectIntakeFieldRole;
+}
+
+export type ProjectSubmissionStatus = 'new' | 'reviewed' | 'accepted' | 'archived';
+
+export interface ProjectSubmission {
+    id: string;
+    projectId: string;
+    tenantId: string;
+    categoryId: string;
+    categoryLabel: string;
+    status: ProjectSubmissionStatus;
+    title: string;
+    description?: string;
+    submitter?: { name?: string; email?: string; company?: string };
+    fields?: ProjectIntakeSubmittedField[];
+    attachments?: ProjectIntakeAttachment[];
+    linkedTaskId?: string;
+    source?: 'public-form';
+    submittedAt?: any;
+    createdAt?: any;
 }
 
 export interface Initiative {
@@ -2519,4 +2606,127 @@ export interface APIToken {
     createdAt: any;
     lastUsedAt?: any;
     expiresAt?: any;           // Optional expiration
+}
+
+// ---------------------------------------------------------------------------
+// Invoicing (Rechnungen) — German-compliant invoices for client projects
+// ---------------------------------------------------------------------------
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'canceled';
+
+export interface InvoiceLineItem {
+    id: string;
+    name: string;                 // Bezeichnung der Position
+    description?: string;         // Beschreibung (unter dem Namen)
+    quantity: number;             // Menge / Stück
+    unit: string;                 // Einheit, i.d.R. 'h'
+    unitPrice: number;            // Preis pro Einheit (netto)
+    useFixedPrice?: boolean;      // true => fester Positionspreis statt Menge × Einzelpreis
+    fixedPrice?: number;          // fester Positionspreis (netto)
+}
+
+export interface InvoiceParty {
+    name: string;
+    contactPerson?: string;       // Ansprechpartner, optional
+    customerNumber?: string;      // Kundennummer, optional
+    addressLine1?: string;
+    addressLine2?: string;
+    zip?: string;
+    city?: string;
+    country?: string;
+    email?: string;
+    vatId?: string;               // USt-IdNr des Kunden (optional)
+}
+
+export interface InvoiceIssuer {
+    name: string;
+    addressLine1?: string;
+    zip?: string;
+    city?: string;
+    country?: string;
+    email?: string;
+    phone?: string;
+    website?: string;
+    taxNumber?: string;           // Steuernummer
+    vatId?: string;               // USt-IdNr
+}
+
+export interface InvoiceBankDetails {
+    accountHolder?: string;
+    iban?: string;
+    bic?: string;
+    bankName?: string;
+}
+
+export interface InvoiceAppendixRow {
+    id: string;
+    date?: string;                // Datum der Einzelleistung
+    description: string;          // Aufgabe / Leistung
+    quantity: number;             // Menge
+    unit: string;                 // Einheit
+    amount?: number;              // Einzelbetrag netto (optional)
+    note?: string;
+}
+
+export interface Invoice {
+    id: string;
+    projectId: string;
+    tenantId?: string;
+    number?: string;              // Rechnungsnummer (fortlaufend, erst bei Finalisierung)
+    status: InvoiceStatus;
+    issueDate: string;            // Rechnungsdatum (ISO yyyy-mm-dd)
+    serviceDate?: string;         // Leistungsdatum / Beginn Leistungszeitraum
+    serviceDateEnd?: string;      // Ende Leistungszeitraum (optional)
+    dueDate?: string;             // Fälligkeit
+    customer: InvoiceParty;
+    items: InvoiceLineItem[];
+    vatEnabled: boolean;          // false => Kleinunternehmer §19 UStG
+    vatRate: number;              // z.B. 19
+    currency: string;             // 'EUR'
+    introText?: string;           // Einleitungstext
+    notes?: string;               // Zahlungshinweise / Freitext
+    appendixTitle?: string;       // Titel der Anlage (z. B. Leistungsnachweis)
+    appendix?: InvoiceAppendixRow[]; // Einzelpositionen als Anlage (Folgeseite)
+    effortEntryIds?: string[];    // IDs der Aufwand-Einträge, die in diese Rechnung übernommen wurden
+    // Snapshots, damit die Rechnung stabil bleibt, auch wenn Einstellungen sich ändern
+    issuer?: InvoiceIssuer;
+    bank?: InvoiceBankDetails;
+    logoUrl?: string;
+    footerText?: string;          // konfigurierbarer Footer (überschreibt Einstellungen)
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+export interface BillingSettings {
+    issuer?: InvoiceIssuer;
+    bank?: InvoiceBankDetails;
+    logoUrl?: string;
+    logoFileId?: string;
+    footerText?: string;          // konfigurierbarer Footer (mehrzeilig)
+    defaultVatRate?: number;      // Standard 19
+    smallBusiness?: boolean;      // Kleinunternehmer-Standard
+    defaultPaymentTermsDays?: number; // Standard 14
+    defaultNotes?: string;
+    invoiceNumberPrefix?: string; // z.B. 'RE-{YYYY}-' ({YYYY} => aktuelles Jahr)
+    nextInvoiceNumber?: number;   // fortlaufender Zähler
+    currency?: string;            // Standard EUR
+}
+
+// ---------------------------------------------------------------------------
+// Effort log (Aufwand) — time/token tracking for client projects
+// ---------------------------------------------------------------------------
+
+export interface EffortEntry {
+    id: string;
+    projectId: string;
+    tenantId?: string;
+    date: string;                 // Datum (ISO yyyy-mm-dd)
+    task: string;                 // Aufgabe
+    durationValue: number;        // Dauer (Wert)
+    durationUnit: string;         // Dauer (Einheit), i.d.R. 'h'
+    tokenValue?: number;          // Token (Wert)
+    tokenUnit?: string;           // Token (Einheit)
+    note?: string;                // Notiz
+    createdAt?: any;
+    updatedAt?: any;
 }

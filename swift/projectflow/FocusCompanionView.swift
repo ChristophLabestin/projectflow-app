@@ -1,5 +1,9 @@
 import SwiftUI
-import FirebaseAuth
+
+// MARK: - FocusCompanionView — Companion V2
+//
+// The "one thing now" surface: active focus + quick focus controls, attention
+// counts, next-due work and pinned items. Data unchanged.
 
 struct FocusCompanionView: View {
     @Binding var selectedTab: MainTab
@@ -16,10 +20,13 @@ struct FocusCompanionView: View {
         NavigationStack {
             ZStack {
                 AppBackground()
-
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 14) {
-                        FocusCompanionHeader()
+                    VStack(alignment: .leading, spacing: PFSpacing.lg) {
+                        PFScreenHeader(
+                            title: L10n.tr("focus.title", fallback: "Focus"),
+                            subtitle: L10n.tr("focus.subtitle", fallback: "Active focus, deadlines and pinned work in one place.")
+                        )
+
                         CurrentFocusPanel(
                             focusItem: pinnedTasksStore.focusItem,
                             focusState: pinnedTasksStore.focusState,
@@ -28,60 +35,48 @@ struct FocusCompanionView: View {
                             onBlock: { pinnedTasksStore.blockFocus() },
                             onClear: { pinnedTasksStore.clearFocus() }
                         )
+
                         AttentionGrid(
                             overdue: dashboardStore.overdueTaskCount,
                             dueToday: dashboardStore.dueTodayTaskCount,
                             blocked: dashboardStore.blockedTaskCount,
                             urgent: dashboardStore.urgentTaskCount
                         )
+
                         DueWorkPreview(
                             tasks: nextDueTasks,
                             tenantId: tenantStore.activeTenantId ?? "",
                             permissions: tenantStore.permissionContext(),
                             onOpenTasks: { selectedTab = .work }
                         )
+
                         PinnedItemsPreview(
                             items: pinnedTasksStore.pinnedItems,
                             onOpenPinned: { showPinnedTasks = true }
                         )
                     }
                     .pfScreenPadding(vertical: PFSpacing.md)
-                    .padding(.bottom, PFSpacing.xl)
+                    .pfTabBarClearance()
+                    .tabBarScrollShrink()
                 }
             }
-            .navigationTitle("Focus")
+            .navigationTitle(L10n.tr("focus.title", fallback: "Focus"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showPinnedTasks = true
-                    } label: {
-                        Image(systemName: "pin.circle")
-                            .foregroundStyle(colors.textMain)
-                    }
-                }
-
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        selectedTab = .work
-                    } label: {
-                        Image(systemName: "checklist")
-                            .foregroundStyle(colors.textMain)
+                    Button { showPinnedTasks = true } label: {
+                        Image(systemName: "pin.circle").foregroundStyle(colors.textMain)
                     }
                 }
             }
-            .sheet(isPresented: $showPinnedTasks) {
-                PinnedTasksSheet()
-            }
+            .sheet(isPresented: $showPinnedTasks) { PinnedTasksSheet() }
         }
         .onAppear {
             dashboardStore.start()
             pinnedTasksStore.start()
             tenantStore.update(for: session.user)
         }
-        .onChange(of: session.user) { _, user in
-            tenantStore.update(for: user)
-        }
+        .onChange(of: session.user) { _, user in tenantStore.update(for: user) }
         .onDisappear {
             dashboardStore.stop()
             pinnedTasksStore.stop()
@@ -101,24 +96,6 @@ struct FocusCompanionView: View {
     }
 }
 
-private struct FocusCompanionHeader: View {
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: PFSpacing.xs) {
-            Text("What's important now")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(colors.textMain)
-
-            Text("Active focus, deadlines, and pinned work in one place.")
-                .font(.subheadline)
-                .foregroundStyle(colors.textMuted)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
-}
-
 private struct CurrentFocusPanel: View {
     let focusItem: PinnedItem?
     let focusState: ProjectFlowFocusState?
@@ -134,36 +111,29 @@ private struct CurrentFocusPanel: View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.md) {
                 HStack(alignment: .top, spacing: PFSpacing.md) {
-                    Image(systemName: focusItem == nil ? "scope" : focusIcon)
-                        .font(.headline)
-                        .foregroundStyle(focusTint)
-                        .frame(width: 38, height: 38)
-                        .background(focusTint.opacity(colorScheme == .dark ? 0.18 : 0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: PFRadius.md, style: .continuous))
-
+                    PFIconTile(icon: focusIcon, tint: focusTint, size: 40)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(focusLabel)
-                            .font(.caption.weight(.semibold))
+                            .font(PFFont.chip)
                             .foregroundStyle(focusTint)
-
-                        Text(focusItem?.title ?? "No active focus selected")
-                            .font(.headline.weight(.semibold))
+                        Text(focusItem?.title ?? L10n.tr("focus.none", fallback: "No focus set"))
+                            .font(PFFont.section)
                             .foregroundStyle(colors.textMain)
                             .lineLimit(2)
-
-                        Text(focusItem == nil ? "No pinned focus is active." : focusDetail)
-                            .font(.caption)
+                        Text(focusItem == nil
+                             ? L10n.tr("focus.none.message", fallback: "Pin a task to keep one thing in view.")
+                             : focusDetail)
+                            .font(PFFont.detail)
                             .foregroundStyle(colors.textMuted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-
                     Spacer(minLength: 0)
                 }
 
                 if focusItem == nil {
                     Button(action: onOpenPinned) {
-                        Label("Choose pinned work", systemImage: "pin")
-                            .font(.subheadline.weight(.semibold))
+                        Label(L10n.tr("focus.choose", fallback: "Choose pinned work"), systemImage: "pin")
+                            .font(PFFont.rowTitle)
                             .foregroundStyle(colors.primary)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, PFSpacing.sm)
@@ -173,10 +143,10 @@ private struct CurrentFocusPanel: View {
                     .buttonStyle(.plain)
                 } else {
                     HStack(spacing: PFSpacing.sm) {
-                        FocusActionButton(title: "Pinned", icon: "pin", action: onOpenPinned)
-                        FocusActionButton(title: "Snooze", icon: "moon.zzz", action: onSnooze)
-                        FocusActionButton(title: "Block", icon: "xmark.octagon", action: onBlock)
-                        FocusActionButton(title: "Clear", icon: "checkmark", action: onClear)
+                        FocusActionButton(title: L10n.tr("focus.action.pinned", fallback: "Pinned"), icon: "pin", action: onOpenPinned)
+                        FocusActionButton(title: L10n.tr("focus.action.snooze", fallback: "Snooze"), icon: "moon.zzz", action: onSnooze)
+                        FocusActionButton(title: L10n.tr("focus.action.block", fallback: "Block"), icon: "xmark.octagon", action: onBlock)
+                        FocusActionButton(title: L10n.tr("focus.action.clear", fallback: "Clear"), icon: "checkmark", action: onClear)
                     }
                 }
             }
@@ -190,7 +160,6 @@ private struct CurrentFocusPanel: View {
         default: return "scope"
         }
     }
-
     private var focusTint: Color {
         switch focusState?.status {
         case "blocked": return colors.error
@@ -198,21 +167,19 @@ private struct CurrentFocusPanel: View {
         default: return colors.primary
         }
     }
-
     private var focusLabel: String {
         switch focusState?.status {
-        case "blocked": return "Blocked focus"
-        case "snoozed": return "Snoozed focus"
-        default: return "Current focus"
+        case "blocked": return L10n.tr("focus.blocked", fallback: "Blocked focus")
+        case "snoozed": return L10n.tr("focus.snoozed", fallback: "Snoozed focus")
+        default: return L10n.tr("dashboard.focus.current", fallback: "Current focus")
         }
     }
-
     private var focusDetail: String {
-        guard let state = focusState else { return "Ready to continue." }
+        guard let state = focusState else { return "" }
         if let updatedAt = state.updatedAt, !updatedAt.isEmpty {
-            return "Last action: \(state.lastAction ?? "updated")"
+            return state.lastAction ?? ""
         }
-        return "Ready to continue."
+        return ""
     }
 }
 
@@ -226,12 +193,8 @@ private struct FocusActionButton: View {
     var body: some View {
         Button(action: action) {
             VStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.caption.weight(.semibold))
-                Text(title)
-                    .font(.caption2.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                Image(systemName: icon).font(.caption.weight(.semibold))
+                Text(title).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.8)
             }
             .foregroundStyle(colors.textMain)
             .frame(maxWidth: .infinity)
@@ -248,49 +211,16 @@ private struct AttentionGrid: View {
     let dueToday: Int
     let blocked: Int
     let urgent: Int
-
-    private let columns = [GridItem(.flexible()), GridItem(.flexible())]
+    @Environment(\.colorScheme) private var colorScheme
+    private var colors: PFColors { PFColors.palette(for: colorScheme) }
+    private let columns = [GridItem(.flexible(), spacing: PFSpacing.sm), GridItem(.flexible(), spacing: PFSpacing.sm)]
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: PFSpacing.sm) {
-            AttentionTile(title: "Overdue", value: overdue, icon: "calendar.badge.exclamationmark", tint: .red)
-            AttentionTile(title: "Due today", value: dueToday, icon: "calendar", tint: .orange)
-            AttentionTile(title: "Blocked", value: blocked, icon: "xmark.octagon", tint: .red)
-            AttentionTile(title: "Urgent", value: urgent, icon: "bolt.fill", tint: .orange)
-        }
-    }
-}
-
-private struct AttentionTile: View {
-    let title: String
-    let value: Int
-    let icon: String
-    let tint: Color
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        PFCard {
-            HStack(spacing: PFSpacing.sm) {
-                Image(systemName: icon)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(tint)
-                    .frame(width: 30, height: 30)
-                    .background(tint.opacity(colorScheme == .dark ? 0.18 : 0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("\(value)")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(colors.textMain)
-                    Text(title)
-                        .font(.caption)
-                        .foregroundStyle(colors.textMuted)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-            }
+            PFMetricTile(value: "\(overdue)", label: L10n.tr("dashboard.attention.overdue", fallback: "Overdue"), icon: "calendar.badge.exclamationmark", tint: colors.error)
+            PFMetricTile(value: "\(dueToday)", label: L10n.tr("dashboard.attention.today", fallback: "Due today"), icon: "calendar", tint: colors.warning)
+            PFMetricTile(value: "\(blocked)", label: L10n.tr("dashboard.attention.blocked", fallback: "Blocked"), icon: "xmark.octagon", tint: colors.error)
+            PFMetricTile(value: "\(urgent)", label: L10n.tr("focus.attention.urgent", fallback: "Urgent"), icon: "bolt.fill", tint: colors.warning)
         }
     }
 }
@@ -300,82 +230,42 @@ private struct DueWorkPreview: View {
     let tenantId: String
     let permissions: PermissionContext
     let onOpenTasks: () -> Void
-
     @Environment(\.colorScheme) private var colorScheme
     private var colors: PFColors { PFColors.palette(for: colorScheme) }
 
     var body: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                HStack {
-                    PFSectionHeader(title: "Next due work", subtitle: "Upcoming deadlines")
-                    Spacer()
-                    Button("Tasks", action: onOpenTasks)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(colors.primary)
-                }
-
+                PFSectionTitle(
+                    title: L10n.tr("focus.nextDue", fallback: "Next due work"),
+                    actionTitle: L10n.tr("tabs.work", fallback: "Tasks"),
+                    action: onOpenTasks
+                )
                 if tasks.isEmpty {
-                    Text("No scheduled tasks in the next seven days.")
-                        .font(.subheadline)
+                    Text(L10n.tr("dashboard.dueNext.empty", fallback: "No scheduled work in the next seven days."))
+                        .font(PFFont.body)
                         .foregroundStyle(colors.textMuted)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, PFSpacing.sm)
                 } else {
                     VStack(spacing: 0) {
                         ForEach(tasks) { task in
-                            NavigationLink(destination: ProjectTaskDetailView(task: task, tenantId: tenantId, permissions: permissions)) {
-                                FocusTaskRow(task: task)
+                            NavigationLink {
+                                ProjectTaskDetailView(task: task, tenantId: tenantId, permissions: permissions)
+                            } label: {
+                                PFListRow(
+                                    title: task.title,
+                                    subtitle: task.dueDate.isEmpty ? task.priority : task.dueDate,
+                                    leadingDot: PFSemantic.priorityTint(task.priority, colors: colors)
+                                )
+                                .padding(.vertical, PFSpacing.sm)
                             }
                             .buttonStyle(.plain)
-
-                            if task.id != tasks.last?.id {
-                                Divider()
-                            }
+                            if task.id != tasks.last?.id { Divider() }
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-private struct FocusTaskRow: View {
-    let task: ProjectTask
-    @Environment(\.colorScheme) private var colorScheme
-    private var colors: PFColors { PFColors.palette(for: colorScheme) }
-
-    var body: some View {
-        HStack(spacing: PFSpacing.sm) {
-            Circle()
-                .fill(priorityColor)
-                .frame(width: 8, height: 8)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(task.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(colors.textMain)
-                    .lineLimit(1)
-                Text(task.dueDate.isEmpty ? "No due date" : task.dueDate)
-                    .font(.caption)
-                    .foregroundStyle(colors.textMuted)
-            }
-
-            Spacer(minLength: 0)
-
-            Image(systemName: "chevron.right")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(colors.textSubtle)
-        }
-        .padding(.vertical, PFSpacing.sm)
-    }
-
-    private var priorityColor: Color {
-        switch task.priority {
-        case "Urgent": return colors.error
-        case "High": return colors.warning
-        case "Low": return colors.success
-        default: return colors.primary
         }
     }
 }
@@ -389,43 +279,39 @@ private struct PinnedItemsPreview: View {
     var body: some View {
         PFCard {
             VStack(alignment: .leading, spacing: PFSpacing.sm) {
-                HStack {
-                    PFSectionHeader(title: "Pinned work", subtitle: "\(items.count) saved for later")
-                    Spacer()
-                    Button(action: onOpenPinned) {
-                        Image(systemName: "arrow.up.right")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(colors.textMuted)
-                    }
-                }
-
+                PFSectionTitle(
+                    title: L10n.tr("focus.pinned", fallback: "Pinned work"),
+                    subtitle: String(format: L10n.tr("focus.pinned.count", fallback: "%d saved for later"), items.count),
+                    actionTitle: L10n.tr("common.viewAll", fallback: "View all"),
+                    action: onOpenPinned
+                )
                 if items.isEmpty {
-                    Text("No pinned work yet.")
-                        .font(.subheadline)
+                    Text(L10n.tr("focus.pinned.empty", fallback: "No pinned work yet."))
+                        .font(PFFont.body)
                         .foregroundStyle(colors.textMuted)
                         .padding(.vertical, PFSpacing.sm)
                 } else {
-                    VStack(spacing: PFSpacing.xs) {
-                        ForEach(items.prefix(4)) { item in
-                            HStack(spacing: PFSpacing.sm) {
-                                Image(systemName: "checklist")
-                                    .font(.caption)
-                                    .foregroundStyle(colors.textMuted)
-                                    .frame(width: 28, height: 28)
-                                    .background(colors.surfaceHover)
-                                    .clipShape(RoundedRectangle(cornerRadius: PFRadius.sm, style: .continuous))
-
-                                Text(item.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(colors.textMain)
-                                    .lineLimit(1)
-
-                                Spacer(minLength: 0)
-                            }
+                    VStack(spacing: PFSpacing.sm) {
+                        ForEach(items.prefix(5)) { item in
+                            PFListRow(
+                                title: item.title,
+                                subtitle: item.type.capitalized,
+                                icon: pinIcon(for: item.type),
+                                iconTint: colors.textMuted,
+                                showsChevron: false
+                            )
                         }
                     }
                 }
             }
+        }
+    }
+
+    private func pinIcon(for type: String) -> String {
+        switch type {
+        case FocusItemType.initiative.rawValue: return "flag"
+        case FocusItemType.personalTask.rawValue: return "person.crop.circle"
+        default: return "checklist"
         }
     }
 }

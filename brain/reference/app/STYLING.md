@@ -196,6 +196,42 @@ These tokens define key layout constants used across the app shell.
 - Search shell behavior must use explicit SCSS classes instead of relying on ad hoc responsive utility classes.
 - Pinned-project menus render through `document.body` as fixed overlays, align from the trigger's right edge, and clamp to the viewport on resize. Keep their visible content dense enough for a normal desktop viewport and let the inner menu scroll when project modules add more rows.
 
+### 5.1) Page Container Widths
+
+The `/ui` style guide standardizes page width categories inspired by the Mossandl Mobility design system, adapted to ProjectFlow's current surfaces:
+
+- Dense operations: `max-width: 1680px` for large boards, finance tables, timelines, and high-density work surfaces.
+- Standard app pages: `max-width: 1480px` for project overviews, dashboards, lists, and balanced app pages.
+- Forms and settings: `max-width: 1120px` for creation flows, settings, and structured input workflows.
+- Readable copy: `max-width: 720px` for documentation, legal copy, help articles, and long-form text.
+
+Use named categories instead of one-off widths where possible.
+
+### 5.2) Level Of Depth
+
+The `/ui` style guide now defines a ProjectFlow depth ladder:
+
+- Level 0 Canvas: `--color-surface-bg`; open page background, no wrapper card by default.
+- Level 1 Surface shell: `--color-surface-card`; default cards, panels, modal shells, and page sections that need a surface.
+- Level 2 Child controls: `--color-surface-hover`; inputs, selectable rows, grouped controls, and child surfaces inside a Level 1 shell.
+- Level 3 Tonal focus: a subtle mix of hover/card surfaces for rare nested focus rows.
+- Overlay layer: `--shadow-lg` or stronger only for dropdowns, popovers, and transient floating UI.
+
+Depth is relative to the direct parent surface. Prefer tonal contrast for nested UI and reserve stronger shadows for true overlays.
+
+### 5.3) UI Library Standardization Primitives
+
+The `/ui` style guide now shows first-version standards for six common operational patterns:
+
+- `ListToolbar`: shared title/search/filter/action row for list and table pages.
+- `FilterMenu`: compact floating filter panel with active-count badge and reset action.
+- `EmptyState`: empty-list guidance with standard icon/copy/action structure.
+- `Skeleton` / `SkeletonBlock`: loading placeholders that preserve list/card rhythm.
+- `InlineEditCell`: compact read/edit field for metadata, settings rows, and dense task surfaces.
+- `Stepper`: progress and setup steps with complete/current/upcoming/error states.
+
+Treat these as v1 defaults before creating one-off versions in feature screens; refine each primitive as screens adopt it.
+
 ---
 
 ## 6) Interaction Guidelines (UX Patterns)

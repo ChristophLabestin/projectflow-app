@@ -8,6 +8,12 @@
     height: 100%;
     z-index: 1000;
 
+    // Stack above high-z modals (e.g. the task-create modal at z-index 9999)
+    // when this modal is opened from within one.
+    &--elevated {
+        z-index: 10000;
+    }
+
     // Background & Blur
     background-color: rgba(0, 0, 0, 0.35); // Darkened
     backdrop-filter: blur(12px) saturate(120%); // Stronger blur
