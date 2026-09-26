@@ -7,6 +7,10 @@ export interface InlineMenuOption {
     /** Optional leading element (icon, dot, avatar). */
     leading?: React.ReactNode;
     hint?: string;
+    /** Single key that picks this option while the menu is open (shown as the hint). */
+    shortcut?: string;
+    /** Render a separator above this option (e.g. to set a rarer action apart). */
+    dividerBefore?: boolean;
 }
 
 interface InlineMenuProps {
@@ -117,6 +121,12 @@ export const InlineMenu = ({
             setActiveIndex((index) => (index - 1 + options.length) % options.length);
         } else if (event.key === 'Tab') {
             close(false);
+        } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1) {
+            const match = options.find((option) => option.shortcut?.toLowerCase() === event.key.toLowerCase());
+            if (match) {
+                event.preventDefault();
+                choose(match.value);
+            }
         }
     };
 
@@ -155,8 +165,9 @@ export const InlineMenu = ({
                     onClick={(event) => event.stopPropagation()}
                 >
                     {options.map((option, index) => (
+                        <React.Fragment key={option.value}>
+                        {option.dividerBefore && <span className="inline-menu__divider" role="separator" />}
                         <button
-                            key={option.value}
                             type="button"
                             role={selectedValues ? 'menuitemcheckbox' : 'menuitemradio'}
                             aria-checked={isSelected(option.value)}
@@ -168,9 +179,14 @@ export const InlineMenu = ({
                         >
                             {option.leading && <span className="inline-menu__leading">{option.leading}</span>}
                             <span className="inline-menu__label">{option.label}</span>
-                            {option.hint && <span className="inline-menu__hint">{option.hint}</span>}
+                            {(option.hint || option.shortcut) && (
+                                <span className={`inline-menu__hint ${option.shortcut && !option.hint ? 'inline-menu__hint--key' : ''}`.trim()}>
+                                    {option.hint || option.shortcut?.toUpperCase()}
+                                </span>
+                            )}
                             {isSelected(option.value) && <span className="material-symbols-outlined inline-menu__check">check</span>}
                         </button>
+                        </React.Fragment>
                     ))}
                     {footer && <div className="inline-menu__footer">{footer(() => close())}</div>}
                 </div>,

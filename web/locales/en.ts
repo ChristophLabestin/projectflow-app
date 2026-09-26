@@ -3603,6 +3603,9 @@ const en = {
     'projectOverview.v2.hero.dueSoonCount': '{count} due soon',
     'projectOverview.v2.initiatives.summary': '{done}/{total} tasks done',
     'projectOverview.v2.initiatives.atRisk': '{count} at risk',
+    'nav.create.label': 'Create',
+    'nav.create.task': 'New task',
+    'nav.create.initiative': 'New initiative',
 };
 
 export default en;

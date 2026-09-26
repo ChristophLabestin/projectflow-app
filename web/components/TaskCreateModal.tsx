@@ -6,6 +6,8 @@ import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { getProjectCategories } from '../services/dataService';
 import { addTask, createSubTask, getProjectTasks } from '../services/domain/tasksService';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
+import { auth } from '../services/firebase';
+import { readRecentProjectAccess } from '../utils/recentProjects';
 import { IdeaGroup, Project, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
 import { Button } from './common/Button/Button';
@@ -76,12 +78,17 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
             if (cancelled) return;
             const deduped = new Map<string, Project>();
             [...owned, ...shared].forEach((project) => deduped.set(project.id, project));
-            const list = Array.from(deduped.values());
+            // Offer live projects only, most recently opened first, so the
+            // preselection is the project you were just working in.
+            const recents = readRecentProjectAccess(auth.currentUser?.uid);
+            const list = Array.from(deduped.values())
+                .filter((project) => project.id === projectId || (project.status !== 'Completed' && project.status !== 'Canceled'))
+                .sort((a, b) => (recents[b.id] || 0) - (recents[a.id] || 0) || (a.title || '').localeCompare(b.title || ''));
             setProjectOptions(list);
             setSelectedProjectId((current) => current || list[0]?.id);
         })();
         return () => { cancelled = true; };
-    }, [allowProjectSelect]);
+    }, [allowProjectSelect, projectId]);
 
     useEffect(() => {
         if (!activeProjectId) {

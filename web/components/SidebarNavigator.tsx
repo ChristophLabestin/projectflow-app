@@ -16,6 +16,9 @@ import type { Project, ProjectExternalResource } from '../types';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { isCoraStudioEnabled } from '../config/features';
 import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
+import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
+import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
+import { InitiativeCreateModal } from './InitiativeCreateModal';
 
 // ----------------------------------------------------------------------
 // Types
@@ -53,11 +56,9 @@ type NavRowDef = {
 // ----------------------------------------------------------------------
 
 const PINNED_STORAGE_PREFIX = 'projectflow.sidebar.pins';
-const RECENT_STORAGE_PREFIX = 'projectflow.recentProjects';
 const MAX_DOCK_PROJECTS = 4;
 
 const pinnedStorageKey = (userId?: string) => `${PINNED_STORAGE_PREFIX}.${userId || 'anonymous'}`;
-const recentStorageKey = (userId?: string) => `${RECENT_STORAGE_PREFIX}.${userId || 'anonymous'}`;
 
 const readPinnedProjectIds = (userId?: string): string[] => {
     if (typeof window === 'undefined') return [];
@@ -80,18 +81,6 @@ const writePinnedProjectIds = (userId: string | undefined, ids: string[]) => {
     }
 };
 
-const readRecentProjectAccess = (userId?: string): Record<string, number> => {
-    if (typeof window === 'undefined') return {};
-    try {
-        const stored = window.localStorage.getItem(recentStorageKey(userId));
-        if (!stored) return {};
-        const parsed = JSON.parse(stored);
-        return parsed && typeof parsed === 'object' ? parsed as Record<string, number> : {};
-    } catch {
-        return {};
-    }
-};
-
 const writeRecentProjectAccess = (userId: string | undefined, access: Record<string, number>) => {
     if (typeof window === 'undefined') return;
     const compact = Object.entries(access)
@@ -100,7 +89,7 @@ const writeRecentProjectAccess = (userId: string | undefined, access: Record<str
         .slice(0, 100)
         .reduce<Record<string, number>>((next, [id, ts]) => { next[id] = ts; return next; }, {});
     try {
-        window.localStorage.setItem(recentStorageKey(userId), JSON.stringify(compact));
+        window.localStorage.setItem(recentProjectsStorageKey(userId), JSON.stringify(compact));
     } catch {
         // Recent ordering is a convenience; ignore storage failures.
     }
@@ -238,7 +227,8 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated, user } = useAuth();
     const { hasPermission } = usePermissions();
-    const { openProjectCreateModal } = useUIState();
+    const { openProjectCreateModal, openTaskCreateModal } = useUIState();
+    const [initiativeModalOpen, setInitiativeModalOpen] = React.useState(false);
 
     const effectiveCollapsed = collapsed && !isDrawer;
     const canViewFinance = hasPermission('tenant.finance.view');
@@ -527,6 +517,27 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
     const currentProject = workspace?.projectId ? projectsById.get(workspace.projectId) : undefined;
     const currentPinned = workspace?.projectId ? pinnedIds.includes(workspace.projectId) : false;
+
+    // "+" in the dock: task first (most frequent), project last. Inside a project,
+    // task and initiative go straight into it; elsewhere the task dialog asks.
+    const createOptions: InlineMenuOption[] = [
+        { value: 'task', label: t('nav.create.task'), leading: <span className="material-symbols-outlined">add_task</span>, shortcut: 't' },
+        ...(workspace?.projectId
+            ? [{ value: 'initiative', label: t('nav.create.initiative'), leading: <span className="material-symbols-outlined">rocket_launch</span>, shortcut: 'i' }]
+            : []),
+        { value: 'project', label: t('nav.newProject'), leading: <span className="material-symbols-outlined">create_new_folder</span>, shortcut: 'p', dividerBefore: true }
+    ];
+    const handleCreate = (kind: string) => {
+        if (isDrawer) onClose?.();
+        if (kind === 'task') {
+            if (workspace?.projectId) openTaskCreateModal(workspace.projectId);
+            else openTaskCreateModal(undefined, { allowProjectSelect: true });
+        } else if (kind === 'initiative') {
+            setInitiativeModalOpen(true);
+        } else {
+            openProjectCreateModal();
+        }
+    };
     const externalResources = workspace?.externalResources || [];
 
     // ---- Context layer header ------------------------------------------------
@@ -685,15 +696,14 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                 );
                             })}
                         </div>
-                        <button
-                            type="button"
-                            onClick={() => { if (isDrawer) onClose?.(); openProjectCreateModal(); }}
-                            className="snav-dock__add"
-                            title={t('nav.newProject')}
-                            aria-label={t('nav.newProject')}
-                        >
-                            <span className="material-symbols-outlined">add</span>
-                        </button>
+                        <InlineMenu
+                            label={t('nav.create.label')}
+                            triggerClassName="snav-dock__add"
+                            trigger={<span className="material-symbols-outlined">add</span>}
+                            options={createOptions}
+                            onSelect={handleCreate}
+                            width={220}
+                        />
                     </div>
 
                     {/* Footer — theme, notifications */}
@@ -778,6 +788,14 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     </div>
                 )}
             </div>
+            {workspace?.projectId && (
+                <InitiativeCreateModal
+                    isOpen={initiativeModalOpen}
+                    projectId={workspace.projectId}
+                    tenantId={currentProject?.tenantId}
+                    onClose={() => setInitiativeModalOpen(false)}
+                />
+            )}
         </aside>
     );
 };

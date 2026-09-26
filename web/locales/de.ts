@@ -3605,6 +3605,9 @@ const de = {
     'projectOverview.v2.hero.dueSoonCount': '{count} bald fällig',
     'projectOverview.v2.initiatives.summary': '{done}/{total} Aufgaben erledigt',
     'projectOverview.v2.initiatives.atRisk': '{count} gefährdet',
+    'nav.create.label': 'Neu anlegen',
+    'nav.create.task': 'Neue Aufgabe',
+    'nav.create.initiative': 'Neue Initiative',
 };
 
 export default de;

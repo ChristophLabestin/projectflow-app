@@ -211,7 +211,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
 
 - `TaskRow`: one task with inline menus for status, priority, due date (quick picks + date input) and assignees (multi-select). It shows the project, subtasks and blocker note as meta. Rare or destructive actions stay in the task detail. Parse dates via `utils/taskDates.ts`.
 - `TaskGroupList`: collapsible, count-labelled groups with per-list persisted collapse state (`storageKey`).
-- `InlineMenu`: accessible popover menu (arrow keys, Enter, Escape, outside click) with optional multi-select (`selectedValues`) and footer slot. Use it for inline edits instead of new ad-hoc popovers.
+- `InlineMenu`: accessible popover menu (arrow keys, Enter, Escape, outside click) with optional multi-select (`selectedValues`), footer slot, per-option `shortcut` keys (shown as key hints) and `dividerBefore` separators. Use it for inline edits instead of new ad-hoc popovers.
 - `workList.ts`:
   - `groupTasks` (group by due, status or assignee; completed work last);
   - `summarizeDue` (header summary line);
@@ -223,7 +223,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card);
   - the Project Overview list view (`components/project/overview/views/WorkViewList.tsx`, task-only work items);
   - the initiative detail work list.
-- `InlineMenu` also powers the dashboard plan's reschedule action.
+- `InlineMenu` also powers the dashboard plan's reschedule action and the sidebar dock "+" create menu (New task `T` / New initiative `I` inside a project / New project `P`).
 
 ## Planning (`web/components/planning/`)
 
