@@ -5,8 +5,8 @@ export default {
     'login.hero.subtitle': 'Der minimalistische Workspace für Kreative. Kein Ballast, nur Klarheit.',
     'login.hero.feature.tasks.title': 'Optimierte Aufgaben',
     'login.hero.feature.tasks.detail': 'Kanban, Listen und Fokus-Modi.',
-    'login.hero.feature.flows.title': 'Klare Liefer-Flows',
-    'login.hero.feature.flows.detail': 'Von der Idee zur Umsetzung ohne Rauschen.',
+    'login.hero.feature.flows.title': 'Gemeinsame Workspaces',
+    'login.hero.feature.flows.detail': 'Lade dein Team oder Kunden ein – Gäste sehen nur, was du teilst.',
     'login.heading.register': 'ProjectFlow beitreten',
     'login.heading.login': 'Willkommen zurück',
     'login.subheading.register': 'Erstelle heute deinen Workspace.',
@@ -43,7 +43,7 @@ export default {
     'login.mfa.back': 'Zurück zum Login',
     'login.social.google': 'Google',
     'login.social.github': 'GitHub',
-    'login.footer.copyright': '© 2024 ProjectFlow Scorp.',
+    'login.footer.copyright': '© {year} {company}',
     'passkey.login.action': 'Mit Passkey anmelden',
     'passkey.login.error': 'Anmeldung mit Passkey fehlgeschlagen'
 };

@@ -7,6 +7,7 @@ import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
+import { COMPANY_NAME } from '../config/company';
 import './login.scss';
 
 export const Login = () => {
@@ -283,7 +284,7 @@ export const Login = () => {
                             </div>
                             <div className="login-page__feature">
                                 <div className="login-page__feature-icon">
-                                    <span className="material-symbols-outlined">account_tree</span>
+                                    <span className="material-symbols-outlined">groups</span>
                                 </div>
                                 <div>
                                     <h3 className="login-page__feature-title">{t('login.hero.feature.flows.title')}</h3>
@@ -294,7 +295,9 @@ export const Login = () => {
                     </div>
 
                     <div className="login-page__hero-footer">
-                        {t('login.footer.copyright')}
+                        {t('login.footer.copyright')
+                            .replace('{year}', String(new Date().getFullYear()))
+                            .replace('{company}', COMPANY_NAME)}
                     </div>
                 </div>
             </div>
