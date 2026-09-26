@@ -338,11 +338,6 @@ export const Login = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="login-page__form">
-                                <div className="login-page__notice login-page__notice--warning">
-                                    <span className="material-symbols-outlined">warning</span>
-                                    <span>{t('login.warning.preBeta')}</span>
-                                </div>
-
                                 {isRegister && !isSignupEnabled && (
                                     <div className="login-page__notice login-page__notice--danger">
                                         <span className="material-symbols-outlined">block</span>

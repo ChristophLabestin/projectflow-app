@@ -29,7 +29,6 @@ export default {
     'login.toggle.newToProjectFlow': 'Neu bei ProjectFlow?',
     'login.toggle.logIn': 'Anmelden',
     'login.toggle.createAccount': 'Konto erstellen',
-    'login.warning.preBeta': 'Pre-Alpha Hinweis: Diese App ist in Pre-Alpha. Konten werden zurückgesetzt. CORA-Funktionen erfordern deinen eigenen Gemini API-Key.',
     'login.warning.registrationDisabled': 'Registrierung ist derzeit deaktiviert. Bitte kontaktiere den Support, falls du ein Konto brauchst.',
     'login.notice.inviteWorkspace': 'Du trittst einer Workspace-Einladung bei. Schliesse die Kontoerstellung ab, um fortzufahren.',
     'login.notice.redirectContinue': 'Melde dich an, um mit der angeforderten Seite fortzufahren.',
