@@ -7,7 +7,7 @@ export type OverviewTab = 'work' | 'sprints' | 'milestones' | 'activity';
 /** Work views available for the work-item surface. */
 export type OverviewWorkView = 'list' | 'board' | 'timeline' | 'calendar' | 'relationships';
 
-export type OverviewGroupBy = 'status' | 'priority' | 'initiative' | 'assignee' | 'none';
+export type OverviewGroupBy = 'due' | 'status' | 'priority' | 'initiative' | 'assignee' | 'none';
 export type OverviewSortBy = 'manual' | 'priority' | 'dueDate' | 'title' | 'createdAt';
 
 export type TabDescriptor = {
@@ -56,7 +56,7 @@ export const resolveViewsForTab = (tab: OverviewTab): ViewDescriptor[] =>
     OVERVIEW_VIEWS.filter((view) => view.supportedTabs.includes(tab));
 
 export const DEFAULT_VIEW_FOR_TAB: Record<OverviewTab, OverviewWorkView> = {
-    work: 'board',
+    work: 'list',
     sprints: 'board',
     milestones: 'timeline',
     activity: 'list'

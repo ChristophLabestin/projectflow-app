@@ -3,7 +3,7 @@ import { format } from 'date-fns';
 
 import { useLanguage } from '../../context/LanguageContext';
 import type { Task } from '../../types';
-import { daysFromToday, parseDateValue } from '../../utils/taskDates';
+import { addDaysFromToday, daysFromToday, nextMonday, parseDateValue, toIsoDate } from '../../utils/taskDates';
 import { InlineMenu, type InlineMenuOption } from './InlineMenu';
 import {
     getAssigneeIds,
@@ -26,26 +26,9 @@ interface TaskRowProps {
     onToggleComplete: (task: Task) => void;
     onUpdate: (task: Task, updates: Partial<Task>) => void;
     onOpen: (task: Task) => void;
+    /** Context-specific trailing action (e.g. detach from initiative). */
+    trailing?: React.ReactNode;
 }
-
-const toIsoDate = (date: Date) => {
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${date.getFullYear()}-${month}-${day}`;
-};
-
-const addDays = (days: number) => {
-    const date = new Date();
-    date.setDate(date.getDate() + days);
-    return date;
-};
-
-const nextMonday = () => {
-    const date = new Date();
-    const offset = ((8 - date.getDay()) % 7) || 7;
-    date.setDate(date.getDate() + offset);
-    return date;
-};
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
 
@@ -71,7 +54,8 @@ export const TaskRow = memo(({
     onSelectChange,
     onToggleComplete,
     onUpdate,
-    onOpen
+    onOpen,
+    trailing
 }: TaskRowProps) => {
     const { t, dateLocale } = useLanguage();
     const isGerman = dateLocale?.code?.startsWith('de');
@@ -105,7 +89,7 @@ export const TaskRow = memo(({
     }));
     const dueOptions: InlineMenuOption[] = [
         { value: toIsoDate(new Date()), label: t('work.due.today'), hint: format(new Date(), 'EEE', { locale: dateLocale }) },
-        { value: toIsoDate(addDays(1)), label: t('work.due.tomorrow'), hint: format(addDays(1), 'EEE', { locale: dateLocale }) },
+        { value: toIsoDate(addDaysFromToday(1)), label: t('work.due.tomorrow'), hint: format(addDaysFromToday(1), 'EEE', { locale: dateLocale }) },
         { value: toIsoDate(nextMonday()), label: t('work.due.nextWeek'), hint: format(nextMonday(), `EEE ${shortDate}`, { locale: dateLocale }) },
         ...(task.dueDate ? [{ value: '', label: t('work.due.clear') }] : [])
     ];
@@ -246,6 +230,7 @@ export const TaskRow = memo(({
                     disabled={!canEdit}
                     width={240}
                 />
+                {trailing}
             </div>
         </div>
     );

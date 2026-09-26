@@ -3,6 +3,7 @@ import type { Initiative, Milestone, Task } from '../../../../../types';
 import type { WorkItem, WorkItemGroup } from './useWorkItems';
 import type { OverviewLabels } from '../../hooks/useProjectOverviewLabels';
 import type { OverviewGroupBy } from '../../config/overviewConfig';
+import type { WorkMember } from '../../../../work/workList';
 
 export type WorkViewContext = {
     items: WorkItem[];
@@ -23,4 +24,8 @@ export type WorkViewContext = {
     onUpdateItemDates: (item: WorkItem, dates: { startDate?: string; dueDate?: string }) => void;
     /** Move an item into a group bucket for the given grouping dimension. */
     onMoveItemToGroup: (item: WorkItem, groupBy: OverviewGroupBy, groupKey: string) => void;
+    /** Workspace members for assignee menus in the list view. */
+    members?: WorkMember[];
+    /** Inline field edits (status, priority, due, assignees) from the list view. */
+    onUpdateTask?: (task: Task, updates: Partial<Task>) => void;
 };

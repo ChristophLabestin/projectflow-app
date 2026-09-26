@@ -16,6 +16,7 @@ import {
 } from '../services/domain/effortService';
 import { getProjectInvoices } from '../services/domain/invoiceService';
 import type { EffortEntry } from '../types';
+import { toIsoDate } from '../utils/taskDates';
 
 type EditableField = 'date' | 'task' | 'durationValue' | 'durationUnit' | 'tokenValue' | 'tokenUnit' | 'note';
 
@@ -24,7 +25,7 @@ const TOKEN_UNITS = ['', 'Token', 'k', 'Mio.'];
 const withCurrent = (options: string[], current?: string) =>
     (current && !options.includes(current) ? [current, ...options] : options);
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => toIsoDate(new Date());
 
 const sumByUnit = (rows: EffortEntry[], pick: (e: EffortEntry) => { value: number; unit: string }) => {
     const map = new Map<string, number>();

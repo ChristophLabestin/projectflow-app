@@ -217,7 +217,17 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `summarizeDue` (header summary line);
   - `normalizeStatus` (`Todo` → `Open`).
 - `useWorkMembers`: members of the active workspace for assignee menus.
-- Used by `screens/Tasks.tsx` (My Tasks) and `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card).
+- `TaskRow` accepts an optional `trailing` action slot (e.g. detach from initiative).
+- Used by:
+  - `screens/Tasks.tsx` (My Tasks);
+  - `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card);
+  - the Project Overview list view (`components/project/overview/views/WorkViewList.tsx`, task-only work items);
+  - the initiative detail work list.
+- `InlineMenu` also powers the dashboard plan's reschedule action.
+
+## Projects (`web/components/projects/`)
+
+- `ProjectPortfolioList`: grouped project rows (Needs attention → On track → In planning → Paused → Completed & canceled, the last one collapsed). Each row shows attention signals (overdue/blocked/due today), done/total progress, the next milestone or due date, and member count. It replaces the spotlight hero and card grid on `/projects`; company and client container sections stay above it.
 
 ## Workspaces (`web/components/workspace/`)
 

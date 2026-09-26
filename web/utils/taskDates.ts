@@ -53,3 +53,24 @@ export const getDueBucket = (value: unknown, now: Date = new Date()): DueBucket 
     if (diff <= 7) return 'week';
     return 'later';
 };
+
+/** Local calendar date as a date-only ISO string ("2026-09-26"). */
+export const toIsoDate = (date: Date) => {
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+};
+
+export const addDaysFromToday = (days: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + days);
+    return date;
+};
+
+/** The coming Monday (never today). */
+export const nextMonday = () => {
+    const date = new Date();
+    const offset = ((8 - date.getDay()) % 7) || 7;
+    date.setDate(date.getDate() + offset);
+    return date;
+};

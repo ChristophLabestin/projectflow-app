@@ -69,7 +69,7 @@ const isSortBy = (value: string | null): value is OverviewSortBy =>
     || value === 'title' || value === 'createdAt';
 
 const isGroupBy = (value: string | null): value is OverviewGroupBy =>
-    value === 'status' || value === 'priority' || value === 'initiative'
+    value === 'due' || value === 'status' || value === 'priority' || value === 'initiative'
     || value === 'assignee' || value === 'none';
 
 const readFilters = (): OverviewFilters => {
@@ -123,7 +123,7 @@ export const useProjectOverviewViewState = (): ProjectOverviewViewState => {
     });
     const [groupBy, setGroupByState] = useState<OverviewGroupBy>(() => {
         const stored = read(STORAGE.groupBy);
-        return isGroupBy(stored) ? stored : 'status';
+        return isGroupBy(stored) ? stored : 'due';
     });
     const [filters, setFiltersState] = useState<OverviewFilters>(readFilters);
 

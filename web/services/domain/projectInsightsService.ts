@@ -14,6 +14,7 @@ import {
 import { auth, db } from '../firebase';
 import { getActiveTenantId } from './authService';
 import type { Activity, GeminiReport } from '../../types';
+import { toIsoDate } from '../../utils/taskDates';
 
 const HEALTH_SNAPSHOTS = 'healthSnapshots';
 const GEMINI_REPORTS = 'gemini_reports';
@@ -68,7 +69,7 @@ export const saveHealthSnapshot = async (
     tenantId?: string
 ): Promise<void> => {
     const resolvedTenant = resolveTenantId(tenantId);
-    const today = new Date().toISOString().split('T')[0];
+    const today = toIsoDate(new Date());
 
     const snapshotRef = doc(projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS), today);
     await setDoc(snapshotRef, {
@@ -89,7 +90,7 @@ export const getHealthDelta = async (
 ): Promise<number | null> => {
     const lastWeek = new Date();
     lastWeek.setDate(lastWeek.getDate() - 7);
-    const lastWeekDate = lastWeek.toISOString().split('T')[0];
+    const lastWeekDate = toIsoDate(lastWeek);
 
     const snapshot = await getHealthSnapshot(projectId, lastWeekDate, tenantId);
     if (snapshot) {

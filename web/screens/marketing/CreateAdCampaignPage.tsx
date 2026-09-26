@@ -8,6 +8,7 @@ import { Textarea } from '../../components/ui/Textarea';
 import { DatePicker } from '../../components/ui/DatePicker';
 import { auth } from '../../services/firebase';
 import { useLanguage } from '../../context/LanguageContext';
+import { toIsoDate } from '../../utils/taskDates';
 
 const PLATFORMS: { value: AdPlatform; label: string; icon: string; color: string }[] = [
     { value: 'Google', label: 'Google Ads', icon: 'search', color: '#4285F4' },
@@ -50,7 +51,7 @@ export const CreateAdCampaignPage = () => {
     const [budgetType, setBudgetType] = useState<'Daily' | 'Lifetime'>('Daily');
     const [budgetDaily, setBudgetDaily] = useState<number>(50);
     const [budgetTotal, setBudgetTotal] = useState<number>(500);
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(toIsoDate(new Date()));
     const [endDate, setEndDate] = useState('');
     const [targeting, setTargeting] = useState<AdTargetAudience>({
         locations: [],

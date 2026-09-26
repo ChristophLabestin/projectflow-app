@@ -3,6 +3,9 @@ import { format } from 'date-fns';
 import type { WorkViewContext } from './shared/viewTypes';
 import type { WorkItem } from './shared/useWorkItems';
 import { isDateOverdue, parseDateValue } from '../../../../utils/taskDates';
+import { TaskGroupList } from '../../../work/TaskGroupList';
+import { TaskRow } from '../../../work/TaskRow';
+import { compareWork, type WorkGroup, type WorkGroupTone } from '../../../work/workList';
 
 const STATUS_VALUES = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'];
 const PRIORITY_VALUES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -59,6 +62,18 @@ const Row: React.FC<{ item: WorkItem; ctx: WorkViewContext }> = ({ item, ctx }) 
     );
 };
 
+const GROUP_TONE: Record<string, WorkGroupTone> = {
+    'due:overdue': 'danger',
+    'due:today': 'warning',
+    'due:week': 'accent',
+    'due:later': 'neutral',
+    'due:none': 'muted',
+    'due:done': 'muted',
+    Blocked: 'danger',
+    'In Progress': 'accent',
+    Review: 'warning'
+};
+
 export const WorkViewList: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
     const { groups, t } = ctx;
 
@@ -68,6 +83,41 @@ export const WorkViewList: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
                 <span className="material-symbols-outlined">task_alt</span>
                 <p>{t('projectOverview.execution.noActiveTasks', 'No active work')}</p>
             </div>
+        );
+    }
+
+    // Task rows share the work-list component used by My Tasks and Project Tasks;
+    // initiative items (when included) keep the compact legacy row.
+    if (ctx.onUpdateTask && groups.every((group) => group.items.every((item) => item.kind === 'task' && item.task))) {
+        const workGroups: WorkGroup[] = groups.map((group) => {
+            const tasks = group.items.map((item) => item.task!);
+            return {
+                key: group.key,
+                label: group.label,
+                tone: GROUP_TONE[group.key] || (group.key === 'due:done' || group.key === 'Done' ? 'muted' : 'neutral'),
+                tasks: ctx.groupBy === 'due' ? [...tasks].sort(compareWork) : tasks
+            };
+        });
+        return (
+            <TaskGroupList
+                groups={workGroups}
+                storageKey={`projectflow.projectOverview.list.${ctx.groupBy}.collapsed`}
+                defaultCollapsed={['due:done', 'Done']}
+                toggleLabel={(label, collapsed) => t(collapsed ? 'work.group.expand' : 'work.group.collapse').replace('{group}', label)}
+                renderRow={(task) => (
+                    <TaskRow
+                        task={task}
+                        members={ctx.members || []}
+                        canEdit={ctx.canManageTasks}
+                        onToggleComplete={ctx.onToggleComplete}
+                        onUpdate={ctx.onUpdateTask!}
+                        onOpen={(entry) => {
+                            const item = ctx.items.find((candidate) => candidate.id === entry.id);
+                            if (item) ctx.onItemClick(item);
+                        }}
+                    />
+                )}
+            />
         );
     }
 

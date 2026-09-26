@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface BreadcrumbsProps {
     items?: { label: string; to?: string }[];
@@ -7,11 +8,12 @@ interface BreadcrumbsProps {
 
 export const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
     const location = useLocation();
+    const { t } = useLanguage();
 
     // Default: Home icon
     const parts = [
-        <Link key="home" to="/" className="text-muted hover:text-main transition-colors flex items-center">
-            <span className="material-symbols-outlined text-[20px]">home</span>
+        <Link key="home" to="/" aria-label={t('nav.dashboard')} title={t('nav.dashboard')} className="text-muted hover:text-main transition-colors flex items-center">
+            <span className="material-symbols-outlined text-[20px]" aria-hidden="true">home</span>
         </Link>
     ];
 

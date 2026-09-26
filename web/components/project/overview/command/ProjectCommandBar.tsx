@@ -29,6 +29,7 @@ const SORT_OPTIONS: { value: OverviewSortBy; labelKey: string }[] = [
 ];
 
 const GROUP_OPTIONS: { value: OverviewGroupBy; labelKey: string }[] = [
+    { value: 'due', labelKey: 'work.groupBy.due' },
     { value: 'status', labelKey: 'projectOverview.v2.group.status' },
     { value: 'priority', labelKey: 'projectOverview.v2.group.priority' },
     { value: 'initiative', labelKey: 'projectOverview.v2.group.initiative' },

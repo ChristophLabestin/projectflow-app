@@ -314,6 +314,9 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Groups: Overdue → Today → Next 7 days → Later → No date → Completed (collapsed by default). Project Tasks may group by status or assignee instead.
 - Rows expose only frequent edits (status pill, priority bars, due chip, assignee avatars) as inline menus. No delete/convert/pin/category buttons on rows.
 - The bulk bar renders only when rows are selected.
+- Project Overview defaults to the list view grouped by due date (`OverviewGroupBy` `'due'`). The list renders the same `TaskRow`s. Board, timeline, calendar and relationships remain opt-in views.
+- `/projects` is a portfolio list (`portfolio-row` in `_work-list.scss`), not spotlight cards. Health is shown as attention signals, not as a raw score.
+- Notifications: the inbox comes first; delivery/push diagnostics sit in a collapsed `<details>` below it.
 
 ### Workstream list pages (Tasks + Initiatives)
 

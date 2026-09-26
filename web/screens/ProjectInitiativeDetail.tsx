@@ -31,6 +31,10 @@ import {
 } from '../services/dataService';
 import { useConfirm } from '../context/UIContext';
 import { parseDateValue } from '../utils/taskDates';
+import { toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
+import { TaskRow } from '../components/work/TaskRow';
+import { compareWork } from '../components/work/workList';
+import { useWorkMembers } from '../components/work/useWorkMembers';
 
 export const ProjectInitiativeDetail = () => {
     const { id: projectId, initiativeId } = useParams<{ id: string; initiativeId: string }>();
@@ -59,6 +63,7 @@ export const ProjectInitiativeDetail = () => {
     const { focusItemId, startFocusItem } = usePinnedTasks();
     const canManageInitiative = can('canManageTasks') || hasPermission('project.initiatives.edit');
     const canManageInitiativeTasks = can('canManageTasks') || hasPermission('project.initiatives.manageTasks');
+    const workMembers = useWorkMembers(project?.tenantId);
 
     const initiativeStatusLabels = useMemo<Record<string, string>>(() => ({
         Planning: t('initiatives.status.planning'),
@@ -574,53 +579,32 @@ export const ProjectInitiativeDetail = () => {
                                     <span className="material-symbols-outlined" style={{ fontSize: '32px', color: 'var(--color-text-muted)', marginBottom: '8px' }}>list_alt</span>
                                     <p className="is-empty">{t('initiatives.detail.noTasks')}</p>
                                 </div>
-                            ) : tasks.map((task) => (
-                                <div key={task.id} className={`initiative-detail__task-row ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
-                                    <div className="initiative-detail__task-row-main">
-                                        <div className={`initiative-detail__task-check ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
-                                            <span className="material-symbols-outlined">check</span>
-                                        </div>
-                                        <Link
-                                            to={`/project/${projectId}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`}
-                                            className="initiative-detail__task-link"
-                                        >
-                                            <div className="initiative-detail__task-title-row">
-                                                <h4 className={`initiative-detail__task-title ${task.isCompleted || task.status === 'Done' ? 'is-done' : ''}`}>
-                                                    {task.title}
-                                                </h4>
-                                                <div className="initiative-detail__task-meta">
-                                                    <span className={`initiative-detail__task-pill initiative-detail__status--${(task.status || 'Open').toLowerCase()}`}>
-                                                        {taskStatusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
-                                                    </span>
-                                                    {task.priority && (
-                                                        <span className={`initiative-detail__task-pill initiative-detail__priority--${(task.priority).toLowerCase()}`}>
-                                                            {priorityLabels[task.priority] || task.priority}
-                                                        </span>
-                                                    )}
-                                                    {task.dueDate && (
-                                                        <span className="initiative-detail__task-pill initiative-detail__task-pill--neutral">
-                                                            {formatDisplayDate(task.dueDate)}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </Link>
-                                    </div>
-                                    {canManageInitiativeTasks && (
-                                        <button
-                                            type="button"
-                                            className="initiative-detail__icon-button"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                updateTaskInitiative(task.id, null, projectId, project?.tenantId);
-                                            }}
-                                            title={t('initiatives.detail.detachTask')}
-                                        >
-                                            <span className="material-symbols-outlined">link_off</span>
-                                        </button>
-                                    )}
+                            ) : (
+                                <div className="work-group__rows" role="list">
+                                    {[...tasks].sort((a, b) => Number(!!a.isCompleted) - Number(!!b.isCompleted) || compareWork(a, b)).map((task) => (
+                                        <TaskRow
+                                            key={task.id}
+                                            task={task}
+                                            members={workMembers}
+                                            canEdit={canManageInitiativeTasks}
+                                            onToggleComplete={(entry) => void toggleTaskStatus(entry.id, !!entry.isCompleted, projectId, project?.tenantId)}
+                                            onUpdate={(entry, updates) => void updateTaskFields(entry.id, updates, projectId, project?.tenantId)}
+                                            onOpen={(entry) => navigate(`/project/${projectId}/tasks/${entry.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                            trailing={canManageInitiativeTasks ? (
+                                                <button
+                                                    type="button"
+                                                    className="work-pill work-pill--icon"
+                                                    onClick={() => updateTaskInitiative(task.id, null, projectId, project?.tenantId)}
+                                                    title={t('initiatives.detail.detachTask')}
+                                                    aria-label={`${t('initiatives.detail.detachTask')}: ${task.title}`}
+                                                >
+                                                    <span className="material-symbols-outlined">link_off</span>
+                                                </button>
+                                            ) : undefined}
+                                        />
+                                    ))}
                                 </div>
-                            ))}
+                            )}
                         </div>
                     </div>
 

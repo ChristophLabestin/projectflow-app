@@ -3,7 +3,7 @@ import type { Initiative, Task } from '../../../../../types';
 import { toMillis } from '../../../../../utils/time';
 import type { OverviewFilters } from '../../hooks/useProjectOverviewViewState';
 import type { OverviewGroupBy, OverviewSortBy } from '../../config/overviewConfig';
-import { parseDateValue } from '../../../../../utils/taskDates';
+import { getDueBucket, parseDateValue } from '../../../../../utils/taskDates';
 
 export type WorkItemKind = 'task' | 'initiative';
 
@@ -117,6 +117,8 @@ export type UseWorkItemsArgs = {
     assigneeLabels: Record<string, string>;
     noneLabel: string;
     unassignedLabel: string;
+    /** Labels for due buckets (overdue/today/week/later/none/done) when grouping by due date. */
+    dueLabels?: Record<string, string>;
 };
 
 export type UseWorkItemsResult = {
@@ -143,7 +145,8 @@ export const useWorkItems = (args: UseWorkItemsArgs): UseWorkItemsResult => {
         priorityLabels,
         assigneeLabels,
         noneLabel,
-        unassignedLabel
+        unassignedLabel,
+        dueLabels = {}
     } = args;
 
     return useMemo(() => {
@@ -157,6 +160,11 @@ export const useWorkItems = (args: UseWorkItemsArgs): UseWorkItemsResult => {
 
         const groupKeyOf = (item: WorkItem): { key: string; label: string; rank: number } => {
             switch (groupBy) {
+                case 'due': {
+                    const bucket = item.isCompleted ? 'done' : getDueBucket(item.dueDate);
+                    const rank = ['overdue', 'today', 'week', 'later', 'none', 'done'].indexOf(bucket);
+                    return { key: `due:${bucket}`, label: dueLabels[bucket] || bucket, rank };
+                }
                 case 'priority': {
                     const key = item.priority || '__none__';
                     return {
@@ -220,6 +228,7 @@ export const useWorkItems = (args: UseWorkItemsArgs): UseWorkItemsResult => {
         priorityLabels,
         assigneeLabels,
         noneLabel,
-        unassignedLabel
+        unassignedLabel,
+        dueLabels
     ]);
 };

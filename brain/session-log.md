@@ -10,6 +10,22 @@
 
 ## Recent Sessions
 
+- Date: 2026-09-26 (continued)
+  - Goal: continue the focus redesign on the remaining views.
+  - Changes:
+    - **`/projects`** is a grouped portfolio list (new `ProjectPortfolioList`) with i18n header and search.
+    - **Project Overview:**
+      - defaults to the list view grouped by due date, rendered with the shared `TaskRow`;
+      - initiative detail work list also uses `TaskRow`, with a detach action (the old checkbox was a non-interactive div).
+    - **Dashboard plan** gets a reschedule menu (Today/Tomorrow/Next week).
+    - **Notifications** inbox is moved above the collapsed delivery diagnostics.
+    - **A11y:** labels on the bell and home breadcrumb.
+    - **Dates:**
+      - UTC "today" strings replaced with local dates (effort, invoices, ad campaigns, insights);
+      - `addDaysIso` parsing fixed.
+  - Validation: web build, theme lint, Vitest 44/44; emulator checks of projects list, overview list and inline edits, initiative detail, notifications, dashboard reschedule, search.
+  - Open: health score calibration (many small penalties drive active projects to 0) is a product decision; not changed.
+
 - Date: 2026-09-26
   - Goal: move ProjectFlow to the Firebase project `projectflow-labestin`, redesign multi-tenancy, then evaluate and improve the PM UI (focus, finding work fast, quick edits).
   - Changes:

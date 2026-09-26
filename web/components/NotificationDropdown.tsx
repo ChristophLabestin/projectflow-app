@@ -174,6 +174,9 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
             {/* Notification Bell Button - Enhanced */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={t('notifications.title')}
+                title={t('notifications.title')}
+                aria-expanded={isOpen}
                 className={`
                     size-9 rounded-xl flex items-center justify-center transition-all duration-300 relative
                     ${isOpen

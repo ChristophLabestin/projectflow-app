@@ -46,6 +46,7 @@ import { isCompanyProject, isClientProject, isContainerProject } from '../config
 import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
 import { isDateOverdue, parseDateValue } from '../utils/taskDates';
+import { ProjectPortfolioList } from '../components/projects/ProjectPortfolioList';
 
 // --- Types ---
 export type ProjectMetrics = {
@@ -2073,18 +2074,14 @@ export const ProjectsList: React.FC = () => {
         />
     );
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
+    if (loading) return <div className="p-8 text-center text-gray-500">{t('app.loading.connecting')}</div>;
 
     return (
         <div className="rich-page">
             <div className="projects-header">
                 <div className="projects-header-info">
-                    <div className="projects-header-date">
-                        <span className="material-symbols-outlined text-sm">calendar_today</span>
-                        {format(new Date(), dateFormat, { locale: dateLocale })}
-                    </div>
-                    <h1 className="projects-header-title">Projects</h1>
-                    <p className="projects-header-subtitle">Manage your team's work.</p>
+                    <h1 className="projects-header-title">{t('projects.portfolio.title')}</h1>
+                    <p className="projects-header-subtitle">{t('projects.portfolio.subtitle')}</p>
                 </div>
             </div>
 
@@ -2094,7 +2091,8 @@ export const ProjectsList: React.FC = () => {
                     <span className="material-symbols-outlined">search</span>
                     <input
                         type="text"
-                        placeholder="Search projects..."
+                        placeholder={t('projects.portfolio.search')}
+                        aria-label={t('projects.portfolio.search')}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -2131,44 +2129,6 @@ export const ProjectsList: React.FC = () => {
             </div>
 
             <div className="rich-content">
-                {spotlightProject && spotlightData && !search && (
-                    <div id="spotlight-hero" className="mb-12">
-                        <SpotlightHero
-                            project={spotlightProject}
-                            metrics={getMetrics(spotlightProject.id)}
-                            healthStatus={spotlightData.health?.status || 'normal'}
-                            healthScore={spotlightData.health?.score || 50}
-                            reasons={spotlightData.reasons}
-                            pendingTaskCount={tasks.filter(t => t.projectId === spotlightProject.id && !t.isCompleted && t.status !== 'Done').length}
-                            completedTaskCount={tasks.filter(t => t.projectId === spotlightProject.id && (t.isCompleted || t.status === 'Done')).length}
-                            nextMilestone={nextSpotlightMilestone}
-                            sprintCount={spotlightProjectSprints.length}
-                            descriptionFallback={t('projectsList.spotlight.noDescription')}
-                            onClick={() => navigate(`/project/${spotlightProject.id}`)}
-                        />
-                    </div>
-                )}
-
-                {/* Manual Focus Card (Only if different from spotlight) */}
-                {manualFocusProject && manualFocusProject.id !== spotlightProject?.id && !search && (
-                    <div id="focus-card" className="mb-12">
-                        <SpotlightHero
-                            project={manualFocusProject}
-                            metrics={getMetrics(manualFocusProject.id)}
-                            healthStatus={manualFocusSpotlightData?.health.status || 'normal'}
-                            healthScore={manualFocusSpotlightData?.health.score || 50}
-                            reasons={manualFocusSpotlightData?.reasons || []}
-                            pendingTaskCount={getMetrics(manualFocusProject.id).taskCount - getMetrics(manualFocusProject.id).taskCompleted}
-                            completedTaskCount={getMetrics(manualFocusProject.id).taskCompleted}
-                            nextMilestone={nextFocusMilestone}
-                            sprintCount={focusSprints.length}
-                            descriptionFallback={t('projectsList.spotlight.noDescription')}
-                            onClick={() => navigate(`/project/${manualFocusProject.id}`)}
-                            mode="focus"
-                        />
-                    </div>
-                )}
-
                 {companyProjects.length > 0 && !search && (
                     <section id="company-projects" className="company-projects-section mb-12">
                         <div className="company-projects-section__header">
@@ -2219,73 +2179,17 @@ export const ProjectsList: React.FC = () => {
                     </section>
                 )}
 
-                {/* Health Warning Strip (Optional, if user wants repeated warnings, but Spotlight covers it mostly) */}
-                {/* We can integrate it if multiple criticals exist? User asked for Spotlight Glow. */}
-
-                {/* Active Grid */}
-                {gridProjects.length > 0 && (
-                    <div id="grid-area" className="mb-12">
-                        <h2 className="section-title">
-                            {t('projects.sections.active.title').replace('{count}', String(gridProjects.length))}
-                        </h2>
-                        <div className="rich-grid">
-                            {gridProjects.map(p => {
-                                const health = projectHealthMap[p.id];
-                                return (
-                                    <RichProjectCard
-                                        key={p.id}
-                                        project={p}
-                                        metrics={getMetrics(p.id)}
-                                        healthStatus={health?.status || 'normal'}
-                                        healthScore={health?.score || 50}
-                                        companyLabel={getCompanyContextLabel(p)}
-                                        descriptionFallback={t('projectsList.card.defaultDescription')}
-                                        statusLabel={getProjectStatusLabel(p.status)}
-                                        onClick={() => navigate(`/project/${p.id}`)}
-                                        isFocus={p.id === focusProjectId}
-                                        canSetFocus={hasPermission('tenant.settings.edit')}
-                                        onSetFocus={() => handleSetFocus(p.id)}
-                                    />
-                                );
-                            })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Lifecycle Lists */}
-                {lifecycleSectionCount > 0 && (
-                    <div id="list-area" className="projects-lifecycle mb-12">
-                        <ProjectLifecycleSection
-                            title={t('projects.sections.backlog.title').replace('{count}', String(backlogList.length))}
-                            description={t('projects.sections.backlog.description')}
-                            projects={backlogList}
-                            renderRow={renderCompactProjectRow}
-                        />
-                        <ProjectLifecycleSection
-                            title={t('projects.sections.paused.title').replace('{count}', String(pausedList.length))}
-                            description={t('projects.sections.paused.description')}
-                            projects={pausedList}
-                            renderRow={renderCompactProjectRow}
-                        />
-                        <ProjectLifecycleSection
-                            title={t('projects.sections.completed.title').replace('{count}', String(completedList.length))}
-                            description={t('projects.sections.completed.description')}
-                            projects={completedList}
-                            renderRow={renderCompactProjectRow}
-                        />
-                        <ProjectLifecycleSection
-                            title={t('projects.sections.canceled.title').replace('{count}', String(canceledList.length))}
-                            description={t('projects.sections.canceled.description')}
-                            projects={canceledList}
-                            renderRow={renderCompactProjectRow}
-                        />
-                    </div>
-                )}
+                <ProjectPortfolioList
+                    projects={ordinaryProjects}
+                    inputsByProject={healthInputsByProject}
+                    healthByProject={projectHealthMap}
+                    onOpen={(project) => navigate(`/project/${project.id}`)}
+                />
 
                 {filteredProjects.length === 0 && (
                     <div className="empty-state">
                         <span className="material-symbols-outlined">folder_off</span>
-                        <h3>No projects found</h3>
+                        <h3>{t(search ? 'projects.portfolio.emptySearch' : 'projects.portfolio.empty')}</h3>
                     </div>
                 )}
             </div>

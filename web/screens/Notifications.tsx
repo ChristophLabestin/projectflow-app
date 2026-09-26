@@ -300,116 +300,6 @@ export const Notifications = () => {
                 </div>
             </div>
 
-            <Card padding="none" className="notifications-diagnostics-card">
-                <div className="notifications-diagnostics">
-                    <div className="notifications-diagnostics__header">
-                        <div>
-                            <p className="notifications-diagnostics__eyebrow">{t('notifications.diagnostics.eyebrow')}</p>
-                            <h2>{t('notifications.diagnostics.title')}</h2>
-                            <p>{t('notifications.diagnostics.subtitle')}</p>
-                        </div>
-                        <div className="notifications-diagnostics__actions">
-                            <Button
-                                variant="secondary"
-                                onClick={loadDiagnostics}
-                                disabled={diagnosticsLoading || registeringPush || sendingTest}
-                                className="notifications-action"
-                            >
-                                <span className="material-symbols-outlined notifications-action__icon">refresh</span>
-                                {t('notifications.diagnostics.refresh')}
-                            </Button>
-                            <Button
-                                variant="primary"
-                                onClick={handleRegisterWebPush}
-                                loading={registeringPush}
-                                disabled={registeringPush || sendingTest}
-                                className="notifications-action"
-                            >
-                                <span className="material-symbols-outlined notifications-action__icon">notifications_active</span>
-                                {t('notifications.diagnostics.enableWebPush')}
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={handleSendTestNotification}
-                                loading={sendingTest}
-                                disabled={sendingTest || registeringPush}
-                                className="notifications-action"
-                            >
-                                <span className="material-symbols-outlined notifications-action__icon">send</span>
-                                {t('notifications.diagnostics.sendTest')}
-                            </Button>
-                        </div>
-                    </div>
-
-                    <div className="notifications-diagnostics__grid" aria-busy={diagnosticsLoading}>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.browser')}</span>
-                            {renderDiagnosticStatus(diagnostics?.browserNotificationsSupported)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.serviceWorker')}</span>
-                            {renderDiagnosticStatus(diagnostics?.serviceWorkerSupported)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.pushManager')}</span>
-                            {renderDiagnosticStatus(diagnostics?.pushManagerSupported)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.firebaseMessaging')}</span>
-                            {renderDiagnosticStatus(diagnostics?.firebaseMessagingSupported)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.permission')}</span>
-                            <strong>{getPermissionLabel(diagnostics?.permission)}</strong>
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.vapid')}</span>
-                            {renderDiagnosticStatus(diagnostics?.vapidKeyConfigured)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.token')}</span>
-                            {renderDiagnosticStatus(diagnostics?.tokenRegistered)}
-                        </div>
-                        <div className="notifications-diagnostic-row">
-                            <span>{t('notifications.diagnostics.lastSync')}</span>
-                            <strong>{diagnostics?.lastTokenSyncAt || t('notifications.diagnostics.never')}</strong>
-                        </div>
-                    </div>
-
-                    {diagnostics?.lastTokenError && (
-                        <p className="notifications-diagnostics__error">
-                            {t('notifications.diagnostics.lastError').replace('{error}', diagnostics.lastTokenError)}
-                        </p>
-                    )}
-
-                    <div className="notifications-delivery-log">
-                        <div className="notifications-delivery-log__header">
-                            <h3>{t('notifications.diagnostics.deliveryLog.title')}</h3>
-                            <span>{deliveryLogs.length}</span>
-                        </div>
-                        {deliveryLogs.length === 0 ? (
-                            <p className="notifications-delivery-log__empty">
-                                {t('notifications.diagnostics.deliveryLog.empty')}
-                            </p>
-                        ) : (
-                            <div className="notifications-delivery-log__list">
-                                {deliveryLogs.map((log) => (
-                                    <div className="notifications-delivery-log__item" key={log.id}>
-                                        <div className="notifications-delivery-log__meta">
-                                            <span className={`notifications-delivery-log__status is-${log.status}`}>
-                                                {getDeliveryStatusLabel(log.status)}
-                                            </span>
-                                            <strong>{getDeliveryChannelLabel(log.channel)}</strong>
-                                            <span>{formatTime(log.createdAt)}</span>
-                                        </div>
-                                        <p>{log.reason}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </Card>
 
             <ConfirmModal
                 isOpen={showClearConfirm}
@@ -514,6 +404,124 @@ export const Notifications = () => {
                     </div>
                 )}
             </Card>
+            {/* Delivery diagnostics are a setup tool: collapsed below the inbox. */}
+            <details className="notifications-delivery">
+                <summary className="notifications-delivery__summary">
+                    <span className="material-symbols-outlined" aria-hidden="true">settings_alert</span>
+                    {t('notifications.delivery.summary')}
+                    <span className="material-symbols-outlined notifications-delivery__chevron" aria-hidden="true">expand_more</span>
+                </summary>
+                <Card padding="none" className="notifications-diagnostics-card">
+                    <div className="notifications-diagnostics">
+                        <div className="notifications-diagnostics__header">
+                            <div>
+                                <p className="notifications-diagnostics__eyebrow">{t('notifications.diagnostics.eyebrow')}</p>
+                                <h2>{t('notifications.diagnostics.title')}</h2>
+                                <p>{t('notifications.diagnostics.subtitle')}</p>
+                            </div>
+                            <div className="notifications-diagnostics__actions">
+                                <Button
+                                    variant="secondary"
+                                    onClick={loadDiagnostics}
+                                    disabled={diagnosticsLoading || registeringPush || sendingTest}
+                                    className="notifications-action"
+                                >
+                                    <span className="material-symbols-outlined notifications-action__icon">refresh</span>
+                                    {t('notifications.diagnostics.refresh')}
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    onClick={handleRegisterWebPush}
+                                    loading={registeringPush}
+                                    disabled={registeringPush || sendingTest}
+                                    className="notifications-action"
+                                >
+                                    <span className="material-symbols-outlined notifications-action__icon">notifications_active</span>
+                                    {t('notifications.diagnostics.enableWebPush')}
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    onClick={handleSendTestNotification}
+                                    loading={sendingTest}
+                                    disabled={sendingTest || registeringPush}
+                                    className="notifications-action"
+                                >
+                                    <span className="material-symbols-outlined notifications-action__icon">send</span>
+                                    {t('notifications.diagnostics.sendTest')}
+                                </Button>
+                            </div>
+                        </div>
+
+                        <div className="notifications-diagnostics__grid" aria-busy={diagnosticsLoading}>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.browser')}</span>
+                                {renderDiagnosticStatus(diagnostics?.browserNotificationsSupported)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.serviceWorker')}</span>
+                                {renderDiagnosticStatus(diagnostics?.serviceWorkerSupported)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.pushManager')}</span>
+                                {renderDiagnosticStatus(diagnostics?.pushManagerSupported)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.firebaseMessaging')}</span>
+                                {renderDiagnosticStatus(diagnostics?.firebaseMessagingSupported)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.permission')}</span>
+                                <strong>{getPermissionLabel(diagnostics?.permission)}</strong>
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.vapid')}</span>
+                                {renderDiagnosticStatus(diagnostics?.vapidKeyConfigured)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.token')}</span>
+                                {renderDiagnosticStatus(diagnostics?.tokenRegistered)}
+                            </div>
+                            <div className="notifications-diagnostic-row">
+                                <span>{t('notifications.diagnostics.lastSync')}</span>
+                                <strong>{diagnostics?.lastTokenSyncAt || t('notifications.diagnostics.never')}</strong>
+                            </div>
+                        </div>
+
+                        {diagnostics?.lastTokenError && (
+                            <p className="notifications-diagnostics__error">
+                                {t('notifications.diagnostics.lastError').replace('{error}', diagnostics.lastTokenError)}
+                            </p>
+                        )}
+
+                        <div className="notifications-delivery-log">
+                            <div className="notifications-delivery-log__header">
+                                <h3>{t('notifications.diagnostics.deliveryLog.title')}</h3>
+                                <span>{deliveryLogs.length}</span>
+                            </div>
+                            {deliveryLogs.length === 0 ? (
+                                <p className="notifications-delivery-log__empty">
+                                    {t('notifications.diagnostics.deliveryLog.empty')}
+                                </p>
+                            ) : (
+                                <div className="notifications-delivery-log__list">
+                                    {deliveryLogs.map((log) => (
+                                        <div className="notifications-delivery-log__item" key={log.id}>
+                                            <div className="notifications-delivery-log__meta">
+                                                <span className={`notifications-delivery-log__status is-${log.status}`}>
+                                                    {getDeliveryStatusLabel(log.status)}
+                                                </span>
+                                                <strong>{getDeliveryChannelLabel(log.channel)}</strong>
+                                                <span>{formatTime(log.createdAt)}</span>
+                                            </div>
+                                            <p>{log.reason}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </Card>
+            </details>
         </div>
     );
 };

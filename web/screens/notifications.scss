@@ -497,3 +497,43 @@
 .notification-delete__icon {
     font-size: 1.25rem;
 }
+
+.notifications-delivery {
+    margin-top: 16px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+
+    &__summary {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 16px;
+        cursor: pointer;
+        list-style: none;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-muted);
+
+        &::-webkit-details-marker {
+            display: none;
+        }
+
+        .material-symbols-outlined {
+            font-size: 18px;
+        }
+    }
+
+    &__chevron {
+        margin-left: auto;
+        transition: transform var(--transition-fast);
+    }
+
+    &[open] &__chevron {
+        transform: rotate(180deg);
+    }
+
+    &[open] .notifications-diagnostics-card {
+        box-shadow: none;
+    }
+}

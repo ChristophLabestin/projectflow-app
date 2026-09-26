@@ -21,6 +21,8 @@ import { useUIState } from '../context/UIContext';
 import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
+import { InlineMenu } from '../components/work/InlineMenu';
+import { addDaysFromToday, nextMonday, toIsoDate } from '../utils/taskDates';
 
 type DashboardTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
 
@@ -1234,6 +1236,25 @@ export const Dashboard = () => {
         }
     };
 
+    const handleReschedule = async (stop: DashboardRouteStop, dueDate: string) => {
+        if (!stop.taskId) return;
+        const { taskId, projectId, tenantId } = stop;
+        const previous = tasks.find((task) => task.id === taskId)?.dueDate;
+        setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, dueDate } : task)));
+        try {
+            await updateTaskFields(taskId, { dueDate }, projectId, tenantId);
+        } catch (error) {
+            console.error('Dashboard reschedule failed', error);
+            setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, dueDate: previous } : task)));
+        }
+    };
+
+    const rescheduleOptions = [
+        { value: toIsoDate(new Date()), label: t('work.due.today') },
+        { value: toIsoDate(addDaysFromToday(1)), label: t('work.due.tomorrow') },
+        { value: toIsoDate(nextMonday()), label: t('work.due.nextWeek') }
+    ];
+
     if (loading || !dashboardTranslationsReady) {
         return (
             <div className="flex items-center justify-center p-12">
@@ -1343,6 +1364,16 @@ export const Dashboard = () => {
                                                         </span>
                                                     </Link>
                                                     <div className="dashboard-plan__actions">
+                                                        {!stop.proposed && stop.taskId && (
+                                                            <InlineMenu
+                                                                label={`${t('work.row.changeDue')}: ${stop.title}`}
+                                                                triggerClassName="dashboard-plan__act"
+                                                                trigger={<span className="material-symbols-outlined">event_repeat</span>}
+                                                                options={rescheduleOptions}
+                                                                onSelect={(dueDate) => void handleReschedule(stop, dueDate)}
+                                                                width={200}
+                                                            />
+                                                        )}
                                                         {stop.proposed && stop.taskId && (
                                                             <button
                                                                 type="button"

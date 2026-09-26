@@ -1,4 +1,5 @@
 import type { EffortEntry } from '../types';
+import { toIsoDate } from './taskDates';
 
 export type ParsedEffortRow = Omit<EffortEntry, 'id' | 'projectId' | 'tenantId' | 'createdAt' | 'updatedAt'>;
 
@@ -133,7 +134,7 @@ export const parseEffortMarkdown = (markdown: string): EffortMarkdownParseResult
         if (!task && !durationValue && !tokenValue && !date) { skipped++; continue; }
 
         rows.push({
-            date: date || new Date().toISOString().slice(0, 10),
+            date: date || toIsoDate(new Date()),
             task: task || '—',
             durationValue,
             durationUnit: (get('durationUnit') || 'h').trim() || 'h',

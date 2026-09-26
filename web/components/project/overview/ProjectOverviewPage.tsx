@@ -41,6 +41,7 @@ import { InviteToWorkspaceModal } from '../../workspace/InviteToWorkspaceModal';
 import { InitiativeCreateModal } from '../../InitiativeCreateModal';
 
 import '../../../src/styles/components/_project-overview-v2.scss';
+import { useWorkMembers } from '../../work/useWorkMembers';
 
 const TaskCreateModal = lazy(() => import('../../TaskCreateModal').then((m) => ({ default: m.TaskCreateModal })));
 
@@ -112,6 +113,15 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     const availableViews = useMemo(() => resolveViewsForTab(activeTab), [activeTab]);
 
     const effectiveGroupBy = viewState.view === 'board' ? 'status' : viewState.groupBy;
+    const workMembers = useWorkMembers(project?.tenantId);
+    const dueLabels = useMemo(() => ({
+        overdue: t('work.group.due.overdue'),
+        today: t('work.group.due.today'),
+        week: t('work.group.due.week'),
+        later: t('work.group.due.later'),
+        none: t('work.group.due.none'),
+        done: t('work.group.done')
+    }), [t]);
 
     // Initiatives are containers of tasks, not flat work items — keep the work
     // stream task-only and surface initiatives via the strip + group-by-initiative.
@@ -126,7 +136,8 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         priorityLabels: labels.priorityLabels,
         assigneeLabels: labels.assigneeLabels,
         noneLabel: t('projectOverview.v2.group.none', 'Ungrouped'),
-        unassignedLabel: t('projectOverview.v2.command.unassigned', 'Unassigned')
+        unassignedLabel: t('projectOverview.v2.command.unassigned', 'Unassigned'),
+        dueLabels
     });
 
     const statusOptions: CommandOption[] = useMemo(
@@ -329,7 +340,12 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         onToggleComplete: handleToggleComplete,
         onUpdateItemStatus: handleUpdateStatus,
         onUpdateItemDates: handleUpdateDates,
-        onMoveItemToGroup: handleMoveToGroup
+        onMoveItemToGroup: handleMoveToGroup,
+        members: workMembers,
+        onUpdateTask: (task, updates) => {
+            if (!project) return;
+            void updateTaskFields(task.id, updates, project.id, project.tenantId);
+        }
     };
 
     return (

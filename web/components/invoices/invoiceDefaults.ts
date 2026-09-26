@@ -1,17 +1,18 @@
 import type { BillingSettings, Invoice, InvoiceAppendixRow, InvoiceIssuer, InvoiceLineItem, InvoiceParty } from '../../types';
 import { COMPANY_CITY, COMPANY_EMAIL, COMPANY_NAME, COMPANY_STREET, COMPANY_ZIP } from '../../config/company';
+import { parseDateValue, toIsoDate } from '../../utils/taskDates';
 
-export const todayIso = (): string => new Date().toISOString().slice(0, 10);
+export const todayIso = (): string => toIsoDate(new Date());
 
 /** Default intro sentence — always usable, still freely editable per invoice. */
 export const DEFAULT_INTRO_TEXT =
     'vielen Dank für die gute Zusammenarbeit. Für die erbrachten Leistungen erlauben wir uns, Ihnen wie folgt in Rechnung zu stellen:';
 
 export const addDaysIso = (iso: string, days: number): string => {
-    const d = new Date(iso);
+    const d = parseDateValue(iso);
     if (Number.isNaN(d.getTime())) return iso;
     d.setDate(d.getDate() + days);
-    return d.toISOString().slice(0, 10);
+    return toIsoDate(d);
 };
 
 export const newLineId = (): string => {
