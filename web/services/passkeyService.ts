@@ -4,7 +4,9 @@ import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
 import { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON, RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/browser';
 
 const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
-const FUNCTIONS_DOMAIN = 'https://app.getprojectflow.com';
+// Passkey functions are exposed through same-origin Hosting rewrites (see
+// firebase.json), so every hosting domain calls its own backend.
+const FUNCTIONS_DOMAIN = location.origin;
 
 // The relying party (rpID/origin) WebAuthn is bound to is the page's own origin.
 // We forward it so the backend can verify against the exact origin the browser
