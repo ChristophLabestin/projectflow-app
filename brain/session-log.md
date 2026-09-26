@@ -210,3 +210,6 @@
 - 2026-09-26 — Production hosting deploy of the UI redesign batch (commit `2a5781f3`).
   - Scope: web only (health recalibration, light-mode contrast, board/team/timeline focus mode, timeline/team/roadmap views, task-detail cards, CORA Studio feature flag, unified top-bar breadcrumbs, detail header row, semantic border radii, calmer project overview with project info drawer, sidebar "+" create menu). No functions/rules/index changes since `71f1abee`.
   - Validation: build, 50/50 tests and theme lint green; live `index` bundle hash matches the local build.
+- 2026-09-26 — Production deploy: signup hardening, first-run rework, open signup (commit `3068b67d`).
+  - Scope: `firestore:rules` (users get-only, no list), functions `acceptWorkspaceInvite` (verified email for email invites), `askCora` + `callGemini` (usage under `users/{uid}/private/usage`), hosting (welcome dialog, quick project create, getting-started checklist, shorter nav, signup lock removed).
+  - Validation: build, 50/50 tests, theme lint; both `projectflow-labestin.web.app` and `app.getprojectflow.com` serve the new bundle; live register form is enabled.

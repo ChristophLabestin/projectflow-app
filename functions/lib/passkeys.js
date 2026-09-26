@@ -6,30 +6,38 @@ const admin = require("firebase-admin");
 const server_1 = require("@simplewebauthn/server");
 const init_1 = require("./init");
 const REGION = 'europe-west3'; // Frankfurt
-// Relying Party Configuration
-// Set these in your Firebase Functions environment configuration
-// firebase functions:config:set passkeys.rp_id="your-app.com" passkeys.origin="https://your-app.com"
-// Or use Google Cloud Run environment variables
+// Relying Party configuration.
+// A passkey is bound to the hostname it was created on (the RP ID), so every
+// production host the app is served from must be allow-listed here. Defaults
+// cover the project's Firebase Hosting domains plus the custom domain; override
+// with a comma-separated PASSKEY_ORIGINS env var if hosting changes.
 const RP_NAME = 'ProjectFlow';
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
-const PROD_RP_ID = process.env.RP_ID || 'app.getprojectflow.com';
-const PROD_ORIGIN = process.env.ORIGIN || 'https://app.getprojectflow.com';
+const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || '';
+const PROD_ORIGINS = (process.env.PASSKEY_ORIGINS
+    || [
+        FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.web.app`,
+        FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.firebaseapp.com`,
+        'https://app.getprojectflow.com'
+    ].filter(Boolean).join(','))
+    .split(',')
+    .map((origin) => origin.trim().replace(/\/$/, ''))
+    .filter(Boolean);
 /**
  * Resolve the WebAuthn Relying Party ID + expected origin for a request.
  *
- * Production traffic always uses the configured production values. Local
- * development hosts (localhost / 127.0.0.1) are allow-listed so passkeys work
- * against the deployed backend without having to run the Functions emulator:
- * the client passes its `window.location.origin` and we derive rpID/origin from
- * it. Any non-local origin falls back to the production defaults, so a remote
- * caller cannot inject an arbitrary relying party.
+ * The client passes its `window.location.origin`. Allow-listed production
+ * origins and local development hosts (localhost / 127.0.0.1) use that origin
+ * and its hostname as the RP ID, so passkeys work on every host the app is
+ * served from. Anything else falls back to the first production origin, so a
+ * remote caller cannot inject an arbitrary relying party.
  */
 const resolveRp = (clientOrigin) => {
     if (clientOrigin) {
         try {
-            const { hostname } = new URL(clientOrigin);
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return { rpID: hostname, origin: clientOrigin };
+            const url = new URL(clientOrigin);
+            if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || PROD_ORIGINS.includes(url.origin)) {
+                return { rpID: url.hostname, origin: url.origin };
             }
         }
         catch (_a) {
@@ -39,12 +47,9 @@ const resolveRp = (clientOrigin) => {
     if (isEmulator) {
         return { rpID: 'localhost', origin: clientOrigin || 'http://localhost:3000' };
     }
-    return { rpID: PROD_RP_ID, origin: PROD_ORIGIN };
+    const fallback = new URL(PROD_ORIGINS[0]);
+    return { rpID: fallback.hostname, origin: fallback.origin };
 };
-/**
- * Generate Registration Options
- * Called when a signed-in user wants to register a new passkey.
- */
 exports.generatePasskeyRegistrationOptions = functions.region(REGION).https.onCall(async (data, context) => {
     try {
         // 1. Ensure user is authenticated

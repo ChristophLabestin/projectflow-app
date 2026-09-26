@@ -13,8 +13,8 @@ const trackUsage = async (uid, tokens) => {
     if (tokens <= 0)
         return;
     try {
-        // Store aiUsage directly on the user document (top-level users collection)
-        const userRef = init_1.db.collection('users').doc(uid);
+        // Usage is owner-only data: users/{uid} itself is readable by every signed-in user.
+        const userRef = init_1.db.collection('users').doc(uid).collection('private').doc('usage');
         await userRef.set({
             aiUsage: {
                 tokensUsed: admin.firestore.FieldValue.increment(tokens),
