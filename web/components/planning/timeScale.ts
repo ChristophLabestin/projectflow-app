@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { parseDateValue, toIsoDate } from '../../utils/taskDates';
 
@@ -131,4 +131,33 @@ export const useBarDrag = (
     };
 
     return { preview, onPointerDown, handlers, wasDragRef };
+};
+
+/** Scale over a fixed [start, end] range (inclusive) with a given day width. */
+export const buildRangeScale = (start: Date, end: Date, dayWidth: number): TimeScale => {
+    const from = startOfDay(start);
+    const days = Math.max(1, dayDiff(from, end) + 1);
+    return {
+        start: from,
+        days,
+        dayWidth,
+        width: days * dayWidth,
+        x: (date) => dayDiff(from, date) * dayWidth,
+        span: (a, b) => ({ left: dayDiff(from, a) * dayWidth, width: Math.max(dayWidth * 2, (dayDiff(a, b) + 1) * dayWidth) })
+    };
+};
+
+/** Tracks an element's content width (for fitting charts to their card). */
+export const useElementWidth = <T extends HTMLElement>() => {
+    const ref = useRef<T>(null);
+    const [width, setWidth] = useState(0);
+    useEffect(() => {
+        const element = ref.current;
+        if (!element) return undefined;
+        const observer = new ResizeObserver((entries) => setWidth(entries[0]?.contentRect.width || 0));
+        observer.observe(element);
+        setWidth(element.clientWidth);
+        return () => observer.disconnect();
+    }, []);
+    return { ref, width };
 };

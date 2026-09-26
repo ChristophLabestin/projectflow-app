@@ -25,6 +25,12 @@ const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2)
 export const WorkViewTimeline: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) => {
     const { t, dateLocale, milestones, members = [], canManageTasks } = ctx;
     const scrollerRef = useRef<HTMLDivElement>(null);
+    const backdropRef = useRef<HTMLDivElement>(null);
+    // Clip the backdrop at the sticky label column so stripes never paint over it.
+    const syncBackdropClip = () => {
+        const scroller = scrollerRef.current;
+        if (backdropRef.current && scroller) backdropRef.current.style.clipPath = `inset(0 0 0 ${scroller.scrollLeft}px)`;
+    };
     const tasks = useMemo(() => ctx.items.filter((item) => item.kind === 'task'), [ctx.items]);
 
     const lanes = useMemo<Lane[]>(() => {
@@ -77,6 +83,7 @@ export const WorkViewTimeline: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) =>
     useEffect(() => {
         const scroller = scrollerRef.current;
         if (scroller) scroller.scrollLeft = Math.max(0, scale.x(new Date()) - DAY_WIDTH * 3);
+        syncBackdropClip();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -98,7 +105,7 @@ export const WorkViewTimeline: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) =>
 
     return (
         <div className="tl" {...handlers}>
-            <div className="tl__scroller" ref={scrollerRef}>
+            <div className="tl__scroller" ref={scrollerRef} onScroll={syncBackdropClip}>
                 <div className="tl__grid" style={{ width: LABEL_WIDTH + scale.width }}>
                     <div className="tl__head">
                         <div className="tl__corner">{t('planning.timeline.lanes')}</div>
@@ -106,7 +113,7 @@ export const WorkViewTimeline: React.FC<{ ctx: WorkViewContext }> = ({ ctx }) =>
                     </div>
 
                     <div className="tl__body">
-                        <div className="tl__backdrop" style={{ left: LABEL_WIDTH }}>
+                        <div className="tl__backdrop" ref={backdropRef} style={{ left: LABEL_WIDTH }}>
                             <TimeScaleBackdrop scale={scale} granularity="day" />
                             {milestones.filter((milestone) => milestone.dueDate).map((milestone) => {
                                 const date = toDate(milestone.dueDate)!;

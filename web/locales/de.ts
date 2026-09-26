@@ -3592,6 +3592,10 @@ const de = {
     'planning.roadmap.projectTarget': 'Projektziel',
     'planning.roadmap.empty': 'Noch keine Roadmap-Punkte. Lege Features oder Ziele mit Zieldatum an, um sie auf der Zeitachse zu sehen.',
     'taskDetail.comments.empty': 'Noch keine Kommentare. Starte die Diskussion!',
+    'planning.roadmap.phase.active': 'Läuft',
+    'planning.roadmap.phase.planned': 'Geplant',
+    'planning.roadmap.phase.done': 'Erledigt',
+    'planning.roadmap.lateSince': 'Ziel {date} verpasst',
 };
 
 export default de;

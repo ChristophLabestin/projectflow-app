@@ -321,6 +321,7 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Rows expose only frequent edits (status pill, priority bars, due chip, assignee avatars) as inline menus. No delete/convert/pin/category buttons on rows.
 - The bulk bar renders only when rows are selected.
 - Project Overview defaults to the list view grouped by due date (`OverviewGroupBy` `'due'`). The list renders the same `TaskRow`s. Board, timeline, calendar and relationships remain opt-in views.
+- Board focus also keeps the Team, Timeline and Calendar views (the list switches to the board); team columns and the timeline fill the viewport height like board lanes.
 - Board focus (Project Overview, "Focus board" button):
   - collapses the sidebar via AppLayout `contentWide`, switches to the board and hides the hero, tabs, initiatives and references;
   - the board fills the viewport and lanes scroll individually;

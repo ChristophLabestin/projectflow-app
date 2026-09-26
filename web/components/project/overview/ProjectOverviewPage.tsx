@@ -104,7 +104,9 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         focusRestoreRef.current = { wide, view: viewState.view };
         outlet.setContentWide?.(true);
         viewState.setTab('work');
-        viewState.setView('board');
+        // Focus keeps spatial views (board, team, timeline, calendar); the
+        // plain list switches to the board.
+        if (viewState.view === 'list' || viewState.view === 'relationships') viewState.setView('board');
         setWorkFocus(true);
         requestAnimationFrame(() => workRef.current?.scrollIntoView({ block: 'start' }));
     };

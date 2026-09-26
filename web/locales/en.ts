@@ -3590,6 +3590,10 @@ const en = {
     'planning.roadmap.projectTarget': 'Project target',
     'planning.roadmap.empty': 'No roadmap items yet. Add features or goals with a target date to see them on the timeline.',
     'taskDetail.comments.empty': 'No comments yet. Be the first to start the discussion!',
+    'planning.roadmap.phase.active': 'In progress',
+    'planning.roadmap.phase.planned': 'Planned',
+    'planning.roadmap.phase.done': 'Done',
+    'planning.roadmap.lateSince': 'target {date} missed',
 };
 
 export default en;

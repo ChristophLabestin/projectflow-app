@@ -233,9 +233,12 @@ No feature should implement an isolated file picker/upload flow outside of this 
 - `TimeScaleHeader` / `TimeScaleBackdrop`: month row plus days (with weekend and today marks) or ISO weeks; weekend stripes and the today line.
 - `stagger.ts`: stacks overlapping milestone labels into rows.
 - `RoadmapView`: Project Overview "Roadmap" tab.
-  - Initiatives appear as bars with progress fill and health tone; bars without a target date are hatched and get a "Set target" quick menu.
-  - Milestones are draggable diamonds; the project target is drawn as a line.
-  - Inline creation of roadmap items (initiatives with start and target) and milestones.
+  - A range scale fitted to the card width (`buildRangeScale` + `useElementWidth`, no empty scroll) with month columns.
+  - A header band with staggered milestone and project-target markers whose guide lines run through the chart.
+  - Items grouped into In progress / Planned / Done (Done collapsed); tone is derived from health, lateness and phase.
+  - Solid bars with the title, a progress strip and the target date; open targets are hatched with a "Set target" quick menu.
+  - Bars and milestones are draggable; roadmap items (initiatives) and milestones can be created inline.
+  - Backdrop and guide layers are clipped at the sticky label column (`clip-path` synced on scroll) because sticky cells otherwise let stripes paint through.
 - Overview work views:
   - `WorkViewTimeline`: lanes per person, draggable and resizable bars, and a per-lane tray for tasks without a date;
   - `WorkViewPeople` ("Team"): one column per workspace member plus Unassigned, load signals (overdue, today, this week, overloaded when more than 5 tasks are due within 7 days) and drag-and-drop reassignment.
