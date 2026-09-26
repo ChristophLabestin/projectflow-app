@@ -213,3 +213,6 @@
 - 2026-09-26 — Production deploy: signup hardening, first-run rework, open signup (commit `3068b67d`).
   - Scope: `firestore:rules` (users get-only, no list), functions `acceptWorkspaceInvite` (verified email for email invites), `askCora` + `callGemini` (usage under `users/{uid}/private/usage`), hosting (welcome dialog, quick project create, getting-started checklist, shorter nav, signup lock removed).
   - Validation: build, 50/50 tests, theme lint; both `projectflow-labestin.web.app` and `app.getprojectflow.com` serve the new bundle; live register form is enabled.
+- 2026-09-26 — Full production deploy (commit `5387eb55`): firestore rules + indexes (api_tokens.tokenHash collection-group), storage rules, all functions (112 updated + new `mcp`), hosting.
+  - Includes: MCP server (`/mcp`), Codex view removed, Sprints redesign, Intake tab removed, old welcome tour removed, new passkey dialog, global search and sidebar work from parallel sessions.
+  - Validation: build, 50/50 tests, theme lint, functions build; both domains serve the new bundle; `https://app.getprojectflow.com/mcp` answers 401 without a token.
