@@ -137,7 +137,11 @@ service cloud.firestore {
 
     // Global user profiles
     match /users/{userId} {
-      allow read: if authed();
+      // Profiles (name, avatar, email) are fetched by uid for co-workers; listing
+      // the collection is not allowed so nobody can enumerate every account.
+      // Owner-only data (AI usage, last workspace) lives under private/*.
+      allow get: if authed();
+      allow list: if false;
       allow write: if authed() && request.auth.uid == userId;
 
       // Owner-only secrets (e.g. GitHub token at private/github). The parent

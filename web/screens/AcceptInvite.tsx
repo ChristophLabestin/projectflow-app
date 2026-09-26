@@ -11,11 +11,13 @@ import {
     isInvitationUsable,
     type WorkspaceInvitation
 } from '../services/domain/workspacesService';
+import { refreshEmailVerification, sendVerificationEmail } from '../services/domain/emailVerification';
 
-type InviteState = 'loading' | 'ready' | 'member' | 'invalid' | 'mismatch' | 'error';
+type InviteState = 'loading' | 'ready' | 'member' | 'invalid' | 'mismatch' | 'unverified' | 'error';
 
 const ERROR_STATE: Record<string, InviteState> = {
     'invite-email-mismatch': 'mismatch',
+    'invite-email-unverified': 'unverified',
     'invite-expired': 'invalid',
     'invite-used-up': 'invalid',
     'invite-not-pending': 'invalid'
@@ -29,6 +31,9 @@ export const AcceptInvite = () => {
     const [invite, setInvite] = useState<WorkspaceInvitation | null>(null);
     const [state, setState] = useState<InviteState>('loading');
     const [isAccepting, setAccepting] = useState(false);
+    const [verifyMailSent, setVerifyMailSent] = useState(false);
+    const [verifyBusy, setVerifyBusy] = useState(false);
+    const [verifyHint, setVerifyHint] = useState<string | null>(null);
     const returnTo = encodeURIComponent(`/invite/${tenantId}/${inviteId}`);
     const isMember = workspace.workspaces.some((entry) => entry.id === tenantId);
 
@@ -46,6 +51,8 @@ export const AcceptInvite = () => {
                     setState('invalid');
                 } else if (loaded?.kind === 'email' && loaded.email && loaded.email !== (user.email || '').toLowerCase()) {
                     setState('mismatch');
+                } else if (loaded?.kind === 'email' && !user.emailVerified) {
+                    setState('unverified');
                 } else {
                     setState('ready');
                 }
@@ -64,8 +71,35 @@ export const AcceptInvite = () => {
             await workspace.switchWorkspace(tenantId);
         } catch (error: any) {
             console.error(error);
-            setState(ERROR_STATE[error?.message] || 'error');
+            // The SDK may append the HTTP status ("invite-expired [412]"); map on the code only.
+            const code = String(error?.message || '').split(' ')[0];
+            setState(ERROR_STATE[code] || 'error');
             setAccepting(false);
+        }
+    };
+
+    const handleSendVerification = async () => {
+        setVerifyBusy(true);
+        setVerifyHint(null);
+        try {
+            await sendVerificationEmail(`/invite/${tenantId}/${inviteId}`);
+            setVerifyMailSent(true);
+        } catch (error) {
+            console.error(error);
+            setVerifyHint(t('auth.verify.sendFailed'));
+        } finally {
+            setVerifyBusy(false);
+        }
+    };
+
+    const handleCheckVerification = async () => {
+        setVerifyBusy(true);
+        setVerifyHint(null);
+        try {
+            if (await refreshEmailVerification()) setState('ready');
+            else setVerifyHint(t('auth.verify.stillPending'));
+        } finally {
+            setVerifyBusy(false);
         }
     };
 
@@ -102,6 +136,28 @@ export const AcceptInvite = () => {
                     <p className="accept-invite__text">{t(state === 'error' ? 'workspace.accept.errorText' : 'workspace.accept.invalidText')}</p>
                     <div className="accept-invite__actions">
                         <Link to="/"><Button variant="secondary">{t('workspace.accept.home')}</Button></Link>
+                    </div>
+                </>
+            );
+        }
+        if (state === 'unverified') {
+            return (
+                <>
+                    <p className="accept-invite__eyebrow">{invite.tenantName}</p>
+                    <h1 className="accept-invite__title">{t('workspace.accept.verifyTitle')}</h1>
+                    <p className="accept-invite__text">
+                        {(verifyMailSent ? t('auth.verify.sentText') : t('workspace.accept.verifyText')).replace('{email}', user.email || '')}
+                    </p>
+                    {verifyHint && <p className="accept-invite__text accept-invite__text--hint">{verifyHint}</p>}
+                    <div className="accept-invite__actions">
+                        {verifyMailSent ? (
+                            <Button variant="primary" isLoading={verifyBusy} onClick={() => void handleCheckVerification()}>{t('auth.verify.check')}</Button>
+                        ) : (
+                            <Button variant="primary" isLoading={verifyBusy} onClick={() => void handleSendVerification()}>{t('auth.verify.send')}</Button>
+                        )}
+                        {verifyMailSent && (
+                            <Button variant="ghost" disabled={verifyBusy} onClick={() => void handleSendVerification()}>{t('auth.verify.resend')}</Button>
+                        )}
                     </div>
                 </>
             );

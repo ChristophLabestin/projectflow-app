@@ -3606,6 +3606,14 @@ const en = {
     'nav.create.label': 'Create',
     'nav.create.task': 'New task',
     'nav.create.initiative': 'New initiative',
+    'auth.verify.send': 'Send confirmation email',
+    'auth.verify.resend': 'Send again',
+    'auth.verify.check': 'I have confirmed it',
+    'auth.verify.sentText': 'We sent a confirmation link to {email}. Open it, then come back here.',
+    'auth.verify.stillPending': 'Not confirmed yet. Open the link in the email, then try again.',
+    'auth.verify.sendFailed': 'The email could not be sent. Please try again in a moment.',
+    'workspace.accept.verifyTitle': 'Confirm your email to join',
+    'workspace.accept.verifyText': 'This invitation was sent to {email}. Confirm that this address is yours before you join the workspace.',
 };
 
 export default en;

@@ -98,6 +98,11 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
         if (invite.kind === 'email' && invite.email && invite.email !== email) {
             throw new functions.https.HttpsError('permission-denied', 'invite-email-mismatch');
         }
+        // Anyone can register an account with any address; only a confirmed
+        // address proves the caller is the person the invitation was sent to.
+        if (invite.kind === 'email' && !userRecord.emailVerified) {
+            throw new functions.https.HttpsError('permission-denied', 'invite-email-unverified');
+        }
         const inviteRole = INVITABLE_ROLES.includes(invite.role) ? invite.role : 'Member';
         const projectIds: string[] = Array.isArray(invite.projectIds) ? invite.projectIds.filter((id: unknown) => typeof id === 'string') : [];
 

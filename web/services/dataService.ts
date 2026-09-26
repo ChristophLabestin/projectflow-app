@@ -24,6 +24,11 @@ import {
     runTransaction,
     deleteField
 } from "firebase/firestore";
+import {
+    getAIUsage as getPrivateAIUsage,
+    incrementAIUsage as incrementPrivateAIUsage,
+    incrementImageUsage as incrementPrivateImageUsage
+} from "./domain/userPrivateData";
 import { httpsCallable } from "firebase/functions";
 import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
@@ -233,47 +238,14 @@ export const linkWithGithub = async (): Promise<string> => {
     }
 };
 
-export const getAIUsage = async (userId: string): Promise<AIUsage | null> => {
-    try {
-        const userRef = userDocRef(userId);
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-            const data = snap.data() as User;
-            // Monthly reset check
-            if (data.aiUsage) {
-                const lastReset = data.aiUsage.lastReset?.toDate?.() || new Date(data.aiUsage.lastReset);
-                const now = new Date();
-                if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
-                    const resetUsage = {
-                        ...data.aiUsage,
-                        tokensUsed: 0,
-                        imagesUsed: 0,
-                        lastReset: serverTimestamp()
-                    };
-                    await updateDoc(userRef, { aiUsage: resetUsage });
-                    return resetUsage;
-                }
-            }
-            return data.aiUsage || null;
-        }
-    } catch (e) {
-        console.warn("Failed to get CORA usage", e);
-    }
-    return null;
-};
+export const getAIUsage = (userId: string): Promise<AIUsage | null> => getPrivateAIUsage(userId);
 
 export const incrementAIUsage = async (userId: string, tokens: number) => {
-    const userRef = userDocRef(userId);
-    await updateDoc(userRef, {
-        'aiUsage.tokensUsed': increment(tokens)
-    });
+    await incrementPrivateAIUsage(userId, tokens);
 };
 
 export const incrementImageUsage = async (userId: string, count: number) => {
-    const userRef = userDocRef(userId);
-    await updateDoc(userRef, {
-        'aiUsage.imagesUsed': increment(count)
-    });
+    await incrementPrivateImageUsage(userId, count);
 };
 
 export const incrementIdeaAIUsage = async (ideaId: string, tokens: number, projectId: string, tenantId?: string) => {
@@ -996,19 +968,18 @@ export const getUsersByIds = async (userIds: string[], tenantId?: string): Promi
 
     const members: Member[] = [];
 
+    // Profiles are fetched one by one: listing `users` is not allowed by the
+    // rules, so nobody can enumerate every account.
     for (const chunk of chunks) {
-        // Try global users collection first as it's the source of truth for profiles
-        const q = query(collection(db, USERS), where(documentId(), "in", chunk));
-        const snapshot = await getDocs(q);
-
-        snapshot.docs.forEach(doc => {
-            const data = doc.data();
+        const snaps = await Promise.all(chunk.map((id) => getDoc(doc(db, USERS, id)).catch(() => null)));
+        snaps.forEach((snap) => {
+            if (!snap?.exists()) return;
+            const data = snap.data();
             members.push({
-                uid: doc.id,
+                uid: snap.id,
                 email: data.email,
                 displayName: data.displayName || 'Unknown User',
-                photoURL: data.photoURL,
-                // ... map other fields if needed
+                photoURL: data.photoURL
             } as Member);
         });
     }

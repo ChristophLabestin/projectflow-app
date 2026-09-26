@@ -11,6 +11,7 @@ import {
     updateDoc,
     where
 } from 'firebase/firestore';
+import { ensurePrivateUserData } from '../domain/userPrivateData';
 
 import { auth, db } from '../firebase';
 import type { Activity, Idea, SubTask, Task, WorkspaceRole } from '../../types';
@@ -119,17 +120,10 @@ export const ensureTenantAndUser = async (_tenantId?: string, _role?: WorkspaceR
             displayName: user.displayName || existing?.displayName || (user.email || 'User').split('@')[0],
             photoURL: existing?.photoURL || user.photoURL || '',
             updatedAt: serverTimestamp(),
-            ...(!existing ? { createdAt: serverTimestamp() } : {}),
-            ...(!existing?.aiUsage ? {
-                aiUsage: {
-                    tokensUsed: 0,
-                    tokenLimit: 1000000,
-                    imagesUsed: 0,
-                    imageLimit: 50,
-                    lastReset: serverTimestamp()
-                }
-            } : {})
+            ...(!existing ? { createdAt: serverTimestamp() } : {})
         }, { merge: true });
+        // Usage counters are private (see userPrivateData).
+        await ensurePrivateUserData(user.uid, { aiUsage: existing?.aiUsage || null, lastTenantId: existing?.lastTenantId || null });
     })().catch((error) => {
         ensureUserProfileCache.delete(user.uid);
         throw error;

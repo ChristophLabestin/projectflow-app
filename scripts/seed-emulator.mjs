@@ -7,6 +7,7 @@
 //   NODE_PATH=functions/node_modules node scripts/seed-emulator.mjs
 //
 // Demo login (emulator only): demo@projectflow.test / projectflow-demo
+// Signup test account (emulator only, registered through the UI, not seeded): neu@projectflow.test / pf-signup-5fb2c664
 
 import { createRequire } from 'node:module';
 

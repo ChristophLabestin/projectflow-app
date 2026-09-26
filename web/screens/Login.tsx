@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
+import { sendVerificationEmail } from '../services/domain/emailVerification';
 import { auth } from '../services/firebase';
 import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCore';
 import { Button } from '../components/common/Button/Button';
@@ -108,6 +109,8 @@ export const Login = () => {
                     throw new Error(t('login.warning.registrationDisabled'));
                 }
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                // Confirmation mail right away; invitations require a verified address.
+                void sendVerificationEmail(redirectUrl.startsWith('/') ? redirectUrl : '/').catch((verifyError) => console.warn('Could not send verification email', verifyError));
                 if (name) {
                     await updateProfile(userCredential.user, { displayName: name });
                     await refreshCurrentUserProfile();

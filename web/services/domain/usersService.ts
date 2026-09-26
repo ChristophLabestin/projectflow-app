@@ -10,6 +10,7 @@ import {
 
 import { auth, db } from '../firebase';
 import { getActiveTenantId } from './authService';
+import { getAIUsage as getPrivateAIUsage } from './userPrivateData';
 import {
     extractFirebaseStoragePath,
     extractTenantIdFromStoragePath,
@@ -193,35 +194,4 @@ export const updateUserProfile = async (data: {
     return { photoURL, coverURL };
 };
 
-export const getAIUsage = async (userId: string): Promise<AIUsage | null> => {
-    try {
-        const snap = await getDoc(userDocRef(userId));
-        if (!snap.exists()) {
-            return null;
-        }
-
-        const data = snap.data() as User;
-        if (!data.aiUsage) {
-            return null;
-        }
-
-        const lastReset = data.aiUsage.lastReset?.toDate?.() || new Date(data.aiUsage.lastReset);
-        const now = new Date();
-
-        if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
-            const resetUsage = {
-                ...data.aiUsage,
-                tokensUsed: 0,
-                imagesUsed: 0,
-                lastReset: serverTimestamp()
-            };
-            await updateDoc(userDocRef(userId), { aiUsage: resetUsage });
-            return resetUsage;
-        }
-
-        return data.aiUsage;
-    } catch (error) {
-        console.warn('Failed to get CORA usage', error);
-        return null;
-    }
-};
+export const getAIUsage = (userId: string): Promise<AIUsage | null> => getPrivateAIUsage(userId);

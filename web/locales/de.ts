@@ -3608,6 +3608,14 @@ const de = {
     'nav.create.label': 'Neu anlegen',
     'nav.create.task': 'Neue Aufgabe',
     'nav.create.initiative': 'Neue Initiative',
+    'auth.verify.send': 'Bestätigungsmail senden',
+    'auth.verify.resend': 'Erneut senden',
+    'auth.verify.check': 'Ich habe bestätigt',
+    'auth.verify.sentText': 'Wir haben einen Bestätigungslink an {email} geschickt. Öffne ihn und komm dann hierher zurück.',
+    'auth.verify.stillPending': 'Noch nicht bestätigt. Öffne den Link in der E-Mail und versuch es dann erneut.',
+    'auth.verify.sendFailed': 'Die E-Mail konnte nicht gesendet werden. Bitte versuch es gleich noch einmal.',
+    'workspace.accept.verifyTitle': 'Bestätige deine E-Mail, um beizutreten',
+    'workspace.accept.verifyText': 'Diese Einladung ging an {email}. Bestätige, dass die Adresse dir gehört, bevor du dem Workspace beitrittst.',
 };
 
 export default de;

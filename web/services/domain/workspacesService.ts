@@ -12,6 +12,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
+import { readLastTenantId, writeLastTenantId } from './userPrivateData';
 import { httpsCallable } from 'firebase/functions';
 
 import { auth, db, functions } from '../firebase';
@@ -140,7 +141,7 @@ const rememberWorkspace = async (tenantId: string) => {
     setCachedTenantId(tenantId);
     const user = auth.currentUser;
     if (user) {
-        await setDoc(userRef(user.uid), { lastTenantId: tenantId }, { merge: true }).catch(() => undefined);
+        await writeLastTenantId(user.uid, tenantId).catch(() => undefined);
     }
 };
 
@@ -162,7 +163,7 @@ export const resolveWorkspaceForCurrentUser = async (defaultWorkspaceName: strin
     const ids = new Set(workspaces.map((workspace) => workspace.id));
     let lastTenantId: string | undefined;
     try {
-        lastTenantId = (await getDoc(userRef(user.uid))).data()?.lastTenantId;
+        lastTenantId = await readLastTenantId(user.uid);
     } catch {
         lastTenantId = undefined;
     }
