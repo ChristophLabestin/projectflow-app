@@ -3635,6 +3635,18 @@ const de = {
     'passkey.setup.benefit.phishing': 'Kann nicht wie ein Passwort abgefischt oder geleakt werden',
     'passkey.setup.benefit.devices': 'Weitere Geräte jederzeit unter Einstellungen → Sicherheit',
     'gettingStarted.secure.alt': 'Lieber Authenticator-App',
+    'settings.mcp.title': 'Claude & Codex verbinden (MCP)',
+    'settings.mcp.subtitle': 'Coding-Agenten lesen und bearbeiten Projekte, Aufgaben und Initiativen über das Model Context Protocol. Sie handeln mit den Rechten des verwendeten API-Tokens.',
+    'settings.mcp.claude.label': 'Claude Code',
+    'settings.mcp.claude.hint': 'Einmal im Terminal ausführen; danach steht der Server in jeder Claude-Code-Sitzung zur Verfügung.',
+    'settings.mcp.codex.label': 'Codex',
+    'settings.mcp.codex.hint': 'In die Codex-Konfiguration eintragen und das Token in die Umgebungsvariable {env} legen.',
+    'settings.mcp.other.label': 'Andere Clients',
+    'settings.mcp.other.hint': 'Für MCP-Clients mit JSON-Konfiguration (z. B. Cursor): Streamable HTTP mit Bearer-Token.',
+    'settings.mcp.copy': 'Kopieren',
+    'settings.mcp.copied': 'Kopiert',
+    'settings.mcp.tokenPlaceholder': '<DEIN_API_TOKEN>',
+    'settings.mcp.needToken': 'Leg unten ein Token an – das Profil „Codex Vollzugriff“ deckt alle Tools ab. Die Befehle zeigen dann dein echtes Token.',
 };
 
 export default de;

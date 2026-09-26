@@ -6,6 +6,7 @@ const admin = require("firebase-admin");
 const email_1 = require("./email");
 const email_locales_1 = require("./email-locales");
 const corsConfig_1 = require("./corsConfig");
+const firestore_1 = require("firebase-admin/firestore");
 const db = admin.firestore();
 const REGION = 'europe-west3';
 // Helper to generate a unique code
@@ -34,13 +35,13 @@ exports.requestNewsletterSignup = functions.region(REGION).https.onRequest((req,
         try {
             console.log(`Processing newsletter signup request for ${email}`);
             const code = generateCode();
-            const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
+            const expiresAt = firestore_1.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
             const pendingData = {
                 email,
                 code,
                 expiresAt,
                 confirmed: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: firestore_1.FieldValue.serverTimestamp()
             };
             const batch = db.batch();
             // 1. Add to 'newsletter_pending' collection
@@ -103,12 +104,12 @@ exports.confirmNewsletterSignup = functions.region(REGION).https.onRequest((req,
             }
             const batch = db.batch();
             // 1. Mark pending doc as confirmed
-            batch.update(doc.ref, { confirmed: true, confirmedAt: admin.firestore.FieldValue.serverTimestamp() });
+            batch.update(doc.ref, { confirmed: true, confirmedAt: firestore_1.FieldValue.serverTimestamp() });
             // 2. Add/Update 'newsletter_subscribers' collection (base level, email as ID)
             const subscriberRef = db.collection('newsletter_subscribers').doc(requestData.email);
             batch.set(subscriberRef, {
                 email: requestData.email,
-                subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
+                subscribedAt: firestore_1.FieldValue.serverTimestamp(),
                 source: 'landing_page',
                 status: 'active'
             }, { merge: true });

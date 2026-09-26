@@ -6,6 +6,7 @@
  */
 
 import * as admin from 'firebase-admin';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin
 if (!admin.apps.length) {
@@ -20,14 +21,14 @@ interface OldUserDoc {
     displayName?: string;
     photoURL?: string;
     role?: string;
-    joinedAt?: admin.firestore.Timestamp;
-    updatedAt?: admin.firestore.Timestamp;
+    joinedAt?: Timestamp;
+    updatedAt?: Timestamp;
     aiUsage?: {
         tokensUsed: number;
         tokenLimit: number;
         imagesUsed: number;
         imageLimit: number;
-        lastReset: admin.firestore.Timestamp;
+        lastReset: Timestamp;
     };
     title?: string;
     bio?: string;
@@ -74,7 +75,7 @@ async function migrateUsers() {
                     email: userData.email || '',
                     displayName: userData.displayName || 'User',
                     photoURL: userData.photoURL || '',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: FieldValue.serverTimestamp(),
                 };
 
                 if (userData.title) profileData.title = userData.title;
@@ -91,7 +92,7 @@ async function migrateUsers() {
                 }
 
                 if (!existingGlobalUser.exists) {
-                    profileData.createdAt = userData.joinedAt || admin.firestore.FieldValue.serverTimestamp();
+                    profileData.createdAt = userData.joinedAt || FieldValue.serverTimestamp();
                 }
 
                 await globalUserRef.set(profileData, { merge: true });
@@ -101,7 +102,7 @@ async function migrateUsers() {
                 const memberData: any = {
                     uid: userId,
                     role: userData.role || 'Member',
-                    joinedAt: userData.joinedAt || admin.firestore.FieldValue.serverTimestamp(),
+                    joinedAt: userData.joinedAt || FieldValue.serverTimestamp(),
                 };
 
                 if (userData.pinnedProjectId) memberData.pinnedProjectId = userData.pinnedProjectId;

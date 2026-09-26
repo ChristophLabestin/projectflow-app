@@ -13,6 +13,7 @@ import {
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { db } from './init';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type StorageProvider = 'firebase' | 's3' | 'googleDrive';
 type UploadModule = 'media' | 'profile' | 'project' | 'finance' | string;
@@ -547,7 +548,7 @@ const getGoogleDriveAccessToken = async (tenantId: string, secret: FileStorageSe
                 ...(drive || {}),
                 connected: false,
                 lastError: 'missing_refresh_token',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp(),
             },
         }, { merge: true });
 
@@ -574,9 +575,9 @@ const getGoogleDriveAccessToken = async (tenantId: string, secret: FileStorageSe
                 accessToken: nextAccessToken,
                 tokenExpiryDate: nextExpiry,
                 scope: normalizeString(credentials.scope) || normalizeString(drive.scope),
-                lastError: admin.firestore.FieldValue.delete(),
+                lastError: FieldValue.delete(),
             },
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
 
         return nextAccessToken;
@@ -589,7 +590,7 @@ const getGoogleDriveAccessToken = async (tenantId: string, secret: FileStorageSe
                 connected: false,
                 lastError: normalizeString(error?.message || 'token_refresh_failed') || 'token_refresh_failed',
             },
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         }, { merge: true });
 
         throw new functions.https.HttpsError('failed-precondition', 'Google Drive token refresh failed. Reconnect Google Drive.');
@@ -1029,7 +1030,7 @@ export const saveWorkspaceFileStorageConfig = functions.region(REGION).https.onC
             ...(existing.googleDrive || {}),
             ...nextGoogleDrive,
         },
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
 
@@ -1055,7 +1056,7 @@ export const testWorkspaceFileStorageConnection = functions.region(REGION).https
         const [metadata] = await bucket.getMetadata();
 
         await secretDocRef(tenantId).set({
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             updatedBy: actorId,
         }, { merge: true });
 
@@ -1081,10 +1082,10 @@ export const testWorkspaceFileStorageConnection = functions.region(REGION).https
             s3: {
                 ...(secret.s3 || {}),
                 ...s3Config,
-                lastTestedAt: admin.firestore.FieldValue.serverTimestamp(),
-                connectedAt: admin.firestore.FieldValue.serverTimestamp(),
+                lastTestedAt: FieldValue.serverTimestamp(),
+                connectedAt: FieldValue.serverTimestamp(),
             },
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             updatedBy: actorId,
         }, { merge: true });
 
@@ -1108,10 +1109,10 @@ export const testWorkspaceFileStorageConnection = functions.region(REGION).https
     await secretDocRef(tenantId).set({
         googleDrive: {
             ...(secret.googleDrive || {}),
-            lastTestedAt: admin.firestore.FieldValue.serverTimestamp(),
-            lastError: admin.firestore.FieldValue.delete(),
+            lastTestedAt: FieldValue.serverTimestamp(),
+            lastError: FieldValue.delete(),
         },
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
 
@@ -1134,8 +1135,8 @@ export const getGoogleDriveStorageAuthUrl = functions.region(REGION).https.onCal
         tenantId,
         userId: actorId,
         csrf,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
     });
 
     const statePayload = Buffer.from(JSON.stringify({
@@ -1162,18 +1163,18 @@ export const disconnectGoogleDriveStorage = functions.region(REGION).https.onCal
     await secretDocRef(tenantId).set({
         googleDrive: {
             connected: false,
-            folderId: admin.firestore.FieldValue.delete(),
-            folderName: admin.firestore.FieldValue.delete(),
-            email: admin.firestore.FieldValue.delete(),
-            scope: admin.firestore.FieldValue.delete(),
-            accessToken: admin.firestore.FieldValue.delete(),
-            refreshToken: admin.firestore.FieldValue.delete(),
-            tokenExpiryDate: admin.firestore.FieldValue.delete(),
-            connectedAt: admin.firestore.FieldValue.delete(),
-            lastTestedAt: admin.firestore.FieldValue.delete(),
-            lastError: admin.firestore.FieldValue.delete(),
+            folderId: FieldValue.delete(),
+            folderName: FieldValue.delete(),
+            email: FieldValue.delete(),
+            scope: FieldValue.delete(),
+            accessToken: FieldValue.delete(),
+            refreshToken: FieldValue.delete(),
+            tokenExpiryDate: FieldValue.delete(),
+            connectedAt: FieldValue.delete(),
+            lastTestedAt: FieldValue.delete(),
+            lastError: FieldValue.delete(),
         },
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
 
@@ -1242,8 +1243,8 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
         fallbackReason: provider.fallbackReason || null,
         providerRef: target.providerRef,
         createdBy: actorId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + UPLOAD_DRAFT_TTL_MS),
+        createdAt: FieldValue.serverTimestamp(),
+        expiresAt: Timestamp.fromMillis(Date.now() + UPLOAD_DRAFT_TTL_MS),
     });
 
     return {
@@ -1280,7 +1281,7 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
         throw new functions.https.HttpsError('permission-denied', 'Only the uploader can finalize this draft.');
     }
 
-    const expiresAtMillis = (draftData.expiresAt as admin.firestore.Timestamp | undefined)?.toMillis?.() || 0;
+    const expiresAtMillis = (draftData.expiresAt as Timestamp | undefined)?.toMillis?.() || 0;
     if (expiresAtMillis && expiresAtMillis < Date.now()) {
         throw new functions.https.HttpsError('deadline-exceeded', 'Upload draft expired. Create a new upload session.');
     }
@@ -1314,8 +1315,8 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
 
     await fileRef.set({
         ...fileRecord,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
     });
 
     await draftRef.delete();
@@ -1362,8 +1363,8 @@ export const listTenantFiles = functions.region(REGION).https.onCall(async (data
         .filter(({ row }) => (!entityType || row.entityType === entityType))
         .filter(({ row }) => (!entityId || row.entityId === entityId))
         .sort((a, b) => {
-            const aMillis = (a.row.createdAt as admin.firestore.Timestamp | undefined)?.toMillis?.() || 0;
-            const bMillis = (b.row.createdAt as admin.firestore.Timestamp | undefined)?.toMillis?.() || 0;
+            const aMillis = (a.row.createdAt as Timestamp | undefined)?.toMillis?.() || 0;
+            const bMillis = (b.row.createdAt as Timestamp | undefined)?.toMillis?.() || 0;
             return bMillis - aMillis;
         });
 
@@ -1517,7 +1518,7 @@ export const googleDriveStorageCallback = functions.region(REGION).https.onReque
             throw new Error('OAuth state CSRF validation failed.');
         }
 
-        const expiresAtMillis = (authState.expiresAt as admin.firestore.Timestamp | undefined)?.toMillis?.() || 0;
+        const expiresAtMillis = (authState.expiresAt as Timestamp | undefined)?.toMillis?.() || 0;
         if (expiresAtMillis && expiresAtMillis < Date.now()) {
             throw new Error('OAuth state expired.');
         }
@@ -1597,10 +1598,10 @@ export const googleDriveStorageCallback = functions.region(REGION).https.onReque
                 accessToken,
                 refreshToken,
                 tokenExpiryDate: expiryDate,
-                connectedAt: previousDrive.connectedAt || admin.firestore.FieldValue.serverTimestamp(),
-                lastError: admin.firestore.FieldValue.delete(),
+                connectedAt: previousDrive.connectedAt || FieldValue.serverTimestamp(),
+                lastError: FieldValue.delete(),
             },
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
             updatedBy: userId,
         }, { merge: true });
 

@@ -87,7 +87,7 @@ exports.facebookCallback = functions.region('europe-west3').https.onRequest(asyn
             .collection('projects').doc(projectId)
             .collection('social_integrations');
         const integrationData = {
-            platform: 'FacebookData',
+            platform: 'FacebookData', // Intermediate type
             projectId,
             authUserId: userId,
             facebookUserId: userData.id,

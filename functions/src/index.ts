@@ -204,3 +204,4 @@ export {
     upsertFinanceTaxCode
 };
 export * from './passkeys';
+export { mcp } from './mcp-server';

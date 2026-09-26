@@ -12,7 +12,8 @@
  * 4. Update your firebase.json hosting rewrites (see instructions below)
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.blogMetaHandler = exports.createBlogMetaFunction = void 0;
+exports.blogMetaHandler = void 0;
+exports.createBlogMetaFunction = createBlogMetaFunction;
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const fs = require("fs");
@@ -83,7 +84,6 @@ function createBlogMetaFunction(db, indexHtmlPath) {
         res.send(html);
     });
 }
-exports.createBlogMetaFunction = createBlogMetaFunction;
 /**
  * Escape HTML special characters to prevent XSS
  */

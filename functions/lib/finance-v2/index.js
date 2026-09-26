@@ -5,6 +5,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const functions = require("firebase-functions/v1");
 const openai_1 = require("openai");
+const firestore_1 = require("firebase-admin/firestore");
 const init_1 = require("../init");
 const calculations_1 = require("./calculations");
 const shared_1 = require("./shared");
@@ -181,7 +182,7 @@ const sanitizeOperationResult = (value) => {
 const nowPlusHours = (hours) => {
     const date = new Date();
     date.setHours(date.getHours() + hours);
-    return admin.firestore.Timestamp.fromDate(date);
+    return firestore_1.Timestamp.fromDate(date);
 };
 const buildOperationStep = (name, status, error) => ({
     name,
@@ -453,7 +454,7 @@ const postJournalEntryInternal = async (actorId, payload) => {
     batch.set(entryRef, {
         tenantId: payload.tenantId,
         entryNumber,
-        postingDate: admin.firestore.Timestamp.fromDate(postingDateValue),
+        postingDate: firestore_1.Timestamp.fromDate(postingDateValue),
         periodKey,
         description: payload.description,
         sourceType: payload.sourceType || 'manual',
@@ -636,7 +637,7 @@ exports.upsertFinancePeriod = functions.region(shared_1.REGION).https.onCall(asy
         ? toDateFromInput(payload.endDate)
         : new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth() + 1, 0));
     await (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.periods).doc(periodKey).set(Object.assign({ tenantId, id: periodKey, periodKey, monthKey: periodKey, fiscalYearId,
-        status, startDate: admin.firestore.Timestamp.fromDate(startDate), endDate: admin.firestore.Timestamp.fromDate(endDate), notes: (0, shared_1.normalizeString)(payload.notes) || null, updatedAt: (0, shared_1.serverTimestamp)() }, (status === 'closed' ? { closedAt: (0, shared_1.serverTimestamp)(), closedBy: actorId } : {})), { merge: true });
+        status, startDate: firestore_1.Timestamp.fromDate(startDate), endDate: firestore_1.Timestamp.fromDate(endDate), notes: (0, shared_1.normalizeString)(payload.notes) || null, updatedAt: (0, shared_1.serverTimestamp)() }, (status === 'closed' ? { closedAt: (0, shared_1.serverTimestamp)(), closedBy: actorId } : {})), { merge: true });
     await (0, shared_1.writeFinanceAuditLog)(tenantId, actorId, 'finance.period.upserted', { periodKey, status });
     return { periodKey, status };
 });
@@ -977,8 +978,8 @@ exports.upsertFinanceRecurringTemplate = functions.region(shared_1.REGION).https
         customerId: (0, shared_1.normalizeString)(template.customerId) || null,
         type,
         cadence,
-        nextRunAt: admin.firestore.Timestamp.fromDate(nextRunAt),
-        endAt: (0, shared_1.normalizeString)(template.endAt) ? admin.firestore.Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
+        nextRunAt: firestore_1.Timestamp.fromDate(nextRunAt),
+        endAt: (0, shared_1.normalizeString)(template.endAt) ? firestore_1.Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
         autoPost: template.autoPost === true,
         isActive: template.isActive === false ? false : true,
         currencyCode: (0, shared_1.normalizeCurrencyCode)(template.currencyCode, 'EUR'),
@@ -1244,8 +1245,8 @@ exports.confirmExtractedInvoiceDraft = functions.region(shared_1.REGION).https.o
         billNo: (0, shared_1.normalizeString)(payload.billNo) || `BILL-${Date.now()}`,
         vendorId,
         projectId,
-        billDate: admin.firestore.Timestamp.fromDate(billDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        billDate: firestore_1.Timestamp.fromDate(billDate),
+        dueDate: firestore_1.Timestamp.fromDate(dueDate),
         currencyCode,
         status: autoPost ? 'posted' : 'draft',
         lines: [billLine],
@@ -1322,9 +1323,9 @@ exports.confirmExtractedInvoiceDraft = functions.region(shared_1.REGION).https.o
             customerId: null,
             type: 'bill',
             cadence: recurringCadence,
-            nextRunAt: admin.firestore.Timestamp.fromDate(dueDate),
+            nextRunAt: firestore_1.Timestamp.fromDate(dueDate),
             endAt: (0, shared_1.normalizeString)(payload.recurringEndDate)
-                ? admin.firestore.Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
+                ? firestore_1.Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
                 : null,
             autoPost,
             isActive: true,
@@ -1418,8 +1419,8 @@ exports.createInvoice = functions.region(shared_1.REGION).https.onCall(async (da
         invoiceNo: (0, shared_1.normalizeString)(payload.invoiceNo) || `INV-${Date.now()}`,
         customerId,
         projectId: (0, shared_1.normalizeString)(payload.projectId) || null,
-        issueDate: admin.firestore.Timestamp.fromDate(issueDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        issueDate: firestore_1.Timestamp.fromDate(issueDate),
+        dueDate: firestore_1.Timestamp.fromDate(dueDate),
         currencyCode,
         status: 'draft',
         lines,
@@ -1638,8 +1639,8 @@ exports.createBill = functions.region(shared_1.REGION).https.onCall(async (data,
         vendorId,
         projectId: (0, shared_1.normalizeString)(payload.projectId) || null,
         sourceDocumentFileId: (0, shared_1.normalizeString)(payload.sourceDocumentFileId) || null,
-        billDate: admin.firestore.Timestamp.fromDate(billDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        billDate: firestore_1.Timestamp.fromDate(billDate),
+        dueDate: firestore_1.Timestamp.fromDate(dueDate),
         currencyCode,
         status: 'draft',
         lines,
@@ -1865,7 +1866,7 @@ exports.recordPayment = functions.region(shared_1.REGION).https.onCall(async (da
         tenantId,
         paymentNo: `PAY-${Date.now()}`,
         direction,
-        paymentDate: admin.firestore.Timestamp.fromDate(paymentDate),
+        paymentDate: firestore_1.Timestamp.fromDate(paymentDate),
         amount,
         currencyCode: (0, shared_1.normalizeCurrencyCode)(payload.currencyCode, settings.currencyCode),
         bankAccountId: (0, shared_1.normalizeString)(payload.bankAccountId) || null,
@@ -2003,9 +2004,9 @@ exports.importBankStatement = functions.region(shared_1.REGION).https.onCall(asy
         batch.set(ref, {
             tenantId,
             bankAccountId,
-            bookingDate: admin.firestore.Timestamp.fromDate(bookingDate),
+            bookingDate: firestore_1.Timestamp.fromDate(bookingDate),
             valueDate: (0, shared_1.normalizeString)(raw.valueDate)
-                ? admin.firestore.Timestamp.fromDate(toDateFromInput(raw.valueDate))
+                ? firestore_1.Timestamp.fromDate(toDateFromInput(raw.valueDate))
                 : null,
             amount: round2((0, shared_1.toNumber)(raw.amount)),
             currencyCode: (0, shared_1.normalizeCurrencyCode)(raw.currencyCode, 'EUR'),
@@ -2040,8 +2041,8 @@ exports.suggestReconciliation = functions.region(shared_1.REGION).https.onCall(a
         if (Number.isFinite(year) && Number.isFinite(month)) {
             const from = new Date(Date.UTC(year, month - 1, 1));
             const to = new Date(Date.UTC(year, month, 1));
-            query = query.where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to));
+            query = query.where('bookingDate', '>=', firestore_1.Timestamp.fromDate(from))
+                .where('bookingDate', '<', firestore_1.Timestamp.fromDate(to));
         }
     }
     const [bankTxSnap, invoicesSnap, billsSnap] = await Promise.all([
@@ -2251,8 +2252,8 @@ exports.runMonthlyClose = functions.region(shared_1.REGION).https.onCall(async (
     const [unreconciledBank, openInvoices, openBills] = await Promise.all([
         (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
             .where('reconciled', '==', false)
-            .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-            .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+            .where('bookingDate', '>=', firestore_1.Timestamp.fromDate(from))
+            .where('bookingDate', '<', firestore_1.Timestamp.fromDate(to))
             .get(),
         (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices)
             .where('status', 'in', ['draft', 'issued', 'partially_paid'])
@@ -2873,8 +2874,8 @@ const buildOperationPreview = async (tenantId, operationType, payload) => {
         const [unreconciledBank, openInvoices, openBills] = await Promise.all([
             (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.bankTransactions)
                 .where('reconciled', '==', false)
-                .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+                .where('bookingDate', '>=', firestore_1.Timestamp.fromDate(from))
+                .where('bookingDate', '<', firestore_1.Timestamp.fromDate(to))
                 .get(),
             (0, shared_1.tenantCollectionRef)(tenantId, shared_1.FINANCE_COLLECTIONS.invoices)
                 .where('status', 'in', ['draft', 'issued', 'partially_paid'])

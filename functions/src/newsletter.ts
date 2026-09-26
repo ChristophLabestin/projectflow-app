@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 
 
@@ -10,6 +9,7 @@ import { getCategories, manageCategories } from './categories';
 import { corsMiddleware } from './corsConfig';
 import { validateAPIToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3'; // Frankfurt
 
@@ -121,12 +121,12 @@ export const newsletterSubscribe = functions.region(REGION).https.onRequest((req
                 // Recipient exists - update if needed
                 const existingDoc = existingQuery.docs[0];
                 const updates: any = {
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    updatedAt: FieldValue.serverTimestamp()
                 };
 
                 // Add to groups if provided
                 if (groupIds.length > 0) {
-                    updates.groupIds = admin.firestore.FieldValue.arrayUnion(...groupIds);
+                    updates.groupIds = FieldValue.arrayUnion(...groupIds);
                 }
 
                 // Update custom fields if provided
@@ -154,8 +154,8 @@ export const newsletterSubscribe = functions.region(REGION).https.onRequest((req
                 source: 'Signup Form',
                 projectId,
                 unsubscribeToken: crypto.randomUUID(), // Secure unique token for unsubscribe links
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp(),
+                updatedAt: FieldValue.serverTimestamp()
             };
 
             if (firstName) recipientData.firstName = firstName;
@@ -428,7 +428,7 @@ export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((r
 
             await recipientDoc.ref.update({
                 status: 'Unsubscribed',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                updatedAt: FieldValue.serverTimestamp()
             });
 
             if (isGet) {

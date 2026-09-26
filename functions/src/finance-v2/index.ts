@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions/v1';
 import OpenAI from 'openai';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 import { db } from '../init';
 import { calculateScenarioSnapshotFromInput } from './calculations';
@@ -137,8 +138,8 @@ const OPERATION_REQUIRES_CONFIRMATION: Record<FinanceOperationType, boolean> = {
 interface FinanceOperationStep {
     name: string;
     status: FinanceOperationStatus;
-    startedAt?: admin.firestore.FieldValue | admin.firestore.Timestamp;
-    finishedAt?: admin.firestore.FieldValue | admin.firestore.Timestamp;
+    startedAt?: FieldValue | Timestamp;
+    finishedAt?: FieldValue | Timestamp;
     error?: string | null;
 }
 
@@ -340,7 +341,7 @@ const sanitizeOperationResult = (value: unknown): unknown => {
 const nowPlusHours = (hours: number) => {
     const date = new Date();
     date.setHours(date.getHours() + hours);
-    return admin.firestore.Timestamp.fromDate(date);
+    return Timestamp.fromDate(date);
 };
 
 const buildOperationStep = (name: string, status: FinanceOperationStatus, error?: string | null): FinanceOperationStep => ({
@@ -673,7 +674,7 @@ const postJournalEntryInternal = async (
     batch.set(entryRef, {
         tenantId: payload.tenantId,
         entryNumber,
-        postingDate: admin.firestore.Timestamp.fromDate(postingDateValue),
+        postingDate: Timestamp.fromDate(postingDateValue),
         periodKey,
         description: payload.description,
         sourceType: payload.sourceType || 'manual',
@@ -907,8 +908,8 @@ export const upsertFinancePeriod = functions.region(REGION).https.onCall(async (
         monthKey: periodKey,
         fiscalYearId,
         status,
-        startDate: admin.firestore.Timestamp.fromDate(startDate),
-        endDate: admin.firestore.Timestamp.fromDate(endDate),
+        startDate: Timestamp.fromDate(startDate),
+        endDate: Timestamp.fromDate(endDate),
         notes: normalizeString(payload.notes) || null,
         updatedAt: serverTimestamp(),
         ...(status === 'closed' ? { closedAt: serverTimestamp(), closedBy: actorId } : {}),
@@ -1312,8 +1313,8 @@ export const upsertFinanceRecurringTemplate = functions.region(REGION).https.onC
         customerId: normalizeString(template.customerId) || null,
         type,
         cadence,
-        nextRunAt: admin.firestore.Timestamp.fromDate(nextRunAt),
-        endAt: normalizeString(template.endAt) ? admin.firestore.Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
+        nextRunAt: Timestamp.fromDate(nextRunAt),
+        endAt: normalizeString(template.endAt) ? Timestamp.fromDate(toDateFromInput(template.endAt)) : null,
         autoPost: template.autoPost === true,
         isActive: template.isActive === false ? false : true,
         currencyCode: normalizeCurrencyCode(template.currencyCode, 'EUR'),
@@ -1619,8 +1620,8 @@ export const confirmExtractedInvoiceDraft = functions.region(REGION).https.onCal
         billNo: normalizeString(payload.billNo) || `BILL-${Date.now()}`,
         vendorId,
         projectId,
-        billDate: admin.firestore.Timestamp.fromDate(billDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        billDate: Timestamp.fromDate(billDate),
+        dueDate: Timestamp.fromDate(dueDate),
         currencyCode,
         status: autoPost ? 'posted' : 'draft',
         lines: [billLine],
@@ -1700,9 +1701,9 @@ export const confirmExtractedInvoiceDraft = functions.region(REGION).https.onCal
             customerId: null,
             type: 'bill',
             cadence: recurringCadence,
-            nextRunAt: admin.firestore.Timestamp.fromDate(dueDate),
+            nextRunAt: Timestamp.fromDate(dueDate),
             endAt: normalizeString(payload.recurringEndDate)
-                ? admin.firestore.Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
+                ? Timestamp.fromDate(toDateFromInput(payload.recurringEndDate))
                 : null,
             autoPost,
             isActive: true,
@@ -1814,8 +1815,8 @@ export const createInvoice = functions.region(REGION).https.onCall(async (data, 
         invoiceNo: normalizeString(payload.invoiceNo) || `INV-${Date.now()}`,
         customerId,
         projectId: normalizeString(payload.projectId) || null,
-        issueDate: admin.firestore.Timestamp.fromDate(issueDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        issueDate: Timestamp.fromDate(issueDate),
+        dueDate: Timestamp.fromDate(dueDate),
         currencyCode,
         status: 'draft',
         lines,
@@ -1869,7 +1870,7 @@ export const issueInvoice = functions.region(REGION).https.onCall(async (data, c
 
     const journalResponse = await postJournalEntryInternal(actorId, {
         tenantId,
-        postingDate: (invoice.issueDate as admin.firestore.Timestamp).toDate().toISOString(),
+        postingDate: (invoice.issueDate as Timestamp).toDate().toISOString(),
         description: `Invoice ${normalizeString(invoice.invoiceNo)}`,
         sourceType: 'invoice',
         sourceId: invoiceId,
@@ -2073,8 +2074,8 @@ export const createBill = functions.region(REGION).https.onCall(async (data, con
         vendorId,
         projectId: normalizeString(payload.projectId) || null,
         sourceDocumentFileId: normalizeString(payload.sourceDocumentFileId) || null,
-        billDate: admin.firestore.Timestamp.fromDate(billDate),
-        dueDate: admin.firestore.Timestamp.fromDate(dueDate),
+        billDate: Timestamp.fromDate(billDate),
+        dueDate: Timestamp.fromDate(dueDate),
         currencyCode,
         status: 'draft',
         lines,
@@ -2127,7 +2128,7 @@ export const postBill = functions.region(REGION).https.onCall(async (data, conte
 
     const journalResponse = await postJournalEntryInternal(actorId, {
         tenantId,
-        postingDate: (bill.billDate as admin.firestore.Timestamp).toDate().toISOString(),
+        postingDate: (bill.billDate as Timestamp).toDate().toISOString(),
         description: `Bill ${normalizeString(bill.billNo)}`,
         sourceType: 'bill',
         sourceId: billId,
@@ -2331,7 +2332,7 @@ export const recordPayment = functions.region(REGION).https.onCall(async (data, 
         tenantId,
         paymentNo: `PAY-${Date.now()}`,
         direction,
-        paymentDate: admin.firestore.Timestamp.fromDate(paymentDate),
+        paymentDate: Timestamp.fromDate(paymentDate),
         amount,
         currencyCode: normalizeCurrencyCode(payload.currencyCode, settings.currencyCode),
         bankAccountId: normalizeString(payload.bankAccountId) || null,
@@ -2498,9 +2499,9 @@ export const importBankStatement = functions.region(REGION).https.onCall(async (
         batch.set(ref, {
             tenantId,
             bankAccountId,
-            bookingDate: admin.firestore.Timestamp.fromDate(bookingDate),
+            bookingDate: Timestamp.fromDate(bookingDate),
             valueDate: normalizeString(raw.valueDate)
-                ? admin.firestore.Timestamp.fromDate(toDateFromInput(raw.valueDate))
+                ? Timestamp.fromDate(toDateFromInput(raw.valueDate))
                 : null,
             amount: round2(toNumber(raw.amount)),
             currencyCode: normalizeCurrencyCode(raw.currencyCode, 'EUR'),
@@ -2542,8 +2543,8 @@ export const suggestReconciliation = functions.region(REGION).https.onCall(async
         if (Number.isFinite(year) && Number.isFinite(month)) {
             const from = new Date(Date.UTC(year, month - 1, 1));
             const to = new Date(Date.UTC(year, month, 1));
-            query = query.where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to));
+            query = query.where('bookingDate', '>=', Timestamp.fromDate(from))
+                .where('bookingDate', '<', Timestamp.fromDate(to));
         }
     }
 
@@ -2775,8 +2776,8 @@ export const runMonthlyClose = functions.region(REGION).https.onCall(async (data
     const [unreconciledBank, openInvoices, openBills] = await Promise.all([
         tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
             .where('reconciled', '==', false)
-            .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-            .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+            .where('bookingDate', '>=', Timestamp.fromDate(from))
+            .where('bookingDate', '<', Timestamp.fromDate(to))
             .get(),
         tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices)
             .where('status', 'in', ['draft', 'issued', 'partially_paid'])
@@ -2911,7 +2912,7 @@ export const generateDatevExport = functions.region(REGION).https.onCall(async (
         const entry = entryMap.get(normalizeString(line.entryId));
         if (!entry) return;
 
-        const postingDate = (entry.postingDate as admin.firestore.Timestamp).toDate().toISOString().slice(0, 10);
+        const postingDate = (entry.postingDate as Timestamp).toDate().toISOString().slice(0, 10);
         const amount = toNonNegative(line.debit) > 0 ? toNonNegative(line.debit) : toNonNegative(line.credit);
 
         const sibling = linesSnap.docs.find((candidate) => {
@@ -3505,8 +3506,8 @@ const buildOperationPreview = async (
         const [unreconciledBank, openInvoices, openBills] = await Promise.all([
             tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.bankTransactions)
                 .where('reconciled', '==', false)
-                .where('bookingDate', '>=', admin.firestore.Timestamp.fromDate(from))
-                .where('bookingDate', '<', admin.firestore.Timestamp.fromDate(to))
+                .where('bookingDate', '>=', Timestamp.fromDate(from))
+                .where('bookingDate', '<', Timestamp.fromDate(to))
                 .get(),
             tenantCollectionRef(tenantId, FINANCE_COLLECTIONS.invoices)
                 .where('status', 'in', ['draft', 'issued', 'partially_paid'])

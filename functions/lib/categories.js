@@ -2,10 +2,10 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.manageCategories = exports.getCategories = void 0;
 const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
 const init_1 = require("./init");
 const corsConfig_1 = require("./corsConfig");
 const authUtils_1 = require("./authUtils");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 /**
  * Get Categories Endpoint
@@ -103,7 +103,7 @@ exports.manageCategories = functions.region(REGION).https.onRequest((req, res) =
                     res.status(404).json({ success: false, error: 'Category not found' });
                     return;
                 }
-                await docRef.update(Object.assign(Object.assign({}, data), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+                await docRef.update(Object.assign(Object.assign({}, data), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
                 const updated = await docRef.get();
                 res.status(200).json({
                     success: true,
@@ -134,7 +134,7 @@ exports.manageCategories = functions.region(REGION).https.onRequest((req, res) =
                     name: data.name,
                     slug: slug,
                     description: data.description || '',
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: firestore_1.FieldValue.serverTimestamp()
                 };
                 const docRef = await init_1.db.collection('blog_categories').add(category);
                 const newDoc = await docRef.get();

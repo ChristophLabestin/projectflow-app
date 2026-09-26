@@ -38,7 +38,7 @@ exports.getYouTubeAuthUrl = functions.region('europe-west3').https.onCall(async 
         'https://www.googleapis.com/auth/userinfo.profile'
     ];
     const url = oauth2Client.generateAuthUrl({
-        access_type: 'offline',
+        access_type: 'offline', // Critical for getting a refresh token
         scope: scopes,
         state: state,
         prompt: 'consent' // Force consent to ensure we get a refresh token
@@ -92,7 +92,7 @@ exports.youtubeCallback = functions.region('europe-west3').https.onRequest(async
             profilePictureUrl: (_b = (_a = channel.snippet.thumbnails) === null || _a === void 0 ? void 0 : _a.default) === null || _b === void 0 ? void 0 : _b.url,
             channelId: channelId,
             accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
+            refreshToken: tokens.refresh_token, // IMPORTANT
             status: 'Connected',
             connectedAt: new Date().toISOString(),
             expiryDate: tokens.expiry_date,

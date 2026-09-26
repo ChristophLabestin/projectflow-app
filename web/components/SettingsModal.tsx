@@ -1,3 +1,4 @@
+import { McpConnectPanel } from './settings/McpConnectPanel';
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
 import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
@@ -1883,6 +1884,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         </div>
 
                         <div className="space-y-6 max-w-4xl">
+                            {/* Connect Claude Code / Codex via MCP */}
+                            <McpConnectPanel />
+
                             {/* Create Token Section */}
                             <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
                                 <h3 className="font-bold text-main text-lg">{t('settings.api.create.title')}</h3>
@@ -2074,6 +2078,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         <span className="material-symbols-outlined text-lg">warning</span>
                         <span>{t('settings.api.successModal.warning')}</span>
                     </div>
+
+                    <McpConnectPanel token={generatedToken} />
 
                     <div className="flex justify-end pt-2">
                         <Button onClick={() => {

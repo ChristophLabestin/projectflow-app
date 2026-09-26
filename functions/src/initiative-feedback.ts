@@ -4,6 +4,7 @@ import * as functions from 'firebase-functions/v1';
 
 import { corsMiddleware } from './corsConfig';
 import { db } from './init';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
 const PROJECTS = 'projects';
@@ -294,7 +295,7 @@ const buildFeedbackSettings = (
         allowAttachments: input.allowAttachments == null ? (current?.allowAttachments !== false) : toBoolean(input.allowAttachments),
         maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(input.maxAttachments, toNumber(current?.maxAttachments, 3)))),
         fields: sanitizeFeedbackFields(input.fields, current?.fields),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userId,
     };
 };
@@ -320,7 +321,7 @@ const toPublicIndexPayload = (
     allowAttachments: feedbackForm.allowAttachments !== false,
     maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(feedbackForm.maxAttachments, 3))),
     fields: sanitizeFeedbackFields(feedbackForm.fields),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
 });
 
 const writeActivity = async (
@@ -341,7 +342,7 @@ const writeActivity = async (
         user: 'ProjectFlow',
         ownerId: 'public-feedback',
         actorType: 'system',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
     });
 };
 
@@ -355,7 +356,7 @@ const syncProjectProgress = async (tenantId: string, projectId: string) => {
     const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
     await getProjectRef(tenantId, projectId).set(
-        { progress, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { progress, updatedAt: FieldValue.serverTimestamp() },
         { merge: true },
     );
 };
@@ -567,7 +568,7 @@ export const saveInitiativeFeedbackConfig = functions.region(REGION).https.onCal
     await initiativeRef.set(
         {
             feedbackForm: nextFeedbackForm,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true },
     );
@@ -806,7 +807,7 @@ export const submitInitiativeFeedback = functions.region(REGION).https.onRequest
                 initiativeId,
                 feedbackSubmission: {
                     source,
-                    submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    submittedAt: FieldValue.serverTimestamp(),
                     customerName: resolvedCustomerName,
                     customerEmail: resolvedCustomerEmail,
                     company: resolvedCompany,
@@ -814,7 +815,7 @@ export const submitInitiativeFeedback = functions.region(REGION).https.onRequest
                     attachments: uploadedAttachments,
                     fields: submittedFields,
                 },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
             });
 
             await writeActivity(

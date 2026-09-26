@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.verifyPasskeyAuthentication = exports.generatePasskeyAuthenticationOptions = exports.verifyPasskeyRegistration = exports.generatePasskeyRegistrationOptions = void 0;
 const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
 const server_1 = require("@simplewebauthn/server");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3'; // Frankfurt
 // Relying Party configuration.
 // A passkey is bound to the hostname it was created on (the RP ID), so every
@@ -89,7 +89,7 @@ exports.generatePasskeyRegistrationOptions = functions.region(REGION).https.onCa
             // verify step uses the exact same origin/rpID the browser saw.
             origin,
             rpID,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
         });
         return options;
     }
@@ -151,7 +151,7 @@ exports.verifyPasskeyRegistration = functions.region(REGION).https.onCall(async 
         // Use a safe ID for the document
         // credentialID is a Buffer, convert to base64url or hex
         const credentialIDBase64 = id;
-        await init_1.db.collection('users').doc(userId).collection('passkeys').doc(credentialIDBase64).set(Object.assign(Object.assign({}, newPasskey), { credentialID: Buffer.from(id, 'base64url'), credentialPublicKey: Buffer.from(publicKey), createdAt: admin.firestore.FieldValue.serverTimestamp(), label: data.deviceName || `Passkey (${(navigatorDetails === null || navigatorDetails === void 0 ? void 0 : navigatorDetails.platform) || 'Unknown Device'})` }));
+        await init_1.db.collection('users').doc(userId).collection('passkeys').doc(credentialIDBase64).set(Object.assign(Object.assign({}, newPasskey), { credentialID: Buffer.from(id, 'base64url'), credentialPublicKey: Buffer.from(publicKey), createdAt: firestore_1.FieldValue.serverTimestamp(), label: data.deviceName || `Passkey (${(navigatorDetails === null || navigatorDetails === void 0 ? void 0 : navigatorDetails.platform) || 'Unknown Device'})` }));
         // Cleanup challenge
         await init_1.db.collection('users').doc(userId).collection('passkey_challenges').doc('current').delete();
         return { success: true };
@@ -206,11 +206,11 @@ exports.generatePasskeyAuthenticationOptions = functions.region(REGION).https.on
         // 3. Store the challenge.
         await init_1.db.collection('auth_challenges').doc(options.challenge).set({
             challenge: options.challenge,
-            userId: userId || null,
+            userId: userId || null, // If we knew the user
             // Persist the relying party so verification matches what the browser saw.
             origin,
             rpID,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: firestore_1.FieldValue.serverTimestamp(),
         });
         return options;
     }
@@ -348,7 +348,7 @@ exports.verifyPasskeyAuthentication = functions.region(REGION).https.onCall(asyn
                 expectedRPID: rpID,
                 credential: {
                     id: credentialID,
-                    publicKey: dbPasskey.credentialPublicKey,
+                    publicKey: new Uint8Array(dbPasskey.credentialPublicKey),
                     counter: dbPasskey.counter,
                     transports: dbPasskey.transports,
                 },
@@ -363,7 +363,7 @@ exports.verifyPasskeyAuthentication = functions.region(REGION).https.onCall(asyn
             // Update counter
             await init_1.db.collection('users').doc(userId).collection('passkeys').doc(credentialID).update({
                 counter: authenticationInfo.newCounter,
-                lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+                lastUsedAt: firestore_1.FieldValue.serverTimestamp(),
             });
             // Delete challenge
             await init_1.db.collection('auth_challenges').doc(challenge).delete();

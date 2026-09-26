@@ -8,6 +8,7 @@ const google_auth_library_1 = require("google-auth-library");
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 const FILE_STORAGE_SECRET_ID = 'fileStorage';
 const FILE_STORAGE_AUTH_STATE_COLLECTION = 'file_storage_auth_states';
@@ -369,7 +370,7 @@ const getGoogleDriveAccessToken = async (tenantId, secret) => {
     const refreshToken = normalizeString(drive.refreshToken);
     if (!refreshToken) {
         await secretDocRef(tenantId).set({
-            googleDrive: Object.assign(Object.assign({}, (drive || {})), { connected: false, lastError: 'missing_refresh_token', updatedAt: admin.firestore.FieldValue.serverTimestamp() }),
+            googleDrive: Object.assign(Object.assign({}, (drive || {})), { connected: false, lastError: 'missing_refresh_token', updatedAt: firestore_1.FieldValue.serverTimestamp() }),
         }, { merge: true });
         throw new functions.https.HttpsError('failed-precondition', 'Google Drive refresh token missing. Reconnect Google Drive.');
     }
@@ -384,8 +385,8 @@ const getGoogleDriveAccessToken = async (tenantId, secret) => {
             throw new Error('Missing refreshed access token.');
         }
         await secretDocRef(tenantId).set({
-            googleDrive: Object.assign(Object.assign({}, (drive || {})), { connected: true, accessToken: nextAccessToken, tokenExpiryDate: nextExpiry, scope: normalizeString(credentials.scope) || normalizeString(drive.scope), lastError: admin.firestore.FieldValue.delete() }),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            googleDrive: Object.assign(Object.assign({}, (drive || {})), { connected: true, accessToken: nextAccessToken, tokenExpiryDate: nextExpiry, scope: normalizeString(credentials.scope) || normalizeString(drive.scope), lastError: firestore_1.FieldValue.delete() }),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
         return nextAccessToken;
     }
@@ -393,7 +394,7 @@ const getGoogleDriveAccessToken = async (tenantId, secret) => {
         console.error('Failed to refresh Google Drive token', error);
         await secretDocRef(tenantId).set({
             googleDrive: Object.assign(Object.assign({}, (drive || {})), { connected: false, lastError: normalizeString((error === null || error === void 0 ? void 0 : error.message) || 'token_refresh_failed') || 'token_refresh_failed' }),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
         }, { merge: true });
         throw new functions.https.HttpsError('failed-precondition', 'Google Drive token refresh failed. Reconnect Google Drive.');
     }
@@ -728,7 +729,7 @@ exports.saveWorkspaceFileStorageConfig = functions.region(REGION).https.onCall(a
         activeProvider,
         s3: Object.assign(Object.assign({}, (existing.s3 || {})), nextS3),
         googleDrive: Object.assign(Object.assign({}, (existing.googleDrive || {})), nextGoogleDrive),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
     const updated = await getSecretConfig(tenantId);
@@ -749,7 +750,7 @@ exports.testWorkspaceFileStorageConnection = functions.region(REGION).https.onCa
         const bucket = fileBucket();
         const [metadata] = await bucket.getMetadata();
         await secretDocRef(tenantId).set({
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
             updatedBy: actorId,
         }, { merge: true });
         return {
@@ -768,8 +769,8 @@ exports.testWorkspaceFileStorageConnection = functions.region(REGION).https.onCa
             Bucket: normalizeString(s3Config.bucket),
         }));
         await secretDocRef(tenantId).set({
-            s3: Object.assign(Object.assign(Object.assign({}, (secret.s3 || {})), s3Config), { lastTestedAt: admin.firestore.FieldValue.serverTimestamp(), connectedAt: admin.firestore.FieldValue.serverTimestamp() }),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            s3: Object.assign(Object.assign(Object.assign({}, (secret.s3 || {})), s3Config), { lastTestedAt: firestore_1.FieldValue.serverTimestamp(), connectedAt: firestore_1.FieldValue.serverTimestamp() }),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
             updatedBy: actorId,
         }, { merge: true });
         return {
@@ -787,8 +788,8 @@ exports.testWorkspaceFileStorageConnection = functions.region(REGION).https.onCa
         url: `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(normalizeString((_a = secret.googleDrive) === null || _a === void 0 ? void 0 : _a.folderId))}?fields=id,name,mimeType`,
     });
     await secretDocRef(tenantId).set({
-        googleDrive: Object.assign(Object.assign({}, (secret.googleDrive || {})), { lastTestedAt: admin.firestore.FieldValue.serverTimestamp(), lastError: admin.firestore.FieldValue.delete() }),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        googleDrive: Object.assign(Object.assign({}, (secret.googleDrive || {})), { lastTestedAt: firestore_1.FieldValue.serverTimestamp(), lastError: firestore_1.FieldValue.delete() }),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
     return {
@@ -807,8 +808,8 @@ exports.getGoogleDriveStorageAuthUrl = functions.region(REGION).https.onCall(asy
         tenantId,
         userId: actorId,
         csrf,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        expiresAt: firestore_1.Timestamp.fromMillis(Date.now() + 10 * 60 * 1000),
     });
     const statePayload = Buffer.from(JSON.stringify({
         tenantId,
@@ -830,18 +831,18 @@ exports.disconnectGoogleDriveStorage = functions.region(REGION).https.onCall(asy
     await secretDocRef(tenantId).set({
         googleDrive: {
             connected: false,
-            folderId: admin.firestore.FieldValue.delete(),
-            folderName: admin.firestore.FieldValue.delete(),
-            email: admin.firestore.FieldValue.delete(),
-            scope: admin.firestore.FieldValue.delete(),
-            accessToken: admin.firestore.FieldValue.delete(),
-            refreshToken: admin.firestore.FieldValue.delete(),
-            tokenExpiryDate: admin.firestore.FieldValue.delete(),
-            connectedAt: admin.firestore.FieldValue.delete(),
-            lastTestedAt: admin.firestore.FieldValue.delete(),
-            lastError: admin.firestore.FieldValue.delete(),
+            folderId: firestore_1.FieldValue.delete(),
+            folderName: firestore_1.FieldValue.delete(),
+            email: firestore_1.FieldValue.delete(),
+            scope: firestore_1.FieldValue.delete(),
+            accessToken: firestore_1.FieldValue.delete(),
+            refreshToken: firestore_1.FieldValue.delete(),
+            tokenExpiryDate: firestore_1.FieldValue.delete(),
+            connectedAt: firestore_1.FieldValue.delete(),
+            lastTestedAt: firestore_1.FieldValue.delete(),
+            lastError: firestore_1.FieldValue.delete(),
         },
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: actorId,
     }, { merge: true });
     const updated = await getSecretConfig(tenantId);
@@ -902,8 +903,8 @@ exports.createTenantFileUploadSession = functions.region(REGION).https.onCall(as
         fallbackReason: provider.fallbackReason || null,
         providerRef: target.providerRef,
         createdBy: actorId,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + UPLOAD_DRAFT_TTL_MS),
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        expiresAt: firestore_1.Timestamp.fromMillis(Date.now() + UPLOAD_DRAFT_TTL_MS),
     });
     return {
         uploadDraftId: draftRef.id,
@@ -961,7 +962,7 @@ exports.finalizeTenantFileUpload = functions.region(REGION).https.onCall(async (
         providerRef: verification.providerRef,
         createdBy: actorId,
     };
-    await fileRef.set(Object.assign(Object.assign({}, fileRecord), { createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await fileRef.set(Object.assign(Object.assign({}, fileRecord), { createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     await draftRef.delete();
     const persisted = (await fileRef.get()).data();
     const downloadUrl = await generateDownloadUrlFromRecord(tenantId, secret, persisted);
@@ -1173,10 +1174,10 @@ exports.googleDriveStorageCallback = functions.region(REGION).https.onRequest(as
                 accessToken,
                 refreshToken,
                 tokenExpiryDate: expiryDate,
-                connectedAt: previousDrive.connectedAt || admin.firestore.FieldValue.serverTimestamp(),
-                lastError: admin.firestore.FieldValue.delete(),
+                connectedAt: previousDrive.connectedAt || firestore_1.FieldValue.serverTimestamp(),
+                lastError: firestore_1.FieldValue.delete(),
             },
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp(),
             updatedBy: userId,
         }, { merge: true });
         await authStateRef.delete();

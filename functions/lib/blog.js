@@ -187,7 +187,7 @@ exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => 
                     featured: !!data.featured,
                     language: data.language || 'en',
                     translationGroupId: data.translationGroupId || null,
-                    translationId: data.translationId || data.translationGroupId || null,
+                    translationId: data.translationId || data.translationGroupId || null, // normalize
                     sourceLanguage: data.sourceLanguage || null
                 };
                 const docRef = init_1.db.collection('blog_posts').doc(blogPost.slug);

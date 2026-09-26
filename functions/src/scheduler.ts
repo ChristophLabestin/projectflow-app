@@ -2,6 +2,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { db } from "./init";
+import { FieldValue } from 'firebase-admin/firestore';
 
 // Types locally defined since we can't easily import from root in this setup
 type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X' | 'YouTube';
@@ -153,7 +154,7 @@ export const publishScheduledPosts = async (log?: (msg: string) => void) => {
                 status: 'Published',
                 publishedAt: new Date().toISOString(),
                 externalId: publishedId || null,
-                error: admin.firestore.FieldValue.delete()
+                error: FieldValue.delete()
             });
             logger(`Successfully published post ${post.id}`);
 
@@ -237,7 +238,7 @@ export const autoStartSprints = onSchedule({ schedule: "every 1 hours", region: 
                 console.log(`[SprintScheduler] Starting sprint ${doc.id} (Project: ${sprint.projectId})`);
                 batch.update(doc.ref, {
                     status: 'Active',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    updatedAt: FieldValue.serverTimestamp()
                 });
                 updateCount++;
             }
@@ -376,7 +377,7 @@ export const dailyHealthSnapshots = onSchedule(
                             status: health.status,
                             trend: health.trend,
                             date: today,
-                            timestamp: admin.firestore.FieldValue.serverTimestamp()
+                            timestamp: FieldValue.serverTimestamp()
                         });
 
                         snapshotCount++;
@@ -441,7 +442,7 @@ export const debugHealthSnapshots = onRequest({ region: "europe-west3" }, async 
                         status: health.status,
                         trend: health.trend,
                         date: today,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                        timestamp: FieldValue.serverTimestamp()
                     });
 
                     log(`  Project "${projectData.title || projectId}": Score ${health.score} (${health.status})`);

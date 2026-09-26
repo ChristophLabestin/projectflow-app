@@ -6,6 +6,7 @@ const admin = require("firebase-admin");
 const email_1 = require("./email");
 const email_locales_1 = require("./email-locales");
 const corsConfig_1 = require("./corsConfig");
+const firestore_1 = require("firebase-admin/firestore");
 const db = admin.firestore();
 const REGION = 'europe-west3';
 // Helper to generate a unique code
@@ -34,14 +35,14 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
         try {
             console.log(`Processing waitlist request for ${email}`);
             const code = generateCode();
-            const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
+            const expiresAt = firestore_1.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
             const waitlistData = {
                 name,
                 email,
                 code,
                 expiresAt,
                 email_confirmed: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: firestore_1.FieldValue.serverTimestamp()
             };
             const batch = db.batch();
             // 1. Add to 'waitlist_pending' collection
@@ -53,7 +54,7 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
                 name,
                 email,
                 email_confirmed: false,
-                updated_at: admin.firestore.FieldValue.serverTimestamp()
+                updated_at: firestore_1.FieldValue.serverTimestamp()
             }, { merge: true });
             await batch.commit();
             // 3. Send Email
@@ -113,12 +114,12 @@ exports.confirmWaitlist = functions.region(REGION).https.onRequest((req, res) =>
             }
             const batch = db.batch();
             // 1. Mark pending doc as confirmed
-            batch.update(doc.ref, { email_confirmed: true, confirmedAt: admin.firestore.FieldValue.serverTimestamp() });
+            batch.update(doc.ref, { email_confirmed: true, confirmedAt: firestore_1.FieldValue.serverTimestamp() });
             // 2. Update 'waitlist' collection (base level, email as ID)
             const waitlistRef = db.collection('waitlist').doc(requestData.email);
             batch.set(waitlistRef, {
                 email_confirmed: true,
-                confirmed_at: admin.firestore.FieldValue.serverTimestamp(),
+                confirmed_at: firestore_1.FieldValue.serverTimestamp(),
                 source: 'waitlist_confirmation'
             }, { merge: true });
             await batch.commit();

@@ -7,6 +7,7 @@
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 const admin = require("firebase-admin");
+const firestore_1 = require("firebase-admin/firestore");
 // Initialize Firebase Admin
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -39,7 +40,7 @@ async function migrateUsers() {
                     email: userData.email || '',
                     displayName: userData.displayName || 'User',
                     photoURL: userData.photoURL || '',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    updatedAt: firestore_1.FieldValue.serverTimestamp(),
                 };
                 if (userData.title)
                     profileData.title = userData.title;
@@ -61,7 +62,7 @@ async function migrateUsers() {
                     profileData.aiUsage = userData.aiUsage;
                 }
                 if (!existingGlobalUser.exists) {
-                    profileData.createdAt = userData.joinedAt || admin.firestore.FieldValue.serverTimestamp();
+                    profileData.createdAt = userData.joinedAt || firestore_1.FieldValue.serverTimestamp();
                 }
                 await globalUserRef.set(profileData, { merge: true });
                 // 2. Create membership record
@@ -69,7 +70,7 @@ async function migrateUsers() {
                 const memberData = {
                     uid: userId,
                     role: userData.role || 'Member',
-                    joinedAt: userData.joinedAt || admin.firestore.FieldValue.serverTimestamp(),
+                    joinedAt: userData.joinedAt || firestore_1.FieldValue.serverTimestamp(),
                 };
                 if (userData.pinnedProjectId)
                     memberData.pinnedProjectId = userData.pinnedProjectId;

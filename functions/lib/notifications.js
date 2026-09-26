@@ -4,6 +4,7 @@ exports.onNotificationCreated = exports.sendTestNotification = void 0;
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
 const email_1 = require("./email");
+const firestore_1 = require("firebase-admin/firestore");
 const auth = admin.auth();
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -49,7 +50,7 @@ const logDelivery = async (tenantId, notificationId, userId, channel, status, re
         status,
         reason,
         details,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp()
     });
 };
 const requireTenantAccess = async (tenantId, context) => {
@@ -75,8 +76,8 @@ const removeInvalidTokens = async (userId, tokens) => {
         return;
     }
     await db.collection('users').doc(userId).set({
-        fcmTokens: admin.firestore.FieldValue.arrayRemove(...tokens),
-        fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        fcmTokens: firestore_1.FieldValue.arrayRemove(...tokens),
+        fcmUpdatedAt: firestore_1.FieldValue.serverTimestamp()
     }, { merge: true });
 };
 const sendPushNotification = async (tenantId, notificationId, notification, userId) => {
@@ -174,9 +175,9 @@ exports.sendTestNotification = functions.region(REGION).https.onCall(async (data
         transaction.set(stateRef, {
             userId,
             tenantId,
-            lastTestNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastTestNotificationAt: firestore_1.FieldValue.serverTimestamp(),
             lastTokenCount: tokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         }, { merge: true });
         transaction.set(notificationRef, {
             userId,
@@ -191,7 +192,7 @@ exports.sendTestNotification = functions.region(REGION).https.onCall(async (data
                 requestedBy: userId,
                 tokenCount
             },
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: firestore_1.FieldValue.serverTimestamp()
         });
     });
     return {

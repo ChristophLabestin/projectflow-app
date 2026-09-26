@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { corsMiddleware } from './corsConfig';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -39,14 +40,14 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
             console.log(`Processing newsletter signup request for ${email}`);
 
             const code = generateCode();
-            const expiresAt = admin.firestore.Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
+            const expiresAt = Timestamp.fromMillis(Date.now() + 4 * 60 * 60 * 1000); // 4 hours
 
             const pendingData = {
                 email,
                 code,
                 expiresAt,
                 confirmed: false,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp()
             };
 
             const batch = db.batch();
@@ -134,13 +135,13 @@ export const confirmNewsletterSignup = functions.region(REGION).https.onRequest(
             const batch = db.batch();
 
             // 1. Mark pending doc as confirmed
-            batch.update(doc.ref, { confirmed: true, confirmedAt: admin.firestore.FieldValue.serverTimestamp() });
+            batch.update(doc.ref, { confirmed: true, confirmedAt: FieldValue.serverTimestamp() });
 
             // 2. Add/Update 'newsletter_subscribers' collection (base level, email as ID)
             const subscriberRef = db.collection('newsletter_subscribers').doc(requestData.email);
             batch.set(subscriberRef, {
                 email: requestData.email,
-                subscribedAt: admin.firestore.FieldValue.serverTimestamp(),
+                subscribedAt: FieldValue.serverTimestamp(),
                 source: 'landing_page',
                 status: 'active'
             }, { merge: true });

@@ -1,5 +1,4 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
 import {
     generateRegistrationOptions,
     verifyRegistrationResponse,
@@ -21,6 +20,7 @@ interface AuthenticatorDevice {
 }
 
 import { db, auth } from './init';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3'; // Frankfurt
 
@@ -111,7 +111,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
             // verify step uses the exact same origin/rpID the browser saw.
             origin,
             rpID,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         return options;
@@ -185,7 +185,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
             ...newPasskey,
             credentialID: Buffer.from(id, 'base64url'), // Verify if Firestore supports Buffer or if we need to store as blob/base64
             credentialPublicKey: Buffer.from(publicKey),
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
             label: data.deviceName || `Passkey (${navigatorDetails?.platform || 'Unknown Device'})`,
         });
 
@@ -263,7 +263,7 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
             // Persist the relying party so verification matches what the browser saw.
             origin,
             rpID,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         return options;
@@ -409,7 +409,7 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
                 expectedRPID: rpID,
                 credential: {
                     id: credentialID,
-                    publicKey: dbPasskey.credentialPublicKey,
+                    publicKey: new Uint8Array(dbPasskey.credentialPublicKey),
                     counter: dbPasskey.counter,
                     transports: dbPasskey.transports as any,
                 },
@@ -425,7 +425,7 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             // Update counter
             await db.collection('users').doc(userId).collection('passkeys').doc(credentialID).update({
                 counter: authenticationInfo.newCounter,
-                lastUsedAt: admin.firestore.FieldValue.serverTimestamp(),
+                lastUsedAt: FieldValue.serverTimestamp(),
             });
 
             // Delete challenge

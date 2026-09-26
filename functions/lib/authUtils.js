@@ -1,9 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getWorkspaceMemberRole = exports.checkProjectPermission = exports.ROLE_PERMISSIONS = exports.getAuthToken = exports.validateAPIToken = exports.hashToken = void 0;
+exports.getWorkspaceMemberRole = exports.checkProjectPermission = exports.ROLE_PERMISSIONS = exports.getAuthToken = exports.validateAPIToken = exports.findApiToken = exports.hashToken = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
  */
@@ -11,6 +12,34 @@ const hashToken = (token) => {
     return crypto.createHash('sha256').update(token).digest('hex');
 };
 exports.hashToken = hashToken;
+/**
+ * Find a workspace API token by its hash. Uses one collection-group query
+ * (index: api_tokens.tokenHash, collection-group scope); falls back to scanning
+ * tenants if that index is not deployed yet.
+ */
+const findApiToken = async (token) => {
+    var _a;
+    const tokenHash = (0, exports.hashToken)(token);
+    try {
+        const snapshot = await init_1.db.collectionGroup('api_tokens').where('tokenHash', '==', tokenHash).limit(1).get();
+        const doc = snapshot.docs[0];
+        const tenantId = (_a = doc === null || doc === void 0 ? void 0 : doc.ref.parent.parent) === null || _a === void 0 ? void 0 : _a.id;
+        return doc && tenantId ? { tokenRef: doc.ref, tokenData: doc.data(), tenantId } : null;
+    }
+    catch (error) {
+        console.warn('api_tokens collection-group lookup failed, scanning tenants', error);
+    }
+    const tenantsSnapshot = await init_1.db.collection('tenants').get();
+    for (const tenantDoc of tenantsSnapshot.docs) {
+        const tokensQuery = await tenantDoc.ref.collection('api_tokens').where('tokenHash', '==', tokenHash).limit(1).get();
+        if (!tokensQuery.empty) {
+            const doc = tokensQuery.docs[0];
+            return { tokenRef: doc.ref, tokenData: doc.data(), tenantId: tenantDoc.id };
+        }
+    }
+    return null;
+};
+exports.findApiToken = findApiToken;
 /**
  * Validate an API token and return the token data if valid
  */
@@ -39,41 +68,29 @@ const validateAPIToken = async (token, requiredPermission) => {
                 }
             };
         }
-        const tokenHash = (0, exports.hashToken)(token);
-        // Search all tenants for the token (we could optimize this with a global tokens collection)
-        const tenantsSnapshot = await init_1.db.collection('tenants').get();
-        for (const tenantDoc of tenantsSnapshot.docs) {
-            const tokensQuery = await init_1.db
-                .collection('tenants')
-                .doc(tenantDoc.id)
-                .collection('api_tokens')
-                .where('tokenHash', '==', tokenHash)
-                .limit(1)
-                .get();
-            if (!tokensQuery.empty) {
-                const tokenDoc = tokensQuery.docs[0];
-                const tokenData = tokenDoc.data();
-                // Check expiration
-                if (tokenData.expiresAt) {
-                    const expiresAt = tokenData.expiresAt.toDate();
-                    if (new Date() > expiresAt) {
-                        return { valid: false, error: 'Token expired' };
-                    }
+        const found = await (0, exports.findApiToken)(token);
+        if (found) {
+            const { tokenRef, tokenData, tenantId } = found;
+            // Check expiration
+            if (tokenData.expiresAt) {
+                const expiresAt = tokenData.expiresAt.toDate();
+                if (new Date() > expiresAt) {
+                    return { valid: false, error: 'Token expired' };
                 }
-                // Check permissions
-                if (!tokenData.permissions.includes(requiredPermission)) {
-                    return { valid: false, error: 'Insufficient permissions' };
-                }
-                // Update lastUsedAt
-                await tokenDoc.ref.update({
-                    lastUsedAt: admin.firestore.FieldValue.serverTimestamp()
-                });
-                return {
-                    valid: true,
-                    tokenData,
-                    tenantId: tenantDoc.id
-                };
             }
+            // Check permissions
+            if (!tokenData.permissions.includes(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
+            // Update lastUsedAt
+            await tokenRef.update({
+                lastUsedAt: firestore_1.FieldValue.serverTimestamp()
+            });
+            return {
+                valid: true,
+                tokenData,
+                tenantId
+            };
         }
         return { valid: false, error: 'Invalid token' };
     }
@@ -121,7 +138,7 @@ exports.ROLE_PERMISSIONS = {
 const checkProjectPermission = async (userId, projectId, permission) => {
     try {
         const projectsRef = init_1.db.collectionGroup('projects');
-        const querySnapshot = await projectsRef.where(admin.firestore.FieldPath.documentId(), '==', projectId).limit(1).get();
+        const querySnapshot = await projectsRef.where(firestore_1.FieldPath.documentId(), '==', projectId).limit(1).get();
         if (querySnapshot.empty)
             return false;
         const projectDoc = querySnapshot.docs[0];

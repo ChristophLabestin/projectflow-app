@@ -27,6 +27,7 @@
 @use '../src/styles/components/invoices';
 @use '../src/styles/components/workspaces';
 @use '../src/styles/components/onboarding';
+@use '../src/styles/components/mcp-connect';
 @use '../src/styles/components/work-list';
 @use '../src/styles/components/planning';
 
@@ -810,4 +811,19 @@ html.dark .glass-strong {
 
 html.dark .bg-dots {
   background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}
+
+/* --- No focus rings on form fields ---
+   Product decision: text fields, textareas and selects show no outline or
+   ring (outline, inset/outer box-shadow) when focused — anywhere in the app.
+   Component styles and the forms base add rings with higher specificity, so
+   this has to be !important. Checkboxes/radios/ranges keep their focus cue. */
+input:not([type='checkbox']):not([type='radio']):not([type='range']):focus,
+input:not([type='checkbox']):not([type='radio']):not([type='range']):focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }

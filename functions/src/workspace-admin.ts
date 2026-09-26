@@ -1,9 +1,9 @@
-import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions/v1';
 
 import { hashToken, type ApiPermission } from './authUtils';
 import { db } from './init';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
 const SMTP_SECRET_ID = 'smtp';
@@ -279,12 +279,12 @@ export const saveWorkspaceSmtpConfig = functions.region(REGION).https.onCall(asy
 
     await db.collection('tenants').doc(tenantId).collection('secrets').doc(SMTP_SECRET_ID).set({
         ...smtpConfig,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: actorId
     }, { merge: true });
 
     await db.collection('tenants').doc(tenantId).set({
-        smtpConfig: admin.firestore.FieldValue.delete()
+        smtpConfig: FieldValue.delete()
     }, { merge: true });
 
     return { success: true };
@@ -339,13 +339,13 @@ export const createWorkspaceApiToken = functions.region(REGION).https.onCall(asy
         throw new functions.https.HttpsError('invalid-argument', 'One or more permissions are not allowed.');
     }
 
-    let expiresAt: admin.firestore.Timestamp | null = null;
+    let expiresAt: Timestamp | null = null;
     if (data?.expiresAt) {
         const parsed = new Date(data.expiresAt);
         if (Number.isNaN(parsed.getTime())) {
             throw new functions.https.HttpsError('invalid-argument', 'expiresAt must be a valid date.');
         }
-        expiresAt = admin.firestore.Timestamp.fromDate(parsed);
+        expiresAt = Timestamp.fromDate(parsed);
     }
 
     const plainToken = generatePlainApiToken();
@@ -359,7 +359,7 @@ export const createWorkspaceApiToken = functions.region(REGION).https.onCall(asy
         tokenPrefix,
         projectScope,
         permissions,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         lastUsedAt: null,
         expiresAt,
         createdBy: actorId
@@ -438,7 +438,7 @@ export const saveWorkspaceFinancialConfig = functions.region(REGION).https.onCal
         token,
         months,
         linkedProjectId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: actorId
     }, { merge: true });
 

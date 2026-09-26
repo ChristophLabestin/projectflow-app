@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const functions = require("firebase-functions/v1");
 const corsConfig_1 = require("./corsConfig");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
@@ -236,7 +237,7 @@ const buildIntakeSettings = (current, input, userId) => {
         maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(input.maxAttachments, toNumber(current === null || current === void 0 ? void 0 : current.maxAttachments, 4)))),
         autoCreateTask: input.autoCreateTask == null ? toBoolean(current === null || current === void 0 ? void 0 : current.autoCreateTask) : toBoolean(input.autoCreateTask),
         categories: sanitizeCategories(input.categories, current === null || current === void 0 ? void 0 : current.categories),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: userId,
     };
 };
@@ -252,7 +253,7 @@ const toPublicIndexPayload = (tenantId, projectId, projectData, intakeForm) => (
     allowAttachments: intakeForm.allowAttachments !== false,
     maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(intakeForm.maxAttachments, 4))),
     categories: sanitizeCategories(intakeForm.categories),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firestore_1.FieldValue.serverTimestamp(),
 });
 const writeActivity = async (tenantId, projectId, target, action) => {
     await getActivityCollectionRef(tenantId, projectId).add({
@@ -265,7 +266,7 @@ const writeActivity = async (tenantId, projectId, target, action) => {
         user: 'ProjectFlow',
         ownerId: 'public-intake',
         actorType: 'system',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
     });
 };
 const decodeAttachment = (attachment) => {
@@ -379,7 +380,7 @@ exports.saveProjectIntakeConfig = functions.region(REGION).https.onCall(async (d
     const currentIntakeForm = (projectData.intakeForm || {});
     const oldToken = normalizeString(currentIntakeForm.token);
     const nextIntakeForm = buildIntakeSettings(currentIntakeForm, data || {}, uid);
-    await projectRef.set({ intakeForm: nextIntakeForm, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    await projectRef.set({ intakeForm: nextIntakeForm, updatedAt: firestore_1.FieldValue.serverTimestamp() }, { merge: true });
     if (oldToken && oldToken !== nextIntakeForm.token) {
         await getPublicIntakeRef(oldToken).delete().catch(() => undefined);
     }
@@ -556,7 +557,7 @@ exports.submitProjectIntake = functions.region(REGION).https.onRequest((req, res
                     status: 'Open',
                     source: 'project-intake',
                     submissionId,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: firestore_1.FieldValue.serverTimestamp(),
                 });
             }
             await submissionRef.set({
@@ -572,8 +573,8 @@ exports.submitProjectIntake = functions.region(REGION).https.onRequest((req, res
                 attachments: uploadedAttachments,
                 linkedTaskId,
                 source: 'public-form',
-                submittedAt: admin.firestore.FieldValue.serverTimestamp(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                submittedAt: firestore_1.FieldValue.serverTimestamp(),
+                createdAt: firestore_1.FieldValue.serverTimestamp(),
             });
             await writeActivity(tenantId, projectId, 'Intake', `Received a "${category.label}" submission for "${normalizeString(projectData.title) || projectId}"`);
             res.status(200).json({

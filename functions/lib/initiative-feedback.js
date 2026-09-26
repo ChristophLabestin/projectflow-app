@@ -6,6 +6,7 @@ const crypto = require("crypto");
 const functions = require("firebase-functions/v1");
 const corsConfig_1 = require("./corsConfig");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 const PROJECTS = 'projects';
 const INITIATIVES = 'initiatives';
@@ -229,7 +230,7 @@ const buildFeedbackSettings = (current, input, userId) => {
         allowAttachments: input.allowAttachments == null ? ((current === null || current === void 0 ? void 0 : current.allowAttachments) !== false) : toBoolean(input.allowAttachments),
         maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(input.maxAttachments, toNumber(current === null || current === void 0 ? void 0 : current.maxAttachments, 3)))),
         fields: sanitizeFeedbackFields(input.fields, current === null || current === void 0 ? void 0 : current.fields),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: userId,
     };
 };
@@ -247,7 +248,7 @@ const toPublicIndexPayload = (tenantId, projectId, initiativeId, projectData, in
     allowAttachments: feedbackForm.allowAttachments !== false,
     maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(feedbackForm.maxAttachments, 3))),
     fields: sanitizeFeedbackFields(feedbackForm.fields),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firestore_1.FieldValue.serverTimestamp(),
 });
 const writeActivity = async (tenantId, projectId, initiativeId, initiativeTitle, target, action) => {
     await getActivityCollectionRef(tenantId, projectId).add({
@@ -260,7 +261,7 @@ const writeActivity = async (tenantId, projectId, initiativeId, initiativeTitle,
         user: 'ProjectFlow',
         ownerId: 'public-feedback',
         actorType: 'system',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
     });
 };
 const syncProjectProgress = async (tenantId, projectId) => {
@@ -271,7 +272,7 @@ const syncProjectProgress = async (tenantId, projectId) => {
         return task.isCompleted === true || task.status === 'Done';
     }).length;
     const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-    await getProjectRef(tenantId, projectId).set({ progress, updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+    await getProjectRef(tenantId, projectId).set({ progress, updatedAt: firestore_1.FieldValue.serverTimestamp() }, { merge: true });
 };
 const decodeAttachment = (attachment) => {
     const fileName = normalizeString(attachment.fileName) || 'attachment.png';
@@ -435,7 +436,7 @@ exports.saveInitiativeFeedbackConfig = functions.region(REGION).https.onCall(asy
     const nextFeedbackForm = buildFeedbackSettings(currentFeedbackForm, data || {}, uid);
     await initiativeRef.set({
         feedbackForm: nextFeedbackForm,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
     }, { merge: true });
     if (oldToken && oldToken !== nextFeedbackForm.token) {
         await getPublicFeedbackRef(oldToken).delete().catch(() => undefined);
@@ -631,7 +632,7 @@ exports.submitInitiativeFeedback = functions.region(REGION).https.onRequest((req
                 initiativeId,
                 feedbackSubmission: {
                     source,
-                    submittedAt: admin.firestore.FieldValue.serverTimestamp(),
+                    submittedAt: firestore_1.FieldValue.serverTimestamp(),
                     customerName: resolvedCustomerName,
                     customerEmail: resolvedCustomerEmail,
                     company: resolvedCompany,
@@ -639,7 +640,7 @@ exports.submitInitiativeFeedback = functions.region(REGION).https.onRequest((req
                     attachments: uploadedAttachments,
                     fields: submittedFields,
                 },
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                createdAt: firestore_1.FieldValue.serverTimestamp(),
             });
             await writeActivity(tenantId, projectId, initiativeId, normalizeString(initiativeData.title), 'Initiatives', `Received customer feedback for "${normalizeString(initiativeData.title) || initiativeId}"`);
             await syncProjectProgress(tenantId, projectId);

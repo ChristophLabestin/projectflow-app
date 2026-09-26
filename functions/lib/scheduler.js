@@ -3,8 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.publishScheduledPosts = void 0;
 const scheduler_1 = require("firebase-functions/v2/scheduler");
 const https_1 = require("firebase-functions/v2/https");
-const admin = require("firebase-admin");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const GRAPH_API_BASE = 'https://graph.facebook.com/v19.0';
 async function publishInstagramPhoto(igAccountId, imageUrl, caption, accessToken, log) {
     var _a, _b;
@@ -97,7 +97,7 @@ const publishScheduledPosts = async (log) => {
                 status: 'Published',
                 publishedAt: new Date().toISOString(),
                 externalId: publishedId || null,
-                error: admin.firestore.FieldValue.delete()
+                error: firestore_1.FieldValue.delete()
             });
             logger(`Successfully published post ${post.id}`);
         }
@@ -161,7 +161,7 @@ exports.autoStartSprints = (0, scheduler_1.onSchedule)({ schedule: "every 1 hour
                 console.log(`[SprintScheduler] Starting sprint ${doc.id} (Project: ${sprint.projectId})`);
                 batch.update(doc.ref, {
                     status: 'Active',
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    updatedAt: firestore_1.FieldValue.serverTimestamp()
                 });
                 updateCount++;
             }
@@ -281,7 +281,7 @@ exports.dailyHealthSnapshots = (0, scheduler_1.onSchedule)({ schedule: "0 0 * * 
                         status: health.status,
                         trend: health.trend,
                         date: today,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                        timestamp: firestore_1.FieldValue.serverTimestamp()
                     });
                     snapshotCount++;
                 }
@@ -333,7 +333,7 @@ exports.debugHealthSnapshots = (0, https_1.onRequest)({ region: "europe-west3" }
                         status: health.status,
                         trend: health.trend,
                         date: today,
-                        timestamp: admin.firestore.FieldValue.serverTimestamp()
+                        timestamp: firestore_1.FieldValue.serverTimestamp()
                     });
                     log(`  Project "${projectData.title || projectId}": Score ${health.score} (${health.status})`);
                     snapshotCount++;

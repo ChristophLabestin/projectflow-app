@@ -28,6 +28,11 @@
     ],
     "rewrites": [
       {
+        "source": "/mcp",
+        "function": "mcp",
+        "region": "europe-west3"
+      },
+      {
         "source": "/generatePasskeyRegistrationOptions",
         "function": "generatePasskeyRegistrationOptions",
         "region": "europe-west3"

@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { sendEmail } from './email';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const auth = admin.auth();
 const db = admin.firestore();
@@ -68,7 +69,7 @@ const logDelivery = async (
         status,
         reason,
         details,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
     });
 };
 
@@ -100,8 +101,8 @@ const removeInvalidTokens = async (userId: string, tokens: string[]) => {
     }
 
     await db.collection('users').doc(userId).set({
-        fcmTokens: admin.firestore.FieldValue.arrayRemove(...tokens),
-        fcmUpdatedAt: admin.firestore.FieldValue.serverTimestamp()
+        fcmTokens: FieldValue.arrayRemove(...tokens),
+        fcmUpdatedAt: FieldValue.serverTimestamp()
     }, { merge: true });
 };
 
@@ -219,9 +220,9 @@ export const sendTestNotification = functions.region(REGION).https.onCall(async 
         transaction.set(stateRef, {
             userId,
             tenantId,
-            lastTestNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
+            lastTestNotificationAt: FieldValue.serverTimestamp(),
             lastTokenCount: tokenCount,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
 
         transaction.set(notificationRef, {
@@ -237,7 +238,7 @@ export const sendTestNotification = functions.region(REGION).https.onCall(async 
                 requestedBy: userId,
                 tokenCount
             },
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: FieldValue.serverTimestamp()
         });
     });
 

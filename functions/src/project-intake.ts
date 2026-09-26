@@ -4,6 +4,7 @@ import * as functions from 'firebase-functions/v1';
 
 import { corsMiddleware } from './corsConfig';
 import { db } from './init';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
 const PROJECTS = 'projects';
@@ -305,7 +306,7 @@ const buildIntakeSettings = (
         maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(input.maxAttachments, toNumber(current?.maxAttachments, 4)))),
         autoCreateTask: input.autoCreateTask == null ? toBoolean(current?.autoCreateTask) : toBoolean(input.autoCreateTask),
         categories: sanitizeCategories(input.categories, current?.categories),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
         updatedBy: userId,
     };
 };
@@ -327,7 +328,7 @@ const toPublicIndexPayload = (
     allowAttachments: intakeForm.allowAttachments !== false,
     maxAttachments: Math.min(MAX_ATTACHMENTS, Math.max(1, toNumber(intakeForm.maxAttachments, 4))),
     categories: sanitizeCategories(intakeForm.categories),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
 });
 
 const writeActivity = async (
@@ -346,7 +347,7 @@ const writeActivity = async (
         user: 'ProjectFlow',
         ownerId: 'public-intake',
         actorType: 'system',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
     });
 };
 
@@ -489,7 +490,7 @@ export const saveProjectIntakeConfig = functions.region(REGION).https.onCall(asy
     const nextIntakeForm = buildIntakeSettings(currentIntakeForm, data || {}, uid);
 
     await projectRef.set(
-        { intakeForm: nextIntakeForm, updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { intakeForm: nextIntakeForm, updatedAt: FieldValue.serverTimestamp() },
         { merge: true },
     );
 
@@ -695,7 +696,7 @@ export const submitProjectIntake = functions.region(REGION).https.onRequest((req
                     status: 'Open',
                     source: 'project-intake',
                     submissionId,
-                    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                    createdAt: FieldValue.serverTimestamp(),
                 });
             }
 
@@ -712,8 +713,8 @@ export const submitProjectIntake = functions.region(REGION).https.onRequest((req
                 attachments: uploadedAttachments,
                 linkedTaskId,
                 source: 'public-form',
-                submittedAt: admin.firestore.FieldValue.serverTimestamp(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                submittedAt: FieldValue.serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
             });
 
             await writeActivity(

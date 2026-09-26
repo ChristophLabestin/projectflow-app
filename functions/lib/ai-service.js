@@ -2,9 +2,9 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = void 0;
 const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
 const openai_1 = require("openai");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const TEXT_MODEL = 'gpt-5-mini';
 const IMAGE_MODEL = 'gpt-image-1-mini';
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
@@ -17,8 +17,8 @@ const trackUsage = async (uid, tokens) => {
         const userRef = init_1.db.collection('users').doc(uid).collection('private').doc('usage');
         await userRef.set({
             aiUsage: {
-                tokensUsed: admin.firestore.FieldValue.increment(tokens),
-                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+                tokensUsed: firestore_1.FieldValue.increment(tokens),
+                lastUpdated: firestore_1.FieldValue.serverTimestamp()
             }
         }, { merge: true });
     }

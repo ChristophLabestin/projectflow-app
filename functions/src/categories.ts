@@ -1,8 +1,8 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
 import { db } from './init';
 import { corsMiddleware } from './corsConfig';
 import { validateAPIToken, getAuthToken } from './authUtils';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
 
@@ -127,7 +127,7 @@ export const manageCategories = functions.region(REGION).https.onRequest((req, r
 
                 await docRef.update({
                     ...data,
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    updatedAt: FieldValue.serverTimestamp()
                 });
 
                 const updated = await docRef.get();
@@ -163,7 +163,7 @@ export const manageCategories = functions.region(REGION).https.onRequest((req, r
                     name: data.name,
                     slug: slug,
                     description: data.description || '',
-                    createdAt: admin.firestore.FieldValue.serverTimestamp()
+                    createdAt: FieldValue.serverTimestamp()
                 };
 
                 const docRef = await db.collection('blog_categories').add(category);

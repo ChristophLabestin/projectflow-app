@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fetchWorkspaceFinancialUsage = exports.saveWorkspaceFinancialConfig = exports.getWorkspaceFinancialConfig = exports.deleteWorkspaceApiToken = exports.createWorkspaceApiToken = exports.listWorkspaceApiTokens = exports.saveWorkspaceSmtpConfig = exports.getWorkspaceSmtpConfig = void 0;
-const admin = require("firebase-admin");
 const crypto = require("crypto");
 const functions = require("firebase-functions/v1");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 const SMTP_SECRET_ID = 'smtp';
 const FINANCIAL_SECRET_ID = 'projectflowFinancial';
@@ -192,9 +192,9 @@ exports.saveWorkspaceSmtpConfig = functions.region(REGION).https.onCall(async (d
     const tenantId = normalizeString(data === null || data === void 0 ? void 0 : data.tenantId);
     const actorId = await requireWorkspaceOwner(tenantId, context);
     const smtpConfig = normalizeSmtpConfig(data === null || data === void 0 ? void 0 : data.smtpConfig);
-    await init_1.db.collection('tenants').doc(tenantId).collection('secrets').doc(SMTP_SECRET_ID).set(Object.assign(Object.assign({}, smtpConfig), { updatedAt: admin.firestore.FieldValue.serverTimestamp(), updatedBy: actorId }), { merge: true });
+    await init_1.db.collection('tenants').doc(tenantId).collection('secrets').doc(SMTP_SECRET_ID).set(Object.assign(Object.assign({}, smtpConfig), { updatedAt: firestore_1.FieldValue.serverTimestamp(), updatedBy: actorId }), { merge: true });
     await init_1.db.collection('tenants').doc(tenantId).set({
-        smtpConfig: admin.firestore.FieldValue.delete()
+        smtpConfig: firestore_1.FieldValue.delete()
     }, { merge: true });
     return { success: true };
 });
@@ -245,7 +245,7 @@ exports.createWorkspaceApiToken = functions.region(REGION).https.onCall(async (d
         if (Number.isNaN(parsed.getTime())) {
             throw new functions.https.HttpsError('invalid-argument', 'expiresAt must be a valid date.');
         }
-        expiresAt = admin.firestore.Timestamp.fromDate(parsed);
+        expiresAt = firestore_1.Timestamp.fromDate(parsed);
     }
     const plainToken = generatePlainApiToken();
     const tokenHash = (0, authUtils_1.hashToken)(plainToken);
@@ -257,7 +257,7 @@ exports.createWorkspaceApiToken = functions.region(REGION).https.onCall(async (d
         tokenPrefix,
         projectScope,
         permissions,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
         lastUsedAt: null,
         expiresAt,
         createdBy: actorId
@@ -321,7 +321,7 @@ exports.saveWorkspaceFinancialConfig = functions.region(REGION).https.onCall(asy
         token,
         months,
         linkedProjectId,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp(),
         updatedBy: actorId
     }, { merge: true });
     return {

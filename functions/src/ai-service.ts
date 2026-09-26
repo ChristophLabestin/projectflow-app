@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions/v1';
-import * as admin from 'firebase-admin';
 import OpenAI, { toFile } from 'openai';
 import { db } from './init';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const TEXT_MODEL = 'gpt-5-mini';
 const IMAGE_MODEL = 'gpt-image-1-mini';
@@ -17,8 +17,8 @@ const trackUsage = async (uid: string, tokens: number) => {
         const userRef = db.collection('users').doc(uid).collection('private').doc('usage');
         await userRef.set({
             aiUsage: {
-                tokensUsed: admin.firestore.FieldValue.increment(tokens),
-                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+                tokensUsed: FieldValue.increment(tokens),
+                lastUpdated: FieldValue.serverTimestamp()
             }
         }, { merge: true });
     } catch (error) {

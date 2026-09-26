@@ -3,6 +3,7 @@ import * as crypto from 'crypto';
 
 import { getAuthToken, getWorkspaceMemberRole, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type ApiContext = {
     tenantId: string;
@@ -172,7 +173,7 @@ const compactObject = <T extends Record<string, unknown>>(payload: T): Partial<T
     }, {} as Partial<T>);
 
 const serializeValue = (value: any): any => {
-    if (value instanceof admin.firestore.Timestamp) {
+    if (value instanceof Timestamp) {
         return value.toDate().toISOString();
     }
 
@@ -239,7 +240,7 @@ const writeProjectActivity = async (
         relatedId,
         details,
         actorType: 'api-token',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
     }));
 };
 
@@ -257,7 +258,7 @@ const syncProjectProgress = async (tenantId: string, projectId: string) => {
     await projectRef(tenantId, projectId).set(
         {
             progress,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         },
         { merge: true }
     );
@@ -491,8 +492,8 @@ const createProject = async (req: any, res: any) => {
         coverImage: getString(body.coverImage),
         squareIcon: getString(body.squareIcon),
         screenshots: Array.isArray(body.screenshots) ? body.screenshots : [],
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await db.collection('tenants').doc(context.tenantId).collection(PROJECTS).add(payload);
@@ -540,7 +541,7 @@ const updateProject = async (req: any, res: any, projectId: string) => {
 
     await projectRef(context.tenantId, projectId).update({
         ...updates,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     await writeProjectActivity(
@@ -669,8 +670,8 @@ const createTask = async (req: any, res: any, projectId: string) => {
         githubProjectV2Fields: getRecord(body.githubProjectV2Fields),
         githubSyncDisabled: typeof body.githubSyncDisabled === 'boolean' ? body.githubSyncDisabled : undefined,
         isCompleted: Boolean(body.isCompleted),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
@@ -721,7 +722,7 @@ const updateTask = async (req: any, res: any, projectId: string, taskId: string)
 
     await taskRef.update({
         ...updates,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const latestTaskSnapshot = await taskRef.get();
@@ -816,7 +817,7 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
         }
 
         updates.externalKey = externalKey;
-        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.updatedAt = FieldValue.serverTimestamp();
 
         await taskSnapshot.ref.update(updates);
 
@@ -886,8 +887,8 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
         githubProjectV2Fields: getRecord(body.githubProjectV2Fields),
         githubSyncDisabled: typeof body.githubSyncDisabled === 'boolean' ? body.githubSyncDisabled : undefined,
         isCompleted: Boolean(body.isCompleted),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
@@ -1019,8 +1020,8 @@ const createInitiative = async (req: any, res: any, projectId: string) => {
         outcome: getString(body.outcome),
         health: getString(body.health),
         completedAt: body.completedAt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
@@ -1096,7 +1097,7 @@ const updateInitiative = async (req: any, res: any, projectId: string, initiativ
 
     await initiativeRef.update({
         ...updates,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const latestSnapshot = await initiativeRef.get();
@@ -1141,8 +1142,8 @@ const deleteInitiative = async (req: any, res: any, projectId: string, initiativ
         .get();
 
     await Promise.all(linkedTasks.docs.map((docSnap) => docSnap.ref.update({
-        initiativeId: admin.firestore.FieldValue.delete(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        initiativeId: FieldValue.delete(),
+        updatedAt: FieldValue.serverTimestamp()
     })));
 
     const initiativeTitle = getString(initiativeSnapshot.data()?.title);
@@ -1195,7 +1196,7 @@ const upsertInitiativeByExternalKey = async (req: any, res: any, projectId: stri
         }
 
         updates.externalKey = externalKey;
-        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.updatedAt = FieldValue.serverTimestamp();
 
         await initiativeSnapshot.ref.update(updates);
         const refreshed = await initiativeSnapshot.ref.get();
@@ -1245,8 +1246,8 @@ const upsertInitiativeByExternalKey = async (req: any, res: any, projectId: stri
         outcome: getString(body.outcome),
         health: getString(body.health),
         completedAt: body.completedAt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
@@ -1330,8 +1331,8 @@ const createSubtask = async (req: any, res: any, projectId: string, taskId: stri
         title,
         isCompleted: Boolean(body.isCompleted),
         assigneeId: getString(body.assigneeId) || null,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     const created = await taskCollectionRef(context.tenantId, projectId).doc(taskId).collection(SUBTASKS).add(payload);
@@ -1415,7 +1416,7 @@ const updateSubtask = async (req: any, res: any, projectId: string, taskId: stri
 
     await subtaskRef.update({
         ...updates,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     await writeProjectActivity(
@@ -1551,8 +1552,8 @@ const createProjectCollectionItem = async (
         ownerId: context.actorId,
         createdBy: context.actorId,
         [requiredField]: requiredValue,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     if (collectionName === MILESTONES) {
@@ -1672,7 +1673,7 @@ const updateProjectCollectionItem = async (
 
     await itemRef.update({
         ...updates,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     await writeProjectActivity(
@@ -1883,7 +1884,7 @@ const upsertCodexLinkedEntity = async (
             externalKey,
             codexManaged: true,
             codexSessionExternalKey: externalKey,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         });
 
         if (!matches.empty) {
@@ -1904,7 +1905,7 @@ const upsertCodexLinkedEntity = async (
             tenantId: context.tenantId,
             ownerId: context.actorId,
             createdBy: context.actorId,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            createdAt: FieldValue.serverTimestamp()
         });
         const snapshot = await created.get();
         return {
@@ -1935,7 +1936,7 @@ const upsertCodexLinkedEntity = async (
         isCompleted: Boolean(body.isCompleted),
         codexManaged: true,
         codexSessionExternalKey: externalKey,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     if (!matches.empty) {
@@ -1958,7 +1959,7 @@ const upsertCodexLinkedEntity = async (
         ownerId: context.actorId,
         createdBy: context.actorId,
         category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'],
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
     });
     const snapshot = await created.get();
     await syncProjectProgress(context.tenantId, projectId);
@@ -1996,7 +1997,7 @@ const writeCodexCheckpoint = async (
         metadata: getRecord(body.metadata),
         createdBy: context.actorId,
         actorLabel: context.actorLabel,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: FieldValue.serverTimestamp()
     });
 
     const checkpointRef = await sessionRef.collection(CODEX_CHECKPOINTS).add(checkpointPayload);
@@ -2007,12 +2008,12 @@ const writeCodexCheckpoint = async (
         lastCheckpointId: checkpointRef.id,
         lastCheckpointSummary: summary,
         lastValidationStatus: validationStatus,
-        lastCheckpointAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        lastCheckpointAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     if (filesTouched.length > 0) {
-        sessionUpdates.filesTouched = admin.firestore.FieldValue.arrayUnion(...filesTouched);
+        sessionUpdates.filesTouched = FieldValue.arrayUnion(...filesTouched);
     }
 
     await sessionRef.set(sessionUpdates, { merge: true });
@@ -2114,7 +2115,7 @@ const createCodexFollowups = async (
             codexSessionId: sessionId,
             codexSessionExternalKey: sessionExternalKey,
             filesTouched: getStringArray(followUp.filesTouched),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         });
 
         let taskId: string;
@@ -2127,7 +2128,7 @@ const createCodexFollowups = async (
         } else {
             const createdTask = await taskCollectionRef(context.tenantId, projectId).add({
                 ...taskPayload,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp()
             });
             taskId = createdTask.id;
             taskOperation = 'created';
@@ -2148,7 +2149,7 @@ const createCodexFollowups = async (
             filesTouched: getStringArray(followUp.filesTouched),
             createdBy: context.actorId,
             actorLabel: context.actorLabel,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         });
 
         const followupMatches = await codexFollowupCollectionRef(context.tenantId, projectId)
@@ -2164,7 +2165,7 @@ const createCodexFollowups = async (
         } else {
             const createdFollowup = await codexFollowupCollectionRef(context.tenantId, projectId).add({
                 ...followupPayload,
-                createdAt: admin.firestore.FieldValue.serverTimestamp()
+                createdAt: FieldValue.serverTimestamp()
             });
             followupId = createdFollowup.id;
         }
@@ -2277,7 +2278,7 @@ const startCodexSession = async (req: any, res: any, projectId: string) => {
         createdBy: context.actorId,
         ownerId: context.actorId,
         metadata: getRecord(body.metadata),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp()
     });
 
     let sessionRef: admin.firestore.DocumentReference;
@@ -2289,8 +2290,8 @@ const startCodexSession = async (req: any, res: any, projectId: string) => {
     } else {
         sessionRef = await codexSessionCollectionRef(context.tenantId, projectId).add({
             ...payload,
-            startedAt: admin.firestore.FieldValue.serverTimestamp(),
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
+            startedAt: FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp()
         });
         operation = 'created';
     }
@@ -2404,8 +2405,8 @@ const finishCodexSession = async (req: any, res: any, projectId: string, session
     const sessionUpdates: Record<string, unknown> = {
         status: finalStatus,
         phase,
-        finishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        finishedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp()
     };
 
     if (getString(body.commitSha) || getString(body.commit)) {
@@ -2420,10 +2421,10 @@ const finishCodexSession = async (req: any, res: any, projectId: string, session
         const taskUpdates: Record<string, unknown> = {
             status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'Review',
             isCompleted: finalStatus === 'completed',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: FieldValue.serverTimestamp()
         };
         if (finalStatus === 'completed') {
-            taskUpdates.completedAt = admin.firestore.FieldValue.serverTimestamp();
+            taskUpdates.completedAt = FieldValue.serverTimestamp();
             taskUpdates.completedBy = context.actorId;
         }
         await taskCollectionRef(context.tenantId, projectId).doc(taskId).set(taskUpdates, { merge: true });
@@ -2433,8 +2434,8 @@ const finishCodexSession = async (req: any, res: any, projectId: string, session
     if (initiativeId) {
         await initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId).set({
             status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'In Progress',
-            completedAt: finalStatus === 'completed' ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.delete(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            completedAt: finalStatus === 'completed' ? FieldValue.serverTimestamp() : FieldValue.delete(),
+            updatedAt: FieldValue.serverTimestamp()
         }, { merge: true });
     }
 

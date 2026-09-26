@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = void 0;
 const functions = require("firebase-functions/v1");
-const admin = require("firebase-admin");
 const crypto = require("crypto");
 const init_1 = require("./init");
 const blog_1 = require("./blog");
@@ -10,6 +9,7 @@ const categories_1 = require("./categories");
 const corsConfig_1 = require("./corsConfig");
 const authUtils_1 = require("./authUtils");
 const projectflow_api_1 = require("./projectflow-api");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3'; // Frankfurt
 /**
  * Newsletter Subscribe Endpoint
@@ -107,11 +107,11 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
                 // Recipient exists - update if needed
                 const existingDoc = existingQuery.docs[0];
                 const updates = {
-                    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                    updatedAt: firestore_1.FieldValue.serverTimestamp()
                 };
                 // Add to groups if provided
                 if (groupIds.length > 0) {
-                    updates.groupIds = admin.firestore.FieldValue.arrayUnion(...groupIds);
+                    updates.groupIds = firestore_1.FieldValue.arrayUnion(...groupIds);
                 }
                 // Update custom fields if provided
                 if (customFields && typeof customFields === 'object') {
@@ -134,9 +134,9 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
                 status: 'Subscribed',
                 source: 'Signup Form',
                 projectId,
-                unsubscribeToken: crypto.randomUUID(),
-                createdAt: admin.firestore.FieldValue.serverTimestamp(),
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                unsubscribeToken: crypto.randomUUID(), // Secure unique token for unsubscribe links
+                createdAt: firestore_1.FieldValue.serverTimestamp(),
+                updatedAt: firestore_1.FieldValue.serverTimestamp()
             };
             if (firstName)
                 recipientData.firstName = firstName;
@@ -397,7 +397,7 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
             }
             await recipientDoc.ref.update({
                 status: 'Unsubscribed',
-                updatedAt: admin.firestore.FieldValue.serverTimestamp()
+                updatedAt: firestore_1.FieldValue.serverTimestamp()
             });
             if (isGet) {
                 res.status(200).send(`

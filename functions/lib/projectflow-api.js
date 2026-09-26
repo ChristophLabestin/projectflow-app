@@ -1,10 +1,10 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleProjectflowApiRoute = void 0;
-const admin = require("firebase-admin");
 const crypto = require("crypto");
 const authUtils_1 = require("./authUtils");
 const init_1 = require("./init");
+const firestore_1 = require("firebase-admin/firestore");
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
 const INITIATIVES = 'initiatives';
@@ -151,7 +151,7 @@ const compactObject = (payload) => Object.entries(payload).reduce((acc, [key, va
     return acc;
 }, {});
 const serializeValue = (value) => {
-    if (value instanceof admin.firestore.Timestamp) {
+    if (value instanceof firestore_1.Timestamp) {
         return value.toDate().toISOString();
     }
     if (Array.isArray(value)) {
@@ -190,7 +190,7 @@ const writeProjectActivity = async (tenantId, projectId, action, target, related
         relatedId,
         details,
         actorType: 'api-token',
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp()
     }));
 };
 const syncProjectProgress = async (tenantId, projectId) => {
@@ -203,7 +203,7 @@ const syncProjectProgress = async (tenantId, projectId) => {
     const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
     await projectRef(tenantId, projectId).set({
         progress,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     }, { merge: true });
 };
 const extractWritableFields = (body, allowedFields) => compactObject(allowedFields.reduce((acc, field) => {
@@ -382,8 +382,8 @@ const createProject = async (req, res) => {
         coverImage: getString(body.coverImage),
         squareIcon: getString(body.squareIcon),
         screenshots: Array.isArray(body.screenshots) ? body.screenshots : [],
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     const created = await init_1.db.collection('tenants').doc(context.tenantId).collection(PROJECTS).add(payload);
     await writeProjectActivity(context.tenantId, created.id, `Created project "${title}" via API token ${context.actorLabel}`, 'Project', created.id, context.actorId, context.actorLabel);
@@ -410,7 +410,7 @@ const updateProject = async (req, res, projectId) => {
         badRequest(res, 'No writable fields provided for update.');
         return;
     }
-    await projectRef(context.tenantId, projectId).update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await projectRef(context.tenantId, projectId).update(Object.assign(Object.assign({}, updates), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     await writeProjectActivity(context.tenantId, projectId, `Updated project "${((_a = projectSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || projectId}" via API token ${context.actorLabel}`, 'Project', projectId, context.actorId, context.actorLabel);
     const updatedSnapshot = await projectRef(context.tenantId, projectId).get();
     res.status(200).json({
@@ -500,8 +500,8 @@ const createTask = async (req, res, projectId) => {
         githubProjectV2Fields: getRecord(body.githubProjectV2Fields),
         githubSyncDisabled: typeof body.githubSyncDisabled === 'boolean' ? body.githubSyncDisabled : undefined,
         isCompleted: Boolean(body.isCompleted),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
     await writeProjectActivity(context.tenantId, projectId, `Created task "${title}" via API token ${context.actorLabel}`, 'Tasks', created.id, context.actorId, context.actorLabel);
@@ -530,7 +530,7 @@ const updateTask = async (req, res, projectId, taskId) => {
         badRequest(res, 'No writable fields provided for update.');
         return;
     }
-    await taskRef.update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await taskRef.update(Object.assign(Object.assign({}, updates), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     const latestTaskSnapshot = await taskRef.get();
     const latestTaskTitle = getString((_a = latestTaskSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title);
     await writeProjectActivity(context.tenantId, projectId, `Updated task "${latestTaskTitle || taskId}" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
@@ -589,7 +589,7 @@ const upsertTaskByExternalKey = async (req, res, projectId) => {
             updates.description = appended;
         }
         updates.externalKey = externalKey;
-        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.updatedAt = firestore_1.FieldValue.serverTimestamp();
         await taskSnapshot.ref.update(updates);
         const refreshed = await taskSnapshot.ref.get();
         const refreshedTitle = getString((_a = refreshed.data()) === null || _a === void 0 ? void 0 : _a.title);
@@ -641,8 +641,8 @@ const upsertTaskByExternalKey = async (req, res, projectId) => {
         githubProjectV2Fields: getRecord(body.githubProjectV2Fields),
         githubSyncDisabled: typeof body.githubSyncDisabled === 'boolean' ? body.githubSyncDisabled : undefined,
         isCompleted: Boolean(body.isCompleted),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     const created = await taskCollectionRef(context.tenantId, projectId).add(payload);
     await writeProjectActivity(context.tenantId, projectId, `Upsert-created task "${title}" via external key ${externalKey}`, 'Tasks', created.id, context.actorId, context.actorLabel);
@@ -733,8 +733,8 @@ const createInitiative = async (req, res, projectId) => {
         outcome: getString(body.outcome),
         health: getString(body.health),
         completedAt: body.completedAt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
     const createdSnapshot = await created.get();
@@ -783,7 +783,7 @@ const updateInitiative = async (req, res, projectId, initiativeId) => {
         badRequest(res, 'No writable fields provided for update.');
         return;
     }
-    await initiativeRef.update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await initiativeRef.update(Object.assign(Object.assign({}, updates), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     const latestSnapshot = await initiativeRef.get();
     await writeProjectActivity(context.tenantId, projectId, `Updated initiative "${getString((_a = latestSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || initiativeId}" via API token ${context.actorLabel}`, 'Initiatives', initiativeId, context.actorId, context.actorLabel);
     res.status(200).json({
@@ -810,8 +810,8 @@ const deleteInitiative = async (req, res, projectId, initiativeId) => {
         .where('initiativeId', '==', initiativeId)
         .get();
     await Promise.all(linkedTasks.docs.map((docSnap) => docSnap.ref.update({
-        initiativeId: admin.firestore.FieldValue.delete(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        initiativeId: firestore_1.FieldValue.delete(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     })));
     const initiativeTitle = getString((_a = initiativeSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title);
     await initiativeRef.delete();
@@ -848,7 +848,7 @@ const upsertInitiativeByExternalKey = async (req, res, projectId) => {
                 : appendSummary;
         }
         updates.externalKey = externalKey;
-        updates.updatedAt = admin.firestore.FieldValue.serverTimestamp();
+        updates.updatedAt = firestore_1.FieldValue.serverTimestamp();
         await initiativeSnapshot.ref.update(updates);
         const refreshed = await initiativeSnapshot.ref.get();
         await writeProjectActivity(context.tenantId, projectId, `Synced initiative "${getString((_a = refreshed.data()) === null || _a === void 0 ? void 0 : _a.title) || refreshed.id}" via external key ${externalKey}`, 'Initiatives', refreshed.id, context.actorId, context.actorLabel);
@@ -882,8 +882,8 @@ const upsertInitiativeByExternalKey = async (req, res, projectId) => {
         outcome: getString(body.outcome),
         health: getString(body.health),
         completedAt: body.completedAt,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     const created = await initiativeCollectionRef(context.tenantId, projectId).add(payload);
     const createdSnapshot = await created.get();
@@ -931,7 +931,7 @@ const createSubtask = async (req, res, projectId, taskId) => {
         return;
     }
     const payload = compactObject(Object.assign(Object.assign({}, extractMutableFields(body)), { taskId,
-        projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, title, isCompleted: Boolean(body.isCompleted), assigneeId: getString(body.assigneeId) || null, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+        projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, title, isCompleted: Boolean(body.isCompleted), assigneeId: getString(body.assigneeId) || null, createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     const created = await taskCollectionRef(context.tenantId, projectId).doc(taskId).collection(SUBTASKS).add(payload);
     const createdSnapshot = await created.get();
     await writeProjectActivity(context.tenantId, projectId, `Created subtask "${title}" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
@@ -986,7 +986,7 @@ const updateSubtask = async (req, res, projectId, taskId, subtaskId) => {
         badRequest(res, 'No writable fields provided for update.');
         return;
     }
-    await subtaskRef.update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await subtaskRef.update(Object.assign(Object.assign({}, updates), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     await writeProjectActivity(context.tenantId, projectId, `Updated subtask "${getString((_a = subtaskSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || subtaskId}" via API token ${context.actorLabel}`, 'Tasks', taskId, context.actorId, context.actorLabel);
     const latest = await subtaskRef.get();
     res.status(200).json({
@@ -1064,7 +1064,7 @@ const createProjectCollectionItem = async (req, res, projectId, collectionName, 
         badRequest(res, `${requiredField} is required.`);
         return;
     }
-    const payload = compactObject(Object.assign(Object.assign({}, extractMutableFields(body)), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, [requiredField]: requiredValue, createdAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    const payload = compactObject(Object.assign(Object.assign({}, extractMutableFields(body)), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, [requiredField]: requiredValue, createdAt: firestore_1.FieldValue.serverTimestamp(), updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     if (collectionName === MILESTONES) {
         payload.status = getString(body.status) || 'Pending';
     }
@@ -1132,7 +1132,7 @@ const updateProjectCollectionItem = async (req, res, projectId, itemId, collecti
     if (collectionName === CATEGORIES && typeof updates.name === 'string') {
         updates.normalized = updates.name.toLowerCase();
     }
-    await itemRef.update(Object.assign(Object.assign({}, updates), { updatedAt: admin.firestore.FieldValue.serverTimestamp() }));
+    await itemRef.update(Object.assign(Object.assign({}, updates), { updatedAt: firestore_1.FieldValue.serverTimestamp() }));
     await writeProjectActivity(context.tenantId, projectId, `Updated ${notFoundLabel.toLowerCase()} "${getString((_a = itemSnapshot.data()) === null || _a === void 0 ? void 0 : _a.title) || getString((_b = itemSnapshot.data()) === null || _b === void 0 ? void 0 : _b.name) || itemId}" via API token ${context.actorLabel}`, activityTarget, itemId, context.actorId, context.actorLabel);
     const latest = await itemRef.get();
     res.status(200).json({
@@ -1254,7 +1254,7 @@ const upsertCodexLinkedEntity = async (context, projectId, body, externalKey, en
             externalKey,
             codexManaged: true,
             codexSessionExternalKey: externalKey,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         });
         if (!matches.empty) {
             const match = matches.docs[0];
@@ -1267,7 +1267,7 @@ const upsertCodexLinkedEntity = async (context, projectId, body, externalKey, en
                 data: serializeValue(snapshot.data())
             };
         }
-        const created = await initiativeCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        const created = await initiativeCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, createdAt: firestore_1.FieldValue.serverTimestamp() }));
         const snapshot = await created.get();
         return {
             type: entity,
@@ -1295,7 +1295,7 @@ const upsertCodexLinkedEntity = async (context, projectId, body, externalKey, en
         isCompleted: Boolean(body.isCompleted),
         codexManaged: true,
         codexSessionExternalKey: externalKey,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     if (!matches.empty) {
         const match = matches.docs[0];
@@ -1309,7 +1309,7 @@ const upsertCodexLinkedEntity = async (context, projectId, body, externalKey, en
             data: serializeValue(snapshot.data())
         };
     }
-    const created = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'], createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+    const created = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, updates), { projectId, tenantId: context.tenantId, ownerId: context.actorId, createdBy: context.actorId, category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'], createdAt: firestore_1.FieldValue.serverTimestamp() }));
     const snapshot = await created.get();
     await syncProjectProgress(context.tenantId, projectId);
     return {
@@ -1337,7 +1337,7 @@ const writeCodexCheckpoint = async (context, projectId, sessionRef, phase, body)
         metadata: getRecord(body.metadata),
         createdBy: context.actorId,
         actorLabel: context.actorLabel,
-        createdAt: admin.firestore.FieldValue.serverTimestamp()
+        createdAt: firestore_1.FieldValue.serverTimestamp()
     });
     const checkpointRef = await sessionRef.collection(CODEX_CHECKPOINTS).add(checkpointPayload);
     const sessionUpdates = compactObject({
@@ -1346,11 +1346,11 @@ const writeCodexCheckpoint = async (context, projectId, sessionRef, phase, body)
         lastCheckpointId: checkpointRef.id,
         lastCheckpointSummary: summary,
         lastValidationStatus: validationStatus,
-        lastCheckpointAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        lastCheckpointAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     if (filesTouched.length > 0) {
-        sessionUpdates.filesTouched = admin.firestore.FieldValue.arrayUnion(...filesTouched);
+        sessionUpdates.filesTouched = firestore_1.FieldValue.arrayUnion(...filesTouched);
     }
     await sessionRef.set(sessionUpdates, { merge: true });
     return Object.assign({ id: checkpointRef.id }, serializeValue(checkpointPayload));
@@ -1424,7 +1424,7 @@ const createCodexFollowups = async (context, projectId, followUpsValue, sessionI
             codexSessionId: sessionId,
             codexSessionExternalKey: sessionExternalKey,
             filesTouched: getStringArray(followUp.filesTouched),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         });
         let taskId;
         let taskOperation;
@@ -1435,7 +1435,7 @@ const createCodexFollowups = async (context, projectId, followUpsValue, sessionI
             taskOperation = 'updated';
         }
         else {
-            const createdTask = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, taskPayload), { createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+            const createdTask = await taskCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, taskPayload), { createdAt: firestore_1.FieldValue.serverTimestamp() }));
             taskId = createdTask.id;
             taskOperation = 'created';
         }
@@ -1454,7 +1454,7 @@ const createCodexFollowups = async (context, projectId, followUpsValue, sessionI
             filesTouched: getStringArray(followUp.filesTouched),
             createdBy: context.actorId,
             actorLabel: context.actorLabel,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         });
         const followupMatches = await codexFollowupCollectionRef(context.tenantId, projectId)
             .where('externalKey', '==', externalKey)
@@ -1467,7 +1467,7 @@ const createCodexFollowups = async (context, projectId, followUpsValue, sessionI
             followupId = followupSnapshot.id;
         }
         else {
-            const createdFollowup = await codexFollowupCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, followupPayload), { createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+            const createdFollowup = await codexFollowupCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, followupPayload), { createdAt: firestore_1.FieldValue.serverTimestamp() }));
             followupId = createdFollowup.id;
         }
         results.push({
@@ -1556,7 +1556,7 @@ const startCodexSession = async (req, res, projectId) => {
         createdBy: context.actorId,
         ownerId: context.actorId,
         metadata: getRecord(body.metadata),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     });
     let sessionRef;
     let operation;
@@ -1566,7 +1566,7 @@ const startCodexSession = async (req, res, projectId) => {
         operation = 'updated';
     }
     else {
-        sessionRef = await codexSessionCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, payload), { startedAt: admin.firestore.FieldValue.serverTimestamp(), createdAt: admin.firestore.FieldValue.serverTimestamp() }));
+        sessionRef = await codexSessionCollectionRef(context.tenantId, projectId).add(Object.assign(Object.assign({}, payload), { startedAt: firestore_1.FieldValue.serverTimestamp(), createdAt: firestore_1.FieldValue.serverTimestamp() }));
         operation = 'created';
     }
     const checkpoint = await writeCodexCheckpoint(context, projectId, sessionRef, getString(body.phase) || 'start', Object.assign(Object.assign({}, body), { status: 'running', summary: summary || `Started ${title}` }));
@@ -1627,8 +1627,8 @@ const finishCodexSession = async (req, res, projectId, sessionId) => {
     const sessionUpdates = {
         status: finalStatus,
         phase,
-        finishedAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        finishedAt: firestore_1.FieldValue.serverTimestamp(),
+        updatedAt: firestore_1.FieldValue.serverTimestamp()
     };
     if (getString(body.commitSha) || getString(body.commit)) {
         sessionUpdates.commitSha = getString(body.commitSha) || getString(body.commit);
@@ -1640,10 +1640,10 @@ const finishCodexSession = async (req, res, projectId, sessionId) => {
         const taskUpdates = {
             status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'Review',
             isCompleted: finalStatus === 'completed',
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         };
         if (finalStatus === 'completed') {
-            taskUpdates.completedAt = admin.firestore.FieldValue.serverTimestamp();
+            taskUpdates.completedAt = firestore_1.FieldValue.serverTimestamp();
             taskUpdates.completedBy = context.actorId;
         }
         await taskCollectionRef(context.tenantId, projectId).doc(taskId).set(taskUpdates, { merge: true });
@@ -1652,8 +1652,8 @@ const finishCodexSession = async (req, res, projectId, sessionId) => {
     if (initiativeId) {
         await initiativeCollectionRef(context.tenantId, projectId).doc(initiativeId).set({
             status: finalStatus === 'completed' ? 'Done' : finalStatus === 'blocked' ? 'Blocked' : 'In Progress',
-            completedAt: finalStatus === 'completed' ? admin.firestore.FieldValue.serverTimestamp() : admin.firestore.FieldValue.delete(),
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+            completedAt: finalStatus === 'completed' ? firestore_1.FieldValue.serverTimestamp() : firestore_1.FieldValue.delete(),
+            updatedAt: firestore_1.FieldValue.serverTimestamp()
         }, { merge: true });
     }
     const followups = await createCodexFollowups(context, projectId, body.followUps, resolvedSession.ref.id, getString(sessionData.externalKey), initiativeId);

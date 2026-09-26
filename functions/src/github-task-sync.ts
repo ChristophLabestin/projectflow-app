@@ -1,5 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions/v1';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3';
 
@@ -140,8 +141,8 @@ export const onProjectTaskGitHubSync = functions.region(REGION).firestore
                     githubIssueUrl: issue.html_url,
                     githubIssueNodeId: issue.node_id,
                     githubIssueState: issue.state,
-                    githubSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-                    githubSyncError: admin.firestore.FieldValue.delete()
+                    githubSyncedAt: FieldValue.serverTimestamp(),
+                    githubSyncError: FieldValue.delete()
                 }, { merge: true });
                 return;
             }
@@ -156,14 +157,14 @@ export const onProjectTaskGitHubSync = functions.region(REGION).firestore
                 githubRepo: repo,
                 githubIssueUrl: issue.html_url || task.githubIssueUrl,
                 githubIssueState: issue.state,
-                githubSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-                githubSyncError: admin.firestore.FieldValue.delete()
+                githubSyncedAt: FieldValue.serverTimestamp(),
+                githubSyncError: FieldValue.delete()
             }, { merge: true });
         } catch (error: any) {
             console.warn('GitHub task sync failed', error);
             await taskRef.set({
                 githubSyncError: getString(error?.message) || 'GitHub task sync failed',
-                githubSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+                githubSyncedAt: FieldValue.serverTimestamp()
             }, { merge: true });
         }
     });

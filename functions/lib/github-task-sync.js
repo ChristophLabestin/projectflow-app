@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.onProjectTaskGitHubSync = void 0;
 const admin = require("firebase-admin");
 const functions = require("firebase-functions/v1");
+const firestore_1 = require("firebase-admin/firestore");
 const REGION = 'europe-west3';
 const getString = (value) => (typeof value === 'string' ? value.trim() : '');
 const getGitHubHeaders = (token) => ({
@@ -110,8 +111,8 @@ exports.onProjectTaskGitHubSync = functions.region(REGION).firestore
                 githubIssueUrl: issue.html_url,
                 githubIssueNodeId: issue.node_id,
                 githubIssueState: issue.state,
-                githubSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-                githubSyncError: admin.firestore.FieldValue.delete()
+                githubSyncedAt: firestore_1.FieldValue.serverTimestamp(),
+                githubSyncError: firestore_1.FieldValue.delete()
             }, { merge: true });
             return;
         }
@@ -124,15 +125,15 @@ exports.onProjectTaskGitHubSync = functions.region(REGION).firestore
             githubRepo: repo,
             githubIssueUrl: issue.html_url || task.githubIssueUrl,
             githubIssueState: issue.state,
-            githubSyncedAt: admin.firestore.FieldValue.serverTimestamp(),
-            githubSyncError: admin.firestore.FieldValue.delete()
+            githubSyncedAt: firestore_1.FieldValue.serverTimestamp(),
+            githubSyncError: firestore_1.FieldValue.delete()
         }, { merge: true });
     }
     catch (error) {
         console.warn('GitHub task sync failed', error);
         await taskRef.set({
             githubSyncError: getString(error === null || error === void 0 ? void 0 : error.message) || 'GitHub task sync failed',
-            githubSyncedAt: admin.firestore.FieldValue.serverTimestamp()
+            githubSyncedAt: firestore_1.FieldValue.serverTimestamp()
         }, { merge: true });
     }
 });
