@@ -1029,6 +1029,48 @@
     &.is-focus .po-list__group { scroll-snap-align: start; }
 }
 
+/* Board focus: the board takes over the page (sidebar collapsed via AppLayout,
+   project chrome hidden in JSX). The work region fills the viewport below the
+   top bar and each lane scrolls on its own. */
+.po--board-focus {
+    max-width: none;
+    padding-top: 12px;
+    padding-bottom: 12px;
+
+    .po-work.is-focus {
+        height: calc(100dvh - var(--topbar-overlay-clearance, 5rem) - 24px);
+    }
+
+    .po-workspace {
+        overflow-x: auto;
+    }
+}
+
+.po-command__focus-label {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+
+    kbd {
+        margin-left: 6px;
+        padding: 1px 5px;
+        border-radius: var(--radius-sm);
+        background: var(--color-surface-hover);
+        font-family: inherit;
+        font-size: 11px;
+        color: var(--color-text-muted);
+    }
+}
+
+/* Light mode: grey lanes, white elevated cards (clearer than grey on white). */
+html:not(.dark) .po-board {
+    .po-board__lane-body { background: var(--color-surface-hover); }
+    .po-board__task {
+        background: var(--color-surface-card);
+        box-shadow: var(--shadow-sm);
+    }
+}
+
 .po-command__focus-btn {
     flex-shrink: 0;
     width: 36px;
@@ -1045,7 +1087,19 @@
 
     .material-symbols-outlined { font-size: 18px; }
     &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
-    &.is-active { background: var(--color-primary); color: var(--color-primary-text); border-color: var(--color-primary); }
+    &.is-active {
+        width: auto;
+        gap: 6px;
+        padding: 0 12px;
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+        border-color: var(--color-primary);
+
+        .po-command__focus-label kbd {
+            background: rgba(var(--color-primary-text-rgb), 0.18);
+            color: var(--color-primary-text);
+        }
+    }
 }
 
 .po-view-empty {

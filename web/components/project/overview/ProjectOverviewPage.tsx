@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { useLanguage } from '../../../context/LanguageContext';
 import { usePinnedProject } from '../../../context/PinnedProjectContext';
@@ -20,7 +20,7 @@ import { useCompanyContext } from './hooks/useCompanyContext';
 import { useProjectLifecycle } from './hooks/useProjectLifecycle';
 import { useWorkItems, type WorkItem } from './views/shared/useWorkItems';
 import type { WorkViewContext } from './views/shared/viewTypes';
-import { resolveEnabledTabs, resolveViewsForTab, type OverviewTab } from './config/overviewConfig';
+import { resolveEnabledTabs, resolveViewsForTab, type OverviewTab, type OverviewWorkView } from './config/overviewConfig';
 import { ProjectHero } from './hero/ProjectHero';
 import { ProjectCommandBar, type CommandOption } from './command/ProjectCommandBar';
 import { WorkViews } from './views/WorkViews';
@@ -92,16 +92,50 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         return next;
     });
 
-    // Focus mode: stretch the quick-add + board region to ~viewport height.
+    // Board focus: the task board takes over the page. The sidebar collapses,
+    // project chrome (hero, tabs, initiatives, references) hides, and the
+    // previous sidebar width and view are restored on exit (button, Esc, or
+    // leaving the page).
     const [workFocus, setWorkFocus] = useState(false);
     const workRef = useRef<HTMLDivElement>(null);
-    const toggleWorkFocus = () => setWorkFocus((prev) => {
-        const next = !prev;
-        if (next) {
-            requestAnimationFrame(() => workRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    const focusRestoreRef = useRef<{ wide: boolean; view: OverviewWorkView } | null>(null);
+    const enterWorkFocus = () => {
+        focusRestoreRef.current = { wide, view: viewState.view };
+        outlet.setContentWide?.(true);
+        viewState.setTab('work');
+        viewState.setView('board');
+        setWorkFocus(true);
+        requestAnimationFrame(() => workRef.current?.scrollIntoView({ block: 'start' }));
+    };
+    const exitWorkFocus = useCallback(() => {
+        const restore = focusRestoreRef.current;
+        focusRestoreRef.current = null;
+        setWorkFocus(false);
+        if (restore) {
+            outlet.setContentWide?.(restore.wide);
+            viewState.setView(restore.view);
         }
-        return next;
-    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [outlet.setContentWide, viewState.setView]);
+    const toggleWorkFocus = () => (workFocus ? exitWorkFocus() : enterWorkFocus());
+
+    useEffect(() => {
+        if (!workFocus) return;
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape') return;
+            if (document.querySelector('[role="dialog"], .inline-menu')) return;
+            exitWorkFocus();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [workFocus, exitWorkFocus]);
+
+    // Leaving the page while focused restores the sidebar.
+    const exitRef = useRef(exitWorkFocus);
+    exitRef.current = exitWorkFocus;
+    useEffect(() => () => {
+        if (focusRestoreRef.current) exitRef.current();
+    }, []);
 
     const tenantQuery = project?.tenantId ? `?tenant=${project.tenantId}` : '';
 
@@ -349,106 +383,111 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     };
 
     return (
-        <div className={`po ${wide ? 'po--wide' : ''}`.trim()}>
-            <ProjectHero
-                project={project}
-                health={health}
-                derived={derived}
-                tenantQuery={tenantQuery}
-                companyContextProject={companyContextProject}
-                linkedCompanyCount={linkedCompanyProjects.length}
-                canManageTasks={canManageTasks}
-                isOwner={isOwner}
-                isPinned={pinnedProjectId === project.id}
-                onNewTask={() => setModal('task')}
-                onTogglePin={togglePin}
-                onEdit={() => { setEditTab('general'); setModal('edit'); }}
-                onInvite={() => setModal('invite')}
-                onReport={() => { setModal('report'); if (!report) void handleGenerateReport(); }}
-                onOpenHealth={() => setModal('health')}
-                onPause={() => void lifecycle.pause()}
-                onResume={() => void lifecycle.resume()}
-                onCancel={() => void lifecycle.cancel()}
-                onComplete={() => void lifecycle.complete()}
-                isWide={wide}
-                onToggleWide={toggleWide}
-                coverExpanded={coverExpanded}
-                onToggleCoverExpand={toggleCoverExpand}
-                reminders={(
-                    <ProjectRemindersPanel
+        <div className={`po ${wide ? 'po--wide' : ''} ${workFocus ? 'po--board-focus' : ''}`.trim()}>
+            {!workFocus && (
+                <>
+                <ProjectHero
+                    project={project}
+                    health={health}
+                    derived={derived}
+                    tenantQuery={tenantQuery}
+                    companyContextProject={companyContextProject}
+                    linkedCompanyCount={linkedCompanyProjects.length}
+                    canManageTasks={canManageTasks}
+                    isOwner={isOwner}
+                    isPinned={pinnedProjectId === project.id}
+                    onNewTask={() => setModal('task')}
+                    onTogglePin={togglePin}
+                    onEdit={() => { setEditTab('general'); setModal('edit'); }}
+                    onInvite={() => setModal('invite')}
+                    onReport={() => { setModal('report'); if (!report) void handleGenerateReport(); }}
+                    onOpenHealth={() => setModal('health')}
+                    onPause={() => void lifecycle.pause()}
+                    onResume={() => void lifecycle.resume()}
+                    onCancel={() => void lifecycle.cancel()}
+                    onComplete={() => void lifecycle.complete()}
+                    isWide={wide}
+                    onToggleWide={toggleWide}
+                    coverExpanded={coverExpanded}
+                    onToggleCoverExpand={toggleCoverExpand}
+                    reminders={(
+                        <ProjectRemindersPanel
+                            project={project}
+                            tasks={tasks}
+                            initiatives={initiatives}
+                            canManage={canManageTasks}
+                            dateFormat={dateFormat}
+                            dateLocale={dateLocale}
+                            onSaveProjectReminders={handleSaveProjectReminders}
+                            onSaveTaskReminders={handleSaveTaskReminders}
+                            onOpenTask={(nextTaskId) => navigate(`/project/${project.id}/tasks/${nextTaskId}${tenantQuery}`)}
+                            onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                            t={t}
+                        />
+                    )}
+                    onOpenNext={() => {
+                        const next = derived.nextItem;
+                        if (!next) return;
+                        if (next.entity === 'task') navigate(`/project/${project.id}/tasks/${next.id}${tenantQuery}`);
+                        else if (next.entity === 'initiative') navigate(`/project/${project.id}/initiatives/${next.id}${tenantQuery}`);
+                        else navigate(`/project/${project.id}/milestones${tenantQuery}`);
+                    }}
+                    t={t}
+                />
+
+                {(isPaused || isCanceled) && (
+                    <div className={`po-banner po-banner--${isCanceled ? 'canceled' : 'paused'}`}>
+                        <span className="material-symbols-outlined">{isCanceled ? 'cancel' : 'pause_circle'}</span>
+                        <span>{isCanceled
+                            ? t('projectOverview.v2.banner.canceled', 'This project is canceled.')
+                            : t('projectOverview.v2.banner.paused', 'This project is paused.')}</span>
+                        {isPaused && isOwner && (
+                            <button type="button" className="po-banner__action" onClick={() => void lifecycle.resume()} disabled={lifecycle.busy}>
+                                {t('projectOverview.v2.lifecycle.resume', 'Resume project')}
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {isCompanyProject(project) && (
+                    <CompanyOverviewSection
                         project={project}
                         tasks={tasks}
+                        milestones={milestones}
                         initiatives={initiatives}
-                        canManage={canManageTasks}
+                        linkedCompanyProjects={linkedCompanyProjects}
                         dateFormat={dateFormat}
                         dateLocale={dateLocale}
-                        onSaveProjectReminders={handleSaveProjectReminders}
-                        onSaveTaskReminders={handleSaveTaskReminders}
-                        onOpenTask={(nextTaskId) => navigate(`/project/${project.id}/tasks/${nextTaskId}${tenantQuery}`)}
-                        onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                        statusLabels={labels.statusLabels}
+                        priorityLabels={labels.priorityLabels}
+                        onEditBrief={() => { setEditTab('briefing'); setModal('edit'); }}
                         t={t}
                     />
                 )}
-                onOpenNext={() => {
-                    const next = derived.nextItem;
-                    if (!next) return;
-                    if (next.entity === 'task') navigate(`/project/${project.id}/tasks/${next.id}${tenantQuery}`);
-                    else if (next.entity === 'initiative') navigate(`/project/${project.id}/initiatives/${next.id}${tenantQuery}`);
-                    else navigate(`/project/${project.id}/milestones${tenantQuery}`);
-                }}
-                t={t}
-            />
 
-            {(isPaused || isCanceled) && (
-                <div className={`po-banner po-banner--${isCanceled ? 'canceled' : 'paused'}`}>
-                    <span className="material-symbols-outlined">{isCanceled ? 'cancel' : 'pause_circle'}</span>
-                    <span>{isCanceled
-                        ? t('projectOverview.v2.banner.canceled', 'This project is canceled.')
-                        : t('projectOverview.v2.banner.paused', 'This project is paused.')}</span>
-                    {isPaused && isOwner && (
-                        <button type="button" className="po-banner__action" onClick={() => void lifecycle.resume()} disabled={lifecycle.busy}>
-                            {t('projectOverview.v2.lifecycle.resume', 'Resume project')}
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {isCompanyProject(project) && (
-                <CompanyOverviewSection
-                    project={project}
-                    tasks={tasks}
-                    milestones={milestones}
-                    initiatives={initiatives}
-                    linkedCompanyProjects={linkedCompanyProjects}
-                    dateFormat={dateFormat}
-                    dateLocale={dateLocale}
-                    statusLabels={labels.statusLabels}
-                    priorityLabels={labels.priorityLabels}
-                    onEditBrief={() => { setEditTab('briefing'); setModal('edit'); }}
-                    t={t}
-                />
-            )}
-
-            {enabledTabs.length > 1 && (
-                <div className="po-tabs" role="tablist" aria-label={t('projectOverview.workspace.tabsLabel', 'Workspace')}>
-                    {enabledTabs.map((tab) => (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            role="tab"
-                            aria-selected={activeTab === tab.id}
-                            className={`po-tabs__tab ${activeTab === tab.id ? 'is-active' : ''}`.trim()}
-                            onClick={() => viewState.setTab(tab.id)}
-                        >
-                            <span className="material-symbols-outlined">{tab.icon}</span>
-                            <span>{t(tab.labelKey, tab.id)}</span>
-                        </button>
-                    ))}
-                </div>
+                {enabledTabs.length > 1 && (
+                    <div className="po-tabs" role="tablist" aria-label={t('projectOverview.workspace.tabsLabel', 'Workspace')}>
+                        {enabledTabs.map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={activeTab === tab.id}
+                                className={`po-tabs__tab ${activeTab === tab.id ? 'is-active' : ''}`.trim()}
+                                onClick={() => viewState.setTab(tab.id)}
+                            >
+                                <span className="material-symbols-outlined">{tab.icon}</span>
+                                <span>{t(tab.labelKey, tab.id)}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+                </>
             )}
 
             {activeTab === 'work' && (
                 <>
+                    {!workFocus && (
                     <InitiativesStrip
                         initiatives={initiatives}
                         tasks={tasks}
@@ -461,6 +500,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                         onCreate={() => setModal('initiative')}
                         t={t}
                     />
+                    )}
                     <div className={`po-work ${workFocus ? 'is-focus' : ''}`.trim()} ref={workRef}>
                         <ProjectCommandBar
                             viewState={viewState}
@@ -480,6 +520,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                             <WorkViews view={viewState.view} ctx={viewCtx} />
                         </div>
                     </div>
+                    {!workFocus && (
                     <ReferenceSection
                         project={project}
                         members={members}
@@ -490,6 +531,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                         onInvite={() => setModal('invite')}
                         t={t}
                     />
+                    )}
                 </>
             )}
 

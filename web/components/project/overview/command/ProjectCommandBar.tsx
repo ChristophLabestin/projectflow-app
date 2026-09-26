@@ -229,7 +229,12 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
                         aria-label={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
                         aria-pressed={workFocus}
                     >
-                        <span className="material-symbols-outlined">{workFocus ? 'fullscreen_exit' : 'height'}</span>
+                        <span className="material-symbols-outlined">{workFocus ? 'close_fullscreen' : 'open_in_full'}</span>
+                        {workFocus && (
+                            <span className="po-command__focus-label">
+                                {t('projectOverview.v2.command.focusExit', 'Exit focus')}<kbd>Esc</kbd>
+                            </span>
+                        )}
                     </button>
                 </div>
             )}

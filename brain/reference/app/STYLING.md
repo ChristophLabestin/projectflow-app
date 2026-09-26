@@ -24,6 +24,12 @@ All UI components and pages must reference these tokens instead of hardcoding va
 
 ### 1.2 Surfaces
 
+> 2026-09-26 light-mode contrast pass:
+> - `--color-surface-bg` is `#f2f2f3` and `--color-surface-hover` is `#ededee`, so white cards separate clearly from the page;
+> - `--shadow-sm/md/lg` include a 5% 1px shadow ring (borderless edge definition);
+> - `--color-text-muted` is `#666666` (5.7:1 on white);
+> - keep `web/styles/_tokens.scss` and `web/src/styles/_tokens.scss` identical for light values (both are emitted; the former wins today).
+
 | Token | Value | Description |
 |------|-------|-------------|
 | `--color-surface-bg` | `#fafafa` | Main application background |
@@ -315,6 +321,11 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Rows expose only frequent edits (status pill, priority bars, due chip, assignee avatars) as inline menus. No delete/convert/pin/category buttons on rows.
 - The bulk bar renders only when rows are selected.
 - Project Overview defaults to the list view grouped by due date (`OverviewGroupBy` `'due'`). The list renders the same `TaskRow`s. Board, timeline, calendar and relationships remain opt-in views.
+- Board focus (Project Overview, "Focus board" button):
+  - collapses the sidebar via AppLayout `contentWide`, switches to the board and hides the hero, tabs, initiatives and references;
+  - the board fills the viewport and lanes scroll individually;
+  - Esc, the exit button or leaving the page restores the previous sidebar width and view;
+  - in light mode, board lanes are grey and cards white with `--shadow-sm`.
 - `/projects` is a portfolio list (`portfolio-row` in `_work-list.scss`), not spotlight cards. Health is shown as attention signals, not as a raw score.
 - Notifications: the inbox comes first; delivery/push diagnostics sit in a collapsed `<details>` below it.
 
