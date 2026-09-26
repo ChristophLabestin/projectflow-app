@@ -207,3 +207,6 @@
   - Actions: added v1 common components for `ListToolbar`, `EmptyState`, `Skeleton`/`SkeletonBlock`, `InlineEditCell`, `FilterMenu`, and `Stepper`; replaced the `/ui` "standardize next" cards with live demos for all six; added EN/DE demo copy and updated component/style Brain docs.
   - Validation: `cd web && npm run build` passed; `cd web && npm run lint:theme` passed.
   - Next: review the six primitives visually in an authenticated `/ui` session, then iterate through them one by one and adopt them in real feature screens.
+- 2026-09-26 — Production hosting deploy of the UI redesign batch (commit `2a5781f3`).
+  - Scope: web only (health recalibration, light-mode contrast, board/team/timeline focus mode, timeline/team/roadmap views, task-detail cards, CORA Studio feature flag, unified top-bar breadcrumbs, detail header row, semantic border radii, calmer project overview with project info drawer, sidebar "+" create menu). No functions/rules/index changes since `71f1abee`.
+  - Validation: build, 50/50 tests and theme lint green; live `index` bundle hash matches the local build.
