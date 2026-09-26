@@ -106,8 +106,6 @@
         box-shadow: var(--shadow-sm);
 
         &:focus-within {
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 2px var(--color-primary-transparent);
             background: var(--color-surface);
         }
 

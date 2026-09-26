@@ -75,7 +75,6 @@
         transition: border-color var(--transition-fast), background var(--transition-fast);
 
         &:focus {
-            border-color: var(--color-primary);
             background: var(--color-surface-card);
         }
     }

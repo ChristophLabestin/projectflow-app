@@ -19,7 +19,13 @@ import { DatePicker } from './common/DateTime/DatePicker';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { ProjectLabelsModal } from './ProjectLabelsModal';
+import { InlineMenu } from './work/InlineMenu';
 import { useLanguage } from '../context/LanguageContext';
+
+const PRIORITY_OPTIONS = ['Urgent', 'High', 'Medium', 'Low'] as const;
+const STATUS_OPTIONS: TaskStatus[] = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'];
+// Sentinel option value for "Create label …" in the labels menu.
+const CREATE_LABEL_VALUE = '__create_label__';
 
 type Props = {
     projectId?: string;
@@ -287,54 +293,47 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
 
                     {/* Toolbar Row */}
                     <div className="toolbar-row">
-                        {/* Priority Dropdown */}
-                        <div className="dropdown-group">
-                            <button
-                                type="button"
-                                className={`trigger-btn trigger-btn--priority priority-${priority.toLowerCase()}`}
-                            >
-                                <span className="material-symbols-outlined trigger-icon">flag</span>
-                                {priorityLabels[priority] || priority}
-                                <span className="material-symbols-outlined chevron">expand_more</span>
-                            </button>
-                            <div className="dropdown-menu">
-                                {(['Urgent', 'High', 'Medium', 'Low'] as const).map(level => (
-                                    <button
-                                        key={level}
-                                        type="button"
-                                        onClick={() => setPriority(level)}
-                                        className={`dropdown-item priority-${level.toLowerCase()} ${priority === level ? 'selected' : ''}`}
-                                    >
-                                        <span className={`priority-dot priority-dot--${level.toLowerCase()}`} />
-                                        {priorityLabels[level] || level}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Priority */}
+                        <InlineMenu
+                            label={t('taskCreate.priority.label')}
+                            triggerClassName={`task-create__trigger task-create__trigger--priority priority-${(priority || 'Medium').toLowerCase()}`}
+                            trigger={(
+                                <>
+                                    <span className="material-symbols-outlined">flag</span>
+                                    {priorityLabels[priority || 'Medium']}
+                                    <span className="material-symbols-outlined task-create__chevron">expand_more</span>
+                                </>
+                            )}
+                            options={PRIORITY_OPTIONS.map((level) => ({
+                                value: level,
+                                label: priorityLabels[level] || level,
+                                leading: <span className={`priority-dot priority-dot--${level.toLowerCase()}`} />,
+                            }))}
+                            value={priority}
+                            onSelect={(value) => setPriority(value as Task['priority'])}
+                            width={180}
+                        />
 
-                        {/* Status Dropdown */}
-                        <div className="dropdown-group">
-                            <button
-                                type="button"
-                                className="trigger-btn trigger-btn--status"
-                            >
-                                <span className="material-symbols-outlined trigger-icon">radio_button_unchecked</span>
-                                {statusLabels[status] || status}
-                                <span className="material-symbols-outlined chevron">expand_more</span>
-                            </button>
-                            <div className="dropdown-menu">
-                                {(['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const).map(value => (
-                                    <button
-                                        key={value}
-                                        type="button"
-                                        onClick={() => setStatus(value)}
-                                        className={`dropdown-item status-${value.toLowerCase().replace(' ', '-')} ${status === value ? 'selected' : ''}`}
-                                    >
-                                        {statusLabels[value] || value}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Status */}
+                        <InlineMenu
+                            label={t('taskCreate.status.label')}
+                            triggerClassName="task-create__trigger"
+                            trigger={(
+                                <>
+                                    <span className={`work-status-dot work-status-dot--${status.replace(/\s+/g, '-').toLowerCase()}`} />
+                                    {statusLabels[status] || status}
+                                    <span className="material-symbols-outlined task-create__chevron">expand_more</span>
+                                </>
+                            )}
+                            options={STATUS_OPTIONS.map((value) => ({
+                                value,
+                                label: statusLabels[value] || value,
+                                leading: <span className={`work-status-dot work-status-dot--${value.replace(/\s+/g, '-').toLowerCase()}`} />,
+                            }))}
+                            value={status}
+                            onSelect={(value) => setStatus(value as TaskStatus)}
+                            width={190}
+                        />
 
                         {/* Divider */}
                         <div className="divider" />
@@ -362,66 +361,64 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                             );
                         })}
 
-                        {/* Add / create label */}
-                        <div className="dropdown-group dropdown-group--labels">
-                            <button
-                                type="button"
-                                className="trigger-btn trigger-btn--labels"
-                            >
-                                <span className="material-symbols-outlined trigger-icon">sell</span>
-                                {t('taskCreate.labels.button')}
-                            </button>
-                            <div className="dropdown-menu dropdown-menu--labels">
+                        {/* Labels: multi-select with search / create */}
+                        <InlineMenu
+                            label={t('taskCreate.labels.button')}
+                            triggerClassName="task-create__trigger task-create__trigger--muted"
+                            trigger={(
+                                <>
+                                    <span className="material-symbols-outlined">sell</span>
+                                    {t('taskCreate.labels.button')}
+                                </>
+                            )}
+                            options={[
+                                ...Array.from(new Set([...categoryOptions, ...selectedCategories]))
+                                    .filter((option) => option.toLowerCase().includes(normalizedLabelQuery))
+                                    .map((option) => ({
+                                        value: option,
+                                        label: option,
+                                        leading: <span className="category-dot" style={{ backgroundColor: categories.find((cat) => cat.name === option)?.color || 'var(--color-text-muted)' }} />,
+                                    })),
+                                ...(canCreateLabel ? [{
+                                    value: CREATE_LABEL_VALUE,
+                                    label: t('taskCreate.labels.create').replace('{name}', labelQuery.trim()),
+                                    leading: <span className="material-symbols-outlined">add</span>,
+                                    dividerBefore: true,
+                                }] : []),
+                            ]}
+                            selectedValues={selectedCategories}
+                            onSelect={(value) => {
+                                if (value === CREATE_LABEL_VALUE) {
+                                    addLabel(labelQuery.trim());
+                                    return;
+                                }
+                                setSelectedCategories((prev) => (prev.includes(value) ? prev.filter((x) => x !== value) : [...prev, value]));
+                            }}
+                            emptyLabel={t('taskCreate.labels.empty')}
+                            header={() => (
                                 <input
                                     type="text"
-                                    className="dropdown-menu__search"
+                                    data-autofocus
+                                    className="inline-menu__search"
                                     value={labelQuery}
                                     onChange={(e) => setLabelQuery(e.target.value)}
                                     onKeyDown={handleLabelInputKeyDown}
                                     placeholder={t('taskCreate.labels.searchPlaceholder')}
                                     aria-label={t('taskCreate.labels.searchPlaceholder')}
                                 />
-                                <div className="dropdown-menu__scroll">
-                                    {filteredLabelOptions.map(option => {
-                                        const catData = categories.find(cat => cat.name === option);
-                                        return (
-                                            <button
-                                                key={option}
-                                                type="button"
-                                                onClick={() => addLabel(option)}
-                                                className="dropdown-item"
-                                            >
-                                                <span className="category-dot" style={{ backgroundColor: catData?.color || 'var(--color-text-muted)' }} />
-                                                {option}
-                                            </button>
-                                        );
-                                    })}
-                                    {canCreateLabel && (
-                                        <button
-                                            type="button"
-                                            onClick={() => addLabel(labelQuery.trim())}
-                                            className="dropdown-item dropdown-item--create"
-                                        >
-                                            <span className="material-symbols-outlined">add</span>
-                                            {t('taskCreate.labels.create').replace('{name}', labelQuery.trim())}
-                                        </button>
-                                    )}
-                                    {filteredLabelOptions.length === 0 && !canCreateLabel && (
-                                        <div className="dropdown-menu__empty">
-                                            {t('taskCreate.labels.empty')}
-                                        </div>
-                                    )}
-                                </div>
+                            )}
+                            footer={(close) => (
                                 <button
                                     type="button"
-                                    onClick={() => setShowLabelsModal(true)}
-                                    className="dropdown-menu__manage"
+                                    className="inline-menu__action"
+                                    onClick={() => { close(); setShowLabelsModal(true); }}
                                 >
                                     <span className="material-symbols-outlined">settings</span>
                                     {t('taskCreate.labels.manage')}
                                 </button>
-                            </div>
-                        </div>
+                            )}
+                            width={240}
+                        />
                     </div>
 
                     {/* Description */}

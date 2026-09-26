@@ -143,17 +143,13 @@
 }
 
 .assignee-select__dropdown {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 50%;
-    transform: translateX(-50%);
-    min-width: 100%;
-    width: min(22rem, 90vw);
+    // Portaled to <body> and positioned from the trigger (MultiAssigneeSelector).
+    position: fixed;
     background-color: var(--color-surface-card);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     overflow: hidden;
-    z-index: 60;
+    z-index: 10000; // above modals (task modal overlay is 9999)
 }
 
 .assignee-select__search {

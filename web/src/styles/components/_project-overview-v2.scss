@@ -4,10 +4,11 @@
    ============================================================ */
 
 .po {
+    --po-gutter: 20px;
     display: flex;
     flex-direction: column;
     gap: 16px;
-    padding: 20px;
+    padding: var(--po-gutter);
     max-width: 1480px;
     margin: 0 auto;
     width: 100%;
@@ -1082,7 +1083,9 @@
    page so we never nest a card inside a card. */
 .po-workspace {
     min-height: 280px;
-    overflow: hidden;
+    /* Clip vertically only: the board bleeds sideways into the page gutter. */
+    overflow-x: visible;
+    overflow-y: clip;
 }
 
 /* ---------- Work region + focus mode ---------- */
@@ -1099,6 +1102,12 @@
         scroll-margin-top: var(--topbar-overlay-clearance, 5rem);
     }
     &.is-focus .po-workspace {
+        /* Scroller reaches the page edge so columns aren't cut at the gutter. */
+        margin-inline: calc(-1 * var(--po-gutter, 20px));
+        padding-inline: var(--po-gutter, 20px);
+        /* …and on the left further, behind the floating collapsed sidebar. */
+        margin-left: calc(-1 * (var(--po-gutter, 20px) + var(--app-content-inset-left, 0px)));
+        padding-left: calc(var(--po-gutter, 20px) + var(--app-content-inset-left, 0px));
         flex: 1 1 auto;
         min-height: 0;
         overflow: auto;
@@ -1117,12 +1126,16 @@
    project chrome hidden in JSX). The work region fills the viewport below the
    top bar and each lane scrolls on its own. */
 .po--board-focus {
+    /* Board sits as far below the topbar pills as the pills sit below the
+       viewport edge (--topbar-pill-* from .app-main-scroll), same gap at the bottom. */
+    --po-focus-gap: var(--topbar-pill-top, 16px);
     max-width: none;
-    padding-top: 12px;
-    padding-bottom: 12px;
+    margin-top: calc(var(--topbar-pill-bottom, 60px) + var(--po-focus-gap) - var(--app-main-scroll-padding-top, 5rem));
+    padding-top: 0;
+    padding-bottom: var(--po-focus-gap);
 
     .po-work.is-focus {
-        height: calc(100dvh - var(--topbar-overlay-clearance, 5rem) - 24px);
+        height: calc(100dvh - var(--topbar-pill-bottom, 60px) - 2 * var(--po-focus-gap));
     }
 
     .po-workspace {
@@ -1258,6 +1271,15 @@ html:not(.dark) .po-board {
     overflow-x: auto;
     padding-bottom: 0.5rem;
     scrollbar-gutter: stable;
+    /* Bleed into the page gutter: columns start where they did, but scroll out to
+       the edge instead of being cut at the content padding. */
+    margin-inline: calc(-1 * var(--po-gutter, 20px));
+    padding-inline: var(--po-gutter, 20px);
+    scroll-padding-inline: var(--po-gutter, 20px);
+    /* With the collapsed sidebar floating over the page, bleed behind it too. */
+    margin-left: calc(-1 * (var(--po-gutter, 20px) + var(--app-content-inset-left, 0px)));
+    padding-left: calc(var(--po-gutter, 20px) + var(--app-content-inset-left, 0px));
+    scroll-padding-left: calc(var(--po-gutter, 20px) + var(--app-content-inset-left, 0px));
 
     &__lane {
         display: flex;
@@ -1893,7 +1915,7 @@ html:not(.dark) .po-board {
 }
 
 @media (max-width: 640px) {
-    .po { padding: 12px; gap: 12px; }
+    .po { --po-gutter: 12px; gap: 12px; }
     .po-hero__context > span:last-child { display: none; }
     .po-command__main { gap: 6px; }
     .po-command__views { margin-left: 0; }
@@ -2047,4 +2069,117 @@ body:has(.po) :where(
 
         &:hover { opacity: 0.9; }
     }
+}
+
+// ---- Board focus transition --------------------------------------------------
+// ProjectOverviewPage wraps entering/leaving board focus in a View Transition
+// (utils/viewTransition.ts). The names only exist while it runs, so nothing
+// else on the page is affected. Browsers without the API switch instantly.
+//
+// No crossfades anywhere: old/new snapshots differ in size (content stays
+// unscaled), so blending them leaves half-transparent areas where the page
+// behind flashes through. Instead the page (root) snaps to its new state
+// underneath, and board / sidebar / topbar show only their new content,
+// revealed by their box morphing from the old to the new position and size.
+html[data-view-transition^='po-focus'] {
+    .po-hero { view-transition-name: po-hero; }
+    .po-inits { view-transition-name: po-inits; }
+    .po-work { view-transition-name: po-work; }
+    .snav { view-transition-name: app-sidebar; }
+    .topbar-shell { view-transition-name: app-topbar; }
+
+    // Let the transition morph the sidebar instead of its own width animation
+    // running a second time inside the new snapshot.
+    .snav,
+    .snav-card { transition: none !important; }
+}
+
+html[data-view-transition^='po-focus']::view-transition-group(*) {
+    animation-duration: 480ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html[data-view-transition^='po-focus']::view-transition-old(root),
+html[data-view-transition^='po-focus']::view-transition-old(po-work),
+html[data-view-transition^='po-focus']::view-transition-old(app-sidebar),
+html[data-view-transition^='po-focus']::view-transition-old(app-topbar) {
+    animation: none;
+    opacity: 0;
+}
+
+html[data-view-transition^='po-focus']::view-transition-new(root),
+html[data-view-transition^='po-focus']::view-transition-new(po-work),
+html[data-view-transition^='po-focus']::view-transition-new(app-sidebar),
+html[data-view-transition^='po-focus']::view-transition-new(app-topbar) {
+    animation: none;
+    opacity: 1;
+}
+
+// Keep morphing content unscaled and pinned top-left so text and cards don't
+// stretch; the clipped box reveals it as it grows.
+html[data-view-transition^='po-focus']::view-transition-group(po-work),
+html[data-view-transition^='po-focus']::view-transition-group(app-sidebar),
+html[data-view-transition^='po-focus']::view-transition-group(app-topbar) {
+    overflow: clip;
+}
+
+// The board has transparent gaps (quick-add ↔ columns, between columns). Give
+// its box the page colour so the hero/initiatives fading out underneath can't
+// show through them.
+html[data-view-transition^='po-focus']::view-transition-group(po-work) {
+    background-color: var(--color-surface-bg);
+}
+
+// Stacking: fading hero/initiatives always below the board, which is below the
+// app chrome (sidebar, topbar).
+html[data-view-transition^='po-focus']::view-transition-group(po-hero),
+html[data-view-transition^='po-focus']::view-transition-group(po-inits) {
+    z-index: 1;
+}
+
+html[data-view-transition^='po-focus']::view-transition-group(po-work) {
+    z-index: 2;
+}
+
+html[data-view-transition^='po-focus']::view-transition-group(app-sidebar),
+html[data-view-transition^='po-focus']::view-transition-group(app-topbar) {
+    z-index: 3;
+}
+
+html[data-view-transition^='po-focus']::view-transition-new(po-work),
+html[data-view-transition^='po-focus']::view-transition-new(app-sidebar),
+html[data-view-transition^='po-focus']::view-transition-new(app-topbar) {
+    width: 100%;
+    height: 100%;
+    object-fit: none;
+    object-position: left top;
+}
+
+// Entering focus: hero and initiatives lift up and away, the initiatives a beat later.
+html[data-view-transition='po-focus-enter']::view-transition-old(po-hero),
+html[data-view-transition='po-focus-enter']::view-transition-old(po-inits) {
+    animation: po-focus-lift-out 320ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+html[data-view-transition='po-focus-enter']::view-transition-old(po-inits) {
+    animation-delay: 40ms;
+}
+
+// Leaving focus: they drop back in after the board has started to settle.
+html[data-view-transition='po-focus-exit']::view-transition-new(po-hero),
+html[data-view-transition='po-focus-exit']::view-transition-new(po-inits) {
+    animation: po-focus-drop-in 460ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: 90ms;
+}
+
+html[data-view-transition='po-focus-exit']::view-transition-new(po-inits) {
+    animation-delay: 150ms;
+}
+
+@keyframes po-focus-lift-out {
+    to { opacity: 0; transform: translateY(-28px) scale(0.97); filter: blur(4px); }
+}
+
+@keyframes po-focus-drop-in {
+    from { opacity: 0; transform: translateY(-20px) scale(0.98); filter: blur(4px); }
 }

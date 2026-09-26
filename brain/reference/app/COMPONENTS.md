@@ -48,6 +48,7 @@ Rules:
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
+| `GlobalSearch` | ⌘K / `/` command palette in the TopBar (`web/components/search/GlobalSearch.tsx`, matching in `web/utils/globalSearch.ts`) | Global navigation and quick actions | No AI. Loads projects/tasks/initiatives once per open (60s cache, prefetched on trigger hover) and matches in memory: multi-word, diacritic-insensitive, fuzzy fallback, highlighted hits. Scope tabs (Tab cycles) and prefixes `>` actions, `#` projects, `!` tasks, `?` help; task filters `is:open|done|overdue|today|mine`, `prio:urgent|high|medium|low`. Empty state: recently opened + recent searches (localStorage per user), actions, pages, tips. ⌘/Ctrl+Enter opens in a new tab. Current project's hits rank higher. Styles in `_global-search.scss`. |
 | `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
 | `ProjectSwitcher` | Sidebar workspace/project switcher | Sidebar project context trigger | Lazy-loads projects, supports current/pinned quick access, company/workstream grouping, search by title/status/company context, pin/unpin, dashboard switch, and create-project entry. |
 | `Breadcrumbs` | Single trail in the top bar pill (back arrow + path + current page) | Every page via `TopBar`; pages must not render their own in-page breadcrumbs | Mobile shows back arrow + current page only |
@@ -224,6 +225,8 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - the Project Overview list view (`components/project/overview/views/WorkViewList.tsx`, task-only work items);
   - the initiative detail work list.
 - `InlineMenu` also powers the dashboard plan's reschedule action and the sidebar dock "+" create menu (New task `T` / New initiative `I` inside a project / New project `P`).
+- `InlineMenu` is portaled with `z-index: 10000`, so it works inside modals (task modal overlay is 9999). Optional `header` slot (an element with `data-autofocus` gets focus on open — e.g. a search field) and `emptyLabel`. Escape closes only the menu, not a surrounding modal. Used for priority / status / labels in `TaskCreateModal` (labels: multi-select + search/create header + "Manage labels" footer).
+- `MultiAssigneeSelector` portals its dropdown to `<body>` (fixed, positioned from the trigger, flips above when there's no room) so modals with `overflow: hidden` don't clip it.
 
 ## Planning (`web/components/planning/`)
 

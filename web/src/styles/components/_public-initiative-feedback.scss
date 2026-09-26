@@ -170,8 +170,6 @@
 
     &:focus,
     &:focus-visible {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.08);
         background-color: var(--color-surface-card);
     }
 

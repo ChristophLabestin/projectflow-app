@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
+import { runViewTransition } from '../../../utils/viewTransition';
 import { useLanguage } from '../../../context/LanguageContext';
 import { usePinnedProject } from '../../../context/PinnedProjectContext';
 import { useConfirm } from '../../../context/UIContext';
@@ -98,15 +99,26 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     const [workFocus, setWorkFocus] = useState(false);
     const workRef = useRef<HTMLDivElement>(null);
     const focusRestoreRef = useRef<{ wide: boolean; view: OverviewWorkView } | null>(null);
+    // Scroll position before entering focus, restored on the way back.
+    const scrollBeforeFocusRef = useRef<number | null>(null);
+    const getScroller = () => document.querySelector<HTMLElement>('.app-main-scroll');
+
     const enterWorkFocus = () => {
-        focusRestoreRef.current = { wide, view: viewState.view };
-        outlet.setContentWide?.(true);
-        viewState.setTab('work');
-        // Focus keeps spatial views (board, team, timeline, calendar); the
-        // plain list switches to the board.
-        if (viewState.view === 'list' || viewState.view === 'relationships') viewState.setView('board');
-        setWorkFocus(true);
-        requestAnimationFrame(() => workRef.current?.scrollIntoView({ block: 'start' }));
+        scrollBeforeFocusRef.current = getScroller()?.scrollTop ?? null;
+        // Animated: the board glides up into full width while hero and
+        // initiatives lift away (see "Board focus transition" in the SCSS).
+        runViewTransition('po-focus-enter', () => {
+            focusRestoreRef.current = { wide, view: viewState.view };
+            outlet.setContentWide?.(true);
+            viewState.setTab('work');
+            // Focus keeps spatial views (board, team, timeline, calendar); the
+            // plain list switches to the board.
+            if (viewState.view === 'list' || viewState.view === 'relationships') viewState.setView('board');
+            setWorkFocus(true);
+        }, () => {
+            const scroller = getScroller();
+            if (scroller) scroller.scrollTop = 0;
+        });
     };
     const exitWorkFocus = useCallback(() => {
         const restore = focusRestoreRef.current;
@@ -118,18 +130,27 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [outlet.setContentWide, viewState.setView]);
-    const toggleWorkFocus = () => (workFocus ? exitWorkFocus() : enterWorkFocus());
+    const exitWorkFocusAnimated = useCallback(() => {
+        const savedScroll = scrollBeforeFocusRef.current;
+        scrollBeforeFocusRef.current = null;
+        runViewTransition('po-focus-exit', exitWorkFocus, () => {
+            // Land where the user was before focusing, not at the top.
+            const scroller = getScroller();
+            if (scroller && savedScroll !== null) scroller.scrollTop = savedScroll;
+        });
+    }, [exitWorkFocus]);
+    const toggleWorkFocus = () => (workFocus ? exitWorkFocusAnimated() : enterWorkFocus());
 
     useEffect(() => {
         if (!workFocus) return;
         const onKey = (event: KeyboardEvent) => {
             if (event.key !== 'Escape') return;
             if (document.querySelector('[role="dialog"], .inline-menu')) return;
-            exitWorkFocus();
+            exitWorkFocusAnimated();
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [workFocus, exitWorkFocus]);
+    }, [workFocus, exitWorkFocusAnimated]);
 
     // Leaving the page while focused restores the sidebar.
     const exitRef = useRef(exitWorkFocus);

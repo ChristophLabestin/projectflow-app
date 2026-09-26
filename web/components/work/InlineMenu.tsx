@@ -24,8 +24,13 @@ interface InlineMenuProps {
     selectedValues?: string[];
     onSelect: (value: string) => void;
     disabled?: boolean;
+    /** Extra content above the options (e.g. a search field). Receives close().
+     *  An element with `data-autofocus` inside it gets focus when the menu opens. */
+    header?: (close: () => void) => React.ReactNode;
     /** Extra content under the options (e.g. a date input). Receives close(). */
     footer?: (close: () => void) => React.ReactNode;
+    /** Shown instead of the options when the list is empty. */
+    emptyLabel?: string;
     width?: number;
 }
 
@@ -44,7 +49,9 @@ export const InlineMenu = ({
     selectedValues,
     onSelect,
     disabled,
+    header,
     footer,
+    emptyLabel,
     width = 220
 }: InlineMenuProps) => {
     const [open, setOpen] = useState(false);
@@ -92,8 +99,16 @@ export const InlineMenu = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open]);
 
+    // A header field marked data-autofocus (e.g. search) takes focus once on open.
     useEffect(() => {
-        if (open) menuRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)?.focus();
+        if (open) menuRef.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+    }, [open]);
+
+    useEffect(() => {
+        if (!open) return;
+        const active = document.activeElement as HTMLElement | null;
+        if (active?.hasAttribute('data-autofocus') && menuRef.current?.contains(active)) return;
+        menuRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)?.focus();
     }, [open, activeIndex]);
 
     const isSelected = (optionValue: string) => (
@@ -112,16 +127,23 @@ export const InlineMenu = ({
     const onMenuKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'Escape') {
             event.preventDefault();
+            // Only close the menu, not a surrounding modal listening on window.
+            event.stopPropagation();
             close();
         } else if (event.key === 'ArrowDown') {
             event.preventDefault();
-            setActiveIndex((index) => (index + 1) % options.length);
+            if (!options.length) return;
+            const fromHeader = (event.target as HTMLElement).hasAttribute('data-autofocus');
+            setActiveIndex((index) => (fromHeader ? 0 : (index + 1) % options.length));
+            if (fromHeader) menuRef.current?.querySelector<HTMLElement>('[data-index="0"]')?.focus();
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
+            if (!options.length) return;
             setActiveIndex((index) => (index - 1 + options.length) % options.length);
         } else if (event.key === 'Tab') {
             close(false);
-        } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1) {
+        } else if (!event.metaKey && !event.ctrlKey && !event.altKey && event.key.length === 1
+            && !(event.target as HTMLElement).hasAttribute('data-autofocus')) {
             const match = options.find((option) => option.shortcut?.toLowerCase() === event.key.toLowerCase());
             if (match) {
                 event.preventDefault();
@@ -164,6 +186,8 @@ export const InlineMenu = ({
                     onKeyDown={onMenuKeyDown}
                     onClick={(event) => event.stopPropagation()}
                 >
+                    {header && <div className="inline-menu__header">{header(() => close())}</div>}
+                    {options.length === 0 && emptyLabel && <div className="inline-menu__empty">{emptyLabel}</div>}
                     {options.map((option, index) => (
                         <React.Fragment key={option.value}>
                         {option.dividerBefore && <span className="inline-menu__divider" role="separator" />}

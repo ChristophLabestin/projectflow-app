@@ -359,8 +359,6 @@
     &:hover { border-color: var(--color-surface-border-hover); }
 
     &:focus, &:focus-visible {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb), 0.1);
         background: var(--color-surface-card);
     }
 

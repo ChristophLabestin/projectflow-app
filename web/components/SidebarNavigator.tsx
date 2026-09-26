@@ -193,6 +193,9 @@ const NavGroup: React.FC<{
 // Compact theme toggle
 // ----------------------------------------------------------------------
 
+// Matches the .snav-ws-menu.is-closing animation duration in _sidebar-navigator.scss.
+const MENU_EXIT_MS = 240;
+
 const ThemeToggle: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const { t } = useLanguage();
@@ -351,6 +354,22 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
     // Close the menu whenever the route changes.
     React.useEffect(() => { setMenuOpen(false); setQuery(''); }, [location.pathname]);
+
+    // After collapsing via the toggle, suppress the hover-peek until the
+    // pointer has left the sidebar once — otherwise it would stay open.
+    const [noPeek, setNoPeek] = React.useState(false);
+    const handleToggleCollapsed = () => {
+        setNoPeek(!effectiveCollapsed);
+        onToggleCollapsed?.();
+    };
+
+    // Keep the menu mounted until its exit animation has played.
+    const [menuRendered, setMenuRendered] = React.useState(false);
+    React.useEffect(() => {
+        if (menuOpen) { setMenuRendered(true); return; }
+        const timer = window.setTimeout(() => setMenuRendered(false), MENU_EXIT_MS);
+        return () => window.clearTimeout(timer);
+    }, [menuOpen]);
 
     // Escape closes the menu.
     React.useEffect(() => {
@@ -601,7 +620,10 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     ) : null;
 
     return (
-        <aside className={`snav ${isDrawer ? 'snav--drawer' : ''} ${effectiveCollapsed ? 'snav--collapsed' : ''} ${menuOpen ? 'snav--menu-open' : ''}`}>
+        <aside
+            className={`snav ${isDrawer ? 'snav--drawer' : ''} ${effectiveCollapsed ? 'snav--collapsed' : ''} ${effectiveCollapsed && noPeek ? 'snav--no-peek' : ''} ${menuOpen ? 'snav--menu-open' : ''}`}
+            onMouseLeave={noPeek ? () => setNoPeek(false) : undefined}
+        >
             <div className="snav-card">
                 <div className="snav-inner">
 
@@ -741,7 +763,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                     <button
                                         type="button"
                                         className="snav-icon-btn"
-                                        onClick={(e) => { e.currentTarget.blur(); onToggleCollapsed(); }}
+                                        onClick={(e) => { e.currentTarget.blur(); handleToggleCollapsed(); }}
                                         title={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-label={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-pressed={effectiveCollapsed}
@@ -757,8 +779,13 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 </div>
 
                 {/* Inline project switcher — flat, native to the card */}
-                {menuOpen && (
-                    <div className="snav-ws-menu" role="dialog" aria-label={t('nav.projects')}>
+                {menuRendered && (
+                    <div
+                        className={`snav-ws-menu ${menuOpen ? 'is-open' : 'is-closing'}`}
+                        role="dialog"
+                        aria-label={t('nav.projects')}
+                        aria-hidden={!menuOpen}
+                    >
                         <div className="snav-ws-menu__search">
                             <span className="material-symbols-outlined">search</span>
                             <input

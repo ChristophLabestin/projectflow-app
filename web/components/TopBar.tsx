@@ -8,7 +8,7 @@ import { useHelpCenter } from '../context/HelpCenterContext';
 import { getHelpTargetForPath } from './help/helpCenterContent';
 import { useLanguage } from '../context/LanguageContext';
 
-const AISearchBar = lazy(() => import('./AISearchBar').then((module) => ({ default: module.AISearchBar })));
+const GlobalSearch = lazy(() => import('./search/GlobalSearch').then((module) => ({ default: module.GlobalSearch })));
 const PinnedProjectPill = lazy(() => import('./PinnedProjectPill').then((module) => ({ default: module.PinnedProjectPill })));
 const UserProfileDropdown = lazy(() => import('./UserProfileDropdown').then((module) => ({ default: module.UserProfileDropdown })));
 const TopBarTeamMenu = lazy(() => import('./TopBarTeamMenu').then((module) => ({ default: module.TopBarTeamMenu })));
@@ -117,7 +117,7 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
             <div className="topbar-right">
                 <div className="topbar-search-pill">
                     <Suspense fallback={<div className="h-9 rounded-lg bg-surface/60" />}>
-                        <AISearchBar tenantId={tenantId || project?.tenantId} />
+                        <GlobalSearch tenantId={tenantId || project?.tenantId} />
                     </Suspense>
                 </div>
 

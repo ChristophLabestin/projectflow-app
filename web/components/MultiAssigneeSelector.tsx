@@ -1,4 +1,5 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useLayoutEffect, useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getActiveTenantId } from '../services/domain/authService';
 import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
 import { getUserProfile } from '../services/domain/usersService';
@@ -26,6 +27,10 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    // The dropdown is portaled to <body> so modals with overflow: hidden can't clip it.
+    const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number } | null>(null);
     const { t } = useLanguage();
 
     useEffect(() => {
@@ -143,13 +148,43 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
     // Handle clicking outside to close
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
-            }
+            const target = event.target as Node;
+            if (wrapperRef.current?.contains(target) || dropdownRef.current?.contains(target)) return;
+            setIsOpen(false);
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    // Position the portaled dropdown under the trigger (or above it when there's no room).
+    useLayoutEffect(() => {
+        if (!isOpen) { setDropdownPos(null); return undefined; }
+        const place = () => {
+            const rect = triggerRef.current?.getBoundingClientRect();
+            if (!rect) return;
+            const gap = 8;
+            const width = Math.min(Math.max(rect.width, 352), window.innerWidth * 0.9);
+            const height = dropdownRef.current?.offsetHeight || 320;
+            const fitsBelow = rect.bottom + gap + height < window.innerHeight - 8;
+            const top = fitsBelow ? rect.bottom + gap : Math.max(8, rect.top - gap - height);
+            const left = Math.min(Math.max(8, rect.left + rect.width / 2 - width / 2), window.innerWidth - width - 8);
+            setDropdownPos({ top, left, width });
+        };
+        place();
+        // Second pass once the dropdown has rendered and its real height is known.
+        const frame = requestAnimationFrame(place);
+        const onScroll = (event: Event) => {
+            if (dropdownRef.current?.contains(event.target as Node)) return;
+            place();
+        };
+        window.addEventListener('scroll', onScroll, true);
+        window.addEventListener('resize', place);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', onScroll, true);
+            window.removeEventListener('resize', place);
+        };
+    }, [isOpen]);
 
     const toggleSelection = (uid: string) => {
         const newIds = assigneeIds.includes(uid)
@@ -184,6 +219,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             <div className="assignee-select__control">
                 {/* Trigger */}
                 <button
+                    ref={triggerRef}
                     type="button"
                     onClick={() => setIsOpen(!isOpen)}
                     className={`assignee-select__trigger ${isOpen ? 'is-open' : ''}`}
@@ -232,8 +268,14 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                 </button>
 
                 {/* Dropdown */}
-                {isOpen && (
-                    <div className="assignee-select__dropdown">
+                {isOpen && createPortal(
+                    <div
+                        ref={dropdownRef}
+                        className="assignee-select__dropdown"
+                        style={dropdownPos
+                            ? { top: dropdownPos.top, left: dropdownPos.left, width: dropdownPos.width }
+                            : { visibility: 'hidden' }}
+                    >
                         <div className="assignee-select__search">
                             <Input
                                 ref={(input) => {
@@ -324,7 +366,8 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                 </div>
                             )}
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
             </div>
         </div>

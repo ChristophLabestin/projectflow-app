@@ -98,18 +98,29 @@
 .snav--collapsed {
     --snav-aside: 76px;
     --snav-card: 52px;
+    /* Floats over the content (AppLayout overlay): only the card may cover it. */
+    background: transparent;
+    pointer-events: none;
+
+    .snav-card { pointer-events: auto; }
 
     .snav-card { z-index: 40; }
 
-    &:hover,
-    &:focus-within { --snav-card: 232px; }
+    // :focus-visible, not :focus-within — a mouse click leaves focus on the
+    // clicked link, which would pin the card open after the pointer leaves.
+    // Keyboard focus still opens it.
+    // .snav--no-peek: just collapsed via the toggle — stay shut even though the
+    // pointer is still inside, until it leaves once.
+    &:not(.snav--no-peek):hover,
+    &:has(:focus-visible) { --snav-card: 232px; }
 
-    &:hover .snav-card,
-    &:focus-within .snav-card { box-shadow: var(--shadow-lg); }
+    &:not(.snav--no-peek):hover .snav-card,
+    &:has(:focus-visible) .snav-card { box-shadow: var(--shadow-lg); }
 
     // Resting spine: fade inline text, collapse the secondary blocks to 0 so
     // only a tidy, centre-aligned icon column remains.
-    &:not(:hover):not(:focus-within) {
+    &:not(:hover):not(:has(:focus-visible)),
+    &.snav--no-peek:not(:has(:focus-visible)) {
         .snav-row__label,
         .snav-row__badge,
         .snav-ws__name,
@@ -610,6 +621,7 @@
 
 // ---- Inline switch overlay (fits inside the card) --------------------
 .snav-ws-menu {
+    --snav-menu-ease: cubic-bezier(0.16, 1, 0.3, 1);
     position: absolute;
     inset: 0;
     z-index: 5;
@@ -617,12 +629,80 @@
     flex-direction: column;
     background: var(--color-surface-card);
     border-radius: var(--radius-xl);
-    animation: snav-menu-in var(--transition-normal);
+
+    // Unfolds out of the workspace button: the clip starts as the button's
+    // strip at the top of the card and grows down to the full card.
+    &.is-open { animation: snav-menu-unfold 420ms var(--snav-menu-ease) both; }
+    &.is-closing {
+        pointer-events: none;
+        animation: snav-menu-fold 240ms cubic-bezier(0.4, 0, 1, 1) both; // keep in sync with MENU_EXIT_MS
+    }
+
+    // Contents cascade in after the unfold has started.
+    &.is-open {
+        .snav-ws-menu__search,
+        .snav-ws-menu__list > *,
+        .snav-ws-menu__create {
+            animation: snav-menu-item-in 360ms var(--snav-menu-ease) both;
+        }
+
+        .snav-ws-menu__search { animation-delay: 40ms; }
+        @for $i from 1 through 8 {
+            .snav-ws-menu__list > *:nth-child(#{$i}) { animation-delay: #{60 + $i * 35}ms; }
+        }
+        .snav-ws-menu__list > *:nth-child(n + 9) { animation-delay: 380ms; }
+        .snav-ws-menu__create { animation-delay: 200ms; }
+    }
+
+    &.is-closing {
+        .snav-ws-menu__search,
+        .snav-ws-menu__list,
+        .snav-ws-menu__create {
+            transition: opacity 120ms ease-in, transform 200ms ease-in;
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+    }
 }
 
-@keyframes snav-menu-in {
-    from { opacity: 0; transform: translateY(-6px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes snav-menu-unfold {
+    from { clip-path: inset(0 0 calc(100% - 60px) 0 round var(--radius-xl)); }
+    to { clip-path: inset(0 0 0 0 round var(--radius-xl)); }
+}
+
+@keyframes snav-menu-fold {
+    from { clip-path: inset(0 0 0 0 round var(--radius-xl)); opacity: 1; }
+    to { clip-path: inset(0 0 calc(100% - 60px) 0 round var(--radius-xl)); opacity: 0; }
+}
+
+@keyframes snav-menu-item-in {
+    from { opacity: 0; transform: translateY(10px); filter: blur(2px); }
+    to { opacity: 1; transform: none; filter: none; }
+}
+
+// The navigation behind recedes while the switcher is up.
+.snav-inner {
+    transform-origin: 50% 0;
+    transition:
+        transform 420ms cubic-bezier(0.16, 1, 0.3, 1),
+        opacity 300ms ease,
+        filter 300ms ease;
+}
+
+.snav--menu-open .snav-inner {
+    transform: scale(0.94);
+    opacity: 0;
+    filter: blur(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .snav-ws-menu,
+    .snav-ws-menu *,
+    .snav-inner {
+        animation-duration: 1ms !important;
+        animation-delay: 0ms !important;
+        transition-duration: 1ms !important;
+    }
 }
 
 .snav-ws-menu__search {

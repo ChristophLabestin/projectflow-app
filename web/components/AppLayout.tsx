@@ -330,9 +330,11 @@ export const AppLayout = () => {
     }, [location.pathname, project, companyProject, taskTitle, campaignName, t]);
 
     return (
-        <div className="flex h-screen w-full bg-surface overflow-hidden">
-            {/* Sidebar Desktop */}
-            <div className="hidden md:flex flex-shrink-0 h-full">
+        <div className="flex h-screen w-full bg-surface overflow-hidden relative">
+            {/* Sidebar Desktop — collapsed, it floats over the content (which
+                keeps its place via --app-content-inset-left) so wide boards can
+                scroll out behind it. */}
+            <div className={`hidden md:flex flex-shrink-0 h-full ${contentWide ? 'app-sidebar-slot--overlay' : ''}`.trim()}>
                 <Suspense fallback={<div className="h-full w-72 border-r border-surface bg-card" />}>
                     <Sidebar
                         collapsed={contentWide}
@@ -384,7 +386,7 @@ export const AppLayout = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 h-full relative">
+            <div className={`flex-1 flex flex-col min-w-0 h-full relative ${contentWide ? 'app-main-column--under-sidebar' : ''}`.trim()}>
 
                 {/* Header */}
                 <Suspense fallback={<div className="topbar-shell" />}>
