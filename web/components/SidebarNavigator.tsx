@@ -502,7 +502,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         const defs = [
             { id: 'overview', path: '', icon: 'grid_view', label: t('nav.overview'), exact: true },
             { id: 'initiatives', path: '/initiatives', icon: 'rocket_launch', label: t('nav.initiatives'), moduleKey: 'initiatives' },
-            { id: 'intake', path: '/intake', icon: 'inbox', label: t('nav.intake') },
             { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
             { id: 'sprints', path: '/sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
             { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },

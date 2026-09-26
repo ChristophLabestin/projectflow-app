@@ -48,8 +48,6 @@ const ProjectTaskDetail = React.lazy(() => import('./screens/ProjectTaskDetail')
 const ProjectInitiatives = React.lazy(() => import('./screens/ProjectInitiatives').then((module) => ({ default: module.ProjectInitiatives })));
 const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitiativeDetail').then((module) => ({ default: module.ProjectInitiativeDetail })));
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
-const PublicProjectIntakePage = React.lazy(() => import('./screens/PublicProjectIntakePage').then((module) => ({ default: module.PublicProjectIntakePage })));
-const ProjectIntake = React.lazy(() => import('./screens/ProjectIntake').then((module) => ({ default: module.ProjectIntake })));
 const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').then((module) => ({ default: module.ProjectInvoices })));
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
@@ -218,7 +216,8 @@ export const AppRouter = () => {
                     <Route path="/legal/:type" element={<LegalPage />} />
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
-                    <Route path="/feedback/project/:token" element={withRouteSuspense(<PublicProjectIntakePage />)} />
+                    {/* Public project intake was removed; old share links land on the app start. */}
+                    <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 
                     <Route
                         path="/ui"
@@ -254,7 +253,7 @@ export const AppRouter = () => {
                             <Route path="tasks/:taskId" element={withRouteSuspense(<ProjectTaskDetail />)} />
                             <Route path="initiatives" element={withRouteSuspense(<ProjectInitiatives />)} />
                             <Route path="initiatives/:initiativeId" element={withRouteSuspense(<ProjectInitiativeDetail />)} />
-                            <Route path="intake" element={withRouteSuspense(<ProjectIntake />)} />
+                            <Route path="intake" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="invoices" element={withRouteSuspense(<ProjectInvoices />)} />
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
