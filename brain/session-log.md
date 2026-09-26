@@ -46,7 +46,8 @@
     - functions build passes;
     - rules compile;
     - end-to-end in emulators: login, workspace creation, switching, guest isolation, email-invite accept, link-invite accept with registration, owner invite with roles/projects, inline edits persisted, group-by status/assignee, bulk selection, mobile layout checks.
-  - Not done: production deploy of the tenancy + UI changes (rules/functions/hosting still run the pre-tenancy code); ProjectFlow tracking task (no `PROJECTFLOW_API_TOKEN`).
+  - Deployed 2026-09-26: all 111 functions (12er batches), Firestore rules + indexes, storage rules, hosting; smoke test: callables answer 401 unauthenticated, `/invite/...` renders, no console errors.
+  - Not done: ProjectFlow tracking task (no `PROJECTFLOW_API_TOKEN`).
 
 - Date: 2026-06-30
   - Goal: add project and task reminder scheduling for customer follow-ups and linked work reminders.

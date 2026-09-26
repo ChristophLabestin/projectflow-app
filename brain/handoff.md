@@ -10,7 +10,7 @@ Last updated: 2026-06-04
 - Owner/Admin/Member/Guest roles;
 - email or link invitations accepted by the `acceptWorkspaceInvite` function.
 
-My Tasks and Project Tasks use the shared grouped work list in `web/components/work/`. All of this is verified in local emulators (`scripts/seed-emulator.mjs`, `npm run dev:emulator`) but **not deployed**: production still runs the pre-tenancy rules, functions and web build. The next step is one combined deploy (see current-focus Next Actions). Uncommitted user WIP in `AppLayout`, `TopBar`, `ProjectOverviewPage`, `ProjectHero`, `ProjectTaskDetail` and `Team` was left intact; `Team.tsx` was additionally migrated to the invitation model and i18n.
+My Tasks and Project Tasks use the shared grouped work list in `web/components/work/`. All of this is verified in local emulators (`scripts/seed-emulator.mjs`, `npm run dev:emulator`) and deployed to production on 2026-09-26 (commit `282abaa3`). Uncommitted user WIP in `AppLayout`, `TopBar`, `ProjectOverviewPage`, `ProjectHero`, `ProjectTaskDetail` and `Team` was left intact; `Team.tsx` was additionally migrated to the invitation model and i18n.
 
 The repository has been migrated into `/brain`, the active Web/Swift removal path for Flows/Ideas and Issues remains in place, and project task detail now has a Full Workbench redesign.
 

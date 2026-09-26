@@ -8,7 +8,7 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 
 ## Active Threads
 
-- 2026-09-26 — Firebase project `projectflow-labestin` + multi-workspace tenancy + PM focus UI (see `plans/pm-focus-ui-redesign.md`, decision-log 2026-09-26). Implemented and verified in the local emulators. **Not yet deployed to production.** Deploy rules, indexes, functions and hosting together, because the new rules break the old client.
+- 2026-09-26 — Firebase project `projectflow-labestin` + multi-workspace tenancy + PM focus UI (see `plans/pm-focus-ui-redesign.md`, decision-log 2026-09-26). Implemented, verified in the local emulators and deployed to production on 2026-09-26 (commit `282abaa3`: all 111 functions, rules, indexes, storage, hosting).
 
 - Brain scaffold: completed with the `brain-folder-bootstrapper` app project type.
 - Documentation migration: former root docs moved into `brain/reference/app/`; former `docs/` content moved into `brain/plans/`, `brain/operations/`, `brain/audits/`, and `brain/reference/legacy-agent/`.
@@ -46,7 +46,6 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 
 ## Next Actions
 
-- Deploy the tenancy + UI changes together: `firebase deploy --only firestore,storage,functions,hosting --project projectflow-labestin`. Deploy functions in batches of ~12 if quota errors appear.
 - Finish the manual Firebase setup listed in `operations/projectflow-production-provisioning.md` (auth providers, OPENAI secret, VAPID/APNs, GitHub secrets, custom domain).
 - Continue the focus redesign on remaining surfaces:
   - Dashboard "today" reuse of `TaskRow`;
