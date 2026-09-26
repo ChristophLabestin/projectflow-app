@@ -45,19 +45,30 @@
 }
 
 // Blocks that collapse away in the resting spine — animated, not snapped.
+// max-height must sit close to the real height: a generous cap (e.g. 800px)
+// makes the visible part of the animation happen in a tiny slice of the
+// duration, so the icon column jumps out of sync with the width animation.
 .snav-back,
 .snav-context-head,
 .snav-section,
-.snav-group--pins,
+.snav-group--pins .snav-row,
 .snav-row--external,
 .snav-dock,
 .snav-footer {
-    max-height: 800px;
     transition:
         max-height var(--transition-normal),
+        margin var(--transition-normal),
         opacity var(--transition-normal),
         padding var(--transition-normal);
 }
+
+.snav-back { max-height: 36px; }
+.snav-context-head { max-height: 56px; }
+.snav-section { max-height: 36px; }
+.snav-group--pins .snav-row,
+.snav-row--external { max-height: 38px; }
+.snav-dock,
+.snav-footer { max-height: 400px; }
 
 .snav-row__label,
 .snav-row__badge,
@@ -97,7 +108,7 @@
     &:focus-within .snav-card { box-shadow: var(--shadow-lg); }
 
     // Resting spine: fade inline text, collapse the secondary blocks to 0 so
-    // only a tidy, centre-aligned icon column remains. Icons never move.
+    // only a tidy, centre-aligned icon column remains.
     &:not(:hover):not(:focus-within) {
         .snav-row__label,
         .snav-row__badge,
@@ -107,13 +118,14 @@
         .snav-back,
         .snav-context-head,
         .snav-section,
-        .snav-group--pins,
+        .snav-group--pins .snav-row,
         .snav-row--external,
         .snav-dock,
         .snav-footer {
             max-height: 0;
             padding-top: 0;
             padding-bottom: 0;
+            margin-bottom: 0;
             opacity: 0;
             overflow: hidden;
         }
@@ -515,6 +527,12 @@
     gap: 8px;
 }
 
+.snav-footer__actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
 .snav-theme {
     display: inline-flex;
     padding: 3px;
@@ -625,6 +643,10 @@
         font: inherit;
         font-size: 14px;
         font-weight: 500;
+
+        // Beats the global forms ring on [type='text']:focus (box-shadow, not outline).
+        &:focus,
+        &:focus-visible { outline: none; box-shadow: none; }
 
         &::placeholder { color: var(--color-text-subtle); }
     }
@@ -748,4 +770,17 @@
     .material-symbols-outlined { font-size: 18px; }
     &:hover { transform: translateY(-1px); }
     &:active { transform: scale(0.99); }
+}
+
+/* "More"/"Less" toggle under the workspace group (new accounts). */
+.snav-row--more {
+    width: 100%;
+    border: none;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover { color: var(--color-text-main); }
 }

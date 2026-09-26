@@ -1,3 +1,4 @@
+import { WelcomeDialog } from './onboarding/WelcomeDialog';
 import React, { Suspense, lazy, useEffect, useState, useMemo } from 'react';
 import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
 import { useUIState } from '../context/UIContext';
@@ -13,12 +14,15 @@ import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
-import { isClientProject } from '../config/projectTemplates';
+import { isClientProject, isSoftwareProject } from '../config/projectTemplates';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
 const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateProjectModal = lazy(() => import('./CreateProjectModal').then((module) => ({ default: module.CreateProjectModal })));
+
+// Per user: a shared device should not hand one person's collapsed sidebar to the next.
+const wideStorageKey = () => `projectflow.projectOverview.wide.${auth.currentUser?.uid || 'anonymous'}`;
 
 export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
@@ -58,11 +62,11 @@ export const AppLayout = () => {
     // When on, the content area uses the full available width and the sidebar
     // collapses to icon-only.
     const [contentWide, setContentWideState] = useState<boolean>(() => {
-        try { return window.localStorage.getItem('projectflow.projectOverview.wide') === '1'; } catch { return false; }
+        try { return window.localStorage.getItem(wideStorageKey()) === '1'; } catch { return false; }
     });
     const setContentWide = (next: boolean) => {
         setContentWideState(next);
-        try { window.localStorage.setItem('projectflow.projectOverview.wide', next ? '1' : '0'); } catch { /* ignore */ }
+        try { window.localStorage.setItem(wideStorageKey(), next ? '1' : '0'); } catch { /* ignore */ }
     };
 
     const user = auth?.currentUser;
@@ -336,6 +340,7 @@ export const AppLayout = () => {
                 <Suspense fallback={<div className="h-full w-72 border-r border-surface bg-card" />}>
                     <Sidebar
                         collapsed={contentWide}
+                        onToggleCollapsed={() => setContentWide(!contentWide)}
                         workspace={projectId ? {
                             projectId,
                             projectTitle: project?.title,
@@ -344,6 +349,7 @@ export const AppLayout = () => {
                             issuesCount: 0,
                             modules: project?.modules,
                             isClientProject: project ? isClientProject(project) : false,
+                            showCodex: project ? (!project.templateId || isSoftwareProject(project)) : true,
                             externalResources: visibleExternalResources,
                             isLoaded: Boolean(project),
                             navPrefs: navPrefs
@@ -372,6 +378,7 @@ export const AppLayout = () => {
                                     issuesCount: 0,
                                     modules: project?.modules,
                                     isClientProject: project ? isClientProject(project) : false,
+                                    showCodex: project ? (!project.templateId || isSoftwareProject(project)) : true,
                                     externalResources: visibleExternalResources,
                                     isLoaded: Boolean(project),
                                     navPrefs: navPrefs
@@ -413,6 +420,9 @@ export const AppLayout = () => {
                     />
                 </Suspense>
             )}
+
+            {/* First sign-in: workspace name, solo/team, invites */}
+            <WelcomeDialog />
 
             {/* Global Project Create Modal */}
             {isProjectCreateModalOpen && (

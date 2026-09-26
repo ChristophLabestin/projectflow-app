@@ -1,7 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from './common/Button/Button';
 import { CreateProjectWizard } from '../screens/CreateProjectWizard';
+import { QuickProjectCreate } from './QuickProjectCreate';
+import type { ProjectTemplateId } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
 type CreateProjectModalProps = {
@@ -11,6 +13,8 @@ type CreateProjectModalProps = {
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose }) => {
     const { t } = useLanguage();
+    // Quick create first; the full wizard is one click away and keeps the draft.
+    const [fullDraft, setFullDraft] = useState<{ name: string; templateId: ProjectTemplateId } | null>(null);
 
     const handleContentClick = (event: React.MouseEvent<HTMLDivElement>) => {
         const target = event.target;
@@ -20,7 +24,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             return;
         }
 
-        if (target instanceof Element && target.closest('.create-project__shell, .create-project__blocked')) {
+        if (target instanceof Element && target.closest('.create-project__shell, .create-project__blocked, .quick-project')) {
             event.stopPropagation();
             return;
         }
@@ -52,7 +56,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
     return createPortal(
         <div
-            className="create-project-modal"
+            className={`create-project-modal ${fullDraft ? '' : 'create-project-modal--quick'}`.trim()}
             role="dialog"
             aria-modal="true"
             aria-label={t('createProjectWizard.header.title')}
@@ -76,7 +80,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 className="create-project-modal__content"
                 onClick={handleContentClick}
             >
-                <CreateProjectWizard onClose={onClose} />
+                {fullDraft ? (
+                    <CreateProjectWizard onClose={onClose} initialName={fullDraft.name} initialTemplateId={fullDraft.templateId} />
+                ) : (
+                    <QuickProjectCreate onClose={onClose} onMoreOptions={setFullDraft} />
+                )}
             </div>
         </div>,
         document.body

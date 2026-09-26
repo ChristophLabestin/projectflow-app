@@ -14,11 +14,12 @@ describe('pmCore', () => {
         PM_CORE_DEPRECATED_MODULES.forEach((module) => {
             expect(result).not.toContain(module);
         });
+        // Chosen extras are kept; unchosen ones are not forced onto new projects.
         expect(result).toContain('social');
-        expect(result).toContain('marketing');
-        expect(result).toContain('accounting');
-        expect(result).toContain('sprints');
         expect(result).toContain('milestones');
+        expect(result).not.toContain('marketing');
+        expect(result).not.toContain('accounting');
+        expect(result).not.toContain('sprints');
     });
 
     it('marks deprecated nav ids when PM core is on', () => {

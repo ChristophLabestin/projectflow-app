@@ -505,6 +505,20 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                             canManage={canManageTasks}
                             onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
                         />
+                    ) : tasks.length === 0 && canManageTasks ? (
+                        // Brand-new project: an inviting empty state that opens the task dialog.
+                        <div className="po-first-task">
+                            <span className="material-symbols-outlined" aria-hidden="true">add_task</span>
+                            <h3>{t('projectOverview.firstTask.title')}</h3>
+                            <p>{t('projectOverview.firstTask.hint')}</p>
+                            <button
+                                type="button"
+                                className="po-first-task__cta"
+                                onClick={() => setModal('task')}
+                            >
+                                {t('projectOverview.firstTask.cta')}
+                            </button>
+                        </div>
                     ) : (
                         <WorkViews view={viewState.view} ctx={viewCtx} />
                     )}

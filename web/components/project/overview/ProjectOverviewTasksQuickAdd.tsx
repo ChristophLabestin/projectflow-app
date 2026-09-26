@@ -33,6 +33,7 @@ export const ProjectOverviewTasksQuickAdd: React.FC<ProjectOverviewTasksQuickAdd
         <form className={`po-quick-add ${hasTitle ? 'has-value' : ''}`.trim()} onSubmit={handleSubmit}>
             <span className="material-symbols-outlined po-quick-add__icon" aria-hidden="true">add</span>
             <input
+                id="po-quick-add-input"
                 className="po-quick-add__input"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}

@@ -1995,6 +1995,19 @@
         font-size: 3rem;
         margin-bottom: 1rem;
     }
+
+    h3 { margin: 0; color: var(--color-text-main); }
+
+    p {
+        max-width: 380px;
+        margin: 8px 0 20px;
+        text-align: center;
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--color-text-muted);
+    }
+
+    .btn .material-symbols-outlined { font-size: 18px; margin: 0; }
 }
 
 .template-configurator {

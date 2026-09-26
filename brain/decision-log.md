@@ -31,6 +31,11 @@ Last updated: 2026-06-04
   - Decision: the sidebar is the only project navigation. The overview lost its Work/Roadmap/Sprints/Milestones/Activity tabs; Roadmap is now a work view in the view switcher, the others live only on their sidebar pages. The header is borderless (card only with a cover), shows one progress + health summary, a "Project info" button and a "…" menu (pin, full width, report, invite, settings, lifecycle); attention sits in a chip row below the title. Quick add is the first item of the command row. Initiatives start collapsed with a summary. Brief/team/resources moved into a right-hand drawer (`ProjectContextDrawer`).
   - Why: two navigations for the same targets plus eight differently styled bands made the page feel unsettled.
 
+- 2026-09-26 — Signup hardening and first-run rework.
+  - Security: email invitations require a verified address (checked in `acceptWorkspaceInvite` via the user record), signup sends a confirmation mail; `users` can be fetched by uid but not listed; AI usage and last workspace moved to `users/{uid}/private/*`.
+  - First run: welcome dialog → one-step project create (starter tasks optional) → dashboard "Getting started" checklist; empty states with actions; PM-core default modules reduced to tasks/initiatives/milestones/activity; Codex hidden for projects created from non-software templates; Finance/Media behind "More" for new accounts; overview view state and sidebar width stored per user instead of per device; team badge removed, invite action in the team menu.
+  - Why: the audit showed new users landed on an empty dashboard with no guidance, a 6-step project wizard and an 11-item project sidebar.
+
 ## Follow-Ups
 
 - Create ProjectFlow tracking record once `PROJECTFLOW_API_TOKEN` is available.

@@ -8,6 +8,8 @@
 //
 // Demo login (emulator only): demo@projectflow.test / projectflow-demo
 // Signup test account (emulator only, registered through the UI, not seeded): neu@projectflow.test / pf-signup-5fb2c664
+// Second signup test account (emulator only, onboarding flow): neu2@projectflow.test / pf-signup-5fb2c664
+// Third signup test account (emulator only, solo onboarding): neu3@projectflow.test / pf-signup-5fb2c664
 
 import { createRequire } from 'node:module';
 

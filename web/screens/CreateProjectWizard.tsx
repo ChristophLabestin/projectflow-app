@@ -109,9 +109,12 @@ const StepHeader: React.FC<{ title: string; subtitle: string }> = ({ title, subt
 
 type CreateProjectWizardProps = {
     onClose?: () => void;
+    /** Prefill from the quick-create dialog when switching to all options. */
+    initialName?: string;
+    initialTemplateId?: ProjectTemplateId;
 };
 
-export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClose }) => {
+export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClose, initialName = '', initialTemplateId = 'blank' }) => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
     const { hasAccess: isSocialAllowed } = useModuleAccess('social');
@@ -125,9 +128,9 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [furthestVisitedStep, setFurthestVisitedStep] = useState(0); // Track max progress
 
     // Form Data
-    const [name, setName] = useState('');
+    const [name, setName] = useState(initialName);
     const [description, setDescription] = useState('');
-    const [templateId, setTemplateId] = useState<ProjectTemplateId>('blank');
+    const [templateId, setTemplateId] = useState<ProjectTemplateId>(initialTemplateId);
     const [projectType, setProjectType] = useState<ProjectType>('standard');
     const [operatingMode, setOperatingMode] = useState<ProjectOperatingMode>('build');
     const [cadence, setCadence] = useState<ProjectCadence>('weekly');
@@ -209,6 +212,12 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             setStartupSensitiveTracksConfirmed(false);
         }
     };
+
+    // Coming from the quick-create dialog: apply the chosen template's defaults once.
+    useEffect(() => {
+        if (initialTemplateId !== 'blank') handleTemplateSelect(initialTemplateId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleNext = () => {
         const currentTemplate = getProjectTemplateDefinition(templateId);

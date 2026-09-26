@@ -12,7 +12,7 @@ import {
     where,
     writeBatch
 } from 'firebase/firestore';
-import { readLastTenantId, writeLastTenantId } from './userPrivateData';
+import { readLastTenantId, writeLastTenantId, writeOnboarding } from './userPrivateData';
 import { httpsCallable } from 'firebase/functions';
 
 import { auth, db, functions } from '../firebase';
@@ -157,6 +157,8 @@ export const resolveWorkspaceForCurrentUser = async (defaultWorkspaceName: strin
     let workspaces = await listMyWorkspaces();
     if (!workspaces.some((workspace) => workspace.role === 'Owner')) {
         await createWorkspace(defaultWorkspaceName);
+        // First sign-in: show the welcome step and the getting-started checklist.
+        await writeOnboarding(user.uid, { welcomePending: true, checklistDismissed: false }).catch(() => undefined);
         workspaces = await listMyWorkspaces();
     }
 

@@ -13,6 +13,7 @@ import { toDate, toMillis } from '../utils/time';
 import { calculateProjectHealth, isProjectActiveForGlobalSignals, ProjectHealth } from '../services/healthService';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
+import { GettingStartedCard } from '../components/onboarding/GettingStartedCard';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -1255,6 +1256,9 @@ export const Dashboard = () => {
         { value: toIsoDate(nextMonday()), label: t('work.due.nextWeek') }
     ];
 
+    // Nothing to plan yet: talk about getting started instead of "a free day".
+    const isFirstRun = projects.length === 0 && tasks.length === 0;
+
     if (loading || !dashboardTranslationsReady) {
         return (
             <div className="flex items-center justify-center p-12">
@@ -1292,10 +1296,13 @@ export const Dashboard = () => {
                                 </div>
 
                                 <h1 className="dashboard-today__headline">
-                                    {renderDashboardStatement(routeStatement)}
+                                    {isFirstRun ? t('dashboard.firstRun.headline') : renderDashboardStatement(routeStatement)}
                                 </h1>
-                                <p className="dashboard-today__cause">{causeLine}</p>
+                                <p className="dashboard-today__cause">{isFirstRun ? t('dashboard.firstRun.cause') : causeLine}</p>
 
+                                <GettingStartedCard projects={projects} taskCount={tasks.length} />
+
+                                {!isFirstRun && (
                                 <div className="dashboard-band-wrap" data-onboarding-id="dashboard-kpis">
                                     <div className="dashboard-band" aria-hidden="true">
                                         {bandSegments.map((segment) => (
@@ -1320,7 +1327,9 @@ export const Dashboard = () => {
                                         {bandCaptionParts.length > 0 && <p>{t('dashboard.band.free')}</p>}
                                     </div>
                                 </div>
+                                )}
 
+                                {!isFirstRun && (
                                 <div className={`dashboard-today__grid ${routeIsSuggested || dayShape === 'clear' || dayShape === 'waiting' ? 'dashboard-today__grid--calm' : ''}`}>
                                     <div className="dashboard-plan" aria-label={t('dashboard.route.title')}>
                                         <div className="dashboard-plan__head">
@@ -1484,6 +1493,7 @@ export const Dashboard = () => {
                                         )}
                                     </aside>
                                 </div>
+                                )}
                             </div>
                         </section>
 

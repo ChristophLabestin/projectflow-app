@@ -19,6 +19,7 @@ import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
 import { InitiativeCreateModal } from './InitiativeCreateModal';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 // ----------------------------------------------------------------------
 // Types
@@ -27,6 +28,7 @@ import { InitiativeCreateModal } from './InitiativeCreateModal';
 type SidebarNavigatorProps = {
     isDrawer?: boolean;
     collapsed?: boolean;
+    onToggleCollapsed?: () => void;
     onClose?: () => void;
     workspace?: {
         projectId: string;
@@ -36,6 +38,8 @@ type SidebarNavigatorProps = {
         issuesCount?: number;
         modules?: string[];
         isClientProject?: boolean;
+        /** Codex sessions only matter for software work; legacy projects keep it. */
+        showCodex?: boolean;
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean;
         navPrefs?: { order: string[]; hidden: string[] };
@@ -222,7 +226,7 @@ const ThemeToggle: React.FC = () => {
 // Sidebar Navigator
 // ----------------------------------------------------------------------
 
-export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = false, collapsed = false, onClose, workspace }) => {
+export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = false, collapsed = false, onToggleCollapsed, onClose, workspace }) => {
     const location = useLocation();
     const { t } = useLanguage();
     const { isAuthReady, isAuthenticated, user } = useAuth();
@@ -454,6 +458,25 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         ...(isCoraStudioEnabled() ? [{ key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') }] : []),
     ];
 
+    // New accounts see Finance and Media behind "More" until they open them;
+    // accounts from before the onboarding rework keep the full list.
+    const { onboarding } = useOnboarding();
+    const extraKeys = ['finance', 'media'];
+    const moreStorageKey = `projectflow.sidebar.moreOpen.${user?.uid || 'anonymous'}`;
+    const [moreOpen, setMoreOpen] = React.useState(() => {
+        try { return window.localStorage.getItem(moreStorageKey) === '1'; } catch { return false; }
+    });
+    const toggleMore = () => setMoreOpen((open) => {
+        const next = !open;
+        try { window.localStorage.setItem(moreStorageKey, next ? '1' : '0'); } catch { /* storage unavailable */ }
+        return next;
+    });
+    const onExtraRoute = extraKeys.some((key) => location.pathname.startsWith(`/${key}`));
+    const hasExtras = Boolean(onboarding) && secondaryAnchors.some((anchor) => extraKeys.includes(anchor.key));
+    const visibleSecondaryAnchors = hasExtras && !moreOpen && !onExtraRoute
+        ? secondaryAnchors.filter((anchor) => !extraKeys.includes(anchor.key))
+        : secondaryAnchors;
+
     // ---- Project module nav (honours navPrefs + module gating) --------------
     const projectModules: NavRowDef[] = React.useMemo(() => {
         if (!workspace?.projectId) return [];
@@ -475,7 +498,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
             ] : []),
             { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
-            { id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') },
+            ...(workspace.showCodex !== false ? [{ id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') }] : []),
         ];
 
         const defaultOrder = pmCore ? [...PM_CORE_PROJECT_NAV_ORDER] : defs.map(d => d.id);
@@ -497,7 +520,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 badge: d.badge,
                 exact: d.exact,
             }));
-    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, pmCore, t]);
+    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, workspace?.showCodex, pmCore, t]);
 
     // ---- Finance subnav ------------------------------------------------------
     const financeModules: NavRowDef[] = [
@@ -624,7 +647,13 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                     </div>
                                 )}
                                 <NavGroup items={primaryAnchors} onNavigate={closeOnNavigate} />
-                                <NavGroup items={secondaryAnchors} onNavigate={closeOnNavigate} label={t('nav.workspace')} />
+                                <NavGroup items={visibleSecondaryAnchors} onNavigate={closeOnNavigate} label={t('nav.workspace')} />
+                                {hasExtras && !onExtraRoute && (
+                                    <button type="button" className="snav-row snav-row--more" onClick={toggleMore} aria-expanded={moreOpen}>
+                                        <span className="snav-row__icon material-symbols-outlined">{moreOpen ? 'expand_less' : 'expand_more'}</span>
+                                        <span className="snav-row__label">{moreOpen ? t('nav.less') : t('nav.more')}</span>
+                                    </button>
+                                )}
                             </div>
 
                             {/* Layer 1 — Active context */}
@@ -710,7 +739,21 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     <div className="snav-footer">
                         <div className="snav-footer__row">
                             <ThemeToggle />
-                            <NotificationDropdown position="sidebar" />
+                            <div className="snav-footer__actions">
+                                {!isDrawer && onToggleCollapsed && (
+                                    <button
+                                        type="button"
+                                        className="snav-icon-btn"
+                                        onClick={(e) => { e.currentTarget.blur(); onToggleCollapsed(); }}
+                                        title={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+                                        aria-label={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+                                        aria-pressed={effectiveCollapsed}
+                                    >
+                                        <span className="material-symbols-outlined">{effectiveCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
+                                    </button>
+                                )}
+                                <NotificationDropdown position="sidebar" />
+                            </div>
                         </div>
                     </div>
 

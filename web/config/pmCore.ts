@@ -1,15 +1,15 @@
 import type { ProjectModule } from '../types';
 
-/** Default modules for new projects in PM-core mode. */
+/**
+ * Default modules for new projects in PM-core mode. Kept to the core so a new
+ * project's sidebar stays short; sprints, social, marketing and accounting are
+ * switched on per project (project settings → Modules) or by a template.
+ */
 export const PM_CORE_DEFAULT_MODULES: ProjectModule[] = [
     'tasks',
     'initiatives',
-    'sprints',
     'milestones',
     'activity',
-    'social',
-    'marketing',
-    'accounting',
 ];
 
 /** Legacy module ids hidden from project nav and create wizard when PM core is active. */

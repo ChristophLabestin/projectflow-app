@@ -2188,8 +2188,16 @@ export const ProjectsList: React.FC = () => {
 
                 {filteredProjects.length === 0 && (
                     <div className="empty-state">
-                        <span className="material-symbols-outlined">folder_off</span>
+                        <span className="material-symbols-outlined">{search ? 'search_off' : 'folder_open'}</span>
                         <h3>{t(search ? 'projects.portfolio.emptySearch' : 'projects.portfolio.empty')}</h3>
+                        {!search && (
+                            <>
+                                <p>{t('projects.portfolio.emptyHint')}</p>
+                                <Button variant="primary" onClick={openProjectCreateModal} icon={<span className="material-symbols-outlined">add</span>}>
+                                    {t('projects.portfolio.emptyCta')}
+                                </Button>
+                            </>
+                        )}
                     </div>
                 )}
             </div>

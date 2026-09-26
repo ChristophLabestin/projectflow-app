@@ -7,6 +7,7 @@ import {
     type OverviewWorkView,
     resolveViewsForTab
 } from '../config/overviewConfig';
+import { auth } from '../../../../services/firebase';
 
 const STORAGE = {
     tab: 'projectflow.projectOverview.tab',
@@ -34,10 +35,13 @@ const EMPTY_FILTERS: OverviewFilters = {
     showCompleted: false
 };
 
+const userKey = (key: string) => `${key}.${auth.currentUser?.uid || 'anonymous'}`;
+
 const read = (key: string): string | null => {
     if (typeof window === 'undefined') return null;
     try {
-        return window.localStorage.getItem(key);
+        // Per user, so a shared device does not hand one person's view to the next.
+        return window.localStorage.getItem(userKey(key));
     } catch {
         return null;
     }
@@ -46,7 +50,7 @@ const read = (key: string): string | null => {
 const write = (key: string, value: string) => {
     if (typeof window === 'undefined') return;
     try {
-        window.localStorage.setItem(key, value);
+        window.localStorage.setItem(userKey(key), value);
     } catch {
         // Storage may be unavailable (private mode); fail silently.
     }

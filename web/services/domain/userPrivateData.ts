@@ -75,3 +75,22 @@ export const readLastTenantId = async (userId: string): Promise<string | undefin
 
 export const writeLastTenantId = (userId: string, tenantId: string) =>
     setDoc(workspaceDocRef(userId), { lastTenantId: tenantId, updatedAt: serverTimestamp() }, { merge: true });
+
+/**
+ * First-run state for accounts created after the onboarding rework. Existing
+ * accounts have no doc and therefore never see the welcome or checklist.
+ */
+export type OnboardingState = {
+    welcomePending?: boolean;
+    checklistDismissed?: boolean;
+};
+
+const onboardingDocRef = (userId: string) => doc(db, 'users', userId, 'private', 'onboarding');
+
+export const readOnboarding = async (userId: string): Promise<OnboardingState | null> => {
+    const snap = await getDoc(onboardingDocRef(userId));
+    return snap.exists() ? (snap.data() as OnboardingState) : null;
+};
+
+export const writeOnboarding = (userId: string, patch: OnboardingState) =>
+    setDoc(onboardingDocRef(userId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });

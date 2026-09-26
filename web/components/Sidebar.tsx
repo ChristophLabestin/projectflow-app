@@ -23,6 +23,7 @@ const SidebarCollapsedContext = React.createContext(false);
 type SidebarProps = {
     isDrawer?: boolean;
     collapsed?: boolean;
+    onToggleCollapsed?: () => void;
     onClose?: () => void;
     workspace?: {
         projectId: string;
@@ -32,6 +33,7 @@ type SidebarProps = {
         issuesCount?: number;
         modules?: string[];
         isClientProject?: boolean;
+        showCodex?: boolean;
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean; // New flag to prevent flickering
         navPrefs?: { order: string[]; hidden: string[] }; // User-specific nav preferences

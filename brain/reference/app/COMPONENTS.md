@@ -257,3 +257,11 @@ No feature should implement an isolated file picker/upload flow outside of this 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.
+
+## First-run experience (2026-09-26)
+
+- `QuickProjectCreate` (`web/components/QuickProjectCreate.tsx`): one-step project creation (name, 4 quick templates, optional starter tasks due over the first week and assigned to the creator). Default content of `CreateProjectModal`; "More options" opens the full `CreateProjectWizard` with name/template prefilled (`initialName`, `initialTemplateId`).
+- `WelcomeDialog` (`web/components/onboarding/`): shown once after the first sign-in (workspace name, solo/team, optional email invites), then opens the project dialog. Mounted in `AppLayout`; skipped on `/invite/*`.
+- `GettingStartedCard` (`web/components/onboarding/`): dashboard checklist (confirm email, first project, three tasks, invite, passkey/2FA) derived from live data; hides when done or dismissed.
+- `useOnboarding` (`web/hooks/`): shared first-run state from `users/{uid}/private/onboarding`. Only accounts whose first workspace was created after the rework have this doc — older accounts never see welcome, checklist or the sidebar "More" grouping.
+- `userPrivateData` (`web/services/domain/`): owner-only user data (`private/usage`, `private/workspace`, `private/onboarding`); `emailVerification` helpers for sending/rechecking the confirmation mail.
