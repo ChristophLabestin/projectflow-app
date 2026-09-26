@@ -81,6 +81,8 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
     const [filterOpen, setFilterOpen] = useState(false);
     const filterRef = useRef<HTMLDivElement>(null);
     const showGroupControl = view !== 'board';
+    // The roadmap plans initiatives and milestones, so task filters do not apply there.
+    const showWorkControls = view !== 'roadmap';
 
     useEffect(() => {
         if (!filterOpen) return;
@@ -99,104 +101,109 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
     return (
         <div className="po-command">
             <div className="po-command__main">
-                <div className="po-command__search">
-                    <span className="material-symbols-outlined">search</span>
-                    <input
-                        type="search"
-                        value={filters.search}
-                        onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
-                        placeholder={t('projectOverview.v2.command.search', 'Search work…')}
-                        aria-label={t('projectOverview.v2.command.search', 'Search work…')}
-                    />
-                </div>
+                {showQuickAdd && <ProjectOverviewTasksQuickAdd onSubmit={onQuickAdd} />}
+                {showWorkControls && (
+                    <>
+                    <div className="po-command__search">
+                        <span className="material-symbols-outlined">search</span>
+                        <input
+                            type="search"
+                            value={filters.search}
+                            onChange={(event) => setFilters((prev) => ({ ...prev, search: event.target.value }))}
+                            placeholder={t('projectOverview.v2.command.search', 'Search work…')}
+                            aria-label={t('projectOverview.v2.command.search', 'Search work…')}
+                        />
+                    </div>
 
-                <div className="po-command__filter" ref={filterRef}>
-                    <button
-                        type="button"
-                        className={`po-command__btn ${activeFilterCount > 0 ? 'is-active' : ''}`.trim()}
-                        onClick={() => setFilterOpen((open) => !open)}
-                        aria-haspopup="true"
-                        aria-expanded={filterOpen}
-                    >
-                        <span className="material-symbols-outlined">tune</span>
-                        <span>{t('projectOverview.v2.command.filter', 'Filter')}</span>
-                        {activeFilterCount > 0 && <span className="po-command__badge">{activeFilterCount}</span>}
-                    </button>
-                    {filterOpen && (
-                        <div className="po-filter">
-                            <MultiToggle
-                                title={t('projectOverview.workspace.columns.status', 'Status')}
-                                options={statusOptions}
-                                selected={filters.statuses}
-                                onToggle={(value) => setFilters((prev) => ({ ...prev, statuses: toggleIn(prev.statuses, value) }))}
-                            />
-                            <MultiToggle
-                                title={t('projectOverview.workspace.columns.priority', 'Priority')}
-                                options={priorityOptions}
-                                selected={filters.priorities}
-                                onToggle={(value) => setFilters((prev) => ({ ...prev, priorities: toggleIn(prev.priorities, value) }))}
-                            />
-                            <MultiToggle
-                                title={t('projectOverview.v2.command.assignee', 'Assignee')}
-                                options={assigneeOptions}
-                                selected={filters.assigneeIds}
-                                onToggle={(value) => setFilters((prev) => ({ ...prev, assigneeIds: toggleIn(prev.assigneeIds, value) }))}
-                            />
-                            {initiativeOptions.length > 0 && (
-                                <div className="po-filter__group">
-                                    <span className="po-filter__group-title">{t('projectOverview.v2.group.initiative', 'Initiative')}</span>
-                                    <div className="po-filter__chips">
-                                        {initiativeOptions.map((option) => (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                className={`po-filter__chip ${filters.initiativeId === option.value ? 'is-active' : ''}`.trim()}
-                                                onClick={() => setFilters((prev) => ({
-                                                    ...prev,
-                                                    initiativeId: prev.initiativeId === option.value ? null : option.value
-                                                }))}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                            <label className="po-filter__switch">
-                                <input
-                                    type="checkbox"
-                                    checked={filters.showCompleted}
-                                    onChange={(event) => setFilters((prev) => ({ ...prev, showCompleted: event.target.checked }))}
+                    <div className="po-command__filter" ref={filterRef}>
+                        <button
+                            type="button"
+                            className={`po-command__btn ${activeFilterCount > 0 ? 'is-active' : ''}`.trim()}
+                            onClick={() => setFilterOpen((open) => !open)}
+                            aria-haspopup="true"
+                            aria-expanded={filterOpen}
+                        >
+                            <span className="material-symbols-outlined">tune</span>
+                            <span>{t('projectOverview.v2.command.filter', 'Filter')}</span>
+                            {activeFilterCount > 0 && <span className="po-command__badge">{activeFilterCount}</span>}
+                        </button>
+                        {filterOpen && (
+                            <div className="po-filter">
+                                <MultiToggle
+                                    title={t('projectOverview.workspace.columns.status', 'Status')}
+                                    options={statusOptions}
+                                    selected={filters.statuses}
+                                    onToggle={(value) => setFilters((prev) => ({ ...prev, statuses: toggleIn(prev.statuses, value) }))}
                                 />
-                                {t('projectOverview.v2.command.showCompleted', 'Show completed')}
-                            </label>
-                            <div className="po-filter__foot">
-                                <button type="button" className="po-filter__reset" onClick={resetFilters}>
-                                    {t('projectOverview.v2.command.clear', 'Clear all')}
-                                </button>
+                                <MultiToggle
+                                    title={t('projectOverview.workspace.columns.priority', 'Priority')}
+                                    options={priorityOptions}
+                                    selected={filters.priorities}
+                                    onToggle={(value) => setFilters((prev) => ({ ...prev, priorities: toggleIn(prev.priorities, value) }))}
+                                />
+                                <MultiToggle
+                                    title={t('projectOverview.v2.command.assignee', 'Assignee')}
+                                    options={assigneeOptions}
+                                    selected={filters.assigneeIds}
+                                    onToggle={(value) => setFilters((prev) => ({ ...prev, assigneeIds: toggleIn(prev.assigneeIds, value) }))}
+                                />
+                                {initiativeOptions.length > 0 && (
+                                    <div className="po-filter__group">
+                                        <span className="po-filter__group-title">{t('projectOverview.v2.group.initiative', 'Initiative')}</span>
+                                        <div className="po-filter__chips">
+                                            {initiativeOptions.map((option) => (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    className={`po-filter__chip ${filters.initiativeId === option.value ? 'is-active' : ''}`.trim()}
+                                                    onClick={() => setFilters((prev) => ({
+                                                        ...prev,
+                                                        initiativeId: prev.initiativeId === option.value ? null : option.value
+                                                    }))}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <label className="po-filter__switch">
+                                    <input
+                                        type="checkbox"
+                                        checked={filters.showCompleted}
+                                        onChange={(event) => setFilters((prev) => ({ ...prev, showCompleted: event.target.checked }))}
+                                    />
+                                    {t('projectOverview.v2.command.showCompleted', 'Show completed')}
+                                </label>
+                                <div className="po-filter__foot">
+                                    <button type="button" className="po-filter__reset" onClick={resetFilters}>
+                                        {t('projectOverview.v2.command.clear', 'Clear all')}
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                <label className="po-command__select">
-                    <span className="po-command__select-label">{t('projectOverview.v2.command.sort', 'Sort')}</span>
-                    <select value={sortBy} onChange={(event) => setSortBy(event.target.value as OverviewSortBy)}>
-                        {SORT_OPTIONS.map((option) => (
-                            <option key={option.value} value={option.value}>{t(option.labelKey, option.value)}</option>
-                        ))}
-                    </select>
-                </label>
-
-                {showGroupControl && (
                     <label className="po-command__select">
-                        <span className="po-command__select-label">{t('projectOverview.v2.command.group', 'Group')}</span>
-                        <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as OverviewGroupBy)}>
-                            {GROUP_OPTIONS.map((option) => (
+                        <span className="po-command__select-label">{t('projectOverview.v2.command.sort', 'Sort')}</span>
+                        <select value={sortBy} onChange={(event) => setSortBy(event.target.value as OverviewSortBy)}>
+                            {SORT_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>{t(option.labelKey, option.value)}</option>
                             ))}
                         </select>
                     </label>
+
+                    {showGroupControl && (
+                        <label className="po-command__select">
+                            <span className="po-command__select-label">{t('projectOverview.v2.command.group', 'Group')}</span>
+                            <select value={groupBy} onChange={(event) => setGroupBy(event.target.value as OverviewGroupBy)}>
+                                {GROUP_OPTIONS.map((option) => (
+                                    <option key={option.value} value={option.value}>{t(option.labelKey, option.value)}</option>
+                                ))}
+                            </select>
+                        </label>
+                    )}
+                    </>
                 )}
 
                 {showViewControls && availableViews.length > 1 && (
@@ -216,28 +223,24 @@ export const ProjectCommandBar: React.FC<ProjectCommandBarProps> = ({
                         ))}
                     </div>
                 )}
+
+                <button
+                    type="button"
+                    className={`po-command__focus-btn ${workFocus ? 'is-active' : ''}`.trim()}
+                    onClick={onToggleWorkFocus}
+                    title={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
+                    aria-label={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
+                    aria-pressed={workFocus}
+                >
+                    <span className="material-symbols-outlined">{workFocus ? 'close_fullscreen' : 'open_in_full'}</span>
+                    {workFocus && (
+                        <span className="po-command__focus-label">
+                            {t('projectOverview.v2.command.focusExit', 'Exit focus')}<kbd>Esc</kbd>
+                        </span>
+                    )}
+                </button>
             </div>
 
-            {showQuickAdd && (
-                <div className="po-command__quick-add">
-                    <ProjectOverviewTasksQuickAdd onSubmit={onQuickAdd} />
-                    <button
-                        type="button"
-                        className={`po-command__focus-btn ${workFocus ? 'is-active' : ''}`.trim()}
-                        onClick={onToggleWorkFocus}
-                        title={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
-                        aria-label={workFocus ? t('projectOverview.v2.command.focusExit', 'Exit focus') : t('projectOverview.v2.command.focus', 'Focus board')}
-                        aria-pressed={workFocus}
-                    >
-                        <span className="material-symbols-outlined">{workFocus ? 'close_fullscreen' : 'open_in_full'}</span>
-                        {workFocus && (
-                            <span className="po-command__focus-label">
-                                {t('projectOverview.v2.command.focusExit', 'Exit focus')}<kbd>Esc</kbd>
-                            </span>
-                        )}
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom';
 import type { Project } from '../../../../types';
 import type { ProjectHealth } from '../../../../services/healthService';
 import { Badge } from '../../../common/Badge/Badge';
-import { HealthIndicator } from '../../HealthIndicator';
 import type { OverviewDerived } from '../hooks/useProjectOverviewDerived';
+import type { OverviewMember } from '../hooks/useProjectMembers';
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error';
 
@@ -46,51 +46,10 @@ export type ProjectHeroProps = {
     coverExpanded: boolean;
     onToggleCoverExpand: () => void;
     reminders?: React.ReactNode;
+    members: OverviewMember[];
+    onOpenContext: () => void;
     t: (key: string, fallback?: string) => string;
 };
-
-const ProgressRing: React.FC<{ pct: number; label: string }> = ({ pct, label }) => {
-    const value = Math.max(0, Math.min(100, Math.round(pct)));
-    const radius = 21;
-    const circumference = 2 * Math.PI * radius;
-    const offset = circumference - (value / 100) * circumference;
-    const tone = value >= 100 ? 'is-complete' : value > 0 ? 'is-progress' : 'is-empty';
-    return (
-        <div className="po-hero__metric po-hero__metric--ring" title={`${label} · ${value}%`}>
-            <svg className={`po-hero__ring ${tone}`} viewBox="0 0 50 50" aria-hidden="true">
-                <circle className="po-hero__ring-track" cx="25" cy="25" r={radius} fill="none" strokeWidth="4.5" />
-                <circle
-                    className="po-hero__ring-value"
-                    cx="25"
-                    cy="25"
-                    r={radius}
-                    fill="none"
-                    strokeWidth="4.5"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={value === 0 ? circumference : offset}
-                    transform="rotate(-90 25 25)"
-                />
-                <text className="po-hero__ring-text" x="25" y="25" textAnchor="middle" dominantBaseline="central">
-                    <tspan className="po-hero__ring-num">{value}</tspan>
-                    <tspan className="po-hero__ring-pct" dy="-3">%</tspan>
-                </text>
-            </svg>
-            <span className="po-hero__metric-label">{label}</span>
-        </div>
-    );
-};
-
-const Stat: React.FC<{ value: number | string; label: string; tone?: 'default' | 'danger' | 'warning' }> = ({
-    value,
-    label,
-    tone = 'default'
-}) => (
-    <div className={`po-hero__metric po-hero__metric--${tone}`}>
-        <span className="po-hero__metric-value">{value}</span>
-        <span className="po-hero__metric-label">{label}</span>
-    </div>
-);
 
 export const ProjectHero: React.FC<ProjectHeroProps> = ({
     project,
@@ -118,6 +77,8 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     coverExpanded,
     onToggleCoverExpand,
     reminders,
+    members,
+    onOpenContext,
     t
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -139,6 +100,15 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     const hasCover = Boolean(project.coverImage);
     const purpose = project.description?.trim();
     const initial = project.title?.trim().charAt(0).toUpperCase() || '?';
+
+    const completion = Math.max(0, Math.min(100, Math.round(derived.completionPct)));
+    const summary = [
+        `${completion}% ${t('projectOverview.v2.hero.complete', 'Complete')}`,
+        t('projectOverview.v2.hero.openCount', '{count} open').replace('{count}', String(derived.openTaskCount)),
+        t('projectOverview.v2.hero.overdueCount', '{count} overdue').replace('{count}', String(derived.overdueCount)),
+        t('projectOverview.v2.hero.dueSoonCount', '{count} due soon').replace('{count}', String(derived.dueSoonCount)),
+        health ? `${t('projectOverview.command.health', 'Health')} ${health.score}` : ''
+    ].filter(Boolean).join(' · ');
 
     const nextItem = derived.nextItem;
     const nextLabelKey = nextItem
@@ -201,48 +171,50 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                     </div>
                 </div>
 
-                <div className="po-hero__metrics" role="group" aria-label={t('projectOverview.v2.hero.metricsLabel', 'Project metrics')}>
-                    <ProgressRing pct={derived.completionPct} label={t('projectOverview.v2.hero.complete', 'Complete')} />
-                    <Stat value={derived.openTaskCount} label={t('projectOverview.v2.hero.openTasks', 'Open tasks')} />
-                    <Stat
-                        value={derived.overdueCount}
-                        label={t('projectOverview.v2.hero.overdue', 'Overdue')}
-                        tone={derived.overdueCount > 0 ? 'danger' : 'default'}
-                    />
-                    <Stat
-                        value={derived.dueSoonCount}
-                        label={t('projectOverview.v2.hero.dueSoon', 'Due soon')}
-                        tone={derived.dueSoonCount > 0 ? 'warning' : 'default'}
-                    />
-                    {health && (
-                        <button type="button" className="po-hero__health" onClick={onOpenHealth} aria-label={t('projectOverview.command.health', 'Health')}>
-                            <HealthIndicator health={health} size="sm" showLabel={false} />
-                            <span className="po-hero__metric-label">{t('projectOverview.command.health', 'Health')}</span>
-                        </button>
-                    )}
-                </div>
+                <div className="po-hero__side">
+                    <button
+                        type="button"
+                        className="po-hero__pulse"
+                        onClick={onOpenHealth}
+                        title={summary}
+                        aria-label={`${t('projectOverview.command.health', 'Health')}: ${summary}`}
+                    >
+                        <span className="po-hero__pulse-progress">
+                            <span className="po-hero__pulse-track" aria-hidden="true">
+                                <span className="po-hero__pulse-fill" style={{ width: `${completion}%` }} />
+                            </span>
+                            <span className="po-hero__pulse-value">{completion}%</span>
+                        </span>
+                        {health && (
+                            <>
+                                <span className="po-hero__pulse-divider" aria-hidden="true" />
+                                <span className={`po-hero__pulse-health po-hero__pulse-health--${health.status}`}>
+                                    <span className="po-hero__pulse-dot" aria-hidden="true" />
+                                    {t(`status.${health.status}`, health.status)}
+                                </span>
+                            </>
+                        )}
+                    </button>
 
-                <div className="po-hero__actions">
+                    <button type="button" className="po-hero__context" onClick={onOpenContext}>
+                        {members.length > 0 && (
+                            <span className="po-hero__avatars" aria-hidden="true">
+                                {members.slice(0, 3).map((member) => (
+                                    <span
+                                        key={member.id}
+                                        className="po-hero__avatar"
+                                        style={member.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
+                                    >
+                                        {!member.photoURL && (member.displayName.trim().charAt(0).toUpperCase() || '?')}
+                                    </span>
+                                ))}
+                            </span>
+                        )}
+                        <span>{t('projectOverview.v2.context.open', 'Project info')}</span>
+                    </button>
+
                     {reminders}
-                    <button
-                        type="button"
-                        className={`po-hero__icon-btn ${isWide ? 'is-active' : ''}`.trim()}
-                        onClick={onToggleWide}
-                        title={isWide ? t('projectOverview.v2.hero.collapseWidth', 'Fit width') : t('projectOverview.v2.hero.fullWidth', 'Full width')}
-                        aria-label={isWide ? t('projectOverview.v2.hero.collapseWidth', 'Fit width') : t('projectOverview.v2.hero.fullWidth', 'Full width')}
-                        aria-pressed={isWide}
-                    >
-                        <span className="material-symbols-outlined">{isWide ? 'close_fullscreen' : 'open_in_full'}</span>
-                    </button>
-                    <button
-                        type="button"
-                        className={`po-hero__icon-btn ${isPinned ? 'is-active' : ''}`.trim()}
-                        onClick={onTogglePin}
-                        title={isPinned ? t('projectOverview.v2.hero.unpin', 'Unpin') : t('projectOverview.v2.hero.pin', 'Pin')}
-                        aria-label={isPinned ? t('projectOverview.v2.hero.unpin', 'Unpin') : t('projectOverview.v2.hero.pin', 'Pin')}
-                    >
-                        <span className="material-symbols-outlined">push_pin</span>
-                    </button>
+
                     <div className="po-hero__menu" ref={menuRef}>
                         <button
                             type="button"
@@ -256,6 +228,14 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                         </button>
                         {menuOpen && (
                             <div className="po-hero__menu-list" role="menu">
+                                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onTogglePin(); }}>
+                                    <span className="material-symbols-outlined">push_pin</span>
+                                    {isPinned ? t('projectOverview.v2.hero.unpin', 'Unpin') : t('projectOverview.v2.hero.pin', 'Pin')}
+                                </button>
+                                <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onToggleWide(); }}>
+                                    <span className="material-symbols-outlined">{isWide ? 'close_fullscreen' : 'open_in_full'}</span>
+                                    {isWide ? t('projectOverview.v2.hero.collapseWidth', 'Fit width') : t('projectOverview.v2.hero.fullWidth', 'Full width')}
+                                </button>
                                 <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); onReport(); }}>
                                     <span className="material-symbols-outlined">auto_awesome</span>
                                     {t('projectOverview.v2.hero.report', 'Project report')}
@@ -302,18 +282,25 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                 </div>
             </div>
 
-            {nextItem && (
-                <button type="button" className={`po-hero__next po-hero__next--${nextItem.kind}`} onClick={onOpenNext}>
-                    <span className="po-hero__next-icon material-symbols-outlined">
-                        {nextItem.kind === 'overdue' ? 'priority_high' : nextItem.kind === 'blocked' ? 'block' : nextItem.kind === 'atRisk' ? 'warning' : 'schedule'}
-                    </span>
-                    <span className="po-hero__next-copy">
-                        <span className="po-hero__next-label">{t(nextLabelKey, nextItem.kind)}</span>
-                        <span className="po-hero__next-title">{nextItem.title}</span>
-                    </span>
-                    <span className="po-hero__next-cta material-symbols-outlined">arrow_forward</span>
-                </button>
-            )}
+            <div className="po-hero__signals">
+                {nextItem && (
+                    <button type="button" className={`po-hero__signal po-hero__signal--${nextItem.kind}`} onClick={onOpenNext}>
+                        <span className="material-symbols-outlined" aria-hidden="true">
+                            {nextItem.kind === 'overdue' ? 'priority_high' : nextItem.kind === 'blocked' ? 'block' : nextItem.kind === 'atRisk' ? 'warning' : 'schedule'}
+                        </span>
+                        <span className="po-hero__signal-label">{t(nextLabelKey, nextItem.kind)}</span>
+                        <span className="po-hero__signal-title">{nextItem.title}</span>
+                        <span className="material-symbols-outlined po-hero__signal-cta" aria-hidden="true">arrow_forward</span>
+                    </button>
+                )}
+                <span className="po-hero__stat">{t('projectOverview.v2.hero.openCount', '{count} open').replace('{count}', String(derived.openTaskCount))}</span>
+                {derived.overdueCount > 0 && (
+                    <span className="po-hero__stat po-hero__stat--danger">{t('projectOverview.v2.hero.overdueCount', '{count} overdue').replace('{count}', String(derived.overdueCount))}</span>
+                )}
+                {derived.dueSoonCount > 0 && (
+                    <span className="po-hero__stat po-hero__stat--warning">{t('projectOverview.v2.hero.dueSoonCount', '{count} due soon').replace('{count}', String(derived.dueSoonCount))}</span>
+                )}
+            </div>
         </header>
     );
 };

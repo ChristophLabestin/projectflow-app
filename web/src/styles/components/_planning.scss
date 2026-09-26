@@ -488,10 +488,6 @@
             background: rgba(var(--color-primary-rgb), 0.08);
             box-shadow: var(--shadow-md);
         }
-
-        &.is-unassigned {
-            background: rgba(var(--color-warning-rgb), 0.08);
-        }
     }
 
     &__head {

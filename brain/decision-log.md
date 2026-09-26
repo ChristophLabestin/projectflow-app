@@ -27,6 +27,10 @@ Last updated: 2026-06-04
     - a past-due project with open work stays capped at 34 (critical).
   - Consequences: the seed "Website Relaunch" project moved from 0 to 39 (warning) and "Mobile App v2" sits at 52. Tests are in `web/utils/__tests__/projectHealth.test.ts`. Initiative health is unchanged.
 
+- 2026-09-26 — Project overview: one navigation, one work surface.
+  - Decision: the sidebar is the only project navigation. The overview lost its Work/Roadmap/Sprints/Milestones/Activity tabs; Roadmap is now a work view in the view switcher, the others live only on their sidebar pages. The header is borderless (card only with a cover), shows one progress + health summary, a "Project info" button and a "…" menu (pin, full width, report, invite, settings, lifecycle); attention sits in a chip row below the title. Quick add is the first item of the command row. Initiatives start collapsed with a summary. Brief/team/resources moved into a right-hand drawer (`ProjectContextDrawer`).
+  - Why: two navigations for the same targets plus eight differently styled bands made the page feel unsettled.
+
 ## Follow-Ups
 
 - Create ProjectFlow tracking record once `PROJECTFLOW_API_TOKEN` is available.

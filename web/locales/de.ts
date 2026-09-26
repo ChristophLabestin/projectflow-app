@@ -3598,6 +3598,13 @@ const de = {
     'planning.roadmap.lateSince': 'Ziel {date} verpasst',
     'breadcrumbs.label': 'Brotkrumen-Navigation',
     'breadcrumbs.back': 'Zurück zu {page}',
+    'projectOverview.v2.context.title': 'Projektinfo',
+    'projectOverview.v2.context.open': 'Projektinfo',
+    'projectOverview.v2.hero.openCount': '{count} offen',
+    'projectOverview.v2.hero.overdueCount': '{count} überfällig',
+    'projectOverview.v2.hero.dueSoonCount': '{count} bald fällig',
+    'projectOverview.v2.initiatives.summary': '{done}/{total} Aufgaben erledigt',
+    'projectOverview.v2.initiatives.atRisk': '{count} gefährdet',
 };
 
 export default de;

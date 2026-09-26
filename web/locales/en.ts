@@ -3596,6 +3596,13 @@ const en = {
     'planning.roadmap.lateSince': 'target {date} missed',
     'breadcrumbs.label': 'Breadcrumb',
     'breadcrumbs.back': 'Back to {page}',
+    'projectOverview.v2.context.title': 'Project info',
+    'projectOverview.v2.context.open': 'Project info',
+    'projectOverview.v2.hero.openCount': '{count} open',
+    'projectOverview.v2.hero.overdueCount': '{count} overdue',
+    'projectOverview.v2.hero.dueSoonCount': '{count} due soon',
+    'projectOverview.v2.initiatives.summary': '{done}/{total} tasks done',
+    'projectOverview.v2.initiatives.atRisk': '{count} at risk',
 };
 
 export default en;

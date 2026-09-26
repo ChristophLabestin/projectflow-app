@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { Button } from '../../common/Button/Button';
-import { TextInput } from '../../common/Input/TextInput';
 import { useLanguage } from '../../../context/LanguageContext';
 
 type ProjectOverviewTasksQuickAddProps = {
@@ -8,6 +6,7 @@ type ProjectOverviewTasksQuickAddProps = {
     onSubmit: (title: string) => Promise<void>;
 };
 
+/** Inline "add a task" field; the submit button only appears once there is a title. */
 export const ProjectOverviewTasksQuickAdd: React.FC<ProjectOverviewTasksQuickAddProps> = ({
     disabled = false,
     onSubmit
@@ -15,6 +14,7 @@ export const ProjectOverviewTasksQuickAdd: React.FC<ProjectOverviewTasksQuickAdd
     const { t } = useLanguage();
     const [title, setTitle] = useState('');
     const [submitting, setSubmitting] = useState(false);
+    const hasTitle = Boolean(title.trim());
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
@@ -30,24 +30,22 @@ export const ProjectOverviewTasksQuickAdd: React.FC<ProjectOverviewTasksQuickAdd
     };
 
     return (
-        <form className="project-overview-tasks-quick-add" onSubmit={handleSubmit}>
-            <TextInput
+        <form className={`po-quick-add ${hasTitle ? 'has-value' : ''}`.trim()} onSubmit={handleSubmit}>
+            <span className="material-symbols-outlined po-quick-add__icon" aria-hidden="true">add</span>
+            <input
+                className="po-quick-add__input"
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={t('projectOverview.workspace.quickAdd.placeholder')}
-                className="project-overview-tasks-quick-add__input"
                 disabled={submitting || disabled}
                 aria-label={t('projectOverview.workspace.quickAdd.placeholder')}
             />
-            <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                disabled={submitting || disabled || !title.trim()}
-                icon={<span className="material-symbols-outlined">add_task</span>}
-            >
-                {t('projectOverview.workspace.quickAdd.action')}
-            </Button>
+            {hasTitle && (
+                <button type="submit" className="po-quick-add__submit" disabled={submitting || disabled}>
+                    {t('projectOverview.workspace.quickAdd.action')}
+                    <kbd>↵</kbd>
+                </button>
+            )}
         </form>
     );
 };

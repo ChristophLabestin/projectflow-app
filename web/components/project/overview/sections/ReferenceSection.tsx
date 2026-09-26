@@ -1,12 +1,10 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import type { Project } from '../../../../types';
 import type { OverviewMember } from '../hooks/useProjectMembers';
 
 export type ReferenceSectionProps = {
     project: Project;
     members: OverviewMember[];
-    tenantQuery: string;
     isOwner: boolean;
     onEditBrief: () => void;
     onEditResources: () => void;
@@ -19,7 +17,6 @@ const initials = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
 export const ReferenceSection: React.FC<ReferenceSectionProps> = ({
     project,
     members,
-    tenantQuery,
     isOwner,
     onEditBrief,
     onEditResources,
@@ -35,6 +32,31 @@ export const ReferenceSection: React.FC<ReferenceSectionProps> = ({
 
     return (
         <section className="po-reference">
+            {/* Team */}
+            <div className="po-ref-card">
+                <header className="po-ref-card__head">
+                    <h3><span className="material-symbols-outlined">group</span>{t('projectOverview.v2.reference.team', 'Team')}</h3>
+                    <button type="button" className="po-ref-card__edit" onClick={onInvite} aria-label={t('projectOverview.actions.invite', 'Invite')}>
+                        <span className="material-symbols-outlined">person_add</span>
+                    </button>
+                </header>
+                <div className="po-ref-card__body po-ref-team">
+                    {members.length > 0 ? members.slice(0, 10).map((member) => (
+                        <div key={member.id} className="po-ref-team__member" title={member.displayName}>
+                            <span
+                                className="po-ref-team__avatar"
+                                style={member.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
+                            >
+                                {!member.photoURL && initials(member.displayName)}
+                            </span>
+                            <span className="po-ref-team__name">{member.displayName}</span>
+                        </div>
+                    )) : (
+                        <span className="po-ref-card__muted">{t('projectOverview.v2.reference.teamEmpty', 'No members yet')}</span>
+                    )}
+                </div>
+            </div>
+
             {/* Brief / contract */}
             <div className="po-ref-card">
                 <header className="po-ref-card__head">
@@ -103,43 +125,6 @@ export const ReferenceSection: React.FC<ReferenceSectionProps> = ({
                 )}
             </div>
 
-            {/* Team */}
-            <div className="po-ref-card">
-                <header className="po-ref-card__head">
-                    <h3><span className="material-symbols-outlined">group</span>{t('projectOverview.v2.reference.team', 'Team')}</h3>
-                    <button type="button" className="po-ref-card__edit" onClick={onInvite} aria-label={t('projectOverview.actions.invite', 'Invite')}>
-                        <span className="material-symbols-outlined">person_add</span>
-                    </button>
-                </header>
-                <div className="po-ref-card__body po-ref-team">
-                    {members.length > 0 ? members.slice(0, 10).map((member) => (
-                        <div key={member.id} className="po-ref-team__member" title={member.displayName}>
-                            <span
-                                className="po-ref-team__avatar"
-                                style={member.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
-                            >
-                                {!member.photoURL && initials(member.displayName)}
-                            </span>
-                            <span className="po-ref-team__name">{member.displayName}</span>
-                        </div>
-                    )) : (
-                        <span className="po-ref-card__muted">{t('projectOverview.v2.reference.teamEmpty', 'No members yet')}</span>
-                    )}
-                </div>
-            </div>
-
-            {/* Codex */}
-            <div className="po-ref-card">
-                <header className="po-ref-card__head">
-                    <h3><span className="material-symbols-outlined">terminal</span>{t('projectOverview.v2.reference.codex', 'Codex sessions')}</h3>
-                </header>
-                <div className="po-ref-card__body">
-                    <Link to={`/project/${project.id}/codex${tenantQuery}`} className="po-ref-card__link">
-                        {t('projectOverview.v2.reference.codexOpen', 'Open Codex')}
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                    </Link>
-                </div>
-            </div>
         </section>
     );
 };

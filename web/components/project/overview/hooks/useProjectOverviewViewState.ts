@@ -52,12 +52,9 @@ const write = (key: string, value: string) => {
     }
 };
 
-const isTab = (value: string | null): value is OverviewTab =>
-    value === 'work' || value === 'roadmap' || value === 'sprints' || value === 'milestones' || value === 'activity';
-
 const isWorkView = (value: string | null): value is OverviewWorkView =>
     value === 'list' || value === 'board' || value === 'people'
-    || value === 'timeline' || value === 'calendar' || value === 'relationships';
+    || value === 'timeline' || value === 'roadmap' || value === 'calendar' || value === 'relationships';
 
 const normalizeWorkView = (value: string | null): OverviewWorkView | null => {
     if (value === 'kanban') return 'board';
@@ -109,11 +106,15 @@ export type ProjectOverviewViewState = {
  * that the active tab actually supports.
  */
 export const useProjectOverviewViewState = (): ProjectOverviewViewState => {
-    const [tab, setTabState] = useState<OverviewTab>(() => {
-        const stored = read(STORAGE.tab);
-        return isTab(stored) ? stored : 'work';
-    });
+    // Only the work tab remains (see OVERVIEW_TABS); older stored tabs fall back to it.
+    const [tab, setTabState] = useState<OverviewTab>('work');
     const [view, setViewState] = useState<OverviewWorkView>(() => {
+        // The roadmap used to be its own tab; it is a work view now.
+        if (read(STORAGE.tab) === 'roadmap') {
+            write(STORAGE.tab, 'work');
+            write(STORAGE.workView, 'roadmap');
+            return 'roadmap';
+        }
         const stored = read(STORAGE.workView) ?? read('projectflow.projectOverview.tasksView');
         return normalizeWorkView(stored) || DEFAULT_VIEW_FOR_TAB.work;
     });

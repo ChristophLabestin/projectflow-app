@@ -232,7 +232,8 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `useBarDrag` drags bars with the pointer to move or resize them in whole days and commits ISO dates.
 - `TimeScaleHeader` / `TimeScaleBackdrop`: month row plus days (with weekend and today marks) or ISO weeks; weekend stripes and the today line.
 - `stagger.ts`: stacks overlapping milestone labels into rows.
-- `RoadmapView`: Project Overview "Roadmap" tab.
+- `ProjectContextDrawer` (`components/project/overview/sections`): right slide-over for project brief, team and resources (Esc/backdrop closes).
+- `RoadmapView`: Project Overview "Roadmap" work view (view switcher, next to Timeline).
   - A range scale fitted to the card width (`buildRangeScale` + `useElementWidth`, no empty scroll) with month columns.
   - A header band with staggered milestone and project-target markers whose guide lines run through the chart.
   - Items grouped into In progress / Planned / Done (Done collapsed); tone is derived from health, lateness and phase.

@@ -20,13 +20,11 @@ import { useCompanyContext } from './hooks/useCompanyContext';
 import { useProjectLifecycle } from './hooks/useProjectLifecycle';
 import { useWorkItems, type WorkItem } from './views/shared/useWorkItems';
 import type { WorkViewContext } from './views/shared/viewTypes';
-import { resolveEnabledTabs, resolveViewsForTab, type OverviewTab, type OverviewWorkView } from './config/overviewConfig';
+import { resolveViewsForTab, type OverviewWorkView } from './config/overviewConfig';
 import { ProjectHero } from './hero/ProjectHero';
 import { ProjectCommandBar, type CommandOption } from './command/ProjectCommandBar';
 import { WorkViews } from './views/WorkViews';
-import { ActivityPanel } from './sections/SecondaryPanels';
-import { SprintsView } from './sections/SprintsView';
-import { MilestonesView } from './sections/MilestonesView';
+import { ProjectContextDrawer } from './sections/ProjectContextDrawer';
 import { InitiativesStrip } from './sections/InitiativesStrip';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
 import { ReferenceSection } from './sections/ReferenceSection';
@@ -46,7 +44,7 @@ import { RoadmapView } from '../../planning/RoadmapView';
 
 const TaskCreateModal = lazy(() => import('../../TaskCreateModal').then((m) => ({ default: m.TaskCreateModal })));
 
-type ModalKind = 'task' | 'initiative' | 'invite' | 'report' | 'edit' | 'health' | null;
+type ModalKind = 'task' | 'initiative' | 'invite' | 'report' | 'edit' | 'health' | 'context' | null;
 
 export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = ({ projectId }) => {
     const navigate = useNavigate();
@@ -142,12 +140,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
 
     const tenantQuery = project?.tenantId ? `?tenant=${project.tenantId}` : '';
 
-    const enabledTabs = useMemo(() => resolveEnabledTabs(project), [project]);
-    const activeTab: OverviewTab = useMemo(
-        () => (enabledTabs.some((tab) => tab.id === viewState.tab) ? viewState.tab : 'work'),
-        [enabledTabs, viewState.tab]
-    );
-    const availableViews = useMemo(() => resolveViewsForTab(activeTab), [activeTab]);
+    const availableViews = useMemo(() => resolveViewsForTab('work'), []);
 
     const effectiveGroupBy = viewState.view === 'board' ? 'status' : viewState.groupBy;
     const workMembers = useWorkMembers(project?.tenantId);
@@ -411,6 +404,8 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                     onComplete={() => void lifecycle.complete()}
                     isWide={wide}
                     onToggleWide={toggleWide}
+                    members={members}
+                    onOpenContext={() => setModal('context')}
                     coverExpanded={coverExpanded}
                     onToggleCoverExpand={toggleCoverExpand}
                     reminders={(
@@ -468,114 +463,70 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                     />
                 )}
 
-                {enabledTabs.length > 1 && (
-                    <div className="po-tabs" role="tablist" aria-label={t('projectOverview.workspace.tabsLabel', 'Workspace')}>
-                        {enabledTabs.map((tab) => (
-                            <button
-                                key={tab.id}
-                                type="button"
-                                role="tab"
-                                aria-selected={activeTab === tab.id}
-                                className={`po-tabs__tab ${activeTab === tab.id ? 'is-active' : ''}`.trim()}
-                                onClick={() => viewState.setTab(tab.id)}
-                            >
-                                <span className="material-symbols-outlined">{tab.icon}</span>
-                                <span>{t(tab.labelKey, tab.id)}</span>
-                            </button>
-                        ))}
-                    </div>
-                )}
                 </>
             )}
 
-            {activeTab === 'work' && (
-                <>
-                    {!workFocus && (
-                    <InitiativesStrip
-                        initiatives={initiatives}
-                        tasks={tasks}
-                        activeInitiativeId={viewState.filters.initiativeId}
-                        canManage={canManageTasks}
-                        statusLabels={labels.statusLabels}
-                        onSelect={toggleInitiativeFilter}
-                        onOpenInitiative={(id) => navigate(`/project/${project.id}/initiatives/${id}${tenantQuery}`)}
-                        onSetColor={handleSetInitiativeColor}
-                        onCreate={() => setModal('initiative')}
-                        t={t}
-                    />
-                    )}
-                    <div className={`po-work ${workFocus ? 'is-focus' : ''}`.trim()} ref={workRef}>
-                        <ProjectCommandBar
-                            viewState={viewState}
-                            availableViews={availableViews}
-                            statusOptions={statusOptions}
-                            priorityOptions={priorityOptions}
-                            assigneeOptions={assigneeOptions}
-                            initiativeOptions={initiativeOptions}
-                            showQuickAdd={canManageTasks}
-                            showViewControls
-                            workFocus={workFocus}
-                            onToggleWorkFocus={toggleWorkFocus}
-                            onQuickAdd={handleQuickAdd}
-                            t={t}
-                        />
-                        <div className="po-workspace">
-                            <WorkViews view={viewState.view} ctx={viewCtx} />
-                        </div>
-                    </div>
-                    {!workFocus && (
-                    <ReferenceSection
-                        project={project}
-                        members={members}
-                        tenantQuery={tenantQuery}
-                        isOwner={isOwner}
-                        onEditBrief={() => { setEditTab('briefing'); setModal('edit'); }}
-                        onEditResources={() => { setEditTab('resources'); setModal('edit'); }}
-                        onInvite={() => setModal('invite')}
-                        t={t}
-                    />
-                    )}
-                </>
-            )}
-
-            {activeTab === 'roadmap' && (
-                <RoadmapView
-                    project={project}
+            {!workFocus && (
+                <InitiativesStrip
                     initiatives={initiatives}
                     tasks={tasks}
-                    milestones={milestones}
+                    activeInitiativeId={viewState.filters.initiativeId}
                     canManage={canManageTasks}
-                    onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                    statusLabels={labels.statusLabels}
+                    onSelect={toggleInitiativeFilter}
+                    onOpenInitiative={(id) => navigate(`/project/${project.id}/initiatives/${id}${tenantQuery}`)}
+                    onSetColor={handleSetInitiativeColor}
+                    onCreate={() => setModal('initiative')}
+                    t={t}
                 />
             )}
-
-            {activeTab === 'milestones' && (
+            <div className={`po-work ${workFocus ? 'is-focus' : ''}`.trim()} ref={workRef}>
+                <ProjectCommandBar
+                    viewState={viewState}
+                    availableViews={availableViews}
+                    statusOptions={statusOptions}
+                    priorityOptions={priorityOptions}
+                    assigneeOptions={assigneeOptions}
+                    initiativeOptions={initiativeOptions}
+                    showQuickAdd={canManageTasks}
+                    showViewControls
+                    workFocus={workFocus}
+                    onToggleWorkFocus={toggleWorkFocus}
+                    onQuickAdd={handleQuickAdd}
+                    t={t}
+                />
                 <div className="po-workspace">
-                    <MilestonesView milestones={milestones} tasks={tasks} dateFormat={dateFormat} dateLocale={dateLocale} t={t} />
+                    {viewState.view === 'roadmap' ? (
+                        <RoadmapView
+                            project={project}
+                            initiatives={initiatives}
+                            tasks={tasks}
+                            milestones={milestones}
+                            canManage={canManageTasks}
+                            onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                        />
+                    ) : (
+                        <WorkViews view={viewState.view} ctx={viewCtx} />
+                    )}
                 </div>
-            )}
+            </div>
 
-            {activeTab === 'sprints' && (
-                <div className="po-workspace">
-                    <SprintsView
-                        sprints={sprints}
-                        tasks={tasks}
-                        members={members}
-                        labels={labels}
-                        projectId={project.id}
-                        tenantQuery={tenantQuery}
-                        dateFormat={dateFormat}
-                        dateLocale={dateLocale}
-                        t={t}
-                    />
-                </div>
-            )}
-
-            {activeTab === 'activity' && (
-                <div className="po-workspace">
-                    <ActivityPanel activity={activity} dateFormat={dateFormat} dateLocale={dateLocale} t={t} />
-                </div>
-            )}
+            <ProjectContextDrawer
+                isOpen={modal === 'context'}
+                onClose={() => setModal(null)}
+                title={project.title}
+                t={t}
+            >
+                <ReferenceSection
+                    project={project}
+                    members={members}
+                    isOwner={isOwner}
+                    onEditBrief={() => { setEditTab('briefing'); setModal('edit'); }}
+                    onEditResources={() => { setEditTab('resources'); setModal('edit'); }}
+                    onInvite={() => setModal('invite')}
+                    t={t}
+                />
+            </ProjectContextDrawer>
 
             {modal === 'task' && (
                 <Suspense fallback={null}>

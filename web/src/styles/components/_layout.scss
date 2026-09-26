@@ -242,6 +242,22 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
     background: transparent;
     pointer-events: none;
 
+    /* Fade scrolled content out under the floating pills instead of letting
+       it show through between them. */
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0 0 -1rem;
+        z-index: -1;
+        background: linear-gradient(
+            180deg,
+            var(--color-surface-bg) 0%,
+            var(--color-surface-bg) 55%,
+            rgba(var(--color-surface-bg-rgb), 0) 100%
+        );
+        pointer-events: none;
+    }
+
     @media (max-width: 767px) {
         min-height: 4.25rem;
         padding: 0.625rem 0.75rem 0.5rem;

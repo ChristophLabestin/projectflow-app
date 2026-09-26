@@ -18,6 +18,8 @@ type InitiativesStripProps = {
     t: (key: string, fallback?: string) => string;
 };
 
+const COLLAPSE_KEY = 'projectflow.projectOverview.initiativesOpen';
+
 const ColorPicker: React.FC<{ current?: string; onPick: (color: string | null) => void; t: InitiativesStripProps['t'] }> = ({ current, onPick, t }) => {
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
@@ -70,17 +72,42 @@ const ColorPicker: React.FC<{ current?: string; onPick: (color: string | null) =
 export const InitiativesStrip: React.FC<InitiativesStripProps> = ({
     initiatives, tasks, activeInitiativeId, canManage, statusLabels, onSelect, onOpenInitiative, onSetColor, onCreate, t
 }) => {
-    const [collapsed, setCollapsed] = useState(false);
+    // Collapsed by default so the work surface starts high; the choice is remembered.
+    const [collapsed, setCollapsed] = useState(() => {
+        try { return window.localStorage.getItem(COLLAPSE_KEY) !== 'open'; } catch { return true; }
+    });
+    const toggleCollapsed = () => setCollapsed((current) => {
+        const next = !current;
+        try { window.localStorage.setItem(COLLAPSE_KEY, next ? 'closed' : 'open'); } catch { /* storage unavailable */ }
+        return next;
+    });
     if (!initiatives.length) return null;
+
+    const initiativeTasks = tasks.filter((task) => task.initiativeId && initiatives.some((initiative) => initiative.id === task.initiativeId));
+    const doneCount = initiativeTasks.filter(isDone).length;
+    const atRiskCount = initiatives.filter((initiative) => initiative.health && initiative.health !== 'On Track').length;
 
     return (
         <section className="po-inits" aria-label={t('projectOverview.v2.group.initiative', 'Initiatives')}>
             <header className="po-inits__head">
-                <button type="button" className="po-inits__head-main" onClick={() => setCollapsed((c) => !c)} aria-expanded={!collapsed}>
+                <button type="button" className="po-inits__head-main" onClick={toggleCollapsed} aria-expanded={!collapsed}>
                     <span className={`material-symbols-outlined po-inits__chevron ${collapsed ? 'is-collapsed' : ''}`.trim()}>expand_more</span>
                     <span className="material-symbols-outlined po-inits__head-icon">rocket_launch</span>
-                    <span className="po-inits__title">{t('projectOverview.v2.group.initiative', 'Initiatives')}</span>
+                    <span className="po-inits__title">{t('nav.initiatives', 'Initiatives')}</span>
                     <span className="po-inits__count">{initiatives.length}</span>
+                    {collapsed && (
+                        <span className="po-inits__summary">
+                            {t('projectOverview.v2.initiatives.summary', '{done}/{total} tasks done')
+                                .replace('{done}', String(doneCount))
+                                .replace('{total}', String(initiativeTasks.length))}
+                            {atRiskCount > 0 && (
+                                <span className="po-inits__summary-risk">
+                                    <span className="material-symbols-outlined" aria-hidden="true">warning</span>
+                                    {t('projectOverview.v2.initiatives.atRisk', '{count} at risk').replace('{count}', String(atRiskCount))}
+                                </span>
+                            )}
+                        </span>
+                    )}
                 </button>
                 <div className="po-inits__head-actions">
                     {activeInitiativeId && (
