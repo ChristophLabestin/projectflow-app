@@ -694,7 +694,7 @@
         font: inherit;
         text-align: inherit;
         cursor: pointer;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         transition: color var(--transition-fast), box-shadow var(--transition-fast);
 
         &:hover {

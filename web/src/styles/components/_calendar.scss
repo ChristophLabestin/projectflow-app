@@ -329,7 +329,7 @@
     border: none;
     background: transparent;
     padding: 4px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     color: var(--color-text-muted);
     transition: opacity var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
 }

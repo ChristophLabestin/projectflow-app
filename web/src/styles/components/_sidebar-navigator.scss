@@ -416,7 +416,7 @@
     justify-content: center;
     width: 28px;
     height: 28px;
-    border-radius: 9px;
+    border-radius: var(--radius-control);
     cursor: pointer;
     text-decoration: none;
     transition: background-color var(--transition-fast), transform var(--transition-fast);
@@ -549,7 +549,7 @@
     gap: 10px;
     padding: 8px 2px;
     border: 0;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-control);
     background: transparent;
     color: var(--color-text-main);
     cursor: pointer;

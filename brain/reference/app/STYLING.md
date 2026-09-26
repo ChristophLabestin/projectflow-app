@@ -132,6 +132,18 @@ Border radius tokens define the rounding used across components. Use them consis
 | `--radius-3xl` | `40px` | Extra-large containers and modals |
 | `--radius-full` | `999px` | Pills, circular buttons, avatars |
 
+**Semantic radii (use these first):**
+
+| Token | Resolves to | Use for |
+| --- | --- | --- |
+| `--radius-control` | `--radius-md` (10px) | Every interactive control: buttons (all sizes), inputs, textareas, selects, pickers, icon buttons, segmented toggles |
+| `--radius-card` | `--radius-lg` (16px) | Cards, sections, panels; nested rows/tiles inside a card use `--radius-control` |
+| `--radius-surface` | `--radius-xl` (24px) | Large shells (sidebar card, modals) |
+| `--radius-full` | 999px | Chips, badges, avatars, pills, round icon buttons |
+
+Do not hardcode px radii or mix `--radius-sm/lg/xl` on controls. Legacy `rounded-*` utilities map onto
+this scale (`rounded-md/lg/xl` → control, `rounded-2xl` → card, `rounded-3xl` → surface).
+
 ---
 
 ## 3) Shadows

@@ -331,7 +331,7 @@
             padding: 9px 10px;
             border: none;
             background: none;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-control);
             font-size: 13px;
             color: var(--color-text-main);
             cursor: pointer;
@@ -387,7 +387,7 @@
     &__action {
         margin-left: auto;
         padding: 5px 12px;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         border: 1px solid currentColor;
         background: none;
         color: inherit;
@@ -520,7 +520,7 @@
         justify-content: center;
         gap: 5px;
         border: 0;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         background: var(--color-primary);
         color: var(--color-primary-text);
         padding: 0;
@@ -931,7 +931,7 @@
         align-items: center;
         justify-content: center;
         border: none;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         background: none;
         color: var(--color-text-muted);
         cursor: pointer;

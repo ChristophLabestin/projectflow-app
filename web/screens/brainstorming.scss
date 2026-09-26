@@ -52,7 +52,7 @@
     width: 100%;
     justify-content: flex-start;
     padding: 10px 16px;
-    border-radius: 20px;
+    border-radius: var(--radius-control);
     gap: 12px;
     background: var(--color-surface-card);
     border: 1px solid transparent;
@@ -417,7 +417,7 @@
         background: transparent !important;
         box-shadow: none !important;
         padding: 4px 8px;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         font-size: 0.75rem;
         font-weight: 500;
         color: var(--color-text-muted);

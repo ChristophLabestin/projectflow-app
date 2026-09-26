@@ -178,7 +178,7 @@
         cursor: pointer;
         color: var(--color-text-muted);
         padding: 4px;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -325,7 +325,7 @@
         font-size: 1rem;
         color: var(--color-text-main);
         padding: 4px 8px;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         transition: background-color 0.1s;
 
         &:hover {

@@ -195,20 +195,20 @@
 }
 
 .rounded-lg {
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-control);
 }
 
 .rounded-xl {
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-control);
 }
 
 .rounded-2xl {
-    border-radius: 16px;
+    border-radius: var(--radius-card);
 }
 
 /* Custom from tailwind usage */
 .rounded-3xl {
-    border-radius: 24px;
+    border-radius: var(--radius-surface);
 }
 
 .rounded-full {

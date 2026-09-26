@@ -231,7 +231,7 @@
 .project-milestones__card {
     position: relative;
     padding: 1.5rem;
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-sm);
     cursor: pointer;
     transition: transform var(--transition-fast), box-shadow var(--transition-fast);

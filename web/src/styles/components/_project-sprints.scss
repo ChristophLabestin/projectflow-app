@@ -327,7 +327,7 @@
     flex-direction: column;
     gap: 1rem;
     padding: 1.25rem;
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
@@ -442,7 +442,7 @@
     min-height: 420px;
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%), var(--color-surface-card);
     border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
     transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -527,7 +527,7 @@
     flex-direction: column;
     gap: 0.75rem;
     padding: 2rem;
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     background-color: var(--color-surface-card);
     box-shadow: var(--shadow-sm);
     text-align: center;
@@ -564,7 +564,7 @@
     flex-direction: column;
     gap: 1rem;
     padding: 1.25rem;
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
@@ -921,7 +921,7 @@
 
 .sprint-detail__stat-card {
     padding: 1.25rem;
-    border-radius: var(--radius-2xl);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-sm);
 }
 

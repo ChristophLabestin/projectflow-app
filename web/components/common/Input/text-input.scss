@@ -40,7 +40,7 @@
     font-family: inherit;
     color: var(--color-text-main);
     background-color: rgba(var(--color-surface-hover-rgb), 0.5);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-control);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 60%, transparent);
     transition: all var(--transition-normal);
     border: none !important;

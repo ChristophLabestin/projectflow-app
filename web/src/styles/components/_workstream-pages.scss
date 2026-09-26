@@ -244,7 +244,7 @@
     max-width: 16rem;
 
     .text-input {
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-control);
         border: 1px solid var(--color-surface-border);
         background: var(--color-surface-bg);
         box-shadow: none;
@@ -299,7 +299,7 @@
 .workstream-page__view-toggle {
     display: inline-flex;
     padding: 0.2rem;
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-control);
     background: var(--color-surface-bg);
     border: 1px solid var(--color-surface-border);
     gap: 0.15rem;
@@ -340,7 +340,7 @@
     max-width: 13rem;
 
     .select-input__trigger {
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-control);
         border: 1px solid var(--color-surface-border);
         background: var(--color-surface-bg);
         box-shadow: none;
@@ -459,7 +459,7 @@
     .select-input__trigger {
         min-height: 2.15rem;
         border: 0;
-        border-radius: var(--radius-lg);
+        border-radius: var(--radius-control);
         background: var(--color-surface-bg);
         box-shadow: none;
     }

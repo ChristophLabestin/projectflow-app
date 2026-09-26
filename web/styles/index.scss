@@ -379,15 +379,15 @@ textarea:focus-visible {
 }
 
 .rounded-md {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
 }
 
 .rounded-lg {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-control);
 }
 
 .rounded-xl {
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
 }
 
 .rounded-full {
@@ -597,7 +597,7 @@ html.dark .help-highlight {
   align-items: center;
   justify-content: center;
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-control);
   background: var(--color-primary);
   color: var(--color-primary-text);
   font-weight: 700;

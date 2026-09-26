@@ -154,7 +154,7 @@
 .stat-card {
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-radius: 16px; // More rounded
+    border-radius: var(--radius-card); // More rounded
     padding: 1.25rem;
     display: flex;
     align-items: center;
@@ -799,7 +799,7 @@
 .company-project-card {
     display: flex;
     flex-direction: column;
-    border-radius: 22px;
+    border-radius: var(--radius-card);
     overflow: hidden;
     cursor: pointer;
     background: var(--color-surface-card);
@@ -1200,7 +1200,7 @@
     // Core Styling - Thick Glass & Aurora Canvas
     background: var(--color-surface-card);
     border: none !important;
-    border-radius: 24px;
+    border-radius: var(--radius-card);
 
     // Kill any lingering borders and shadows from .ui-card
     &.ui-card {
@@ -1676,7 +1676,7 @@
     // Buttons
     .btn-primary {
         padding: 0.85rem 1rem;
-        border-radius: 14px;
+        border-radius: var(--radius-control);
         font-size: 0.9rem;
         font-weight: 700;
         cursor: pointer;

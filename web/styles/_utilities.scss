@@ -720,23 +720,23 @@ $space-scale: (
 }
 
 .rounded-md {
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-control);
 }
 
 .rounded-lg {
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-control);
 }
 
 .rounded-xl {
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-control);
 }
 
 .rounded-2xl {
-  border-radius: var(--radius-2xl);
+  border-radius: var(--radius-card);
 }
 
 .rounded-3xl {
-  border-radius: var(--radius-3xl);
+  border-radius: var(--radius-surface);
 }
 
 .rounded-full {

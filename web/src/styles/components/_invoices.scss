@@ -601,7 +601,7 @@
 
     &__btn {
         border: none;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         background: transparent;
         padding: 0.45rem 0.7rem;
         font-size: 0.82rem;
@@ -863,7 +863,7 @@
             padding: 0.4rem 0.5rem;
             background: var(--color-surface-bg);
             border: 1px solid transparent;
-            border-radius: var(--radius-sm);
+            border-radius: var(--radius-control);
             color: var(--color-text-main);
             font-size: 0.85rem;
             font-family: inherit;
@@ -954,7 +954,7 @@
     }
     &__seg-btn {
         border: none;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         background: transparent;
         padding: 0.55rem 0.75rem;
         font-size: 0.85rem;

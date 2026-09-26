@@ -19,7 +19,7 @@
     padding: 32px;
     /* p-8 */
     background-color: var(--color-surface-card);
-    border-radius: 16px;
+    border-radius: var(--radius-card);
     /* rounded-2xl */
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     /* shadow-xl */
@@ -153,7 +153,7 @@
     /* font-bold / semi-bold */
     font-size: 0.875rem;
     /* text-sm */
-    border-radius: 8px;
+    border-radius: var(--radius-control);
     transition: opacity 0.2s;
     border: none;
     cursor: pointer;

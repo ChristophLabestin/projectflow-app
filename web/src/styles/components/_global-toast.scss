@@ -63,7 +63,7 @@
         flex-shrink: 0;
         padding: 6px;
         border: none;
-        border-radius: 8px;
+        border-radius: var(--radius-control);
         color: inherit;
         cursor: pointer;
         background: rgba(255, 255, 255, 0.2);

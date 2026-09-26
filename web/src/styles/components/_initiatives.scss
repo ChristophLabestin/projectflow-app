@@ -381,7 +381,7 @@
     padding: 8px 10px;
     border: 0;
     background: transparent;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     cursor: pointer;
     text-align: left;
     transition: all var(--transition-fast);
@@ -896,7 +896,7 @@
 
     button {
         border: 0;
-        border-radius: var(--radius-sm);
+        border-radius: var(--radius-control);
         background: transparent;
         color: var(--color-text-muted);
         cursor: pointer;

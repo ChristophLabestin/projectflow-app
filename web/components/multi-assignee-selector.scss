@@ -23,7 +23,7 @@
 .assignee-select__trigger {
     width: 100%;
     padding: 0.75rem;
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-control);
     border: 0;
     background-color: var(--color-surface-hover);
     display: flex;
@@ -162,7 +162,7 @@
 }
 
 .assignee-select__search-input .text-input {
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-control);
     border: 0;
     background-color: var(--color-surface-card);
     box-shadow: none;

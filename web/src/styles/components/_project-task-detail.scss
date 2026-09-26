@@ -221,7 +221,7 @@
     align-items: center;
     justify-content: center;
     border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     background: var(--color-surface-card);
     color: var(--color-text-muted);
     cursor: pointer;
@@ -525,6 +525,17 @@
     width: 100%;
 }
 
+// The shared assignee picker sits between the status/priority selects in the
+// sidebar, so it adopts the same trigger metrics instead of its modal styling.
+.task-detail__sidebar .assignee-select__trigger {
+    min-height: 40px;
+    padding: 8px 12px;
+    border-radius: var(--radius-control);
+    background: var(--color-surface-bg);
+    border: 1px solid var(--color-surface-border);
+    font-size: 14px;
+}
+
 .task-detail__select-trigger {
     width: 100%;
     min-height: 40px;
@@ -534,7 +545,7 @@
     gap: 8px;
     padding: 8px 12px;
     border: 1px solid var(--color-surface-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-control);
     background: var(--color-surface-bg);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -858,7 +869,7 @@
     font-weight: 700;
     cursor: pointer;
     padding: 4px 8px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     transition: all var(--transition-fast);
 
     &:hover {
@@ -979,7 +990,7 @@
     background: var(--color-surface-bg);
     border: 1px solid var(--color-surface-border);
     padding: 4px 8px;
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     color: var(--color-text-main);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-size: 12px;

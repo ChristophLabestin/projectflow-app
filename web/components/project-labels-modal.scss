@@ -130,7 +130,7 @@
 .project-labels__icon-btn {
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: 0.5rem;
+    border-radius: var(--radius-control);
     border: 0;
     background: transparent;
     color: var(--color-text-muted);
