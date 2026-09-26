@@ -31,3 +31,5 @@ The app shows copy-ready snippets with the real token right after creating one (
 ## Testing
 
 `MCP_URL=… PROJECTFLOW_API_TOKEN=… node functions/scripts/mcp-e2e.cjs` (official MCP client; creates, updates and deletes its own tasks in the first project). 26/26 checks passed against the emulator on 2026-09-26; a read-only token (`projects:read`, `tasks:read`) only lists the 9 read tools.
+
+- 2026-09-26: the project "Codex" view was removed from the app. Coding sessions are still stored (`codex_sessions`) and appear in the task and the project activity log (filter "Codex").

@@ -692,8 +692,6 @@ const deProjectOverview = {
     'projectOverview.v2.reference.resourcesEmpty': 'Noch keine Links',
     'projectOverview.v2.reference.team': 'Team',
     'projectOverview.v2.reference.teamEmpty': 'Noch keine Mitglieder',
-    'projectOverview.v2.reference.codex': 'Codex-Sitzungen',
-    'projectOverview.v2.reference.codexOpen': 'Codex öffnen',
     'projectOverview.reminders.eyebrow': 'Follow-ups',
     'projectOverview.reminders.title': 'Reminder',
     'projectOverview.reminders.stats': 'Reminder-Status',

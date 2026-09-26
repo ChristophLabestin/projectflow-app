@@ -53,7 +53,6 @@ const ProjectIntake = React.lazy(() => import('./screens/ProjectIntake').then((m
 const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').then((module) => ({ default: module.ProjectInvoices })));
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
-const ProjectCodex = React.lazy(() => import('./screens/ProjectCodex').then((module) => ({ default: module.ProjectCodex })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const SocialLayout = React.lazy(() => import('./screens/social/SocialLayout').then((module) => ({ default: module.SocialLayout })));
 const SocialDashboard = React.lazy(() => import('./screens/social/SocialDashboard').then((module) => ({ default: module.SocialDashboard })));
@@ -260,7 +259,8 @@ export const AppRouter = () => {
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
-                            <Route path="codex" element={withRouteSuspense(<ProjectCodex />)} />
+                            {/* The Codex view was removed; keep old links working. */}
+                            <Route path="codex" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />
                             <Route
                                 path="sprints"

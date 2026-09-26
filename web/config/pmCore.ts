@@ -27,7 +27,6 @@ export const PM_CORE_PROJECT_NAV_ORDER = [
     'marketing',
     'accounting',
     'activity',
-    'codex',
 ] as const;
 
 /** Workspace nav paths that move under Advanced when PM core is active. */

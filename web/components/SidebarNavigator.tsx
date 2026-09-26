@@ -38,8 +38,6 @@ type SidebarNavigatorProps = {
         issuesCount?: number;
         modules?: string[];
         isClientProject?: boolean;
-        /** Codex sessions only matter for software work; legacy projects keep it. */
-        showCodex?: boolean;
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean;
         navPrefs?: { order: string[]; hidden: string[] };
@@ -498,7 +496,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
             ] : []),
             { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
-            ...(workspace.showCodex !== false ? [{ id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') }] : []),
         ];
 
         const defaultOrder = pmCore ? [...PM_CORE_PROJECT_NAV_ORDER] : defs.map(d => d.id);
@@ -520,7 +517,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 badge: d.badge,
                 exact: d.exact,
             }));
-    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, workspace?.showCodex, pmCore, t]);
+    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, pmCore, t]);
 
     // ---- Finance subnav ------------------------------------------------------
     const financeModules: NavRowDef[] = [

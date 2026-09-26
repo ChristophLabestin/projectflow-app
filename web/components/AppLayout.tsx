@@ -14,7 +14,7 @@ import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
-import { isClientProject, isSoftwareProject } from '../config/projectTemplates';
+import { isClientProject } from '../config/projectTemplates';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -35,7 +35,6 @@ export const AppLayout = () => {
     const isFullWidthRoute = location.pathname.includes('/social')
         || location.pathname.includes('/marketing')
         || location.pathname.includes('/activity')
-        || location.pathname.includes('/codex')
         || location.pathname.includes('/team')
         || location.pathname.includes('/brainstorm');
 
@@ -263,9 +262,6 @@ export const AppLayout = () => {
                     case 'activity':
                         rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
                         break;
-                    case 'codex':
-                        rawItems.push({ label: t('breadcrumbs.codex'), to: `/project/${parts[1]}/codex` });
-                        break;
                     case 'social':
                         rawItems.push({ label: t('breadcrumbs.socialStudio'), to: `/project/${parts[1]}/social` });
                         // Handle social sub-menus
@@ -349,7 +345,6 @@ export const AppLayout = () => {
                             issuesCount: 0,
                             modules: project?.modules,
                             isClientProject: project ? isClientProject(project) : false,
-                            showCodex: project ? (!project.templateId || isSoftwareProject(project)) : true,
                             externalResources: visibleExternalResources,
                             isLoaded: Boolean(project),
                             navPrefs: navPrefs
@@ -378,7 +373,6 @@ export const AppLayout = () => {
                                     issuesCount: 0,
                                     modules: project?.modules,
                                     isClientProject: project ? isClientProject(project) : false,
-                                    showCodex: project ? (!project.templateId || isSoftwareProject(project)) : true,
                                     externalResources: visibleExternalResources,
                                     isLoaded: Boolean(project),
                                     navPrefs: navPrefs

@@ -33,7 +33,6 @@ type SidebarProps = {
         issuesCount?: number;
         modules?: string[];
         isClientProject?: boolean;
-        showCodex?: boolean;
         externalResources?: ProjectExternalResource[];
         isLoaded?: boolean; // New flag to prevent flickering
         navPrefs?: { order: string[]; hidden: string[] }; // User-specific nav preferences
@@ -381,7 +380,6 @@ const LegacySidebar = ({ isDrawer = false, collapsed = false, onClose, workspace
                                         { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
                                     ] : []),
                                     { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
-                                    { id: 'codex', path: '/codex', icon: 'terminal', label: t('nav.codex') },
                                 ];
 
                                 // Get the order (custom or default)

@@ -33,7 +33,7 @@ Typical flow:
 2. Call list_projects and pick a projectId.
 3. Read with list_tasks / get_task / list_initiatives / list_milestones before changing things.
 4. Prefer upsert_task with a stable externalKey when syncing work from code, issues or plans — repeated calls update instead of duplicating.
-5. For coding sessions use codex_start_session → codex_checkpoint (optional, repeatable) → codex_finish_session; this links the work to a task and shows it in the project's Codex view.
+5. For coding sessions use codex_start_session → codex_checkpoint (optional, repeatable) → codex_finish_session; this links the work to a task and records it in the project's activity log.
 
 Dates are ISO strings (YYYY-MM-DD). Task statuses: ${TASK_STATUSES.join(', ')}. Priorities: ${PRIORITIES.join(', ')}.`;
 

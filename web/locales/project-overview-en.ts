@@ -693,8 +693,6 @@ const enProjectOverview = {
     'projectOverview.v2.reference.resourcesEmpty': 'No links yet',
     'projectOverview.v2.reference.team': 'Team',
     'projectOverview.v2.reference.teamEmpty': 'No members yet',
-    'projectOverview.v2.reference.codex': 'Codex sessions',
-    'projectOverview.v2.reference.codexOpen': 'Open Codex',
     'projectOverview.reminders.eyebrow': 'Follow-ups',
     'projectOverview.reminders.title': 'Reminders',
     'projectOverview.reminders.stats': 'Reminder status',
