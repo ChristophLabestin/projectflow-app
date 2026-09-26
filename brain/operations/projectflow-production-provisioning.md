@@ -29,11 +29,14 @@ Since 2026-09-25 ProjectFlow runs on Firebase project `projectflow-labestin` (pr
 - Registered apps: web `1:11139679569:web:cbe0ba834a8dd97715bf70`, iOS `1:11139679569:ios:8f2cc861969cce7915bf70` (`de.christophlabestin.projectflow`).
 - Secret `OPENAI_API_KEY` was created with a placeholder value; set the real value with `firebase functions:secrets:set OPENAI_API_KEY`.
 
+- Auth (2026-09-26): Identity Platform with email/password, Google (public name "ProjectFlow", support `christoph@labestindigital.de`), GitHub (OAuth App "ProjectFlow (projectflow-labestin)" owned by ChristophLabestin, callback `https://projectflow-labestin.firebaseapp.com/__/auth/handler`, user-token expiry off because Firebase gets no refresh token) and TOTP MFA (`mfa.providerConfigs[].totpProviderConfig.adjacentIntervals = 5`, set via the Identity Toolkit admin API; the console only shows "MFA per SMS"). The old OAuth App "ProjectFlow Auth" still serves the old project/domain.
+- Functions runtime SA `projectflow-labestin@appspot.gserviceaccount.com` had no roles at all (new projects no longer get Editor), so every Firestore-touching function failed with `PERMISSION_DENIED`. Granted: `datastore.user`, `firebaseauth.admin`, `storage.objectAdmin`, `firebasecloudmessaging.admin`, plus `iam.serviceAccountTokenCreator` on itself (custom tokens for passkey sign-in).
+- Passkeys: RP ID = the page hostname for allow-listed origins (`<project>.web.app`, `<project>.firebaseapp.com`, `app.getprojectflow.com`; override `PASSKEY_ORIGINS`). A passkey only works on the host it was created on.
 - New-project gotchas hit during setup: the default compute service account needed `cloudbuild.builds.builder`, `logging.logWriter`, `artifactregistry.writer`, `storage.objectViewer` before functions could build; the labestindigital.de org policy `iam.allowedPolicyMemberDomains` blocks `allUsers`, so a project-level override (`allowAll`) was set and `allUsers` invoker granted to all HTTP/callable functions; deploy functions in batches of ~12 to avoid "Quota Exceeded".
 
 Open manual steps (console/external):
 
-1. Auth: enable Google, GitHub, Facebook providers (email/password is enabled). OAuth callback: `https://projectflow-labestin.firebaseapp.com/__/auth/handler`.
+1. Auth: Facebook provider is still off (Google, GitHub, TOTP and passkeys are set up, see below).
 2. Set the real `OPENAI_API_KEY` secret and redeploy the functions that use it.
 3. Cloud Messaging: generate a Web Push certificate, put it into `VITE_FIREBASE_VAPID_KEY` (local + CI), upload the APNs key for the iOS app.
 4. GitHub Actions: create secrets `FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN` and the `VITE_FIREBASE_*` values for the new project.
