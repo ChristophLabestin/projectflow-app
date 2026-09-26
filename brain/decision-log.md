@@ -16,6 +16,17 @@ Last updated: 2026-06-04
   - Alternatives considered: keep uid-tenants and add extra workspaces beside them (two identity models); client-side acceptance guarded by rules (complex cross-document rules, weaker guarantees).
   - Consequences: no data migration needed (fresh Firebase project `projectflow-labestin`); old invite routes (`/invite/:tenantId`, `/join…`, `/invite-project…`) removed; cross-workspace "shared projects" lists are replaced by workspace switching.
 
+- 2026-09-26: Recalibrated project health scoring.
+  - Rationale: roughly 30 independent penalties summed linearly from a baseline of 70, so one underlying problem (for example two overdue tasks) tripped several related factors and ordinary active projects hit 0/critical.
+  - Decision:
+    - baselines are Active 82, Planning 72, On hold 60, Completed 85;
+    - negative factors are grouped into delivery (cap 35), flow (cap 25) and hygiene (cap 10), and positives are capped at 12;
+    - inside each group penalties saturate as `cap × (1 − e^(−raw/cap))`;
+    - factor impacts are rescaled so the UI explanation sums to the score;
+    - the guardrail for a single urgent overdue task moved from 42 to 58, and for urgent-due-soon from 58 to 68;
+    - a past-due project with open work stays capped at 34 (critical).
+  - Consequences: the seed "Website Relaunch" project moved from 0 to 39 (warning) and "Mobile App v2" sits at 52. Tests are in `web/utils/__tests__/projectHealth.test.ts`. Initiative health is unchanged.
+
 ## Follow-Ups
 
 - Create ProjectFlow tracking record once `PROJECTFLOW_API_TOKEN` is available.

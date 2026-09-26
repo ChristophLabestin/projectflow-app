@@ -349,6 +349,61 @@ export const calculateInitiativeHealth = (
     };
 };
 
+// ---- Project health scoring ---------------------------------------------------
+// Negative factors are grouped by the problem they describe. Within a group the
+// raw penalties saturate (cap × (1 − e^(−raw/cap))): the first issue costs
+// almost its full weight, further related issues cost progressively less, and
+// the group never exceeds its cap. Positive factors saturate the same way.
+type HealthFactorCategory = 'delivery' | 'flow' | 'hygiene';
+
+const HEALTH_CATEGORY_CAPS: Record<HealthFactorCategory, number> = {
+    delivery: 35,
+    flow: 25,
+    hygiene: 10
+};
+const HEALTH_POSITIVE_CAP = 12;
+
+const DELIVERY_FACTORS = new Set([
+    'tasks_overdue', 'tasks_due_soon', 'schedule_behind', 'deadline_overdue', 'deadline_imminent',
+    'deadline_approaching', 'missed_milestones', 'milestones_due_soon', 'high_risk_milestones',
+    'sprint_overdue', 'sprint_at_risk', 'initiative_health_risk', 'project_completed_with_open_work',
+    'startup_launch_gate_blocked'
+]);
+const FLOW_FACTORS = new Set([
+    'blocked_tasks', 'dependency_pressure', 'low_task_completion', 'stalled_velocity', 'scope_creep',
+    'stale_project', 'inactive_recent', 'sprint_not_started', 'sprint_without_work', 'project_on_hold'
+]);
+
+const categorizeFactor = (id: string): HealthFactorCategory => (
+    DELIVERY_FACTORS.has(id) ? 'delivery' : FLOW_FACTORS.has(id) ? 'flow' : 'hygiene'
+);
+
+const saturate = (raw: number, cap: number) => (raw <= 0 ? 0 : cap * (1 - Math.exp(-raw / cap)));
+
+/**
+ * Returns the net score change for the given factors and rescales each
+ * factor's `impact` so the explanation shown in the UI adds up to it.
+ */
+export const applyCategorizedImpacts = (factors: HealthFactor[]): number => {
+    let total = 0;
+    const scaleGroup = (group: HealthFactor[], cap: number, sign: 1 | -1) => {
+        const raw = group.reduce((sum, factor) => sum + Math.abs(factor.impact), 0);
+        if (!raw) return;
+        const applied = saturate(raw, cap);
+        const ratio = applied / raw;
+        group.forEach((factor) => {
+            factor.impact = sign * Math.max(1, Math.round(Math.abs(factor.impact) * ratio));
+        });
+        total += sign * applied;
+    };
+    (Object.keys(HEALTH_CATEGORY_CAPS) as HealthFactorCategory[]).forEach((category) => {
+        const group = factors.filter((factor) => factor.impact < 0 && categorizeFactor(factor.id) === category);
+        scaleGroup(group, HEALTH_CATEGORY_CAPS[category], -1);
+    });
+    scaleGroup(factors.filter((factor) => factor.impact > 0), HEALTH_POSITIVE_CAP, 1);
+    return total;
+};
+
 export const calculateProjectHealth = (
     project: Project,
     tasks: Task[] = [],
@@ -380,20 +435,24 @@ export const calculateProjectHealth = (
     const isTerminalProject = project.status === 'Completed';
     const isPausedProject = project.status === 'On Hold';
 
+    // Baseline: a project with no signals at all reads as healthy (active) or
+    // normal (planning / paused). Factors then move it within capped categories.
     let score = project.status === 'Completed'
-        ? 82
+        ? 85
         : project.status === 'On Hold'
-            ? 54
+            ? 60
             : project.status === 'Planning' || project.status === 'Brainstorming' || project.status === 'Backlog'
-                ? 60
-                : 70;
+                ? 72
+                : 82;
     const factors: HealthFactor[] = [];
     const recommendationEntries: { key: string; text: string }[] = [];
     const addRecommendation = (key: string, text: string) => {
         recommendationEntries.push({ key, text });
     };
+    // Factors are collected first and scored per category afterwards (see
+    // applyCategorizedImpacts) so one underlying problem that trips several
+    // related factors cannot drive the score to zero on its own.
     const addFactor = (factor: HealthFactor) => {
-        score += factor.impact;
         factors.push(factor);
     };
 
@@ -1341,12 +1400,14 @@ export const calculateProjectHealth = (
         }
     }
 
+    score += applyCategorizedImpacts(factors);
+
     // Guardrails keep severe live risks from being hidden by unrelated positives.
     score = clampScore(score);
     if (!isTerminalProject && dueDays !== null && dueDays < 0 && openWorkCount > 0) score = Math.min(score, 34);
-    if (!isTerminalProject && urgentOverdueTaskCount > 0) score = Math.min(score, 42);
+    if (!isTerminalProject && urgentOverdueTaskCount > 0) score = Math.min(score, 58);
     if (!isTerminalProject && blockedTasks >= 3) score = Math.min(score, 50);
-    if (!isTerminalProject && urgentDueSoonTaskCount > 0 && score > 58) score = 58;
+    if (!isTerminalProject && urgentDueSoonTaskCount > 0 && score > 68) score = 68;
     if (!hasTrackedWork && activelyManaged) score = Math.min(score, 62);
     if (project.status === 'Completed' && openWorkCount === 0 && missedMilestones === 0) score = Math.max(score, 88);
     score = clampScore(score);

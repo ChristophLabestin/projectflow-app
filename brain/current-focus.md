@@ -46,6 +46,8 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 
 ## Next Actions
 
+- Watch the recalibrated project health (decision-log 2026-09-26) on real projects; tune the category caps if it feels too lenient or too strict.
+
 - Finish the manual Firebase setup listed in `operations/projectflow-production-provisioning.md` (auth providers, OPENAI secret, VAPID/APNs, GitHub secrets, custom domain).
 - Continue the focus redesign on remaining surfaces:
   - Dashboard "today" reuse of `TaskRow`;
