@@ -3596,6 +3596,8 @@ const de = {
     'planning.roadmap.phase.planned': 'Geplant',
     'planning.roadmap.phase.done': 'Erledigt',
     'planning.roadmap.lateSince': 'Ziel {date} verpasst',
+    'breadcrumbs.label': 'Brotkrumen-Navigation',
+    'breadcrumbs.back': 'Zurück zu {page}',
 };
 
 export default de;

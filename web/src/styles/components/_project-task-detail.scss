@@ -88,49 +88,9 @@
 .task-detail__header-top {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     gap: 16px;
     flex-wrap: wrap;
-}
-
-.task-detail__breadcrumb {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-width: 0;
-    color: var(--color-text-subtle);
-    font-size: 13px;
-    font-weight: 600;
-}
-
-.task-detail__breadcrumb-link,
-.task-detail__breadcrumb-current {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    color: var(--color-text-muted);
-    text-decoration: none;
-}
-
-.task-detail__breadcrumb-link {
-    max-width: 260px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-
-    &:hover {
-        color: var(--color-text-main);
-    }
-}
-
-.task-detail__breadcrumb-link .material-symbols-outlined {
-    font-size: 16px;
-}
-
-.task-detail__breadcrumb-current::before {
-    content: '/';
-    color: var(--color-text-subtle);
 }
 
 .task-detail__title-group {

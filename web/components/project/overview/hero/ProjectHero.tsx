@@ -172,12 +172,6 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                         {!project.squareIcon && <span>{initial}</span>}
                     </div>
                     <div className="po-hero__identity-copy">
-                        <div className="po-hero__breadcrumb">
-                            <Link to={`/projects${tenantQuery}`} className="po-hero__breadcrumb-link">
-                                {t('nav.projects', 'Projects')}
-                            </Link>
-                            <span className="material-symbols-outlined">chevron_right</span>
-                        </div>
                         <div className="po-hero__title-row">
                             <h1 className="po-hero__title">{project.title}</h1>
                             <Badge variant={statusVariant}>{statusLabel}</Badge>

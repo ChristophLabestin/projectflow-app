@@ -3594,6 +3594,8 @@ const en = {
     'planning.roadmap.phase.planned': 'Planned',
     'planning.roadmap.phase.done': 'Done',
     'planning.roadmap.lateSince': 'target {date} missed',
+    'breadcrumbs.label': 'Breadcrumb',
+    'breadcrumbs.back': 'Back to {page}',
 };
 
 export default en;

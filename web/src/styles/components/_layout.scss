@@ -303,6 +303,93 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
     }
 }
 
+// Breadcrumb trail inside the top bar pill (single trail for all pages).
+.crumbs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 13px;
+    font-weight: 600;
+
+    &__home,
+    &__back {
+        width: 26px;
+        height: 26px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-full);
+        color: var(--color-text-muted);
+        transition: background var(--transition-fast), color var(--transition-fast);
+
+        .material-symbols-outlined {
+            font-size: 17px;
+        }
+
+        &:hover {
+            background: var(--color-surface-hover);
+            color: var(--color-text-main);
+        }
+    }
+
+    &__list {
+        display: flex;
+        align-items: center;
+        min-width: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    &__item {
+        display: inline-flex;
+        align-items: center;
+        min-width: 0;
+
+        & + &::before {
+            content: '/';
+            margin: 0 8px;
+            color: var(--color-text-subtle);
+            font-weight: 500;
+        }
+    }
+
+    &__link {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--color-text-muted);
+        text-decoration: none;
+        transition: color var(--transition-fast);
+    }
+
+    a.crumbs__link:hover {
+        color: var(--color-text-main);
+    }
+
+    &__current {
+        max-width: 320px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        color: var(--color-text-main);
+    }
+
+    @media (max-width: 767px) {
+        // Small screens: back arrow + current page only.
+        &__item:not(&__item--current) {
+            display: none;
+        }
+
+        &__current {
+            max-width: 46vw;
+        }
+    }
+}
+
 .topbar-right {
     display: flex;
     flex: 1 1 auto;

@@ -669,16 +669,6 @@ export const ProjectTaskDetail = () => {
                 <main className="task-detail__main">
                     <header className="task-detail__header">
                         <div className="task-detail__header-top">
-                            <div className="task-detail__breadcrumb">
-                                {project && (
-                                    <Link to={`/project/${project.id}${tenantQuery}`} className="task-detail__breadcrumb-link">
-                                        <span className="material-symbols-outlined">west</span>
-                                        {project.title}
-                                    </Link>
-                                )}
-                                <span className="task-detail__breadcrumb-current">{t('breadcrumbs.taskDetails')}</span>
-                            </div>
-
                             <div className="task-detail__quick-actions">
                                 <button type="button" className="task-detail__icon-button" data-state={activeFocus ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'} onClick={handleTogglePinnedTask} aria-label={t('taskDetail.actions.togglePin')}>
                                     <span className="material-symbols-outlined">push_pin</span>

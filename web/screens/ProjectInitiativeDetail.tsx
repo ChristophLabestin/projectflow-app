@@ -44,6 +44,7 @@ export const ProjectInitiativeDetail = () => {
     const { t, dateFormat, dateLocale } = useLanguage();
     const [project, setProject] = useState<Project | null>(null);
     const [initiative, setInitiative] = useState<Initiative | null>(null);
+    const [initiativeLoaded, setInitiativeLoaded] = useState(false);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [allTasks, setAllTasks] = useState<Task[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
@@ -157,9 +158,11 @@ export const ProjectInitiativeDetail = () => {
         let unsubMilestones = () => undefined;
         let unsubActivity = () => undefined;
 
+        setInitiativeLoaded(false);
         void getProjectById(projectId).then((nextProject) => {
             setProject(nextProject);
             if (!nextProject) {
+                setInitiativeLoaded(true);
                 return;
             }
 
@@ -170,7 +173,7 @@ export const ProjectInitiativeDetail = () => {
             void getInitiativeById(initiativeId, projectId, nextProject.tenantId).then((item) => {
                 setInitiative(item);
                 setSourceIdea(null);
-            });
+            }).finally(() => setInitiativeLoaded(true));
 
             unsubInitiativeTasks = subscribeInitiativeTasks(projectId, initiativeId, setTasks, nextProject.tenantId);
             unsubAllTasks = subscribeProjectTasks(projectId, setAllTasks, nextProject.tenantId);
@@ -180,6 +183,7 @@ export const ProjectInitiativeDetail = () => {
             }, nextProject.tenantId);
         }).catch((error) => {
             console.error('Failed to load initiative detail', error);
+            setInitiativeLoaded(true);
         });
 
         return () => {
@@ -341,6 +345,10 @@ export const ProjectInitiativeDetail = () => {
         }
     };
 
+    if (!initiativeLoaded && !initiative) {
+        return <div className="initiative-detail__empty" aria-busy="true" />;
+    }
+
     if (!initiative || !projectId) {
         return (
             <div className="initiative-detail__empty">
@@ -394,29 +402,6 @@ export const ProjectInitiativeDetail = () => {
         <div className="initiative-detail">
             <div className="initiative-detail__header">
                 <div className="initiative-detail__header-top">
-                    <div className="initiative-detail__breadcrumb">
-                        <Link to={`/project/${projectId}/initiatives`} className="initiative-detail__breadcrumb-link">
-                            <span className="material-symbols-outlined">west</span>
-                            {t('initiatives.list.title')}
-                        </Link>
-                        <span>/</span>
-                        <Link to={`/project/${projectId}`} className="initiative-detail__breadcrumb-link">
-                            {project?.title || t('nav.initiatives')}
-                        </Link>
-                        {sourceIdea && (
-                            <>
-                                <span>/</span>
-                                <Link to={`/project/${projectId}/flows/${sourceIdea.id}`} className="initiative-detail__breadcrumb-link">
-                                    {t('initiatives.detail.fromFlow')}
-                                </Link>
-                            </>
-                        )}
-                        <span>/</span>
-                        <span className="initiative-detail__breadcrumb-current">
-                            {initiative.title}
-                        </span>
-                    </div>
-
                     <div className="initiative-detail__quick-actions">
                         <button
                             type="button"
