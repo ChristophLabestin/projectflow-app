@@ -1,91 +1,23 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth } from '../../services/firebase';
 import { updateUserOnboardingStatus } from '../../services/dataService';
-import { getUserProfile } from '../../services/domain/usersService';
 
 type UseOnboardingTourOptions = {
     storageKey?: string;
+    /** @deprecated Tours never auto-open; kept so existing callers compile. */
     enabled?: boolean;
     stepCount?: number;
     autoStart?: boolean;
 };
 
-const isOnboardingComplete = (state: any) => {
-    if (!state) return false;
-    if (state === true) return true;
-    if (typeof state === 'string') {
-        return state === 'completed' || state === 'skipped';
-    }
-    if (typeof state === 'object') {
-        return state.status === 'completed' || state.status === 'skipped' || state.completed === true;
-    }
-    return false;
-};
-
 export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOptions = {}) => {
-    const { storageKey = `onboarding_${tourKey}_v1`, enabled = true, stepCount, autoStart = false } = options;
-    const [showWelcome, setShowWelcome] = useState(false);
+    const { storageKey = `onboarding_${tourKey}_v1`, stepCount } = options;
     const [onboardingActive, setOnboardingActive] = useState(false);
     const [stepIndex, setStepIndex] = useState(0);
 
-    useEffect(() => {
-        // Page step tours (autoStart) never open on their own anymore: they
-        // interrupted work on every first visit and stacked with other modals.
-        // Only the one-time welcome prompt (dashboard) is offered automatically;
-        // step tours start explicitly via `start()`.
-        if (!enabled || autoStart) return;
-        let isMounted = true;
-
-        const checkOnboarding = async () => {
-            let localStatus: string | null = null;
-            try {
-                localStatus = localStorage.getItem(storageKey);
-            } catch {
-                // Ignore storage failures
-            }
-            if (localStatus) return;
-
-            if (auth.currentUser?.uid) {
-                try {
-                    const profile = await getUserProfile(auth.currentUser.uid);
-                    const onboardingState = profile?.preferences?.onboarding?.[tourKey];
-                    if (!isOnboardingComplete(onboardingState) && isMounted) {
-                        if (autoStart) {
-                            setShowWelcome(false);
-                            setOnboardingActive(true);
-                            setStepIndex(0);
-                        } else {
-                            setShowWelcome(true);
-                        }
-                    }
-                } catch (error) {
-                    if (!isMounted) return;
-                    if (autoStart) {
-                        setShowWelcome(false);
-                        setOnboardingActive(true);
-                        setStepIndex(0);
-                    } else {
-                        setShowWelcome(true);
-                    }
-                    console.warn('Failed to load onboarding status', error);
-                }
-            } else if (isMounted) {
-                if (autoStart) {
-                    setShowWelcome(false);
-                    setOnboardingActive(true);
-                    setStepIndex(0);
-                } else {
-                    setShowWelcome(true);
-                }
-            }
-        };
-
-        void checkOnboarding();
-
-        return () => {
-            isMounted = false;
-        };
-    }, [autoStart, enabled, storageKey, tourKey]);
+    // Tours never open on their own; the first-run welcome dialog and the
+    // dashboard "Getting started" checklist replaced the old welcome prompt.
+    // Page tours start explicitly via `start()`.
 
     useEffect(() => {
         if (!onboardingActive || stepCount === undefined) return;
@@ -99,7 +31,6 @@ export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOpt
     }, [onboardingActive, stepCount, stepIndex]);
 
     const persistStatus = useCallback(async (status: 'completed' | 'skipped') => {
-        setShowWelcome(false);
         setOnboardingActive(false);
         setStepIndex(0);
         try {
@@ -118,7 +49,6 @@ export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOpt
     }, [storageKey, tourKey]);
 
     const start = useCallback(() => {
-        setShowWelcome(false);
         setOnboardingActive(true);
         setStepIndex(0);
     }, []);
@@ -132,7 +62,6 @@ export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOpt
     }, [persistStatus]);
 
     return {
-        showWelcome,
         onboardingActive,
         stepIndex,
         setStepIndex,

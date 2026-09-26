@@ -5,7 +5,6 @@ import { useLocation } from 'react-router-dom';
 import { Button } from '../common/Button/Button';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { useUIState } from '../../context/UIContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { createInvitation, renameWorkspace } from '../../services/domain/workspacesService';
@@ -18,15 +17,14 @@ const parseEmails = (value: string) => Array.from(new Set(
 
 /**
  * One-screen welcome after the first sign-in: confirm the workspace name, say
- * whether you work alone or with a team (and invite them right away), then go
- * straight to the first project.
+ * whether you work alone or with a team (and invite them right away). The
+ * dashboard checklist takes it from there — no dialog chain.
  */
 export const WelcomeDialog: React.FC = () => {
     const { t } = useLanguage();
     const { user } = useAuth();
     const location = useLocation();
     const workspace = useWorkspace();
-    const { openProjectCreateModal } = useUIState();
     const { onboarding, update } = useOnboarding();
     const active = workspace.activeWorkspace;
 
@@ -48,7 +46,7 @@ export const WelcomeDialog: React.FC = () => {
     const parsedEmails = parseEmails(emails);
     const invalidEmails = parsedEmails.filter((email) => !EMAIL_PATTERN.test(email));
 
-    const finish = async (next: 'project' | 'later') => {
+    const finish = async () => {
         if (mode === 'team' && invalidEmails.length) {
             setError(t('welcome.errors.invalidEmails').replace('{emails}', invalidEmails.join(', ')));
             return;
@@ -66,8 +64,8 @@ export const WelcomeDialog: React.FC = () => {
                     await createInvitation({ tenantId: active.id, tenantName: trimmed || active.name, kind: 'email', email, role: 'Member' });
                 }
             }
+            // No follow-up dialog: the dashboard checklist suggests the next steps.
             await update({ welcomePending: false });
-            if (next === 'project') openProjectCreateModal();
         } catch (saveError) {
             console.error(saveError);
             setError(t('welcome.errors.save'));
@@ -136,10 +134,7 @@ export const WelcomeDialog: React.FC = () => {
                 {error && <p className="welcome-dialog__error" role="alert">{error}</p>}
 
                 <footer className="welcome-dialog__foot">
-                    <button type="button" className="welcome-dialog__later" disabled={busy} onClick={() => void finish('later')}>
-                        {t('welcome.later')}
-                    </button>
-                    <Button variant="primary" isLoading={busy} onClick={() => void finish('project')}>
+                    <Button variant="primary" isLoading={busy} onClick={() => void finish()}>
                         {mode === 'team' && parsedEmails.length
                             ? (parsedEmails.length === 1
                                 ? t('welcome.inviteAndStartOne')

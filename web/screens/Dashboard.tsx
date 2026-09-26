@@ -11,10 +11,8 @@ import { getUserProfile } from '../services/domain/usersService';
 import { Project, Task, Initiative } from '../types';
 import { toDate, toMillis } from '../utils/time';
 import { calculateProjectHealth, isProjectActiveForGlobalSignals, ProjectHealth } from '../services/healthService';
-import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
-import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
 import { GettingStartedCard } from '../components/onboarding/GettingStartedCard';
-import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { useOnboarding } from '../hooks/useOnboarding';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
@@ -191,34 +189,8 @@ export const Dashboard = () => {
         }
     }, [t]);
 
-    const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
-        {
-            id: 'header',
-            targetId: 'dashboard-header',
-            title: t('onboarding.dashboard.steps.header.title'),
-            description: t('onboarding.dashboard.steps.header.description')
-        },
-        {
-            id: 'focus',
-            targetId: 'dashboard-kpis',
-            title: t('onboarding.dashboard.steps.kpis.title'),
-            description: t('onboarding.dashboard.steps.kpis.description'),
-            placement: 'top'
-        }
-    ]), [t]);
-
-    const {
-        showWelcome: showOnboardingWelcome,
-        onboardingActive,
-        stepIndex: onboardingStepIndex,
-        setStepIndex: setOnboardingStepIndex,
-        start: handleStartOnboarding,
-        skip: handleSkipOnboarding,
-        finish: handleFinishOnboarding
-    } = useOnboardingTour('dashboard', {
-        stepCount: onboardingSteps.length,
-        enabled: !loading
-    });
+    // New accounts get the passkey nudge as a checklist step instead of a popup.
+    const { onboarding: firstRunState } = useOnboarding();
 
     useEffect(() => {
         if (!isAuthReady) {
@@ -1270,7 +1242,7 @@ export const Dashboard = () => {
     return (
         <>
             <PasskeySetupModal
-                isOpen={showPasskeyUpsell && !showOnboardingWelcome && !onboardingActive}
+                isOpen={showPasskeyUpsell && !firstRunState}
                 onClose={() => setShowPasskeyUpsell(false)}
                 onSetupComplete={() => setShowPasskeyUpsell(false)}
             />
@@ -1289,7 +1261,7 @@ export const Dashboard = () => {
                             className="dashboard-slide"
                             aria-hidden={activeDashboardStep !== 0}
                         >
-                            <div className="dashboard-today" data-onboarding-id="dashboard-header">
+                            <div className="dashboard-today">
                                 <div className="dashboard-today__top">
                                     <p>{todayLongLabel} · {greeting}, {userName || t('dashboard.userFallback')}</p>
                                     <p className="dashboard-today__week">{weekBadge}</p>
@@ -1303,7 +1275,7 @@ export const Dashboard = () => {
                                 <GettingStartedCard projects={projects} taskCount={tasks.length} />
 
                                 {!isFirstRun && (
-                                <div className="dashboard-band-wrap" data-onboarding-id="dashboard-kpis">
+                                <div className="dashboard-band-wrap">
                                     <div className="dashboard-band" aria-hidden="true">
                                         {bandSegments.map((segment) => (
                                             <span
@@ -1662,21 +1634,6 @@ export const Dashboard = () => {
                     </button>
                 </div>
             </div>
-            <OnboardingWelcomeModal
-                isOpen={showOnboardingWelcome}
-                title={t('onboarding.dashboard.welcome.title')}
-                description={t('onboarding.dashboard.welcome.description')}
-                onStart={handleStartOnboarding}
-                onSkip={handleSkipOnboarding}
-            />
-            <OnboardingOverlay
-                isOpen={onboardingActive}
-                steps={onboardingSteps}
-                stepIndex={onboardingStepIndex}
-                onStepChange={setOnboardingStepIndex}
-                onFinish={handleFinishOnboarding}
-                onSkip={handleSkipOnboarding}
-            />
         </>
     );
 };

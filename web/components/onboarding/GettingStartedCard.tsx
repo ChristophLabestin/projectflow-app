@@ -12,6 +12,7 @@ import { listInvitations } from '../../services/domain/workspacesService';
 import { needsEmailVerification, refreshEmailVerification, sendVerificationEmail } from '../../services/domain/emailVerification';
 import { useWorkMembers } from '../work/useWorkMembers';
 import { InviteToWorkspaceModal } from '../workspace/InviteToWorkspaceModal';
+import { PasskeySetupModal } from '../modals/PasskeySetupModal';
 import type { Project } from '../../types';
 
 const SettingsModal = lazy(() => import('../SettingsModal').then((module) => ({ default: module.SettingsModal })));
@@ -43,6 +44,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
     const [verifyState, setVerifyState] = useState<'idle' | 'sent' | 'busy' | 'pending'>('idle');
     const [inviteOpen, setInviteOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [passkeyOpen, setPasskeyOpen] = useState(false);
 
     const isAdmin = workspace.activeWorkspace?.role === 'Owner' || workspace.activeWorkspace?.role === 'Admin';
 
@@ -61,7 +63,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
         getDocs(collection(db, 'users', current.uid, 'passkeys'))
             .then((snap) => setSecured(!snap.empty))
             .catch(() => setSecured(false));
-    }, [settingsOpen]);
+    }, [settingsOpen, passkeyOpen]);
 
     if (!onboarding || onboarding.checklistDismissed || !user) return null;
 
@@ -82,7 +84,7 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
         if (id === 'project') openProjectCreateModal();
         else if (id === 'tasks') openTaskCreateModal(projects[0]?.id, { allowProjectSelect: true });
         else if (id === 'invite') setInviteOpen(true);
-        else if (id === 'secure') setSettingsOpen(true);
+        else if (id === 'secure') setPasskeyOpen(true);
         else if (id === 'verify') {
             if (verifyState === 'sent' || verifyState === 'pending') {
                 setVerifyState('busy');
@@ -136,6 +138,11 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
                                         : t(`gettingStarted.${step.id}.hint`)}
                             </small>
                         </span>
+                        {!step.done && step.id === 'secure' && (
+                            <button type="button" className="getting-started__alt" onClick={() => setSettingsOpen(true)}>
+                                {t('gettingStarted.secure.alt')}
+                            </button>
+                        )}
                         {!step.done && (
                             <button
                                 type="button"
@@ -151,6 +158,12 @@ export const GettingStartedCard: React.FC<GettingStartedCardProps> = ({ projects
             </ol>
 
             <InviteToWorkspaceModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} projects={projects} />
+            <PasskeySetupModal
+                isOpen={passkeyOpen}
+                onClose={() => setPasskeyOpen(false)}
+                onSetupComplete={() => setSecured(true)}
+                snoozeOnLater={false}
+            />
             {settingsOpen && (
                 <Suspense fallback={null}>
                     <SettingsModal isOpen onClose={() => setSettingsOpen(false)} initialTab="security" />
