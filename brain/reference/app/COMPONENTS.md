@@ -225,6 +225,21 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - the initiative detail work list.
 - `InlineMenu` also powers the dashboard plan's reschedule action.
 
+## Planning (`web/components/planning/`)
+
+- `timeScale.ts`:
+  - `buildTimeScale` builds a linear day scale that always includes today;
+  - `useBarDrag` drags bars with the pointer to move or resize them in whole days and commits ISO dates.
+- `TimeScaleHeader` / `TimeScaleBackdrop`: month row plus days (with weekend and today marks) or ISO weeks; weekend stripes and the today line.
+- `stagger.ts`: stacks overlapping milestone labels into rows.
+- `RoadmapView`: Project Overview "Roadmap" tab.
+  - Initiatives appear as bars with progress fill and health tone; bars without a target date are hatched and get a "Set target" quick menu.
+  - Milestones are draggable diamonds; the project target is drawn as a line.
+  - Inline creation of roadmap items (initiatives with start and target) and milestones.
+- Overview work views:
+  - `WorkViewTimeline`: lanes per person, draggable and resizable bars, and a per-lane tray for tasks without a date;
+  - `WorkViewPeople` ("Team"): one column per workspace member plus Unassigned, load signals (overdue, today, this week, overloaded when more than 5 tasks are due within 7 days) and drag-and-drop reassignment.
+
 ## Projects (`web/components/projects/`)
 
 - `ProjectPortfolioList`: grouped project rows (Needs attention → On track → In planning → Paused → Completed & canceled, the last one collapsed). Each row shows attention signals (overdue/blocked/due today), done/total progress, the next milestone or due date, and member count. It replaces the spotlight hero and card grid on `/projects`; company and client container sections stay above it.

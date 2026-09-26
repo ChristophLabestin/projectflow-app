@@ -10,6 +10,7 @@ import { Button } from './ui/Button';
 import { getProjectGroups } from '../services/projectGroupService';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { getWorkspaceRoles } from '../services/rolesService';
+import { useLanguage } from '../context/LanguageContext';
 import { notifyMention } from '../services/notificationService';
 import { useToast } from '../context/UIContext';
 
@@ -60,6 +61,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     hideHeader = false,
     onCountChange
 }) => {
+    const { t } = useLanguage();
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
@@ -333,7 +335,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 {comments.length === 0 ? (
                     <div className="flex items-center gap-2 py-4 text-[var(--color-text-muted)] text-sm font-medium">
                         <span className="material-symbols-outlined text-[18px]">forum</span>
-                        No comments yet. Be the first to start the discussion!
+                        {t('taskDetail.comments.empty')}
                     </div>
                 ) : (
                     comments.map((comment) => (

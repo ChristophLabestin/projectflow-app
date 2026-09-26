@@ -6,6 +6,7 @@ import { WorkViewBoard } from './WorkViewBoard';
 import { WorkViewTimeline } from './WorkViewTimeline';
 import { WorkViewCalendar } from './WorkViewCalendar';
 import { WorkViewRelationships } from './WorkViewRelationships';
+import { WorkViewPeople } from './WorkViewPeople';
 
 export const WorkViews: React.FC<{ view: OverviewWorkView; ctx: WorkViewContext }> = ({ view, ctx }) => {
     switch (view) {
@@ -13,6 +14,8 @@ export const WorkViews: React.FC<{ view: OverviewWorkView; ctx: WorkViewContext 
             return <WorkViewList ctx={ctx} />;
         case 'board':
             return <WorkViewBoard ctx={ctx} />;
+        case 'people':
+            return <WorkViewPeople ctx={ctx} />;
         case 'timeline':
             return <WorkViewTimeline ctx={ctx} />;
         case 'calendar':

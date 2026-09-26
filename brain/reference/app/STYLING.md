@@ -326,6 +326,11 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
   - the board fills the viewport and lanes scroll individually;
   - Esc, the exit button or leaving the page restores the previous sidebar width and view;
   - in light mode, board lanes are grey and cards white with `--shadow-sm`.
+- Planning surfaces (`_planning.scss`):
+  - timeline and roadmap share the `.tl` grid (sticky label column, sticky time header, backdrop layer for weekends, today, milestones and the project target);
+  - bars use status/health RGB tokens with an inset accent instead of borders;
+  - milestone labels are staggered rather than overlapping.
+- Task detail: the main-column sections (focus banner, description, subtasks, discussion) are `--color-surface-card` cards with `--shadow-sm`, matching the inspector.
 - `/projects` is a portfolio list (`portfolio-row` in `_work-list.scss`), not spotlight cards. Health is shown as attention signals, not as a raw score.
 - Notifications: the inbox comes first; delivery/push diagnostics sit in a collapsed `<details>` below it.
 

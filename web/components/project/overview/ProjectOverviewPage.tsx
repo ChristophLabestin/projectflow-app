@@ -42,6 +42,7 @@ import { InitiativeCreateModal } from '../../InitiativeCreateModal';
 
 import '../../../src/styles/components/_project-overview-v2.scss';
 import { useWorkMembers } from '../../work/useWorkMembers';
+import { RoadmapView } from '../../planning/RoadmapView';
 
 const TaskCreateModal = lazy(() => import('../../TaskCreateModal').then((m) => ({ default: m.TaskCreateModal })));
 
@@ -260,7 +261,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                 if (item.kind === 'task') void taskUpdate({ initiativeId: groupKey === '__standalone__' ? '' : groupKey });
                 break;
             case 'assignee':
-                if (item.kind === 'task') void taskUpdate({ assigneeIds: groupKey === '__unassigned__' ? [] : [groupKey] });
+                if (item.kind === 'task') void taskUpdate(groupKey === '__unassigned__' ? { assigneeId: '', assigneeIds: [] } : { assigneeId: groupKey, assigneeIds: [groupKey] });
                 break;
             default:
                 break;
@@ -533,6 +534,17 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                     />
                     )}
                 </>
+            )}
+
+            {activeTab === 'roadmap' && (
+                <RoadmapView
+                    project={project}
+                    initiatives={initiatives}
+                    tasks={tasks}
+                    milestones={milestones}
+                    canManage={canManageTasks}
+                    onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                />
             )}
 
             {activeTab === 'milestones' && (

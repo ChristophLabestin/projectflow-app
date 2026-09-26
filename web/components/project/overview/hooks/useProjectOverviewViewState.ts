@@ -53,10 +53,10 @@ const write = (key: string, value: string) => {
 };
 
 const isTab = (value: string | null): value is OverviewTab =>
-    value === 'work' || value === 'sprints' || value === 'milestones' || value === 'activity';
+    value === 'work' || value === 'roadmap' || value === 'sprints' || value === 'milestones' || value === 'activity';
 
 const isWorkView = (value: string | null): value is OverviewWorkView =>
-    value === 'list' || value === 'board'
+    value === 'list' || value === 'board' || value === 'people'
     || value === 'timeline' || value === 'calendar' || value === 'relationships';
 
 const normalizeWorkView = (value: string | null): OverviewWorkView | null => {
@@ -133,7 +133,8 @@ export const useProjectOverviewViewState = (): ProjectOverviewViewState => {
         // Clamp the active view to one supported by the new tab.
         const supported = resolveViewsForTab(next).map((v) => v.id);
         setViewState((current) => {
-            if (supported.includes(current)) return current;
+            // Tabs without sub-views (roadmap, activity) keep the work view as is.
+            if (!supported.length || supported.includes(current)) return current;
             const fallback = DEFAULT_VIEW_FOR_TAB[next];
             const resolved = supported.includes(fallback) ? fallback : supported[0];
             write(STORAGE.workView, resolved);
