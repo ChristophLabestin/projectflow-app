@@ -13,7 +13,6 @@ import './login.scss';
 
 export const Login = () => {
     const { t, authScreenTranslationsReady, loadAuthScreenTranslations } = useLanguage();
-    const isSignupEnabled = import.meta.env.VITE_AUDIT_SIGNUP_ENABLED !== 'false';
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -105,9 +104,6 @@ export const Login = () => {
 
         try {
             if (isRegister) {
-                if (!isSignupEnabled) {
-                    throw new Error(t('login.warning.registrationDisabled'));
-                }
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 // Confirmation mail right away; invitations require a verified address.
                 void sendVerificationEmail(redirectUrl.startsWith('/') ? redirectUrl : '/').catch((verifyError) => console.warn('Could not send verification email', verifyError));
@@ -341,20 +337,12 @@ export const Login = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="login-page__form">
-                                {isRegister && !isSignupEnabled && (
-                                    <div className="login-page__notice login-page__notice--danger">
-                                        <span className="material-symbols-outlined">block</span>
-                                        <span>{t('login.warning.registrationDisabled')}</span>
-                                    </div>
-                                )}
-
                                 {isRegister && (
                                     <TextInput
                                         label={t('login.label.fullName')}
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
                                         placeholder={t('login.placeholder.fullName')}
-                                        disabled={!isSignupEnabled}
                                     />
                                 )}
                                 <TextInput
@@ -363,7 +351,6 @@ export const Login = () => {
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder={t('login.placeholder.email')}
-                                    disabled={isRegister && !isSignupEnabled}
                                 />
                                 <TextInput
                                     label={t('login.label.password')}
@@ -371,7 +358,6 @@ export const Login = () => {
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder={t('login.placeholder.password')}
-                                    disabled={isRegister && !isSignupEnabled}
                                 />
 
                                 {error && (
@@ -385,7 +371,7 @@ export const Login = () => {
                                     type="submit"
                                     isLoading={isLoading}
                                     className="login-page__primary"
-                                    disabled={isLoading || (isRegister && !isSignupEnabled)}
+                                    disabled={isLoading}
                                 >
                                     {isRegister ? t('login.action.createAccount') : t('login.action.signIn')}
                                 </Button>

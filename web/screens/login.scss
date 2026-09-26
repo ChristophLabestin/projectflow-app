@@ -169,16 +169,6 @@
     color: var(--color-text-muted);
 }
 
-.login-page__notice--warning {
-    background: color-mix(in srgb, var(--color-warning) 12%, transparent);
-    color: var(--color-warning);
-}
-
-.login-page__notice--danger {
-    background: color-mix(in srgb, var(--color-error) 12%, transparent);
-    color: var(--color-error);
-}
-
 .login-page__error {
     padding: 12px;
     border-radius: var(--radius-md);

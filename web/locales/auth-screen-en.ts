@@ -29,7 +29,6 @@ export default {
     'login.toggle.newToProjectFlow': 'New to ProjectFlow?',
     'login.toggle.logIn': 'Log in',
     'login.toggle.createAccount': 'Create account',
-    'login.warning.registrationDisabled': 'Registration is currently disabled. Please contact support if you need an account.',
     'login.notice.inviteWorkspace': 'You are joining a workspace invitation. Finish account setup to continue.',
     'login.notice.redirectContinue': 'Sign in to continue to the page you requested.',
     'login.notice.passkeyReady': 'This device supports passkey sign-in for a faster return path.',
