@@ -180,7 +180,7 @@ const sanitizeCategories = (value, currentValue) => {
         .filter((category) => category.label);
     return sanitized.length > 0 ? sanitized : defaultCategories();
 };
-const getProjectId = () => process.env.GCLOUD_PROJECT || admin.app().options.projectId || 'project-manager-9d0ad';
+const getProjectId = () => process.env.GCLOUD_PROJECT || admin.app().options.projectId || 'projectflow-labestin';
 const functionUrl = (name) => `https://${REGION}-${getProjectId()}.cloudfunctions.net/${name}`;
 const requireAuth = (context) => {
     var _a;

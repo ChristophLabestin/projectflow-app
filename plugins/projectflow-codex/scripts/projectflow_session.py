@@ -13,7 +13,7 @@ from typing import Any
 from urllib import error, request
 
 
-DEFAULT_API_BASE_URL = "https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api"
+DEFAULT_API_BASE_URL = "https://europe-west3-projectflow-labestin.cloudfunctions.net/api"
 
 
 def run_git(args: list[str]) -> str:

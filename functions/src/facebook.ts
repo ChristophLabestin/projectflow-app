@@ -3,7 +3,7 @@ import * as functions from 'firebase-functions/v1';
 import { db } from './init';
 
 const getFunctionUrl = (name: string) => {
-    const projectId = process.env.GCLOUD_PROJECT || 'project-manager-9d0ad';
+    const projectId = process.env.GCLOUD_PROJECT || 'projectflow-labestin';
     const region = 'europe-west3';
     return `https://${region}-${projectId}.cloudfunctions.net/${name}`;
 };

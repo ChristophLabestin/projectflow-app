@@ -6,7 +6,7 @@ const init_1 = require("./init");
 const CLIENT_KEY = 'sbaw900ci7fk07ygnz';
 const CLIENT_SECRET = 'shqFCCdjvbIgkeSPxBP0ZhKLtaDEOChJ';
 const getFunctionUrl = (name) => {
-    const projectId = process.env.GCLOUD_PROJECT || 'project-manager-9d0ad';
+    const projectId = process.env.GCLOUD_PROJECT || 'projectflow-labestin';
     const region = 'europe-west3';
     return `https://${region}-${projectId}.cloudfunctions.net/${name}`;
 };

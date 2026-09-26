@@ -13,7 +13,7 @@ This repo-local plugin package gives Codex a durable workflow for keeping Projec
 
 Set these values in the Codex environment or local shell profile:
 
-- `PROJECTFLOW_API_BASE_URL`: API root, for example `https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`.
+- `PROJECTFLOW_API_BASE_URL`: API root, for example `https://europe-west3-projectflow-labestin.cloudfunctions.net/api`.
 - `PROJECTFLOW_API_TOKEN`: ProjectFlow API token with the Codex Full Access preset.
 - `PROJECTFLOW_PROJECT_ID`: default ProjectFlow project id for the current repo.
 

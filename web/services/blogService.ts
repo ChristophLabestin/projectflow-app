@@ -80,7 +80,7 @@ const extractToken = (headersJson?: string): string => {
 };
 
 // Internal Cloud Functions Helper
-const CLOUD_FUNCTIONS_URL = import.meta.env.VITE_CLOUD_FUNCTIONS_URL || `https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`;
+const CLOUD_FUNCTIONS_URL = import.meta.env.VITE_CLOUD_FUNCTIONS_URL || `https://europe-west3-projectflow-labestin.cloudfunctions.net/api`;
 
 const executeCloudApiRequest = async (path: string, method: string = 'GET', data?: any, token?: string) => {
     const url = `${CLOUD_FUNCTIONS_URL}${path}`;

@@ -21,13 +21,32 @@ scripts/check-retention-provisioning.sh --signed-app /path/to/projectflow.app
 
 Use `--strict` in CI or release scripts if warnings should fail the job.
 
+## Firebase Project
+
+Since 2026-09-25 ProjectFlow runs on Firebase project `projectflow-labestin` (project number `11139679569`, owner account `christoph@labestindigital.de`, billing account "Firebase Payment"). The previous project `project-manager-9d0ad` belongs to a different account and was abandoned without data migration (fresh start).
+
+- Firestore `(default)` in `eur3`, RTDB `projectflow-labestin-default-rtdb` in `europe-west1`, Storage bucket `projectflow-labestin.firebasestorage.app` in `EUROPE-WEST3`, Functions in `europe-west3`.
+- Registered apps: web `1:11139679569:web:cbe0ba834a8dd97715bf70`, iOS `1:11139679569:ios:8f2cc861969cce7915bf70` (`de.christophlabestin.projectflow`).
+- Secret `OPENAI_API_KEY` was created with a placeholder value; set the real value with `firebase functions:secrets:set OPENAI_API_KEY`.
+
+- New-project gotchas hit during setup: the default compute service account needed `cloudbuild.builds.builder`, `logging.logWriter`, `artifactregistry.writer`, `storage.objectViewer` before functions could build; the labestindigital.de org policy `iam.allowedPolicyMemberDomains` blocks `allUsers`, so a project-level override (`allowAll`) was set and `allUsers` invoker granted to all HTTP/callable functions; deploy functions in batches of ~12 to avoid "Quota Exceeded".
+
+Open manual steps (console/external):
+
+1. Auth: enable Google, GitHub, Facebook providers (email/password is enabled). OAuth callback: `https://projectflow-labestin.firebaseapp.com/__/auth/handler`.
+2. Set the real `OPENAI_API_KEY` secret and redeploy the functions that use it.
+3. Cloud Messaging: generate a Web Push certificate, put it into `VITE_FIREBASE_VAPID_KEY` (local + CI), upload the APNs key for the iOS app.
+4. GitHub Actions: create secrets `FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN` and the `VITE_FIREBASE_*` values for the new project.
+5. Custom domain `app.getprojectflow.com`: connect it to hosting in `projectflow-labestin` and update DNS.
+6. Codex/team plugins: issue new workspace API tokens (old tokens belonged to the old project).
+
 ## Web Push
 
 ProjectFlow web push uses Firebase Cloud Messaging. The web app reads the public Web Push certificate key from `VITE_FIREBASE_VAPID_KEY` in the Vite environment.
 
 Production setup:
 
-1. In Firebase Console for `project-manager-9d0ad`, open Cloud Messaging.
+1. In Firebase Console for `projectflow-labestin`, open Cloud Messaging.
 2. Create or reuse the Web Push certificates key pair.
 3. Put the public VAPID key into the web build environment as `VITE_FIREBASE_VAPID_KEY`.
 4. Keep local development values in `web/.env.local`; do not commit them.

@@ -16,11 +16,11 @@ Use a ProjectFlow API token with the Codex Full Access preset. The current imple
 
 Production API base URL:
 
-`https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`
+`https://europe-west3-projectflow-labestin.cloudfunctions.net/api`
 
 Production web route:
 
-`https://project-manager-9d0ad.web.app/project/{projectId}/codex`
+`https://projectflow-labestin.web.app/project/{projectId}/codex`
 
 ## Endpoints
 

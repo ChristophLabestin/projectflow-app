@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const DEFAULT_PROJECTFLOW_API_BASE = 'https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api/projectflow';
+const DEFAULT_PROJECTFLOW_API_BASE = 'https://europe-west3-projectflow-labestin.cloudfunctions.net/api/projectflow';
 
 const args = process.argv.slice(2);
 

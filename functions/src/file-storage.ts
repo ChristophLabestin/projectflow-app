@@ -367,7 +367,7 @@ const getGoogleDriveRedirectUri = () => {
     const explicit = normalizeString(process.env.GOOGLE_DRIVE_STORAGE_REDIRECT_URI);
     if (explicit) return explicit;
 
-    const projectId = process.env.GCLOUD_PROJECT || 'project-manager-9d0ad';
+    const projectId = process.env.GCLOUD_PROJECT || 'projectflow-labestin';
     return `https://${REGION}-${projectId}.cloudfunctions.net/googleDriveStorageCallback`;
 };
 
