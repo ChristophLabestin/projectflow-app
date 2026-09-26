@@ -32,8 +32,9 @@ export const ProjectContextDrawer: React.FC<ProjectContextDrawerProps> = ({ isOp
             <aside
                 ref={panelRef}
                 className="po-drawer__panel"
-                role="dialog"
-                aria-modal="true"
+                // Only a real dialog while open: other Esc handlers check for [role="dialog"].
+                role={isOpen ? 'dialog' : undefined}
+                aria-modal={isOpen || undefined}
                 aria-label={t('projectOverview.v2.context.title')}
                 tabIndex={-1}
             >
