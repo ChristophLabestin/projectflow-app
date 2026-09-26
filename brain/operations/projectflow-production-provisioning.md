@@ -40,7 +40,7 @@ Open manual steps (console/external):
 2. Set the real `OPENAI_API_KEY` secret and redeploy the functions that use it.
 3. Cloud Messaging: generate a Web Push certificate, put it into `VITE_FIREBASE_VAPID_KEY` (local + CI), upload the APNs key for the iOS app.
 4. GitHub Actions: create secrets `FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN` and the `VITE_FIREBASE_*` values for the new project.
-5. Custom domain `app.getprojectflow.com`: connect it to hosting in `projectflow-labestin` and update DNS.
+5. ~~Custom domain~~ done 2026-09-26: `app.getprojectflow.com` CNAME → `projectflow-labestin.web.app`, ownership moved from the old project (`OWNERSHIP_ACTIVE`, cert active). Passkeys created there are bound to `app.getprojectflow.com`.
 6. Codex/team plugins: issue new workspace API tokens (old tokens belonged to the old project).
 
 ## Web Push
