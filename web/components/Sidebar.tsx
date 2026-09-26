@@ -15,6 +15,7 @@ import { useUIState } from '../context/UIContext';
 import { isSidebarV2Enabled } from '../config/sidebarV2';
 import { SidebarNavigator } from './SidebarNavigator';
 import type { ProjectExternalResource } from '../types';
+import { isCoraStudioEnabled } from '../config/features';
 
 // When true, the sidebar renders icon-only (driven by the overview "stretch" mode).
 const SidebarCollapsedContext = React.createContext(false);
@@ -322,7 +323,9 @@ const LegacySidebar = ({ isDrawer = false, collapsed = false, onClose, workspace
                                             {canViewFinance && (
                                                 <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
                                             )}
-                                            <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
+                                            {isCoraStudioEnabled() && (
+                                                <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
+                                            )}
                                             <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
                                             <NavItem to="/media" icon="perm_media" label={t('nav.media')} onClick={isDrawer ? onClose : undefined} />
                                         </div>
@@ -337,7 +340,9 @@ const LegacySidebar = ({ isDrawer = false, collapsed = false, onClose, workspace
                                     {canViewFinance && (
                                         <NavItem to="/finance/cockpit" icon="account_balance_wallet" label={t('nav.finance')} onClick={isDrawer ? onClose : undefined} />
                                     )}
-                                    <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
+                                    {isCoraStudioEnabled() && (
+                                        <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} onClick={isDrawer ? onClose : undefined} />
+                                    )}
                                     <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
                                 </>
                             )}

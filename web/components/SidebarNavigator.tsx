@@ -14,6 +14,7 @@ import { NotificationDropdown } from './NotificationDropdown';
 import logo from '../assets/logo.svg';
 import type { Project, ProjectExternalResource } from '../types';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { isCoraStudioEnabled } from '../config/features';
 import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 
 // ----------------------------------------------------------------------
@@ -460,7 +461,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
         ...(canViewFinance ? [{ key: 'finance', to: '/finance/cockpit', icon: 'account_balance_wallet', label: t('nav.finance') }] : []),
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') }] : []),
-        { key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') },
+        ...(isCoraStudioEnabled() ? [{ key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') }] : []),
     ];
 
     // ---- Project module nav (honours navPrefs + module gating) --------------

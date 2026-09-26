@@ -49,7 +49,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/finance/exports` — Export and monthly close workflows (DATEV/jobs)
 - [x] `/finance/sync` — External sync connections and sync run history
 - [x] `/finance/settings` — Finance settings, numbering defaults, and controls
-- [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
+- [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge) — **disabled by default since 2026-09-26** (`VITE_CORA_STUDIO_ENABLED`, `web/config/features.ts`): redirects to `/`, nav entries hidden; code kept.
 - [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with one project purpose field, optional success criteria/cadence, and returns to `/projects`
 - [x] `/team` — Team / members management
 - [x] `/media` — Media library

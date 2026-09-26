@@ -8,6 +8,7 @@ import { Dashboard } from './screens/Dashboard';
 import { ProjectsList } from './screens/ProjectsList';
 import { Tasks } from './screens/Tasks';
 import { Brainstorming } from './screens/Brainstorming';
+import { isCoraStudioEnabled } from './config/features';
 import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
@@ -239,7 +240,7 @@ export const AppRouter = () => {
                         <Route path="/finance" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/finance/:financeSection/:financeOperationType" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/finance/:financeSection" element={withRouteSuspense(<FinanceTracking />)} />
-                        <Route path="/brainstorm" element={<Brainstorming />} />
+                        <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
                         <Route path="/media" element={<MediaLibraryPage />} />
