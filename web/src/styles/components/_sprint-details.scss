@@ -1,0 +1,469 @@
+/* Sprint members dialog (SprintDetailsModal). */
+.sprint-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sprint-detail__hero {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border-radius: var(--radius-2xl);
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 100%), var(--color-surface-card);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.03);
+}
+
+.sprint-detail__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.sprint-detail__title {
+    margin: 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.sprint-detail__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sprint-detail__meta span.material-symbols-outlined {
+    font-size: 0.9rem;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__date-separator {
+    margin: 0 0.35rem;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__tabs {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem;
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-surface-card-rgb), 0.6);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+}
+
+.sprint-detail__tab {
+    border: 0;
+    background: transparent;
+    padding: 0.5rem 1.25rem;
+    border-radius: var(--radius-full);
+    font-size: 0.65rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.sprint-detail__tab.is-active {
+    background-color: var(--color-surface-card);
+    color: var(--color-text-main);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sprint-detail__tab-indicator {
+    width: 0.35rem;
+    height: 0.35rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-warning);
+}
+
+.sprint-detail__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sprint-detail__overview {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sprint-detail__progress {
+    padding: 1.5rem;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__progress-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+
+    @media (min-width: 768px) {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+
+.sprint-detail__label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__progress-value {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__progress-subtitle {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__progress-meta {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.sprint-detail__progress-track {
+    margin-top: 1rem;
+    height: 0.5rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-hover);
+    overflow: hidden;
+}
+
+.sprint-detail__progress-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    transition: width var(--transition-normal);
+}
+
+.sprint-detail__stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.sprint-detail__stat-card {
+    padding: 1.25rem;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__stat-value {
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__stat-value.is-overdue {
+    color: var(--color-error);
+}
+
+.sprint-detail__team {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sprint-detail__team-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    @media (min-width: 768px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.sprint-detail__team-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__team-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sprint-detail__menu-wrapper {
+    position: relative;
+}
+
+.sprint-detail__menu {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    right: 0;
+    min-width: 220px;
+    padding: 0.5rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+}
+
+.sprint-detail__menu p {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    padding: 0.5rem;
+}
+
+.sprint-detail__menu-item {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    text-align: left;
+    color: var(--color-text-main);
+    font-size: 0.85rem;
+}
+
+.sprint-detail__menu-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.sprint-detail__menu-item img,
+.sprint-detail__menu-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+    background-color: var(--color-surface-hover);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__requests {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sprint-detail__requests h4 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__request-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sprint-detail__request {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__request .sprint-detail__member-info p {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__request .sprint-detail__member-info span {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.sprint-detail__member-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sprint-detail__member-info img,
+.sprint-detail__member-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+    background-color: var(--color-surface-hover);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__request-actions,
+.sprint-detail__member-info div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.sprint-detail__request-actions {
+    flex-direction: row;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.sprint-detail__icon-button {
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__icon-button--danger {
+    color: var(--color-error);
+}
+
+.sprint-detail__icon-button--success {
+    color: var(--color-success);
+}
+
+.sprint-detail__members {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sprint-detail__members h4 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-subtle);
+}
+
+.sprint-detail__members-empty {
+    padding: 1.5rem;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    text-align: center;
+}
+
+.sprint-detail__member-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+
+    @media (min-width: 768px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.sprint-detail__member {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-card);
+    box-shadow: var(--shadow-sm);
+}
+
+.sprint-detail__member-name {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.sprint-detail__member-email {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.sprint-detail__owner {
+    font-size: 0.55rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.sprint-detail__footer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+
+    @media (min-width: 768px) {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+.sprint-detail__footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.sprint-detail__delete {
+    color: var(--color-error);
+}
