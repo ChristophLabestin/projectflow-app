@@ -5,6 +5,7 @@ import { Task, Milestone, Issue } from '../../types';
 import { Button } from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
 import { getHealthFactorText, getHealthRecommendations } from '../../utils/healthLocalization';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface HealthDetailModalProps {
     isOpen: boolean;
@@ -93,17 +94,17 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
     const riskItems = useMemo(() => {
         const overdueTasks = tasks.filter(task => {
             if (task.isCompleted || task.status === 'Done' || !task.dueDate) return false;
-            return new Date(task.dueDate).getTime() < now;
+            return parseDateValue(task.dueDate).getTime() < now;
         });
         const dueSoonTasks = tasks.filter(task => {
             if (task.isCompleted || task.status === 'Done' || !task.dueDate) return false;
-            const due = new Date(task.dueDate).getTime();
+            const due = parseDateValue(task.dueDate).getTime();
             return due >= now && due <= now + 3 * DAY;
         });
         const blockedTasks = tasks.filter(task => task.status === 'Blocked');
         const overdueMilestones = milestones.filter(milestone => {
             if (milestone.status === 'Achieved' || !milestone.dueDate) return false;
-            return new Date(milestone.dueDate).getTime() < now;
+            return parseDateValue(milestone.dueDate).getTime() < now;
         });
         const urgentIssues = issues.filter(issue =>
             (issue.priority === 'Urgent' || issue.priority === 'High') &&

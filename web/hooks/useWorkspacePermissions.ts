@@ -48,7 +48,6 @@ export const useWorkspacePermissions = () => {
     // Get legacy workspace role
     const role = useMemo((): WorkspaceRole | 'None' => {
         if (!currentUser || !tenantId) return 'None';
-        if (currentUser.uid === tenantId) return 'Owner';
         return getWorkspaceRole(members, currentUser.uid);
     }, [currentUser, tenantId, members]);
 

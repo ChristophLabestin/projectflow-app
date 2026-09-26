@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.checkProjectPermission = exports.ROLE_PERMISSIONS = exports.getAuthToken = exports.validateAPIToken = exports.hashToken = void 0;
+exports.getWorkspaceMemberRole = exports.checkProjectPermission = exports.ROLE_PERMISSIONS = exports.getAuthToken = exports.validateAPIToken = exports.hashToken = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const init_1 = require("./init");
@@ -16,22 +16,28 @@ exports.hashToken = hashToken;
  */
 const validateAPIToken = async (token, requiredPermission) => {
     try {
-        // 1. Try to verify as Firebase ID Token
+        // 1. Firebase ID tokens (signed-in app users) are only accepted for
+        //    workspace-scoped PM endpoints. The caller must still verify the
+        //    user's membership in the requested tenant (see requireWorkspaceMember).
+        let decodedToken = null;
         try {
-            const decodedToken = await admin.auth().verifyIdToken(token);
-            // Implicitly grant permissions to authenticated users of the project
-            // In a stricter system, we'd check roles/tenants here.
+            decodedToken = await admin.auth().verifyIdToken(token);
+        }
+        catch (e) {
+            decodedToken = null;
+        }
+        if (decodedToken) {
+            if (!/^(projects|initiatives|tasks):/.test(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
             return {
                 valid: true,
                 tokenData: {
                     uid: decodedToken.uid,
-                    permissions: [requiredPermission] // Grant the requested permission
-                },
-                tenantId: decodedToken.tenant || undefined // If custom claims used
+                    authType: 'firebase',
+                    permissions: [requiredPermission]
+                }
             };
-        }
-        catch (e) {
-            // Not a valid ID token, continue to check API tokens
         }
         const tokenHash = (0, exports.hashToken)(token);
         // Search all tenants for the token (we could optimize this with a global tokens collection)
@@ -161,4 +167,13 @@ const checkProjectPermission = async (userId, projectId, permission) => {
     }
 };
 exports.checkProjectPermission = checkProjectPermission;
+/**
+ * Returns the member role of `uid` in `tenantId`, or null when not a member.
+ */
+const getWorkspaceMemberRole = async (tenantId, uid) => {
+    var _a;
+    const snap = await init_1.db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    return snap.exists ? String(((_a = snap.data()) === null || _a === void 0 ? void 0 : _a.role) || 'Member') : null;
+};
+exports.getWorkspaceMemberRole = getWorkspaceMemberRole;
 //# sourceMappingURL=authUtils.js.map

@@ -6,6 +6,7 @@ import { Button } from '../common/Button/Button';
 import { Badge } from '../common/Badge/Badge';
 import { Card } from '../common/Card/Card';
 import { useLanguage } from '../../context/LanguageContext';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface MilestoneDetailModalProps {
     isOpen: boolean;
@@ -47,7 +48,7 @@ export const MilestoneDetailModal = ({
         if (milestone.status === 'Achieved') return 'Low';
 
         const now = new Date();
-        const dueDate = milestone.dueDate ? new Date(milestone.dueDate) : null;
+        const dueDate = milestone.dueDate ? parseDateValue(milestone.dueDate) : null;
 
         if (dueDate && dueDate < now) return 'High';
 
@@ -155,7 +156,7 @@ export const MilestoneDetailModal = ({
                             <span className="material-symbols-outlined">calendar_today</span>
                             <span>
                                 {milestone.dueDate
-                                    ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale })
+                                    ? format(parseDateValue(milestone.dueDate), dateFormat, { locale: dateLocale })
                                     : t('projectMilestones.detail.noDueDate')}
                             </span>
                         </div>

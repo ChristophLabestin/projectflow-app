@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 
-import { getAuthToken, type ApiPermission, validateAPIToken } from './authUtils';
+import { getAuthToken, getWorkspaceMemberRole, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
 
 type ApiContext = {
@@ -57,7 +57,6 @@ const PROJECT_WRITE_FIELDS = [
     'squareIcon',
     'screenshots',
     'githubRepo',
-    'githubToken',
     'overviewLayout',
     'members',
     'memberIds',
@@ -344,6 +343,15 @@ const authRequest = async (
     if (validation.tenantId && validation.tenantId !== tenantId) {
         forbidden(res, 'Token tenant mismatch.');
         return null;
+    }
+
+    // Signed-in users (Firebase ID token) must be full members of the tenant.
+    if (validation.tokenData.authType === 'firebase') {
+        const role = await getWorkspaceMemberRole(tenantId, validation.tokenData.uid);
+        if (!role || role === 'Guest') {
+            forbidden(res, 'Not a member of this workspace.');
+            return null;
+        }
     }
 
     const scopedProjectId = getString(validation.tokenData.projectScope);

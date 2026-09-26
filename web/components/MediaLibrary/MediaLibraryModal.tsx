@@ -100,7 +100,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const { t } = useLanguage();
     const canBrowseTenantMedia = collectionType === 'project' && !deferredUpload && !storagePath;
     const resolveTenantIdForMedia = useCallback(() => {
-        return tenantId || getCachedTenantId() || auth.currentUser?.uid || '';
+        return tenantId || getCachedTenantId() || '';
     }, [tenantId]);
     const resolveUserIdForMedia = useCallback(() => {
         return userId || auth.currentUser?.uid || '';

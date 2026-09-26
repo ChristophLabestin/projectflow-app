@@ -1,5 +1,6 @@
 import { updateProfile } from 'firebase/auth';
 import {
+    deleteDoc,
     doc,
     getDoc,
     serverTimestamp,
@@ -79,6 +80,24 @@ export const updateUserData = async (userId: string, data: Partial<any>) => {
     await setDoc(userDocRef(userId), data, { merge: true });
 };
 
+// GitHub tokens live in an owner-only private subdoc, never on the
+// world-readable users/{uid} profile or on project docs.
+const githubTokenDocRef = (userId: string) => doc(db, USERS, userId, 'private', 'github');
+
+export const getGithubToken = async (userId: string): Promise<string | null> => {
+    const snap = await getDoc(githubTokenDocRef(userId));
+    const token = snap.exists() ? snap.data()?.token : null;
+    return typeof token === 'string' && token ? token : null;
+};
+
+export const setGithubToken = async (userId: string, token: string) => {
+    await setDoc(githubTokenDocRef(userId), { token, updatedAt: serverTimestamp() });
+};
+
+export const clearGithubToken = async (userId: string) => {
+    await deleteDoc(githubTokenDocRef(userId));
+};
+
 export const updateUserProfile = async (data: {
     displayName?: string;
     photoURL?: string;
@@ -102,7 +121,7 @@ export const updateUserProfile = async (data: {
 
     let photoURL = data.photoURL || user.photoURL;
     let coverURL = data.coverURL;
-    const tenantId = getActiveTenantId() || user.uid;
+    const tenantId = getActiveTenantId();
     let photoFileId = data.photoFileId || '';
     let coverFileId = data.coverFileId || '';
     let photoFileTenantId = data.photoFileTenantId || '';

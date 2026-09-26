@@ -12,6 +12,7 @@ import { AdCampaign, AdSet, SocialPost, AdPlatform, AdCampaignStatus } from '../
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/UIContext';
 import { format } from 'date-fns';
+import { parseDateValue } from '../../utils/taskDates';
 
 const PLATFORM_CONFIG: Record<AdPlatform, { color: string; bg: string; darkBg: string; name: string }> = {
     Google: { color: '#4285F4', bg: 'bg-blue-100', darkBg: 'dark:bg-blue-900/30', name: 'Google Ads' },
@@ -139,7 +140,7 @@ export const AdCampaignDetail = () => {
                             <span>•</span>
                             <span>{campaign.objective}</span>
                             <span>•</span>
-                            <span>Started {format(new Date(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
+                            <span>Started {format(parseDateValue(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
                         </div>
                     </div>
                 </div>
@@ -219,7 +220,7 @@ export const AdCampaignDetail = () => {
                         <span>Daily: ${campaign.budgetDaily?.toLocaleString() || 'Not set'}</span>
                         <span>
                             {campaign.endDate
-                                ? `Ends ${format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}`
+                                ? `Ends ${format(parseDateValue(campaign.endDate), dateFormat, { locale: dateLocale })}`
                                 : 'No end date'
                             }
                         </span>

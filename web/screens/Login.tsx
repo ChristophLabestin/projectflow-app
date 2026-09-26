@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/domain/authService';
+import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCore';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,7 +29,7 @@ export const Login = () => {
     // Get redirect URL from query param OR from location.state
     const requestedRedirect = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '';
     const redirectUrl = requestedRedirect || '/';
-    const inviteTenantId = (location.state as any)?.inviteTenantId || getActiveTenantId();
+    const inviteTenantId = (location.state as any)?.inviteTenantId;
     const hasRedirectContext = requestedRedirect !== '' && requestedRedirect !== location.pathname;
     const passkeyAvailable = authScreenTranslationsReady && !isRegister && !showMfaStep && shouldAutoPrompt();
 
@@ -107,12 +107,12 @@ export const Login = () => {
                     throw new Error(t('login.warning.registrationDisabled'));
                 }
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                if (name) await updateProfile(userCredential.user, { displayName: name });
-                const inviteTenant = (location.state as any)?.inviteTenantId;
-                await bootstrapTenantForCurrentUser(inviteTenant || undefined, true);
+                if (name) {
+                    await updateProfile(userCredential.user, { displayName: name });
+                    await refreshCurrentUserProfile();
+                }
             } else {
                 await signInWithEmailAndPassword(auth, email.trim(), password);
-                await bootstrapTenantForCurrentUser();
             }
             await handleAuthSuccess();
         } catch (err: any) {
@@ -148,7 +148,6 @@ export const Login = () => {
             const hint = mfaResolver.hints[0];
             const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, mfaCode);
             await mfaResolver.resolveSignIn(assertion);
-            await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
         } catch (err: any) {
             console.error(err);
@@ -183,7 +182,6 @@ export const Login = () => {
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
-            await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
         } catch (err: any) {
             handleOAuthMfaError(err, 'login.error.google');
@@ -198,7 +196,6 @@ export const Login = () => {
         try {
             const provider = new GithubAuthProvider();
             await signInWithPopup(auth, provider);
-            await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
         } catch (err: any) {
             handleOAuthMfaError(err, 'login.error.github');
@@ -214,7 +211,6 @@ export const Login = () => {
         try {
             const token = await loginWithPasskey(email);
             await signInWithCustomToken(auth, token);
-            await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();
         } catch (e: any) {
             console.error(e);

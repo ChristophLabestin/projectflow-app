@@ -4,6 +4,7 @@ import type { Locale } from 'date-fns';
 import { Badge } from '../../../common/Badge/Badge';
 import { timeAgo } from '../../../../utils/time';
 import type { Activity, Milestone, Sprint } from '../../../../types';
+import { parseDateValue } from '../../../../utils/taskDates';
 
 type Common = {
     dateFormat: string;
@@ -40,7 +41,7 @@ export const MilestonesPanel: React.FC<Common & { milestones: Milestone[] }> = (
                                 {t('projectOverview.v2.milestones.linkedTasks', '{count} tasks').replace('{count}', String(milestone.linkedTaskIds.length))}
                             </span>
                         ) : null}
-                        {milestone.dueDate && <span>{format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale })}</span>}
+                        {milestone.dueDate && <span>{format(parseDateValue(milestone.dueDate), dateFormat, { locale: dateLocale })}</span>}
                         <Badge variant={milestoneVariant(milestone.status)}>{t(`milestones.status.${milestone.status.toLowerCase()}`, milestone.status)}</Badge>
                     </div>
                 </div>
@@ -61,7 +62,7 @@ export const SprintsPanel: React.FC<Common & { sprints: Sprint[] }> = ({ sprints
             </div>
         );
     }
-    const sorted = [...sprints].sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+    const sorted = [...sprints].sort((a, b) => parseDateValue(b.startDate).getTime() - parseDateValue(a.startDate).getTime());
     return (
         <div className="po-panel-list">
             {sorted.map((sprint) => (
@@ -74,7 +75,7 @@ export const SprintsPanel: React.FC<Common & { sprints: Sprint[] }> = ({ sprints
                     <div className="po-panel-list__meta">
                         {sprint.memberIds?.length ? <span className="po-panel-list__count">{sprint.memberIds.length}</span> : null}
                         <span>
-                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })} – {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                            {format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale })} – {format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale })}
                         </span>
                         <Badge variant={sprintVariant(sprint.status)}>{t(`sprints.status.${sprint.status.toLowerCase()}`, sprint.status)}</Badge>
                     </div>

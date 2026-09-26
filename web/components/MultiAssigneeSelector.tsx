@@ -50,7 +50,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
 
             // 2. Get the project to determine its tenant
             const project = await getProjectById(projectId);
-            const projectTenantId = project?.tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            const projectTenantId = project?.tenantId || getActiveTenantId();
 
             // 3. Fetch all member profiles
             const memberProfiles: Record<string, any> = {};

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { subscribeProjectInitiatives, subscribeProjectTasks } from '../services/dataService';
 import { getProjectCategories } from '../services/domain/projectMetaService';
-import { deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
+import { addTask, deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getProjectById } from '../services/domain/projectsService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Initiative, Task, Project, TaskCategory, ProjectGroup } from '../types';
@@ -20,6 +20,12 @@ import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { parseDateValue, isDateOverdue } from '../utils/taskDates';
+import { auth } from '../services/firebase';
+import { TaskGroupList } from '../components/work/TaskGroupList';
+import { TaskRow } from '../components/work/TaskRow';
+import { groupTasks, summarizeDue, type WorkGroupBy } from '../components/work/workList';
+import { useWorkMembers } from '../components/work/useWorkMembers';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -50,12 +56,20 @@ export const ProjectTasks = () => {
     const [taskPillEditorPosition, setTaskPillEditorPosition] = useState({ top: 0, left: 0, width: 304 });
     const [savingInlineTaskId, setSavingInlineTaskId] = useState<string | null>(null);
     const [bulkUpdating, setBulkUpdating] = useState(false);
+    const [groupBy, setGroupBy] = useState<WorkGroupBy>(() => {
+        const stored = localStorage.getItem('projectflow.work.project.groupBy');
+        return stored === 'status' || stored === 'assignee' ? stored : 'due';
+    });
+    const [quickTitle, setQuickTitle] = useState('');
+    const [quickAdding, setQuickAdding] = useState(false);
+    const quickInputRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const confirm = useConfirm();
     const taskPillEditorRef = useRef<HTMLDivElement | null>(null);
 
     // Permissions
     const { can } = useProjectPermissions(project);
+    const members = useWorkMembers(project?.tenantId);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem, startFocusItem } = usePinnedTasks();
     const { dateFormat, dateLocale, t } = useLanguage();
 
@@ -207,6 +221,39 @@ export const ProjectTasks = () => {
             : { dueDate: normalizedNextValue };
 
         await updateTaskInline(task, updates);
+    };
+
+    const handleQuickAdd = async (event?: React.FormEvent) => {
+        event?.preventDefault();
+        if (!id || !quickTitle.trim() || quickAdding || !can('canManageTasks')) return;
+        setQuickAdding(true);
+        try {
+            await addTask(id, quickTitle.trim(), undefined, undefined, 'Medium', undefined, project?.tenantId);
+            setQuickTitle('');
+        } catch (err) {
+            console.error(err);
+            setError(t('work.quickAdd.error'));
+        } finally {
+            setQuickAdding(false);
+        }
+    };
+
+    // "N" focuses quick add from anywhere on the page.
+    useEffect(() => {
+        const onKey = (event: KeyboardEvent) => {
+            const target = event.target as HTMLElement | null;
+            const typing = !!target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName));
+            if (event.key.toLowerCase() !== 'n' || event.metaKey || event.ctrlKey || event.altKey || typing) return;
+            event.preventDefault();
+            quickInputRef.current?.focus();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, []);
+
+    const changeGroupBy = (next: WorkGroupBy) => {
+        setGroupBy(next);
+        localStorage.setItem('projectflow.work.project.groupBy', next);
     };
 
     const openTaskPillEditor = (taskId: string, type: TaskPillEditorType, anchorEl: HTMLElement) => {
@@ -363,13 +410,13 @@ export const ProjectTasks = () => {
                     const pB = priorityMap[b.priority || 'Medium'] || 0;
                     if (pA !== pB) return pB - pA; // Descending (Urgent first)
                     // Secondary sort by due date
-                    const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-                    const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                    const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                    const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
                     return dateA - dateB;
                 }
                 case 'dueDate': {
-                    const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-                    const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                    const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+                    const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
                     return dateA - dateB; // Ascending (soonest first)
                 }
                 case 'title':
@@ -536,8 +583,8 @@ export const ProjectTasks = () => {
         const showStrategicTimeline = isStrategic && hasStart && hasDue && !task.isCompleted;
         const showStrategicDue = isStrategic && !hasStart && hasDue && !task.isCompleted;
         const showDueDateSetter = !hasDue && !task.isCompleted;
-        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-        const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
+        const dueDate = task.dueDate ? parseDateValue(task.dueDate) : null;
+        const isOverdue = !!dueDate && isDateOverdue(dueDate) && !task.isCompleted;
         const priorityLabel = task.priority ? (priorityLabels[task.priority] || task.priority) : '';
         const statusLabel = task.status ? (statusLabels[task.status] || task.status) : '';
         const initiative = task.initiativeId ? initiativeLookup[task.initiativeId] : null;
@@ -783,8 +830,8 @@ export const ProjectTasks = () => {
                                     {t('projectTasks.timeline.strategic')}
                                 </span>
                                 {(() => {
-                                    const start = new Date(task.startDate!).getTime();
-                                    const end = new Date(task.dueDate!).getTime();
+                                    const start = parseDateValue(task.startDate!).getTime();
+                                    const end = parseDateValue(task.dueDate!).getTime();
                                     const now = new Date().getTime();
                                     const total = end - start;
                                     const elapsed = now - start;
@@ -794,8 +841,8 @@ export const ProjectTasks = () => {
                             </div>
                             <div className="timeline-bar">
                                 {(() => {
-                                    const start = new Date(task.startDate!).getTime();
-                                    const end = new Date(task.dueDate!).getTime();
+                                    const start = parseDateValue(task.startDate!).getTime();
+                                    const end = parseDateValue(task.dueDate!).getTime();
                                     const now = new Date().getTime();
                                     const total = end - start;
                                     const elapsed = now - start;
@@ -809,20 +856,20 @@ export const ProjectTasks = () => {
                                 })()}
                             </div>
                             <div className="dates-row">
-                                <span>{t('projectTasks.timeline.start')} {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
+                                <span>{t('projectTasks.timeline.start')} {format(parseDateValue(task.startDate!), dateFormat, { locale: dateLocale })}</span>
                                 {canQuickEditDates ? (
                                     <button
                                         type="button"
                                         onClick={togglePillEditor('dates')}
                                         data-task-pill-trigger={`${task.id}-dates`}
-                                        className={`due-date-trigger ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                        className={`due-date-trigger ${isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
                                         title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                     >
-                                        {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                        {t('projectTasks.timeline.due')} {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </button>
                                 ) : (
-                                    <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
-                                        {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    <span className={isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''}>
+                                        {t('projectTasks.timeline.due')} {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </span>
                                 )}
                             </div>
@@ -832,8 +879,8 @@ export const ProjectTasks = () => {
                         <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className="timeline-simple-bar">
                                 {(() => {
-                                    const start = new Date(task.startDate!).getTime();
-                                    const end = new Date(task.dueDate!).getTime();
+                                    const start = parseDateValue(task.startDate!).getTime();
+                                    const end = parseDateValue(task.dueDate!).getTime();
                                     const now = new Date().getTime();
                                     const total = end - start;
                                     const elapsed = now - start;
@@ -847,20 +894,20 @@ export const ProjectTasks = () => {
                                 })()}
                             </div>
                             <div className="dates-row">
-                                <span>{format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
+                                <span>{format(parseDateValue(task.startDate!), dateFormat, { locale: dateLocale })}</span>
                                 {canQuickEditDates ? (
                                     <button
                                         type="button"
                                         onClick={togglePillEditor('dates')}
                                         data-task-pill-trigger={`${task.id}-dates`}
-                                        className={`due-date-trigger due-date-trigger--compact ${new Date(task.dueDate!) < new Date() ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
+                                        className={`due-date-trigger due-date-trigger--compact ${isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
                                         title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
                                     >
-                                        {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                        {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </button>
                                 ) : (
-                                    <span className={new Date(task.dueDate!) < new Date() ? 'overdue' : ''}>
-                                        {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
+                                    <span className={isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''}>
+                                        {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
                                     </span>
                                 )}
                             </div>
@@ -1030,6 +1077,17 @@ export const ProjectTasks = () => {
         ? (Array.isArray(editingTask.category) ? editingTask.category : [editingTask.category].filter(Boolean))
         : [];
 
+    const groups = useMemo(
+        () => groupTasks(filteredTasks, { groupBy, t, members, currentUserId: auth.currentUser?.uid }),
+        [filteredTasks, groupBy, t, members]
+    );
+    const dueSummary = useMemo(() => summarizeDue(tasks), [tasks]);
+    const summaryParts = [
+        dueSummary.overdue ? { tone: 'danger', text: t('work.summary.overdue').replace('{count}', String(dueSummary.overdue)) } : null,
+        dueSummary.today ? { tone: 'warning', text: t('work.summary.today').replace('{count}', String(dueSummary.today)) } : null,
+        dueSummary.week ? { tone: 'neutral', text: t('work.summary.week').replace('{count}', String(dueSummary.week)) } : null
+    ].filter(Boolean) as { tone: string; text: string }[];
+
     if (loading) return (
         <div className="workstream-page workstream-page--tasks">
             <div className="workstream-page__loading">
@@ -1063,15 +1121,19 @@ export const ProjectTasks = () => {
 
     return (
         <>
-            <div className="workstream-page workstream-page--tasks">
+            <div className="work-page work-page--project">
 
-                <header data-onboarding-id="project-tasks-header" className="workstream-page__hero">
-                    <div className="workstream-page__hero-copy">
-                        <h1 className="workstream-page__title">{t('projectTasks.header.titleEmphasis')}</h1>
-                        <p className="workstream-page__subtitle">
-                            {project?.title
-                                ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.title)
-                                : t('projectTasks.header.subtitleFallback')}
+                <header data-onboarding-id="project-tasks-header" className="work-page__header">
+                    <div>
+                        {project?.title && <p className="work-page__eyebrow">{project.title}</p>}
+                        <h1 className="work-page__title">{t('work.project.title')}</h1>
+                        <p className="work-page__summary">
+                            {summaryParts.length ? summaryParts.map((part, index) => (
+                                <React.Fragment key={part.text}>
+                                    {index > 0 && <span className="work-page__dot" aria-hidden="true">·</span>}
+                                    <span className={`work-page__summary-item work-page__summary-item--${part.tone}`}>{part.text}</span>
+                                </React.Fragment>
+                            )) : t('work.summary.clear')}
                         </p>
                     </div>
                     {can('canManageTasks') && (
@@ -1079,160 +1141,149 @@ export const ProjectTasks = () => {
                             <Button
                                 onClick={() => setShowInitiativeModal(true)}
                                 icon={<span className="material-symbols-outlined">rocket_launch</span>}
-                                variant="secondary"
+                                variant="ghost"
                             >
                                 {t('initiatives.create.action')}
                             </Button>
                             <Button
                                 onClick={() => setShowCreateModal(true)}
-                                icon={<span className="material-symbols-outlined">add</span>}
-                                variant="primary"
+                                icon={<span className="material-symbols-outlined">edit_note</span>}
+                                variant="secondary"
                             >
-                                {t('projectTasks.actions.newTask')}
+                                {t('work.newDetailed')}
                             </Button>
                         </div>
                     )}
                 </header>
 
-                <div data-onboarding-id="project-tasks-stats" className="workstream-page__metrics">
-                    {metricCards.map((metric) => (
-                        <div key={metric.label} className="workstream-page__metric">
-                            <span className="workstream-page__metric-label">{metric.label}</span>
-                            <span className="workstream-page__metric-value">{metric.value}</span>
-                            <span className="workstream-page__metric-meta">{metric.meta}</span>
-                        </div>
-                    ))}
-                </div>
-
-                <div data-onboarding-id="project-tasks-controls" className="workstream-page__command">
-                    <div className="workstream-page__command-left">
-                        <TextInput
-                            value={search}
-                            onChange={handleSearchChange}
-                            placeholder={t('projectTasks.search.placeholder')}
-                            className="workstream-page__search"
-                            leftElement={<span className="material-symbols-outlined">search</span>}
+                {can('canManageTasks') && (
+                    <form className="work-quick-add" onSubmit={handleQuickAdd}>
+                        <span className="material-symbols-outlined work-quick-add__icon" aria-hidden="true">add</span>
+                        <input
+                            ref={quickInputRef}
+                            className="work-quick-add__input"
+                            value={quickTitle}
+                            onChange={(event) => setQuickTitle(event.target.value)}
+                            placeholder={t('work.quickAdd.placeholder')}
+                            aria-label={t('work.quickAdd.label')}
                         />
-                        <div className="workstream-page__command-filters">
-                            <Select
-                                value={filter}
-                                onChange={(value) => setFilter(value as typeof filter)}
-                                options={filterSelectOptions}
-                                className="workstream-page__select"
-                            />
-                            <Select
-                                value={sortBy}
-                                onChange={(value) => setSortBy(value as typeof sortBy)}
-                                options={sortOptions}
-                                placeholder={t('projectTasks.sort.label')}
-                                className="workstream-page__select"
-                            />
-                        </div>
-                    </div>
-                    <div className="workstream-page__command-right">
-                        <div className="workstream-page__view-toggle" role="group" aria-label={t('projectTasks.view.label')}>
-                            {(['list', 'grid'] as const).map((v) => (
-                                <button
-                                    key={v}
-                                    type="button"
-                                    onClick={() => setView(v)}
-                                    className={`workstream-page__view-btn ${view === v ? 'is-active' : ''}`}
-                                    aria-pressed={view === v}
-                                    title={viewLabels[v]}
-                                    aria-label={viewLabels[v]}
-                                >
-                                    <span className="material-symbols-outlined">{v === 'list' ? 'format_list_bulleted' : 'grid_view'}</span>
-                                </button>
-                            ))}
-                        </div>
+                        <kbd className="work-quick-add__hint" aria-hidden="true">N</kbd>
+                        <Button type="submit" size="sm" isLoading={quickAdding} disabled={!quickTitle.trim()}>
+                            {t('work.quickAdd.submit')}
+                        </Button>
+                    </form>
+                )}
+
+                <div data-onboarding-id="project-tasks-controls" className="work-toolbar">
+                    <label className="work-toolbar__search">
+                        <span className="material-symbols-outlined" aria-hidden="true">search</span>
+                        <input
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                            placeholder={t('work.filter.search')}
+                            aria-label={t('work.filter.search')}
+                        />
+                    </label>
+                    {view === 'list' ? (
+                        <Select
+                            value={groupBy}
+                            onChange={(value) => changeGroupBy(value as WorkGroupBy)}
+                            options={(['due', 'status', 'assignee'] as const).map((option) => ({
+                                value: option,
+                                label: `${t('work.filter.groupBy')}: ${t(`work.groupBy.${option}`)}`
+                            }))}
+                            className="work-toolbar__select"
+                        />
+                    ) : (
+                        <Select
+                            value={sortBy}
+                            onChange={(value) => setSortBy(value as typeof sortBy)}
+                            options={sortOptions}
+                            placeholder={t('projectTasks.sort.label')}
+                            className="work-toolbar__select"
+                        />
+                    )}
+                    <button
+                        type="button"
+                        className={`work-chip ${filter !== 'active' ? 'is-active' : ''}`}
+                        aria-pressed={filter !== 'active'}
+                        onClick={() => setFilter((current) => (current === 'active' ? 'all' : 'active'))}
+                    >
+                        <span className="material-symbols-outlined" aria-hidden="true">done_all</span>
+                        {t('work.filter.showCompleted')}
+                    </button>
+                    <div className="work-toolbar__views" role="group" aria-label={t('work.view.label')}>
+                        {(['list', 'grid'] as const).map((option) => (
+                            <button
+                                key={option}
+                                type="button"
+                                onClick={() => setView(option)}
+                                className={`work-toolbar__view ${view === option ? 'is-active' : ''}`}
+                                aria-pressed={view === option}
+                                title={t(`work.view.${option}`)}
+                                aria-label={t(`work.view.${option}`)}
+                            >
+                                <span className="material-symbols-outlined">{option === 'list' ? 'view_agenda' : 'grid_view'}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
 
-                {can('canManageTasks') && filteredTasks.length > 0 && (
-                    <div className={`workstream-page__bulk ${selectedIds.size > 0 ? 'has-selection' : ''}`}>
-                        <div className="workstream-page__bulk-left">
-                            <button
-                                type="button"
-                                className="workstream-page__bulk-select"
-                                onClick={toggleSelectAllVisible}
-                                disabled={bulkUpdating}
-                                aria-pressed={allVisibleSelected}
-                            >
-                                <span className="material-symbols-outlined">
-                                    {allVisibleSelected ? 'check_box' : someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank'}
-                                </span>
-                                {allVisibleSelected ? t('projectTasks.bulk.unmarkAll') : t('projectTasks.bulk.markAll')}
-                            </button>
-                            <span className="workstream-page__bulk-count">
-                                {t('projectTasks.bulk.selectedCount').replace('{count}', String(selectedIds.size))}
-                            </span>
-                        </div>
-                        <div className="workstream-page__bulk-actions" aria-disabled={selectedIds.size === 0 || bulkUpdating}>
-                            <Select
-                                value={null}
-                                onChange={handleBulkStatusChange}
-                                options={bulkStatusOptions}
-                                placeholder={t('projectTasks.bulk.status')}
-                                disabled={selectedIds.size === 0 || bulkUpdating}
-                                className="workstream-page__bulk-select-control"
-                            />
-                            <Select
-                                value={null}
-                                onChange={handleBulkPriorityChange}
-                                options={bulkPriorityOptions}
-                                placeholder={t('projectTasks.bulk.priority')}
-                                disabled={selectedIds.size === 0 || bulkUpdating}
-                                className="workstream-page__bulk-select-control"
-                            />
-                            <Select
-                                value={null}
-                                onChange={handleBulkInitiativeChange}
-                                options={bulkInitiativeOptions}
-                                placeholder={t('projectTasks.bulk.initiative')}
-                                disabled={selectedIds.size === 0 || bulkUpdating}
-                                className="workstream-page__bulk-select-control workstream-page__bulk-select-control--wide"
-                            />
-                            <button
-                                type="button"
-                                className="workstream-page__bulk-icon"
-                                onClick={clearSelection}
-                                disabled={selectedIds.size === 0 || bulkUpdating}
-                                title={t('projectTasks.bulk.clear')}
-                                aria-label={t('projectTasks.bulk.clear')}
-                            >
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                            <button
-                                type="button"
-                                className="workstream-page__bulk-icon workstream-page__bulk-icon--danger"
-                                onClick={handleBulkDelete}
-                                disabled={selectedIds.size === 0 || bulkUpdating}
-                                title={t('projectTasks.bulk.delete')}
-                                aria-label={t('projectTasks.bulk.delete')}
-                            >
-                                <span className="material-symbols-outlined">delete</span>
-                            </button>
-                        </div>
+                {can('canManageTasks') && selectedIds.size > 0 && (
+                    <div className="work-bulk-bar" role="region" aria-label={t('work.bulk.selected').replace('{count}', String(selectedIds.size))}>
+                        <span className="work-bulk-bar__count">{t('work.bulk.selected').replace('{count}', String(selectedIds.size))}</span>
+                        <button type="button" className="work-chip" onClick={toggleSelectAllVisible} disabled={bulkUpdating} aria-pressed={allVisibleSelected}>
+                            <span className="material-symbols-outlined" aria-hidden="true">{allVisibleSelected ? 'check_box' : someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank'}</span>
+                            {t('work.bulk.selectAll')}
+                        </button>
+                        <Select value={null} onChange={handleBulkStatusChange} options={bulkStatusOptions} placeholder={t('work.bulk.status')} disabled={bulkUpdating} className="work-bulk-bar__select" />
+                        <Select value={null} onChange={handleBulkPriorityChange} options={bulkPriorityOptions} placeholder={t('work.bulk.priority')} disabled={bulkUpdating} className="work-bulk-bar__select" />
+                        {bulkInitiativeOptions.length > 1 && (
+                            <Select value={null} onChange={handleBulkInitiativeChange} options={bulkInitiativeOptions} placeholder={t('work.bulk.initiative')} disabled={bulkUpdating} className="work-bulk-bar__select" />
+                        )}
+                        <Button variant="danger" size="sm" onClick={handleBulkDelete} disabled={bulkUpdating} icon={<span className="material-symbols-outlined">delete</span>}>
+                            {t('work.bulk.delete')}
+                        </Button>
+                        <button type="button" className="work-toolbar__view" onClick={clearSelection} disabled={bulkUpdating} title={t('work.bulk.clear')} aria-label={t('work.bulk.clear')}>
+                            <span className="material-symbols-outlined">close</span>
+                        </button>
                     </div>
                 )}
 
-                <div data-onboarding-id="project-tasks-view" className="workstream-page__body">
-                    {filteredTasks.length === 0 ? (
-                        <div className="workstream-page__empty">
-                            <span className="material-symbols-outlined workstream-page__empty-icon">task_alt</span>
-                            <h3>{t('projectTasks.empty.title')}</h3>
-                            <p>{t('projectTasks.empty.description')}</p>
-                            {can('canManageTasks') && (
-                                <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
-                                    {t('projectTasks.actions.createTask')}
-                                </Button>
+                <div data-onboarding-id="project-tasks-view" className="work-page__body">
+                    {view === 'list' ? (
+                        <TaskGroupList
+                            groups={groups}
+                            storageKey={`projectflow.work.project.${groupBy}.collapsed`}
+                            toggleLabel={(label, collapsed) => t(collapsed ? 'work.group.expand' : 'work.group.collapse').replace('{group}', label)}
+                            renderRow={(task) => (
+                                <TaskRow
+                                    task={task}
+                                    members={members}
+                                    subtasks={subtaskStats[task.id]}
+                                    canEdit={can('canManageTasks')}
+                                    saving={savingInlineTaskId === task.id}
+                                    selectable={can('canManageTasks')}
+                                    selected={selectedIds.has(task.id)}
+                                    onSelectChange={(entry) => toggleSelect(entry.id)}
+                                    onToggleComplete={handleToggle}
+                                    onUpdate={updateTaskInline}
+                                    onOpen={(entry) => navigate(`/project/${id}/tasks/${entry.id}`)}
+                                />
                             )}
-                        </div>
-                    ) : view === 'list' ? (
-                        <div className="workstream-page__list">
-                            {filteredTasks.map(task => (
-                                <TaskCard key={task.id} task={task} />
-                            ))}
+                            empty={(
+                                <div className="work-empty">
+                                    <span className="material-symbols-outlined" aria-hidden="true">{search ? 'filter_alt_off' : 'task_alt'}</span>
+                                    <p className="work-empty__title">{t(search ? 'work.empty.filteredTitle' : 'projectTasks.empty.title')}</p>
+                                    <p className="work-empty__text">{t(search ? 'work.empty.filteredText' : 'projectTasks.empty.description')}</p>
+                                </div>
+                            )}
+                        />
+                    ) : filteredTasks.length === 0 ? (
+                        <div className="work-empty">
+                            <span className="material-symbols-outlined" aria-hidden="true">task_alt</span>
+                            <p className="work-empty__title">{t('projectTasks.empty.title')}</p>
+                            <p className="work-empty__text">{t('projectTasks.empty.description')}</p>
                         </div>
                     ) : (
                         <div className="workstream-page__grid">

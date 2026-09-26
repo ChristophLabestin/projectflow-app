@@ -6,10 +6,10 @@ import { useConfirm } from '../../../context/UIContext';
 import { useProjectPermissions } from '../../../hooks/useProjectPermissions';
 import { addTask, toggleTaskStatus, updateTaskFields } from '../../../services/domain/tasksService';
 import { updateInitiative } from '../../../services/domain/initiativesService';
-import { updateProjectFields, generateInviteLink, sendTeamInvitation } from '../../../services/domain/projectAdminService';
+import { updateProjectFields } from '../../../services/domain/projectAdminService';
 import { saveGeminiReport } from '../../../services/domain/projectInsightsService';
 import { generateProjectReport } from '../../../services/geminiService';
-import type { Project, ProjectRole, Task } from '../../../types';
+import type { Project, ProjectReminder, Task } from '../../../types';
 
 import { useProjectOverviewData } from './hooks/useProjectOverviewData';
 import { useProjectOverviewDerived } from './hooks/useProjectOverviewDerived';
@@ -30,13 +30,14 @@ import { MilestonesView } from './sections/MilestonesView';
 import { InitiativesStrip } from './sections/InitiativesStrip';
 import { CompanyOverviewSection } from './sections/CompanyOverviewSection';
 import { ReferenceSection } from './sections/ReferenceSection';
+import { ProjectRemindersPanel } from './sections/ProjectRemindersPanel';
 import { isCompanyProject } from '../../../config/projectTemplates';
 import type { Tab as ProjectEditTab } from '../ProjectEditModal';
 
 import { HealthDetailModal } from '../HealthDetailModal';
 import { ProjectReportModal } from '../ProjectReportModal';
 import { ProjectEditModal } from '../ProjectEditModal';
-import { InviteMemberModal } from '../../InviteMemberModal';
+import { InviteToWorkspaceModal } from '../../workspace/InviteToWorkspaceModal';
 import { InitiativeCreateModal } from '../../InitiativeCreateModal';
 
 import '../../../src/styles/components/_project-overview-v2.scss';
@@ -226,6 +227,26 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         void updateInitiative(initiativeId, { color: color || '' }, project.id, project.tenantId);
     };
 
+    const handleSaveProjectReminders = async (reminders: ProjectReminder[]) => {
+        if (!project) return;
+        await updateProjectFields(
+            project.id,
+            { reminders },
+            { action: 'Updated project reminders', target: 'Project', type: 'status' },
+            project.tenantId
+        );
+        data.setProject((prev) => (prev ? { ...prev, reminders } : prev));
+    };
+
+    const handleSaveTaskReminders = async (task: Task, reminders: ProjectReminder[], reminderAt?: string | null) => {
+        if (!project) return;
+        const updates: Partial<Task> = { reminders };
+        if (reminderAt !== undefined) {
+            updates.reminderAt = reminderAt || '';
+        }
+        await updateTaskFields(task.id, updates, project.id, project.tenantId);
+    };
+
     const toggleInitiativeFilter = (initiativeId: string) => {
         viewState.setFilters((prev) => ({
             ...prev,
@@ -337,6 +358,21 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                 onToggleWide={toggleWide}
                 coverExpanded={coverExpanded}
                 onToggleCoverExpand={toggleCoverExpand}
+                reminders={(
+                    <ProjectRemindersPanel
+                        project={project}
+                        tasks={tasks}
+                        initiatives={initiatives}
+                        canManage={canManageTasks}
+                        dateFormat={dateFormat}
+                        dateLocale={dateLocale}
+                        onSaveProjectReminders={handleSaveProjectReminders}
+                        onSaveTaskReminders={handleSaveTaskReminders}
+                        onOpenTask={(nextTaskId) => navigate(`/project/${project.id}/tasks/${nextTaskId}${tenantQuery}`)}
+                        onOpenInitiative={(initiativeId) => navigate(`/project/${project.id}/initiatives/${initiativeId}${tenantQuery}`)}
+                        t={t}
+                    />
+                )}
                 onOpenNext={() => {
                     const next = derived.nextItem;
                     if (!next) return;
@@ -487,15 +523,12 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                 onClose={() => setModal(null)}
             />
 
-            <InviteMemberModal
+            <InviteToWorkspaceModal
                 isOpen={modal === 'invite'}
                 onClose={() => setModal(null)}
-                projectTitle={project.title}
-                customRoles={workspaceRoles}
-                onGenerateLink={(role, maxUses, expiresInHours) =>
-                    generateInviteLink(project.id, role as ProjectRole | string, maxUses, expiresInHours, project.tenantId)}
-                onSendEmail={(email, role) =>
-                    sendTeamInvitation(email, 'project', project.id, role, project.tenantId || '')}
+                projects={[project]}
+                initialProjectIds={[project.id]}
+                initialRole="Guest"
             />
 
             <ProjectReportModal

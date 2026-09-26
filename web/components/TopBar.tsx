@@ -11,6 +11,7 @@ import { useLanguage } from '../context/LanguageContext';
 const AISearchBar = lazy(() => import('./AISearchBar').then((module) => ({ default: module.AISearchBar })));
 const PinnedProjectPill = lazy(() => import('./PinnedProjectPill').then((module) => ({ default: module.PinnedProjectPill })));
 const UserProfileDropdown = lazy(() => import('./UserProfileDropdown').then((module) => ({ default: module.UserProfileDropdown })));
+const TopBarTeamMenu = lazy(() => import('./TopBarTeamMenu').then((module) => ({ default: module.TopBarTeamMenu })));
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
@@ -128,6 +129,10 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
                     </span>
 
                     <PinnedTasksToggle />
+
+                    <Suspense fallback={<div className="topbar-icon-button" />}>
+                        <TopBarTeamMenu tenantId={tenantId || project?.tenantId} />
+                    </Suspense>
 
                     <button
                         onClick={handleOpenHelp}

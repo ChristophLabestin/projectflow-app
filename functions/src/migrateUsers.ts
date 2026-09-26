@@ -36,7 +36,6 @@ interface OldUserDoc {
     coverURL?: string;
     privacySettings?: any;
     geminiConfig?: any;
-    githubToken?: string;
     pinnedProjectId?: string;
     groupIds?: string[];
     preferences?: any;
@@ -105,7 +104,6 @@ async function migrateUsers() {
                     joinedAt: userData.joinedAt || admin.firestore.FieldValue.serverTimestamp(),
                 };
 
-                if (userData.githubToken) memberData.githubToken = userData.githubToken;
                 if (userData.pinnedProjectId) memberData.pinnedProjectId = userData.pinnedProjectId;
                 if (userData.groupIds) memberData.groupIds = userData.groupIds;
 

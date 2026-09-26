@@ -22,6 +22,18 @@ Last updated: 2026-06-04
 - Playwright E2E: `cd web && npm run test:e2e`
 - Firebase hosting deploy: `cd web && npm run deploy`
 
+## Local Emulator Workflow (seeded demo data)
+
+Use this to QA signed-in screens without touching production.
+1. `export PATH=/opt/homebrew/opt/openjdk@21/bin:$PATH` (the Firestore emulator needs Java).
+2. `firebase emulators:start --only auth,firestore,storage,functions --project demo-projectflow` (ports in `firebase.json`: auth 9099, firestore 8085, storage 9199, functions 5001; build functions first).
+3. `node scripts/seed-emulator.mjs` wipes the emulator and seeds:
+   - workspace "Demo Studio" (owner `demo@projectflow.test` / `projectflow-demo`) with 4 projects covering overdue, today, blocked and unassigned tasks, subtasks, initiatives, a sprint and milestones;
+   - "Berger Agency", where the demo user is a Guest on one project;
+   - a pending email invitation from "Romero Labs".
+4. `cd web && npm run dev:emulator` (mode `emulator` → `.env.emulator` sets `VITE_USE_FIREBASE_EMULATORS=true`; also available as `web-emulator` in `.claude/launch.json`).
+
+
 ## Functions Commands
 
 - Build: `cd functions && npm run build`

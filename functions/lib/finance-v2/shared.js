@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.writeFinanceAuditLog = exports.assertPeriodWritable = exports.requireFinancePermission = exports.buildIdempotencyKey = exports.tenantCollectionRef = exports.tenantDocRef = exports.normalizeCurrencyCode = exports.toPeriodKey = exports.toNonNegative = exports.toNumber = exports.normalizeString = exports.serverTimestamp = exports.FINANCE_COLLECTIONS = exports.REGION = void 0;
-const admin = require("firebase-admin");
+const firestore_1 = require("firebase-admin/firestore");
 const crypto = require("crypto");
 const functions = require("firebase-functions/v1");
 const init_1 = require("../init");
@@ -70,7 +70,8 @@ const ADMIN_GRANTED_PERMISSIONS = [
 const MEMBER_GRANTED_PERMISSIONS = [
     'tenant.finance.view',
 ];
-exports.serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
+const serverTimestamp = () => firestore_1.FieldValue.serverTimestamp();
+exports.serverTimestamp = serverTimestamp;
 const normalizeString = (value) => (typeof value === 'string' ? value.trim() : '');
 exports.normalizeString = normalizeString;
 const toNumber = (value) => {

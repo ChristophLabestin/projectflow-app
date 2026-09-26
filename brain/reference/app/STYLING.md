@@ -303,6 +303,18 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Use flat rails, rows, and lightly outlined sections. Avoid nested cards, oversized hero wrappers, decorative gradients, and duplicated metadata between header, rail, and inspector.
 - On mobile, stack the command rail and move the inspector below the workbench; all icon-only actions need accessible labels and stable hit areas.
 
+### Work list pattern (My Tasks + Project Tasks, 2026-09-26)
+
+- Styles live in `web/src/styles/components/_work-list.scss`; components are in `web/components/work/`.
+- Page order:
+  1. a title plus one summary line ("2 overdue · 1 due today · 4 this week") instead of stat cards;
+  2. the quick-add bar (`N` focuses it);
+  3. one compact toolbar (search, group-by or project/priority, "Completed" chip, view toggle);
+  4. grouped rows.
+- Groups: Overdue → Today → Next 7 days → Later → No date → Completed (collapsed by default). Project Tasks may group by status or assignee instead.
+- Rows expose only frequent edits (status pill, priority bars, due chip, assignee avatars) as inline menus. No delete/convert/pin/category buttons on rows.
+- The bulk bar renders only when rows are selected.
+
 ### Workstream list pages (Tasks + Initiatives)
 
 - Project task lists, global `/tasks`, and initiative lists share the `workstream-page` shell in `web/src/styles/components/_workstream-pages.scss`.

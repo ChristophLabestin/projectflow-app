@@ -13,7 +13,7 @@ import {
     togglePersonalTaskStatus,
     updatePersonalTask
 } from '../services/domain/personalTasksService';
-import { getUserProfile } from '../services/domain/usersService';
+import { getGithubToken } from '../services/domain/usersService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
@@ -314,11 +314,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 setLoadingCommits(true);
                 try {
                     const user = auth.currentUser;
-                    let token = project.githubToken;
-                    if (!token && user?.uid) {
-                        const profile = await getUserProfile(user.uid, project.tenantId);
-                        token = profile?.githubToken;
-                    }
+                    const token = user?.uid ? (await getGithubToken(user.uid)) ?? undefined : undefined;
 
                     const commits = await fetchCommitsReferencingIssue(
                         project.githubRepo!,

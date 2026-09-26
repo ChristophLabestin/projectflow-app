@@ -29,7 +29,11 @@ export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOpt
     const [stepIndex, setStepIndex] = useState(0);
 
     useEffect(() => {
-        if (!enabled) return;
+        // Page step tours (autoStart) never open on their own anymore: they
+        // interrupted work on every first visit and stacked with other modals.
+        // Only the one-time welcome prompt (dashboard) is offered automatically;
+        // step tours start explicitly via `start()`.
+        if (!enabled || autoStart) return;
         let isMounted = true;
 
         const checkOnboarding = async () => {

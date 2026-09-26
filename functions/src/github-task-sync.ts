@@ -113,13 +113,12 @@ export const onProjectTaskGitHubSync = functions.region(REGION).firestore
         const projectSnapshot = await projectRef.get();
         const project = projectSnapshot.data() || {};
         const repo = getString(task.githubRepo) || getString(project.githubRepo);
-        let token = getString(project.githubToken);
-        if (!token) {
-            const tokenOwnerId = getString(project.ownerId) || getString(task.createdBy) || getString(task.ownerId);
-            if (tokenOwnerId) {
-                const userSnapshot = await admin.firestore().collection('users').doc(tokenOwnerId).get();
-                token = getString(userSnapshot.data()?.githubToken);
-            }
+        // Tokens are never stored on project docs; use the owner's private token.
+        let token = '';
+        const tokenOwnerId = getString(project.ownerId) || getString(task.createdBy) || getString(task.ownerId);
+        if (tokenOwnerId) {
+            const tokenSnapshot = await admin.firestore().doc(`users/${tokenOwnerId}/private/github`).get();
+            token = getString(tokenSnapshot.data()?.token);
         }
 
         if (project.githubIssueSync !== true || !repo || !token) {

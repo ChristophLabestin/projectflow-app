@@ -1,117 +1,153 @@
 import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
+import { ALLOWED_ORIGINS } from './corsConfig';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
+const INVITABLE_ROLES = ['Admin', 'Member', 'Guest'];
 
-// Helper to generate a unique token
-const generateToken = () => {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+// Workspace invitations live at tenants/{tenantId}/invitations/{inviteId}.
+// Admins create them from the client (validated by firestore.rules); these
+// functions deliver the email and perform the privileged acceptance.
+
+const escapeHtml = (value: string) => value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+const getMemberRole = async (tenantId: string, uid: string): Promise<string | null> => {
+    const snap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    return snap.exists ? String(snap.data()?.role || 'Member') : null;
+};
+
+const resolveAppOrigin = (requested?: unknown) => {
+    if (typeof requested === 'string' && ALLOWED_ORIGINS.includes(requested)) return requested;
+    return process.env.APP_URL || 'https://app.getprojectflow.com';
 };
 
 export const sendInvitation = functions.region(REGION).https.onCall(async (data, context) => {
-    // 1. Validate Request
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
-
-    const { email, type, targetId, role, tenantId: inputTenantId, language } = data;
-    // For workspace invites, inputTenantId might be null if we are inviting TO the tenant context which is usually implicit
-    // Actually, usually inviter is in a tenant. 
-
-    if (!email || !type || !targetId) {
-        throw new functions.https.HttpsError('invalid-argument', 'Missing required fields: email, type, targetId');
+    const { tenantId, inviteId, language, origin } = data || {};
+    if (typeof tenantId !== 'string' || typeof inviteId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and inviteId are required.');
     }
 
-    // Resolve tenantId
-    // If inviting to a project, project might belong to a tenant.
-    // Ideally the frontend passes the tenantId.
-    const tenantId = inputTenantId;
-    if (!tenantId) {
-        throw new functions.https.HttpsError('invalid-argument', 'Tenant ID is required');
+    const role = await getMemberRole(tenantId, context.auth.uid);
+    if (role !== 'Owner' && role !== 'Admin') {
+        throw new functions.https.HttpsError('permission-denied', 'Only workspace admins can send invitations.');
     }
 
-    try {
-        console.log(`Sending invite to ${email} for ${type} ${targetId} in tenant ${tenantId}`);
+    const inviteSnap = await db.doc(`tenants/${tenantId}/invitations/${inviteId}`).get();
+    const invite = inviteSnap.data();
+    if (!inviteSnap.exists || !invite || invite.status !== 'pending' || !invite.email) {
+        throw new functions.https.HttpsError('failed-precondition', 'Invitation is not pending or has no email.');
+    }
 
-        // 2. Create Invite Record
-        const inviteToken = generateToken();
-        // inviteRef removed as it was unused and redundant with docRef logic below
-        // Using auto ID allows multiple invites.
+    const tenantSnap = await db.doc(`tenants/${tenantId}`).get();
+    const workspaceName = escapeHtml(String(tenantSnap.data()?.name || 'ProjectFlow'));
+    const inviteUrl = `${resolveAppOrigin(origin)}/invite/${tenantId}/${inviteId}`;
 
-        // Actually, we might want to check if the user is already a member?
-        // For now, let's just send the invite.
+    const locale = getLocale(language);
+    const content = EMAIL_CONTENT[locale].invitation;
+    const bodyHtml = `${content.bodyPrefix} <strong>${workspaceName}</strong> ${content.rolePrefix} <strong>${escapeHtml(String(invite.role))}</strong>. ${content.bodySuffix}`;
+    const html = getSystemEmailTemplate(content.title, bodyHtml, inviteUrl, content.button, locale);
 
-        // We need to store the invite so the frontend can validate it when the user clicks the link.
-        // Wait, for workspace invites, we usually just add them to the users list or something?
-        // The existing logic uses `getWorkspaceInviteLinks`. Let's see how they work.
-        // `generateWorkspaceInviteLink` in `dataService.ts` just creates a doc in `invites` collection.
+    await sendEmail(invite.email, content.subject, html, { tenantId });
+    return { success: true };
+});
 
-        // Let's emulate that structure but maybe add specific email targeting.
+export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async (data, context) => {
+    if (!context.auth) {
+        throw new functions.https.HttpsError('unauthenticated', 'Sign in to accept the invitation.');
+    }
+    const { tenantId, inviteId } = data || {};
+    if (typeof tenantId !== 'string' || typeof inviteId !== 'string') {
+        throw new functions.https.HttpsError('invalid-argument', 'tenantId and inviteId are required.');
+    }
 
-        const inviteData = {
-            type, // 'workspace' or 'project'
-            targetId, // tenantId or projectId
-            role: role || 'Member',
-            email, // Optional restriction
-            token: inviteToken,
-            createdBy: context.auth.uid,
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-            used: false
-        };
+    const uid = context.auth.uid;
+    const token = context.auth.token;
+    const userRecord = await admin.auth().getUser(uid);
+    const email = String(userRecord.email || token.email || '').toLowerCase();
 
-        // If it's a project invite, we should store it in project invites or similar?
-        // The existing `getProjectInviteLinks` looks at `tenants/{tid}/projects/{pid}/invites`.
+    const inviteRef = db.doc(`tenants/${tenantId}/invitations/${inviteId}`);
+    const memberRef = db.doc(`tenants/${tenantId}/members/${uid}`);
+    const tenantRef = db.doc(`tenants/${tenantId}`);
 
-        let docRef;
-        if (type === 'project') {
-            docRef = db.collection('tenants').doc(tenantId).collection('projects').doc(targetId).collection('invites').doc();
-        } else {
-            docRef = db.collection('tenants').doc(tenantId).collection('invites').doc();
+    const result = await db.runTransaction(async (tx) => {
+        const [inviteSnap, memberSnap, tenantSnap] = await Promise.all([tx.get(inviteRef), tx.get(memberRef), tx.get(tenantRef)]);
+        const invite = inviteSnap.data();
+        if (!inviteSnap.exists || !invite || !tenantSnap.exists) {
+            throw new functions.https.HttpsError('not-found', 'Invitation not found.');
         }
+        if (invite.status !== 'pending') {
+            throw new functions.https.HttpsError('failed-precondition', 'invite-not-pending');
+        }
+        if (invite.expiresAt && Date.parse(invite.expiresAt) < Date.now()) {
+            throw new functions.https.HttpsError('failed-precondition', 'invite-expired');
+        }
+        if (invite.maxUses && Number(invite.uses || 0) >= Number(invite.maxUses)) {
+            throw new functions.https.HttpsError('failed-precondition', 'invite-used-up');
+        }
+        if (invite.kind === 'email' && invite.email && invite.email !== email) {
+            throw new functions.https.HttpsError('permission-denied', 'invite-email-mismatch');
+        }
+        const inviteRole = INVITABLE_ROLES.includes(invite.role) ? invite.role : 'Member';
+        const projectIds: string[] = Array.isArray(invite.projectIds) ? invite.projectIds.filter((id: unknown) => typeof id === 'string') : [];
 
-        await docRef.set(inviteData);
+        const projectSnaps = await Promise.all(projectIds.map((projectId) => tx.get(db.doc(`tenants/${tenantId}/projects/${projectId}`))));
 
-        // 3. Send Email
-        // Construct Link
-        // Assuming app is hosted at something like https://app.projectflow.com or localhost
-        // We need the origin.
-        // For now, let's assume a standard URL structure:
-        // /invite?token=...&type=...
-        // Or /join/...
+        // Existing members keep their (higher) role; only their project access grows.
+        const existingRole = memberSnap.exists ? String(memberSnap.data()?.role || 'Member') : null;
+        const rank: Record<string, number> = { Guest: 0, Member: 1, Admin: 2, Owner: 3 };
+        const role = existingRole && (rank[existingRole] ?? 1) >= (rank[inviteRole] ?? 1) ? existingRole : inviteRole;
 
-        const origin = process.env.APP_URL || 'http://localhost:5173'; // Fallback for dev
-        // In production, we should probably pass the origin from the client or config.
-        // Let's ask client to pass origin? Or just config it.
+        const now = FieldValue.serverTimestamp();
+        tx.set(memberRef, {
+            uid,
+            role,
+            roleIds: memberSnap.data()?.roleIds || [],
+            joinedAt: memberSnap.data()?.joinedAt || now,
+            invitedBy: invite.invitedBy || null,
+            inviteId,
+            displayName: userRecord.displayName || email.split('@')[0] || 'User',
+            email,
+            photoURL: userRecord.photoURL || ''
+        }, { merge: true });
 
-        const inviteUrl = `${origin}/accept-invite?token=${docRef.id}&type=${type}&tenantId=${tenantId}&targetId=${targetId}`;
-        // Note: existing invites rely on doc ID or token field? 
-        // `generateWorkspaceInviteLink` returns the ID. 
-        // Let's assume the ID acts as the token for simplicity unless we implemented a token field lookup.
+        projectSnaps.forEach((projectSnap) => {
+            if (!projectSnap.exists) return;
+            const memberIds: string[] = projectSnap.data()?.memberIds || [];
+            if (memberIds.includes(uid)) return;
+            tx.update(projectSnap.ref, {
+                memberIds: FieldValue.arrayUnion(uid),
+                members: FieldValue.arrayUnion({
+                    userId: uid,
+                    role: 'Editor',
+                    joinedAt: new Date().toISOString(),
+                    invitedBy: invite.invitedBy || null
+                }),
+                [`roles.${uid}`]: 'Editor'
+            });
+        });
 
-        const locale = getLocale(language);
-        const content = EMAIL_CONTENT[locale].invitation;
-        const subject = content.subject;
+        const uses = Number(invite.uses || 0) + 1;
+        const usedUp = invite.kind === 'email' || (invite.maxUses && uses >= Number(invite.maxUses));
+        tx.update(inviteRef, {
+            uses,
+            lastAcceptedBy: uid,
+            lastAcceptedAt: now,
+            ...(usedUp ? { status: 'accepted', acceptedBy: uid, acceptedAt: now } : {})
+        });
 
-        const bodyHtml = `${content.bodyPrefix} <strong>${type}</strong> ${content.rolePrefix} <strong>${role || 'Member'}</strong>. ${content.bodySuffix}`;
+        return { tenantId, role };
+    });
 
-        const html = getSystemEmailTemplate(
-            content.title,
-            bodyHtml,
-            inviteUrl,
-            content.button,
-            locale
-        );
-
-        await sendEmail(email, subject, html, { tenantId });
-
-        return { success: true, message: 'Invitation sent' };
-
-    } catch (error: any) {
-        console.error('Error sending invitation:', error);
-        throw new functions.https.HttpsError('internal', error.message);
-    }
+    return result;
 });

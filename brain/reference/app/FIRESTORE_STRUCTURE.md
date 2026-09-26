@@ -64,22 +64,44 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `lastAction`: `"started" | "resumed" | "snoozed" | "blocked" | "completed" | "cleared"`
 - Native iOS mirrors `focusState` into App Group defaults for widgets, Live Activity, and local reminders. That local mirror is not a Firestore document.
 
+#### ↳ 📂 **`private`** *(owner-only secrets)*
+**Path:** `/users/{userId}/private/{docId}`
+**Access:** Only the owning user (and Cloud Functions via admin SDK). Never put secrets on `users/{uid}` itself — every signed-in user can read it.
+- `github`: `{ token: string, updatedAt: Timestamp }` — the user's GitHub access token (OAuth link or manual PAT). Written by Settings / Project Edit via `setGithubToken`/`clearGithubToken` in `web/services/domain/usersService.ts`. Client GitHub calls use the *current* user's token; `onProjectTaskGitHubSync` uses the project owner's (fallback: task creator/owner). Projects and tenant member docs do not store GitHub tokens.
+
 ### 📂 **`tenants`** (Workspaces)
-**Path:** `/tenants/{tenantId}`
-**Access:** Tenant members can read; Owners can write.
+**Path:** `/tenants/{tenantId}` — `tenantId` is a random document id (never the owner's uid; changed 2026-09-26).
+**Access:** Any member (incl. guests) can read; Owner/Admin can update (only the Owner may change `ownerId`); only the Owner can delete. A signed-in user may create a tenant whose `ownerId` is their uid.
 **Schema:** `Tenant`
+- `tenantId`: string (mirrors the doc id)
 - `name`: string
-- `description`: string
-- `roles`: Map<userId, type> (Cache for O(1) access)
+- `ownerId`: string (uid of the Owner)
+- `createdBy`: string, `createdAt` / `updatedAt`: Timestamp
+
+Every account owns at least one workspace (created on first sign-in by `WorkspaceProvider`) and can belong to any number of others. The active workspace is cached per user in localStorage (`projectflow.activeTenant.{uid}`) and in `users/{uid}.lastTenantId`; switching reloads the app.
 
 #### ↳ 📂 **`members`**
-**Path:** `/tenants/{tenantId}/members/{userId}`
+**Path:** `/tenants/{tenantId}/members/{userId}` — the single source of truth for access.
 **Schema:** `TenantMembership`
 - `uid`: string
-- `role`: "Owner" | "Member" | "Guest" (primary/display role; Owner derived from tenant ownership)
-- `roleIds`: string[] (authoritative stacked CUSTOM role doc ids; Member is implicit, never stored; Owner/Guest are derived). See `roles` below.
-- `joinedAt`: Timestamp
-- `groupIds`: string[] (Workspace groups)
+- `role`: "Owner" | "Admin" | "Member" | "Guest"
+  - Owner/Admin: everything; Admin cannot grant/revoke Admin or touch the Owner.
+  - Member: all workspace data.
+  - Guest: only projects whose `memberIds` contain them (plus docs addressed to them, e.g. notifications).
+- `roleIds`: string[] (stacked CUSTOM role doc ids; see `roles` below)
+- `displayName`, `email`, `photoURL`: profile snapshot for member lists
+- `invitedBy`, `inviteId`: set when joined through an invitation
+- `joinedAt`: Timestamp, `groupIds`: string[]
+
+Members are created only by (a) the workspace creator bootstrapping themselves as Owner in the same batch as the tenant doc, (b) admins, or (c) the `acceptWorkspaceInvite` Cloud Function. Self-join is not possible. "My workspaces" = collection-group query `members where uid == me` (index override in `firestore.indexes.json`).
+
+#### ↳ 📂 **`invitations`**
+**Path:** `/tenants/{tenantId}/invitations/{inviteId}` — the doc id is the secret in the invite link `/invite/{tenantId}/{inviteId}`.
+- `kind`: "email" | "link"; `email`: lowercased address (email kind) or null
+- `role`: "Admin" | "Member" | "Guest" (Admin only by the Owner); `projectIds`: string[] added to project `memberIds` on accept (required for guests)
+- `status`: "pending" | "accepted" | "revoked"; `expiresAt` (ISO, 14 days); `maxUses`, `uses`
+- `tenantName`, `invitedBy`, `invitedByName`, `createdAt`, accept/revoke metadata
+**Access:** admins create/list/revoke; any signed-in user may `get` by id (landing page); invitees with a *verified* email can query their pending invitations via collection group. Acceptance runs in `acceptWorkspaceInvite` (checks status, expiry, uses and email match; never downgrades an existing role). `sendInvitation` emails the link (admins only).
 
 #### ↳ 📂 **`roles`** *(Discord-style custom role definitions)*
 **Path:** `/tenants/{tenantId}/roles/{roleId}`
@@ -299,14 +321,15 @@ These collections are largely public or allow unauthenticated access (e.g., for 
 - `screenshots`: string[] (Legacy URLs)
 - `screenshotFileIds`: string[] (Optional, managed file references)
 - `intakeForm`: Object (optional) — public **project intake** config. `{ enabled, token, title, description, submitLabel, successMessage, allowAttachments, maxAttachments, autoCreateTask, categories: [{ id, label, icon, description, enabled, fields: IntakeField[] }] }`. Written only by the `saveProjectIntakeConfig` Cloud Function; when `enabled`, mirrored to `public_project_intake/{token}`.
+- `reminders`: Array of project-level follow-up reminders. Each reminder is `{ id, title, remindAt, linkedType, linkedId, linkedTitle, isCompleted, createdAt, completedAt }`; `linkedType` can be `project`, `task`, or `initiative`. Project Overview merges these with task-level reminders for the operational follow-up strip.
 
 > **Project Subcollections**
 > These collections exist *within* a project document.
 
 *   **`tasks`**
-    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, dependencies, parentTaskId, nextStep, blockerNote, reminderAt, lastWorkbenchNote, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, githubRepo, githubIssueNumber, githubIssueUrl, githubIssueNodeId, githubIssueState, githubProjectV2Fields, githubSyncedAt, githubSyncError, githubSyncDisabled, ... }`
+    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, dependencies, parentTaskId, nextStep, blockerNote, reminderAt, reminders, lastWorkbenchNote, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, githubRepo, githubIssueNumber, githubIssueUrl, githubIssueNodeId, githubIssueState, githubProjectV2Fields, githubSyncedAt, githubSyncError, githubSyncDisabled, ... }`
         *   Task relationship fields are optional and live on the task document: `dependencies` stores task ids that block this task, inverse "is blocking" links are derived from other tasks' `dependencies`, and `parentTaskId` stores the parent task for task-to-task hierarchy. Adding blocked-by/is-blocking links should mark the blocked task `status: "Blocked"`.
-        *   Full Workbench fields are optional task metadata: `nextStep` is the next concrete action, `blockerNote` explains blocked work, `reminderAt` is a visible reminder date only, and `lastWorkbenchNote` stores the latest quick-log note. They do not create notification backend behavior by themselves.
+        *   Full Workbench fields are optional task metadata: `nextStep` is the next concrete action, `blockerNote` explains blocked work, `reminders` stores multiple task-level follow-up reminders, `reminderAt` mirrors the earliest open reminder date for legacy/sort compatibility, and `lastWorkbenchNote` stores the latest quick-log note. They do not create notification backend behavior by themselves.
         *   Startup/company template seeds use `source: "template"` or `source: "official_template"`, `templateId: "startup_company_formation"`, `templateTrack`, `templateSeedId`, and optional `sourceReferences` to keep generated work editable, filterable, and source-auditable.
         *   GitHub Issues are imported as tasks with `source: "github_issue"` and `externalKey: "github:{owner/repo}:issue:{number}"`. GitHub Projects v2 field snapshots live in `githubProjectV2Fields`. ProjectFlow-to-GitHub sync uses `githubIssueNumber`, `githubIssueUrl`, `githubIssueState`, and `githubSyncedAt`; `githubSyncDisabled` opts out per task.
     *   📄 `Initiative`: `{ title, status, priority, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, successMetric, ... }`
@@ -328,12 +351,6 @@ These collections are largely public or allow unauthenticated access (e.g., for 
     *   ↳ 📂 `checkpoints/{checkpointId}`: `{ phase, summary, validationStatus, filesTouched, commands, createdAt }`
 *   **`codex_followups`**
     *   📄 `CodexFollowUp`: `{ title, status, priority, taskId, sessionId, externalKey, filesTouched, ... }`
-
-#### ↳ 📂 **`invite_links`**
-**Path:** `/tenants/{tenantId}/invite_links/{linkId}`
-**Description:** Publicly readable invite links for joining the workspace.
-
----
 
 ## **Global Module Collections**
 These collections are at the root level but often contain `projectId` references to link them to specific projects.
@@ -383,8 +400,10 @@ because RTDB `onDisconnect` reliably marks users offline on connection loss.
     when unset. The former Firestore `presence` subcollections are retired.
 
 ## **Collection Groups (Queries)**
-Allow querying across all workspaces regardless of hierarchy.
+Workspace isolation: screens only show data of the active workspace. Collection-group queries must filter on something the rules can prove:
 
-*   **`projects`**: Find all projects a user is a member of.
-*   **`tasks`**: Find all tasks assigned to a user across all projects.
-*   **`ideas`**: Find ideas across projects.
+*   **`members`**: `where uid == me` → the user's workspaces.
+*   **`invitations`**: `where email == myVerifiedEmail and status == 'pending'`.
+*   **`projects`**: only by `tenantId`-scoped docs a member can read; project lists use `tenants/{active}/projects` (guests: `where memberIds array-contains uid`).
+*   **`tasks`** / **`initiatives`**: always with `where tenantId == activeTenant`.
+*   `activities`, `subtasks`, `ideas`, `issues`: no collection-group rule — read them via their project path.

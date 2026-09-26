@@ -56,12 +56,14 @@ import {
     findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
+    clearCachedTenantId,
     getCachedTenantId,
     getProjectContextFromRef,
     logActivity,
     projectDocRef,
     projectSubCollection,
     resolveTenantId,
+    setCachedTenantId,
     syncProjectProgress
 } from './internal/workspaceDataCore';
 
@@ -122,27 +124,9 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
     ]
 };
 
-const TENANT_CACHE_KEY = "activeTenantId";
+export const setActiveTenantId = (tenantId: string) => setCachedTenantId(tenantId);
 
-export const setActiveTenantId = (tenantId: string) => {
-    try {
-        if (typeof localStorage !== "undefined") {
-            localStorage.setItem(TENANT_CACHE_KEY, tenantId);
-        }
-    } catch {
-        // best-effort; ignore storage failures
-    }
-};
-
-export const clearActiveTenantId = () => {
-    try {
-        if (typeof localStorage !== "undefined") {
-            localStorage.removeItem(TENANT_CACHE_KEY);
-        }
-    } catch {
-        // ignore
-    }
-};
+export const clearActiveTenantId = () => clearCachedTenantId();
 
 export const getActiveTenantId = () => getCachedTenantId();
 
@@ -452,32 +436,6 @@ export const addActivityEntry = async (projectId: string, payload: Omit<Activity
 };
 
 // --- Tenants / Users ---
-
-export const joinTenant = async (tenantId: string, role: WorkspaceRole = 'Member') => {
-    setActiveTenantId(tenantId);
-    await ensureTenantAndUser(tenantId, role);
-};
-
-export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string, ignoreCache = false) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // 1. Always ensure the user has their own personal tenant
-    await ensureTenantAndUser(user.uid);
-
-    // 2. Determine target tenant
-    // If invited, use that.
-    // If ignoreCache is TRUE, we skip getCachedTenantId() (critical for fresh registrations).
-    // Otherwise, we check cache, then fallback to user.uid.
-    const targetTenant = inviteTenantId || (!ignoreCache && getCachedTenantId()) || user.uid;
-
-    // 3. If target is different (e.g. joined via invite), ensure we are added to that tenant too
-    if (targetTenant !== user.uid) {
-        await ensureTenantAndUser(targetTenant);
-    }
-
-    setActiveTenantId(targetTenant);
-};
 
 // --- Projects ---
 
@@ -813,29 +771,8 @@ export const deleteProjectById = async (projectId: string, tenantId?: string) =>
     return deleteProjectByIdDomain(projectId, tenantId);
 };
 
-export const getSharedProjects = async (): Promise<Project[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    // Query all projects where the user is a member
-    const q = query(
-        collectionGroup(db, PROJECTS),
-        where("memberIds", "array-contains", user.uid)
-    );
-
-    const snapshot = await getDocs(q);
-
-    const projects = snapshot.docs
-        .map(docSnap => ({
-            id: docSnap.id,
-            tenantId: getTenantIdFromRef(docSnap.ref), // Extract tenant from path
-            ...docSnap.data()
-        } as Project))
-        .filter(p => p.ownerId !== user.uid) // Exclude owned projects
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-
-    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project)));
-};
+/** @deprecated See projectsService.getSharedProjects (workspace isolation). */
+export const getSharedProjects = async (): Promise<Project[]> => [];
 
 export const getAllMemberProjects = async (userId: string): Promise<Project[]> => {
     const { getAllMemberProjects: getAllMemberProjectsDomain } = await import('./domain/profileService');
@@ -880,40 +817,9 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
             memberIds: arrayUnion(user.uid)
         });
 
-        // Check if user already exists in tenant members to preserve role
-        const memberRef = tenantMemberDocRef(tenantId, user.uid);
-        const memberSnap = await getDoc(memberRef);
-
-        let targetRole: WorkspaceRole = 'Guest'; // Default for new project-only joins
-
-        if (memberSnap.exists()) {
-            const existing = memberSnap.data();
-            targetRole = existing.role || 'Guest';
-        }
-
-        // Ensure user exists in global users collection
-        await setDoc(
-            userDocRef(user.uid),
-            {
-                uid: user.uid,
-                email: user.email || "",
-                displayName: user.displayName || "User",
-                photoURL: user.photoURL || "",
-                updatedAt: serverTimestamp(),
-            },
-            { merge: true }
-        );
-
-        // Add membership to tenant
-        await setDoc(
-            memberRef,
-            {
-                uid: user.uid,
-                role: targetRole,
-                joinedAt: memberSnap.exists() ? (memberSnap.data().joinedAt || serverTimestamp()) : serverTimestamp(),
-            },
-            { merge: true }
-        );
+        // Workspace membership is granted by invitations only; joining a
+        // project never creates or changes a tenant membership.
+        await ensureTenantAndUser();
 
         await logActivity(
             projectId,
@@ -1079,70 +985,6 @@ export const removeMember = async (
     });
 };
 
-/**
- * Generate a shareable invite link for a project
- */
-export const generateInviteLink = async (
-    projectId: string,
-    role: ProjectRole | string,
-    maxUses?: number,
-    expiresInHours: number = 24,
-    tenantId?: string
-): Promise<string> => {
-    const { generateInviteLink: generateInviteLinkDomain } = await import('./domain/projectAdminService');
-    return generateInviteLinkDomain(projectId, role, maxUses, expiresInHours, tenantId);
-};
-
-/**
- * Validate and use an invite link
- */
-export const validateInviteLink = async (
-    inviteLinkId: string,
-    projectId: string,
-    tenantId: string
-): Promise<ProjectRole> => {
-    const inviteLinkRef = doc(db, `tenants/${tenantId}/projects/${projectId}/inviteLinks`, inviteLinkId);
-    const inviteLinkDoc = await getDoc(inviteLinkRef);
-
-    if (!inviteLinkDoc.exists()) {
-        throw new Error("Invalid invite link");
-    }
-
-    const linkData = inviteLinkDoc.data();
-
-    // Check if link is active
-    if (!linkData.isActive) {
-        throw new Error("This invite link has been disabled");
-    }
-
-    // Check expiration
-    const expiresAt = linkData.expiresAt?.toDate?.() || new Date(linkData.expiresAt);
-    if (expiresAt < new Date()) {
-        throw new Error("This invite link has expired");
-    }
-
-    // Check max uses
-    if (linkData.maxUses && linkData.uses >= linkData.maxUses) {
-        throw new Error("This invite link has reached its maximum number of uses");
-    }
-
-    return linkData.role as ProjectRole;
-};
-
-/**
- * Join a project using an invite link
- */
-export const joinProjectViaLink = async (
-    inviteLinkId: string,
-    projectId: string,
-    tenantId: string
-): Promise<void> => {
-    const { joinProjectViaLink: joinProjectViaLinkDomain } = await import('./domain/inviteLinksService');
-    return joinProjectViaLinkDomain(inviteLinkId, projectId, tenantId);
-};
-
-// --- User Management ---
-
 export const getUsersByIds = async (userIds: string[], tenantId?: string): Promise<Member[]> => {
     if (!userIds || userIds.length === 0) return [];
 
@@ -1174,99 +1016,11 @@ export const getUsersByIds = async (userIds: string[], tenantId?: string): Promi
     return members;
 };
 
-/**
- * Send an email invitation directly
- */
-export const sendTeamInvitation = async (
-    email: string,
-    type: 'workspace' | 'project',
-    targetId: string, // tenantId or projectId
-    role: string,
-    tenantId: string
-): Promise<void> => {
-    const { sendTeamInvitation: sendTeamInvitationDomain } = await import('./domain/projectAdminService');
-    return sendTeamInvitationDomain(email, type, targetId, role, tenantId);
-};
-
-// --- Workspace Invites ---
-
-/**
- * Generate a shareable invite link for a workspace
- */
-export const generateWorkspaceInviteLink = async (
-    role: WorkspaceRole = 'Member',
-    maxUses?: number,
-    expiresInHours: number = 24,
-    tenantId?: string
-): Promise<string> => {
-    const { generateWorkspaceInviteLink: generateWorkspaceInviteLinkDomain } = await import('./domain/inviteLinksService');
-    return generateWorkspaceInviteLinkDomain(role, maxUses, expiresInHours, tenantId);
-};
-
-/**
- * Validate and use a workspace invite link
- */
-export const validateWorkspaceInviteLink = async (
-    inviteLinkId: string,
-    tenantId: string
-): Promise<WorkspaceRole> => {
-    const inviteLinkRef = doc(db, `tenants/${tenantId}/inviteLinks`, inviteLinkId);
-    const inviteLinkDoc = await getDoc(inviteLinkRef);
-
-    if (!inviteLinkDoc.exists()) {
-        throw new Error("Invalid invite link");
-    }
-
-    const linkData = inviteLinkDoc.data();
-
-    if (!linkData.isActive) throw new Error("This invite link has been disabled");
-
-    const expiresAt = linkData.expiresAt?.toDate?.() || new Date(linkData.expiresAt);
-    if (expiresAt < new Date()) throw new Error("This invite link has expired");
-
-    if (linkData.maxUses && linkData.uses >= linkData.maxUses) {
-        throw new Error("This invite link has reached its maximum number of uses");
-    }
-
-    return (linkData.role || 'Member') as WorkspaceRole;
-};
-
-/**
- * Join a workspace using an invite link
- */
-export const joinWorkspaceViaLink = async (
-    inviteLinkId: string,
-    tenantId: string
-): Promise<void> => {
-    const { joinWorkspaceViaLink: joinWorkspaceViaLinkDomain } = await import('./domain/inviteLinksService');
-    return joinWorkspaceViaLinkDomain(inviteLinkId, tenantId);
-};
-
-export const getWorkspaceInviteLinks = async (tenantId?: string): Promise<any[]> => {
-    const { getWorkspaceInviteLinks: getWorkspaceInviteLinksDomain } = await import('./domain/inviteLinksService');
-    return getWorkspaceInviteLinksDomain(tenantId);
-};
-
-export const revokeWorkspaceInviteLink = async (inviteLinkId: string, tenantId?: string) => {
-    const { revokeWorkspaceInviteLink: revokeWorkspaceInviteLinkDomain } = await import('./domain/inviteLinksService');
-    return revokeWorkspaceInviteLinkDomain(inviteLinkId, tenantId);
-};
-
-export const getProjectInviteLinks = async (projectId: string, tenantId?: string): Promise<any[]> => {
-    const { getProjectInviteLinks: getProjectInviteLinksDomain } = await import('./domain/inviteLinksService');
-    return getProjectInviteLinksDomain(projectId, tenantId);
-};
-
-export const revokeProjectInviteLink = async (projectId: string, inviteLinkId: string, tenantId?: string) => {
-    const { revokeProjectInviteLink: revokeProjectInviteLinkDomain } = await import('./domain/inviteLinksService');
-    return revokeProjectInviteLinkDomain(projectId, inviteLinkId, tenantId);
-};
-
 export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {
     const user = auth.currentUser;
     if (!user) return [];
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
     const q = query(projectsCollection(resolvedTenant), where("ownerId", "==", user.uid));
     const snapshot = await getDocs(q);
@@ -1280,7 +1034,7 @@ export const getOrCreatePersonalProject = async (tenantId?: string): Promise<str
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
 
     // 1. Try to find existing personal project
@@ -1315,7 +1069,7 @@ export const getAllWorkspaceProjects = async (
     const user = auth.currentUser;
     if (!user) return [];
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
 
     const snapshot = await getDocs(projectsCollection(resolvedTenant));
@@ -1413,7 +1167,7 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
     const user = auth.currentUser;
     if (!user) return [];
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
 
     // Get all projects first
@@ -1444,7 +1198,7 @@ export const getAllWorkspaceIssues = async (tenantId?: string): Promise<Issue[]>
     const user = auth.currentUser;
     if (!user) return [];
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
 
     // Get all projects first
@@ -1476,7 +1230,7 @@ export const getAllWorkspaceIdeas = async (tenantId?: string): Promise<Idea[]> =
     const user = auth.currentUser;
     if (!user) return [];
 
-    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    const resolvedTenant = tenantId || getCachedTenantId();
     await ensureTenantAndUser(resolvedTenant);
 
     // Get all projects first
@@ -2174,11 +1928,8 @@ export const addComment = async (
             if (issue?.githubIssueNumber) {
                 const project = await getProjectById(projectId, resolvedTenant);
                 if (project?.githubIssueSync && project.githubRepo) {
-                    let githubToken = project.githubToken;
-                    if (!githubToken && user.uid) {
-                        const profile = await getUserProfile(user.uid, resolvedTenant);
-                        githubToken = profile?.githubToken;
-                    }
+                    const { getGithubToken } = await import('./domain/usersService');
+                    const githubToken = user.uid ? await getGithubToken(user.uid) : null;
 
                     if (githubToken) {
                         await addGithubIssueComment(

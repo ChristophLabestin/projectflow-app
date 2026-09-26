@@ -13,6 +13,8 @@ import { useUIState } from '../context/UIContext';
 import { NotificationDropdown } from './NotificationDropdown';
 import logo from '../assets/logo.svg';
 import type { Project, ProjectExternalResource } from '../types';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 
 // ----------------------------------------------------------------------
 // Types
@@ -277,6 +279,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     // Inline workspace / project switch menu open state. Declared here (before the
     // project fetch effect) so that effect can refetch when the menu opens.
     const [menuOpen, setMenuOpen] = React.useState(false);
+    const { activeWorkspace } = useWorkspace();
 
     // ---- Data: projects for the dock ----------------------------------------
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -456,7 +459,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const secondaryAnchors: NavRowDef[] = [
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
         ...(canViewFinance ? [{ key: 'finance', to: '/finance/cockpit', icon: 'account_balance_wallet', label: t('nav.finance') }] : []),
-        { key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') },
+        ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') }] : []),
         { key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') },
     ];
 
@@ -574,7 +577,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     <div className="snav-top">
                         <button type="button" className="snav-ws" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}>
                             <span className="snav-ws__logo"><img src={logo} alt="" /></span>
-                            <span className="snav-ws__name">{t('app.brand')}</span>
+                            <span className="snav-ws__name">{activeWorkspace?.name || t('app.brand')}</span>
                             <span className="material-symbols-outlined snav-ws__chev">unfold_more</span>
                         </button>
                         {isDrawer && (
@@ -719,6 +722,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                             </button>
                         </div>
                         <div className="snav-ws-menu__list">
+                            {!trimmedQuery && <WorkspaceMenuSection />}
                             {!trimmedQuery && (
                                 <button type="button" className="snav-ws-row" onClick={goWorkspace}>
                                     <span className="snav-avatar snav-avatar--finance"><span className="material-symbols-outlined">space_dashboard</span></span>

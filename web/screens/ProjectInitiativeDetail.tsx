@@ -30,6 +30,7 @@ import {
     updateTaskInitiative
 } from '../services/dataService';
 import { useConfirm } from '../context/UIContext';
+import { parseDateValue } from '../utils/taskDates';
 
 export const ProjectInitiativeDetail = () => {
     const { id: projectId, initiativeId } = useParams<{ id: string; initiativeId: string }>();
@@ -764,13 +765,13 @@ export const ProjectInitiativeDetail = () => {
                         <span className="initiative-detail__sidebar-label">{t('taskDetail.timeline.label')}</span>
                         <div className="initiative-detail__date-grid">
                             <DatePicker
-                                value={initiative.startDate ? new Date(initiative.startDate) : null}
+                                value={initiative.startDate ? parseDateValue(initiative.startDate) : null}
                                 onChange={(date) => void applyInitiativeUpdates({ startDate: date ? format(date, 'yyyy-MM-dd') : '' })}
                                 disabled={!canManageInitiative}
                                 placeholder={t('taskDetail.timeline.startDate')}
                             />
                             <DatePicker
-                                value={initiative.dueDate ? new Date(initiative.dueDate) : null}
+                                value={initiative.dueDate ? parseDateValue(initiative.dueDate) : null}
                                 onChange={(date) => void applyInitiativeUpdates({ dueDate: date ? format(date, 'yyyy-MM-dd') : '' })}
                                 disabled={!canManageInitiative}
                                 placeholder={t('taskDetail.timeline.dueDate')}

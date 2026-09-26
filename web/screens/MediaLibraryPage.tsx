@@ -44,7 +44,7 @@ export const MediaLibraryPage: React.FC = () => {
             setLoading(true);
 
             try {
-                const resolvedTenantId = getActiveTenantId() || currentUser.uid;
+                const resolvedTenantId = getActiveTenantId();
 
                 // 1. Fetch Projects
                 const allProjects = await getAllWorkspaceProjects(resolvedTenantId);
@@ -125,7 +125,7 @@ export const MediaLibraryPage: React.FC = () => {
         setIsUploading(true);
 
         try {
-            const resolvedTenantId = getActiveTenantId() || currentUser.uid;
+            const resolvedTenantId = getActiveTenantId();
 
             const uploadPromises = files.map(async (file) => {
                 const uploaded = await uploadTenantFile({
@@ -199,7 +199,7 @@ export const MediaLibraryPage: React.FC = () => {
         if (!confirmed) return;
 
         try {
-            const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
+            const resolvedTenantId = getActiveTenantId();
             if (!resolvedTenantId) {
                 throw new Error('No tenant context');
             }
@@ -222,7 +222,7 @@ export const MediaLibraryPage: React.FC = () => {
         if (!editingImage) return;
         setLoading(true); // Reuse loading state for overlay effect
         try {
-            const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
+            const resolvedTenantId = getActiveTenantId();
             if (!resolvedTenantId) {
                 throw new Error('No tenant context');
             }
@@ -266,7 +266,7 @@ export const MediaLibraryPage: React.FC = () => {
         if (!editingImage) return;
         setLoading(true);
         try {
-            const resolvedTenantId = getActiveTenantId() || currentUser?.uid;
+            const resolvedTenantId = getActiveTenantId();
             if (!resolvedTenantId) {
                 throw new Error('No tenant context');
             }

@@ -288,6 +288,20 @@ export interface ProjectHealthSnapshot {
     summary?: string;
 }
 
+export type ProjectReminderLinkType = 'project' | 'task' | 'initiative';
+
+export interface ProjectReminder {
+    id: string;
+    title: string;
+    remindAt: string;
+    linkedType?: ProjectReminderLinkType;
+    linkedId?: string;
+    linkedTitle?: string;
+    isCompleted?: boolean;
+    createdAt?: string;
+    completedAt?: string;
+}
+
 export interface Project {
     id: string;
     title: string;
@@ -338,7 +352,6 @@ export interface Project {
     updatedAt?: any; // Firestore Timestamp
     tenantId?: string;
     githubRepo?: string; // owner/repo
-    githubToken?: string; // Personal Access Token
     githubIssueSync?: boolean; // Toggle for issue sync
     isPersonal?: boolean; // Hidden personal project
     visibilityGroupIds?: string[]; // IDs of groups that can view this project
@@ -346,6 +359,7 @@ export interface Project {
     overviewLayout?: ProjectOverviewLayout;
     intakeForm?: ProjectIntakeFormSettings;
     billingCustomer?: InvoiceParty; // Gespeicherte Kundenanschrift für Rechnungen (Kundenprojekte)
+    reminders?: ProjectReminder[];
 }
 
 export interface ProjectExternalResource {
@@ -429,7 +443,6 @@ export interface TenantMembership {
     joinedAt: any;
     groupIds?: string[];
     pinnedProjectId?: string;
-    githubToken?: string; // Workspace-specific GitHub token
 }
 
 /**
@@ -441,7 +454,6 @@ export interface Member extends User {
     roleIds?: string[]; // Stacked custom role doc ids
     groupIds?: string[];
     joinedAt?: any;
-    githubToken?: string;
     pinnedProjectId?: string;
 }
 
@@ -491,6 +503,7 @@ export interface Task {
     nextStep?: string;
     blockerNote?: string;
     reminderAt?: string;
+    reminders?: ProjectReminder[];
     lastWorkbenchNote?: string;
     category?: IdeaGroup | IdeaGroup[];
     status?: TaskStatus;

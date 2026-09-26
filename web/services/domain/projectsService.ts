@@ -14,6 +14,7 @@ import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from '../fileStor
 import { toMillis } from '../../utils/time';
 import type { Project, ProjectMember } from '../../types';
 import { resolveActiveTenantId } from './authService';
+import { isGuestInActiveWorkspace } from '../internal/workspaceDataCore';
 
 const TENANTS = 'tenants';
 const PROJECTS = 'projects';
@@ -34,17 +35,7 @@ const resolveProjectDoc = async (projectId: string, tenantId?: string) => {
         }
     }
 
-    const user = auth.currentUser;
-    if (!user) {
-        return null;
-    }
-
-    const [ownedSnapshot, memberSnapshot] = await Promise.all([
-        getDocs(query(collectionGroup(db, PROJECTS), where('ownerId', '==', user.uid))),
-        getDocs(query(collectionGroup(db, PROJECTS), where('memberIds', 'array-contains', user.uid)))
-    ]);
-
-    return [...ownedSnapshot.docs, ...memberSnapshot.docs].find((docSnap) => docSnap.id === projectId) || null;
+    return null;
 };
 
 const getTenantIdFromRef = (ref: { path: string }) => {
@@ -139,6 +130,11 @@ export const hydrateProjectAssets = async (
     options?: ProjectHydrationOptions
 ): Promise<Project[]> => Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, options)));
 
+/**
+ * Projects of the active workspace the current user can see: full members see
+ * every project (private ones only if they belong to them), guests only the
+ * projects they were added to. Other workspaces are reached via the switcher.
+ */
 export const getUserProjects = async (
     tenantId?: string,
     hydrationOptions?: ProjectHydrationOptions
@@ -147,37 +143,33 @@ export const getUserProjects = async (
     const resolvedTenant = resolveActiveTenantId(tenantId);
     if (!user || !resolvedTenant) return [];
 
+    const projectsRef = collection(db, TENANTS, resolvedTenant, PROJECTS);
     const snapshot = await getDocs(
-        query(collection(db, TENANTS, resolvedTenant, PROJECTS), where('ownerId', '==', user.uid))
+        isGuestInActiveWorkspace()
+            ? query(projectsRef, where('memberIds', 'array-contains', user.uid))
+            : projectsRef
     );
 
     const projects = snapshot.docs
         .map((docSnap) => ({ id: docSnap.id, tenantId: resolvedTenant, ...docSnap.data() } as Project))
-        .filter((project) => !project.isPersonal)
+        .filter((project) => isVisibleProject(project, user.uid))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 
     return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, hydrationOptions)));
 };
 
-export const getSharedProjects = async (hydrationOptions?: ProjectHydrationOptions): Promise<Project[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const snapshot = await getDocs(
-        query(collectionGroup(db, PROJECTS), where('memberIds', 'array-contains', user.uid))
-    );
-
-    const projects = snapshot.docs
-        .map((docSnap) => ({
-            id: docSnap.id,
-            tenantId: getTenantIdFromRef(docSnap.ref),
-            ...docSnap.data()
-        } as Project))
-        .filter((project) => project.ownerId !== user.uid)
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-
-    return Promise.all(projects.map((project) => hydrateProjectAssetUrls(project, hydrationOptions)));
+const isVisibleProject = (project: Project, uid: string) => {
+    if (project.isPersonal) return false;
+    if (!project.isPrivate) return true;
+    return project.ownerId === uid || (project.memberIds || []).includes(uid);
 };
+
+/**
+ * @deprecated Workspace isolation: getUserProjects already returns every
+ * project the user can access in the active workspace, including ones shared
+ * with them. Kept so existing callers that merge both lists stay correct.
+ */
+export const getSharedProjects = async (_hydrationOptions?: ProjectHydrationOptions): Promise<Project[]> => [];
 
 export const getProjectMembers = async (projectId: string, tenantId?: string): Promise<string[]> => {
     const projectDoc = await resolveProjectDoc(projectId, tenantId);

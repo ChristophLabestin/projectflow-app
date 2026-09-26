@@ -6,6 +6,7 @@ import { Button } from '../common/Button/Button';
 import { Badge } from '../common/Badge/Badge';
 import { Card } from '../common/Card/Card';
 import { useLanguage } from '../../context/LanguageContext';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface SprintDetailsModalProps {
     isOpen: boolean;
@@ -58,10 +59,10 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
 
     if (!sprint) return null;
 
-    const daysLeft = differenceInDays(new Date(sprint.endDate), new Date());
-    const daysUntilStart = differenceInDays(new Date(sprint.startDate), new Date());
+    const daysLeft = differenceInDays(parseDateValue(sprint.endDate), new Date());
+    const daysUntilStart = differenceInDays(parseDateValue(sprint.startDate), new Date());
     const isOverdue = daysLeft < 0 && sprint.status === 'Active';
-    const duration = differenceInDays(new Date(sprint.endDate), new Date(sprint.startDate));
+    const duration = differenceInDays(parseDateValue(sprint.endDate), parseDateValue(sprint.startDate));
 
     const isCreator = sprint.createdBy === currentUserId || canManageTeam;
     const isMember = sprint.memberIds?.includes(currentUserId);
@@ -132,9 +133,9 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                     <div className="sprint-detail__meta">
                         <span>
                             <span className="material-symbols-outlined">calendar_today</span>
-                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                            {format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale })}
                             <span className="sprint-detail__date-separator">-</span>
-                            {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                            {format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale })}
                         </span>
                         <span>
                             <span className="material-symbols-outlined">schedule</span>

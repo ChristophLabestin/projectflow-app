@@ -9,6 +9,7 @@ import { Select, type SelectOption } from './common/Select/Select';
 import { createInitiative } from '../services/domain/initiativesService';
 import type { Initiative, Task } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { parseDateValue } from '../utils/taskDates';
 
 type InitiativeFormState = Partial<Pick<
     Initiative,
@@ -202,7 +203,7 @@ export const InitiativeCreateModal: React.FC<InitiativeCreateModalProps> = ({
                         <div className="task-field">
                             <label className="section-label">{t('initiatives.fields.startDate')}</label>
                             <DatePicker
-                                value={form.startDate ? new Date(form.startDate) : null}
+                                value={form.startDate ? parseDateValue(form.startDate) : null}
                                 onChange={(date) => {
                                     setForm((current) => ({ ...current, startDate: date ? format(date, 'yyyy-MM-dd') : '' }));
                                     if (error) setError(null);
@@ -212,7 +213,7 @@ export const InitiativeCreateModal: React.FC<InitiativeCreateModalProps> = ({
                         <div className="task-field">
                             <label className="section-label">{t('initiatives.fields.dueDate')}</label>
                             <DatePicker
-                                value={form.dueDate ? new Date(form.dueDate) : null}
+                                value={form.dueDate ? parseDateValue(form.dueDate) : null}
                                 onChange={(date) => {
                                     setForm((current) => ({ ...current, dueDate: date ? format(date, 'yyyy-MM-dd') : '' }));
                                     if (error) setError(null);

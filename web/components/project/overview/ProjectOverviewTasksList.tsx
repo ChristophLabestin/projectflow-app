@@ -4,6 +4,7 @@ import type { Locale } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { Task } from '../../../types';
 import { useLanguage } from '../../../context/LanguageContext';
+import { isDateOverdue, parseDateValue } from '../../../utils/taskDates';
 
 type SubtaskStats = Record<string, { done: number; total: number }>;
 
@@ -74,8 +75,8 @@ export const ProjectOverviewTasksList: React.FC<ProjectOverviewTasksListProps> =
                     <span>{t('projectOverview.workspace.columns.due')}</span>
                 </div>
                 {tasks.map((task) => {
-                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-                    const isOverdue = Boolean(dueDate && dueDate < new Date() && !task.isCompleted);
+                    const dueDate = task.dueDate ? parseDateValue(task.dueDate) : null;
+                    const isOverdue = Boolean(dueDate && isDateOverdue(dueDate) && !task.isCompleted);
                     const priorityKey = task.priority?.toLowerCase() || '';
                     const priorityClass = priorityKey === 'urgent'
                         ? 'is-urgent'

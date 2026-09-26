@@ -3,15 +3,15 @@ import { Project, ProjectMember, ProjectRole } from '../../types';
 import { Button } from '../common/Button/Button';
 import { Select } from '../common/Select/Select';
 import { Badge } from '../common/Badge/Badge';
-import { TextInput } from '../common/Input/TextInput';
 import {
     updateMemberRole,
     removeMember,
 } from '../../services/dataService';
-import { generateInviteLink } from '../../services/domain/projectAdminService';
 import { resolveActiveTenantId } from '../../services/domain/authService';
 import { getUserProfile } from '../../services/domain/usersService';
-import { getProjectInviteLinks, revokeProjectInviteLink } from '../../services/domain/inviteLinksService';
+import { listInvitations, revokeInvitation, type WorkspaceInvitation } from '../../services/domain/workspacesService';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { InviteToWorkspaceModal } from '../workspace/InviteToWorkspaceModal';
 import { auth, db } from '../../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useConfirm, useToast } from '../../context/UIContext';
@@ -36,11 +36,11 @@ interface EnrichedMember extends ProjectMember {
 
 export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project, canManage, customRoles: passedRoles, loadingRoles }) => {
     const [members, setMembers] = useState<EnrichedMember[]>([]);
-    const [inviteLinks, setInviteLinks] = useState<any[]>([]);
+    const [inviteLinks, setInviteLinks] = useState<WorkspaceInvitation[]>([]);
     const [loading, setLoading] = useState(true);
-    const [inviteRole, setInviteRole] = useState<ProjectRole | string>('Editor');
-    const [generatedLink, setGeneratedLink] = useState<string>('');
-    const [isGenerating, setIsGenerating] = useState(false);
+    const [isInviteOpen, setInviteOpen] = useState(false);
+    const { activeWorkspace } = useWorkspace();
+    const canInvite = canManage && (activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin');
     const [internalCustomRoles, setInternalCustomRoles] = useState<CustomRole[]>([]);
     const customRoles = passedRoles || internalCustomRoles;
     const confirm = useConfirm();
@@ -97,12 +97,12 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     }, [project.id, project.tenantId]);
 
     const loadInviteLinks = async () => {
-        if (!canManage) return;
+        if (!canInvite || !project.tenantId) return;
         try {
-            const links = await getProjectInviteLinks(project.id, project.tenantId);
-            setInviteLinks(links);
+            const invitations = await listInvitations(project.tenantId);
+            setInviteLinks(invitations.filter((invite) => invite.projectIds?.includes(project.id)));
         } catch (e) {
-            console.error("Failed to load invite links", e);
+            console.error("Failed to load invitations", e);
         }
     };
 
@@ -111,13 +111,6 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             const roles = await getWorkspaceRoles(project.tenantId);
             setInternalCustomRoles(roles);
 
-            // Set default invite role if not already set or if it was 'Editor' (legacy default)
-            const defaultRole = roles.find(r => r.isDefault);
-            if (defaultRole && (inviteRole === 'Editor' || inviteRole === 'Viewer')) {
-                setInviteRole(defaultRole.id);
-            } else if (roles.length > 0 && (inviteRole === 'Editor' || inviteRole === 'Viewer')) {
-                setInviteRole(roles[0].id);
-            }
         } catch (e) {
             console.error("Failed to load custom roles", e);
         }
@@ -145,28 +138,13 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
         }
     };
 
-    const handleGenerateLink = async () => {
-        if (!canManage) return;
-        setIsGenerating(true);
-        try {
-            const link = await generateInviteLink(project.id, inviteRole, undefined, 72, project.tenantId); // 72 hours expiration
-            setGeneratedLink(link);
-            loadInviteLinks();
-        } catch (e) {
-            console.error("Failed to generate link", e);
-            showError(t('projectTeam.errors.generateInvite'));
-        } finally {
-            setIsGenerating(false);
-        }
-    };
-
-    const handleRevokeLink = async (linkId: string) => {
+    const handleRevokeLink = async (inviteId: string) => {
         if (!await confirm(t('projectTeam.confirm.revokeTitle'), t('projectTeam.confirm.revokeMessage'))) return;
         try {
-            await revokeProjectInviteLink(project.id, linkId, project.tenantId);
+            await revokeInvitation(project.tenantId || '', inviteId);
             loadInviteLinks();
         } catch (e) {
-            console.error("Failed to revoke link", e);
+            console.error("Failed to revoke invitation", e);
             showError(t('projectTeam.errors.revokeInvite'));
         }
     };
@@ -186,12 +164,6 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
         const isLegacy = ['Viewer', 'Editor'].includes(currentRole) && !customRoles.find(r => r.id === currentRole);
         if (!isLegacy) return baseRoleOptions;
         return [{ value: currentRole, label: `${currentRole} (${legacySuffix})` }, ...baseRoleOptions];
-    };
-
-    const getInviteRoleOptions = () => {
-        const isLegacy = ['Viewer', 'Editor'].includes(inviteRole) && !customRoles.find(r => r.id === inviteRole);
-        if (!isLegacy) return baseRoleOptions;
-        return [{ value: inviteRole, label: `${inviteRole} (${legacySuffix})` }, ...baseRoleOptions];
     };
 
     const summaryCards = [
@@ -314,102 +286,77 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                 </div>
             </section>
 
-            {/* Invite Section */}
+            {/* Invite Section — invitations add people to the workspace with access to this project */}
             {canManage && (
                 <section className="project-team__section project-team__section--invite">
                     <div className="project-team__divider" />
                     <div className="project-team__header">
                         <div>
                             <h3 className="project-team__title">{t('projectTeam.invite.title')}</h3>
-                            <p className="project-team__subtitle">{t('projectTeam.invite.subtitle')}</p>
+                            <p className="project-team__subtitle">
+                                {canInvite ? t('projectTeam.invite.subtitle') : t('projectTeam.invite.adminOnly')}
+                            </p>
                         </div>
-                    </div>
-
-                    <div className="project-team__invite-card">
-                        <div className="project-team__invite-row">
-                            <Select
-                                value={inviteRole}
-                                onChange={(value) => setInviteRole(String(value))}
-                                options={getInviteRoleOptions()}
-                                className="project-team__invite-select"
-                            />
+                        {canInvite && (
                             <Button
                                 variant="primary"
-                                onClick={handleGenerateLink}
-                                isLoading={isGenerating}
-                                icon={<span className="material-symbols-outlined">link</span>}
-                                className="project-team__invite-button"
+                                onClick={() => setInviteOpen(true)}
+                                icon={<span className="material-symbols-outlined">person_add</span>}
                             >
-                                {t('projectTeam.invite.generate')}
+                                {t('projectTeam.invite.cta')}
                             </Button>
-                        </div>
-
-                        {generatedLink && (
-                            <div className="project-team__invite-link animate-fade-in">
-                                <TextInput
-                                    value={generatedLink}
-                                    readOnly
-                                    className="project-team__link-input"
-                                />
-                                <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>
-                                    {t('common.copy')}
-                                </Button>
-                            </div>
                         )}
                     </div>
 
-                    {/* Active Invite Links */}
                     {inviteLinks.length > 0 && (
                         <div className="project-team__links">
                             <h4 className="project-team__links-title">{t('projectTeam.invite.active')}</h4>
                             <div className="project-team__links-list">
-                                {inviteLinks.map(link => {
-                                    const roleInfo = getRoleDisplayInfo(customRoles, link.role);
-                                    const expiresAt = new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt);
-                                    return (
-                                        <div key={link.id} className="project-team__link-row">
-                                            <Badge
-                                                variant="neutral"
-                                                className="project-team__role-badge"
-                                                style={{
-                                                    backgroundColor: `${roleInfo.color}20`,
-                                                    color: roleInfo.color,
-                                                    borderColor: `${roleInfo.color}40`
-                                                }}
-                                            >
-                                                {roleInfo.name}
-                                            </Badge>
-                                            <div className="project-team__link-meta">
+                                {inviteLinks.map(invite => (
+                                    <div key={invite.id} className="project-team__link-row">
+                                        <Badge variant="neutral" className="project-team__role-badge">
+                                            {t(`workspace.role.${invite.role}`)}
+                                        </Badge>
+                                        <div className="project-team__link-meta">
+                                            <span className="project-team__link-author">
+                                                {invite.email || t('workspace.invite.kind.link')}
+                                            </span>
+                                            {invite.expiresAt && (
                                                 <span className="project-team__link-expires">
-                                                    {t('projectTeam.invite.expires').replace('{date}', format(expiresAt, dateFormat, { locale: dateLocale }))}
+                                                    {t('projectTeam.invite.expires').replace('{date}', format(new Date(invite.expiresAt), dateFormat, { locale: dateLocale }))}
                                                 </span>
-                                                <span className="project-team__link-author">
-                                                    {t('projectTeam.invite.createdByYou')}
-                                                </span>
-                                            </div>
-                                            <div className="project-team__link-actions">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => copyToClipboard(`${window.location.origin}/join/${link.id}?projectId=${project.id}&tenantId=${project.tenantId}`)}
-                                                    className="project-team__link-action"
-                                                >
-                                                    {t('projectTeam.invite.copyLink')}
-                                                </button>
-                                                <span className="project-team__link-separator" />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRevokeLink(link.id)}
-                                                    className="project-team__link-action project-team__link-action--danger"
-                                                >
-                                                    {t('projectTeam.invite.revoke')}
-                                                </button>
-                                            </div>
+                                            )}
                                         </div>
-                                    );
-                                })}
+                                        <div className="project-team__link-actions">
+                                            <button
+                                                type="button"
+                                                onClick={() => copyToClipboard(`${window.location.origin}/invite/${invite.tenantId}/${invite.id}`)}
+                                                className="project-team__link-action"
+                                            >
+                                                {t('projectTeam.invite.copyLink')}
+                                            </button>
+                                            <span className="project-team__link-separator" />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRevokeLink(invite.id)}
+                                                className="project-team__link-action project-team__link-action--danger"
+                                            >
+                                                {t('projectTeam.invite.revoke')}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
+                    <InviteToWorkspaceModal
+                        isOpen={isInviteOpen}
+                        onClose={() => setInviteOpen(false)}
+                        projects={[project]}
+                        initialProjectIds={[project.id]}
+                        initialRole="Guest"
+                        onCreated={loadInviteLinks}
+                    />
                 </section>
             )}
         </div>

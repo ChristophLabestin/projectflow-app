@@ -50,7 +50,6 @@ const PROJECT_WRITE_FIELDS = [
     'squareIcon',
     'screenshots',
     'githubRepo',
-    'githubToken',
     'overviewLayout',
     'members',
     'memberIds',
@@ -261,6 +260,14 @@ const authRequest = async (req, res, permission, projectId, allowScopedList = fa
     if (validation.tenantId && validation.tenantId !== tenantId) {
         forbidden(res, 'Token tenant mismatch.');
         return null;
+    }
+    // Signed-in users (Firebase ID token) must be full members of the tenant.
+    if (validation.tokenData.authType === 'firebase') {
+        const role = await (0, authUtils_1.getWorkspaceMemberRole)(tenantId, validation.tokenData.uid);
+        if (!role || role === 'Guest') {
+            forbidden(res, 'Not a member of this workspace.');
+            return null;
+        }
     }
     const scopedProjectId = getString(validation.tokenData.projectScope);
     if (scopedProjectId) {

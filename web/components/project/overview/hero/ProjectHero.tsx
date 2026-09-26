@@ -45,6 +45,7 @@ export type ProjectHeroProps = {
     onToggleWide: () => void;
     coverExpanded: boolean;
     onToggleCoverExpand: () => void;
+    reminders?: React.ReactNode;
     t: (key: string, fallback?: string) => string;
 };
 
@@ -116,6 +117,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     onToggleWide,
     coverExpanded,
     onToggleCoverExpand,
+    reminders,
     t
 }) => {
     const [menuOpen, setMenuOpen] = useState(false);
@@ -227,6 +229,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                 </div>
 
                 <div className="po-hero__actions">
+                    {reminders}
                     <button
                         type="button"
                         className={`po-hero__icon-btn ${isWide ? 'is-active' : ''}`.trim()}

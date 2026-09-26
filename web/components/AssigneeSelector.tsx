@@ -24,7 +24,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({ projectId, v
             setMembers(m);
 
             // 2. Fetch Tenant Users to resolve names (best effort)
-            const tenantId = getActiveTenantId() || auth.currentUser?.uid;
+            const tenantId = getActiveTenantId();
             if (tenantId) {
                 const unsub = subscribeTenantUsers((users) => {
                     const map: Record<string, any> = {};

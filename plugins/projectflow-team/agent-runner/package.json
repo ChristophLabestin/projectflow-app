@@ -1,0 +1,10 @@
+{
+  "name": "projectflow-team-runner",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Report-Runner + autonome Provisionierung (hire-agent) für das ProjectFlow-Team.",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

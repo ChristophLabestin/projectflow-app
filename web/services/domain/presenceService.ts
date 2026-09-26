@@ -53,7 +53,7 @@ export const presenceEnabled = (): boolean => !!rtdb;
 const statusPath = (tenantId: string, uid: string) => `status/${tenantId}/${uid}`;
 
 const resolveTenant = (tenantId?: string) =>
-    resolveActiveTenantId(tenantId) || auth.currentUser?.uid;
+    resolveActiveTenantId(tenantId);
 
 /**
  * Establish presence for the current user. Returns a handle for updating state

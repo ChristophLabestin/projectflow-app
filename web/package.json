@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:emulator": "vite --mode emulator",
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "npm run build && firebase deploy --only hosting --config ../firebase.json",
@@ -43,7 +44,7 @@
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
     "dotenv": "^17.2.3",
-    "firebase": "^12.6.0",
+    "firebase": "^12.19.0",
     "framer-motion": "^12.23.26",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",

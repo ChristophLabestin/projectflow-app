@@ -1,0 +1,11 @@
+{
+  "_comment": "BEISPIEL. Die echte tokens.json erzeugt das Seed-Skript (enthaelt geheime API-Tokens und ist .gitignore-t).",
+  "apiBase": "https://europe-west3-projectflow-labestin.cloudfunctions.net/api",
+  "tenantId": "<TENANT_ID>",
+  "projectId": "<PROJECT_ID>",
+  "generatedAt": "2026-06-30T00:00:00.000Z",
+  "agents": {
+    "carla": { "uid": "<uid>", "displayName": "Carla Brandt", "shortName": "Carla", "function": "Chief of Staff", "email": "carla@agents.labestindigital.internal", "token": "pfat_xxx", "tokenId": "<id>", "photoURL": "https://..." },
+    "mara":  { "uid": "<uid>", "displayName": "Mara Keller",  "shortName": "Mara",  "function": "Marketing Manager", "email": "mara@agents.labestindigital.internal", "token": "pfat_xxx", "tokenId": "<id>", "photoURL": "https://..." }
+  }
+}

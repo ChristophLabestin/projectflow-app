@@ -1,0 +1,9 @@
+# Geheimnisse & Credentials niemals committen
+mcp/tokens.json
+**/sa.json
+**/service-account*.json
+**/*.serviceaccount.json
+GOOGLE_APPLICATION_CREDENTIALS*
+
+# Node
+**/node_modules/

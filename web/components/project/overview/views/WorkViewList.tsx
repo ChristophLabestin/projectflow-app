@@ -2,6 +2,7 @@ import React from 'react';
 import { format } from 'date-fns';
 import type { WorkViewContext } from './shared/viewTypes';
 import type { WorkItem } from './shared/useWorkItems';
+import { isDateOverdue, parseDateValue } from '../../../../utils/taskDates';
 
 const STATUS_VALUES = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'];
 const PRIORITY_VALUES = ['Low', 'Medium', 'High', 'Urgent'];
@@ -9,8 +10,8 @@ const PRIORITY_VALUES = ['Low', 'Medium', 'High', 'Urgent'];
 const Row: React.FC<{ item: WorkItem; ctx: WorkViewContext }> = ({ item, ctx }) => {
     const { labels, dateFormat, dateLocale, canManageTasks, t, onItemClick, onToggleComplete, onUpdateItemStatus, initiativeColors } = ctx;
     const initiativeColor = item.initiativeId ? initiativeColors[item.initiativeId] : undefined;
-    const due = item.dueDate ? new Date(item.dueDate) : null;
-    const isOverdue = Boolean(due && due < new Date() && !item.isCompleted);
+    const due = item.dueDate ? parseDateValue(item.dueDate) : null;
+    const isOverdue = Boolean(due && isDateOverdue(due) && !item.isCompleted);
     const priorityClass = item.priority === 'Urgent' ? 'is-urgent' : item.priority === 'High' ? 'is-high' : '';
 
     return (

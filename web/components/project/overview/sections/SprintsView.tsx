@@ -5,6 +5,7 @@ import type { Locale } from 'date-fns';
 import type { Sprint, Task } from '../../../../types';
 import type { OverviewMember } from '../hooks/useProjectMembers';
 import type { OverviewLabels } from '../hooks/useProjectOverviewLabels';
+import { parseDateValue } from '../../../../utils/taskDates';
 
 type SprintsViewProps = {
     sprints: Sprint[];
@@ -36,8 +37,8 @@ const sprintMetrics = (sprint: Sprint, tasks: Task[]) => {
     const done = sprintTasks.filter(isDone).length;
     const completion = total ? clampPct((done / total) * 100) : 0;
 
-    const start = new Date(sprint.startDate);
-    const end = new Date(sprint.endDate);
+    const start = parseDateValue(sprint.startDate);
+    const end = parseDateValue(sprint.endDate);
     const today = new Date();
     const totalDays = Math.max(1, differenceInCalendarDays(end, start));
     const elapsed = differenceInCalendarDays(today, start);
@@ -90,11 +91,11 @@ export const SprintsView: React.FC<SprintsViewProps> = ({
     }
 
     const active = sprints.filter((s) => s.status === 'Active')
-        .sort((a, b) => new Date(a.endDate).getTime() - new Date(b.endDate).getTime());
+        .sort((a, b) => parseDateValue(a.endDate).getTime() - parseDateValue(b.endDate).getTime());
     const planning = sprints.filter((s) => s.status === 'Planning')
-        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        .sort((a, b) => parseDateValue(a.startDate).getTime() - parseDateValue(b.startDate).getTime());
     const closed = sprints.filter((s) => s.status === 'Completed' || s.status === 'Archived')
-        .sort((a, b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+        .sort((a, b) => parseDateValue(b.endDate).getTime() - parseDateValue(a.endDate).getTime());
 
     // Aggregate header stats.
     const sprintTaskIds = new Set(sprints.map((s) => s.id));
@@ -198,7 +199,7 @@ export const SprintsView: React.FC<SprintsViewProps> = ({
                                 <footer className="po-sprint__foot">
                                     <span className="po-sprint__dates">
                                         <span className="material-symbols-outlined">calendar_today</span>
-                                        {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })} – {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                                        {format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale })} – {format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale })}
                                     </span>
                                     {m.blocked > 0 && (
                                         <span className="po-sprint__blocked" data-status="Blocked">
@@ -222,7 +223,7 @@ export const SprintsView: React.FC<SprintsViewProps> = ({
                         <h4 className="po-sprints__col-title">{t('projectOverview.v2.sprints.upcoming', 'Upcoming')}</h4>
                         {planning.map((sprint) => {
                             const m = sprintMetrics(sprint, tasks);
-                            const startsIn = differenceInCalendarDays(new Date(sprint.startDate), new Date());
+                            const startsIn = differenceInCalendarDays(parseDateValue(sprint.startDate), new Date());
                             return (
                                 <div key={sprint.id} className="po-sprints__mini">
                                     <div className="po-sprints__mini-main">
@@ -232,7 +233,7 @@ export const SprintsView: React.FC<SprintsViewProps> = ({
                                     <span className="po-sprints__mini-meta">
                                         {startsIn >= 0
                                             ? t('projectOverview.v2.sprints.startsIn', 'in {count}d').replace('{count}', String(startsIn))
-                                            : format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                                            : format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale })}
                                     </span>
                                 </div>
                             );
@@ -248,7 +249,7 @@ export const SprintsView: React.FC<SprintsViewProps> = ({
                                 <div key={sprint.id} className="po-sprints__mini">
                                     <div className="po-sprints__mini-main">
                                         <strong>{sprint.name}</strong>
-                                        <span>{format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}</span>
+                                        <span>{format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale })}</span>
                                     </div>
                                     <span className="po-sprints__mini-pct" data-status={m.completion >= 100 ? 'Done' : 'Review'}>{m.completion}%</span>
                                 </div>

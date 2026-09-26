@@ -1,0 +1,16 @@
+{
+  "name": "projectflow-team-seed",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Seedet 9 AI-Mitarbeiter (Accounts, Mitgliedschaften, API-Tokens) und einen gelebten Backlog in ProjectFlow.",
+  "scripts": {
+    "seed:dry": "node seed.mjs",
+    "seed": "node seed.mjs --confirm-prod",
+    "teardown:dry": "node teardown.mjs",
+    "teardown": "node teardown.mjs --confirm-prod"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

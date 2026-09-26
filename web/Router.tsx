@@ -12,10 +12,7 @@ import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
 import { Team } from './screens/Team';
-import { InviteLanding } from './screens/InviteLanding';
-import { ProjectInviteLanding } from './screens/ProjectInviteLanding';
-import { JoinProjectViaLink } from './screens/JoinProjectViaLink';
-import { JoinWorkspaceViaLink } from './screens/JoinWorkspaceViaLink';
+import { AcceptInvite } from './screens/AcceptInvite';
 import { Profile } from './screens/Profile';
 import { Notifications } from './screens/Notifications';
 import { MediaLibraryPage } from './screens/MediaLibraryPage';
@@ -162,7 +159,7 @@ const CreateProjectModalRoute = () => {
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/register|\/invite|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
 
     return (
         <>
@@ -219,10 +216,7 @@ export const AppRouter = () => {
                     <Route path="/register" element={<Login />} />
                     <Route path="/auth/action" element={<AuthAction />} />
                     <Route path="/legal/:type" element={<LegalPage />} />
-                    <Route path="/invite/:tenantId" element={<InviteLanding />} />
-                    <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
-                    <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
-                    <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
+                    <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
                     <Route path="/feedback/project/:token" element={withRouteSuspense(<PublicProjectIntakePage />)} />
 

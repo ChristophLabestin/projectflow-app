@@ -5,6 +5,7 @@ import { Initiative, Task, TaskStatus } from '../../../types';
 import { Badge } from '../../common/Badge/Badge';
 import { useLanguage } from '../../../context/LanguageContext';
 import './project-overview-work-views.scss';
+import { parseDateValue } from '../../../utils/taskDates';
 
 type BoardLane = {
     id: string;
@@ -131,7 +132,7 @@ export const ProjectOverviewWorkBoard: React.FC<ProjectOverviewWorkBoardProps> =
                                                 </Badge>
                                             )}
                                             {task.dueDate && (
-                                                <span>{format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}</span>
+                                                <span>{format(parseDateValue(task.dueDate), dateFormat, { locale: dateLocale })}</span>
                                             )}
                                         </div>
                                     </button>

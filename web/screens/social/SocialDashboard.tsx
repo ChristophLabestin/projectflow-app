@@ -9,6 +9,7 @@ import { DashboardCampaignCard } from './components/DashboardCampaignCard';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 import { Button } from '../../components/ui/Button';
+import { parseDateValue } from '../../utils/taskDates';
 
 export const SocialDashboard = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -361,7 +362,7 @@ const QuickStatBox = ({ label, value, icon, color }: { label: string; value: num
 const CampaignRow = ({ campaign, projectId, postsCount }: { campaign: SocialCampaign; projectId: string; postsCount: number }) => {
     const { t } = useLanguage();
     const brandColor = campaign.color || '#E1306C';
-    const progress = campaign.endDate ? Math.round((differenceInDays(new Date(), new Date(campaign.startDate)) / differenceInDays(new Date(campaign.endDate), new Date(campaign.startDate))) * 100) : 0;
+    const progress = campaign.endDate ? Math.round((differenceInDays(new Date(), parseDateValue(campaign.startDate)) / differenceInDays(parseDateValue(campaign.endDate), parseDateValue(campaign.startDate))) * 100) : 0;
     const cleanProgress = Math.min(Math.max(progress, 0), 100);
     const statusLabel = getSocialCampaignStatusLabel(campaign.status, t);
 

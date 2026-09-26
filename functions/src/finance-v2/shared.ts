@@ -1,4 +1,4 @@
-import * as admin from 'firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions/v1';
 
@@ -94,7 +94,7 @@ const MEMBER_GRANTED_PERMISSIONS: FinancePermissionNode[] = [
     'tenant.finance.view',
 ];
 
-export const serverTimestamp = admin.firestore.FieldValue.serverTimestamp;
+export const serverTimestamp = () => FieldValue.serverTimestamp();
 
 export const normalizeString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 

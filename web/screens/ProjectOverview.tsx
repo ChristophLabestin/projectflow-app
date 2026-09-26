@@ -6,13 +6,13 @@ import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { addActivityEntry, createInitiativeTask, getAllWorkspaceProjects, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectInitiatives } from '../services/dataService';
 import { addTask } from '../services/domain/tasksService';
-import { deleteProjectById, generateInviteLink, sendTeamInvitation, updateProjectFields } from '../services/domain/projectAdminService';
+import { deleteProjectById, updateProjectFields } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { getLatestGeminiReport, saveGeminiReport, saveHealthSnapshot } from '../services/domain/projectInsightsService';
 import { subscribeProjectMilestones, updateMilestone } from '../services/domain/projectMetaService';
 import { getProjectById, getProjectMembers } from '../services/domain/projectsService';
 import { getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
-import { getUserProfile } from '../services/domain/usersService';
+import { getGithubToken, getUserProfile } from '../services/domain/usersService';
 import { isPmCoreOnly } from '../config/pmCore';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { subscribeProjectSprints } from '../services/sprintService';
@@ -53,7 +53,7 @@ import { Select, type SelectOption } from '../components/common/Select/Select';
 import { TextInput } from '../components/common/Input/TextInput';
 import { Checkbox } from '../components/common/Checkbox/Checkbox';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
-import { InviteMemberModal } from '../components/InviteMemberModal';
+import { InviteToWorkspaceModal } from '../components/workspace/InviteToWorkspaceModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
@@ -66,6 +66,7 @@ import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
 import { ProjectTriageModal } from '../components/project/ProjectTriageModal';
 import { getStartupJurisdictionTemplate, getStartupSourceReferences, isCompanyProject, isSoftwareProject, STARTUP_JURISDICTION_SEED_TASKS, STARTUP_TRACK_DEFINITIONS } from '../config/projectTemplates';
 import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStageReadinessDefaults, getStartupStagePhase, getStartupStageKey } from '../utils/startupProjects';
+import { parseDateValue, isDateOverdue } from '../utils/taskDates';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
@@ -782,11 +783,7 @@ const ProjectOverviewLegacy = () => {
 
             try {
                 const user = auth.currentUser;
-                let token = project.githubToken;
-                if (!token && user?.uid) {
-                    const profile = await getUserProfile(user.uid, project.tenantId);
-                    token = profile?.githubToken;
-                }
+                const token = user?.uid ? (await getGithubToken(user.uid)) ?? undefined : undefined;
 
                 const commits = await fetchLastCommits(project.githubRepo, token);
                 if (mounted) {
@@ -810,7 +807,7 @@ const ProjectOverviewLegacy = () => {
         return () => {
             mounted = false;
         };
-    }, [project?.githubRepo, project?.githubToken, project?.tenantId, project?.modules]);
+    }, [project?.githubRepo, project?.tenantId, project?.modules]);
 
     // Fetch team member profiles
     useEffect(() => {
@@ -1663,8 +1660,8 @@ const ProjectOverviewLegacy = () => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
             if (pA !== pB) return pB - pA; // Descending Priority
-            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
             return dateA - dateB; // Ascending Due Date
         })
         .slice(0, 10);
@@ -1675,8 +1672,8 @@ const ProjectOverviewLegacy = () => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
             if (pA !== pB) return pB - pA;
-            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
             return dateA - dateB;
         });
 
@@ -1687,8 +1684,8 @@ const ProjectOverviewLegacy = () => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
             if (pA !== pB) return pB - pA;
-            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
-            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
             return dateA - dateB;
         });
 
@@ -2273,8 +2270,8 @@ const ProjectOverviewLegacy = () => {
                                 <span>{t('projectOverview.workspace.columns.due')}</span>
                             </div>
                             {displayedTasks.slice(0, taskDisplayLimit).map((task) => {
-                                const dueDate = task.dueDate ? new Date(task.dueDate) : null;
-                                const isOverdue = Boolean(dueDate && dueDate < new Date() && !task.isCompleted);
+                                const dueDate = task.dueDate ? parseDateValue(task.dueDate) : null;
+                                const isOverdue = Boolean(dueDate && isDateOverdue(dueDate) && !task.isCompleted);
                                 const priorityKey = task.priority?.toLowerCase() || '';
                                 const priorityClass = priorityKey === 'urgent'
                                     ? 'is-urgent'
@@ -2380,8 +2377,8 @@ const ProjectOverviewLegacy = () => {
                                 const initiativeTasks = tasks.filter((task) => task.initiativeId === initiative.id);
                                 const doneSub = initiativeTasks.filter((task) => task.isCompleted || task.status === 'Done').length;
                                 const totalSub = initiativeTasks.length;
-                                const dueDate = initiative.dueDate ? new Date(initiative.dueDate) : null;
-                                const isOverdue = Boolean(dueDate && dueDate < new Date() && initiative.status !== 'Done');
+                                const dueDate = initiative.dueDate ? parseDateValue(initiative.dueDate) : null;
+                                const isOverdue = Boolean(dueDate && isDateOverdue(dueDate) && initiative.status !== 'Done');
                                 const priorityKey = initiative.priority?.toLowerCase() || '';
                                 const priorityClass = priorityKey === 'urgent'
                                     ? 'is-urgent'
@@ -2538,7 +2535,7 @@ const ProjectOverviewLegacy = () => {
                             const dueDateStr = issue.dueDate || issue.scheduledDate;
                             const dueDate = dueDateStr ? new Date(dueDateStr) : null;
                             const isResolved = ['Resolved', 'Closed'].includes(issue.status);
-                            const isOverdue = Boolean(dueDate && dueDate < new Date() && !isResolved);
+                            const isOverdue = Boolean(dueDate && isDateOverdue(dueDate) && !isResolved);
                             const priorityKey = issue.priority?.toLowerCase() || '';
                             const priorityClass = priorityKey === 'urgent'
                                 ? 'is-urgent'
@@ -2852,13 +2849,13 @@ const ProjectOverviewLegacy = () => {
                         <div>
                             <p className="date-label">{t('projectOverview.planning.start')}</p>
                             <p className="date-value">
-                                {project.startDate ? format(new Date(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                {project.startDate ? format(parseDateValue(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                             </p>
                         </div>
                         <div className="dates-grid__item dates-grid__item--right">
                             <p className="date-label">{t('projectOverview.planning.due')}</p>
                             <p className="date-value">
-                                {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                {project.dueDate ? format(parseDateValue(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                             </p>
                         </div>
                     </div>
@@ -2909,7 +2906,7 @@ const ProjectOverviewLegacy = () => {
                             .slice(0, 3)
                             .map((milestone, index) => {
                                 const isFirst = index === 0;
-                                const isOverdue = milestone.dueDate ? new Date(milestone.dueDate) < new Date() : false;
+                                const isOverdue = milestone.dueDate ? isDateOverdue(parseDateValue(milestone.dueDate)) : false;
                                 return (
                                     <div key={milestone.id} className="milestone-item">
                                         <div className={`timeline-dot ${isFirst ? 'is-next' : 'is-future'}`}>
@@ -2924,7 +2921,7 @@ const ProjectOverviewLegacy = () => {
                                                     </p>
                                                     <div className="milestone-meta">
                                                         <p className={`milestone-date ${isOverdue ? 'is-overdue' : isFirst ? 'is-up-next' : ''}`}>
-                                                            {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
+                                                            {milestone.dueDate ? format(parseDateValue(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
                                                         </p>
                                                         {isFirst && (
                                                             <span className="milestone-tag">
@@ -3395,9 +3392,9 @@ const ProjectOverviewLegacy = () => {
                             <div className="project-overview-sprints-panel__row-copy">
                                 <strong>{activeSprint.title}</strong>
                                 <span>
-                                    {activeSprint.startDate ? format(new Date(activeSprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                    {activeSprint.startDate ? format(parseDateValue(activeSprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                     {' - '}
-                                    {activeSprint.endDate ? format(new Date(activeSprint.endDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                    {activeSprint.endDate ? format(parseDateValue(activeSprint.endDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                 </span>
                             </div>
                             <Badge variant="success">{activeSprint.status}</Badge>
@@ -3435,9 +3432,9 @@ const ProjectOverviewLegacy = () => {
                                 <div className="project-overview-sprints-panel__row-copy">
                                     <strong>{sprint.title}</strong>
                                     <span>
-                                        {sprint.startDate ? format(new Date(sprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                        {sprint.startDate ? format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                         {' - '}
-                                        {sprint.endDate ? format(new Date(sprint.endDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
+                                        {sprint.endDate ? format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                     </span>
                                 </div>
                                 <Badge variant={sprint.status === 'Active' ? 'success' : sprint.status === 'Planning' ? 'warning' : 'neutral'}>
@@ -3468,8 +3465,8 @@ const ProjectOverviewLegacy = () => {
                         className={`project-overview-milestones-timeline__item ${index === 0 && milestone.status !== 'Achieved' ? 'is-next' : ''}`.trim()}
                     >
                         <strong>{milestone.title}</strong>
-                        <span className={`milestone-date ${milestone.dueDate && new Date(milestone.dueDate) < new Date() && milestone.status !== 'Achieved' ? 'is-overdue' : ''}`}>
-                            {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
+                        <span className={`milestone-date ${milestone.dueDate && isDateOverdue(parseDateValue(milestone.dueDate)) && milestone.status !== 'Achieved' ? 'is-overdue' : ''}`}>
+                            {milestone.dueDate ? format(parseDateValue(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
                         </span>
                         <Badge variant={milestone.status === 'Achieved' ? 'success' : milestone.status === 'Missed' ? 'error' : 'neutral'}>
                             {milestone.status}
@@ -4970,17 +4967,12 @@ const ProjectOverviewLegacy = () => {
                             }
                             {
                                 showInviteModal && project && can('canInvite') && (
-                                    <InviteMemberModal
+                                    <InviteToWorkspaceModal
                                         isOpen={showInviteModal}
                                         onClose={() => setShowInviteModal(false)}
-                                        projectTitle={project.title}
-                                        customRoles={workspaceRoles}
-                                        onGenerateLink={async (role: ProjectRole, maxUses?: number, expiresInHours?: number) => {
-                                            return await generateInviteLink(id || '', role, maxUses, expiresInHours, project.tenantId);
-                                        }}
-                                        onSendEmail={async (email, role) => {
-                                            await sendTeamInvitation(email, 'project', id || '', role, project.tenantId);
-                                        }}
+                                        projects={[project]}
+                                        initialProjectIds={[project.id]}
+                                        initialRole="Guest"
                                     />
                                 )
                             }

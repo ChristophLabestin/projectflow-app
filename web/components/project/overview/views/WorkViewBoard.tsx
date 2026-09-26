@@ -15,6 +15,7 @@ import {
 import { Badge } from '../../../common/Badge/Badge';
 import type { WorkViewContext } from './shared/viewTypes';
 import type { WorkItem } from './shared/useWorkItems';
+import { parseDateValue } from '../../../../utils/taskDates';
 
 const STATUS_COLS = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'];
 const PRIORITY_COLS = ['Urgent', 'High', 'Medium', 'Low'];
@@ -30,7 +31,7 @@ const Card: React.FC<{ item: WorkItem; ctx: WorkViewContext; draggable: boolean;
         disabled: !draggable
     });
     const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined;
-    const due = item.dueDate ? new Date(item.dueDate) : null;
+    const due = item.dueDate ? parseDateValue(item.dueDate) : null;
     return (
         <div
             ref={overlay ? undefined : setNodeRef}

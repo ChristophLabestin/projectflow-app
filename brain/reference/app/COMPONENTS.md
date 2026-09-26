@@ -207,6 +207,24 @@ No feature should implement an isolated file picker/upload flow outside of this 
 
 ---
 
+## Work Lists (`web/components/work/`)
+
+- `TaskRow`: one task with inline menus for status, priority, due date (quick picks + date input) and assignees (multi-select). It shows the project, subtasks and blocker note as meta. Rare or destructive actions stay in the task detail. Parse dates via `utils/taskDates.ts`.
+- `TaskGroupList`: collapsible, count-labelled groups with per-list persisted collapse state (`storageKey`).
+- `InlineMenu`: accessible popover menu (arrow keys, Enter, Escape, outside click) with optional multi-select (`selectedValues`) and footer slot. Use it for inline edits instead of new ad-hoc popovers.
+- `workList.ts`:
+  - `groupTasks` (group by due, status or assignee; completed work last);
+  - `summarizeDue` (header summary line);
+  - `normalizeStatus` (`Todo` → `Open`).
+- `useWorkMembers`: members of the active workspace for assignee menus.
+- Used by `screens/Tasks.tsx` (My Tasks) and `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card).
+
+## Workspaces (`web/components/workspace/`)
+
+- `WorkspaceMenuSection`: sidebar switcher section with the workspace list, pending invitations (accept) and "New workspace".
+- `InviteToWorkspaceModal`: invite by email or link, with role (Member/Guest, plus Admin for the Owner) and optional/required projects. Use it for every invite entry point (Team, Project Overview, Project Team manager).
+- `context/WorkspaceContext.tsx` (`useWorkspace`): active workspace, list, pending invitations, `switchWorkspace`, `createWorkspace`. Gates the app until the workspace is resolved.
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

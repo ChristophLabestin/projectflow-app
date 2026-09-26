@@ -1,5 +1,6 @@
 import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative, Idea } from '../types';
 import { toMillis } from '../utils/time';
+import { parseDateValue } from '../utils/taskDates';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
 
@@ -237,7 +238,7 @@ export const calculateInitiativeHealth = (
 
     const missedMilestones = milestones.filter((milestone) => (
         milestone.status === 'Missed'
-        || (milestone.status === 'Pending' && milestone.dueDate && new Date(milestone.dueDate).getTime() < now)
+        || (milestone.status === 'Pending' && milestone.dueDate && parseDateValue(milestone.dueDate).getTime() < now)
     )).length;
 
     if (missedMilestones > 0) {
@@ -516,8 +517,8 @@ export const calculateProjectHealth = (
     }
 
     if (project.startDate && project.dueDate && !isTerminalProject) {
-        const startTime = new Date(project.startDate).getTime();
-        const dueTime = new Date(project.dueDate).getTime();
+        const startTime = parseDateValue(project.startDate).getTime();
+        const dueTime = parseDateValue(project.dueDate).getTime();
         const totalDuration = dueTime - startTime;
         const elapsed = now - startTime;
 
@@ -1008,8 +1009,8 @@ export const calculateProjectHealth = (
 
             const sprintDone = sprintTasks.filter(isTaskDone).length;
             const sprintProgress = sprintDone / sprintTasks.length;
-            const sprintStart = new Date(sprint.startDate).getTime();
-            const sprintEnd = new Date(sprint.endDate).getTime();
+            const sprintStart = parseDateValue(sprint.startDate).getTime();
+            const sprintEnd = parseDateValue(sprint.endDate).getTime();
             const sprintDuration = sprintEnd - sprintStart;
             const sprintElapsed = sprintDuration > 0 ? (now - sprintStart) / sprintDuration : 0;
 
@@ -1474,7 +1475,7 @@ export const calculateSpotlightScore = (
 
     // 1. PROJECT DEADLINE URGENCY (Highest Priority Factor)
     if (project.dueDate) {
-        const dueTime = new Date(project.dueDate).getTime();
+        const dueTime = parseDateValue(project.dueDate).getTime();
         const daysUntilDue = (dueTime - now) / DAY;
 
         if (daysUntilDue < 0) {
@@ -1521,7 +1522,7 @@ export const calculateSpotlightScore = (
 
         if (!t.dueDate) return;
 
-        const taskDate = new Date(t.dueDate);
+        const taskDate = parseDateValue(t.dueDate);
         taskDate.setHours(0, 0, 0, 0);
         const diffTime = taskDate.getTime() - todayMidnight.getTime();
         const diffDays = diffTime / DAY;
@@ -1595,7 +1596,7 @@ export const calculateSpotlightScore = (
 
     pendingMilestones.forEach(m => {
         if (m.dueDate) {
-            const dueTime = new Date(m.dueDate).getTime();
+            const dueTime = parseDateValue(m.dueDate).getTime();
             const diffDays = (dueTime - now) / DAY;
 
             if (dueTime < now) {
@@ -1648,8 +1649,8 @@ export const calculateSpotlightScore = (
 
     // 7. PROGRESS VS DEADLINE TRACKING
     if (project.dueDate && project.startDate) {
-        const startTime = new Date(project.startDate).getTime();
-        const dueTime = new Date(project.dueDate).getTime();
+        const startTime = parseDateValue(project.startDate).getTime();
+        const dueTime = parseDateValue(project.dueDate).getTime();
         const totalDuration = dueTime - startTime;
         const elapsed = now - startTime;
 
@@ -1671,7 +1672,7 @@ export const calculateSpotlightScore = (
 
     // --- SPRINT ANALYSIS ---
     const activeSprints = sprints.filter(s => s.status === 'Active');
-    const overdueSprints = sprints.filter(s => s.status === 'Active' && s.endDate && new Date(s.endDate).getTime() < now);
+    const overdueSprints = sprints.filter(s => s.status === 'Active' && s.endDate && parseDateValue(s.endDate).getTime() < now);
 
     if (overdueSprints.length > 0) {
         addReason(

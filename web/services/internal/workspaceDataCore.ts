@@ -5,9 +5,11 @@ import {
     doc,
     getDoc,
     getDocs,
+    query,
     serverTimestamp,
     setDoc,
-    updateDoc
+    updateDoc,
+    where
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';
@@ -23,30 +25,71 @@ const ISSUES = 'issues';
 const IDEAS = 'ideas';
 const ACTIVITIES = 'activities';
 const CATEGORIES = 'taskCategories';
-const TENANT_CACHE_KEY = 'activeTenantId';
-const ensureTenantAndUserCache = new Map<string, Promise<void>>();
+const LEGACY_TENANT_CACHE_KEY = 'activeTenantId';
+const tenantCacheKey = (uid: string) => `projectflow.activeTenant.${uid}`;
+const ensureUserProfileCache = new Map<string, Promise<void>>();
+let activeTenantMemory: { uid: string; tenantId: string } | null = null;
 
+// The active workspace is stored per user so a different account on the same
+// browser never inherits someone else's workspace. It is resolved and
+// validated against the user's memberships by WorkspaceProvider on login.
 export const getCachedTenantId = () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return undefined;
+    if (activeTenantMemory?.uid === uid) return activeTenantMemory.tenantId;
     try {
         if (typeof localStorage === 'undefined') return undefined;
-        return localStorage.getItem(TENANT_CACHE_KEY) || undefined;
+        return localStorage.getItem(tenantCacheKey(uid)) || undefined;
     } catch {
         return undefined;
     }
 };
 
+export const setCachedTenantId = (tenantId: string) => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return;
+    activeTenantMemory = { uid, tenantId };
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem(tenantCacheKey(uid), tenantId);
+            localStorage.removeItem(LEGACY_TENANT_CACHE_KEY);
+        }
+    } catch {
+        // best-effort; ignore storage failures
+    }
+};
+
+// Role of the current user in the active workspace (set by WorkspaceProvider).
+let activeWorkspaceRole: WorkspaceRole | null = null;
+export const setCachedWorkspaceRole = (role: WorkspaceRole | null) => { activeWorkspaceRole = role; };
+export const getCachedWorkspaceRole = () => activeWorkspaceRole;
+export const isGuestInActiveWorkspace = () => activeWorkspaceRole === 'Guest';
+
+export const clearCachedTenantId = () => {
+    const uid = auth.currentUser?.uid;
+    activeTenantMemory = null;
+    try {
+        if (typeof localStorage === 'undefined') return;
+        if (uid) localStorage.removeItem(tenantCacheKey(uid));
+        localStorage.removeItem(LEGACY_TENANT_CACHE_KEY);
+    } catch {
+        // ignore
+    }
+};
+
 export const resolveTenantId = (tenantId?: string) => {
-    const user = auth.currentUser;
-    const resolved = tenantId || getCachedTenantId() || user?.uid;
-    if (!resolved) {
+    if (!auth.currentUser) {
         throw new Error('User not authenticated');
+    }
+    const resolved = tenantId || getCachedTenantId();
+    if (!resolved) {
+        throw new Error('No active workspace');
     }
     return resolved;
 };
 
 const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
 const userDocRef = (userId: string) => doc(db, USERS, userId);
-const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, TENANTS, tenantId, 'members', userId);
 
 export const projectDocRef = (tenantId: string, projectId: string) => doc(tenantDocRef(tenantId), PROJECTS, projectId);
 
@@ -54,32 +97,30 @@ export const projectSubCollection = (tenantId: string, projectId: string, subCol
     collection(db, TENANTS, tenantId, PROJECTS, projectId, subCollectionName)
 );
 
-export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole) => {
+// Ensures the global users/{uid} profile exists. Workspace membership is no
+// longer created implicitly: members are added by workspace creation or by
+// accepting an invitation (see workspacesService). The tenant argument is kept
+// for the many existing call sites.
+export const ensureTenantAndUser = async (_tenantId?: string, _role?: WorkspaceRole) => {
     const user = auth.currentUser;
     if (!user) return;
 
-    const cacheKey = `${tenantId}:${user.uid}:${role || 'default'}`;
-    const cachedEnsure = ensureTenantAndUserCache.get(cacheKey);
-    if (cachedEnsure) {
-        return cachedEnsure;
-    }
+    const cached = ensureUserProfileCache.get(user.uid);
+    if (cached) return cached;
 
     const ensurePromise = (async () => {
-        const isOwner = user.uid === tenantId;
         const globalUserRef = userDocRef(user.uid);
         const globalUserSnap = await getDoc(globalUserRef);
+        const existing = globalUserSnap.exists() ? globalUserSnap.data() : null;
 
         await setDoc(globalUserRef, {
             uid: user.uid,
-            email: user.email || '',
-            displayName: user.displayName || 'User',
-            photoURL: user.photoURL || '',
+            email: (user.email || '').toLowerCase(),
+            displayName: user.displayName || existing?.displayName || (user.email || 'User').split('@')[0],
+            photoURL: existing?.photoURL || user.photoURL || '',
             updatedAt: serverTimestamp(),
-            ...(!globalUserSnap.exists() ? { createdAt: serverTimestamp() } : {})
-        }, { merge: true });
-
-        if (!globalUserSnap.exists() || !globalUserSnap.data()?.aiUsage) {
-            await setDoc(globalUserRef, {
+            ...(!existing ? { createdAt: serverTimestamp() } : {}),
+            ...(!existing?.aiUsage ? {
                 aiUsage: {
                     tokensUsed: 0,
                     tokenLimit: 1000000,
@@ -87,44 +128,21 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
                     imageLimit: 50,
                     lastReset: serverTimestamp()
                 }
-            }, { merge: true });
-        }
-
-        if (isOwner) {
-            await setDoc(
-                tenantDocRef(tenantId),
-                {
-                    tenantId,
-                    name: user.displayName || 'Workspace',
-                    updatedAt: serverTimestamp()
-                },
-                { merge: true }
-            );
-        }
-
-        const tenantSnap = await getDoc(tenantDocRef(tenantId));
-        if (!tenantSnap.exists() && !isOwner) {
-            console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
-            return;
-        }
-
-        // `role` is the primary/display role; `roleIds` holds stacked CUSTOM role
-        // doc ids (Member is implicit, Owner is derived from tenant ownership), so
-        // new members start with an empty roleIds set.
-        const existingMember = await getDoc(tenantMemberDocRef(tenantId, user.uid));
-        await setDoc(tenantMemberDocRef(tenantId, user.uid), {
-            uid: user.uid,
-            joinedAt: serverTimestamp(),
-            role: role || (isOwner ? 'Owner' : 'Member'),
-            ...(existingMember.exists() && existingMember.data()?.roleIds ? {} : { roleIds: [] })
+            } : {})
         }, { merge: true });
     })().catch((error) => {
-        ensureTenantAndUserCache.delete(cacheKey);
+        ensureUserProfileCache.delete(user.uid);
         throw error;
     });
 
-    ensureTenantAndUserCache.set(cacheKey, ensurePromise);
+    ensureUserProfileCache.set(user.uid, ensurePromise);
     return ensurePromise;
+};
+
+export const refreshCurrentUserProfile = async () => {
+    const uid = auth.currentUser?.uid;
+    if (uid) ensureUserProfileCache.delete(uid);
+    await ensureTenantAndUser();
 };
 
 export const getProjectContextFromRef = (ref: { parent?: any }) => {
@@ -145,7 +163,8 @@ export const findTaskDoc = async (taskId: string, projectId?: string, tenantId?:
         if (snap.exists()) return snap;
     }
 
-    const snapshot = await getDocs(collectionGroup(db, TASKS));
+    if (!preferredTenant) return null;
+    const snapshot = await getDocs(query(collectionGroup(db, TASKS), where('tenantId', '==', preferredTenant)));
     return snapshot.docs.find((docSnap) => docSnap.id === taskId) || null;
 };
 
@@ -157,7 +176,8 @@ export const findInitiativeDoc = async (initiativeId: string, projectId?: string
         if (snap.exists()) return snap;
     }
 
-    const snapshot = await getDocs(collectionGroup(db, INITIATIVES));
+    if (!preferredTenant) return null;
+    const snapshot = await getDocs(query(collectionGroup(db, INITIATIVES), where('tenantId', '==', preferredTenant)));
     return snapshot.docs.find((docSnap) => docSnap.id === initiativeId) || null;
 };
 
@@ -169,8 +189,7 @@ export const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?:
         if (snap.exists()) return snap;
     }
 
-    const snapshot = await getDocs(collectionGroup(db, IDEAS));
-    return snapshot.docs.find((docSnap) => docSnap.id === ideaId) || null;
+    return null;
 };
 
 export const findSubtaskDoc = async (subTaskId: string, taskId?: string, projectId?: string, tenantId?: string) => {
@@ -183,8 +202,7 @@ export const findSubtaskDoc = async (subTaskId: string, taskId?: string, project
         }
     }
 
-    const snapshot = await getDocs(collectionGroup(db, SUBTASKS));
-    return snapshot.docs.find((docSnap) => docSnap.id === subTaskId) || null;
+    return null;
 };
 
 export const findIssueDoc = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
@@ -201,8 +219,7 @@ export const findIssueDoc = async (issueId: string, projectId?: string, tenantId
         if (snap.exists()) return snap;
     }
 
-    const snapshot = await getDocs(collectionGroup(db, ISSUES));
-    return snapshot.docs.find((docSnap) => docSnap.id === issueId) || null;
+    return null;
 };
 
 export const logActivity = async (

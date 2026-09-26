@@ -1,0 +1,97 @@
+{
+  "_comment": "Definition der 9 AI-Mitarbeiter. Wird vom Seed-Skript und vom MCP-Server gelesen. 'key' ist stabil und wird im MCP-Tool als as_agent verwendet. 'permissions' = API-Token-Scopes (ApiPermission). uid/token werden beim Seed in tokens.json zurueckgeschrieben. Hinweis: Kommentare erfordern serverseitig 'projects:write', daher hat jeder Agent diesen Scope.",
+  "emailDomain": "agents.labestindigital.internal",
+  "passwordNote": "Seed generiert pro Agent ein langes Zufallspasswort (Login erfolgt ohnehin server-/tokenseitig).",
+  "agents": [
+    {
+      "key": "carla",
+      "displayName": "Carla Brandt",
+      "shortName": "Carla",
+      "function": "Chief of Staff",
+      "role": "Member",
+      "customRole": { "name": "Chief of Staff", "color": "#7C5CFF" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","projects:delete","tasks:read","tasks:write","tasks:delete","initiatives:read","initiatives:write","initiatives:delete"]
+    },
+    {
+      "key": "mara",
+      "displayName": "Mara Keller",
+      "shortName": "Mara",
+      "function": "Marketing Manager",
+      "role": "Member",
+      "customRole": { "name": "Marketing", "color": "#FF6B6B" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read","initiatives:write"]
+    },
+    {
+      "key": "paul",
+      "displayName": "Paul Hoffmann",
+      "shortName": "Paul",
+      "function": "Product Manager",
+      "role": "Member",
+      "customRole": { "name": "Product", "color": "#4D96FF" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","tasks:delete","initiatives:read","initiatives:write"]
+    },
+    {
+      "key": "theo",
+      "displayName": "Theo Richter",
+      "shortName": "Theo",
+      "function": "Tech Lead",
+      "role": "Member",
+      "customRole": { "name": "Engineering", "color": "#22C55E" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read","initiatives:write"]
+    },
+    {
+      "key": "uma",
+      "displayName": "Uma Schneider",
+      "shortName": "Uma",
+      "function": "UX/UI Reviewer",
+      "role": "Member",
+      "customRole": { "name": "Design", "color": "#F59E0B" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read"]
+    },
+    {
+      "key": "quinn",
+      "displayName": "Quinn Vogel",
+      "shortName": "Quinn",
+      "function": "QA / Regression Tester",
+      "role": "Member",
+      "customRole": { "name": "QA", "color": "#14B8A6" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read"]
+    },
+    {
+      "key": "felix",
+      "displayName": "Felix Wagner",
+      "shortName": "Felix",
+      "function": "Finance / Invoice Manager",
+      "role": "Member",
+      "customRole": { "name": "Finance", "color": "#A3A3A3" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read"]
+    },
+    {
+      "key": "rosa",
+      "displayName": "Rosa Lindqvist",
+      "shortName": "Rosa",
+      "function": "Research Agent",
+      "role": "Member",
+      "customRole": { "name": "Research", "color": "#EC4899" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read","initiatives:write"]
+    },
+    {
+      "key": "nina",
+      "displayName": "Nina Albrecht",
+      "shortName": "Nina",
+      "function": "Content Manager",
+      "role": "Member",
+      "customRole": { "name": "Content", "color": "#8B5CF6" },
+      "avatarStyle": "thumbs",
+      "permissions": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read"]
+    }
+  ]
+}

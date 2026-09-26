@@ -63,6 +63,11 @@ Ownership transfer policy:
 - Tenant ownership can be transferred from the current Owner to another eligible user.
 - If the current Owner is not accessible, recovery requires opening a support ticket (manual process).
 
+#### A2) Admin (system, since 2026-09-26)
+- Stored as `members/{uid}.role == 'Admin'`; granted/revoked only by the Owner.
+- Same tenant permissions as the Owner in the app (`ADMIN_ROLE` in `PermissionContext`) and in rules (`isTenantAdmin`): manage members, invitations, roles and settings.
+- Cannot change `ownerId`, delete the workspace, or modify the Owner's membership.
+
 #### B) Member (system baseline, configurable)
 - Equivalent to Discord’s @everyone baseline.
 - Always applies to every tenant member and project member.
@@ -186,8 +191,10 @@ Startup/company legal, finance, compliance, funding, and advisor links use the s
 
 ## 6) External Collaborators (Guest Rules)
 
-- External project members must always include Guest.
-- On promotion to tenant member, Guest is removed.
+- External collaborators are workspace members with `role: 'Guest'`; they only see projects whose `memberIds` contain them (enforced in `firestore.rules` via `isFullMember` vs `isTenantMember` + `isProjectMember`).
+- Guests get only `GUEST_ROLE` permissions (no implicit Member baseline) and do not see workspace-wide areas such as Finance or Media.
+- Guests join through an invitation with `role: 'Guest'` and at least one `projectIds` entry; admins can later promote them in Team → member detail → Workspace access.
+- Removing a member also removes them from every project `memberIds` in that workspace.
 
 ---
 

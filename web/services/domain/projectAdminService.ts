@@ -7,9 +7,8 @@ import {
     serverTimestamp,
     updateDoc
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
 
-import { auth, db, functions } from '../firebase';
+import { auth, db } from '../firebase';
 import { ensureTenantAndUser, logActivity, projectDocRef, resolveTenantId } from '../internal/workspaceDataCore';
 import { uploadTenantFile } from '../fileStorageService';
 import type { Activity, Project, ProjectRole } from '../../types';
@@ -202,54 +201,3 @@ export const deleteProjectById = async (projectId: string, tenantId?: string) =>
     await deleteDoc(projectDocRef(resolvedTenant, projectId));
 };
 
-export const generateInviteLink = async (
-    projectId: string,
-    role: ProjectRole | string,
-    maxUses?: number,
-    expiresInHours = 24,
-    tenantId?: string
-): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error('User not authenticated');
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    const projectSnap = await getDoc(projectDocRef(resolvedTenant, projectId));
-    if (!projectSnap.exists()) throw new Error('Project not found');
-
-    const project = projectSnap.data() as Project;
-    if (project.ownerId !== user.uid) {
-        throw new Error('Only the project owner can create invite links');
-    }
-
-    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`);
-    const docRef = await addDoc(inviteLinksRef, {
-        projectId,
-        role,
-        createdBy: user.uid,
-        createdAt: serverTimestamp(),
-        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
-        maxUses: maxUses || null,
-        uses: 0,
-        isActive: true
-    });
-
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}/join/${docRef.id}?projectId=${projectId}&tenantId=${resolvedTenant}`;
-};
-
-export const sendTeamInvitation = async (
-    email: string,
-    type: 'workspace' | 'project',
-    targetId: string,
-    role: string,
-    tenantId: string
-): Promise<void> => {
-    const sendInvite = httpsCallable(functions, 'sendInvitation');
-    await sendInvite({
-        email,
-        type,
-        targetId,
-        role,
-        tenantId
-    });
-};

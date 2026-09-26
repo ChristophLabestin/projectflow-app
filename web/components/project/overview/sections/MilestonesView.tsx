@@ -2,6 +2,7 @@ import React from 'react';
 import { differenceInCalendarDays, format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import type { Milestone, Task } from '../../../../types';
+import { parseDateValue } from '../../../../utils/taskDates';
 
 type MilestonesViewProps = {
     milestones: Milestone[];
@@ -46,7 +47,7 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ milestones, task
         const linkedTasks = tasks.filter((task) => linked.includes(task.id));
         const total = linkedTasks.length;
         const done = linkedTasks.filter(isDone).length;
-        const due = milestone.dueDate ? new Date(milestone.dueDate) : null;
+        const due = milestone.dueDate ? parseDateValue(milestone.dueDate) : null;
         const daysLeft = due ? differenceInCalendarDays(due, today) : null;
         const overdue = Boolean(due && daysLeft !== null && daysLeft < 0 && milestone.status === 'Pending');
         return { total, done, pct: total ? clampPct((done / total) * 100) : 0, due, daysLeft, overdue };
@@ -84,7 +85,7 @@ export const MilestonesView: React.FC<MilestonesViewProps> = ({ milestones, task
                             <small>{t('projectOverview.v2.milestones.nextDue', 'Next milestone')}</small>
                             <strong>{nextMilestone.title}</strong>
                         </div>
-                        <span className="po-mstones__next-date">{format(new Date(nextMilestone.dueDate!), dateFormat, { locale: dateLocale })}</span>
+                        <span className="po-mstones__next-date">{format(parseDateValue(nextMilestone.dueDate!), dateFormat, { locale: dateLocale })}</span>
                     </div>
                 )}
             </div>

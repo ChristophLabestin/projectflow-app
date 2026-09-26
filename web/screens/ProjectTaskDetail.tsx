@@ -6,7 +6,7 @@ import { getProjectById, getProjectMembers } from '../services/domain/projectsSe
 import { addSubTask, deleteSubTask, deleteTask, getProjectTasks, getSubTasks, getTaskById, subscribeTaskActivity, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
 import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
 import { deleteField } from 'firebase/firestore';
-import { SubTask, Task, Member, Project, Activity, Milestone, TaskCategory } from '../types';
+import { SubTask, Task, Member, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
 import { CommentSection } from '../components/CommentSection';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { getInitiativeById } from '../services/dataService';
 import { AdvancedEditorRuntime } from '../components/editor/AdvancedEditorRuntime';
+import { parseDateValue } from '../utils/taskDates';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -35,6 +36,22 @@ const safeDate = (val: any): Date | null => {
     if (val instanceof Date) return val;
     const d = new Date(val);
     return isNaN(d.getTime()) ? null : d;
+};
+
+const makeReminderId = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+        return crypto.randomUUID();
+    }
+    return `reminder-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+};
+
+const getEarliestOpenReminderDate = (reminders: ProjectReminder[]) => {
+    const next = reminders
+        .filter((reminder) => !reminder.isCompleted)
+        .map((reminder) => reminder.remindAt)
+        .filter(Boolean)
+        .sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+    return next || '';
 };
 
 const getTaskStatusStyle = (status: string) => {
@@ -102,6 +119,8 @@ export const ProjectTaskDetail = () => {
     const [nextStepDraft, setNextStepDraft] = useState('');
     const [blockerNoteDraft, setBlockerNoteDraft] = useState('');
     const [quickLogDraft, setQuickLogDraft] = useState('');
+    const [newReminderTitle, setNewReminderTitle] = useState('');
+    const [newReminderDate, setNewReminderDate] = useState<Date | null>(null);
     const [savingWorkbenchField, setSavingWorkbenchField] = useState<string | null>(null);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
@@ -405,6 +424,54 @@ export const ProjectTaskDetail = () => {
         await updateTaskFields(task.id, { [field]: nextValue } as Partial<Task>, id, activeTenantId);
     };
 
+    const saveTaskReminders = async (nextReminders: ProjectReminder[], nextReminderAt = getEarliestOpenReminderDate(nextReminders)) => {
+        if (!task) return;
+        const updates: Partial<Task> = {
+            reminders: nextReminders,
+            reminderAt: nextReminderAt
+        };
+        setTask(prev => prev ? { ...prev, ...updates } : prev);
+        await updateTaskFields(task.id, updates, id, activeTenantId);
+    };
+
+    const handleAddReminder = async () => {
+        if (!task || !newReminderDate) return;
+        const reminder: ProjectReminder = {
+            id: makeReminderId(),
+            title: newReminderTitle.trim() || t('taskDetail.reminders.defaultTitle'),
+            remindAt: format(newReminderDate, 'yyyy-MM-dd'),
+            linkedType: 'task',
+            linkedId: task.id,
+            linkedTitle: task.title,
+            isCompleted: false,
+            createdAt: new Date().toISOString()
+        };
+        const nextReminders = [...(task.reminders || []), reminder];
+        setNewReminderTitle('');
+        setNewReminderDate(null);
+        await saveTaskReminders(nextReminders);
+    };
+
+    const handleToggleReminder = async (reminder: ProjectReminder) => {
+        if (!task) return;
+        const nextReminders = (task.reminders || []).map((item) => (
+            item.id === reminder.id
+                ? {
+                    ...item,
+                    isCompleted: !item.isCompleted,
+                    completedAt: item.isCompleted ? '' : new Date().toISOString()
+                }
+                : item
+        ));
+        await saveTaskReminders(nextReminders);
+    };
+
+    const handleDeleteReminder = async (reminderId: string) => {
+        if (!task) return;
+        const nextReminders = (task.reminders || []).filter((item) => item.id !== reminderId);
+        await saveTaskReminders(nextReminders);
+    };
+
     const saveWorkbenchText = async (field: keyof Pick<Task, 'nextStep' | 'blockerNote' | 'lastWorkbenchNote'>, value: string) => {
         if (!task) return;
         setSavingWorkbenchField(field);
@@ -522,9 +589,12 @@ export const ProjectTaskDetail = () => {
     const currentStatusLabel = statusLabels[currentStatus as keyof typeof statusLabels] || t('tasks.status.unknown');
     const activeFocus = focusItemId === task.id || focusState?.itemId === task.id;
     const tenantQuery = activeTenantId ? `?tenant=${activeTenantId}` : '';
-    const reminderDate = safeDate(task.reminderAt);
     const dueDate = safeDate(task.dueDate);
     const startDate = safeDate(task.startDate);
+    const taskReminders = [...(task.reminders || [])].sort((a, b) => {
+        if (Boolean(a.isCompleted) !== Boolean(b.isCompleted)) return a.isCompleted ? 1 : -1;
+        return parseDateValue(a.remindAt).getTime() - parseDateValue(b.remindAt).getTime();
+    });
     const isBlocked = currentStatus === 'Blocked';
     const taskCats = Array.isArray(task.category) ? task.category : [task.category || ''];
     const filteredCats = taskCats.filter(Boolean);
@@ -880,7 +950,60 @@ export const ProjectTaskDetail = () => {
                         <div className="task-detail__date-grid">
                             <DatePicker value={startDate} onChange={(date) => handleUpdateField('startDate', date)} placeholder={t('taskDetail.timeline.startPlaceholder')} />
                             <DatePicker value={dueDate} onChange={(date) => handleUpdateField('dueDate', date)} placeholder={t('taskDetail.timeline.duePlaceholder')} />
-                            <DatePicker value={reminderDate} onChange={(date) => handleUpdateField('reminderAt', date)} placeholder={t('taskDetail.workbench.reminderPlaceholder')} />
+                        </div>
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <span className="task-detail__sidebar-label">{t('taskDetail.workbench.reminder')}</span>
+                        <div className="task-detail__reminders">
+                            {taskReminders.length > 0 ? (
+                                taskReminders.map((reminder) => {
+                                    const reminderDate = safeDate(reminder.remindAt);
+                                    const isDue = Boolean(reminderDate && reminderDate.getTime() <= Date.now() && !reminder.isCompleted);
+                                    return (
+                                        <div key={reminder.id} className={`task-detail__reminder ${reminder.isCompleted ? 'is-done' : ''} ${isDue ? 'is-due' : ''}`.trim()}>
+                                            <button
+                                                type="button"
+                                                className="task-detail__reminder-check"
+                                                onClick={() => void handleToggleReminder(reminder)}
+                                                aria-label={reminder.isCompleted ? t('taskDetail.reminders.reopen') : t('taskDetail.reminders.complete')}
+                                            >
+                                                <span className="material-symbols-outlined">{reminder.isCompleted ? 'check_circle' : 'radio_button_unchecked'}</span>
+                                            </button>
+                                            <div className="task-detail__reminder-copy">
+                                                <strong>{reminder.title}</strong>
+                                                <span>{reminderDate ? format(reminderDate, dateFormat, { locale: dateLocale }) : reminder.remindAt}</span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                className="task-detail__reminder-delete"
+                                                onClick={() => void handleDeleteReminder(reminder.id)}
+                                                aria-label={t('taskDetail.reminders.delete')}
+                                            >
+                                                <span className="material-symbols-outlined">close</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <p className="task-detail__reminders-empty">{t('taskDetail.reminders.empty')}</p>
+                            )}
+                        </div>
+                        <div className="task-detail__reminder-form">
+                            <TextInput
+                                value={newReminderTitle}
+                                onChange={(event) => setNewReminderTitle(event.target.value)}
+                                placeholder={t('taskDetail.reminders.titlePlaceholder')}
+                            />
+                            <DatePicker
+                                value={newReminderDate}
+                                onChange={setNewReminderDate}
+                                placeholder={t('taskDetail.workbench.reminderPlaceholder')}
+                            />
+                            <button type="button" onClick={() => void handleAddReminder()} disabled={!newReminderDate}>
+                                <span className="material-symbols-outlined">add_alert</span>
+                                <span>{t('taskDetail.reminders.add')}</span>
+                            </button>
                         </div>
                     </div>
 
@@ -954,7 +1077,7 @@ export const ProjectTaskDetail = () => {
                                 <span className="material-symbols-outlined">flag</span>
                                 <div>
                                     <strong>{linkedMilestone.title}</strong>
-                                    {linkedMilestone.dueDate && <small>{t('taskDetail.details.milestone.duePrefix').replace('{date}', format(new Date(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}</small>}
+                                    {linkedMilestone.dueDate && <small>{t('taskDetail.details.milestone.duePrefix').replace('{date}', format(parseDateValue(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}</small>}
                                 </div>
                                 <button type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">link_off</span>
@@ -977,7 +1100,7 @@ export const ProjectTaskDetail = () => {
                                                     <button key={m.id} type="button" onClick={() => handleLinkMilestone(m.id)} className="task-detail__menu-item">
                                                         <span className="material-symbols-outlined task-detail__menu-icon">flag</span>
                                                         <span className="task-detail__menu-text">{m.title}</span>
-                                                        {m.dueDate && <span className="task-detail__menu-meta">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
+                                                        {m.dueDate && <span className="task-detail__menu-meta">{format(parseDateValue(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
                                                     </button>
                                                 ))
                                             )}

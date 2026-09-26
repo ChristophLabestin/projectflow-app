@@ -19,6 +19,7 @@ import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { isProjectIncludedInImportantSignals } from '../services/healthService';
+import { parseDateValue } from '../utils/taskDates';
 
 export const PersonalTasksPage = () => {
     const [tasks, setTasks] = useState<PersonalTask[]>([]);
@@ -270,7 +271,7 @@ export const PersonalTasksPage = () => {
                                 {task.dueDate && (
                                     <div className="flex items-center gap-1 mt-2 text-xs text-muted">
                                         <span className="material-symbols-outlined text-[14px]">event</span>
-                                        {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
+                                        {format(parseDateValue(task.dueDate), dateFormat, { locale: dateLocale })}
                                     </div>
                                 )}
                             </div>

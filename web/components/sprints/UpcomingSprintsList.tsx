@@ -4,6 +4,7 @@ import { Sprint, Task } from '../../types';
 import { Button } from '../../components/common/Button/Button';
 import { Badge } from '../../components/common/Badge/Badge';
 import { useLanguage } from '../../context/LanguageContext';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface UpcomingSprintsListProps {
     sprints: Sprint[];
@@ -26,7 +27,7 @@ export const UpcomingSprintsList: React.FC<UpcomingSprintsListProps> = ({ sprint
             <div className="sprint-upcoming__grid">
                 {sprints.map(upcoming => {
                     const upcomingTasks = allTasks.filter(t => t.sprintId === upcoming.id);
-                    const startsIn = differenceInDays(new Date(upcoming.startDate), new Date());
+                    const startsIn = differenceInDays(parseDateValue(upcoming.startDate), new Date());
                     const startsLabel = startsIn <= 0
                         ? t('projectSprints.upcoming.startsToday')
                         : t('projectSprints.upcoming.startsIn').replace('{count}', String(startsIn));
@@ -49,9 +50,9 @@ export const UpcomingSprintsList: React.FC<UpcomingSprintsListProps> = ({ sprint
                                     </div>
                                     <div className="sprint-upcoming__dates">
                                         <span className="material-symbols-outlined">calendar_today</span>
-                                        {format(new Date(upcoming.startDate), dateFormat, { locale: dateLocale })}
+                                        {format(parseDateValue(upcoming.startDate), dateFormat, { locale: dateLocale })}
                                         <span className="sprint-upcoming__date-separator">-</span>
-                                        {format(new Date(upcoming.endDate), dateFormat, { locale: dateLocale })}
+                                        {format(parseDateValue(upcoming.endDate), dateFormat, { locale: dateLocale })}
                                     </div>
                                 </div>
                                 {onStartSprint && (

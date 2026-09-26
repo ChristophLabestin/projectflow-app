@@ -10,6 +10,51 @@
 
 ## Recent Sessions
 
+- Date: 2026-09-26
+  - Goal: move ProjectFlow to the Firebase project `projectflow-labestin`, redesign multi-tenancy, then evaluate and improve the PM UI (focus, finding work fast, quick edits).
+  - Changes:
+    - **Firebase migration**: committed `3dabddda`; all rules, indexes, functions and hosting deployed to the new project.
+    - **Multi-workspace tenancy with invitations** (decision-log 2026-09-26):
+      - rules rewrite;
+      - `workspacesService`, `WorkspaceProvider`, sidebar workspace switcher;
+      - `InviteToWorkspaceModal` and `/invite/:tenantId/:inviteId`;
+      - `acceptWorkspaceInvite` + hardened `sendInvitation`;
+      - API membership check;
+      - guests scoped to projects.
+    - **Shared work list** (`web/components/work/*`) powering My Tasks and Project Tasks:
+      - grouped by due bucket (project tasks can also group by status or assignee);
+      - inline status/priority/due/assignee menus;
+      - quick add with `N`;
+      - bulk bar only on selection.
+    - **Date correctness**: `utils/taskDates.ts` replaces `new Date(dueDate)` and `due < new Date()` across ~40 files, so today is no longer overdue and the calendar no longer shows 02:00.
+    - **Calendar**: now shows all unfinished statuses.
+    - **Smaller fixes**:
+      - page tours no longer auto-start;
+      - the passkey upsell no longer stacks on the welcome dialog;
+      - project hero OVERDUE tag fixed;
+      - initiative placeholder text removed;
+      - mobile initiative rows fixed;
+      - Team page i18n;
+      - guests no longer see Finance/Media;
+      - Admin system role added;
+      - notification tenant fallback fixed.
+    - **Upgrades**: Firebase web SDK upgraded to 12.19.0 (ca9 assertion bug).
+    - **Local emulator workflow**: seed script + `dev:emulator`.
+  - Validation:
+    - `web` build and theme lint pass;
+    - Vitest 44/44 (7 new in `utils/__tests__/taskDates.test.ts`);
+    - functions build passes;
+    - rules compile;
+    - end-to-end in emulators: login, workspace creation, switching, guest isolation, email-invite accept, link-invite accept with registration, owner invite with roles/projects, inline edits persisted, group-by status/assignee, bulk selection, mobile layout checks.
+  - Not done: production deploy of the tenancy + UI changes (rules/functions/hosting still run the pre-tenancy code); ProjectFlow tracking task (no `PROJECTFLOW_API_TOKEN`).
+
+- Date: 2026-06-30
+  - Goal: add project and task reminder scheduling for customer follow-ups and linked work reminders.
+  - Actions: added a shared `ProjectReminder` data shape on projects and tasks; created a Project Overview reminders strip that merges project reminders, task reminders, and legacy task `reminderAt` values; added create/complete/delete flows with optional links to tasks or initiatives; replaced task detail's single reminder date control with multi-reminder management; added EN/DE copy and tokenized SCSS.
+  - Validation: `cd web && npm run build` passed; `cd web && npm run lint:theme` passed; `cd web && npm run typecheck` remains blocked by existing repo-wide TypeScript issues, but a targeted typecheck scan found no new errors in the new reminder component or overview integration.
+  - ProjectFlow tracking: not created because `PROJECTFLOW_API_TOKEN` is missing in the current shell.
+  - Next: verify in an authenticated project that reminders can be created for the project, linked to a task, linked to an initiative, completed, deleted, and surfaced correctly in Project Overview.
+
 - Date: 2026-06-14
   - Goal: expand the ProjectFlow UI Style Guide with additional standardization candidates inspired by Mossandl Mobility.
   - Actions: reviewed Mossandl Mobility's design-system brief and developer UI library, especially max-width categories, relative depth levels, checkbox/toggle primitives, and reusable operational UI patterns; extended `web/screens/StyleGuidePage.tsx` with Level of Depth, max-width containers, checkbox/toggle examples, and next standardization candidates for list toolbars, empty states, skeletons, inline edit cells, filter menus, and steppers; added responsive SCSS and EN/DE locale keys.

@@ -3,6 +3,7 @@ import type { Initiative, Task } from '../../../../../types';
 import { toMillis } from '../../../../../utils/time';
 import type { OverviewFilters } from '../../hooks/useProjectOverviewViewState';
 import type { OverviewGroupBy, OverviewSortBy } from '../../config/overviewConfig';
+import { parseDateValue } from '../../../../../utils/taskDates';
 
 export type WorkItemKind = 'task' | 'initiative';
 
@@ -89,8 +90,8 @@ const compareBy = (sortBy: OverviewSortBy) => (a: WorkItem, b: WorkItem): number
         case 'priority':
             return (PRIORITY_RANK[a.priority || 'Low'] ?? 9) - (PRIORITY_RANK[b.priority || 'Low'] ?? 9);
         case 'dueDate': {
-            const av = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
-            const bv = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
+            const av = a.dueDate ? parseDateValue(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
+            const bv = b.dueDate ? parseDateValue(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
             return av - bv;
         }
         case 'title':

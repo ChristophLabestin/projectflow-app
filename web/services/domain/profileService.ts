@@ -23,11 +23,15 @@ const getTenantIdFromRef = (refPath: string) => {
     return tenantIndex >= 0 ? parts[tenantIndex + 1] : undefined;
 };
 
+// Scoped to the active workspace; other workspaces are isolated.
 export const getAllMemberProjects = async (userId: string): Promise<Project[]> => {
+    const tenantId = getActiveTenantId();
+    if (!tenantId) return [];
     const snapshot = await getDocs(query(
-        collectionGroup(db, PROJECTS),
+        collection(db, 'tenants', tenantId, PROJECTS),
         where('memberIds', 'array-contains', userId)
-    ));
+    )).catch(() => null);
+    if (!snapshot) return [];
 
     return snapshot.docs
         .map((docSnap) => ({
@@ -48,7 +52,7 @@ export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20
         return [];
     }
 
-    const resolvedTenant = tenantId || getActiveTenantId() || user.uid;
+    const resolvedTenant = tenantId || getActiveTenantId();
 
     try {
         const snapshot = await getDocs(query(

@@ -7,6 +7,7 @@ import { TextInput } from '../common/Input/TextInput';
 import { TextArea } from '../common/Input/TextArea';
 import { DatePicker } from '../common/DateTime/DatePicker';
 import { useLanguage } from '../../context/LanguageContext';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface CreateSprintModalProps {
     isOpen: boolean;
@@ -30,8 +31,8 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, on
         if (initialData) {
             setName(initialData.name);
             setGoal(initialData.goal || '');
-            setStartDate(initialData.startDate ? new Date(initialData.startDate) : null);
-            setEndDate(initialData.endDate ? new Date(initialData.endDate) : null);
+            setStartDate(initialData.startDate ? parseDateValue(initialData.startDate) : null);
+            setEndDate(initialData.endDate ? parseDateValue(initialData.endDate) : null);
             setAutoStart(initialData.autoStart || false);
             return;
         }

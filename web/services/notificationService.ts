@@ -16,6 +16,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { db, auth, app, firebaseConfig, functions as cloudFunctions } from './firebase';
 import type { Notification, NotificationType } from '../types';
+import { getCachedTenantId } from './internal/workspaceDataCore';
 
 export interface WebNotificationDiagnostics {
     browserNotificationsSupported: boolean;
@@ -147,22 +148,9 @@ export const registerWebPushToken = async (): Promise<WebNotificationDiagnostics
     }
 };
 
-// Helper to get tenant ID without importing from dataService (circular dependency)
-const getCachedTenantId = () => {
-    try {
-        if (typeof localStorage === "undefined") return undefined;
-        return localStorage.getItem("activeTenantId") || undefined;
-    } catch {
-        return undefined;
-    }
-};
-
 const resolveTenantId = (tenantId?: string) => {
-    const user = auth.currentUser;
-    const resolved = tenantId || getCachedTenantId() || user?.uid;
+    const resolved = tenantId || getCachedTenantId();
     if (!resolved) {
-        // Fallback to error or maybe just user.uid if auth exists?
-        // If we can't resolve a tenant, we can't save/read notifications.
         throw new Error("Cannot resolve tenant ID for notifications");
     }
     return resolved;

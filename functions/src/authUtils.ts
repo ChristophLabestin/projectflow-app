@@ -34,21 +34,27 @@ export const validateAPIToken = async (
     requiredPermission: ApiPermission
 ): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; error?: string }> => {
     try {
-        // 1. Try to verify as Firebase ID Token
+        // 1. Firebase ID tokens (signed-in app users) are only accepted for
+        //    workspace-scoped PM endpoints. The caller must still verify the
+        //    user's membership in the requested tenant (see requireWorkspaceMember).
+        let decodedToken: admin.auth.DecodedIdToken | null = null;
         try {
-            const decodedToken = await admin.auth().verifyIdToken(token);
-            // Implicitly grant permissions to authenticated users of the project
-            // In a stricter system, we'd check roles/tenants here.
+            decodedToken = await admin.auth().verifyIdToken(token);
+        } catch (e) {
+            decodedToken = null;
+        }
+        if (decodedToken) {
+            if (!/^(projects|initiatives|tasks):/.test(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
             return {
                 valid: true,
                 tokenData: {
                     uid: decodedToken.uid,
-                    permissions: [requiredPermission] // Grant the requested permission
-                },
-                tenantId: decodedToken.tenant || undefined // If custom claims used
+                    authType: 'firebase',
+                    permissions: [requiredPermission]
+                }
             };
-        } catch (e) {
-            // Not a valid ID token, continue to check API tokens
         }
 
         const tokenHash = hashToken(token);
@@ -195,4 +201,12 @@ export const checkProjectPermission = async (userId: string, projectId: string, 
         console.error('Permission check failed', e);
         return false;
     }
+};
+
+/**
+ * Returns the member role of `uid` in `tenantId`, or null when not a member.
+ */
+export const getWorkspaceMemberRole = async (tenantId: string, uid: string): Promise<string | null> => {
+    const snap = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+    return snap.exists ? String(snap.data()?.role || 'Member') : null;
 };

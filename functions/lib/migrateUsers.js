@@ -71,8 +71,6 @@ async function migrateUsers() {
                     role: userData.role || 'Member',
                     joinedAt: userData.joinedAt || admin.firestore.FieldValue.serverTimestamp(),
                 };
-                if (userData.githubToken)
-                    memberData.githubToken = userData.githubToken;
                 if (userData.pinnedProjectId)
                     memberData.pinnedProjectId = userData.pinnedProjectId;
                 if (userData.groupIds)

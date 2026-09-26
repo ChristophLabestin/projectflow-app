@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
-import { collection, query, getDocs, deleteDoc, updateDoc, doc, deleteField } from 'firebase/firestore';
+import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
 import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
@@ -51,7 +51,7 @@ import {
     type WorkspaceApiToken
 } from '../services/domain/adminSettingsService';
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
-import { getAIUsage, getUserProfile, updateUserData } from '../services/domain/usersService';
+import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithubToken, updateUserData } from '../services/domain/usersService';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta';
 
@@ -250,8 +250,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 setProviders(user.providerData.map(p => p.providerId));
                 setEmailVerified(user.emailVerified);
                 try {
-                    const profile = await getUserProfile(user.uid);
-                    if (profile?.githubToken) {
+                    const [profile, githubToken] = await Promise.all([
+                        getUserProfile(user.uid),
+                        getGithubToken(user.uid)
+                    ]);
+                    if (githubToken) {
                         setGithubLinked(true);
                     }
                     if (profile?.geminiConfig) {
@@ -274,7 +277,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         setConnectingGithub(true);
         try {
             const token = await linkWithGithub();
-            await updateUserData(user.uid, { githubToken: token });
+            await setGithubToken(user.uid, token);
             setGithubLinked(true);
             setProviders(user.providerData.map(p => p.providerId));
             showSuccess(t('settings.account.github.connected'));
@@ -336,7 +339,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             }
 
             if (githubLinked) {
-                await updateDoc(doc(db, 'users', user.uid), { githubToken: deleteField() });
+                await clearGithubToken(user.uid);
             }
 
             await user.reload();
@@ -513,7 +516,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     };
 
     const saveVerifiedStatus = async (verified: boolean) => {
-        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        const id = tenantId || getActiveTenantId();
         if (!id) return;
         await saveWorkspaceSmtpConfig(id, {
             host: smtpHost,
@@ -576,7 +579,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     };
 
     const handleSaveStorageConfig = async () => {
-        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        const id = tenantId || getActiveTenantId();
         if (!id) return;
 
         setStorageSaving(true);
@@ -613,7 +616,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     };
 
     const handleTestStorageConnection = async () => {
-        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        const id = tenantId || getActiveTenantId();
         if (!id) return;
 
         setStorageTesting(true);
@@ -703,7 +706,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     });
 
     const handleConnectGoogleDriveStorage = async () => {
-        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        const id = tenantId || getActiveTenantId();
         if (!id) return;
 
         setStorageConnectingDrive(true);
@@ -726,7 +729,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     };
 
     const handleDisconnectGoogleDriveStorage = async () => {
-        const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+        const id = tenantId || getActiveTenantId();
         if (!id) return;
 
         setStorageConnectingDrive(true);
@@ -749,7 +752,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     useEffect(() => {
         const loadSettings = async () => {
             try {
-                const id = getActiveTenantId() || auth.currentUser?.uid;
+                const id = getActiveTenantId();
                 if (!id) return;
                 setTenantId(id);
 
@@ -818,7 +821,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         const loadAPITokens = async () => {
             setLoadingTokens(true);
             try {
-                const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+                const id = tenantId || getActiveTenantId();
                 if (!id) return;
                 const tokens = await listWorkspaceApiTokens(id);
                 setApiTokens(tokens);
@@ -965,7 +968,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
         setCreatingToken(true);
         try {
-            const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            const id = tenantId || getActiveTenantId();
             if (!id) {
                 throw new Error('Workspace not found');
             }
@@ -997,7 +1000,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         if (!confirmed) return;
 
         try {
-            const id = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            const id = tenantId || getActiveTenantId();
             if (!id) {
                 throw new Error('Workspace not found');
             }

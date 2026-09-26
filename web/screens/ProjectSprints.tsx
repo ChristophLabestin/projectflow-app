@@ -31,6 +31,7 @@ import { Badge } from '../components/common/Badge/Badge';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/UIContext';
+import { parseDateValue } from '../utils/taskDates';
 
 export const ProjectSprints: React.FC = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -247,7 +248,7 @@ export const ProjectSprints: React.FC = () => {
         const priority = task.priority || 'Medium';
         const priorityLabel = priorityLabels[priority] || priority;
         const priorityVariant = priority === 'Urgent' ? 'error' : priority === 'High' ? 'warning' : 'neutral';
-        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+        const dueDate = task.dueDate ? parseDateValue(task.dueDate) : null;
 
         return (
             <div className={`sprint-task-card ${task.isCompleted ? 'is-complete' : ''}`}>

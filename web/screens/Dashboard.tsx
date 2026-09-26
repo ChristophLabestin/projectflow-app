@@ -1245,7 +1245,7 @@ export const Dashboard = () => {
     return (
         <>
             <PasskeySetupModal
-                isOpen={showPasskeyUpsell}
+                isOpen={showPasskeyUpsell && !showOnboardingWelcome && !onboardingActive}
                 onClose={() => setShowPasskeyUpsell(false)}
                 onSetupComplete={() => setShowPasskeyUpsell(false)}
             />

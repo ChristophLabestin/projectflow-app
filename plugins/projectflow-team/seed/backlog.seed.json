@@ -1,0 +1,113 @@
+{
+  "_comment": "Gelebter Backlog. 'by' = Agent-Key, dessen Token den Task erstellt (=> Urheber). 'assignTo' = Agent-Keys (assigneeIds). 'dueInDays' relativ zu heute (negativ = überfällig/vergangen). Kommentare 'by' = Urheber des Kommentars. externalKey macht den Seed idempotent (re-run aktualisiert statt dupliziert).",
+  "tasks": [
+    {
+      "externalKey": "seed-onboarding-flow",
+      "by": "paul", "assignTo": ["theo"], "priority": "High", "status": "In Progress", "dueInDays": 4,
+      "title": "Onboarding-Flow: leerer Workspace muss zur ersten Aktion führen",
+      "description": "Neue Nutzer landen ohne Projekt im Leerzustand und springen ab. Wir brauchen einen geführten ersten Schritt (erstes Projekt + erster Task). Akzeptanz: Nutzer hat nach Onboarding mindestens 1 Projekt und 1 Task.",
+      "comments": [
+        { "by": "theo", "content": "Mach ich diese Woche. Frage: soll das erste Projekt automatisch angelegt werden oder per Auswahl? Tendiere zu Auto-Anlage + umbenennbar." },
+        { "by": "uma", "content": "Bitte keinen mehrstufigen Wizard. Ein Screen, eine klare Aktion. Ich häng eine Skizze an den Design-Review." }
+      ]
+    },
+    {
+      "externalKey": "seed-onboarding-ux-review",
+      "by": "uma", "assignTo": ["paul"], "priority": "Medium", "status": "Open", "dueInDays": 6,
+      "title": "UX-Review Onboarding: Streichliste für unnötige UI-Elemente",
+      "description": "Review des aktuellen Onboarding-Screens. Fokus: überflüssige Badges/Chips raus, klare Hierarchie, ein primärer CTA. Liefert Vorher→Nachher-Vorschläge.",
+      "comments": [
+        { "by": "uma", "content": "Erster Durchgang: 3x P1 (konkurrierende CTAs), 2x P2 (Status-Chips ohne Funktion). Details folgen." }
+      ]
+    },
+    {
+      "externalKey": "seed-task-perf",
+      "by": "theo", "assignTo": ["quinn"], "priority": "Medium", "status": "Open", "dueInDays": 9,
+      "title": "Performance prüfen: Projekte mit >500 Tasks",
+      "description": "Unklar, wie die Task-Liste bei großen Projekten skaliert. Bitte Lastszenario testen und Schwelle dokumentieren.",
+      "comments": [
+        { "by": "quinn", "content": "Setze einen Test mit 1k Tasks auf. Messe Render + Firestore-Reads. Bericht bis Ende der Woche." }
+      ]
+    },
+    {
+      "externalKey": "seed-pricing-decision",
+      "by": "carla", "assignTo": ["paul", "mara"], "priority": "High", "status": "Open", "dueInDays": 3,
+      "title": "Entscheidungsvorlage Pricing-Modell vorbereiten",
+      "description": "Freemium vs. 14-Tage-Trial vs. reine Bezahl-App. Paul: Produktsicht + Conversion-Annahmen. Mara: Messaging-Auswirkung. Ergebnis als Entscheidungsvorlage für Christoph.",
+      "comments": [
+        { "by": "carla", "content": "Brauche das vor dem Wochen-Review. Bitte je 3 Bulletpoints, keine Romane." },
+        { "by": "mara", "content": "Trial lässt sich am ehrlichsten kommunizieren. Freemium erzeugt Erwartung an Gratis-Dauerumfang." }
+      ]
+    },
+    {
+      "externalKey": "seed-launch-plan",
+      "by": "mara", "assignTo": ["nina"], "priority": "Medium", "status": "In Progress", "dueInDays": 8,
+      "title": "Launch-Plan v1: Kanäle, Botschaft, Content-Bedarf",
+      "description": "Positionierung 'ruhige Alternative zu überladenen Task-Tools'. Nina: konkreten Content-Bedarf ableiten (Formate + Anzahl).",
+      "comments": [
+        { "by": "nina", "content": "Plane eine 'Weniger ist mehr'-Reihe: 4 Carousels + 2 Reels. Hooks teste ich in 2 Varianten." }
+      ]
+    },
+    {
+      "externalKey": "seed-ig-series",
+      "by": "nina", "assignTo": ["mara"], "priority": "Low", "status": "Open", "dueInDays": 12,
+      "title": "Instagram-Themenreihe Woche 1 produzieren",
+      "description": "Erste Reihe für den AI-Account. Abhängig von Nischen-Entscheidung. Captions + Post-Struktur (Hook/Body/CTA).",
+      "comments": [
+        { "by": "mara", "content": "Nische ist noch offen (Entscheidung steht aus). Bereite zwei Stränge vor: Productivity und AI-Tools." }
+      ]
+    },
+    {
+      "externalKey": "seed-competitor-research",
+      "by": "rosa", "assignTo": ["paul"], "priority": "Medium", "status": "In Progress", "dueInDays": 5,
+      "title": "Wettbewerbs- & Preisrecherche Task-Tools",
+      "description": "Vergleich relevanter Tools: Zielgruppe, Preis, Stärke/Schwäche. Fakten/Annahmen/Empfehlung klar trennen.",
+      "comments": [
+        { "by": "rosa", "content": "Tabelle steht zu 60%. Preise mit Stand-Datum, da sie sich häufig ändern." }
+      ]
+    },
+    {
+      "externalKey": "seed-regression-r12",
+      "by": "quinn", "assignTo": ["theo"], "priority": "High", "status": "Open", "dueInDays": 7,
+      "title": "Regressionsplan Release 1.2",
+      "description": "Welche bestehenden Features sind durch den Onboarding-Umbau gefährdet? Testfälle + Freigabe-Empfehlung.",
+      "comments": [
+        { "by": "quinn", "content": "Risikobereiche: Projekt-Erstellung, Task-Capture, Mitglieder-Sicht. Decke ich mit 12 Testfällen ab." }
+      ]
+    },
+    {
+      "externalKey": "seed-finance-june",
+      "by": "felix", "assignTo": ["carla"], "priority": "Medium", "status": "Open", "dueInDays": 2,
+      "title": "Belege Juni für Steuerberater vorbereiten",
+      "description": "Eingangs-/Ausgangsrechnungen sortieren, fehlende Belege markieren, offene Fragen sammeln. Keine steuerliche Endentscheidung.",
+      "comments": [
+        { "by": "felix", "content": "2 Belege fehlen noch (Hosting, Software-Abo). Frage zur USt bei Auslandskunde geht an den Steuerberater." }
+      ]
+    },
+    {
+      "externalKey": "seed-keyboard-shortcuts",
+      "by": "paul", "assignTo": ["theo", "uma"], "priority": "Low", "status": "Open", "dueInDays": 14,
+      "title": "Tastaturkürzel-Overlay (Capture-First)",
+      "description": "Schneller Task-Capture per Tastatur. Overlay mit Kürzel-Übersicht. Theo: Machbarkeit, Uma: ruhiges, nicht überladenes Layout.",
+      "comments": []
+    },
+    {
+      "externalKey": "seed-weekly-planning",
+      "by": "carla", "assignTo": ["carla"], "priority": "Medium", "status": "Done", "dueInDays": -1,
+      "title": "Wochenplanung KW27 erstellen",
+      "description": "Top-3-Fokus, Tagesplan, Risiken. Erledigt und im Outbox abgelegt.",
+      "comments": [
+        { "by": "carla", "content": "Erledigt. Top-3: Onboarding, IG-Reihe, Finance-Juni. Pricing-Entscheidung als Vorlage an Christoph." }
+      ]
+    },
+    {
+      "externalKey": "seed-design-tokens",
+      "by": "uma", "assignTo": ["theo"], "priority": "Low", "status": "Done", "dueInDays": -3,
+      "title": "Akzentfarben auf eine pro Screen reduzieren",
+      "description": "Mehrere konkurrierende Akzentfarben im Board. Auf eine reduziert, Tokens angepasst.",
+      "comments": [
+        { "by": "theo", "content": "Umgesetzt in den SCSS-Tokens. Sieht deutlich ruhiger aus." }
+      ]
+    }
+  ]
+}

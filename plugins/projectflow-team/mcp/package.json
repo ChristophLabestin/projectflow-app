@@ -1,0 +1,13 @@
+{
+  "name": "projectflow-team-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP-Server: laesst AI-Agenten als ProjectFlow-Mitarbeiter Tasks anlegen, zuweisen und kommentieren.",
+  "bin": { "projectflow-team-mcp": "server.mjs" },
+  "scripts": { "start": "node server.mjs" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "engines": { "node": ">=18" }
+}

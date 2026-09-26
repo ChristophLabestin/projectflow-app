@@ -32,6 +32,7 @@ export const AppLayout = () => {
         || location.pathname.includes('/marketing')
         || location.pathname.includes('/activity')
         || location.pathname.includes('/codex')
+        || location.pathname.includes('/team')
         || location.pathname.includes('/brainstorm');
 
     // Derived project ID from URL if not in params (e.g. nested routes)

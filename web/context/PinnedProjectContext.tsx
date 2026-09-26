@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../services/firebase';
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 import { Project } from '../types';
 import { getProjectById } from '../services/domain/projectsService';
+import { getCachedTenantId } from '../services/internal/workspaceDataCore';
 
 interface PinnedProjectContextType {
     pinnedProjectId: string | null;
@@ -50,7 +51,11 @@ export const PinnedProjectProvider: React.FC<{ children: React.ReactNode }> = ({
         // Let's assume we maintain pinned project per tenant effectively by listening to the current user's doc in the current tenant.
         // Use `localStorage` for active tenant?
 
-        const tenantId = localStorage.getItem('activeTenantId') || user.uid;
+        const tenantId = getCachedTenantId();
+        if (!tenantId) {
+            setIsLoading(false);
+            return;
+        }
 
         const unsub = onSnapshot(doc(db, 'tenants', tenantId, 'users', user.uid), (snap) => {
             if (snap.exists()) {
@@ -112,11 +117,12 @@ export const PinnedProjectProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const pinProject = async (projectId: string) => {
         if (!user) return;
-        const tenantId = localStorage.getItem('activeTenantId') || user.uid;
+        const tenantId = getCachedTenantId();
+        if (!tenantId) return;
         try {
-            await updateDoc(doc(db, 'tenants', tenantId, 'users', user.uid), {
+            await setDoc(doc(db, 'tenants', tenantId, 'users', user.uid), {
                 pinnedProjectId: projectId
-            });
+            }, { merge: true });
             // State update will happen via snapshot listener
         } catch (e) {
             console.error("Failed to pin project", e);
@@ -125,11 +131,12 @@ export const PinnedProjectProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const unpinProject = async () => {
         if (!user) return;
-        const tenantId = localStorage.getItem('activeTenantId') || user.uid;
+        const tenantId = getCachedTenantId();
+        if (!tenantId) return;
         try {
-            await updateDoc(doc(db, 'tenants', tenantId, 'users', user.uid), {
-                pinnedProjectId: null // or deleteField()
-            });
+            await setDoc(doc(db, 'tenants', tenantId, 'users', user.uid), {
+                pinnedProjectId: null
+            }, { merge: true });
         } catch (e) {
             console.error("Failed to unpin project", e);
         }

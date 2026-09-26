@@ -1,3 +1,4 @@
+import { parseDateValue } from '../utils/taskDates';
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
@@ -39,7 +40,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState<Task['priority']>(initialTaskFields?.priority || 'Medium');
     const [description, setDescription] = useState(initialTaskFields?.description || '');
-    const [dueDate, setDueDate] = useState<Date | null>(initialTaskFields?.dueDate ? new Date(initialTaskFields.dueDate) : null);
+    const [dueDate, setDueDate] = useState<Date | null>(initialTaskFields?.dueDate ? parseDateValue(initialTaskFields.dueDate) : null);
     const [selectedCategories, setSelectedCategories] = useState<IdeaGroup[]>([]);
     const [status, setStatus] = useState<TaskStatus>(initialTaskFields?.status || 'Open');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);

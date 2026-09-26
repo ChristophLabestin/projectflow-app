@@ -45,6 +45,7 @@ import { getUserProfile } from '../services/domain/usersService';
 import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';
 import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
+import { isDateOverdue, parseDateValue } from '../utils/taskDates';
 
 // --- Types ---
 export type ProjectMetrics = {
@@ -196,6 +197,7 @@ const SpotlightHero: React.FC<SpotlightHeroProps> = ({
     sprintCount = 0,
     mode = 'spotlight'
 }) => {
+    const { t, dateFormat, dateLocale } = useLanguage();
     const healthColor = getHealthColor(healthStatus);
     const primaryReason = reasons[0];
 
@@ -295,11 +297,11 @@ const SpotlightHero: React.FC<SpotlightHeroProps> = ({
                             <div className="due-date-box">
                                 <span className="material-symbols-outlined">calendar_today</span>
                                 <div className="due-date-info">
-                                    <span className="due-label">Due Date</span>
+                                    <span className="due-label">{t('projects.spotlight.dueDate')}</span>
                                     <span className="due-value">
-                                        {new Date(project.dueDate).toLocaleDateString()}
-                                        {healthStatus === 'critical' && reasons.some(r => r.key.includes('Overdue')) && (
-                                            <span className="overdue-tag"> OVERDUE</span>
+                                        {format(parseDateValue(project.dueDate), dateFormat, { locale: dateLocale })}
+                                        {isDateOverdue(project.dueDate) && project.status !== 'Completed' && (
+                                            <span className="overdue-tag"> {t('projects.spotlight.overdue')}</span>
                                         )}
                                     </span>
                                 </div>
@@ -595,7 +597,7 @@ const CompactProjectRow: React.FC<{
                     {project.dueDate && (
                         <span className="meta-item">
                             <span className="material-symbols-outlined">event</span>
-                            {new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            {parseDateValue(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                         </span>
                     )}
                     {companyLabel && (
@@ -1930,7 +1932,7 @@ export const ProjectsList: React.FC = () => {
         pending.sort((a, b) => {
             if (!a.dueDate) return 1;
             if (!b.dueDate) return -1;
-            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+            return parseDateValue(a.dueDate).getTime() - parseDateValue(b.dueDate).getTime();
         });
         return pending[0];
     }, [focusMilestones]);
@@ -2030,7 +2032,7 @@ export const ProjectsList: React.FC = () => {
         pending.sort((a, b) => {
             if (!a.dueDate) return 1;
             if (!b.dueDate) return -1;
-            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+            return parseDateValue(a.dueDate).getTime() - parseDateValue(b.dueDate).getTime();
         });
         return pending[0];
     }, [spotlightProjectMilestones]);

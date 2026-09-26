@@ -1,4 +1,4 @@
-import { arrayRemove, collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from 'firebase/firestore';
+import { arrayRemove, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
 import { db } from '../firebase';
 import { getActiveTenantId } from './authService';
@@ -6,7 +6,6 @@ import type { Member, WorkspaceRole } from '../../types';
 
 const tenantMembersCollection = (tenantId: string) => collection(db, 'tenants', tenantId, 'members');
 const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, 'tenants', tenantId, 'members', userId);
-const tenantUserDocRef = (tenantId: string, userId: string) => doc(db, 'tenants', tenantId, 'users', userId);
 const groupDocRef = (tenantId: string, groupId: string) => doc(db, 'tenants', tenantId, 'groups', groupId);
 const userDocRef = (userId: string) => doc(db, 'users', userId);
 
@@ -36,7 +35,6 @@ export const getWorkspaceMembers = async (tenantId?: string): Promise<Member[]> 
                 joinedAt: membership.joinedAt,
                 groupIds: membership.groupIds,
                 pinnedProjectId: membership.pinnedProjectId,
-                githubToken: membership.githubToken,
             } as Member;
         })
     );
@@ -137,12 +135,6 @@ export const updateUserRole = async (
     }
 
     await updateDoc(tenantMemberDocRef(resolvedTenant, targetUserId), { role: newRole });
-
-    const legacyTenantUserRef = tenantUserDocRef(resolvedTenant, targetUserId);
-    const legacyTenantUserSnap = await getDoc(legacyTenantUserRef);
-    if (legacyTenantUserSnap.exists()) {
-        await updateDoc(legacyTenantUserRef, { role: newRole });
-    }
 };
 
 /**
@@ -170,17 +162,8 @@ export const removeUserFromWorkspace = async (userId: string, tenantId?: string)
     }
 
     const memberRef = tenantMemberDocRef(resolvedTenant, userId);
-    const tenantUserRef = tenantUserDocRef(resolvedTenant, userId);
-
-    const [memberSnap, tenantUserSnap] = await Promise.all([
-        getDoc(memberRef),
-        getDoc(tenantUserRef)
-    ]);
-
-    const groupIds = Array.from(new Set([
-        ...((memberSnap.exists() ? memberSnap.data().groupIds : []) || []),
-        ...((tenantUserSnap.exists() ? tenantUserSnap.data().groupIds : []) || [])
-    ]));
+    const memberSnap = await getDoc(memberRef);
+    const groupIds: string[] = (memberSnap.exists() ? memberSnap.data().groupIds : []) || [];
 
     await Promise.all(groupIds.map(async (groupId) => {
         try {
@@ -192,8 +175,15 @@ export const removeUserFromWorkspace = async (userId: string, tenantId?: string)
         }
     }));
 
-    await Promise.all([
-        deleteDoc(memberRef),
-        deleteDoc(tenantUserRef)
-    ]);
+    // Revoke project-level access too (guests are scoped via project memberIds).
+    const projectSnaps = await getDocs(query(
+        collection(db, 'tenants', resolvedTenant, 'projects'),
+        where('memberIds', 'array-contains', userId)
+    ));
+    await Promise.all(projectSnaps.docs.map((projectSnap) => updateDoc(projectSnap.ref, {
+        memberIds: arrayRemove(userId),
+        [`roles.${userId}`]: deleteField()
+    }).catch((error) => console.warn('Failed to remove user from project', error))));
+
+    await deleteDoc(memberRef);
 };

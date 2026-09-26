@@ -15,6 +15,7 @@ import { Card } from '../components/common/Card/Card';
 import { useLanguage } from '../context/LanguageContext';
 import { getProjectById } from '../services/domain/projectsService';
 import confetti from 'canvas-confetti';
+import { parseDateValue } from '../utils/taskDates';
 
 export const ProjectMilestones = () => {
     type RiskLevel = 'Low' | 'Medium' | 'High';
@@ -206,8 +207,8 @@ export const ProjectMilestones = () => {
 
     const sortedMilestones = useMemo(() => {
         return [...milestones].sort((a, b) => {
-            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : 9999999999999;
-            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : 9999999999999;
+            const dateA = a.dueDate ? parseDateValue(a.dueDate).getTime() : 9999999999999;
+            const dateB = b.dueDate ? parseDateValue(b.dueDate).getTime() : 9999999999999;
             return dateA - dateB;
         });
     }, [milestones]);
@@ -235,7 +236,7 @@ export const ProjectMilestones = () => {
         if (milestone.status === 'Achieved') return 'Low';
 
         const now = new Date();
-        const dueDate = milestone.dueDate ? new Date(milestone.dueDate) : null;
+        const dueDate = milestone.dueDate ? parseDateValue(milestone.dueDate) : null;
 
         if (dueDate && dueDate < now) return 'High';
 
@@ -382,10 +383,10 @@ export const ProjectMilestones = () => {
                                                     {milestone.dueDate ? (
                                                         <>
                                                             <span className="project-milestones__date-month">
-                                                                {format(new Date(milestone.dueDate), 'MMM', { locale: dateLocale })}
+                                                                {format(parseDateValue(milestone.dueDate), 'MMM', { locale: dateLocale })}
                                                             </span>
                                                             <span className="project-milestones__date-day">
-                                                                {new Date(milestone.dueDate).getDate()}
+                                                                {parseDateValue(milestone.dueDate).getDate()}
                                                             </span>
                                                         </>
                                                     ) : (

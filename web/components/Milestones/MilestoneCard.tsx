@@ -4,6 +4,7 @@ import { Milestone } from '../../types';
 import { subscribeProjectMilestones } from '../../services/domain/projectMetaService';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
+import { parseDateValue, isDateOverdue } from '../../utils/taskDates';
 
 export const MilestoneCard = ({ projectId }: { projectId: string }) => {
     const navigate = useNavigate();
@@ -30,7 +31,7 @@ export const MilestoneCard = ({ projectId }: { projectId: string }) => {
         .sort((a, b) => (a.dueDate || '9999').localeCompare(b.dueDate || '9999'))[0];
 
     const isOverdue = nextMilestone?.dueDate
-        ? new Date(nextMilestone.dueDate) < new Date()
+        ? isDateOverdue(parseDateValue(nextMilestone.dueDate))
         : false;
 
     if (loading) {
@@ -101,7 +102,7 @@ export const MilestoneCard = ({ projectId }: { projectId: string }) => {
                         <p className="milestone-card__next-title">{nextMilestone.title}</p>
                         {nextMilestone.dueDate && (
                             <p className={`milestone-card__next-due ${isOverdue ? 'milestone-card__next-due--overdue' : ''}`}>
-                                Due {format(new Date(nextMilestone.dueDate), dateFormat, { locale: dateLocale })}
+                                Due {format(parseDateValue(nextMilestone.dueDate), dateFormat, { locale: dateLocale })}
                             </p>
                         )}
                     </div>

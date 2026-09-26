@@ -11,6 +11,7 @@ import { getUserTasks, updateTask } from '../services/domain/tasksService';
 import { Task, Issue } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
 import { auth } from '../services/firebase';
+import { hasTimeComponent, parseDateValue } from '../utils/taskDates';
 
 const getUserIssues = async (): Promise<Issue[]> => [];
 const updateIssue = async () => undefined;
@@ -212,7 +213,7 @@ export const Calendar = () => {
     const unscheduleFutureItems = async () => {
         try {
             const now = new Date();
-            const futureTasks = tasks.filter(t => t.scheduledDate && isAfter(new Date(t.scheduledDate), now) && !t.isCompleted);
+            const futureTasks = tasks.filter(t => t.scheduledDate && isAfter(parseDateValue(t.scheduledDate), now) && !t.isCompleted);
             const futureIssues = issues.filter(i => i.scheduledDate && isAfter(new Date(i.scheduledDate), now) && i.status !== 'Resolved' && i.status !== 'Closed');
 
             const allFuture = [...futureTasks, ...futureIssues];
@@ -427,9 +428,9 @@ export const Calendar = () => {
 
     // Helper to determine effective date for display
     const getItemDate = (item: Task | Issue): Date | null => {
-        if (item.scheduledDate) return new Date(item.scheduledDate);
+        if (item.scheduledDate) return parseDateValue(item.scheduledDate);
         // Fallback for Tasks only usually, but if Issues purely rely on scheduledDate they won't show
-        if ((item as Task).dueDate) return new Date((item as Task).dueDate!);
+        if ((item as Task).dueDate) return parseDateValue((item as Task).dueDate!);
         return null;
     };
 
@@ -437,10 +438,9 @@ export const Calendar = () => {
         const dateTasks = tasks.filter(t => {
             const d = getItemDate(t);
             if (!d || !isValid(d)) return false;
-            // Only show tasks with Open or In Progress status, and not completed
-            const status = t.status || 'Open';
-            if (status !== 'Open' && status !== 'In Progress') return false;
-            return isSameDay(d, date) && !t.isCompleted;
+            // Every unfinished task belongs on the calendar (Todo, Review, Blocked, …).
+            if (t.isCompleted || t.status === 'Done') return false;
+            return isSameDay(d, date);
         });
 
         const dateIssues = issues.filter(i => {
@@ -625,9 +625,9 @@ export const Calendar = () => {
                                                     <div className="calendar-item__title">{item.title}</div>
                                                     <div className="calendar-item__meta">
                                                         <span className={`calendar-priority-dot calendar-priority-dot--${priorityTone}`} />
-                                                        {(item as Task).dueDate && (
+                                                        {hasTimeComponent((item as Task).dueDate) && (
                                                             <span className="calendar-item__time">
-                                                                {format(new Date((item as Task).dueDate!), 'HH:mm', { locale: dateLocale })}
+                                                                {format(parseDateValue((item as Task).dueDate!), 'HH:mm', { locale: dateLocale })}
                                                             </span>
                                                         )}
                                                     </div>
@@ -946,9 +946,9 @@ export const Calendar = () => {
                                     <span className="material-symbols-outlined calendar-tooltip__meta-icon">schedule</span>
                                     <span>
                                         {hoveredTask.item.scheduledDate
-                                            ? format(new Date(hoveredTask.item.scheduledDate), 'MMM d, HH:mm', { locale: dateLocale })
+                                            ? format(parseDateValue(hoveredTask.item.scheduledDate), hasTimeComponent(hoveredTask.item.scheduledDate) ? 'MMM d, HH:mm' : 'MMM d', { locale: dateLocale })
                                             : (hoveredTask.item as Task).dueDate
-                                                ? format(new Date((hoveredTask.item as Task).dueDate!), 'MMM d, HH:mm', { locale: dateLocale })
+                                                ? format(parseDateValue((hoveredTask.item as Task).dueDate!), hasTimeComponent((hoveredTask.item as Task).dueDate) ? 'MMM d, HH:mm' : 'MMM d', { locale: dateLocale })
                                                 : t('calendar.tooltip.noDate')
                                         }
                                     </span>

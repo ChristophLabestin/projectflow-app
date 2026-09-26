@@ -1,0 +1,40 @@
+{
+  "_comment": "Per-Projekt-Agenten: je ein Product Manager pro Projekt, Customer Service zusaetzlich bei Kundenprojekten. projectFlowId 'CREATE' => Projekt wird angelegt. agentFunction wird als Jobtitel im Team-Feature angezeigt.",
+  "emailDomain": "agents.labestindigital.internal",
+  "customRoles": {
+    "pm": { "name": "Product Manager", "color": "#4D96FF" },
+    "cs": { "name": "Customer Service", "color": "#16A34A" }
+  },
+  "permissions": {
+    "pm": ["projects:read","projects:write","tasks:read","tasks:write","tasks:delete","initiatives:read","initiatives:write"],
+    "cs": ["projects:read","projects:write","tasks:read","tasks:write","initiatives:read"]
+  },
+  "projects": [
+    {
+      "key": "quivena", "name": "Quivena", "projectFlowId": "QDinAXhnyTA3CFQsJafl", "customer": false,
+      "pm": { "key": "pm-quivena", "displayName": "Jonas Vogt" }
+    },
+    {
+      "key": "notenklar", "name": "Notenklar", "projectFlowId": "efpiBNxMM3di3YMQwl6c", "customer": false,
+      "pm": { "key": "pm-notenklar", "displayName": "Lena Sommer" }
+    },
+    {
+      "key": "monoria", "name": "Monoria", "projectFlowId": "Lcv2i3TcvEeqNOApxbXG", "customer": false,
+      "pm": { "key": "pm-monoria", "displayName": "David Krueger" }
+    },
+    {
+      "key": "projectflow", "name": "ProjectFlow", "projectFlowId": "ogZ8Pyz8pwEQtv8I64nu", "customer": false,
+      "pm": { "key": "pm-projectflow", "displayName": "Sophie Wendt" }
+    },
+    {
+      "key": "vfrskiclub", "name": "VfR Skiclub Laberweinting", "projectFlowId": "Oe8Qid5d8bVQExDUx1CD", "customer": true,
+      "pm": { "key": "pm-vfrskiclub", "displayName": "Markus Berg" },
+      "cs": { "key": "cs-vfrskiclub", "displayName": "Eva Klein" }
+    },
+    {
+      "key": "feuerwehr", "name": "Feuerwehr Laberweinting", "projectFlowId": "CREATE", "customer": true,
+      "pm": { "key": "pm-feuerwehr", "displayName": "Hannah Roth" },
+      "cs": { "key": "cs-feuerwehr", "displayName": "Tobias Frank" }
+    }
+  ]
+}

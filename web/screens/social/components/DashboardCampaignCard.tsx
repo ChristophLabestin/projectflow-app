@@ -5,6 +5,7 @@ import { PlatformIcon } from './PlatformIcon';
 import { format } from 'date-fns';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../../utils/socialLocalization';
+import { parseDateValue } from '../../../utils/taskDates';
 
 interface DashboardCampaignCardProps {
     campaign: SocialCampaign;
@@ -80,7 +81,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                         <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                         <span>
                             {t('social.dashboardCampaign.ends')
-                                .replace('{date}', campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.dashboardCampaign.tbd'))}
+                                .replace('{date}', campaign.endDate ? format(parseDateValue(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.dashboardCampaign.tbd'))}
                         </span>
                     </div>
                     <Link

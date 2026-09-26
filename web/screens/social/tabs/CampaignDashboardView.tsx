@@ -3,6 +3,7 @@ import { SocialCampaign, SocialPost, SocialPlatform } from '../../../types';
 import { format } from 'date-fns';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getSocialCampaignStatusLabel, getSocialPostStatusLabel } from '../../../utils/socialLocalization';
+import { parseDateValue } from '../../../utils/taskDates';
 
 interface CampaignDashboardViewProps {
     campaign: SocialCampaign;
@@ -41,8 +42,8 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
     // Campaign progress (based on dates if available)
     let progressPercent = 0;
     if (campaign.startDate && campaign.endDate) {
-        const start = new Date(campaign.startDate).getTime();
-        const end = new Date(campaign.endDate).getTime();
+        const start = parseDateValue(campaign.startDate).getTime();
+        const end = parseDateValue(campaign.endDate).getTime();
         const now = Date.now();
         if (now >= end) progressPercent = 100;
         else if (now <= start) progressPercent = 0;
@@ -52,7 +53,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
     // Days remaining
     let daysRemaining: number | null = null;
     if (campaign.endDate) {
-        const end = new Date(campaign.endDate).getTime();
+        const end = parseDateValue(campaign.endDate).getTime();
         const now = Date.now();
         daysRemaining = Math.max(0, Math.ceil((end - now) / (1000 * 60 * 60 * 24)));
     }
@@ -105,8 +106,8 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs text-muted">
-                            <span>{format(new Date(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
-                            <span>{format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}</span>
+                            <span>{format(parseDateValue(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
+                            <span>{format(parseDateValue(campaign.endDate), dateFormat, { locale: dateLocale })}</span>
                         </div>
                         <div className="h-3 bg-surface rounded-full overflow-hidden">
                             <div

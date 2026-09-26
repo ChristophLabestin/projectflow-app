@@ -5,6 +5,7 @@ import { PlatformIcon } from './PlatformIcon';
 import { format } from 'date-fns';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../../utils/socialLocalization';
+import { parseDateValue } from '../../../utils/taskDates';
 
 interface CampaignHeaderProps {
     campaign: SocialCampaign;
@@ -34,8 +35,8 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     // const publishedCount = posts.filter(p => p.status === 'Published').length;
 
     // Using date-fns for formatting
-    const startDate = campaign.startDate ? format(new Date(campaign.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
-    const endDate = campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
+    const startDate = campaign.startDate ? format(parseDateValue(campaign.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
+    const endDate = campaign.endDate ? format(parseDateValue(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
 
     return (
         <div className="relative shrink-0 border-b border-surface bg-surface">

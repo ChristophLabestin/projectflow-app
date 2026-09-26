@@ -17,6 +17,7 @@ import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { isProjectIncludedInImportantSignals } from '../services/healthService';
+import { parseDateValue } from '../utils/taskDates';
 
 export const PersonalTaskDetailPage = () => {
     const { taskId } = useParams<{ taskId: string }>();
@@ -204,7 +205,7 @@ export const PersonalTaskDetailPage = () => {
                                             <div className="flex flex-col">
                                             <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('personalTaskDetail.labels.dueDate')}</span>
                                                 <span className="text-main font-semibold whitespace-nowrap">
-                                                    {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
+                                                    {format(parseDateValue(task.dueDate), dateFormat, { locale: dateLocale })}
                                                 </span>
                                             </div>
                                     </div>

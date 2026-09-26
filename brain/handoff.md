@@ -4,10 +4,19 @@ Last updated: 2026-06-04
 
 ## Where Things Stand
 
+**2026-09-26 update.** ProjectFlow now targets the Firebase project `projectflow-labestin`. Tenancy is multi-workspace:
+- random tenant ids;
+- `members` docs as the only access source;
+- Owner/Admin/Member/Guest roles;
+- email or link invitations accepted by the `acceptWorkspaceInvite` function.
+
+My Tasks and Project Tasks use the shared grouped work list in `web/components/work/`. All of this is verified in local emulators (`scripts/seed-emulator.mjs`, `npm run dev:emulator`) but **not deployed**: production still runs the pre-tenancy rules, functions and web build. The next step is one combined deploy (see current-focus Next Actions). Uncommitted user WIP in `AppLayout`, `TopBar`, `ProjectOverviewPage`, `ProjectHero`, `ProjectTaskDetail` and `Team` was left intact; `Team.tsx` was additionally migrated to the invitation model and i18n.
+
 The repository has been migrated into `/brain`, the active Web/Swift removal path for Flows/Ideas and Issues remains in place, and project task detail now has a Full Workbench redesign.
 
 ## What Changed Recently
 
+- Added project/task reminders for operational follow-ups. `ProjectReminder` now lives on `Project.reminders` and `Task.reminders`; task `reminderAt` is kept as the earliest open task reminder for legacy compatibility. Project Overview V2 shows a merged reminder strip with project reminders, task reminders, and legacy `reminderAt` values, with create/complete/delete actions and optional Task/Initiative links. Task detail now supports multiple reminders instead of a single reminder date. Build and theme lint pass; authenticated write/visual QA remains pending. ProjectFlow tracking could not be created because `PROJECTFLOW_API_TOKEN` is missing.
 - Created app-type Brain core files.
 - Moved former root product, route, styling, permission, Firestore, mobile, privacy, and agent docs into `brain/reference/app/`.
 - Moved old planning docs into `brain/plans/`.
@@ -47,7 +56,7 @@ The repository has been migrated into `/brain`, the active Web/Swift removal pat
 
 ## Next Best Move
 
-Check the UI in an authenticated browser session at a real `/project/:id/tasks/:taskId`: verify command rail edits, Work/Discussion/History tabs, next-step/blocker/reminder/quick-log saves, subtasks, comments, relationships, labels, milestone, and responsive behavior. Also search for a known project title from the topbar while inside a project route and verify the result opens with the correct tenant.
+Check the UI in an authenticated browser session on a real project: create project-level reminders, task-linked reminders, and initiative-linked reminders from Project Overview; complete/delete them; then open `/project/:id/tasks/:taskId` and verify multiple task reminders sync back to the Overview strip. Also repeat the pending task-detail workbench QA and topbar project-name search QA.
 
 ## Watchouts
 
@@ -65,6 +74,7 @@ Check the UI in an authenticated browser session at a real `/project/:id/tasks/:
 - ProjectFlow tracking for the global search project-name lookup fix also could not be created because `PROJECTFLOW_API_TOKEN` is missing.
 - ProjectFlow tracking for the sidebar Project Switcher redesign also could not be created because `PROJECTFLOW_API_TOKEN` is missing.
 - ProjectFlow tracking for the UI Style Guide standardization expansion also could not be created because `PROJECTFLOW_API_TOKEN` is missing.
+- ProjectFlow tracking for the project/task reminders feature could not be created because `PROJECTFLOW_API_TOKEN` is missing.
 - Playwright unauthenticated route QA redirects task detail URLs to `/login`; build/theme validation passed, but real task visual QA still needs an authenticated session.
 - In-app Browser unauthenticated QA for Project Overview board visuals redirects to `/login`; `cd web && npm run build` passed, but real board visual QA needs an authenticated project session.
 - In-app Browser QA for the Project Switcher reached the login screen at `http://127.0.0.1:5173/`; build and theme validation passed, but the dropdown interaction still needs an authenticated sidebar session.

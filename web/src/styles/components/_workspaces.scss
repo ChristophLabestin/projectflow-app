@@ -1,0 +1,372 @@
+// Workspaces: resolution gate, switcher section, invite modal, accept page.
+// Depth via surface contrast + shadow only (borderless design).
+
+.workspace-gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-surface-bg);
+
+    &__panel {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        max-width: 380px;
+        text-align: center;
+    }
+
+    &__icon {
+        font-size: 36px;
+        color: var(--color-text-subtle);
+
+        &--error {
+            color: var(--color-error);
+        }
+    }
+
+    &__spin {
+        animation: workspace-gate-spin 1s linear infinite;
+    }
+
+    &__title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    &__text {
+        font-size: 13px;
+        color: var(--color-text-muted);
+    }
+
+    &__actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    &__button {
+        padding: 8px 14px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        font-weight: 600;
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+        transition: filter var(--transition-fast);
+
+        &:hover {
+            filter: brightness(0.95);
+        }
+
+        &--ghost {
+            background: var(--color-surface-hover);
+            color: var(--color-text-main);
+        }
+    }
+}
+
+@keyframes workspace-gate-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+// ---- Switcher section (inside .snav-ws-menu) --------------------------------
+
+.workspace-menu {
+    &__avatar {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-md);
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+
+        .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        &--invite {
+            background: rgba(var(--color-warning-rgb), 0.16);
+            color: var(--color-warning);
+        }
+
+        &--ghost {
+            background: var(--color-surface-hover);
+            color: var(--color-text-muted);
+        }
+    }
+
+    &__invite {
+        cursor: default;
+    }
+
+    &__accept {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: var(--radius-full);
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+        transition: filter var(--transition-fast);
+
+        .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        &:hover:not(:disabled) {
+            filter: brightness(0.92);
+        }
+
+        &:disabled {
+            opacity: 0.7;
+        }
+    }
+
+    &__create .snav-ws-row__title {
+        color: var(--color-text-muted);
+    }
+}
+
+.workspace-create {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    &__hint {
+        font-size: 13px;
+        color: var(--color-text-muted);
+        line-height: 1.5;
+    }
+}
+
+// ---- Invite modal -------------------------------------------------------------
+
+.invite-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+    &__segments {
+        display: inline-flex;
+        align-self: flex-start;
+        gap: 2px;
+        padding: 3px;
+        border-radius: var(--radius-full);
+        background: var(--color-surface-hover);
+    }
+
+    &__segment {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: var(--radius-full);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-muted);
+        transition: background var(--transition-fast), color var(--transition-fast);
+
+        .material-symbols-outlined {
+            font-size: 16px;
+        }
+
+        &.is-active {
+            background: var(--color-surface-card);
+            color: var(--color-text-main);
+            box-shadow: var(--shadow-sm);
+        }
+    }
+
+    &__label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    &__hint {
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--color-text-muted);
+    }
+
+    &__roles {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin: 0;
+        padding: 0;
+        border: 0;
+    }
+
+    &__role {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        column-gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-hover);
+        cursor: pointer;
+        transition: background var(--transition-fast), box-shadow var(--transition-fast);
+
+        input {
+            grid-row: span 2;
+            accent-color: var(--color-primary);
+        }
+
+        &.is-active {
+            background: var(--color-surface-card);
+            box-shadow: var(--shadow-md);
+        }
+    }
+
+    &__role-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    &__role-hint {
+        font-size: 12px;
+        color: var(--color-text-muted);
+    }
+
+    &__project-list {
+        display: flex;
+        flex-direction: column;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 4px;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-hover);
+    }
+
+    &__project {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 7px 8px;
+        border-radius: var(--radius-md);
+        font-size: 13px;
+        color: var(--color-text-main);
+        cursor: pointer;
+
+        input {
+            accent-color: var(--color-primary);
+        }
+
+        &:hover {
+            background: var(--color-surface-card);
+        }
+    }
+
+    &__error {
+        margin-top: 6px;
+        font-size: 12px;
+        color: var(--color-error);
+    }
+
+    &__result {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    &__link {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 8px 8px 12px;
+        border-radius: var(--radius-lg);
+        background: var(--color-surface-hover);
+    }
+
+    &__link-text {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 12px;
+        color: var(--color-text-main);
+    }
+}
+
+// ---- Accept invitation page ---------------------------------------------------
+
+.accept-invite {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-surface-bg);
+
+    &__card {
+        width: 100%;
+        max-width: 440px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 36px 32px;
+        border-radius: var(--radius-2xl);
+        background: var(--color-surface-card);
+        box-shadow: var(--shadow-lg);
+        text-align: center;
+    }
+
+    &__icon {
+        width: 52px;
+        height: 52px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 6px;
+        border-radius: var(--radius-full);
+        background: rgba(var(--color-primary-rgb), 0.1);
+        color: var(--color-primary);
+        font-size: 26px;
+    }
+
+    &__eyebrow {
+        font-size: 13px;
+        color: var(--color-text-muted);
+    }
+
+    &__title {
+        font-size: 22px;
+        font-weight: 800;
+        line-height: 1.25;
+        color: var(--color-text-main);
+    }
+
+    &__text {
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--color-text-muted);
+    }
+
+    &__actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 12px;
+    }
+}

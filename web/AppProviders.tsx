@@ -7,27 +7,32 @@ import { PinnedProjectProvider } from './context/PinnedProjectContext';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
+import { WorkspaceProvider } from './context/WorkspaceContext';
 
 type AppProvidersProps = {
     children: React.ReactNode;
 };
 
+// Auth and workspace resolution come first so every tenant-scoped provider
+// below mounts with a resolved active workspace.
 export const AppProviders = ({ children }: AppProvidersProps) => (
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
         <LanguageProvider defaultLanguage="en" storageKey="pf-language">
-            <PinnedProjectProvider>
-                <PinnedTasksProvider>
-                    <UIProvider>
-                        <HelpCenterProvider>
-                            <AuthProvider>
-                                <PermissionProvider>
-                                    {children}
-                                </PermissionProvider>
-                            </AuthProvider>
-                        </HelpCenterProvider>
-                    </UIProvider>
-                </PinnedTasksProvider>
-            </PinnedProjectProvider>
+            <AuthProvider>
+                <WorkspaceProvider>
+                    <PinnedProjectProvider>
+                        <PinnedTasksProvider>
+                            <UIProvider>
+                                <HelpCenterProvider>
+                                    <PermissionProvider>
+                                        {children}
+                                    </PermissionProvider>
+                                </HelpCenterProvider>
+                            </UIProvider>
+                        </PinnedTasksProvider>
+                    </PinnedProjectProvider>
+                </WorkspaceProvider>
+            </AuthProvider>
         </LanguageProvider>
     </ThemeProvider>
 );

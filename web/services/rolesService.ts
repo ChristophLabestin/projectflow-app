@@ -116,7 +116,7 @@ export const createCustomRole = async (
     const user = auth.currentUser;
     if (!user) throw new Error('Authentication required');
 
-    const tid = tenantId || getActiveTenantId() || user.uid;
+    const tid = tenantId || getActiveTenantId();
     const tenantRef = doc(db, 'tenants', tid);
 
     // Get current roles
@@ -154,7 +154,7 @@ export const updateCustomRole = async (
     const user = auth.currentUser;
     if (!user) throw new Error('Authentication required');
 
-    const tid = tenantId || getActiveTenantId() || user.uid;
+    const tid = tenantId || getActiveTenantId();
     const tenantRef = doc(db, 'tenants', tid);
 
     // Find and update the role
@@ -186,7 +186,7 @@ export const deleteCustomRole = async (
     const user = auth.currentUser;
     if (!user) throw new Error('Authentication required');
 
-    const tid = tenantId || getActiveTenantId() || user.uid;
+    const tid = tenantId || getActiveTenantId();
     const tenantRef = doc(db, 'tenants', tid);
 
     const roleToDelete = currentRoles.find(r => r.id === roleId);
@@ -209,7 +209,7 @@ export const reorderCustomRoles = async (
     const user = auth.currentUser;
     if (!user) throw new Error('Authentication required');
 
-    const tid = tenantId || getActiveTenantId() || user.uid;
+    const tid = tenantId || getActiveTenantId();
     const tenantRef = doc(db, 'tenants', tid);
 
     // Update positions based on new order
@@ -234,7 +234,7 @@ export const setDefaultRole = async (
     const user = auth.currentUser;
     if (!user) throw new Error('Authentication required');
 
-    const tid = tenantId || getActiveTenantId() || user.uid;
+    const tid = tenantId || getActiveTenantId();
     const tenantRef = doc(db, 'tenants', tid);
 
     await updateDoc(tenantRef, {

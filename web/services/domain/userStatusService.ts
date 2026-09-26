@@ -7,7 +7,7 @@ const TENANTS = 'tenants';
 const USERS = 'users';
 
 const resolveStatusDoc = (userId: string, tenantId?: string) => {
-    const resolvedTenant = resolveActiveTenantId(tenantId) || auth.currentUser?.uid;
+    const resolvedTenant = resolveActiveTenantId(tenantId);
     if (!resolvedTenant) {
         throw new Error('User not authenticated');
     }

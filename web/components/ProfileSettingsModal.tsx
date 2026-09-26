@@ -388,7 +388,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 projectId="uncategorized"
                 collectionType="user"
                 userId={auth.currentUser?.uid}
-                tenantId={getCachedTenantId() || auth.currentUser?.uid}
+                tenantId={getCachedTenantId()}
                 onSelect={(asset) => {
                     if (mediaTarget === 'avatar') {
                         setPhotoURL(asset.url);

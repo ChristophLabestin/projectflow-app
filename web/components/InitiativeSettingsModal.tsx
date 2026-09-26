@@ -8,6 +8,7 @@ import { DatePicker } from './common/DateTime/DatePicker';
 import { Select, type SelectOption } from './common/Select/Select';
 import type { Initiative, Task } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { parseDateValue } from '../utils/taskDates';
 
 type InitiativeSettingsDraft = {
     title: string;
@@ -196,7 +197,7 @@ export const InitiativeSettingsModal: React.FC<InitiativeSettingsModalProps> = (
                         <div className="task-field">
                             <label className="section-label">{t('initiatives.fields.startDate')}</label>
                             <DatePicker
-                                value={draft.startDate ? new Date(draft.startDate) : null}
+                                value={draft.startDate ? parseDateValue(draft.startDate) : null}
                                 onChange={(date) => {
                                     setDraft((current) => ({ ...current, startDate: date ? format(date, 'yyyy-MM-dd') : '' }));
                                     if (error) setError(null);
@@ -206,7 +207,7 @@ export const InitiativeSettingsModal: React.FC<InitiativeSettingsModalProps> = (
                         <div className="task-field">
                             <label className="section-label">{t('initiatives.fields.dueDate')}</label>
                             <DatePicker
-                                value={draft.dueDate ? new Date(draft.dueDate) : null}
+                                value={draft.dueDate ? parseDateValue(draft.dueDate) : null}
                                 onChange={(date) => {
                                     setDraft((current) => ({ ...current, dueDate: date ? format(date, 'yyyy-MM-dd') : '' }));
                                     if (error) setError(null);

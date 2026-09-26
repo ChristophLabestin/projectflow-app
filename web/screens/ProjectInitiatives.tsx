@@ -11,6 +11,7 @@ import { subscribeProjectInitiatives, subscribeProjectTasks } from '../services/
 import { calculateInitiativeHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { parseDateValue } from '../utils/taskDates';
 
 const healthToneClass = (status?: string) => {
     if (status === 'On Track') return 'is-on-track';
@@ -251,9 +252,11 @@ export const ProjectInitiatives = () => {
                                             <div className="workstream-initiative-card__title-block">
                                                 <span className="workstream-initiative-card__status">{initiative.status}</span>
                                                 <h2 className="workstream-initiative-card__title">{initiative.title}</h2>
-                                                <p className="workstream-initiative-card__description">
-                                                    {initiative.description || t('initiatives.empty.description')}
-                                                </p>
+                                                {(initiative.description || initiative.outcome || initiative.successMetric) && (
+                                                    <p className="workstream-initiative-card__description">
+                                                        {initiative.description || initiative.outcome || initiative.successMetric}
+                                                    </p>
+                                                )}
                                             </div>
                                             <div className="workstream-initiative-card__progress-ring" aria-hidden="true">
                                                 <svg viewBox="0 0 36 36">
@@ -292,12 +295,12 @@ export const ProjectInitiatives = () => {
                                             <div className="workstream-initiative-card__dates">
                                                 {initiative.startDate && (
                                                     <span>
-                                                        {t('initiatives.fields.startDate')}: {format(new Date(initiative.startDate), dateFormat, { locale: dateLocale })}
+                                                        {t('initiatives.fields.startDate')}: {format(parseDateValue(initiative.startDate), dateFormat, { locale: dateLocale })}
                                                     </span>
                                                 )}
                                                 {initiative.dueDate && (
                                                     <span>
-                                                        {t('initiatives.fields.dueDate')}: {format(new Date(initiative.dueDate), dateFormat, { locale: dateLocale })}
+                                                        {t('initiatives.fields.dueDate')}: {format(parseDateValue(initiative.dueDate), dateFormat, { locale: dateLocale })}
                                                     </span>
                                                 )}
                                             </div>

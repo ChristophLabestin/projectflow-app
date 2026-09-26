@@ -2,723 +2,489 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { auth } from '../services/firebase';
-import { sendTeamInvitation } from '../services/domain/projectAdminService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { removeUserFromWorkspace, setMemberRoleIds, subscribeTenantUsers, updateUserRole } from '../services/domain/workspaceMembersService';
 import { getSharedProjects, subscribeTenantProjects } from '../services/domain/projectsService';
+import { getProjectTasks } from '../services/domain/tasksService';
 import { subscribeTenantRoles } from '../services/dataService';
-import {
-    generateWorkspaceInviteLink,
-    getTenantProjectInviteLinks,
-    getWorkspaceInviteLinks,
-    revokeProjectInviteLink,
-    revokeWorkspaceInviteLink
-} from '../services/domain/inviteLinksService';
-import { InviteMemberModal } from '../components/InviteMemberModal';
-import { Project, WorkspaceRole, Member, CustomRole } from '../types';
+import { buildInviteUrl, listInvitations, revokeInvitation, type WorkspaceInvitation } from '../services/domain/workspacesService';
+import { InviteToWorkspaceModal } from '../components/workspace/InviteToWorkspaceModal';
+import { useWorkspace } from '../context/WorkspaceContext';
+import { Project, WorkspaceRole, Member, CustomRole, Task } from '../types';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 
-// --- Types ---
-interface TeamMember extends Member {
+// Member erbt bereits von User (displayName/email/photoURL/role). Wir ergänzen nur id + Agent-Felder.
+type TeamMember = Member & {
     id: string;
-    role: WorkspaceRole;
-}
+    title?: string;
+    isAgent?: boolean;
+    agentKey?: string;
+    agentFunction?: string;
+    agentProject?: string;
+};
 
-interface InviteLink {
-    id: string;
-    inviteLinkId?: string;
-    email?: string;
-    role: WorkspaceRole;
-    type: 'workspace' | 'project';
-    projectId?: string;
-    projectName?: string;
-    createdAt?: any;
-}
+type ViewMode = 'department' | 'project' | 'all' | 'invites';
 
-type Tab = 'members' | 'projects' | 'invites';
+// Depth-System: Tiefe über Helligkeit + Schatten, niemals Borders.
+const SURFACE_CARD = 'var(--color-surface-card)';
+const SURFACE_HOVER = 'var(--color-surface-hover)';
+const SURFACE_HOVER_LIGHT = 'var(--color-surface-hover-light, var(--color-surface-hover))';
 
 export const Team = () => {
     const navigate = useNavigate();
     const { t, teamTranslationsReady, loadTeamTranslations } = useLanguage();
     const confirm = useConfirm();
     const { showError, showSuccess } = useToast();
-    const { can, isOwner } = useWorkspacePermissions();
-    const tenantId = useMemo(() => getActiveTenantId() || auth.currentUser?.uid || '', []);
+    const { can } = useWorkspacePermissions();
+    const tenantId = useMemo(() => getActiveTenantId() || '', []);
+    const { activeWorkspace } = useWorkspace();
+    const isWorkspaceAdmin = activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin';
+    const currentUserId = auth.currentUser?.uid;
 
-    useEffect(() => {
-        void loadTeamTranslations();
-    }, [loadTeamTranslations]);
+    useEffect(() => { void loadTeamTranslations(); }, [loadTeamTranslations]);
 
-    // --- State ---
-    const [activeTab, setActiveTab] = useState<Tab>('members');
+    const [view, setView] = useState<ViewMode>('department');
     const [selectedId, setSelectedId] = useState<string | null>(null);
-
     const [users, setUsers] = useState<TeamMember[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
     const [sharedProjects, setSharedProjects] = useState<Project[]>([]);
-    const [inviteLinks, setInviteLinks] = useState<InviteLink[]>([]);
+    const [inviteLinks, setInviteLinks] = useState<WorkspaceInvitation[]>([]);
     const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
     const [showInviteModal, setShowInviteModal] = useState(false);
-
-    // Filter State
     const [searchQuery, setSearchQuery] = useState('');
+    const [selTasks, setSelTasks] = useState<{ loading: boolean; tasks: Task[] }>({ loading: false, tasks: [] });
 
-    // --- Data Fetching ---
     useEffect(() => {
         if (!tenantId) return;
-
         const unsubUsers = subscribeTenantUsers((data) => {
-            const mapped = data.map(d => ({
-                ...d,
-                uid: d.id,
-                role: d.role || 'Member'
-            })) as TeamMember[];
-            setUsers(mapped);
+            setUsers(data.map(d => ({ ...d, uid: d.id, role: d.role || 'Member' })) as TeamMember[]);
         }, tenantId);
-
         const unsubProjects = subscribeTenantProjects(setProjects, tenantId);
         getSharedProjects().then(setSharedProjects).catch(console.error);
-
-        // Custom roles now live in the tenant's `roles` subcollection (node model).
         const unsubRoles = subscribeTenantRoles((firestoreRoles) => {
-            setCustomRoles(firestoreRoles
-                .filter(r => !r.isSystem)
-                .map(r => ({
-                    id: r.id,
-                    name: r.name,
-                    color: r.color || '#3b82f6',
-                    position: r.position,
-                    permissions: [],
-                    isDefault: false,
-                    createdAt: r.createdAt,
-                    createdBy: r.createdBy || ''
-                })) as CustomRole[]);
+            setCustomRoles(firestoreRoles.filter(r => !r.isSystem).map(r => ({
+                id: r.id, name: r.name, color: r.color || 'var(--color-text-muted)', position: r.position,
+                permissions: [], isDefault: false, createdAt: r.createdAt, createdBy: r.createdBy || ''
+            })) as CustomRole[]);
         }, tenantId);
-
-        return () => {
-            unsubUsers();
-            unsubProjects();
-            unsubRoles();
-        };
+        return () => { unsubUsers(); unsubProjects(); unsubRoles(); };
     }, [tenantId]);
 
-    useEffect(() => {
-        if (!tenantId) return;
+    const loadInvitations = React.useCallback(async () => {
+        if (!tenantId || !isWorkspaceAdmin) return;
+        try { setInviteLinks(await listInvitations(tenantId)); }
+        catch (e) { console.error('Failed to fetch invitations', e); }
+    }, [tenantId, isWorkspaceAdmin]);
 
-        const loadInvites = async () => {
-            try {
-                const projectLookup = new Map(
-                    [...projects, ...sharedProjects].map((project) => [project.id, project])
-                );
-                const [workspaceLinks, projectLinks] = await Promise.all([
-                    getWorkspaceInviteLinks(tenantId),
-                    getTenantProjectInviteLinks(tenantId)
-                ]);
+    useEffect(() => { void loadInvitations(); }, [loadInvitations]);
 
-                const allInvites: InviteLink[] = [
-                    ...workspaceLinks.map((link: any) => ({
-                        ...link,
-                        inviteLinkId: link.id,
-                        id: `workspace:${link.id}`,
-                        type: 'workspace' as const
-                    })),
-                    ...projectLinks.map((link: any) => ({
-                        ...link,
-                        inviteLinkId: link.id,
-                        id: `project:${link.projectId}:${link.id}`,
-                        type: 'project' as const,
-                        projectName: projectLookup.get(link.projectId)?.title
-                    }))
-                ];
+    const allProjects = useMemo(() => {
+        const map = new Map<string, Project>();
+        [...projects, ...sharedProjects].forEach(p => map.set(p.id, p));
+        return [...map.values()];
+    }, [projects, sharedProjects]);
 
-                setInviteLinks(allInvites);
-            } catch (error) {
-                console.error('Failed to fetch invites', error);
-            }
-        };
+    const isAgent = (m: TeamMember) => m.isAgent === true || !!m.agentKey;
+    const jobTitle = (m: TeamMember) => m.agentFunction || m.title || '';
 
-        void loadInvites();
-    }, [projects, sharedProjects, tenantId]);
-
-    // --- Helpers ---
     const getRoleDetails = (roleId?: string) => {
         const id = roleId || 'Member';
         const custom = customRoles.find(r => r.id === id);
-        if (custom) {
-            return { label: custom.name, color: custom.color };
-        }
-        // Fallback or Legacy
-        let label = id;
-        let color = '#3b82f6';
-        if (id === 'Owner') { label = t('roles.owner') || 'Owner'; color = '#f59e0b'; }
-        else if (id === 'Admin') { label = t('roles.admin') || 'Admin'; color = '#ef4444'; }
-        else if (id === 'Guest') { label = t('roles.guest') || 'Guest'; color = '#6b7280'; }
+        if (custom) return { label: custom.name, color: custom.color };
+        let label = id, color = 'var(--color-text-muted)';
+        if (id === 'Owner') { label = t('roles.owner') || 'Owner'; color = 'var(--color-warning)'; }
+        else if (id === 'Admin') { label = t('roles.admin') || 'Admin'; color = 'var(--color-error)'; }
+        else if (id === 'Guest') { label = t('roles.guest') || 'Guest'; }
         else if (id === 'Member') { label = t('roles.member') || 'Member'; }
-
         return { label, color };
     };
 
-    const getUserDetails = (userId: string) => users.find(u => u.id === userId);
-
-    // --- Derived Data ---
-    const listItems = useMemo(() => {
-        let items: any[] = [];
-        const q = searchQuery.toLowerCase();
-
-        if (activeTab === 'members') {
-            items = users.filter(u =>
-                (u.displayName || '').toLowerCase().includes(q) ||
-                (u.email || '').toLowerCase().includes(q)
-            ).sort((a, b) => {
-                // Owner first
-                if (a.role === 'Owner') return -1;
-                if (b.role === 'Owner') return 1;
-                return (a.displayName || '').localeCompare(b.displayName || '');
-            });
-        } else if (activeTab === 'projects') {
-            items = [...projects, ...sharedProjects].filter(p =>
-                p.title.toLowerCase().includes(q)
-            );
-        } else {
-            // Invites
-            items = inviteLinks; // Simple for invites
-        }
-        return items;
-    }, [activeTab, users, projects, sharedProjects, inviteLinks, searchQuery]);
-
-    const summaryCards = useMemo(() => {
-        const uniqueProjectCount = new Set([...projects, ...sharedProjects].map((project) => project.id)).size;
-
-        return [
-            {
-                key: 'members',
-                label: t('team.summary.members'),
-                value: users.length
-            },
-            {
-                key: 'projects',
-                label: t('team.summary.projects'),
-                value: uniqueProjectCount
-            },
-            {
-                key: 'invites',
-                label: t('team.summary.invites'),
-                value: inviteLinks.length
-            }
-        ];
-    }, [inviteLinks.length, projects, sharedProjects, t, users.length]);
-
-    // Auto-select first item on tab change or search if nothing selected
-    useEffect(() => {
-        // If the currently selected ID is not in the new list, select the first one
-        // OR if nothing is selected yet
-        if (listItems.length > 0) {
-            const exists = listItems.find(i => i.id === selectedId);
-            if (!exists) {
-                setSelectedId(listItems[0].id);
-            }
-        } else {
-            setSelectedId(null);
-        }
-    }, [listItems, activeTab]);
-
-    if (!teamTranslationsReady) {
-        return <div className="p-10 text-center">Loading team...</div>;
-    }
-
-
-    // --- Handlers ---
-    const handleRoleChange = async (userId: string, newRole: string) => {
-        if (!can('canManageMembers')) return;
-        try {
-            await updateUserRole(userId, newRole as WorkspaceRole, tenantId);
-            showSuccess(t('team.members.toast.roleUpdated'));
-        } catch (error) {
-            console.error(error);
-            showError(t('team.members.errors.updateRole'));
-        }
+    const departmentOf = (m: TeamMember): { name: string; color: string } => {
+        const rid = (m.roleIds || [])[0];
+        const cr = customRoles.find(r => r.id === rid);
+        if (cr) return { name: cr.name, color: cr.color };
+        const rd = getRoleDetails(m.role);
+        return { name: rd.label, color: rd.color };
     };
 
-    // Toggle a stacked custom role on/off for a member (Discord-style multi-role)
+    const memberInProject = (p: Project, uid: string) =>
+        p.ownerId === uid
+        || (p.members || []).some((x: any) => (typeof x === 'string' ? x : x?.userId) === uid)
+        || (p.memberIds || []).includes(uid);
+
+    const filtered = useMemo(() => {
+        const q = searchQuery.toLowerCase();
+        return users.filter(u =>
+            (u.displayName || '').toLowerCase().includes(q) ||
+            (u.email || '').toLowerCase().includes(q) ||
+            (u.agentFunction || '').toLowerCase().includes(q)
+        );
+    }, [users, searchQuery]);
+
+    const sortMembers = (a: TeamMember, b: TeamMember) => {
+        if (a.id === currentUserId) return -1;
+        if (b.id === currentUserId) return 1;
+        return (a.displayName || '').localeCompare(b.displayName || '');
+    };
+
+    const byDepartment = useMemo(() => {
+        const map = new Map<string, { color: string; members: TeamMember[] }>();
+        filtered.forEach(m => {
+            const d = departmentOf(m);
+            if (!map.has(d.name)) map.set(d.name, { color: d.color, members: [] });
+            map.get(d.name)!.members.push(m);
+        });
+        return [...map.entries()]
+            .map(([name, v]) => ({ name, color: v.color, members: [...v.members].sort(sortMembers) }))
+            .sort((a, b) => b.members.length - a.members.length || a.name.localeCompare(b.name));
+    }, [filtered, customRoles]);
+
+    const byProject = useMemo(() => {
+        const sections = allProjects.map(p => ({
+            project: p,
+            members: filtered.filter(m => m.agentProject === p.title || memberInProject(p, m.id)).sort(sortMembers)
+        })).filter(s => s.members.length > 0).sort((a, b) => b.members.length - a.members.length);
+        const companyWide = filtered.filter(m => isAgent(m) && !m.agentProject
+            && !allProjects.some(p => memberInProject(p, m.id))).sort(sortMembers);
+        const people = filtered.filter(m => !isAgent(m)).sort(sortMembers);
+        return { sections, companyWide, people };
+    }, [filtered, allProjects]);
+
+    const stats = useMemo(() => {
+        const agents = users.filter(isAgent).length;
+        return { agents, humans: users.length - agents, departments: new Set(users.map(u => departmentOf(u).name)).size, projects: byProject.sections.length };
+    }, [users, byProject, customRoles]);
+
+    const selected = useMemo(() => users.find(u => u.id === selectedId) || null, [users, selectedId]);
+    const selectedProject = useMemo(() => {
+        if (!selected) return null;
+        if (selected.agentProject) return allProjects.find(p => p.title === selected.agentProject) || null;
+        return allProjects.find(p => memberInProject(p, selected.id)) || null;
+    }, [selected, allProjects]);
+
+    useEffect(() => {
+        setSelTasks({ loading: false, tasks: [] });
+        if (!selected || !selectedProject) return;
+        let alive = true;
+        setSelTasks({ loading: true, tasks: [] });
+        getProjectTasks(selectedProject.id, tenantId).then(all => {
+            if (!alive) return;
+            const mine = all.filter(tk => tk.assigneeId === selected.id || (tk.assigneeIds || []).includes(selected.id));
+            setSelTasks({ loading: false, tasks: mine });
+        }).catch(() => { if (alive) setSelTasks({ loading: false, tasks: [] }); });
+        return () => { alive = false; };
+    }, [selected?.id, selectedProject?.id, tenantId]);
+
     const handleToggleRole = async (userId: string, roleId: string, currentRoleIds: string[]) => {
         if (!can('canManageMembers')) return;
-        const next = currentRoleIds.includes(roleId)
-            ? currentRoleIds.filter(id => id !== roleId)
-            : [...currentRoleIds, roleId];
-        try {
-            await setMemberRoleIds(userId, next, tenantId);
-            showSuccess(t('team.members.toast.roleUpdated'));
-        } catch (error) {
-            console.error(error);
-            showError(t('team.members.errors.updateRole'));
-        }
+        const next = currentRoleIds.includes(roleId) ? currentRoleIds.filter(id => id !== roleId) : [...currentRoleIds, roleId];
+        try { await setMemberRoleIds(userId, next, tenantId); showSuccess(t('team.members.toast.roleUpdated')); }
+        catch (e) { console.error(e); showError(t('team.members.errors.updateRole')); }
     };
-
     const handleRemoveMember = async (userId: string) => {
         if (!await confirm(t('team.members.confirmRemove.title'), t('team.members.confirmRemove.message'))) return;
+        try { await removeUserFromWorkspace(userId, tenantId); showSuccess(t('team.members.toast.removed')); setSelectedId(null); }
+        catch (e: any) { showError(e.message || t('team.members.toast.removeError')); }
+    };
+    const handleRevokeInvite = async (invite: WorkspaceInvitation) => {
         try {
-            await removeUserFromWorkspace(userId, tenantId);
-            showSuccess(t('team.members.toast.removed'));
-            // Selection will auto-update via effect
-        } catch (error: any) {
-            showError(error.message || t('team.members.toast.removeError'));
-        }
+            await revokeInvitation(tenantId, invite.id);
+            setInviteLinks(prev => prev.filter(l => l.id !== invite.id));
+            showSuccess(t('team.v2.invites.revoked'));
+        } catch { showError(t('team.v2.invites.revokeError')); }
     };
-
-    const handleRevokeInvite = async (link: InviteLink) => {
+    const handleCopyInvite = async (invite: WorkspaceInvitation) => {
         try {
-            const inviteLinkId = link.inviteLinkId || link.id;
-            if (link.type === 'workspace') await revokeWorkspaceInviteLink(inviteLinkId, tenantId);
-            else await revokeProjectInviteLink(link.projectId!, inviteLinkId, tenantId);
-            setInviteLinks(prev => prev.filter(l => l.id !== link.id));
-            showSuccess('Invitation revoked');
-        } catch (e) {
-            showError('Failed to revoke invitation');
-        }
+            await navigator.clipboard.writeText(buildInviteUrl(tenantId, invite.id));
+            showSuccess(t('team.v2.invites.copied'));
+        } catch { /* clipboard unavailable */ }
     };
-
-    // --- Selection Details ---
-    const selectedItem = useMemo(() => {
-        if (!selectedId) return null;
-        return listItems.find(i => i.id === selectedId);
-    }, [selectedId, listItems]);
-
-
-    // --- Renderers ---
-
-    // 1. Sidebar List Item
-    const renderListItem = (item: any) => {
-        const isSelected = selectedId === item.id;
-
-        if (activeTab === 'members') {
-            const member = item as TeamMember;
-            return (
-                <div
-                    key={member.id}
-                    onClick={() => setSelectedId(member.id)}
-                    className={`
-                        group relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all duration-300
-                        ${isSelected
-                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] font-bold shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]/40 hover:text-[var(--color-text-main)]'}
-                    `}
-                >
-                    {isSelected && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[var(--color-primary)] rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
-                    )}
-
-                    <div
-                        className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-800 bg-cover bg-center shrink-0 border border-[var(--color-surface-border)]"
-                        style={{ backgroundImage: member.photoURL ? `url(${member.photoURL})` : undefined }}
-                    >
-                        {!member.photoURL && <div className="w-full h-full flex items-center justify-center text-xs font-bold text-[var(--color-text-muted)]">{(member.displayName || '?')[0].toUpperCase()}</div>}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[14px]/none font-semibold truncate tracking-tight">{member.displayName || 'Unknown'}</p>
-                        <p className="text-[12px] text-[var(--color-text-muted)] opacity-60 truncate mt-1 font-medium">{member.email}</p>
-                    </div>
-                </div>
-            );
-        }
-
-        if (activeTab === 'projects') {
-            const project = item as Project;
-            return (
-                <div
-                    key={project.id}
-                    onClick={() => setSelectedId(project.id)}
-                    className={`
-                        group relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all duration-300
-                        ${isSelected
-                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] font-bold shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]/40 hover:text-[var(--color-text-main)]'}
-                    `}
-                >
-                    {isSelected && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[var(--color-primary)] rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
-                    )}
-
-                    <div className="w-9 h-9 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center font-bold shrink-0 border border-[var(--color-primary)]/10 text-sm">
-                        {project.squareIcon ? <img src={project.squareIcon} className="w-full h-full object-cover rounded-lg" /> : project.title[0]}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[14px]/none font-semibold truncate tracking-tight">{project.title}</p>
-                    </div>
-                </div>
-            );
-        }
-
-        if (activeTab === 'invites') {
-            const link = item as InviteLink;
-            return (
-                <div
-                    key={link.id}
-                    onClick={() => setSelectedId(link.id)}
-                    className={`
-                        group relative flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl cursor-pointer transition-all duration-300
-                        ${isSelected
-                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] font-bold shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]/40 hover:text-[var(--color-text-main)]'}
-                    `}
-                >
-                    {isSelected && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[var(--color-primary)] rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
-                    )}
-
-                    <div className="w-9 h-9 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0 border border-[var(--color-surface-border)]">
-                        <span className="material-symbols-outlined text-[18px]">mail</span>
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <p className="text-[14px]/none font-semibold truncate tracking-tight">{link.email || 'Pending Invite'}</p>
-                        <p className="text-[12px] text-[var(--color-text-muted)] opacity-60 truncate mt-1 font-medium">{link.inviteLinkId || link.id}</p>
-                    </div>
-                </div>
-            );
-        }
-        return null;
+    const handleBaseRole = async (userId: string, role: WorkspaceRole) => {
+        try { await updateUserRole(userId, role, tenantId); showSuccess(t('team.v2.detail.roleUpdated')); }
+        catch (e) { console.error(e); showError(t('team.members.errors.updateRole')); }
     };
+    const assignableRoles: WorkspaceRole[] = activeWorkspace?.role === 'Owner' ? ['Admin', 'Member', 'Guest'] : ['Member', 'Guest'];
 
+    if (!teamTranslationsReady) return <div className="p-10 text-center text-[var(--color-text-muted)]">{t('team.v2.loading')}</div>;
 
-    // 2. Detail Views
-    const renderDetailView = () => {
-        if (!selectedItem) {
-            return (
-                <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)] opacity-50">
-                    <span className="material-symbols-outlined text-6xl mb-4">person_search</span>
-                    <p className="text-lg">Select an item to view details</p>
-                </div>
-            );
-        }
-
-        if (activeTab === 'members') {
-            const member = selectedItem as TeamMember;
-            const role = getRoleDetails(member.role);
-            const memberProjects = [...projects, ...sharedProjects].filter(p =>
-                p.ownerId === member.id || (p.members || []).some((m: any) => (typeof m === 'string' ? m : m.userId) === member.id)
-            );
-            const isMe = member.id === auth.currentUser?.uid;
-
-            return (
-                <div className="h-full flex flex-col overflow-y-auto animate-fade-in p-8 gap-8">
-                    {/* Hero Section */}
-                    <Card padding="lg" className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-[var(--color-primary)]/[0.03] to-transparent">
-                        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
-                            <div
-                                className="w-32 h-32 rounded-full bg-[var(--color-surface-hover)] bg-cover bg-center shrink-0 border-4 border-white dark:border-[var(--color-surface-border)] shadow-sm"
-                                style={{ backgroundImage: member.photoURL ? `url(${member.photoURL})` : undefined }}
-                            >
-                                {!member.photoURL && <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-[var(--color-text-muted)] opacity-30">{(member.displayName || '?')[0].toUpperCase()}</div>}
-                            </div>
-
-                            <div className="flex-1 text-center md:text-left pt-2">
-                                <h2 className="text-3xl font-bold text-[var(--color-text-main)] tracking-tight mb-3">
-                                    {member.displayName}
-                                </h2>
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                                    <Badge variant="primary" className="py-1">
-                                        {role.label}
-                                    </Badge>
-                                    <span className="text-[14px] text-[var(--color-text-muted)] font-medium">{member.email}</span>
-                                </div>
-
-                                {/* Stacked custom roles (Discord-style). Owner has all access implicitly. */}
-                                {member.role !== 'Owner' && customRoles.length > 0 && (
-                                    <div className="mt-4 flex flex-wrap items-center justify-center md:justify-start gap-2">
-                                        {customRoles.map(cr => {
-                                            const assigned = (member.roleIds || []).includes(cr.id);
-                                            const canManage = can('canManageMembers');
-                                            return (
-                                                <button
-                                                    key={cr.id}
-                                                    type="button"
-                                                    disabled={!canManage}
-                                                    onClick={() => handleToggleRole(member.id, cr.id, member.roleIds || [])}
-                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-bold border transition-all ${assigned ? 'border-transparent text-white' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-surface-border)]'} ${canManage ? 'cursor-pointer hover:opacity-90' : 'cursor-default opacity-80'}`}
-                                                    style={assigned ? { backgroundColor: cr.color } : undefined}
-                                                >
-                                                    <span className="material-symbols-outlined text-[14px]">{assigned ? 'check' : 'add'}</span>
-                                                    {cr.name}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-
-                                <div className="mt-8 flex flex-wrap gap-4">
-                                    {can('canManageMembers') && !isMe && (
-                                        <button
-                                            onClick={() => handleRemoveMember(member.id)}
-                                            className="px-5 py-2 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 rounded-xl text-[12px] font-bold uppercase tracking-wider hover:bg-rose-100 dark:hover:bg-rose-900/20 transition-colors border border-rose-100 dark:border-rose-900/20"
-                                        >
-                                            Remove from Team
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
+    // --- Agent-Karte (Depth via Helligkeit + Schatten, keine Borders) ---
+    const AgentCard = (m: TeamMember) => {
+        const dept = departmentOf(m);
+        const isMe = m.id === currentUserId;
+        const isSel = selectedId === m.id;
+        return (
+            <button
+                key={m.id}
+                onClick={() => setSelectedId(m.id)}
+                className="group relative text-left rounded-[16px] p-4 transition-all duration-200 hover:-translate-y-0.5"
+                style={{
+                    background: isSel ? SURFACE_HOVER_LIGHT : SURFACE_CARD,
+                    boxShadow: isSel ? 'var(--shadow-md)' : 'var(--shadow-sm)'
+                }}
+            >
+                {isSel && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-r-full" style={{ background: 'var(--color-primary)' }} />}
+                <div className="flex items-start gap-3">
+                    <div className="relative shrink-0">
+                        <div className="w-11 h-11 rounded-full bg-cover bg-center" style={{ backgroundColor: SURFACE_HOVER, backgroundImage: m.photoURL ? `url(${m.photoURL})` : undefined }}>
+                            {!m.photoURL && <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[var(--color-text-muted)]">{(m.displayName || '?')[0].toUpperCase()}</div>}
                         </div>
-                    </Card>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <Card className="flex flex-col gap-1 items-center justify-center text-center p-6">
-                            <span className="material-symbols-outlined text-[24px] text-blue-500 mb-2">layers</span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">Projects</span>
-                            <span className="text-2xl font-bold text-[var(--color-text-main)] leading-none">{memberProjects.length}</span>
-                        </Card>
-                        <Card className="flex flex-col gap-1 items-center justify-center text-center p-6">
-                            <span className="material-symbols-outlined text-[24px] text-emerald-500 mb-2">check_circle</span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">Status</span>
-                            <span className="text-2xl font-bold text-emerald-500 leading-none">Active</span>
-                        </Card>
-                        <Card className="flex flex-col gap-1 items-center justify-center text-center p-6">
-                            <span className="material-symbols-outlined text-[24px] text-amber-500 mb-2">calendar_today</span>
-                            <span className="text-[11px] font-black uppercase tracking-[0.2em] text-[var(--color-text-muted)] opacity-50">Joined</span>
-                            <span className="text-2xl font-bold text-[var(--color-text-main)] leading-none">2024</span>
-                        </Card>
-                    </div>
-
-                    {/* Projects Section */}
-                    <div>
-                        <div className="flex items-center gap-4 mb-6 px-1">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Assigned Projects</h3>
-                            <div className="flex-1 h-px bg-[var(--color-surface-border)]/50" />
-                        </div>
-
-                        {memberProjects.length > 0 ? (
-                            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                {memberProjects.map(p => (
-                                    <Card
-                                        key={p.id}
-                                        hoverable
-                                        onClick={() => navigate(`/project/${p.id}`)}
-                                        className="group"
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className="size-12 rounded-xl bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xl font-bold border border-[var(--color-primary)]/10">
-                                                {p.squareIcon ? <img src={p.squareIcon} className="w-full h-full object-cover rounded-xl" /> : p.title[0]}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <h4 className="font-bold text-[var(--color-text-main)] truncate text-[15px]">{p.title}</h4>
-                                                <span className="text-xs text-[var(--color-text-muted)] font-medium">{p.status || 'Active'}</span>
-                                            </div>
-                                            <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
-                                        </div>
-                                    </Card>
-                                ))}
-                            </div>
-                        ) : (
-                            <Card className="p-12 text-center border-dashed">
-                                <p className="text-[var(--color-text-muted)] font-medium">No projects assigned to this member.</p>
-                            </Card>
+                        {isAgent(m) && (
+                            <span className="absolute -bottom-1 -right-1 px-1 h-[15px] rounded-full text-[9px] font-black flex items-center justify-center"
+                                style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }} title={t('team.v2.agentBadge')}>AI</span>
                         )}
                     </div>
-                </div>
-            );
-        }
-
-        if (activeTab === 'projects') {
-            const project = selectedItem as Project;
-            const members = (project.members || []).map((m: any) => {
-                const uid = typeof m === 'string' ? m : m.userId;
-                return getUserDetails(uid) || { id: uid, displayName: 'User', photoURL: null, email: '' };
-            });
-
-            return (
-                <div className="h-full flex flex-col overflow-y-auto animate-fade-in p-8 gap-8">
-                    {/* Project Hero Card */}
-                    <Card padding="lg" className="relative overflow-hidden border-none shadow-md bg-gradient-to-br from-[var(--color-primary)]/[0.03] to-transparent">
-                        <div className="relative flex flex-col md:flex-row items-center md:items-end gap-10 z-10">
-                            <div className="w-32 h-32 rounded-3xl bg-[var(--color-surface-hover)] text-[var(--color-primary)] flex items-center justify-center text-5xl font-bold shadow-sm border-4 border-white dark:border-[var(--color-surface-border)] shrink-0">
-                                {project.squareIcon ? <img src={project.squareIcon} className="w-full h-full object-cover rounded-3xl" /> : project.title[0]}
-                            </div>
-                            <div className="flex-1 text-center md:text-left">
-                                <h2 className="text-3xl font-bold text-[var(--color-text-main)] tracking-tight mb-3">{project.title}</h2>
-                                <p className="text-[15px] text-[var(--color-text-muted)] font-medium leading-relaxed max-w-2xl mb-6">{project.description || t('common.noDescription')}</p>
-                                <div className="flex justify-center md:justify-start">
-                                    <Button
-                                        onClick={() => navigate(`/project/${project.id}`)}
-                                        className="rounded-xl px-6 py-2.5 font-bold text-[13px]"
-                                    >
-                                        Open Dashboard
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
-
-                    <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-8 px-1">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Active Team ({members.length})</h3>
-                            <div className="flex-1 h-px bg-[var(--color-surface-border)]/50" />
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                            {members.map((m: any) => (
-                                <Card key={m.id} padding="sm" className="group flex items-center gap-4">
-                                    <div
-                                        className="w-12 h-12 rounded-full bg-[var(--color-surface-hover)] bg-cover bg-center shrink-0 border border-[var(--color-surface-border)]"
-                                        style={{ backgroundImage: m.photoURL ? `url(${m.photoURL})` : undefined }}
-                                    >
-                                        {!m.photoURL && <div className="w-full h-full flex items-center justify-center text-lg font-bold text-[var(--color-text-subtle)]">{(m.displayName || '?')[0]}</div>}
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-[14px] font-bold text-[var(--color-text-main)] truncate">{m.displayName}</p>
-                                        <p className="text-[12px] font-medium text-[var(--color-text-muted)] opacity-60 truncate">{m.email}</p>
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
+                    <div className="min-w-0 flex-1">
+                        <p className="text-[14px] font-bold text-[var(--color-text-main)] truncate">
+                            {m.displayName || t('team.v2.unknown')}{isMe && <span className="ml-1 text-[10px] font-medium text-[var(--color-text-subtle)]">{t('team.v2.you')}</span>}
+                        </p>
+                        <p className="text-[12px] text-[var(--color-text-muted)] truncate mt-0.5">{jobTitle(m) || m.email}</p>
+                        <span className="inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-[10px] font-bold"
+                            style={{ background: `color-mix(in srgb, ${dept.color} 14%, transparent)`, color: dept.color }}>
+                            {dept.name}
+                        </span>
                     </div>
                 </div>
-            );
-        }
-
-        if (activeTab === 'invites') {
-            const link = selectedItem as InviteLink;
-            const role = getRoleDetails(link.role);
-            const inviteLinkId = link.inviteLinkId || link.id;
-            const inviteUrl = link.type === 'workspace'
-                ? `${window.location.origin}/join-workspace/${inviteLinkId}?tenantId=${tenantId}`
-                : `${window.location.origin}/join/${inviteLinkId}?projectId=${link.projectId}&tenantId=${tenantId}`;
-            return (
-                <div className="h-full flex flex-col items-center justify-center animate-fade-in p-12 text-center gap-8">
-                    <Card padding="lg" className="max-w-xl w-full flex flex-col items-center shadow-xl border-dashed">
-                        <div className="w-24 h-24 rounded-3xl bg-blue-50 dark:bg-blue-900/10 text-blue-500 flex items-center justify-center mb-6 shadow-sm border border-blue-100 dark:border-blue-900/20">
-                            <span className="material-symbols-outlined text-4xl">mail</span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2 tracking-tight">Pending Invitation</h2>
-                        <p className="text-[15px] text-[var(--color-text-muted)] font-medium mb-8 leading-relaxed">
-                            An invitation is pending for <strong className="text-[var(--color-text-main)]">{link.email || 'this user'}</strong> to join as a <Badge variant="primary" size="sm" style={{ color: role.color }}>{role.label}</Badge>.
-                        </p>
-
-                        <div className="flex flex-wrap items-center justify-center gap-4">
-                            <Button
-                                variant="secondary"
-                                onClick={() => {
-                                    navigator.clipboard.writeText(inviteUrl);
-                                    showSuccess('Copied link');
-                                }}
-                                className="rounded-xl px-6 py-2.5 font-bold text-[13px]"
-                            >
-                                <span className="material-symbols-outlined mr-2 text-[18px]">content_copy</span>
-                                Copy Link
-                            </Button>
-                            <Button
-                                variant="danger"
-                                onClick={() => handleRevokeInvite(link)}
-                                className="rounded-xl px-6 py-2.5 font-bold text-[13px]"
-                            >
-                                Revoke Invite
-                            </Button>
-                        </div>
-                    </Card>
-                </div>
-            );
-        }
-
+            </button>
+        );
     };
+
+    const Section = ({ title, color, members }: { title: string; color?: string; members: TeamMember[] }) => (
+        <section className="mb-9">
+            <div className="flex items-center gap-2.5 mb-4">
+                {color && <span className="w-2.5 h-2.5 rounded-full" style={{ background: color }} />}
+                <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)]">{title}</h3>
+                <span className="min-w-[20px] h-[20px] px-1.5 rounded-full text-[11px] font-bold text-[var(--color-text-muted)] flex items-center justify-center" style={{ background: SURFACE_HOVER }}>{members.length}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+                {members.map(AgentCard)}
+            </div>
+        </section>
+    );
+
+    const segItems: [ViewMode, string][] = [
+        ['department', t('team.v2.view.department')],
+        ['project', t('team.v2.view.project')],
+        ['all', t('team.v2.view.all')],
+        ...(isWorkspaceAdmin ? [['invites', t('team.v2.view.invites')] as [ViewMode, string]] : [])
+    ];
 
     return (
-        <div className="h-[calc(100vh-64px)] flex overflow-hidden bg-[var(--color-surface-paper)]">
-            {/* --- Left Sidebar (30% / 280px standard) --- */}
-            <div className="w-full md:w-[280px] shrink-0 flex flex-col bg-[var(--color-surface-card)] border-r border-[var(--color-surface-border)]">
-                {/* Header */}
-                <div className="p-4 pt-6">
-                    <div className="flex items-center justify-between mb-6 px-1">
-                        <div className="flex items-center gap-3">
-                            <span className="material-symbols-outlined text-[22px] text-[var(--color-primary)]">group</span>
-                            <h1 className="text-xl font-bold text-[var(--color-text-main)] tracking-tight">{t('nav.team')}</h1>
+        <div className="h-full w-full flex overflow-hidden" style={{ background: 'var(--color-surface-bg)' }}>
+            {/* Hauptbereich */}
+            <div className="flex-1 flex flex-col min-w-0">
+                {/* Kopf */}
+                <div className="px-8 pt-7 pb-5">
+                    <div className="flex items-center justify-between flex-wrap gap-4">
+                        <div>
+                            <h1 className="text-[26px] font-bold text-[var(--color-text-main)] tracking-tight leading-none">{t('nav.team')}</h1>
+                            <p className="text-[12.5px] text-[var(--color-text-muted)] mt-2">
+                                {t('team.v2.stats')
+                                    .replace('{agents}', String(stats.agents))
+                                    .replace('{humans}', String(stats.humans))
+                                    .replace('{departments}', String(stats.departments))
+                                    .replace('{projects}', String(stats.projects))}
+                            </p>
                         </div>
-                        {can('canManageMembers') && (
-                            <button
-                                onClick={() => setShowInviteModal(true)}
-                                className="size-8 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[var(--color-primary)]/15"
-                                title="Add Member"
-                            >
-                                <span className="material-symbols-outlined text-[18px]">add</span>
-                            </button>
+                        {isWorkspaceAdmin && (
+                            <Button onClick={() => setShowInviteModal(true)} className="rounded-[12px] px-4 py-2 text-[13px] font-bold">
+                                <span className="material-symbols-outlined mr-1.5 text-[18px]">person_add</span>{t('team.v2.invite')}
+                            </Button>
                         )}
                     </div>
 
-                    {/* Tab Switcher - Sidebar Theme-Style Pill */}
-                    <div className="flex p-0.5 bg-[var(--color-surface-hover)] rounded-full border border-[var(--color-surface-border)] mb-6">
-                        {(['members', 'projects', 'invites'] as Tab[]).map((tab) => (
-                            <button
-                                key={tab}
-                                onClick={() => setActiveTab(tab)}
-                                className={`flex-1 py-1.5 rounded-full text-[11px] font-bold transition-all ${activeTab === tab
-                                    ? 'bg-white dark:bg-slate-700 text-[var(--color-text-main)] shadow-sm'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
-                                    }`}
-                            >
-                                {t(`team.tabs.${tab}` as any) || tab}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Search - Nav-Style */}
-                    <div className="relative group px-1">
-                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-[18px]">search</span>
-                        <input
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder={t('common.search') || "Search..."}
-                            className="w-full bg-[var(--color-surface-hover)]/40 hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl pl-10 pr-4 py-2 text-[13px] font-medium focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] outline-none transition-all"
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 mt-4 px-1">
-                        {summaryCards.map((card) => (
-                            <div
-                                key={card.key}
-                                className="rounded-2xl border border-[var(--color-surface-border)] px-3 py-3"
-                                style={{
-                                    background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 10%, transparent), transparent 65%), var(--color-surface-card)'
-                                }}
-                            >
-                                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--color-text-subtle)]">
-                                    {card.label}
-                                </div>
-                                <div className="mt-1 text-lg font-black text-[var(--color-text-main)]">
-                                    {card.value}
-                                </div>
+                    <div className="flex items-center gap-3 mt-5 flex-wrap">
+                        <div className="flex p-1 rounded-full" style={{ background: SURFACE_HOVER }}>
+                            {segItems.map(([v, label]) => (
+                                <button key={v} onClick={() => setView(v)}
+                                    className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition-all"
+                                    style={view === v
+                                        ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
+                                        : { color: 'var(--color-text-muted)' }}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        {view !== 'invites' && (
+                            <div className="relative flex-1 min-w-[200px] max-w-sm">
+                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)] text-[18px]">search</span>
+                                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('common.search')}
+                                    className="w-full rounded-full pl-9 pr-3 py-2 text-[13px] text-[var(--color-text-main)] placeholder:text-[var(--color-text-subtle)] outline-none focus:shadow-[var(--shadow-sm)] transition-shadow"
+                                    style={{ background: SURFACE_HOVER }} />
                             </div>
-                        ))}
+                        )}
                     </div>
                 </div>
 
-                {/* List Items */}
-                <div className="flex-1 overflow-y-auto px-2 py-4 space-y-0.5">
-                    {listItems.length > 0 ? (
-                        listItems.map(renderListItem)
-                    ) : (
-                        <div className="p-8 text-center text-[var(--color-text-muted)] text-xs opacity-50">
-                            No results found
+                {/* Inhalt */}
+                <div className="flex-1 overflow-y-auto px-8 pb-10">
+                    {view === 'department' && byDepartment.map(d => <Section key={d.name} title={d.name} color={d.color} members={d.members} />)}
+                    {view === 'all' && <Section title={t('team.v2.allMembers')} members={[...filtered].sort(sortMembers)} />}
+                    {view === 'project' && (
+                        <>
+                            {byProject.sections.map(s => <Section key={s.project.id} title={s.project.title} members={s.members} />)}
+                            {byProject.companyWide.length > 0 && <Section title={t('team.v2.companyWide')} members={byProject.companyWide} />}
+                            {byProject.people.length > 0 && <Section title={t('team.v2.people')} members={byProject.people} />}
+                        </>
+                    )}
+                    {view === 'invites' && (
+                        <div className="max-w-2xl">
+                            <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)] mb-4">{t('team.v2.invites.title').replace('{count}', String(inviteLinks.length))}</h3>
+                            {inviteLinks.length === 0 ? (
+                                <div className="p-10 text-center rounded-[16px]" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-sm)' }}>
+                                    <p className="text-[var(--color-text-muted)] text-sm">{t('team.v2.invites.empty')}</p>
+                                </div>
+                            ) : inviteLinks.map(invite => (
+                                <div key={invite.id} className="flex items-center gap-3 p-3.5 mb-2.5 rounded-[14px]" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-sm)' }}>
+                                    <span className="material-symbols-outlined w-9 h-9 flex items-center justify-center rounded-full text-[var(--color-text-muted)]" style={{ background: SURFACE_HOVER }}>{invite.kind === 'email' ? 'mail' : 'link'}</span>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[13px] font-semibold text-[var(--color-text-main)] truncate">{invite.email || t('team.v2.invites.link')}</p>
+                                        <p className="text-[11px] text-[var(--color-text-muted)]">
+                                            {t(`workspace.role.${invite.role}`)} · {invite.projectIds?.length
+                                                ? t('team.v2.invites.scopeProjects').replace('{count}', String(invite.projectIds.length))
+                                                : t('team.v2.invites.scopeWorkspace')}
+                                        </p>
+                                    </div>
+                                    <Button variant="ghost" onClick={() => void handleCopyInvite(invite)} className="rounded-[10px] px-3 py-1.5 text-[12px]">{t('team.v2.invites.copy')}</Button>
+                                    <Button variant="danger" onClick={() => void handleRevokeInvite(invite)} className="rounded-[10px] px-3 py-1.5 text-[12px]">{t('team.v2.invites.revoke')}</Button>
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* --- Main Stage (70%) --- */}
-            <div className="hidden md:block flex-1 bg-[var(--color-surface-paper)] overflow-hidden relative">
-                {renderDetailView()}
-            </div>
+            {/* Detail-Panel: höhere Ebene = hellere Surface + Schatten, kein Border */}
+            {selected && (
+                <aside className="hidden lg:flex w-[380px] shrink-0 flex-col overflow-y-auto z-10" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-lg)' }}>
+                    <div className="p-7">
+                        <button onClick={() => setSelectedId(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] text-[12px] mb-5 inline-flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[16px]">close</span>{t('team.v2.close')}
+                        </button>
 
-            <InviteMemberModal
+                        <div className="flex flex-col items-center text-center">
+                            <div className="relative">
+                                <div className="w-24 h-24 rounded-full bg-cover bg-center" style={{ backgroundColor: SURFACE_HOVER, backgroundImage: selected.photoURL ? `url(${selected.photoURL})` : undefined }}>
+                                    {!selected.photoURL && <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[var(--color-text-subtle)]">{(selected.displayName || '?')[0].toUpperCase()}</div>}
+                                </div>
+                                {isAgent(selected) && <span className="absolute bottom-0 right-0 px-1.5 h-5 rounded-full text-[10px] font-black flex items-center justify-center" style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}>AI</span>}
+                            </div>
+                            <h2 className="text-xl font-bold text-[var(--color-text-main)] mt-3">{selected.displayName}</h2>
+                            {jobTitle(selected) && <p className="text-[13px] font-semibold text-[var(--color-text-muted)] mt-0.5">{jobTitle(selected)}</p>}
+                            {selected.email && <p className="text-[12px] text-[var(--color-text-subtle)] mt-1">{selected.email}</p>}
+                            <span className="inline-flex items-center mt-3 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                                style={{ background: `color-mix(in srgb, ${departmentOf(selected).color} 14%, transparent)`, color: departmentOf(selected).color }}>
+                                {departmentOf(selected).name}
+                            </span>
+                        </div>
+
+                        {!isAgent(selected) && (
+                            <div className="mt-6">
+                                <p className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-subtle)] mb-2.5">{t('team.v2.detail.access')}</p>
+                                {selected.role === 'Owner' || !isWorkspaceAdmin || selected.id === currentUserId || (selected.role === 'Admin' && activeWorkspace?.role !== 'Owner') ? (
+                                    <span className="inline-flex px-2.5 py-1 rounded-full text-[11px] font-bold" style={{ background: SURFACE_HOVER, color: 'var(--color-text-main)' }}>
+                                        {t(`workspace.role.${selected.role || 'Member'}`)}
+                                    </span>
+                                ) : (
+                                    <div className="flex p-1 rounded-full w-fit" style={{ background: SURFACE_HOVER }} role="radiogroup" aria-label={t('team.v2.detail.access')}>
+                                        {assignableRoles.map(role => (
+                                            <button key={role} type="button" role="radio" aria-checked={selected.role === role}
+                                                onClick={() => { if (selected.role !== role) void handleBaseRole(selected.id, role); }}
+                                                className="px-3 py-1 rounded-full text-[11.5px] font-bold transition-all"
+                                                style={selected.role === role
+                                                    ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
+                                                    : { color: 'var(--color-text-muted)' }}>
+                                                {t(`workspace.role.${role}`)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {customRoles.length > 0 && selected.role !== 'Owner' && (
+                            <div className="mt-6">
+                                <p className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-subtle)] mb-2.5">{t('team.v2.detail.roles')}</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {customRoles.map(cr => {
+                                        const assigned = (selected.roleIds || []).includes(cr.id);
+                                        const canManage = can('canManageMembers');
+                                        return (
+                                            <button key={cr.id} type="button" disabled={!canManage}
+                                                onClick={() => handleToggleRole(selected.id, cr.id, selected.roleIds || [])}
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-all ${canManage ? 'hover:opacity-90 cursor-pointer' : 'cursor-default opacity-80'}`}
+                                                style={assigned ? { background: cr.color, color: 'var(--color-absolute-white)' } : { background: SURFACE_HOVER, color: 'var(--color-text-muted)' }}>
+                                                <span className="material-symbols-outlined text-[13px]">{assigned ? 'check' : 'add'}</span>{cr.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedProject && (
+                            <div className="mt-6">
+                                <p className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-subtle)] mb-2.5">{t('team.v2.detail.project')}</p>
+                                <button onClick={() => navigate(`/project/${selectedProject.id}`)}
+                                    className="w-full flex items-center gap-3 p-3 rounded-[14px] transition-colors text-left hover:brightness-95"
+                                    style={{ background: SURFACE_HOVER }}>
+                                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center font-bold" style={{ background: 'color-mix(in srgb, var(--color-primary) 12%, transparent)', color: 'var(--color-primary)' }}>{selectedProject.title[0]}</div>
+                                    <span className="text-[13px] font-semibold text-[var(--color-text-main)] truncate flex-1">{selectedProject.title}</span>
+                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">arrow_forward</span>
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="mt-6">
+                            <p className="text-[11px] font-black uppercase tracking-wider text-[var(--color-text-subtle)] mb-2.5">
+                                {t('team.v2.detail.tasks')}{!selTasks.loading && selectedProject ? ` (${selTasks.tasks.length})` : ''}
+                            </p>
+                            {!selectedProject ? (
+                                <p className="text-[12px] text-[var(--color-text-muted)]">{t('team.v2.detail.noProject')}</p>
+                            ) : selTasks.loading ? (
+                                <p className="text-[12px] text-[var(--color-text-muted)]">{t('team.v2.detail.loading')}</p>
+                            ) : selTasks.tasks.length === 0 ? (
+                                <p className="text-[12px] text-[var(--color-text-muted)]">{t('team.v2.detail.noTasks')}</p>
+                            ) : (
+                                <div className="rounded-[14px] p-1.5" style={{ background: SURFACE_HOVER }}>
+                                    {selTasks.tasks.slice(0, 8).map(tk => (
+                                        <button key={tk.id} onClick={() => navigate(`/project/${selectedProject.id}`)}
+                                            className="w-full text-left flex items-center gap-2 p-2 rounded-[10px] transition-colors hover:brightness-95" style={{ background: 'transparent' }}>
+                                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: tk.isCompleted ? 'var(--color-success)' : 'var(--color-primary)' }} />
+                                            <span className="text-[12px] text-[var(--color-text-main)] truncate flex-1">{tk.title}</span>
+                                            {tk.status && <span className="text-[10px] text-[var(--color-text-subtle)]">{tk.status}</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {isAgent(selected) && selectedProject && (
+                            <div className="mt-6 p-3.5 rounded-[14px]" style={{ background: SURFACE_HOVER }}>
+                                <p className="text-[12px] text-[var(--color-text-muted)] leading-relaxed">
+                                    <span className="material-symbols-outlined text-[14px] align-middle mr-1">forum</span>
+                                    {t('team.v2.detail.agentBriefing').replace('{name}', selected.displayName?.split(' ')[0] || '')}
+                                </p>
+                            </div>
+                        )}
+
+                        {isWorkspaceAdmin && selected.id !== currentUserId && !isAgent(selected) && selected.role !== 'Owner' && (
+                            <button onClick={() => handleRemoveMember(selected.id)}
+                                className="mt-7 w-full px-4 py-2.5 rounded-[12px] text-[12px] font-bold transition-all hover:brightness-95"
+                                style={{ background: 'color-mix(in srgb, var(--color-error) 12%, transparent)', color: 'var(--color-error)' }}>
+                                {t('team.v2.detail.remove')}
+                            </button>
+                        )}
+                    </div>
+                </aside>
+            )}
+
+            <InviteToWorkspaceModal
                 isOpen={showInviteModal}
                 onClose={() => setShowInviteModal(false)}
-                isWorkspace={true}
-                customRoles={customRoles}
-                onGenerateLink={async (role: WorkspaceRole, maxUses?: number, expiresInHours?: number) => {
-                    return await generateWorkspaceInviteLink(role, maxUses, expiresInHours, tenantId);
-                }}
-                onSendEmail={async (email, role) => {
-                    await sendTeamInvitation(email, 'workspace', tenantId, role, tenantId);
-                }}
+                projects={allProjects}
+                onCreated={() => void loadInvitations()}
             />
         </div>
     );

@@ -7,6 +7,7 @@ import { useConfirm, useToast } from '../../context/UIContext';
 import { format } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
 import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
+import { parseDateValue } from '../../utils/taskDates';
 
 export const CampaignList = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -111,7 +112,7 @@ export const CampaignList = () => {
                         <h3 className="h4 mb-1">{c.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-muted mb-4">
                             <span className="material-symbols-outlined text-base">calendar_today</span>
-                            <span>{c.startDate ? format(new Date(c.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignList.tbd')}</span>
+                            <span>{c.startDate ? format(parseDateValue(c.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignList.tbd')}</span>
                         </div>
                         <div className="pt-4 border-t border-surface text-sm text-muted">
                             {c.toneOfVoice || t('social.campaignList.noTone')}

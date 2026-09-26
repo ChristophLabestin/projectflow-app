@@ -22,7 +22,7 @@ import { useToast } from '../../context/UIContext';
 
 import { auth } from '../../services/firebase';
 import { getAllWorkspaceProjects, linkWithGithub, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
-import { getUserProfile, updateUserData } from '../../services/domain/usersService';
+import { getGithubToken, setGithubToken as saveGithubToken } from '../../services/domain/usersService';
 import { fetchUserRepositories, GithubRepo } from '../../services/githubService';
 
 interface ProjectEditModalProps {
@@ -172,12 +172,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             const loadGithubData = async () => {
                 const user = auth.currentUser;
                 if (user) {
-                    const profile = await getUserProfile(user.uid);
-                    if (profile?.githubToken) {
-                        setGithubToken(profile.githubToken);
+                    const storedToken = await getGithubToken(user.uid);
+                    if (storedToken) {
+                        setGithubToken(storedToken);
                         setLoadingGithub(true);
                         try {
-                            const repos = await fetchUserRepositories(profile.githubToken);
+                            const repos = await fetchUserRepositories(storedToken);
                             setGithubRepos(repos);
                         } catch (e) {
                             console.error('Failed to fetch repos', e);
@@ -234,7 +234,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         setConnectingGithub(true);
         try {
             const token = await linkWithGithub();
-            await updateUserData(user.uid, { githubToken: token });
+            await saveGithubToken(user.uid, token);
             setGithubToken(token);
             setLoadingGithub(true);
             const repos = await fetchUserRepositories(token);
@@ -258,7 +258,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         setLoadingGithub(true);
         try {
             const repos = await fetchUserRepositories(token);
-            await updateUserData(user.uid, { githubToken: token });
+            await saveGithubToken(user.uid, token);
             setGithubToken(token);
             setGithubRepos(repos);
             setManualGithubToken('');

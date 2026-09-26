@@ -7,26 +7,17 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // The tenant id equals the owner's uid (mirrors firestore.rules isOwner).
-    function isTenantOwner(tenantId) {
-      return authed() && request.auth.uid == tenantId;
-    }
-
-    // Membership is sourced from Firestore so storage access matches the same
-    // tenant scope enforced in firestore.rules (isTenantMember).
-    function isTenantMember(tenantId) {
+    // Membership is sourced from Firestore (tenants/{tenantId}/members/{uid})
+    // so storage access matches firestore.rules. Tenant ids are random and no
+    // longer equal the owner's uid.
+    function canAccessTenant(tenantId) {
       return authed() &&
         firestore.exists(
           /databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)
         );
     }
 
-    function canAccessTenant(tenantId) {
-      return isTenantOwner(tenantId) || isTenantMember(tenantId);
-    }
-
-    // Tenant-scoped storage (projects, media, etc.). Only the tenant owner or a
-    // member of that tenant may read/write — no cross-tenant access.
+    // Tenant-scoped storage (projects, media, etc.). Only members of that tenant may read/write — no cross-tenant access.
     match /tenants/{tenantId}/{allPaths=**} {
       allow read, write: if canAccessTenant(tenantId);
     }

@@ -43,6 +43,15 @@ import {
 const OWNER_ROLE: Role = { id: 'system-owner', name: 'Owner', systemKey: 'OWNER', ...SYSTEM_ROLE_DEFAULTS.OWNER };
 const MEMBER_ROLE: Role = { id: 'system-member', name: 'Member', systemKey: 'MEMBER', ...SYSTEM_ROLE_DEFAULTS.MEMBER };
 const GUEST_ROLE: Role = { id: 'system-guest', name: 'Guest', systemKey: 'GUEST', ...SYSTEM_ROLE_DEFAULTS.GUEST };
+// Workspace admins manage people, invitations and settings like the owner, but
+// ownership itself (transfer/delete workspace) stays with the Owner.
+const ADMIN_ROLE: Role = {
+    id: 'system-admin',
+    name: 'Admin',
+    systemKey: 'OWNER',
+    ...SYSTEM_ROLE_DEFAULTS.OWNER,
+    position: Number.MAX_SAFE_INTEGER - 2
+};
 
 /** Map a Firestore role doc to the in-memory Role model. */
 function firestoreRoleToRole(fr: FirestoreRole): Role {
@@ -153,7 +162,6 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
     // Check if current user is tenant owner
     const isTenantOwner = useMemo(() => {
         if (!userId || !tenantId) return false;
-        if (userId === tenantId) return true; // personal workspace
         return currentMember?.role === 'Owner';
     }, [userId, tenantId, currentMember]);
 
@@ -176,7 +184,9 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
         if (!userId || !tenantId) return [];
         if (isTenantOwner) return [OWNER_ROLE];
 
-        const roles: Role[] = [MEMBER_ROLE];
+        // Guests only get guest permissions (plus explicitly assigned custom
+        // roles); they never inherit workspace-wide Member permissions.
+        const roles: Role[] = isExternal ? [] : [currentMember?.role === 'Admin' ? ADMIN_ROLE : MEMBER_ROLE];
         const assignedIds: string[] = currentMember?.roleIds || [];
         assignedIds.forEach((id) => {
             const match = customRoles.find((r) => r.id === id);

@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { EmailBlock, TemplateVariable } from '../../types';
 import { getLatestEmailTemplateDraft, saveEmailTemplateDraft, getEmailTemplateDrafts, getEmailTemplateById, getTemplateVersions } from '../../services/domain/marketingTemplatesService';
 import { getProjectById } from '../../services/domain/projectsService';
+import { getActiveTenantId } from '../../services/domain/authService';
 import { auth, db } from '../../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -69,7 +70,7 @@ export const EmailBuilderPage = () => {
                 try {
                     // First, find the project to get the correct tenantId (important for shared projects)
                     const project = await getProjectById(projectId);
-                    const tenantId = project?.tenantId || user.uid;
+                    const tenantId = project?.tenantId || getActiveTenantId();
                     setResolvedTenantId(tenantId);
 
                     if (templateIdFromUrl) {

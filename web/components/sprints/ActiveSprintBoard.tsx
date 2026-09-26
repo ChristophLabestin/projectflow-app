@@ -6,6 +6,7 @@ import { Button } from '../../components/common/Button/Button';
 import { Badge } from '../../components/common/Badge/Badge';
 import { useLanguage } from '../../context/LanguageContext';
 import { UpcomingSprintsList } from './UpcomingSprintsList';
+import { parseDateValue } from '../../utils/taskDates';
 
 interface ActiveSprintBoardProps {
     sprint: Sprint;
@@ -29,7 +30,7 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
     renderTask
 }) => {
     const { t, dateFormat, dateLocale } = useLanguage();
-    const daysLeft = differenceInDays(new Date(sprint.endDate), new Date());
+    const daysLeft = differenceInDays(parseDateValue(sprint.endDate), new Date());
     const isOverdue = daysLeft < 0;
 
     const daysLabel = isOverdue
@@ -55,9 +56,9 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
                     <div className="sprint-board__meta">
                         <span className="sprint-board__meta-item">
                             <span className="material-symbols-outlined">calendar_today</span>
-                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                            {format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale })}
                             <span className="sprint-board__meta-separator">-</span>
-                            {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                            {format(parseDateValue(sprint.endDate), dateFormat, { locale: dateLocale })}
                         </span>
                         <span className={`sprint-board__meta-item ${isOverdue ? 'is-overdue' : 'is-ontrack'}`}>
                             {daysLabel}

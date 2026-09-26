@@ -3,6 +3,7 @@ import { SocialCampaign, SocialPost } from '../../../types';
 import { differenceInDays, format } from 'date-fns';
 import { useLanguage } from '../../../context/LanguageContext';
 import { getSocialPostFormatLabel } from '../../../utils/socialLocalization';
+import { parseDateValue } from '../../../utils/taskDates';
 
 interface CampaignStrategyViewProps {
     campaign: SocialCampaign;
@@ -19,8 +20,8 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
     const drafts = posts.filter(p => p.status === 'Draft' && !p.isConcept);
 
     // Timeline
-    const totalDays = campaign.startDate && campaign.endDate ? differenceInDays(new Date(campaign.endDate), new Date(campaign.startDate)) : 0;
-    const daysElapsed = campaign.startDate ? differenceInDays(new Date(), new Date(campaign.startDate)) : 0;
+    const totalDays = campaign.startDate && campaign.endDate ? differenceInDays(parseDateValue(campaign.endDate), parseDateValue(campaign.startDate)) : 0;
+    const daysElapsed = campaign.startDate ? differenceInDays(new Date(), parseDateValue(campaign.startDate)) : 0;
     const daysRemaining = Math.max(0, totalDays - daysElapsed);
     const progress = totalDays > 0 ? Math.min(100, Math.max(0, (daysElapsed / totalDays) * 100)) : 0;
 
@@ -111,7 +112,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                 label={t('social.campaignStrategy.duration')}
                                 value={`${totalDays}d`}
                                 subtext={campaign.endDate
-                                    ? t('social.campaignStrategy.ends').replace('{date}', format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }))
+                                    ? t('social.campaignStrategy.ends').replace('{date}', format(parseDateValue(campaign.endDate), dateFormat, { locale: dateLocale }))
                                     : t('social.campaignStrategy.ongoing')}
                             />
                             <StatCard

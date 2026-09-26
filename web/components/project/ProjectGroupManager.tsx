@@ -126,7 +126,7 @@ const GroupMemberAvatar: React.FC<{ uid: string, tenantId?: string }> = ({ uid, 
 
     useEffect(() => {
         const fetch = async () => {
-            const resolvedTenant = tenantId || getActiveTenantId() || auth.currentUser?.uid;
+            const resolvedTenant = tenantId || getActiveTenantId();
             // Try fetching from project tenant first
             let p = null;
             if (resolvedTenant) {
