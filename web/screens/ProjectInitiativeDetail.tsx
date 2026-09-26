@@ -401,6 +401,9 @@ export const ProjectInitiativeDetail = () => {
     return (
         <div className="initiative-detail">
             <div className="initiative-detail__header">
+                <div className="initiative-detail__title-group">
+                    <h1 className="initiative-detail__title">{initiative.title}</h1>
+                </div>
                 <div className="initiative-detail__header-top">
                     <div className="initiative-detail__quick-actions">
                         <button
@@ -425,10 +428,6 @@ export const ProjectInitiativeDetail = () => {
                             </button>
                         )}
                     </div>
-                </div>
-
-                <div className="initiative-detail__title-group">
-                    <h1 className="initiative-detail__title">{initiative.title}</h1>
                 </div>
             </div>
 

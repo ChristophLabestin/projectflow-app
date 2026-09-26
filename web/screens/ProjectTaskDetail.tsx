@@ -668,6 +668,9 @@ export const ProjectTaskDetail = () => {
             <div className="task-detail__grid">
                 <main className="task-detail__main">
                     <header className="task-detail__header">
+                        <div className="task-detail__title-group">
+                            <h1 className="task-detail__title">{task.title}</h1>
+                        </div>
                         <div className="task-detail__header-top">
                             <div className="task-detail__quick-actions">
                                 <button type="button" className="task-detail__icon-button" data-state={activeFocus ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'} onClick={handleTogglePinnedTask} aria-label={t('taskDetail.actions.togglePin')}>
@@ -680,10 +683,6 @@ export const ProjectTaskDetail = () => {
                                     <span className="material-symbols-outlined">delete</span>
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="task-detail__title-group">
-                            <h1 className="task-detail__title">{task.title}</h1>
                         </div>
                     </header>
 
