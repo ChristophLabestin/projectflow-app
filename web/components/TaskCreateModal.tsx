@@ -128,10 +128,12 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
         () =>
             Array.from(
                 new Set([
-                    ...categories.map((c) => c.name.trim()),
+                    // Older projects carry labels without a name and non-string
+                    // task categories; never let those crash the modal.
+                    ...categories.map((c) => (typeof c?.name === 'string' ? c.name.trim() : '')),
                     ...tasks.flatMap((t) => {
-                        const cats = Array.isArray(t.category) ? t.category : [t.category || ''];
-                        return cats.map((c) => (c || '').trim());
+                        const cats: unknown[] = Array.isArray(t.category) ? t.category : [t.category];
+                        return cats.map((c) => (typeof c === 'string' ? c.trim() : ''));
                     })
                 ].filter(Boolean))
             ),

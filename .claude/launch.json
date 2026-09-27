@@ -39,6 +39,25 @@
         "--strictPort"
       ],
       "port": 4173
+    },
+    {
+      "name": "web-emu-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "--prefix",
+        "web",
+        "vite",
+        "preview",
+        "web",
+        "--mode",
+        "emulator",
+        "--outDir",
+        "/tmp/pf-emu-dist",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "port": 4174
     }
   ]
 }

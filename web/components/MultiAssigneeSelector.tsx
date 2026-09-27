@@ -38,6 +38,14 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
         let mounted = true;
 
         const load = async () => {
+            // No project picked yet (e.g. task modal opened from the Dashboard).
+            if (!projectId) {
+                if (mounted) {
+                    setMembers([]);
+                    setGroups([]);
+                }
+                return;
+            }
             // 1. Fetch Project Member UIDs
             const memberIds = await getProjectMembers(projectId);
 
@@ -137,7 +145,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                 console.error('Failed to fetch project groups', error);
             }
         };
-        load();
+        load().catch((error) => console.error('Failed to load assignees', error));
 
         return () => {
             mounted = false;
@@ -207,7 +215,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
         return name.toLowerCase().includes(search.toLowerCase());
     });
 
-    const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredGroups = groups.filter(group => String(group.name || '').toLowerCase().includes(search.toLowerCase()));
 
 
     if (loading) return <div className="assignee-select__loading" />;
@@ -251,7 +259,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                             )}
                             {assigneeIds.length > 0 && assigneeIds.length <= 4 && (
                                 <span className="assignee-select__name">
-                                    {assigneeIds.length === 1 ? (userMap[assigneeIds[0]]?.displayName.split(' ')[0] || '') : ''}
+                                    {assigneeIds.length === 1 ? (String(userMap[assigneeIds[0]]?.displayName || '').split(' ')[0]) : ''}
                                 </span>
                             )}
                         </div>
