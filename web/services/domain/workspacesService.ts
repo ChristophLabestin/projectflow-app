@@ -303,3 +303,16 @@ export const acceptInvitation = async (tenantId: string, inviteId: string) => {
     await rememberWorkspace(result.data.tenantId);
     return result.data;
 };
+
+// ---- Workspace lifecycle (owner actions, run server-side) --------------------
+
+/** Make another member the owner; the current owner stays on as Admin. */
+export const transferWorkspaceOwnership = async (tenantId: string, newOwnerId: string) => {
+    await httpsCallable(functions, 'transferWorkspaceOwnership')({ tenantId, newOwnerId });
+};
+
+/** Permanently delete the workspace and everything in it. `confirmName` must equal its name. */
+export const deleteWorkspace = async (tenantId: string, confirmName: string) => {
+    await httpsCallable(functions, 'deleteWorkspace')({ tenantId, confirmName });
+    if (getCachedTenantId() === tenantId) clearCachedTenantId();
+};

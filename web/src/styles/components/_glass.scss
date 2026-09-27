@@ -1,0 +1,27 @@
+@use '../mixins';
+
+/* ============================================================
+   Glass surfaces for every floating menu, dropdown and popover.
+   Loaded last (styles/index.scss) so it wins over the component
+   defaults (html:root lifts specificity above component CSS that loads later).
+   New popovers: add the `pf-glass` class or a selector here.
+   ============================================================ */
+
+html:root :is(
+    .pf-glass,
+    .inline-menu,
+    .select-input__popover,
+    .dt-picker__popover,
+    .assignee-select__dropdown,
+    .project-switcher__dropdown,
+    .po-hero__menu-list,
+    .po-filter,
+    .po-reminders__popover,
+    .snav-ws-menu,
+    .workspace-menu,
+    .task-detail__menu,
+    .task-dependency-selector__menu,
+    .sprint-detail__menu
+) {
+    @include mixins.glass-surface;
+}

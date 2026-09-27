@@ -233,3 +233,5 @@ These are outside the Social module shell in the old routing.
 - [x] AppSession + permission service + extended Firestore models/repositories
 
 MVP exclusions: Finance V2, Social, Marketing modules (open in web links). macOS variant planned separately.
+
+- [x] `/workspace` — Workspace settings (2026-09-27): general profile, members summary + invite, roles (RoleManagement), integrations (SMTP/storage/API via SettingsModal), danger zone (leave, transfer ownership, delete via callables `transferWorkspaceOwnership` / `deleteWorkspace`). Entry: sidebar workspace menu → "Workspace settings".

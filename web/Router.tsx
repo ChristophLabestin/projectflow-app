@@ -12,6 +12,7 @@ import { isCoraStudioEnabled } from './config/features';
 import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
+const WorkspaceSettings = React.lazy(() => import('./screens/WorkspaceSettings').then((module) => ({ default: module.WorkspaceSettings })));
 import { Team } from './screens/Team';
 import { AcceptInvite } from './screens/AcceptInvite';
 import { Profile } from './screens/Profile';
@@ -241,6 +242,7 @@ export const AppRouter = () => {
                         <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
+                        <Route path="/workspace" element={withRouteSuspense(<WorkspaceSettings />)} />
                         <Route path="/media" element={<MediaLibraryPage />} />
                         <Route path="/profile" element={<Profile />} />
 

@@ -801,6 +801,15 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                         <div className="snav-ws-menu__list">
                             {!trimmedQuery && <WorkspaceMenuSection />}
                             {!trimmedQuery && (
+                                <button type="button" className="snav-ws-row" onClick={() => { setMenuOpen(false); closeOnNavigate?.(); navigate('/workspace'); }}>
+                                    <span className="snav-avatar snav-avatar--finance"><span className="material-symbols-outlined">settings</span></span>
+                                    <div className="snav-ws-row__copy">
+                                        <span className="snav-ws-row__title">{t('workspaceSettings.menuEntry')}</span>
+                                        <span className="snav-ws-row__meta">{t('workspaceSettings.menuHint')}</span>
+                                    </div>
+                                </button>
+                            )}
+                            {!trimmedQuery && (
                                 <button type="button" className="snav-ws-row" onClick={goWorkspace}>
                                     <span className="snav-avatar snav-avatar--finance"><span className="material-symbols-outlined">space_dashboard</span></span>
                                     <div className="snav-ws-row__copy">

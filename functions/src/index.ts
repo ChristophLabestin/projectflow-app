@@ -205,3 +205,4 @@ export {
 };
 export * from './passkeys';
 export { mcp } from './mcp-server';
+export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';

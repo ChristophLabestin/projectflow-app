@@ -118,9 +118,8 @@ export const UserProfileDropdown: React.FC = () => {
                 <div
                     className="
                         absolute top-full right-0 mt-2 w-72
-                        bg-card 
-                        border border-surface
-                        rounded-2xl shadow-2xl
+                        pf-glass
+                        rounded-2xl
                         animate-scale-up origin-top-right
                         z-50
                     "
@@ -180,9 +179,8 @@ export const UserProfileDropdown: React.FC = () => {
                                 <div
                                     className="
                                         absolute top-full left-0 right-0 mt-1.5 p-1
-                                        bg-card 
-                                        border border-surface
-                                        rounded-xl shadow-xl
+                                        pf-glass
+                                        rounded-xl
                                         z-[60] animate-scale-up origin-top
                                     "
                                 >

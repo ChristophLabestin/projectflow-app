@@ -79,7 +79,7 @@ export const TopBarTeamMenu: React.FC<TopBarTeamMenuProps> = ({ tenantId }) => {
             {open && (
                 <div
                     role="menu"
-                    className="absolute right-0 top-full mt-2 w-72 max-h-[70vh] flex flex-col rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-xl overflow-hidden z-50 animate-fade-in"
+                    className="absolute right-0 top-full mt-2 w-72 max-h-[70vh] flex flex-col rounded-2xl pf-glass overflow-hidden z-50 animate-fade-in"
                 >
                     <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)]">
                         <div className="flex items-center gap-2">

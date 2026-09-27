@@ -199,7 +199,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                 <div className={`absolute ${position === 'sidebar'
                     ? 'left-full bottom-0 ml-3'
                     : 'right-0 mt-2'
-                    } w-[340px] bg-card rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in`}
+                    } w-[340px] pf-glass rounded-2xl overflow-hidden z-50 animate-fade-in`}
                 >
                     {/* Header - Gradient Design */}
                     <div className="relative px-5 py-4 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border-b border-surface">
