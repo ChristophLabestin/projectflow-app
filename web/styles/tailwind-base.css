@@ -1,0 +1,2 @@
+/* Tailwind preflight + forms base. Loaded before styles/index.scss so app styles win. */
+@tailwind base;

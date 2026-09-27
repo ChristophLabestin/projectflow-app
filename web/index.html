@@ -12,7 +12,6 @@
         rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries,typography"></script>
     <script>
         // Polyfill process.env to prevent ReferenceError in libs that expect it
         window.process = {
@@ -22,38 +21,6 @@
             }
         };
 
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "ink": "rgb(var(--color-text-main-rgb) / <alpha-value>)",
-                        "main": "rgb(var(--color-text-main-rgb) / <alpha-value>)",
-                        "muted": "rgb(var(--color-text-muted-rgb) / <alpha-value>)",
-                        "subtle": "rgb(var(--color-text-subtle-rgb) / <alpha-value>)",
-                        "canvas": "rgb(var(--color-surface-bg-rgb) / <alpha-value>)",
-                        "paper": "rgb(var(--color-surface-paper-rgb) / <alpha-value>)",
-                        "card": "rgb(var(--color-surface-card-rgb) / <alpha-value>)",
-                        "surface": "rgb(var(--color-surface-bg-rgb) / <alpha-value>)",
-                        "surface-hover": "rgb(var(--color-surface-hover-rgb) / <alpha-value>)",
-                        "line": "rgb(var(--color-surface-border-rgb) / <alpha-value>)",
-                        "primary": "rgb(var(--color-primary-rgb) / <alpha-value>)",
-                        "on-primary": "rgb(var(--color-primary-text-rgb) / <alpha-value>)",
-                        "accent": "rgb(var(--color-primary-rgb) / <alpha-value>)",
-                        "accent-alt": "rgb(var(--color-primary-rgb) / <alpha-value>)",
-                        "accent-2": "rgb(var(--color-primary-rgb) / <alpha-value>)",
-                    },
-                    fontFamily: {
-                        "display": ["Plus Jakarta Sans", "sans-serif"],
-                        "body": ["Plus Jakarta Sans", "sans-serif"]
-                    },
-                    boxShadow: {
-                        "soft": "0 18px 34px rgba(17, 19, 24, 0.12)",
-                        "lift": "0 12px 26px rgba(17, 19, 24, 0.14)"
-                    }
-                },
-            },
-        }
     </script>
     <script type="importmap">
 {

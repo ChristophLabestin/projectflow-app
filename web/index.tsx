@@ -4,6 +4,7 @@ import App from './App';
 import { AppProviders } from './AppProviders';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { initErrorReporting } from './services/errorReporting';
+import './styles/tailwind-base.css';
 import './styles/index.scss';
 
 initErrorReporting();

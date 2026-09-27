@@ -48,6 +48,12 @@ module.exports = {
                 error: rgbVar('--color-error-rgb'),
                 ink: 'var(--color-text-main)',
             },
+            // Borders always use the border token, never a surface fill color
+            // (colors.surface.DEFAULT is the card color).
+            borderColor: {
+                DEFAULT: 'var(--color-surface-border)',
+                surface: { DEFAULT: 'var(--color-surface-border)' },
+            },
             borderRadius: {
                 sm: 'var(--radius-sm)',
                 md: 'var(--radius-md)',
@@ -67,7 +73,7 @@ module.exports = {
         },
     },
     plugins: [
-        forms({ strategy: 'class' }),
+        forms(),
         typography,
         containerQueries,
     ],

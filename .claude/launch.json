@@ -4,16 +4,41 @@
     {
       "name": "web",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "web"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "web"
+      ],
       "port": 3000,
       "autoPort": true
     },
     {
       "name": "web-emulator",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:emulator", "--prefix", "web"],
+      "runtimeArgs": [
+        "run",
+        "dev:emulator",
+        "--prefix",
+        "web"
+      ],
       "port": 3000,
       "autoPort": true
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "preview",
+        "--prefix",
+        "web",
+        "--",
+        "--port",
+        "4173",
+        "--strictPort"
+      ],
+      "port": 4173
     }
   ]
 }
