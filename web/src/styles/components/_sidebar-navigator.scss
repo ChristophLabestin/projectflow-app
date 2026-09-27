@@ -112,15 +112,17 @@
     // .snav--no-peek: just collapsed via the toggle — stay shut even though the
     // pointer is still inside, until it leaves once.
     &:not(.snav--no-peek):hover,
-    &:has(:focus-visible) { --snav-card: 232px; }
+    &:has(:focus-visible),
+    &.snav--menu-open { --snav-card: 232px; }
 
     &:not(.snav--no-peek):hover .snav-card,
     &:has(:focus-visible) .snav-card { box-shadow: var(--shadow-lg); }
 
     // Resting spine: fade inline text, collapse the secondary blocks to 0 so
     // only a tidy, centre-aligned icon column remains.
-    &:not(:hover):not(:has(:focus-visible)),
-    &.snav--no-peek:not(:has(:focus-visible)) {
+    // An open workspace menu always shows the expanded card (labels, sections).
+    &:not(:hover):not(:has(:focus-visible)):not(.snav--menu-open),
+    &.snav--no-peek:not(:has(:focus-visible)):not(.snav--menu-open) {
         .snav-row__label,
         .snav-row__badge,
         .snav-ws__name,
@@ -642,6 +644,7 @@
     &.is-open {
         .snav-ws-menu__search,
         .snav-ws-menu__list > *,
+        .snav-ws-menu__settings,
         .snav-ws-menu__create {
             animation: snav-menu-item-in 360ms var(--snav-menu-ease) both;
         }
@@ -651,12 +654,14 @@
             .snav-ws-menu__list > *:nth-child(#{$i}) { animation-delay: #{60 + $i * 35}ms; }
         }
         .snav-ws-menu__list > *:nth-child(n + 9) { animation-delay: 380ms; }
+        .snav-ws-menu__settings { animation-delay: 180ms; }
         .snav-ws-menu__create { animation-delay: 200ms; }
     }
 
     &.is-closing {
         .snav-ws-menu__search,
         .snav-ws-menu__list,
+        .snav-ws-menu__settings,
         .snav-ws-menu__create {
             transition: opacity 120ms ease-in, transform 200ms ease-in;
             opacity: 0;
@@ -850,6 +855,29 @@
     .material-symbols-outlined { font-size: 18px; }
     &:hover { transform: translateY(-1px); }
     &:active { transform: scale(0.99); }
+}
+
+/* Workspace settings entry, just above "New project". */
+.snav-ws-menu__settings {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 4px 12px 6px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: var(--radius-control);
+    background: none;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    white-space: nowrap;
+
+    .material-symbols-outlined { font-size: 18px; }
+    &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
 }
 
 /* "More"/"Less" toggle under the workspace group (new accounts). */
