@@ -216,3 +216,4 @@
 - 2026-09-26 — Full production deploy (commit `5387eb55`): firestore rules + indexes (api_tokens.tokenHash collection-group), storage rules, all functions (112 updated + new `mcp`), hosting.
   - Includes: MCP server (`/mcp`), Codex view removed, Sprints redesign, Intake tab removed, old welcome tour removed, new passkey dialog, global search and sidebar work from parallel sessions.
   - Validation: build, 50/50 tests, theme lint, functions build; both domains serve the new bundle; `https://app.getprojectflow.com/mcp` answers 401 without a token.
+- 2026-09-27 — Deploy: functions `transferWorkspaceOwnership`, `deleteWorkspace` (new) + hosting (commit `ad05449d`): workspace settings page `/workspace`, glass popovers, top-bar pill glass moved to `::before` (fixes see-through profile menu). Both domains serve the new bundle; callables reachable (401 without auth).
