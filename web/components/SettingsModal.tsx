@@ -34,6 +34,8 @@ import { Checkbox } from './ui/Checkbox';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
 import { RoleManagement } from './settings/RoleManagement';
+import { WorkspaceSettingsPanel, type WorkspaceSettingsSection } from './settings/WorkspaceSettingsPanel';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { TwoFactorChallengeModal } from './modals/TwoFactorChallengeModal';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
@@ -54,12 +56,17 @@ import {
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
 import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithubToken, updateUserData } from '../services/domain/usersService';
 
-type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta';
+type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
+    | WorkspaceSettingsSection;
+
+const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'api', 'danger'];
 
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialTab?: SettingsTab;
+    /** 'personal' = account settings, 'workspace' = settings of the active workspace. Derived from initialTab when omitted. */
+    scope?: 'personal' | 'workspace';
 }
 
 type TokenPreset = 'codex-full' | 'read-only' | 'write-no-delete';
@@ -127,8 +134,13 @@ const TOKEN_PERMISSION_LABEL_KEYS: Record<APITokenPermission, string> = {
 const hasDestructiveScope = (permissions: APITokenPermission[]) =>
     permissions.includes('projects:delete') || permissions.includes('tasks:delete') || permissions.includes('initiatives:delete');
 
-export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab = 'account' }) => {
-    const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, initialTab, scope: scopeProp }) => {
+    const scope = scopeProp || (initialTab && WORKSPACE_TABS.includes(initialTab) ? 'workspace' : 'personal');
+    const startTab: SettingsTab = initialTab || (scope === 'workspace' ? 'workspace' : 'account');
+    const [activeTab, setActiveTab] = useState<SettingsTab>(startTab);
+    const workspaceContext = useWorkspace();
+    const workspaceRole = workspaceContext.activeWorkspace?.role;
+    const isWorkspaceAdmin = workspaceRole === 'Owner' || workspaceRole === 'Admin';
     const { language, setLanguage, dateFormat, setDateFormat, t, settingsTranslationsReady, loadSettingsTranslations } = useLanguage();
     const [tenant, setTenant] = useState<Partial<Tenant>>({});
     const [loading, setLoading] = useState(true);
@@ -224,10 +236,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     useEffect(() => {
         if (isOpen) {
             // Reset state or reload when opened if needed
-            setActiveTab(initialTab);
+            setActiveTab(startTab);
             void loadSettingsTranslations();
         }
-    }, [initialTab, isOpen, loadSettingsTranslations]);
+    }, [startTab, isOpen, loadSettingsTranslations]);
 
     useEffect(() => {
         // Reset verification status when credentials change from saved values
@@ -1130,18 +1142,30 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         }
     };
 
-    const tabs: { id: SettingsTab; label: string; icon: string }[] = [
-        { id: 'account', label: t('settings.tabs.account'), icon: 'person' },
-        { id: 'preferences', label: t('settings.tabs.preferences'), icon: 'tune' },
-        { id: 'security', label: t('settings.tabs.security'), icon: 'security' },
-        { id: 'general', label: t('settings.tabs.general'), icon: 'settings' },
-        { id: 'roles', label: 'Roles', icon: 'badge' },
-        { id: 'api', label: 'API Keys', icon: 'key' } as any,
-        { id: 'prebeta', label: t('settings.tabs.prebeta'), icon: 'science' },
-    ];
+    const tabs: { id: SettingsTab; label: string; icon: string }[] = scope === 'workspace'
+        ? [
+            { id: 'workspace', label: t('workspaceSettings.tabs.workspace'), icon: 'domain' },
+            { id: 'members', label: t('workspaceSettings.tabs.members'), icon: 'group' },
+            ...(isWorkspaceAdmin ? [
+                { id: 'roles' as SettingsTab, label: t('workspaceSettings.tabs.roles'), icon: 'badge' },
+                { id: 'general' as SettingsTab, label: t('workspaceSettings.tabs.services'), icon: 'mail' },
+            ] : []),
+            { id: 'api', label: t('workspaceSettings.tabs.api'), icon: 'key' },
+            { id: 'danger', label: t('workspaceSettings.tabs.danger'), icon: 'warning' },
+        ]
+        : [
+            { id: 'account', label: t('settings.tabs.account'), icon: 'person' },
+            { id: 'preferences', label: t('settings.tabs.preferences'), icon: 'tune' },
+            { id: 'security', label: t('settings.tabs.security'), icon: 'security' },
+            { id: 'prebeta', label: t('settings.tabs.prebeta'), icon: 'science' },
+        ];
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'workspace':
+            case 'members':
+            case 'danger':
+                return <WorkspaceSettingsPanel section={activeTab} onNavigate={onClose} />;
             case 'roles':
                 return <RoleManagement />;
             case 'prebeta':
@@ -2012,7 +2036,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
 
     return (
         <React.Fragment>
-            <Modal isOpen={isOpen} onClose={onClose} title={settingsTranslationsReady ? (t('settings.title') || 'Settings') : 'Settings'} size="4xl">
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                title={scope === 'workspace'
+                    ? t('workspaceSettings.title')
+                    : settingsTranslationsReady ? (t('settings.title') || 'Settings') : 'Settings'}
+                size="4xl"
+            >
                 {isOpen && !settingsTranslationsReady ? (
                     <div className="flex h-[80vh] items-center justify-center">
                         <span className="material-symbols-outlined animate-spin text-3xl text-muted">progress_activity</span>
@@ -2021,8 +2052,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                     <div className="flex h-[80vh] -m-6 rounded-b-2xl overflow-hidden bg-surface-bg">
                         {/* Sidebar */}
                         <div className="w-64 shrink-0 bg-surface-hover/30 p-4 flex flex-col gap-1 overflow-y-auto">
-                            <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 px-3 pt-2">
-                                Configuration
+                            <div className="text-xs font-bold text-muted uppercase tracking-wider mb-2 px-3 pt-2 truncate">
+                                {scope === 'workspace' ? (workspaceContext.activeWorkspace?.name || t('workspaceSettings.tabs.workspace')) : t('settings.tabs.account')}
                             </div>
                             {tabs.map(tab => (
                                 <button

@@ -125,7 +125,7 @@ export const UserProfileDropdown: React.FC = () => {
                     "
                 >
                     {/* User Info Header */}
-                    <div className="p-4 rounded-t-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-transparent border-b border-surface">
+                    <div className="p-4 rounded-t-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-transparent pf-menu-divider-b">
                         <div className="flex items-center gap-3">
                             {user?.photoURL ? (
                                 <img
@@ -156,11 +156,11 @@ export const UserProfileDropdown: React.FC = () => {
                             <button
                                 onClick={() => setIsStatusSelectorOpen(!isStatusSelectorOpen)}
                                 className={`
-                                    w-full flex items-center justify-between px-3 py-2 rounded-xl border
+                                    w-full flex items-center justify-between px-3 py-2 rounded-xl pf-menu-field
                                     transition-all duration-200 group
                                     ${isStatusSelectorOpen
-                                        ? 'bg-surface-hover border-primary/50 ring-4 ring-primary/5'
-                                        : 'bg-white/5 border-surface hover:border-primary/30'
+                                        ? 'pf-menu-field--open ring-4 ring-primary/5'
+                                        : ''
                                     }
                                 `}
                             >
@@ -251,7 +251,7 @@ export const UserProfileDropdown: React.FC = () => {
                     </div>
 
                     {/* Logout Section */}
-                    <div className="border-t border-surface py-2 rounded-b-2xl">
+                    <div className="pf-menu-divider-t py-2 rounded-b-2xl">
                         <button
                             onClick={handleSignOut}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-600 dark:text-rose-400 transition-colors text-left"

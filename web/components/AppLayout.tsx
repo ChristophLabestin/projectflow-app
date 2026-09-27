@@ -309,8 +309,6 @@ export const AppLayout = () => {
             rawItems.push({ label: t('breadcrumbs.aiStudio') });
         } else if (parts[0] === 'team') {
             rawItems.push({ label: t('breadcrumbs.team') });
-        } else if (parts[0] === 'workspace') {
-            rawItems.push({ label: t('workspaceSettings.title') });
         } else if (parts[0] === 'calendar') {
             rawItems.push({ label: t('breadcrumbs.calendar') });
         } else if (parts[0] === 'finance') {

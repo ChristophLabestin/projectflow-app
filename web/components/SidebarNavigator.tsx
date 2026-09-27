@@ -21,6 +21,8 @@ import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/rece
 import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
 
+const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
+
 // ----------------------------------------------------------------------
 // Types
 // ----------------------------------------------------------------------
@@ -234,6 +236,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const { hasPermission } = usePermissions();
     const { openProjectCreateModal, openTaskCreateModal } = useUIState();
     const [initiativeModalOpen, setInitiativeModalOpen] = React.useState(false);
+    const [workspaceSettingsOpen, setWorkspaceSettingsOpen] = React.useState(false);
 
     const effectiveCollapsed = collapsed && !isDrawer;
     const canViewFinance = hasPermission('tenant.finance.view');
@@ -396,7 +399,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         if (isDrawer) onClose?.();
         navigate(`/project/${projectId}`);
     };
-    const openWorkspaceSettings = () => { setMenuOpen(false); setQuery(''); if (isDrawer) onClose?.(); navigate('/workspace'); };
+    const openWorkspaceSettings = () => { setMenuOpen(false); setQuery(''); setWorkspaceSettingsOpen(true); };
     const createProject = () => { setMenuOpen(false); if (isDrawer) onClose?.(); openProjectCreateModal(); };
 
     const trimmedQuery = query.trim().toLowerCase();
@@ -856,6 +859,11 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     tenantId={currentProject?.tenantId}
                     onClose={() => setInitiativeModalOpen(false)}
                 />
+            )}
+            {workspaceSettingsOpen && (
+                <React.Suspense fallback={null}>
+                    <SettingsModal isOpen scope="workspace" onClose={() => setWorkspaceSettingsOpen(false)} />
+                </React.Suspense>
             )}
         </aside>
     );

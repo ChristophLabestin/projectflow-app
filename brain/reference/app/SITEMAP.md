@@ -234,4 +234,4 @@ These are outside the Social module shell in the old routing.
 
 MVP exclusions: Finance V2, Social, Marketing modules (open in web links). macOS variant planned separately.
 
-- [x] `/workspace` — Workspace settings (2026-09-27): general profile, members summary + invite, roles (RoleManagement), integrations (SMTP/storage/API via SettingsModal), danger zone (leave, transfer ownership, delete via callables `transferWorkspaceOwnership` / `deleteWorkspace`). Entry: sidebar workspace menu → "Workspace settings".
+- [x] `/workspace` — redirects to `/` (2026-09-27). Workspace settings are a modal: `SettingsModal scope="workspace"` (tabs Workspace, Members, Roles, Email & storage, API & MCP, Danger zone; sections in `components/settings/WorkspaceSettingsPanel.tsx`). Entry: sidebar workspace menu → "Workspace settings". Personal settings (profile menu) only show Account, Preferences, Security, Pre-Alpha.

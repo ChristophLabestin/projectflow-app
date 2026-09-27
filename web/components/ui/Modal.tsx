@@ -48,37 +48,36 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
     };
 
     return createPortal(
-        <div className={`fixed inset-0 flex items-center justify-center p-4 sm:p-6 z-50 ${className}`}>
+        <div className={`ui-modal ${className}`.trim()}>
             <div
                 ref={overlayRef}
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                className="ui-modal__backdrop"
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className={`
-                relative w-full ${sizeClasses[size]} bg-card rounded-2xl shadow-xl 
-                border border-surface flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden
-            `}>
+            <div className={`ui-modal__panel ${sizeClasses[size]}`} role="dialog" aria-modal="true">
                 {!hideHeader && (
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-surface">
-                        <h2 className="text-lg font-bold text-main">
+                    <div className="ui-modal__header">
+                        <h2 className="ui-modal__title">
                             {title}
                         </h2>
                         <button
+                            type="button"
                             onClick={onClose}
-                            className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
+                            className="ui-modal__close"
+                            aria-label="Close"
                         >
                             <span className="material-symbols-outlined text-[20px]">close</span>
                         </button>
                     </div>
                 )}
 
-                <div className={noPadding ? 'flex-1 overflow-hidden flex flex-col' : 'p-6 overflow-y-auto flex-1'}>
+                <div className={noPadding ? 'ui-modal__body ui-modal__body--flush' : 'ui-modal__body'}>
                     {children}
                 </div>
 
                 {footer && (
-                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface bg-surface rounded-b-xl">
+                    <div className="ui-modal__footer">
                         {footer}
                     </div>
                 )}

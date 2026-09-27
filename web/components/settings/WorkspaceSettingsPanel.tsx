@@ -1,40 +1,37 @@
-import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useOutletContext } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
-import { Button } from '../components/common/Button/Button';
-import { RoleManagement } from '../components/settings/RoleManagement';
-import { InviteToWorkspaceModal } from '../components/workspace/InviteToWorkspaceModal';
-import { useAuth } from '../context/AuthContext';
-import { useLanguage } from '../context/LanguageContext';
-import { useToast } from '../context/UIContext';
-import { useWorkspace } from '../context/WorkspaceContext';
-import { getTenant, updateTenant } from '../services/domain/workspaceService';
-import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
+import { Button } from '../common/Button/Button';
+import { InviteToWorkspaceModal } from '../workspace/InviteToWorkspaceModal';
+import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { useToast } from '../../context/UIContext';
+import { useWorkspace } from '../../context/WorkspaceContext';
+import { getTenant, updateTenant } from '../../services/domain/workspaceService';
+import { getWorkspaceMembers } from '../../services/domain/workspaceMembersService';
 import {
     deleteWorkspace,
     leaveWorkspace,
     listInvitations,
     transferWorkspaceOwnership
-} from '../services/domain/workspacesService';
-import type { Member } from '../types';
-
-const SettingsModal = lazy(() => import('../components/SettingsModal').then((module) => ({ default: module.SettingsModal })));
+} from '../../services/domain/workspacesService';
+import type { Member } from '../../types';
 
 type Profile = { name: string; description: string; website: string; contactEmail: string };
 type DangerAction = 'leave' | 'transfer' | 'delete' | null;
+export type WorkspaceSettingsSection = 'workspace' | 'members' | 'danger';
 
 /**
- * Workspace settings: profile, members, roles, advanced integrations and the
- * owner-only lifecycle actions (transfer, delete). Everyone can open it; the
- * page shows editing controls according to the caller's workspace role.
+ * Workspace sections of the settings modal: profile, members and the
+ * lifecycle actions (leave, transfer, delete). Editing controls follow the
+ * caller's workspace role.
  */
-export const WorkspaceSettings: React.FC = () => {
+export const WorkspaceSettingsPanel: React.FC<{ section: WorkspaceSettingsSection; onNavigate?: () => void }> = ({ section, onNavigate }) => {
     const { t } = useLanguage();
     const { user } = useAuth();
     const { showSuccess, showError } = useToast();
     const workspace = useWorkspace();
-    const outlet = useOutletContext<{ setTaskTitle?: (title: string | null) => void }>() || {};
     const active = workspace.activeWorkspace;
     const tenantId = workspace.activeWorkspaceId || '';
     const role = active?.role;
@@ -47,14 +44,7 @@ export const WorkspaceSettings: React.FC = () => {
     const [members, setMembers] = useState<Member[]>([]);
     const [pendingInvites, setPendingInvites] = useState(0);
     const [inviteOpen, setInviteOpen] = useState(false);
-    const [advancedTab, setAdvancedTab] = useState<'general' | 'api' | null>(null);
     const [danger, setDanger] = useState<DangerAction>(null);
-
-    useEffect(() => {
-        outlet.setTaskTitle?.(t('workspaceSettings.title'));
-        return () => outlet.setTaskTitle?.(null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [t]);
 
     useEffect(() => {
         if (!tenantId) return;
@@ -131,7 +121,9 @@ export const WorkspaceSettings: React.FC = () => {
     );
 
     return (
-        <div className="ws-settings">
+        <div className="ws-settings ws-settings--panel">
+            {section === 'workspace' && (
+                <>
             <header className="ws-settings__head">
                 <div className="ws-settings__badge" aria-hidden="true">{(active.name || '?').trim().charAt(0).toUpperCase()}</div>
                 <div>
@@ -164,6 +156,10 @@ export const WorkspaceSettings: React.FC = () => {
                 )}
             </section>
 
+                </>
+            )}
+            {section === 'members' && (
+                <>
             {/* Members */}
             <section className="ws-card">
                 <header className="ws-card__head">
@@ -176,7 +172,7 @@ export const WorkspaceSettings: React.FC = () => {
                     {isAdmin && <div className="ws-stat"><strong>{pendingInvites}</strong><span>{t('workspaceSettings.members.pending')}</span></div>}
                 </div>
                 <footer className="ws-card__foot">
-                    <Link to="/team" className="ws-link">{t('workspaceSettings.members.manage')}</Link>
+                    <Link to="/team" className="ws-link" onClick={onNavigate}>{t('workspaceSettings.members.manage')}</Link>
                     {isAdmin && (
                         <Button variant="primary" onClick={() => setInviteOpen(true)} icon={<span className="material-symbols-outlined">person_add</span>}>
                             {t('workspaceSettings.members.invite')}
@@ -185,39 +181,10 @@ export const WorkspaceSettings: React.FC = () => {
                 </footer>
             </section>
 
-            {/* Roles */}
-            {isAdmin && (
-                <section className="ws-card">
-                    {/* RoleManagement brings its own "Roles" heading. */}
-                    <RoleManagement />
-                </section>
+                </>
             )}
-
-            {/* Advanced */}
-            {isAdmin && (
-                <section className="ws-card">
-                    <header className="ws-card__head">
-                        <h2>{t('workspaceSettings.advanced.title')}</h2>
-                    </header>
-                    <div className="ws-rows">
-                        {([
-                            { key: 'email', icon: 'mail', tab: 'general' },
-                            { key: 'storage', icon: 'cloud', tab: 'general' },
-                            { key: 'api', icon: 'key', tab: 'api' }
-                        ] as const).map((row) => (
-                            <button key={row.key} type="button" className="ws-row" onClick={() => setAdvancedTab(row.tab)}>
-                                <span className="material-symbols-outlined" aria-hidden="true">{row.icon}</span>
-                                <span className="ws-row__copy">
-                                    <strong>{t(`workspaceSettings.advanced.${row.key}.title`)}</strong>
-                                    <small>{t(`workspaceSettings.advanced.${row.key}.hint`)}</small>
-                                </span>
-                                <span className="material-symbols-outlined ws-row__chevron" aria-hidden="true">chevron_right</span>
-                            </button>
-                        ))}
-                    </div>
-                </section>
-            )}
-
+            {section === 'danger' && (
+                <>
             {/* Danger zone */}
             <section className="ws-card ws-card--danger">
                 <header className="ws-card__head">
@@ -254,12 +221,10 @@ export const WorkspaceSettings: React.FC = () => {
                 </div>
             </section>
 
-            {isAdmin && <InviteToWorkspaceModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} projects={[]} />}
-            {advancedTab && (
-                <Suspense fallback={null}>
-                    <SettingsModal isOpen onClose={() => setAdvancedTab(null)} initialTab={advancedTab} />
-                </Suspense>
+                </>
             )}
+
+            {isAdmin && <InviteToWorkspaceModal isOpen={inviteOpen} onClose={() => setInviteOpen(false)} projects={[]} />}
             {danger && (
                 <DangerDialog
                     action={danger}

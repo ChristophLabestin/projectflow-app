@@ -3605,6 +3605,12 @@ const en = {
     'workspaceSettings.danger.delete.confirmText': 'All projects, tasks, members, invitations and settings in “{name}” are removed. This cannot be undone.',
     'workspaceSettings.danger.delete.typeName': 'Type “{name}” to confirm',
     'workspaceSettings.errors.generic': 'That did not work. Please try again.',
+    'workspaceSettings.tabs.workspace': 'Workspace',
+    'workspaceSettings.tabs.members': 'Members',
+    'workspaceSettings.tabs.roles': 'Roles',
+    'workspaceSettings.tabs.services': 'Email & storage',
+    'workspaceSettings.tabs.api': 'API & MCP',
+    'workspaceSettings.tabs.danger': 'Danger zone',
 };
 
 export default en;

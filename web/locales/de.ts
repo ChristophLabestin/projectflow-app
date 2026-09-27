@@ -3608,6 +3608,12 @@ const de = {
     'workspaceSettings.danger.delete.confirmText': 'Alle Projekte, Aufgaben, Mitglieder, Einladungen und Einstellungen in „{name}“ werden entfernt. Das lässt sich nicht rückgängig machen.',
     'workspaceSettings.danger.delete.typeName': 'Zur Bestätigung „{name}“ eingeben',
     'workspaceSettings.errors.generic': 'Das hat nicht geklappt. Bitte versuch es noch einmal.',
+    'workspaceSettings.tabs.workspace': 'Workspace',
+    'workspaceSettings.tabs.members': 'Mitglieder',
+    'workspaceSettings.tabs.roles': 'Rollen',
+    'workspaceSettings.tabs.services': 'E-Mail & Speicher',
+    'workspaceSettings.tabs.api': 'API & MCP',
+    'workspaceSettings.tabs.danger': 'Gefahrenzone',
 };
 
 export default de;

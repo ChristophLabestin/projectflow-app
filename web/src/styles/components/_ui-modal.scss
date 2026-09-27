@@ -1,0 +1,141 @@
+/* ============================================================
+   Legacy dialog shell (components/ui/Modal.tsx)
+   Token-based on purpose: the Tailwind-like utilities it used
+   (.bg-card, .border-surface) are defined twice in the bundle
+   and rendered a see-through header and hard black borders.
+   ============================================================ */
+
+.ui-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+
+    @media (min-width: 640px) {
+        padding: 24px;
+    }
+
+    &__backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+    }
+
+    &__panel {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-height: 90vh;
+        overflow: hidden;
+        border-radius: var(--radius-surface);
+        border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+        background: var(--color-surface-card);
+        box-shadow: var(--shadow-lg);
+        animation: ui-modal-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    &__header {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 16px 24px;
+        background: var(--color-surface-card);
+        border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    &__close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border: 0;
+        border-radius: var(--radius-full);
+        background: transparent;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        transition: background-color var(--transition-fast, 150ms), color var(--transition-fast, 150ms);
+
+        &:hover {
+            background: var(--color-surface-hover);
+            color: var(--color-text-main);
+        }
+    }
+
+    &__body {
+        flex: 1;
+        min-height: 0;
+        padding: 24px;
+        overflow-y: auto;
+
+        &--flush {
+            display: flex;
+            flex-direction: column;
+            padding: 0;
+            overflow: hidden;
+        }
+    }
+
+    &__footer {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        padding: 16px 24px;
+        background: var(--color-surface-card);
+        border-top: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+    }
+}
+
+@keyframes ui-modal-in {
+    from {
+        opacity: 0;
+        transform: scale(0.97) translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* Soft dividers inside glass popovers (profile menu). */
+.pf-menu-divider-b {
+    border-bottom: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+}
+
+.pf-menu-divider-t {
+    border-top: 1px solid color-mix(in srgb, var(--color-surface-border) 55%, transparent);
+}
+
+.pf-menu-field {
+    border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
+    background: rgba(var(--color-surface-card-rgb), 0.5);
+
+    &:hover,
+    &--open {
+        border-color: rgba(var(--color-primary-rgb), 0.4);
+    }
+}
+
+/* Workspace sections rendered inside the settings modal. */
+.ws-settings--panel {
+    max-width: none;
+}
