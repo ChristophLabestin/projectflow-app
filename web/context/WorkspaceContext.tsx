@@ -14,6 +14,8 @@ import {
     type WorkspaceSummary
 } from '../services/domain/workspacesService';
 
+const RESOLVE_TIMEOUT_MS = 20000;
+
 type WorkspaceStatus = 'signed-out' | 'loading' | 'ready' | 'error';
 
 interface WorkspaceContextValue {
@@ -47,6 +49,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const [workspaces, setWorkspaces] = useState<WorkspaceSummary[]>([]);
     const [pendingInvitations, setPendingInvitations] = useState<WorkspaceInvitation[]>([]);
     const resolvedFor = useRef<string | null>(null);
+    const attemptRef = useRef(0);
 
     const defaultName = useCallback(() => {
         const current = auth.currentUser;
@@ -55,16 +58,26 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     }, [t]);
 
     const resolve = useCallback(async () => {
+        const attempt = ++attemptRef.current;
         setStatus('loading');
+        let timer: ReturnType<typeof setTimeout> | undefined;
         try {
-            const { activeId, workspaces: list } = await resolveWorkspaceForCurrentUser(defaultName());
+            // A stalled Firestore connection would otherwise leave the spinner up forever.
+            const timeout = new Promise<never>((_, reject) => {
+                timer = setTimeout(() => reject(new Error('Workspace resolution timed out')), RESOLVE_TIMEOUT_MS);
+            });
+            const { activeId, workspaces: list } = await Promise.race([resolveWorkspaceForCurrentUser(defaultName()), timeout]);
+            if (attempt !== attemptRef.current) return;
             setWorkspaces(list);
             setActiveWorkspaceId(activeId);
             setStatus('ready');
             void listMyPendingInvitations().then(setPendingInvitations);
         } catch (error) {
+            if (attempt !== attemptRef.current) return;
             console.error('Workspace resolution failed', error);
             setStatus('error');
+        } finally {
+            clearTimeout(timer);
         }
     }, [defaultName]);
 

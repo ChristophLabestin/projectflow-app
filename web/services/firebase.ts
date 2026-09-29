@@ -9,9 +9,19 @@ import { getDatabase, type Database } from "firebase/database";
 // the emulators from firebase.json and swaps in an offline demo project id.
 const useEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true';
 
+// Safari (ITP) blocks the storage of a third-party auth domain, so a Google/GitHub
+// popup served from `*.firebaseapp.com` hangs on "Bitte warten". On domains served
+// by Firebase Hosting we use the page's own host, which serves `/__/auth/handler`.
+// Each host needs `https://<host>/__/auth/handler` as an OAuth redirect URI.
+const SAME_ORIGIN_AUTH_HOSTS = ['app.getprojectflow.com'];
+const resolveAuthDomain = () => {
+  const host = typeof window !== 'undefined' ? window.location.hostname : '';
+  return SAME_ORIGIN_AUTH_HOSTS.includes(host) ? host : import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+};
+
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || (useEmulators ? 'demo-api-key' : undefined),
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain: resolveAuthDomain(),
   projectId: useEmulators ? 'demo-projectflow' : import.meta.env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, type AuthProvider, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { sendVerificationEmail } from '../services/domain/emailVerification';
 import { auth } from '../services/firebase';
 import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCore';
@@ -10,6 +10,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { COMPANY_NAME } from '../config/company';
 import './login.scss';
+
+const OAUTH_REDIRECT_KEY = 'pf.oauthRedirect';
 
 export const Login = () => {
     const { t, authScreenTranslationsReady, loadAuthScreenTranslations } = useLanguage();
@@ -176,33 +178,63 @@ export const Login = () => {
         setError(t(fallbackKey));
     };
 
-    const handleGoogleSignIn = async () => {
+    // Popups hang or get blocked in embedded (in-app) browsers; there we use a
+    // full-page redirect and pick the result up in the effect below.
+    const prefersRedirect = () => /FBAN|FBAV|Instagram|LinkedInApp|Line\/|WhatsApp|; wv\)/i.test(navigator.userAgent);
+
+    const handleOAuthSignIn = async (provider: AuthProvider, fallbackKey: string) => {
         setError('');
         setIsLoading(true);
+        const startRedirect = async () => {
+            sessionStorage.setItem(OAUTH_REDIRECT_KEY, JSON.stringify({ redirectUrl, fallbackKey }));
+            await signInWithRedirect(auth, provider);
+        };
         try {
-            const provider = new GoogleAuthProvider();
+            if (prefersRedirect()) {
+                await startRedirect();
+                return;
+            }
             await signInWithPopup(auth, provider);
             await handleAuthSuccess();
         } catch (err: any) {
-            handleOAuthMfaError(err, 'login.error.google');
+            if (err.code === 'auth/popup-blocked' || err.code === 'auth/operation-not-supported-in-this-environment') {
+                try {
+                    await startRedirect();
+                    return;
+                } catch (redirectError) {
+                    err = redirectError;
+                }
+            }
+            handleOAuthMfaError(err, fallbackKey);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleGithubSignIn = async () => {
-        setError('');
-        setIsLoading(true);
+    const handleGoogleSignIn = () => handleOAuthSignIn(new GoogleAuthProvider(), 'login.error.google');
+
+    const handleGithubSignIn = () => handleOAuthSignIn(new GithubAuthProvider(), 'login.error.github');
+
+    // Completes a sign-in that went through signInWithRedirect.
+    useEffect(() => {
+        const pending = sessionStorage.getItem(OAUTH_REDIRECT_KEY);
+        if (!pending) return;
+        sessionStorage.removeItem(OAUTH_REDIRECT_KEY);
+        let stored: { redirectUrl?: string; fallbackKey?: string } = {};
         try {
-            const provider = new GithubAuthProvider();
-            await signInWithPopup(auth, provider);
-            await handleAuthSuccess();
-        } catch (err: any) {
-            handleOAuthMfaError(err, 'login.error.github');
-        } finally {
-            setIsLoading(false);
+            stored = JSON.parse(pending);
+        } catch {
+            stored = {};
         }
-    };
+        setIsLoading(true);
+        getRedirectResult(auth)
+            .then((result) => {
+                if (result) navigate(stored.redirectUrl || redirectUrl);
+            })
+            .catch((err) => handleOAuthMfaError(err, stored.fallbackKey || 'login.error.google'))
+            .finally(() => setIsLoading(false));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
 
     const handlePasskeySignIn = async (isAuto = false) => {
