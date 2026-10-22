@@ -92,7 +92,7 @@ struct PersonalTaskScreen: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .ignoresSafeArea(.container, edges: .top)
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
     }
 
     private func pills(_ task: PersonalTask, actions: WorkItemActions) -> some View {
@@ -141,7 +141,10 @@ struct PersonalTaskScreen: View {
             }
             if isEditingDescription {
                 RichTextEditorView(controller: editor)
-                    .task { editor.load(document) }
+                    .task {
+                        editor.load(document)
+                        editor.focus()
+                    }
             } else if document.isEmpty {
                 Button {
                     withAnimation(PFMotion.respecting(PFMotion.fast)) { isEditingDescription = true }

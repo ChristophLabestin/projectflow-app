@@ -86,14 +86,18 @@ struct ProjectCreateSheet: View {
             PFSheetHeader(L10n.t("projects.new.eyebrow"), title: L10n.t("projects.new.title"))
             PFTextField(L10n.t("projects.new.namePlaceholder"), text: $title, onSubmit: create)
                 .padding(.horizontal, PFSpace.page)
-            VStack(spacing: 0) {
-                ForEach(Array(ProjectTemplate.all.enumerated()), id: \.element.id) { index, template in
-                    if index > 0 { PFRowDivider(leadingInset: 64) }
-                    templateRow(template)
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(Array(ProjectTemplate.all.enumerated()), id: \.element.id) { index, template in
+                        if index > 0 { PFRowDivider(leadingInset: 64) }
+                        templateRow(template)
+                    }
                 }
+                .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                .padding(.horizontal, PFSpace.m)
             }
-            .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
-            .padding(.horizontal, PFSpace.m)
+            .frame(maxHeight: 280)
+            .scrollIndicators(.hidden)
             PFButton(L10n.t("projects.new.create"), systemImage: "plus", fullWidth: true, action: create)
                 .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty || isCreating)
                 .padding(.horizontal, PFSpace.page)

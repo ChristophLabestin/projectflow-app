@@ -129,6 +129,7 @@ struct BoardTaskCard: View {
         .onTapGesture { model.router.push(.task(task.ref)) }
         .accessibilityAddTraits(.isButton)
         .accessibilityElement(children: .combine)
+        .accessibilityAction(named: L10n.t("common.status")) { WorkItemActions(model: model).presentStatus(.task(task)) }
     }
 }
 

@@ -119,6 +119,12 @@ final class RichEditorController {
 
     func resign() { textView?.resignFirstResponder() }
 
+    func focus() {
+        guard let textView else { return }
+        textView.becomeFirstResponder()
+        textView.selectedRange = NSRange(location: textView.textStorage.length, length: 0)
+    }
+
     var isEmpty: Bool { (textView?.text ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     /// Tiptap-compatible HTML: `<p>`, `<h1–3>`, `<ul><li><p>`, `<strong>`, `<em>`, `<a href>`.
@@ -183,10 +189,25 @@ final class RichEditorController {
         return length
     }
 
+    /// Block type of the paragraph containing `location`. Lists are recognised by their marker characters and
+    /// headings by their font — UITextView drops custom attributes from typed text, so nothing else is reliable.
     fileprivate func blockAt(_ storage: NSTextStorage, _ location: Int) -> EditorBlock {
-        guard storage.length > 0 else { return .p }
-        let safe = min(max(location, 0), storage.length - 1)
-        return EditorBlock(rawValue: storage.attribute(.pfBlock, at: safe, effectiveRange: nil) as? String ?? "p") ?? .p
+        let string = storage.string as NSString
+        guard string.length > 0, location < string.length || !string.hasSuffix("\n") else { return .p }
+        let paragraph = string.paragraphRange(for: NSRange(location: min(max(location, 0), string.length - 1), length: 0))
+        guard paragraph.length > 0 else { return .p }
+        if storage.attribute(.pfMarker, at: paragraph.location, effectiveRange: nil) != nil {
+            return string.substring(with: NSRange(location: paragraph.location, length: 1)) == "•" ? .ul : .ol
+        }
+        if let font = storage.attribute(.font, at: paragraph.location, effectiveRange: nil) as? UIFont, let heading = headingBlock(font) { return heading }
+        return .p
+    }
+
+    fileprivate func headingBlock(_ font: UIFont) -> EditorBlock? {
+        let ratio = font.pointSize / PFFont.uiFont(.body).pointSize
+        if ratio >= 1.4 { return .h1 }
+        if ratio >= 1.15 { return .h2 }
+        return font.familyName.localizedCaseInsensitiveContains("Jakarta") ? .h3 : nil
     }
 
     fileprivate func paragraphRanges(_ storage: NSTextStorage, in selection: NSRange) -> [NSRange] {
@@ -246,40 +267,62 @@ final class RichEditorController {
     func setBlock(_ target: EditorBlock) {
         guard let textView else { return }
         let storage = textView.textStorage
-        let ranges = paragraphRanges(storage, in: textView.selectedRange)
+        let selection = textView.selectedRange
+        let ranges = paragraphRanges(storage, in: selection)
         let current = blockAt(storage, ranges.first?.location ?? 0)
         let newBlock: EditorBlock = current == target ? .p : target
+        var shifts: [(location: Int, delta: Int)] = []
         storage.beginEditing()
         for range in ranges.reversed() {
-            if blockAt(storage, range.location).isList, range.length > 0 { removeMarker(storage, paragraph: range) }
+            if blockAt(storage, range.location).isList, range.length > 0 {
+                shifts.append((range.location, -markerLength(storage, paragraph: range)))
+                removeMarker(storage, paragraph: range)
+            }
             let fresh = paragraphRanges(storage, in: NSRange(location: range.location, length: 0)).first ?? range
             restyle(storage, paragraph: fresh, as: newBlock)
         }
         storage.endEditing()
+        textView.selectedRange = shifted(selection, by: shifts, length: storage.length)
         textView.typingAttributes = typingAttributes(for: newBlock, from: textView.typingAttributes)
         normalize()
         didEdit()
         refreshState()
     }
 
+    /// Moves a selection after marker characters were inserted (+) or removed (−) at `location`.
+    private func shifted(_ selection: NSRange, by shifts: [(location: Int, delta: Int)], length: Int) -> NSRange {
+        let start = selection.location + shifts.filter { $0.location <= selection.location }.reduce(0) { $0 + $1.delta }
+        let end = selection.location + selection.length + shifts.filter { $0.location <= selection.location + selection.length }.reduce(0) { $0 + $1.delta }
+        let location = min(max(start, 0), length)
+        return NSRange(location: location, length: min(max(end - start, 0), length - location))
+    }
+
     func toggleList(ordered: Bool) {
         guard let textView else { return }
         let storage = textView.textStorage
+        let selection = textView.selectedRange
         let target: EditorBlock = ordered ? .ol : .ul
-        let ranges = paragraphRanges(storage, in: textView.selectedRange)
+        let ranges = paragraphRanges(storage, in: selection)
         let allTarget = ranges.allSatisfy { blockAt(storage, $0.location) == target && storage.length > 0 }
+        var shifts: [(location: Int, delta: Int)] = []
         storage.beginEditing()
         for range in ranges.reversed() {
-            if blockAt(storage, range.location).isList, range.length > 0 { removeMarker(storage, paragraph: range) }
+            if blockAt(storage, range.location).isList, range.length > 0 {
+                shifts.append((range.location, -markerLength(storage, paragraph: range)))
+                removeMarker(storage, paragraph: range)
+            }
             let fresh = paragraphRanges(storage, in: NSRange(location: range.location, length: 0)).first ?? range
             if allTarget {
                 restyle(storage, paragraph: fresh, as: .p)
             } else {
                 restyle(storage, paragraph: fresh, as: target)
-                storage.insert(marker(target), at: fresh.location)
+                let item = marker(target)
+                storage.insert(item, at: fresh.location)
+                shifts.append((fresh.location, item.length))
             }
         }
         storage.endEditing()
+        textView.selectedRange = shifted(selection, by: shifts, length: storage.length)
         textView.typingAttributes = typingAttributes(for: allTarget ? .p : target, from: textView.typingAttributes)
         normalize()
         didEdit()
@@ -306,7 +349,7 @@ final class RichEditorController {
         guard paragraph.length > 0 else { return }
         storage.enumerateAttributes(in: paragraph, options: []) { attributes, range, _ in
             let traits = (attributes[.font] as? UIFont)?.fontDescriptor.symbolicTraits ?? []
-            let wasHeading = (attributes[.pfBlock] as? String).flatMap(EditorBlock.init(rawValue:))?.isHeading ?? false
+            let wasHeading = (attributes[.font] as? UIFont).flatMap { headingBlock($0) } != nil
             let bold = traits.contains(.traitBold) && !wasHeading
             storage.addAttributes([
                 .font: font(block, bold: bold, italic: traits.contains(.traitItalic)),
@@ -361,7 +404,7 @@ final class RichEditorController {
         let traits = (typing[.font] as? UIFont)?.fontDescriptor.symbolicTraits ?? []
         isBold = traits.contains(.traitBold)
         isItalic = traits.contains(.traitItalic)
-        block = blockAt(storage, textView.selectedRange.location - (textView.selectedRange.location > 0 && textView.selectedRange.location >= storage.length ? 1 : 0))
+        block = blockAt(storage, textView.selectedRange.location)
         hasSelection = textView.selectedRange.length > 0
     }
 
@@ -383,22 +426,23 @@ final class RichEditorController {
             let block = blockAt(storage, paragraph.location)
             if block.isList {
                 let length = markerLength(storage, paragraph: paragraph)
-                if length == 0 {
-                    restyle(storage, paragraph: paragraph, as: .p)
-                    counter = 0
-                } else if block == .ol {
+                if block == .ol {
                     counter += 1
                     let expected = "\(counter).\t"
                     let current = (storage.string as NSString).substring(with: NSRange(location: paragraph.location, length: length))
                     if current != expected {
                         storage.replaceCharacters(in: NSRange(location: paragraph.location, length: length), with: marker(.ol, index: counter))
-                        delta += expected.count - length
+                        if paragraph.location < selection.location { delta += expected.count - length }
                     }
                 } else {
                     counter = 0
                 }
             } else {
                 counter = 0
+                // A paragraph that lost its marker drops the hanging list indent.
+                if let style = storage.attribute(.paragraphStyle, at: paragraph.location, effectiveRange: nil) as? NSParagraphStyle, style.headIndent > 0 {
+                    restyle(storage, paragraph: paragraph, as: block)
+                }
             }
             let updated = (storage.string as NSString).paragraphRange(for: NSRange(location: paragraph.location, length: 0))
             location = updated.location + updated.length
@@ -461,11 +505,10 @@ struct RichTextEditorView: UIViewRepresentable {
         func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
             let storage = textView.textStorage
             let string = storage.string as NSString
-
             if text == "\n" {
                 let probe = min(range.location, max(string.length - 1, 0))
                 let paragraph = string.length == 0 ? NSRange(location: 0, length: 0) : string.paragraphRange(for: NSRange(location: probe, length: 0))
-                let block = controller.blockAt(storage, range.location > 0 && range.location >= string.length ? range.location - 1 : range.location)
+                let block = controller.blockAt(storage, range.location)
                 if block.isList {
                     let markerLength = controller.markerLength(storage, paragraph: paragraph)
                     let contentLength = paragraph.length - markerLength - (string.length > paragraph.location + paragraph.length - 1 && paragraph.length > 0 && string.substring(with: NSRange(location: paragraph.location + paragraph.length - 1, length: 1)) == "\n" ? 1 : 0)

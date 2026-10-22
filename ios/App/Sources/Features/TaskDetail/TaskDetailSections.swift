@@ -65,7 +65,7 @@ extension TaskDetailScreen {
         presenter.present(detents: [.fit]) {
             OptionSheet(title: L10n.t("common.status"), options: TaskStatus.workflow.map { status in
                 OptionSheet.Option(id: status.rawValue, label: status.label, isSelected: status == task.status) {
-                    PFPill(status.label, tone: .status(status.tone), compact: true)
+                    PFDot(PFColor.statusBase(status.tone), size: 12)
                 }
             }) { id in
                 guard let status = TaskStatus(rawValue: id), status != task.status else { return }
@@ -298,7 +298,10 @@ extension TaskDetailScreen {
             }
             if isEditingDescription {
                 RichTextEditorView(controller: editor)
-                    .task { editor.load(document) }
+                    .task {
+                        editor.load(document)
+                        editor.focus()
+                    }
             } else if document.isEmpty {
                 if canEdit {
                     Button { startEditingDescription(task, document) } label: {

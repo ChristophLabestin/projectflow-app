@@ -110,7 +110,7 @@ struct ProjectScreen: View {
         }
         .scrollIndicators(.hidden)
         .scrollDismissesKeyboard(.interactively)
-        .ignoresSafeArea(.container, edges: .top)
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
     }
 
     /// Board and sprint use the whole screen: a compact header, the tabs and lanes that scroll on their own.

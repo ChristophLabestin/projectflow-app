@@ -236,7 +236,7 @@ struct PFBottomFloatModifier<Floating: View>: ViewModifier {
                 .padding(.top, 36)
                 .frame(maxWidth: .infinity)
                 .background {
-                    LinearGradient(colors: [PFColor.canvas.opacity(0), PFColor.canvas.opacity(0.92)], startPoint: .top, endPoint: .bottom)
+                    LinearGradient(stops: [.init(color: PFColor.canvas.opacity(0), location: 0), .init(color: PFColor.canvas.opacity(0.94), location: 0.42), .init(color: PFColor.canvas, location: 1)], startPoint: .top, endPoint: .bottom)
                         .allowsHitTesting(false)
                 }
         }
