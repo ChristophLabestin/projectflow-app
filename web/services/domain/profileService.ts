@@ -1,6 +1,5 @@
 import {
     collection,
-    collectionGroup,
     getDocs,
     limit,
     orderBy,
@@ -46,6 +45,8 @@ export const getAllMemberProjects = async (userId: string): Promise<Project[]> =
         });
 };
 
+// Reads activity per project (project members can read these) instead of a
+// collection-group query, which the security rules do not allow.
 export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
     const user = auth.currentUser;
     if (!user) {
@@ -53,19 +54,38 @@ export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20
     }
 
     const resolvedTenant = tenantId || getActiveTenantId();
+    if (!resolvedTenant) {
+        return [];
+    }
 
     try {
-        const snapshot = await getDocs(query(
-            collectionGroup(db, ACTIVITIES),
-            where('tenantId', '==', resolvedTenant),
-            orderBy('createdAt', 'desc'),
-            limit(limitCount)
+        const projectsSnap = await getDocs(query(
+            tenantProjectsCollection(resolvedTenant),
+            where('memberIds', 'array-contains', user.uid)
         ));
 
-        return snapshot.docs.map((docSnap) => ({
-            id: docSnap.id,
-            ...docSnap.data()
-        } as Activity));
+        const perProject = await Promise.all(projectsSnap.docs.slice(0, 12).map(async (projectDoc) => {
+            try {
+                const snapshot = await getDocs(query(
+                    collection(db, 'tenants', resolvedTenant, PROJECTS, projectDoc.id, ACTIVITIES),
+                    orderBy('createdAt', 'desc'),
+                    limit(limitCount)
+                ));
+                return snapshot.docs.map((docSnap) => ({
+                    id: docSnap.id,
+                    projectId: projectDoc.id,
+                    ...docSnap.data()
+                } as Activity));
+            } catch {
+                return [] as Activity[];
+            }
+        }));
+
+        const millis = (value: any) => value?.toMillis?.() ?? (value ? new Date(value).getTime() : 0);
+        return perProject
+            .flat()
+            .sort((a, b) => millis((b as any).createdAt) - millis((a as any).createdAt))
+            .slice(0, limitCount);
     } catch (error) {
         console.error('Error fetching global activities:', error);
         return [];
@@ -80,7 +100,7 @@ export const getUserProfileStats = async (uid: string, tenantId?: string) => {
 
     const projectsSnap = await getDocs(query(
         tenantProjectsCollection(resolvedTenant),
-        where('members', 'array_contains', uid)
+        where('memberIds', 'array-contains', uid)
     ));
 
     return {

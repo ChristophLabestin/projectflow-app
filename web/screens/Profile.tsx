@@ -76,6 +76,11 @@ export const Profile = () => {
         }
     }, [user]);
 
+    const joinedLabel = (() => {
+        const created = user?.metadata?.creationTime ? new Date(user.metadata.creationTime) : null;
+        return created && !Number.isNaN(created.getTime()) ? format(created, dateFormat, { locale: dateLocale }) : '-';
+    })();
+
     if (!user) {
         return (
             <div className="p-10 text-center">
@@ -168,15 +173,12 @@ export const Profile = () => {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <Button className="px-8 py-4 rounded-2xl font-bold hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5">
-                                    {t('profile.actions.follow')}
+                                <Button
+                                    className="px-8 py-4 rounded-2xl font-bold hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5"
+                                    onClick={() => setShowEditModal(true)}
+                                >
+                                    {t('profile.actions.edit')}
                                 </Button>
-                                <Button variant="secondary" className="px-8 py-4 rounded-2xl font-bold border-surface bg-white dark:bg-black hover:bg-surface-hover">
-                                    {t('profile.actions.message')}
-                                </Button>
-                                <button className="p-4 rounded-2xl border border-surface bg-white dark:bg-black hover:bg-surface-hover transition-colors">
-                                    <span className="material-symbols-outlined" aria-label={t('profile.actions.more')}>more_horiz</span>
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -251,12 +253,8 @@ export const Profile = () => {
                                         <span className="text-sm font-bold font-mono">{statsData.projects}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-subtle">{t('profile.quickStats.karma')}</span>
-                                        <span className="text-sm font-bold font-mono text-primary">940</span>
-                                    </div>
-                                    <div className="flex items-center justify-between">
                                         <span className="text-sm text-subtle">{t('profile.quickStats.joined')}</span>
-                                        <span className="text-sm font-bold font-mono">{t('profile.quickStats.joinedValue')}</span>
+                                        <span className="text-sm font-bold font-mono">{joinedLabel}</span>
                                     </div>
                                 </div>
                             </div>
@@ -267,23 +265,16 @@ export const Profile = () => {
                             {activeTab === 'overview' && (
                                 <div className="space-y-6 animate-fade-in">
                                     {/* Stats Grid */}
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
                                             <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.projects')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.projects}</div>
                                         </div>
                                         <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
-                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.tasksDone')}</div>
-                                            <div className="text-2xl font-display font-bold">142</div>
-                                        </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
                                             <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.teams')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.teams}</div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
-                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.focus')}</div>
-                                            <div className="text-2xl font-display font-bold text-emerald-500">89%</div>
-                                        </div>
+                                    </div>
                                     </div>
 
                                     <Card className="p-6">
