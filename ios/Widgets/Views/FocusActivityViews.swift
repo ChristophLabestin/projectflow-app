@@ -33,8 +33,6 @@ struct FocusActivityClock: View {
                 Text(strings.t("w.pausedUntil", ["time": strings.time(until)]))
                     .font(WidgetFont.row(size * 0.55))
                     .foregroundStyle(PFColor.textMuted)
-            } else if state.isBlocked {
-                Text(strings.t("w.blocked")).font(WidgetFont.display(size * 0.75)).foregroundStyle(PFColor.dangerText)
             } else {
                 Text(state.startDate, style: .timer)
                     .font(WidgetFont.display(size).monospacedDigit())
@@ -96,8 +94,6 @@ struct FocusIslandCompactTrailing: View {
         Group {
             if state.isPaused {
                 Image(systemName: "pause.fill").font(.system(size: 12, weight: .bold)).foregroundStyle(PFColor.textMuted)
-            } else if state.isBlocked {
-                Image(systemName: "exclamationmark").font(.system(size: 12, weight: .heavy)).foregroundStyle(PFColor.danger)
             } else {
                 Text(state.startDate, style: .timer)
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())

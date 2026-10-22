@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         PFFont.registerIfNeeded()
         PFFirebase.configure(Self.backend)
+        AppIntentBridge.bootstrap()
         UNUserNotificationCenter.current().delegate = self
         UNUserNotificationCenter.current().setNotificationCategories(NotificationCategories.all)
         Messaging.messaging().delegate = self

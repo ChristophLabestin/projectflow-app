@@ -25,24 +25,36 @@ struct DesignCatalogScreen: View {
             PFCanvas(dotted: true)
             VStack(alignment: .leading, spacing: 0) {
                 if model.router.isDeep { PFTopBar(title: "Design catalog", backLabel: L10n.t("common.back"), onBack: { model.router.pop() }) {} }
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        PFSegmented([("system", "System"), ("light", "Light"), ("dark", "Dark")], selection: $appearance)
-                            .padding(.top, PFSpace.s)
-                        CatalogTypography()
-                        CatalogColors()
-                        CatalogButtons()
-                        CatalogIndicators()
-                        CatalogInputs()
-                        CatalogLists()
-                        CatalogFeedback()
-                        CatalogChrome()
-                        CatalogSystem()
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            PFSegmented([("system", "System"), ("light", "Light"), ("dark", "Dark")], selection: $appearance)
+                                .padding(.top, PFSpace.s)
+                            CatalogTypography().id("typography")
+                            CatalogColors().id("colour")
+                            CatalogButtons().id("buttons")
+                            CatalogIndicators().id("indicators")
+                            CatalogInputs().id("inputs")
+                            CatalogLists().id("lists")
+                            CatalogFeedback().id("feedback")
+                            CatalogChrome().id("chrome")
+                            CatalogSystem().id("system")
+                            CatalogShare().id("share")
+                        }
+                        .padding(.horizontal, PFSpace.page)
+                        .padding(.bottom, 120)
                     }
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.bottom, 120)
+                    .scrollIndicators(.hidden)
+                    .task {
+                        // QA: `-pfCatalogSection widgets|indicators|…` and `-pfCatalogAppearance dark` for screenshots.
+                        let arguments = ProcessInfo.processInfo.arguments
+                        if let index = arguments.firstIndex(of: "-pfCatalogAppearance"), arguments.count > index + 1 { appearance = arguments[index + 1] }
+                        if let index = arguments.firstIndex(of: "-pfCatalogSection"), arguments.count > index + 1 {
+                            try? await Task.sleep(for: .milliseconds(400))
+                            proxy.scrollTo(arguments[index + 1] == "widgets" ? "system" : arguments[index + 1], anchor: .top)
+                        }
+                    }
                 }
-                .scrollIndicators(.hidden)
             }
         }
         .environment(\.colorScheme, scheme)
@@ -83,6 +95,20 @@ private struct CatalogRow<Content: View>: View {
             Text(label).pfText(.caption).foregroundStyle(PFColor.textMuted)
             content
         }
+    }
+}
+
+/// Horizontally scrolling row for demos wider than the screen (keeps the page itself from overflowing).
+private struct CatalogScrollRow<Content: View>: View {
+    let content: Content
+    init(@ViewBuilder content: () -> Content) { self.content = content() }
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            HStack(alignment: .center, spacing: 12) { content }
+                .padding(.vertical, 4)
+        }
+        .scrollIndicators(.hidden)
     }
 }
 
@@ -168,7 +194,7 @@ private struct CatalogButtons: View {
                     .padding(.horizontal, -PFSpace.page)
                 }
                 CatalogRow("PFButton — sizes, icon, tinted, glass, disabled") {
-                    HStack(spacing: 8) {
+                    CatalogScrollRow {
                         PFButton("Small", systemImage: "plus", size: .small) {}
                         PFButton("Medium", systemImage: "checkmark") {}
                         PFButton("Tinted", kind: .tinted(PFColor.success), size: .small) {}
@@ -178,7 +204,7 @@ private struct CatalogButtons: View {
                 }
                 PFButton("Large, full width", systemImage: "arrow.right", size: .large, fullWidth: true) {}
                 CatalogRow("PFIconButton — glass, raised, primary, plain") {
-                    HStack(spacing: 10) {
+                    CatalogScrollRow {
                         PFIconButton("xmark", label: "Close", style: .glass) {}
                         PFIconButton("ellipsis", label: "More", style: .raised) {}
                         PFIconButton("plus", label: "Add", style: .primary) {}
@@ -205,7 +231,7 @@ private struct CatalogIndicators: View {
                     .padding(.horizontal, -PFSpace.page)
                 }
                 CatalogRow("PFPill — severity, neutral, compact, leading, PFCountPill") {
-                    HStack(spacing: 8) {
+                    CatalogScrollRow {
                         PFPill("Overdue", tone: .severity(.overdue))
                         PFPill("Today", tone: .severity(.due))
                         PFPill("Neutral")
@@ -237,7 +263,7 @@ private struct CatalogIndicators: View {
                     }
                 }
                 CatalogRow("PFAvatar — sizes, ring; PFAvatarStack") {
-                    HStack(spacing: 12) {
+                    CatalogScrollRow {
                         PFAvatar(name: "Anna Weber", size: 24)
                         PFAvatar(name: "Ben Kruse", size: 32)
                         PFAvatar(name: "Cem Yilmaz", size: 40, ring: true)
@@ -246,7 +272,7 @@ private struct CatalogIndicators: View {
                     }
                 }
                 CatalogRow("PFHealthRing — none, 20, 55, 90; PFProgressBar") {
-                    HStack(spacing: 14) {
+                    CatalogScrollRow {
                         PFHealthRing(score: nil)
                         PFHealthRing(score: 20)
                         PFHealthRing(score: 55)
@@ -470,47 +496,31 @@ private struct CatalogSystem: View {
     var body: some View {
         CatalogSection("Widgets") {
             CatalogRow("Heute — small 158×158, medium 338×158, large 338×354") {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 14) {
-                        tile(TodaySmallView(entry: entry), width: 158, height: 158)
-                        tile(TodayMediumView(entry: entry), width: 338, height: 158)
-                        tile(TodayLargeView(entry: entry), width: 338, height: 354)
-                    }
-                    .padding(.vertical, 6)
+                VStack(alignment: .leading, spacing: 14) {
+                    tile(TodaySmallView(entry: entry), width: 158, height: 158)
+                    tile(TodayMediumView(entry: entry), width: 338, height: 158)
+                    tile(TodayLargeView(entry: entry), width: 338, height: 354)
                 }
-                .scrollIndicators(.hidden)
-                .padding(.horizontal, -PFSpace.page)
-                .contentMargins(.horizontal, PFSpace.page, for: .scrollContent)
             }
             CatalogRow("Heute — Zustände: signed out, new day, empty") {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 14) {
-                        tile(TodaySmallView(entry: TodayEntry(date: .now, snapshot: .signedOut)), width: 158, height: 158)
-                        tile(TodaySmallView(entry: TodayEntry(date: .now.addingTimeInterval(172_800), snapshot: snapshot)), width: 158, height: 158)
-                        tile(TodaySmallView(entry: TodayEntry(date: .now, snapshot: TodaySnapshot(workspaceName: "Demo", headline: "Alles erledigt. Gönn dir die Pause.", summary: "", band: ["free"], overdueCount: 0, dueTodayCount: 0, stops: [], moreCount: 0, focus: nil))), width: 158, height: 158)
-                    }
-                    .padding(.vertical, 6)
+                CatalogScrollRow {
+                    tile(TodaySmallView(entry: TodayEntry(date: .now, snapshot: .signedOut)), width: 158, height: 158)
+                    tile(TodaySmallView(entry: TodayEntry(date: .now.addingTimeInterval(172_800), snapshot: snapshot)), width: 158, height: 158)
+                    tile(TodaySmallView(entry: TodayEntry(date: .now, snapshot: TodaySnapshot(workspaceName: "Demo", headline: "Alles erledigt. Gönn dir die Pause.", summary: "", band: ["free"], overdueCount: 0, dueTodayCount: 0, stops: [], moreCount: 0, focus: nil, language: "de"))), width: 158, height: 158)
                 }
-                .scrollIndicators(.hidden)
-                .padding(.horizontal, -PFSpace.page)
-                .contentMargins(.horizontal, PFSpace.page, for: .scrollContent)
             }
             CatalogRow("Fokus — small, medium, paused, empty") {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 14) {
+                    CatalogScrollRow {
                         tile(FocusSmallView(entry: focusEntry), width: 158, height: 158)
-                        tile(FocusMediumView(entry: focusEntry), width: 338, height: 158)
-                        tile(FocusMediumView(entry: FocusEntry(date: .now, snapshot: paused)), width: 338, height: 158)
-                        tile(FocusSmallView(entry: FocusEntry(date: .now, snapshot: TodaySnapshot(workspaceName: "", headline: "", summary: "", band: [], overdueCount: 0, dueTodayCount: 0, stops: [], moreCount: 0, focus: nil))), width: 158, height: 158)
+                        tile(FocusSmallView(entry: FocusEntry(date: .now, snapshot: TodaySnapshot(workspaceName: "", headline: "", summary: "", band: [], overdueCount: 0, dueTodayCount: 0, stops: [], moreCount: 0, focus: nil, language: "de"))), width: 158, height: 158)
                     }
-                    .padding(.vertical, 6)
+                    tile(FocusMediumView(entry: focusEntry), width: 338, height: 158)
+                    tile(FocusMediumView(entry: FocusEntry(date: .now, snapshot: paused)), width: 338, height: 158)
                 }
-                .scrollIndicators(.hidden)
-                .padding(.horizontal, -PFSpace.page)
-                .contentMargins(.horizontal, PFSpace.page, for: .scrollContent)
             }
             CatalogRow("Lock screen — rectangular, circular, inline") {
-                HStack(spacing: 14) {
+                CatalogScrollRow {
                     accessory(TodayAccessoryRectangularView(entry: entry), width: 170, height: 72)
                     accessory(TodayAccessoryCircularView(entry: entry), width: 72, height: 72)
                     accessory(FocusAccessoryRectangularView(entry: focusEntry), width: 170, height: 72)
@@ -530,7 +540,7 @@ private struct CatalogSystem: View {
             CatalogRow("Dynamic Island — expanded, compact, minimal") {
                 VStack(alignment: .leading, spacing: 12) {
                     island
-                    HStack(spacing: 10) {
+                    CatalogScrollRow {
                         let state = contentState(status: "active")
                         HStack {
                             FocusIslandCompactLeading(state: state)
@@ -601,5 +611,39 @@ private struct CatalogSystem: View {
             .frame(width: width, height: height)
             .background(PFColor.raised, in: .rect(cornerRadius: 14, style: .continuous))
             .allowsHitTesting(false)
+    }
+}
+
+// MARK: - Share extension
+
+/// The share composer inside a PFDesign sheet, with a sample link. Reads the real shared session and snapshot, so it
+/// also proves that the keychain hand-over works. Saving writes a real task.
+private struct CatalogShare: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        CatalogSection("Share extension") {
+            CatalogRow("ShareComposerView (writes a real personal task or project task)") {
+                PFChipRow {
+                    PFChip("Link", systemImage: "link") { present(link: true) }
+                    PFChip("Text", systemImage: "text.alignleft") { present(link: false) }
+                }
+                .padding(.horizontal, -PFSpace.page)
+            }
+        }
+    }
+
+    private func present(link: Bool) {
+        let share = ShareModel(context: nil)
+        if link {
+            share.title = "Apple Newsroom"
+            share.url = URL(string: "https://www.apple.com/newsroom/")
+        } else {
+            share.title = "Angebot für Studio Nord nachfassen"
+            share.details = "Rückruf bis Freitag, Ansprechpartnerin Lena."
+        }
+        model.presenter.present(detents: [.large]) {
+            ShareComposerView(model: share).frame(maxWidth: .infinity, minHeight: 520)
+        }
     }
 }

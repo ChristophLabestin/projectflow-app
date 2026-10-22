@@ -127,10 +127,6 @@ struct FocusClock: View {
                 Text(strings.t("w.pausedUntil", ["time": strings.time(until)]))
                     .font(WidgetFont.row(size * 0.62))
                     .foregroundStyle(PFColor.textMuted)
-            } else if focus.isBlocked {
-                Text(strings.t("w.blocked"))
-                    .font(WidgetFont.display(size * 0.8))
-                    .foregroundStyle(PFColor.dangerText)
             } else if let started = focus.startedAt {
                 Text(started, style: .timer)
                     .font(WidgetFont.display(size).monospacedDigit())

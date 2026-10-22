@@ -13,7 +13,19 @@ final class AppIntentBridge: IntentPerformer {
     static let shared = AppIntentBridge()
     static weak var model: AppModel?
 
-    /// Called once when the app starts (also for background launches triggered by intents).
+    private static var owned: AppModel?
+
+    /// Creates the app model once (strong reference) and wires it up. Called by the app delegate right after Firebase
+    /// is configured — also for background launches triggered by intents — and by `ProjectFlowApp`.
+    @discardableResult
+    static func bootstrap() -> AppModel {
+        if let owned { return owned }
+        let model = AppModel()
+        owned = model
+        install(model: model)
+        return model
+    }
+
     static func install(model: AppModel) {
         self.model = model
         IntentRuntime.performer = shared

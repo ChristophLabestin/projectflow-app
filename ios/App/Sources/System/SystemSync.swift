@@ -11,6 +11,10 @@ import PFSnapshot
 enum SystemSync {
     static func appBecameActive(model: AppModel) {
         Task { await PushRegistrar.shared.registerIfAuthorized() }
+        #if DEBUG
+        // QA: `-pfRequestPush` asks for notification permission right away (simulator push tests).
+        if ProcessInfo.processInfo.arguments.contains("-pfRequestPush") { Task { await PushRegistrar.shared.requestPermissionIfNeeded() } }
+        #endif
         PushRegistrar.shared.upload()
         LiveActivityBridge.shared.observeStartToken(model: model)
         SharedSession.update(model: model)
@@ -46,7 +50,9 @@ enum SnapshotPublisher {
 
     static func publish(model: AppModel) {
         if isPreviewPinned {
-            SnapshotStore.save(.preview)
+            var preview = TodaySnapshot.preview
+            preview.projects = shareTargets(model: model)
+            SnapshotStore.save(preview)
             WidgetCenter.shared.reloadAllTimelines()
             return
         }
@@ -63,15 +69,20 @@ enum SnapshotPublisher {
         WidgetCenter.shared.reloadAllTimelines()
     }
 
-    /// Adds what only the app model knows: language, share targets, stop priorities and the exact focus state.
-    private static func enrich(_ snapshot: inout TodaySnapshot, model: AppModel) {
-        snapshot.language = L10n.language.rawValue
-        let workspace = model.workspace
-        snapshot.projects = (workspace?.projects ?? [])
+    /// Projects the share extension can target: open projects of the active workspace, most recently touched first.
+    private static func shareTargets(model: AppModel) -> [TodaySnapshot.ProjectRef] {
+        (model.workspace?.projects ?? [])
             .filter { !$0.isPersonal && $0.status.lifecycle != .closed }
             .sorted { ($0.updatedAt?.instant ?? .distantPast) > ($1.updatedAt?.instant ?? .distantPast) }
             .prefix(20)
             .map { TodaySnapshot.ProjectRef(id: $0.id, title: $0.title, tenantId: $0.tenantId) }
+    }
+
+    /// Adds what only the app model knows: language, share targets, stop priorities and the exact focus state.
+    private static func enrich(_ snapshot: inout TodaySnapshot, model: AppModel) {
+        snapshot.language = L10n.language.rawValue
+        let workspace = model.workspace
+        snapshot.projects = shareTargets(model: model)
         snapshot.stops = snapshot.stops.map { stop in
             guard stop.priority == nil else { return stop }
             var copy = stop

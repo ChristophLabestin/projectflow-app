@@ -1,0 +1,369 @@
+{
+  "sourceLanguage": "de",
+  "strings": {
+    "${task} erledigen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete ${task}"
+          }
+        }
+      }
+    },
+    "Aufgabe": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Task"
+          }
+        }
+      }
+    },
+    "Aufgabe ${taskTitle} erfassen in ${project}": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture task ${taskTitle} in ${project}"
+          }
+        }
+      }
+    },
+    "Aufgabe erfassen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capture task"
+          }
+        }
+      }
+    },
+    "Aufgabe erledigen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete task"
+          }
+        }
+      }
+    },
+    "Aufgabe öffnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open task"
+          }
+        }
+      }
+    },
+    "Erfassen öffnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open capture"
+          }
+        }
+      }
+    },
+    "Fokus auf ${task} starten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start focus on ${task}"
+          }
+        }
+      }
+    },
+    "Fokus erledigen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complete focus"
+          }
+        }
+      }
+    },
+    "Fokus fortsetzen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resume focus"
+          }
+        }
+      }
+    },
+    "Fokus pausieren": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause focus"
+          }
+        }
+      }
+    },
+    "Fokus pausieren oder fortsetzen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pause or resume focus"
+          }
+        }
+      }
+    },
+    "Fokus starten": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start focus"
+          }
+        }
+      }
+    },
+    "Hakt eine Aufgabe als erledigt ab.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Marks a task as done."
+          }
+        }
+      }
+    },
+    "Legt eine Aufgabe an: persönlich oder in einem Projekt.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creates a task: personal or in a project."
+          }
+        }
+      }
+    },
+    "Läuft": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Running"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        }
+      }
+    },
+    "Nennt dir die Headline des Tages und die nächsten Aufgaben.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tells you today's headline and the next tasks."
+          }
+        }
+      }
+    },
+    "Pausiert deinen Fokus für eine Stunde.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pauses your focus for an hour."
+          }
+        }
+      }
+    },
+    "Persönlich": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal"
+          }
+        }
+      }
+    },
+    "Projekt": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Project"
+          }
+        }
+      }
+    },
+    "Projekt öffnen": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open project"
+          }
+        }
+      }
+    },
+    "Schließt die Aufgabe ab, an der du gerade im Fokus arbeitest.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finishes the task you are focusing on right now."
+          }
+        }
+      }
+    },
+    "Setzt deinen pausierten Fokus fort.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resumes your paused focus."
+          }
+        }
+      }
+    },
+    "Startet den Fokus auf einer Aufgabe.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts focus on a task."
+          }
+        }
+      }
+    },
+    "Titel": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Title"
+          }
+        }
+      }
+    },
+    "Was steht an?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's next?"
+          }
+        }
+      }
+    },
+    "Was steht heute an?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What's on today?"
+          }
+        }
+      }
+    },
+    "Wie soll die Aufgabe heißen?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What should the task be called?"
+          }
+        }
+      }
+    },
+    "Workspace": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Workspace"
+          }
+        }
+      }
+    },
+    "Öffnet ProjectFlow direkt im Erfassen-Composer.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens ProjectFlow straight into the capture composer."
+          }
+        }
+      }
+    },
+    "Öffnet ein Projekt in ProjectFlow.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens a project in ProjectFlow."
+          }
+        }
+      }
+    },
+    "Öffnet eine Aufgabe in ProjectFlow.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens a task in ProjectFlow."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
