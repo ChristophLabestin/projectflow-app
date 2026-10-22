@@ -20,6 +20,16 @@
 
 /* ---------- States ---------- */
 .po-state {
+    &__link {
+        color: var(--color-primary);
+        font-weight: 600;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
     display: flex;
     flex-direction: column;
     align-items: center;

@@ -29,6 +29,8 @@ export type ProjectHeroProps = {
     linkedCompanyCount?: number;
     canManageTasks: boolean;
     isOwner: boolean;
+    canDelete?: boolean;
+    onDelete?: () => void;
     isPinned: boolean;
     onNewTask: () => void;
     onTogglePin: () => void;
@@ -60,6 +62,8 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     linkedCompanyCount,
     canManageTasks,
     isOwner,
+    canDelete,
+    onDelete,
     isPinned,
     onNewTask,
     onTogglePin,
@@ -273,6 +277,15 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                                         <button type="button" role="menuitem" className="po-hero__menu-danger" onClick={() => { setMenuOpen(false); onCancel(); }}>
                                             <span className="material-symbols-outlined">cancel</span>
                                             {t('projectOverview.v2.lifecycle.cancel', 'Cancel project')}
+                                        </button>
+                                    </>
+                                )}
+                                {canDelete && onDelete && (
+                                    <>
+                                        <span className="po-hero__menu-divider" />
+                                        <button type="button" role="menuitem" className="po-hero__menu-danger" onClick={() => { setMenuOpen(false); onDelete(); }}>
+                                            <span className="material-symbols-outlined">delete</span>
+                                            {t('projectOverview.delete.title', 'Delete project')}
                                         </button>
                                     </>
                                 )}

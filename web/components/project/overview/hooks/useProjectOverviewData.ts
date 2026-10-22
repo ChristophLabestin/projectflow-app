@@ -90,7 +90,7 @@ export const useProjectOverviewData = (
                 const projData = await getProjectById(projectId);
                 if (!active) return;
                 if (!projData) {
-                    setError(t('projectOverview.error.notFound'));
+                    setError('projectOverview.error.notFound');
                     setProject(null);
                     setLoading(false);
                     return;
@@ -143,7 +143,7 @@ export const useProjectOverviewData = (
                 };
             } catch (err) {
                 console.error(err);
-                if (active) setError(t('projectOverview.error.load'));
+                if (active) setError('projectOverview.error.load');
             } finally {
                 if (active) setLoading(false);
             }

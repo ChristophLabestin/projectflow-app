@@ -3619,6 +3619,9 @@ const en = {
     'aiStudio.common.exitMode': 'Exit mode',
     'aiStudio.blueprint.converting': 'Converting...',
     'aiStudio.blueprint.converted': 'Converted',
+    'notFound.title': 'Page not found',
+    'notFound.description': 'The page you are looking for does not exist or was moved.',
+    'notFound.backToDashboard': 'Back to dashboard',
 };
 
 export default en;

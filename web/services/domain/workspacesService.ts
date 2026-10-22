@@ -170,7 +170,15 @@ export const resolveWorkspaceForCurrentUser = async (defaultWorkspaceName: strin
         lastTenantId = undefined;
     }
     const cached = getCachedTenantId();
-    const activeId = [cached, lastTenantId].find((id): id is string => Boolean(id && ids.has(id)))
+    // Deep links (?tenant=<id>) switch to that workspace when the user is a member of it.
+    let linkedTenantId: string | undefined;
+    try {
+        const fromUrl = new URLSearchParams(window.location.search).get('tenant');
+        linkedTenantId = fromUrl && ids.has(fromUrl) ? fromUrl : undefined;
+    } catch {
+        linkedTenantId = undefined;
+    }
+    const activeId = [linkedTenantId, cached, lastTenantId].find((id): id is string => Boolean(id && ids.has(id)))
         || workspaces.find((workspace) => workspace.role === 'Owner')?.id
         || workspaces[0]?.id;
 

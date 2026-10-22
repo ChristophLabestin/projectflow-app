@@ -1,13 +1,15 @@
 import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useOutletContext } from 'react-router-dom';
+import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { runViewTransition } from '../../../utils/viewTransition';
 import { useLanguage } from '../../../context/LanguageContext';
 import { usePinnedProject } from '../../../context/PinnedProjectContext';
-import { useConfirm } from '../../../context/UIContext';
+import { useConfirm, useToast } from '../../../context/UIContext';
 import { useProjectPermissions } from '../../../hooks/useProjectPermissions';
+import { useWorkspacePermissions } from '../../../hooks/useWorkspacePermissions';
+import { useTenantDeepLink } from '../../../hooks/useTenantDeepLink';
 import { addTask, toggleTaskStatus, updateTaskFields } from '../../../services/domain/tasksService';
 import { updateInitiative } from '../../../services/domain/initiativesService';
-import { updateProjectFields } from '../../../services/domain/projectAdminService';
+import { deleteProjectById, updateProjectFields } from '../../../services/domain/projectAdminService';
 import { saveGeminiReport } from '../../../services/domain/projectInsightsService';
 import { generateProjectReport } from '../../../services/geminiService';
 import type { Project, ProjectReminder, Task } from '../../../types';
@@ -50,6 +52,7 @@ type ModalKind = 'task' | 'initiative' | 'invite' | 'report' | 'edit' | 'health'
 export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = ({ projectId }) => {
     const navigate = useNavigate();
     const confirm = useConfirm();
+    const { showError, showSuccess } = useToast();
     const { t, dateFormat, dateLocale, loadProjectOverviewTranslations } = useLanguage();
     const { pinnedProjectId, pinProject, unpinProject } = usePinnedProject();
 
@@ -66,8 +69,34 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     const derived = useProjectOverviewDerived(tasks, initiatives, milestones);
     const viewState = useProjectOverviewViewState();
     const { can, isOwner } = useProjectPermissions(project);
+    const { isOwner: isWorkspaceOwner, isAdmin: isWorkspaceAdmin } = useWorkspacePermissions();
+    const canDelete = isOwner || isWorkspaceOwner || isWorkspaceAdmin;
+    const deepLink = useTenantDeepLink();
+    const [searchParams, setSearchParams] = useSearchParams();
     const canManageTasks = can('canManageTasks');
     const lifecycle = useProjectLifecycle(project, data.setProject, confirm, t);
+
+    // Legacy sub-routes redirect here as `?view=<workView>` / `?settings=<tab>`.
+    const requestedView = searchParams.get('view');
+    const requestedSettings = searchParams.get('settings');
+    useEffect(() => {
+        if (!requestedView && !requestedSettings) return;
+        if (requestedView) {
+            viewState.setTab('work');
+            viewState.setView(requestedView as OverviewWorkView);
+        }
+        if (requestedSettings && project) {
+            setEditTab(requestedSettings as ProjectEditTab);
+            setModal('edit');
+        }
+        if (requestedView || project) {
+            const next = new URLSearchParams(searchParams);
+            next.delete('view');
+            next.delete('settings');
+            setSearchParams(next, { replace: true });
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requestedView, requestedSettings, project?.id]);
 
     const [modal, setModal] = useState<ModalKind>(null);
     const [editTab, setEditTab] = useState<ProjectEditTab>('general');
@@ -345,7 +374,29 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         }
     };
 
-    if (data.loading) {
+    const handleDeleteProject = async () => {
+        if (!project) return;
+        const confirmed = await confirm({
+            title: t('projectOverview.delete.title', 'Delete project'),
+            message: t('projectOverview.delete.description', 'This will permanently delete {project} and all of its data.').replace('{project}', project.title),
+            confirmText: t('projectOverview.delete.confirm', 'Delete'),
+            cancelText: t('projectOverview.delete.cancel', 'Cancel'),
+            variant: 'danger'
+        });
+        if (!confirmed) return;
+        try {
+            const deletedId = project.id;
+            await deleteProjectById(deletedId, project.tenantId);
+            if (pinnedProjectId === deletedId) void unpinProject();
+            showSuccess(t('projectOverview.delete.done', 'Project deleted.'));
+            navigate('/projects', { replace: true });
+        } catch (error) {
+            console.error('Failed to delete project', error);
+            showError(t('projectOverview.error.delete', 'Failed to delete project.'));
+        }
+    };
+
+    if (deepLink.switching || data.loading) {
         return (
             <div className="po-state">
                 <span className="po-state__spinner" aria-hidden="true" />
@@ -354,11 +405,12 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         );
     }
 
-    if (data.unauthorized) {
+    if (data.unauthorized || deepLink.noAccess) {
         return (
             <div className="po-state">
                 <span className="material-symbols-outlined po-state__icon">lock</span>
                 <p>{t('projectOverview.error.unauthorized', 'You do not have access to this project.')}</p>
+                <Link to="/projects" className="po-state__link">{t('projectOverview.unauthorized.back', 'Back to projects')}</Link>
             </div>
         );
     }
@@ -367,7 +419,8 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         return (
             <div className="po-state">
                 <span className="material-symbols-outlined po-state__icon">error</span>
-                <p>{data.error || t('projectOverview.error.notFound', 'Project not found.')}</p>
+                <p>{t(data.error || 'projectOverview.error.notFound')}</p>
+                <Link to="/projects" className="po-state__link">{t('projectOverview.unauthorized.back', 'Back to projects')}</Link>
             </div>
         );
     }
@@ -412,6 +465,8 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                     linkedCompanyCount={linkedCompanyProjects.length}
                     canManageTasks={canManageTasks}
                     isOwner={isOwner}
+                    canDelete={canDelete}
+                    onDelete={() => void handleDeleteProject()}
                     isPinned={pinnedProjectId === project.id}
                     onNewTask={() => setModal('task')}
                     onTogglePin={togglePin}

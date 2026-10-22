@@ -1,3 +1,4 @@
+import { useTenantDeepLink } from '../hooks/useTenantDeepLink';
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import '../src/styles/components/_project-task-detail.scss';
@@ -88,6 +89,7 @@ export const ProjectTaskDetail = () => {
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
+    const deepLink = useTenantDeepLink();
     const { dateFormat, dateLocale, t } = useLanguage();
     const [task, setTask] = useState<Task | null>(null);
     const [subTasks, setSubTasks] = useState<SubTask[]>([]);
@@ -566,7 +568,18 @@ export const ProjectTaskDetail = () => {
         }
     }, [task, setTaskTitle]);
 
-    if (loading) {
+    if (deepLink.noAccess) {
+        return (
+            <div className="task-detail__empty">
+                <h3 className="task-detail__empty-title">{t('projectOverview.error.unauthorized')}</h3>
+                <Button variant="secondary" onClick={() => navigate('/projects')}>
+                    {t('projectOverview.unauthorized.back')}
+                </Button>
+            </div>
+        );
+    }
+
+    if (loading || deepLink.switching) {
         return (
             <div className="task-detail__loading">
                 <span className="task-detail__spinner" aria-hidden="true" />

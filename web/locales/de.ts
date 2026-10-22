@@ -3622,6 +3622,9 @@ const de = {
     'aiStudio.common.exitMode': 'Modus verlassen',
     'aiStudio.blueprint.converting': 'Wird umgewandelt...',
     'aiStudio.blueprint.converted': 'Umgewandelt',
+    'notFound.title': 'Seite nicht gefunden',
+    'notFound.description': 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
+    'notFound.backToDashboard': 'Zurück zum Dashboard',
 };
 
 export default de;
