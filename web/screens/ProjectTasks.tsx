@@ -6,7 +6,6 @@ import { addTask, deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } 
 import { getProjectById } from '../services/domain/projectsService';
 import { Initiative, Task, Project } from '../types';
 import { Button } from '../components/common/Button/Button';
-import { Select } from '../components/common/Select/Select';
 import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { useConfirm } from '../context/UIContext';
@@ -20,11 +19,13 @@ import { groupTasks, summarizeDue, type WorkGroupBy } from '../components/work/w
 import { useWorkMembers } from '../components/work/useWorkMembers';
 import { useWorkSelection } from '../components/work/useWorkSelection';
 import { WorkBulkBar } from '../components/work/WorkBulkBar';
-import type { InlineMenuOption } from '../components/work/InlineMenu';
+import { InlineMenu, type InlineMenuOption } from '../components/work/InlineMenu';
 import { UNASSIGNED_VALUE } from '../components/work/workMenuOptions';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
+
+const GROUP_BY_ICONS: Record<WorkGroupBy, string> = { due: 'event', status: 'radio_button_checked', assignee: 'person' };
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
@@ -449,14 +450,25 @@ export const ProjectTasks = () => {
                             aria-label={t('work.filter.search')}
                         />
                     </label>
-                    <Select
-                        value={groupBy}
-                        onChange={(value) => changeGroupBy(value as WorkGroupBy)}
+                    <InlineMenu
+                        label={`${t('work.filter.groupBy')}: ${t(`work.groupBy.${groupBy}`)}`}
+                        triggerClassName="work-chip work-chip--menu"
+                        trigger={(
+                            <>
+                                <span className="material-symbols-outlined" aria-hidden="true">{GROUP_BY_ICONS[groupBy]}</span>
+                                <span className="work-chip__prefix">{t('work.filter.groupBy')}</span>
+                                {t(`work.groupBy.${groupBy}`)}
+                                <span className="material-symbols-outlined work-chip__caret" aria-hidden="true">expand_more</span>
+                            </>
+                        )}
                         options={(['due', 'status', 'assignee'] as const).map((option) => ({
                             value: option,
-                            label: `${t('work.filter.groupBy')}: ${t(`work.groupBy.${option}`)}`
+                            label: t(`work.groupBy.${option}`),
+                            leading: <span className="material-symbols-outlined">{GROUP_BY_ICONS[option]}</span>
                         }))}
-                        className="work-toolbar__select"
+                        value={groupBy}
+                        onSelect={(value) => changeGroupBy(value as WorkGroupBy)}
+                        width={200}
                     />
                     <button
                         type="button"

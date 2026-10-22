@@ -218,6 +218,27 @@
         color: var(--color-text-main);
         box-shadow: var(--shadow-sm);
     }
+
+    // Menu chip (e.g. "Group by: Due date ▾"): the value reads strongest.
+    &--menu.inline-menu__trigger {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-main);
+
+        &:hover {
+            background: var(--color-surface-active);
+        }
+    }
+
+    &__prefix {
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    &__caret {
+        margin-left: -2px;
+        color: var(--color-text-subtle);
+    }
 }
 
 // ---- Groups -------------------------------------------------------------------
