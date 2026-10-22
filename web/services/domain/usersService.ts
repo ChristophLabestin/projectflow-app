@@ -4,8 +4,7 @@ import {
     doc,
     getDoc,
     serverTimestamp,
-    setDoc,
-    updateDoc
+    setDoc
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';

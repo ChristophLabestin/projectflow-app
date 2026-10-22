@@ -31,14 +31,6 @@ import LegalPage from './screens/LegalPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
-import { PmCoreDeprecatedRedirect } from './components/routing/PmCoreDeprecatedRedirect';
-
-const withPmCoreGuard = (
-    element: React.ReactNode,
-    fallback: 'tasks' | 'overview' = 'tasks'
-) => (
-    <PmCoreDeprecatedRedirect fallback={fallback}>{element}</PmCoreDeprecatedRedirect>
-);
 
 // Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
 const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));

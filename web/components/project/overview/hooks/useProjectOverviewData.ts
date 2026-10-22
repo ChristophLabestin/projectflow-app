@@ -38,8 +38,6 @@ export type ProjectOverviewData = {
     initiatives: Initiative[];
     projectGroups: ProjectGroup[];
     activity: Activity[];
-    ideas: [];
-    issues: [];
     milestones: Milestone[];
     sprints: Sprint[];
     workspaceRoles: CustomRole[];
@@ -183,7 +181,7 @@ export const useProjectOverviewData = (
     // Project health (memoized) + daily snapshot.
     const health = useMemo<ProjectHealth | null>(() => {
         if (!project || isProjectExcludedFromHealth(project)) return null;
-        return calculateProjectHealth(project, tasks, milestones, [], sprints, activity, [], initiatives, []);
+        return calculateProjectHealth(project, tasks, milestones, sprints, activity, [], initiatives);
     }, [project, tasks, milestones, sprints, activity, initiatives]);
 
     useEffect(() => {
@@ -202,8 +200,6 @@ export const useProjectOverviewData = (
         initiatives,
         projectGroups,
         activity,
-        ideas: [],
-        issues: [],
         milestones,
         sprints,
         workspaceRoles,

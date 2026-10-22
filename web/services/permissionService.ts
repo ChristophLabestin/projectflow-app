@@ -13,9 +13,6 @@
 
 import {
     PermissionNode,
-    TenantPermissionNode,
-    ProjectPermissionNode,
-    AIPermissionNode,
     Role,
     RolePermissions,
     PermissionEvaluationContext,
@@ -167,35 +164,6 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'project.tasks.comment': { scope: 'project', description: 'Comment on tasks' },
     'project.tasks.attachFiles': { scope: 'project', description: 'Attach files/media to tasks' },
     'project.tasks.manageCustomFields': { scope: 'project', description: 'Create/edit custom fields for tasks', dangerLevel: 'medium' },
-
-    // Project - Flows
-    'project.flows.view': { scope: 'project', description: 'View flows list and flow details' },
-    'project.flows.create': { scope: 'project', description: 'Create flows' },
-    'project.flows.edit': { scope: 'project', description: 'Edit flow content' },
-    'project.flows.delete': { scope: 'project', description: 'Delete flows', dangerLevel: 'medium' },
-    'project.flows.comment': { scope: 'project', description: 'Comment on flows' },
-    'project.flows.attachFiles': { scope: 'project', description: 'Attach files/media to flows' },
-    'project.flows.advanceStep': { scope: 'project', description: 'Move flow to the next pipeline step' },
-    'project.flows.revertStep': { scope: 'project', description: 'Move flow to a previous step' },
-    'project.flows.setStep': { scope: 'project', description: 'Set flow to any step (jump)', dangerLevel: 'medium' },
-    'project.flows.requestReview': { scope: 'project', description: 'Mark/request review for a flow' },
-    'project.flows.approve': { scope: 'project', description: 'Approve a flow review', dangerLevel: 'medium' },
-    'project.flows.reject': { scope: 'project', description: 'Reject a flow review' },
-    'project.flows.handoffToTasks': { scope: 'project', description: 'Convert/handoff flow to tasks' },
-    'project.flows.convertToInitiatives': { scope: 'project', description: 'Convert approved flows into initiatives' },
-    'project.flows.handoffToSocial': { scope: 'project', description: 'Handoff flow to Social module' },
-    'project.flows.handoffToMarketing': { scope: 'project', description: 'Handoff flow to Marketing module' },
-
-    // Project - Issues
-    'project.issues.view': { scope: 'project', description: 'View issues' },
-    'project.issues.create': { scope: 'project', description: 'Create issues' },
-    'project.issues.edit': { scope: 'project', description: 'Edit issues' },
-    'project.issues.delete': { scope: 'project', description: 'Delete issues', dangerLevel: 'medium' },
-    'project.issues.assign': { scope: 'project', description: 'Assign/unassign issues' },
-    'project.issues.changeStatus': { scope: 'project', description: 'Change issue status/state' },
-    'project.issues.comment': { scope: 'project', description: 'Comment on issues' },
-    'project.issues.linkGithub': { scope: 'project', description: 'Link issue to GitHub' },
-    'project.issues.unlinkGithub': { scope: 'project', description: 'Unlink issue from GitHub' },
 
     // Project - Marketing Blog
     'project.marketing.blog.view': { scope: 'project', description: 'View blog posts' },
@@ -585,14 +553,6 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.tasks.manageChecklists',
                 'project.tasks.comment',
                 'project.tasks.attachFiles',
-                'project.flows.convertToInitiatives',
-                'project.issues.view',
-                'project.issues.create',
-                'project.issues.edit',
-                'project.issues.delete',
-                'project.issues.assign',
-                'project.issues.changeStatus',
-                'project.issues.comment',
                 'project.media.view',
                 'project.media.upload',
             ];
@@ -603,7 +563,6 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.initiatives.view',
                 'project.tasks.view',
                 'project.tasks.comment',
-                'project.issues.view',
                 'project.media.view',
             ];
         default:

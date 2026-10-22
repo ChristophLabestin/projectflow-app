@@ -1949,12 +1949,10 @@ export const ProjectsList: React.FC = () => {
                 project,
                 projectInputs.tasks,
                 projectInputs.milestones,
-                [],
                 projectInputs.sprints,
                 projectInputs.activity,
                 [],
-                projectInputs.initiatives,
-                []
+                projectInputs.initiatives
             );
         });
         return healthMap;
@@ -1969,17 +1967,15 @@ export const ProjectsList: React.FC = () => {
         const projectSprints = sprints.filter(s => s.projectId === manualFocusProject.id);
         const projectInputs = healthInputsByProject[manualFocusProject.id] || EMPTY_PROJECT_HEALTH_INPUTS;
 
-        const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, [], projectSprints);
+        const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, projectSprints);
         const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(
             manualFocusProject,
             projectInputs.tasks,
             projectInputs.milestones,
-            [],
             projectInputs.sprints,
             projectInputs.activity,
             [],
-            projectInputs.initiatives,
-            []
+            projectInputs.initiatives
         );
         return {
             reasons: score.reasons,
@@ -1998,7 +1994,7 @@ export const ProjectsList: React.FC = () => {
             const projectMilestones = milestones.filter(m => m.projectId === project.id);
             const projectSprints = sprints.filter(s => s.projectId === project.id);
 
-            const score = calculateSpotlightScore(project, projectTasks, projectMilestones, [], projectSprints);
+            const score = calculateSpotlightScore(project, projectTasks, projectMilestones, projectSprints);
             const health = projectHealthMap[project.id];
             return { project, score, health };
         });

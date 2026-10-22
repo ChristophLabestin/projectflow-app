@@ -16,7 +16,6 @@ import {
 } from 'firebase/firestore';
 
 import { auth, db } from '../firebase';
-import { isPmCoreOnly } from '../../config/pmCore';
 import { notifySubtaskAssignment, notifyTaskAssignment } from '../notificationService';
 import {
     ensureCategory,
@@ -36,7 +35,6 @@ import { getSharedProjects, getUserProjects } from './projectsService';
 
 const TASKS = 'tasks';
 const SUBTASKS = 'subtasks';
-const ISSUES = 'issues';
 
 const loadProjectTasks = async (projectId: string, tenantId?: string): Promise<Task[]> => {
     if (!tenantId) {
@@ -102,7 +100,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = 'Medium',
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate' | 'source' | 'templateId' | 'templateTrack' | 'templateSeedId' | 'sourceReferences' | 'externalKey'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate' | 'source' | 'templateId' | 'templateTrack' | 'templateSeedId' | 'sourceReferences' | 'externalKey'>>,
     tenantId?: string
 ) => {
     const user = auth.currentUser;
@@ -137,14 +135,6 @@ export const addTask = async (
         createdBy: user.uid,
         createdAt: serverTimestamp()
     };
-
-    if (!isPmCoreOnly() && extra?.linkedIssueId) {
-        taskData.linkedIssueId = extra.linkedIssueId;
-    }
-
-    if (!isPmCoreOnly() && extra?.convertedIdeaId) {
-        taskData.convertedIdeaId = extra.convertedIdeaId;
-    }
 
     if (extra?.initiativeId) {
         taskData.initiativeId = extra.initiativeId;
@@ -318,20 +308,6 @@ export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, p
     );
 
     await syncProjectProgress(data.projectId, resolvedTenant);
-
-    if (!isPmCoreOnly() && data.linkedIssueId) {
-        try {
-            const issueRef = doc(projectSubCollection(resolvedTenant || resolveTenantId(), data.projectId, ISSUES), data.linkedIssueId);
-            await updateDoc(issueRef, { status: newStatus ? 'Resolved' : 'Open' });
-            await logActivity(
-                data.projectId,
-                { action: `Auto-${newStatus ? 'resolved' : 'reopened'} linked issue`, target: 'Issues', type: 'status' },
-                resolvedTenant
-            );
-        } catch (error) {
-            console.warn('Failed to sync linked issue status', error);
-        }
-    }
 };
 
 export const updateTaskFields = async (taskId: string, updates: Partial<Task>, projectId?: string, tenantId?: string) => {

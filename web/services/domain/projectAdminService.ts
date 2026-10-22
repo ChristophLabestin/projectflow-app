@@ -2,7 +2,6 @@ import {
     addDoc,
     collection,
     deleteField,
-    getDoc,
     serverTimestamp,
     updateDoc
 } from 'firebase/firestore';
@@ -12,7 +11,7 @@ import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase';
 import { ensureTenantAndUser, logActivity, projectDocRef, resolveTenantId } from '../internal/workspaceDataCore';
 import { uploadTenantFile } from '../fileStorageService';
-import type { Activity, Project, ProjectRole } from '../../types';
+import type { Activity, Project } from '../../types';
 
 const TENANTS = 'tenants';
 const PROJECTS = 'projects';

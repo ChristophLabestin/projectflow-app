@@ -1,5 +1,4 @@
 import { ProjectGroup } from '../types';
-import { db } from './firebase';
 import { resolveTenantId, projectSubCollection } from './dataService';
 import {
     addDoc,

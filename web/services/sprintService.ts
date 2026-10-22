@@ -1,5 +1,5 @@
 import { db, auth } from './firebase';
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, serverTimestamp, orderBy, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, where, serverTimestamp, orderBy, getDocs } from 'firebase/firestore';
 import { Sprint } from '../types';
 
 // Helper to get collection ref (tenant-aware if needed, but for now sprints are subcollection of projects or root collection with projectId)

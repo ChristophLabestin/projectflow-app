@@ -14,7 +14,7 @@ import {
 import { ensurePrivateUserData } from '../domain/userPrivateData';
 
 import { auth, db } from '../firebase';
-import type { Activity, Idea, SubTask, Task, WorkspaceRole } from '../../types';
+import type { Activity, Task, WorkspaceRole } from '../../types';
 
 const TENANTS = 'tenants';
 const USERS = 'users';
@@ -22,8 +22,6 @@ const PROJECTS = 'projects';
 const TASKS = 'tasks';
 const INITIATIVES = 'initiatives';
 const SUBTASKS = 'subtasks';
-const ISSUES = 'issues';
-const IDEAS = 'ideas';
 const ACTIVITIES = 'activities';
 const CATEGORIES = 'taskCategories';
 const LEGACY_TENANT_CACHE_KEY = 'activeTenantId';
@@ -175,17 +173,6 @@ export const findInitiativeDoc = async (initiativeId: string, projectId?: string
     return snapshot.docs.find((docSnap) => docSnap.id === initiativeId) || null;
 };
 
-export const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    const preferredTenant = tenantId || getCachedTenantId();
-    if (projectId && preferredTenant) {
-        const directRef = doc(projectSubCollection(preferredTenant, projectId, IDEAS), ideaId);
-        const snap = await getDoc(directRef);
-        if (snap.exists()) return snap;
-    }
-
-    return null;
-};
-
 export const findSubtaskDoc = async (subTaskId: string, taskId?: string, projectId?: string, tenantId?: string) => {
     if (taskId) {
         const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
@@ -194,23 +181,6 @@ export const findSubtaskDoc = async (subTaskId: string, taskId?: string, project
             const snap = await getDoc(ref);
             if (snap.exists()) return snap;
         }
-    }
-
-    return null;
-};
-
-export const findIssueDoc = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
-    if (path) {
-        const ref = doc(db, path);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
-    }
-
-    const preferredTenant = tenantId || getCachedTenantId();
-    if (projectId && preferredTenant) {
-        const ref = doc(projectSubCollection(preferredTenant, projectId, ISSUES), issueId);
-        const snap = await getDoc(ref);
-        if (snap.exists()) return snap;
     }
 
     return null;

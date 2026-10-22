@@ -491,7 +491,7 @@ export interface ProjectNavPrefs {
 export interface Comment {
     id: string;
     projectId: string;
-    targetId: string; // ID of the Task, Issue, Idea, or Initiative
+    targetId: string; // ID of the Task or Initiative
     targetType: 'task' | 'issue' | 'idea' | 'initiative';
     userId: string;
     userDisplayName: string;
@@ -783,114 +783,6 @@ export interface PersonalTask {
     createdAt?: any;
     tenantId?: string;
     completedAt?: any;
-}
-
-export type IdeaStage =
-    // Generic / Feature
-    | 'Brainstorm' | 'Refining' | 'Concept' | 'Review' | 'Approved'
-    // Marketing
-    | 'Ideation' | 'Content' | 'Scheduled' | 'Live'
-    // Moonshot
-    | 'Feasibility' | 'Prototype' | 'Greenlight'
-    // Optimization
-    | 'Analysis' | 'Proposal' | 'Benchmark' | 'Implementation'
-    // Product
-    | 'Strategy' | 'Discovery' | 'Definition' | 'Development' | 'Launch'
-    // Paid Ads
-    | 'Brief' | 'Research' | 'Creative' | 'Targeting' | 'Budget' | 'Build' | 'Optimization'
-    | (string & {});
-
-/** Legacy flow/idea record shape (still present in older Firestore data and legacy service paths). */
-export interface Idea {
-    id: string;
-    projectId?: string;
-    ownerId?: string;
-    title: string;
-    description: string;
-    type: IdeaGroup;
-    stage: IdeaStage;
-    parentIdeaId?: string;
-    votes: number;
-    likedBy?: string[];
-    dislikedBy?: string[];
-    comments: number;
-    impact?: 'Low' | 'Medium' | 'High';
-    effort?: 'Low' | 'Medium' | 'High';
-    generated?: boolean;
-    tenantId?: string;
-    convertedTaskId?: string;
-    convertedInitiativeId?: string;
-    convertedAt?: any;
-    createdAt?: any;
-    posX?: number;
-    posY?: number;
-    concept?: string;
-    aiSessionId?: string;
-    approvedBy?: string;
-    approvedAt?: any;
-    analysis?: {
-        strengths: string[];
-        weaknesses: string[];
-        opportunities: string[];
-        threats: string[];
-    };
-    riskWinAnalysis?: RiskWinAnalysis;
-    keywords?: string[];
-    dismissedSuggestions?: string[];
-    tags?: string[];
-    requirements?: string; // JSON string for Discovery/Definition data
-    devPlan?: string; // JSON string for Development data
-    launchPlan?: string; // JSON string for Launch data
-    convertedCampaignId?: string;
-    campaignType?: 'email' | 'ad' | 'marketing' | 'social';
-    socialType?: 'post' | 'campaign';
-    marketingType?: 'paidAd' | 'emailMarketing';
-    lastRejectionReason?: string;
-    originIdeaId?: string;
-    assignedUserIds?: string[];
-    aiTokensUsed?: number;
-    vision?: string;
-    targetAudience?: string;
-    adData?: Record<string, any>;
-}
-
-/** Legacy issue record shape (still present in older Firestore data and legacy service paths). */
-export interface Issue {
-    id: string;
-    projectId: string;
-    tenantId: string;
-    ownerId: string;
-    title: string;
-    description: string;
-    status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
-    priority: 'Low' | 'Medium' | 'High' | 'Urgent';
-    reporter: string;
-    reporterId?: string;
-    assignee?: string;
-    assigneeId?: string;
-    assigneeIds?: string[];
-    assignedGroupIds?: string[];
-    scheduledDate?: string;
-    startDate?: string;
-    dueDate?: string;
-    createdAt: any;
-    linkedTaskId?: string;
-    githubIssueUrl?: string;
-    githubIssueNumber?: number;
-    createdBy?: string;
-    completedBy?: string;
-    completedAt?: any;
-    originIdeaId?: string;
-    path?: string;
-}
-
-export interface RiskWinAnalysis {
-    successProbability: number; // 0-100
-    marketFitScore: number; // 0-10
-    technicalFeasibilityScore: number; // 0-10
-    risks: { title: string; severity: 'Low' | 'Medium' | 'High'; mitigation?: string; }[];
-    wins: { title: string; impact: 'Low' | 'Medium' | 'High'; }[];
-    recommendation: string;
 }
 
 export interface Activity {

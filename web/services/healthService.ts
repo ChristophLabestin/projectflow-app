@@ -1,4 +1,4 @@
-import { Project, Task, Milestone, Issue, Activity, Comment, Sprint, Initiative, Idea } from '../types';
+import { Project, Task, Milestone, Activity, Comment, Sprint, Initiative } from '../types';
 import { toMillis } from '../utils/time';
 import { parseDateValue } from '../utils/taskDates';
 
@@ -408,17 +408,13 @@ export const calculateProjectHealth = (
     project: Project,
     tasks: Task[] = [],
     milestones: Milestone[] = [],
-    _issues: Issue[] = [],
     sprints: Sprint[] = [],
     activities: Activity[] = [],
     comments: Comment[] = [],
-    initiatives: Initiative[] = [],
-    _ideas: Idea[] = []
+    initiatives: Initiative[] = []
 ): ProjectHealth => {
     const now = Date.now();
 
-    void _issues;
-    void _ideas;
 
     if (isProjectExcludedFromHealth(project)) {
         return {
@@ -1502,11 +1498,9 @@ export const calculateSpotlightScore = (
     project: Project,
     tasks: Task[] = [],
     milestones: Milestone[] = [],
-    _issues: Issue[] = [],
     sprints: Sprint[] = [],
     activities: Activity[] = []
 ): SpotlightScore => {
-    void _issues;
     if (isProjectExcludedFromHealth(project)) {
         const reason = {
             key: 'health.spotlight.excludedCanceled',

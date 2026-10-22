@@ -13,35 +13,10 @@ import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
 import { auth } from '../services/firebase';
 import { hasTimeComponent, parseDateValue } from '../utils/taskDates';
 
-// Issues are retired from the product; the calendar keeps a minimal local shape for legacy scheduling.
-interface Issue {
-    id: string;
-    projectId: string;
-    tenantId?: string;
-    title: string;
-    description?: string;
-    status?: string;
-    priority?: string;
-    reporter?: string;
-    scheduledDate?: string | number | Date | null;
-    assigneeIds?: string[];
-    assigneeId?: string;
-}
-
-const getUserIssues = async (): Promise<Issue[]> => [];
-const updateIssue = async (
-    _id: string,
-    _updates: Record<string, unknown>,
-    _projectId: string,
-    _tenantId?: string,
-    _path?: string
-): Promise<void> => undefined;
-
 export const Calendar = () => {
     const { t, dateLocale, calendarTranslationsReady, loadCalendarTranslations } = useLanguage();
     const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [issues, setIssues] = useState<Issue[]>([]);
     const [unassignedTasks, setUnassignedTasks] = useState<Task[]>([]);
     const [tempTeamTasks, setTempTeamTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
@@ -96,7 +71,7 @@ export const Calendar = () => {
     const [dragActiveDate, setDragActiveDate] = useState<string | null>(null);
     const [dragOverInbox, setDragOverInbox] = useState(false);
 
-    const handleDragStart = (e: React.DragEvent, item: Task | Issue, type: 'task' | 'issue') => {
+    const handleDragStart = (e: React.DragEvent, item: Task, type: 'task') => {
         e.dataTransfer.setData('application/json', JSON.stringify({
             id: item.id,
             type,
@@ -159,8 +134,6 @@ export const Calendar = () => {
 
             if (type === 'task') {
                 await updateTask(id, updates, projectId, tenantId, path);
-            } else {
-                await updateIssue(id, updates, projectId, tenantId, path);
             }
 
             // Optimistic update or refresh
@@ -191,8 +164,6 @@ export const Calendar = () => {
 
             if (type === 'task') {
                 await updateTask(id, { scheduledDate: null }, projectId, tenantId, path);
-            } else {
-                await updateIssue(id, { scheduledDate: null }, projectId, tenantId, path);
             }
 
             refreshData();
@@ -235,25 +206,16 @@ export const Calendar = () => {
         try {
             const now = new Date();
             const futureTasks = tasks.filter(t => t.scheduledDate && isAfter(parseDateValue(t.scheduledDate), now) && !t.isCompleted);
-            const futureIssues = issues.filter(i => i.scheduledDate && isAfter(new Date(i.scheduledDate), now) && i.status !== 'Resolved' && i.status !== 'Closed');
-
-            const allFuture = [...futureTasks, ...futureIssues];
+            const allFuture = futureTasks;
 
             if (allFuture.length === 0) {
                 showToast(t('calendar.info.noFutureItems'));
                 return;
             }
 
-            await Promise.all(allFuture.map(item => {
-                const isTask = !('reporter' in item);
-                const tenantId = (item as any).tenantId;
-                const path = (item as any).path;
-                if (isTask) {
-                    return updateTask(item.id, { scheduledDate: null }, item.projectId, tenantId, path);
-                } else {
-                    return updateIssue(item.id, { scheduledDate: null }, item.projectId, tenantId, path);
-                }
-            }));
+            await Promise.all(allFuture.map(item =>
+                updateTask(item.id, { scheduledDate: null }, item.projectId, (item as any).tenantId, (item as any).path)
+            ));
 
             showSuccess(t('calendar.success.futureUnscheduled').replace('{count}', String(allFuture.length)));
             refreshData();
@@ -263,24 +225,19 @@ export const Calendar = () => {
         }
     };
 
-    const handleItemClick = (e: React.MouseEvent, item: Task | Issue, type: 'task' | 'issue') => {
+    const handleItemClick = (e: React.MouseEvent, item: Task, type: 'task') => {
         e.stopPropagation();
         const tenantId = (item as any).tenantId;
-        // Issues were folded into tasks; every item opens the task detail view.
         navigate(`/project/${item.projectId}/tasks/${item.id}${tenantId ? `?tenant=${tenantId}` : ''}`);
     };
 
-    const handleUnschedule = async (e: React.MouseEvent, item: Task | Issue, type: 'task' | 'issue') => {
+    const handleUnschedule = async (e: React.MouseEvent, item: Task, type: 'task') => {
         e.stopPropagation();
         e.preventDefault();
         try {
             const tenantId = (item as any).tenantId;
             const path = (item as any).path;
-            if (type === 'task') {
-                await updateTask(item.id, { scheduledDate: null }, item.projectId, tenantId, path);
-            } else {
-                await updateIssue(item.id, { scheduledDate: null }, item.projectId, tenantId, path);
-            }
+            await updateTask(item.id, { scheduledDate: null }, item.projectId, tenantId, path);
             refreshData();
         } catch (error: any) {
             console.error("Failed to unschedule", error);
@@ -289,20 +246,18 @@ export const Calendar = () => {
     };
 
     // Hover Tooltip State
-    const [hoveredTask, setHoveredTask] = useState<{ item: Task | Issue, x: number, y: number } | null>(null);
+    const [hoveredTask, setHoveredTask] = useState<{ item: Task, x: number, y: number } | null>(null);
 
     // Fetch data
     const refreshData = async () => {
         setLoading(true);
         try {
-            const [fetchedTasks, fetchedIssues, fetchedUnassigned] = await Promise.all([
+            const [fetchedTasks, fetchedUnassigned] = await Promise.all([
                 getUserTasks(),
-                getUserIssues(),
                 getUnassignedTasks()
             ]);
             console.log("Calendar: Fetched tasks", fetchedTasks.length);
             setTasks(fetchedTasks);
-            setIssues(fetchedIssues);
             setUnassignedTasks(fetchedUnassigned);
 
             if (fetchedTasks.length === 0) {
@@ -324,15 +279,11 @@ export const Calendar = () => {
     const prepareAutoSchedule = async () => {
         setDistributing(true);
         try {
-            // Find all unique co-assignees from current tasks and issues
+            // Find all unique co-assignees from current tasks
             const coAssignees = new Set<string>();
             tasks.forEach(t => {
                 if (t.assigneeId) coAssignees.add(t.assigneeId);
                 if (t.assigneeIds) t.assigneeIds.forEach(id => coAssignees.add(id));
-            });
-            issues.forEach(i => {
-                if (i.assigneeId) coAssignees.add(i.assigneeId);
-                if (i.assigneeIds) i.assigneeIds.forEach(id => coAssignees.add(id));
             });
 
             // Remove current user
@@ -350,7 +301,7 @@ export const Calendar = () => {
             const unassignedToInclude = unassignedTasks.filter(t => !t.scheduledDate && !t.isCompleted);
             const schedulingPoolTasks = [...tasks, ...unassignedToInclude];
 
-            const proposed = distributeTasks(schedulingPoolTasks, [], undefined, teamTasks);
+            const proposed = distributeTasks(schedulingPoolTasks, undefined, teamTasks);
 
             // Only show if there are changes
             const changes = proposed.filter(p => {
@@ -402,11 +353,6 @@ export const Calendar = () => {
 
                             await updateTask(task.id, updates, task.projectId, task.tenantId);
                         }
-                    } else if (p.type === 'issue') {
-                        const issue = issues.find(i => i.id === p.taskId);
-                        if (issue) {
-                            await updateIssue(issue.id, { scheduledDate: dateStr }, issue.projectId, issue.tenantId);
-                        }
                     }
                 });
 
@@ -445,10 +391,9 @@ export const Calendar = () => {
     const days = getDaysGrid();
 
     // Helper to determine effective date for display
-    const getItemDate = (item: Task | Issue): Date | null => {
+    const getItemDate = (item: Task): Date | null => {
         if (item.scheduledDate) return parseDateValue(item.scheduledDate);
-        // Fallback for Tasks only usually, but if Issues purely rely on scheduledDate they won't show
-        if ((item as Task).dueDate) return parseDateValue((item as Task).dueDate!);
+        if (item.dueDate) return parseDateValue(item.dueDate);
         return null;
     };
 
@@ -461,27 +406,19 @@ export const Calendar = () => {
             return isSameDay(d, date);
         });
 
-        const dateIssues = issues.filter(i => {
-            const d = getItemDate(i);
-            if (!d || !isValid(d)) return false;
-            // Only show issues with Open or In Progress status
-            return isSameDay(d, date) && (i.status === 'Open' || i.status === 'In Progress');
-        });
-
-        return [...dateTasks, ...dateIssues];
+        return dateTasks;
     };
 
     const unscheduledItems = useMemo(() => {
-        // Personal unscheduled tasks/issues
+        // Personal unscheduled tasks
         const personalTasks = tasks.filter(t => !getItemDate(t) && !t.isCompleted);
-        const personalIssues = issues.filter(issue => !getItemDate(issue) && issue.status !== 'Resolved' && issue.status !== 'Closed');
 
         // Unassigned tasks from projects (avoid duplicates with personal tasks)
         const personalTaskIds = new Set(personalTasks.map(t => t.id));
         const unassignedUnscheduled = unassignedTasks.filter(t => !getItemDate(t) && !t.isCompleted && !personalTaskIds.has(t.id));
 
-        return [...personalTasks, ...personalIssues, ...unassignedUnscheduled];
-    }, [tasks, issues, unassignedTasks]);
+        return [...personalTasks, ...unassignedUnscheduled];
+    }, [tasks, unassignedTasks]);
 
     if (loading || !calendarTranslationsReady) {
         return (
@@ -621,7 +558,7 @@ export const Calendar = () => {
 
                                     <div className="calendar-day__list">
                                         {items.map(item => {
-                                            const itemType = 'reporter' in item ? 'issue' : 'task';
+                                            const itemType = 'task' as const;
                                             const priorityTone = getPriorityTone((item as Task).priority);
                                             return (
                                                 <div
@@ -730,7 +667,7 @@ export const Calendar = () => {
                             ) : (
                                 <div className="calendar-sidebar__list">
                                     {unscheduledItems.map(item => {
-                                        const itemType = 'reporter' in item ? 'issue' : 'task';
+                                        const itemType = 'task' as const;
                                         const priorityTone = getPriorityTone((item as Task).priority);
                                         return (
                                             <div
@@ -744,7 +681,7 @@ export const Calendar = () => {
                                                 <div className="calendar-unscheduled-card__meta">
                                                     <div className="calendar-unscheduled-card__type">
                                                         <span className={`calendar-priority-dot calendar-priority-dot--${priorityTone}`} />
-                                                        <span>{itemType === 'issue' ? t('calendar.item.issue') : t('calendar.item.task')}</span>
+                                                        <span>{t('calendar.item.task')}</span>
                                                     </div>
                                                     <button type="button" className="calendar-unscheduled-card__hint">
                                                         {t('calendar.unassigned.dragToSchedule')}
@@ -833,11 +770,8 @@ export const Calendar = () => {
                         ) : (
                             <div className="calendar-schedule__rows">
                                 {proposedSchedule.map((change, idx) => {
-                                    const isIssue = change.type === 'issue';
                                     const isUnassigned = unassignedTasks.some(t => t.id === change.taskId);
-                                    const item = isIssue
-                                        ? issues.find(i => i.id === change.taskId)
-                                        : tasks.find(t => t.id === change.taskId) ||
+                                    const item = tasks.find(t => t.id === change.taskId) ||
                                         tempTeamTasks.find(t => t.id === change.taskId) ||
                                         unassignedTasks.find(t => t.id === change.taskId);
 
@@ -867,8 +801,8 @@ export const Calendar = () => {
 
                                             <div className="calendar-schedule__details">
                                                 <div className="calendar-schedule__item-title">
-                                                    <span className={`material-symbols-outlined calendar-schedule__item-icon calendar-schedule__item-icon--${isIssue ? 'issue' : 'task'}`}>
-                                                        {isIssue ? 'bug_report' : 'check_circle'}
+                                                    <span className={`material-symbols-outlined calendar-schedule__item-icon calendar-schedule__item-icon--task`}>
+                                                        check_circle
                                                     </span>
                                                     <span className="calendar-schedule__item-text">{itemTitle || t('calendar.modal.unknownItem')}</span>
                                                 </div>
@@ -930,10 +864,8 @@ export const Calendar = () => {
                     >
                         <div className="calendar-tooltip__card">
                             <div className="calendar-tooltip__header">
-                                <div className={`calendar-tooltip__icon ${'reporter' in hoveredTask.item ? 'calendar-tooltip__icon--issue' : 'calendar-tooltip__icon--task'}`}>
-                                    <span className="material-symbols-outlined">
-                                        {'reporter' in hoveredTask.item ? 'bug_report' : 'check_circle'}
-                                    </span>
+                                <div className="calendar-tooltip__icon calendar-tooltip__icon--task">
+                                    <span className="material-symbols-outlined">check_circle</span>
                                 </div>
                                 <div className="calendar-tooltip__body">
                                     <h4 className="calendar-tooltip__title">{hoveredTask.item.title}</h4>
@@ -943,19 +875,16 @@ export const Calendar = () => {
                                         </span>
                                         <span className="calendar-tooltip__separator" />
                                         <span className="calendar-tooltip__status">
-                                            {'reporter' in hoveredTask.item
-                                                ? t('calendar.tooltip.issue').replace('{status}', (hoveredTask.item as Issue).status || t('tasks.status.open'))
-                                                : t('calendar.tooltip.task').replace('{status}', (hoveredTask.item as Task).status || t('tasks.status.open'))
-                                            }
+                                            {t('calendar.tooltip.task').replace('{status}', hoveredTask.item.status || t('tasks.status.open'))}
                                         </span>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Description if available */}
-                            {((hoveredTask.item as Task).description || (hoveredTask.item as Issue).description) && (
+                            {hoveredTask.item.description && (
                                 <p className="calendar-tooltip__description">
-                                    {(hoveredTask.item as Task).description || (hoveredTask.item as Issue).description}
+                                    {hoveredTask.item.description}
                                 </p>
                             )}
 

@@ -286,10 +286,6 @@
     background: var(--color-primary);
 }
 
-.calendar-item--issue::before {
-    background: var(--color-warning);
-}
-
 .calendar-item:hover {
     transform: translateY(-1px);
     box-shadow: var(--shadow-md);
@@ -686,10 +682,6 @@
     font-size: 18px;
 }
 
-.calendar-schedule__item-icon--issue {
-    color: var(--color-warning);
-}
-
 .calendar-schedule__item-icon--task {
     color: var(--color-primary);
 }
@@ -894,11 +886,6 @@
     justify-content: center;
     background: color-mix(in srgb, var(--color-primary) 15%, transparent);
     color: var(--color-primary);
-}
-
-.calendar-tooltip__icon--issue {
-    background: color-mix(in srgb, var(--color-warning) 15%, transparent);
-    color: var(--color-warning);
 }
 
 .calendar-tooltip__icon--task {

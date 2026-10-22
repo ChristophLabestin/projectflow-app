@@ -343,9 +343,7 @@ export const Dashboard = () => {
                 [],
                 [],
                 [],
-                [],
-                initiativesByProject[project.id] || [],
-                []
+                initiativesByProject[project.id] || []
             );
         });
         return healthMap;

@@ -25,8 +25,6 @@ interface LanguageProviderState {
     dateLocale: Locale;
     legalTranslationsReady: boolean;
     loadLegalTranslations: () => Promise<void>;
-    flowStageTranslationsReady: boolean;
-    loadFlowStageTranslations: () => Promise<void>;
     settingsTranslationsReady: boolean;
     loadSettingsTranslations: () => Promise<void>;
     projectOverviewTranslationsReady: boolean;
@@ -68,8 +66,6 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     dateLocale: enUS,
     legalTranslationsReady: true,
     loadLegalTranslations: async () => undefined,
-    flowStageTranslationsReady: true,
-    loadFlowStageTranslations: async () => undefined,
     settingsTranslationsReady: true,
     loadSettingsTranslations: async () => undefined,
     projectOverviewTranslationsReady: true,
@@ -108,7 +104,6 @@ export function LanguageProvider({
         de,
     }), []);
     const [legalTranslations, setLegalTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [flowStageTranslations, setFlowStageTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [settingsTranslations, setSettingsTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [projectOverviewTranslations, setProjectOverviewTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [dashboardTranslations, setDashboardTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
@@ -128,10 +123,8 @@ export function LanguageProvider({
         }
         return !window.location.pathname.startsWith('/legal');
     });
-    const [flowStageTranslationsReady, setFlowStageTranslationsReady] = useState<boolean>(true);
 
     const hasLegalTranslations = Boolean(legalTranslations.en && legalTranslations.de);
-    const hasFlowStageTranslations = Boolean(flowStageTranslations.en && flowStageTranslations.de);
     const hasSettingsTranslations = Boolean(settingsTranslations.en && settingsTranslations.de);
     const hasProjectOverviewTranslations = Boolean(projectOverviewTranslations.en && projectOverviewTranslations.de);
     const hasDashboardTranslations = Boolean(dashboardTranslations.en && dashboardTranslations.de);
@@ -162,9 +155,6 @@ export function LanguageProvider({
         });
         setLegalTranslationsReady(true);
     }, [hasLegalTranslations]);
-    const loadFlowStageTranslations = useCallback(async () => {
-        setFlowStageTranslationsReady(true);
-    }, []);
     const [settingsTranslationsReady, setSettingsTranslationsReady] = useState<boolean>(false);
     const [projectOverviewTranslationsReady, setProjectOverviewTranslationsReady] = useState<boolean>(false);
     const [dashboardTranslationsReady, setDashboardTranslationsReady] = useState<boolean>(false);
@@ -454,7 +444,6 @@ export function LanguageProvider({
             const targetLang = isValidLanguage(language) ? language : 'en';
             const currentTranslations = translations[targetLang] || translations.en;
             const currentLegalTranslations = legalTranslations[targetLang];
-            const currentFlowStageTranslations = flowStageTranslations[targetLang];
             const currentSettingsTranslations = settingsTranslations[targetLang];
             const currentProjectOverviewTranslations = projectOverviewTranslations[targetLang];
             const currentDashboardTranslations = dashboardTranslations[targetLang];
@@ -475,9 +464,6 @@ export function LanguageProvider({
             }
             if (currentLegalTranslations && currentLegalTranslations[key] !== undefined) {
                 return currentLegalTranslations[key];
-            }
-            if (currentFlowStageTranslations && currentFlowStageTranslations[key] !== undefined) {
-                return currentFlowStageTranslations[key];
             }
             if (currentSettingsTranslations && currentSettingsTranslations[key] !== undefined) {
                 return currentSettingsTranslations[key];
@@ -556,7 +542,6 @@ export function LanguageProvider({
 
             const englishTranslations = translations.en;
             const englishLegalTranslations = legalTranslations.en;
-            const englishFlowStageTranslations = flowStageTranslations.en;
             const englishSettingsTranslations = settingsTranslations.en;
             const englishProjectOverviewTranslations = projectOverviewTranslations.en;
             const englishDashboardTranslations = dashboardTranslations.en;
@@ -576,9 +561,6 @@ export function LanguageProvider({
             }
             if (englishLegalTranslations && englishLegalTranslations[key] !== undefined) {
                 return englishLegalTranslations[key];
-            }
-            if (englishFlowStageTranslations && englishFlowStageTranslations[key] !== undefined) {
-                return englishFlowStageTranslations[key];
             }
             if (englishSettingsTranslations && englishSettingsTranslations[key] !== undefined) {
                 return englishSettingsTranslations[key];
@@ -647,7 +629,7 @@ export function LanguageProvider({
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, flowStageTranslations, joinLinkTranslations, language, legalTranslations, profileTranslations, projectInviteTranslations, projectOverviewTranslations, settingsTranslations, taskPageTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, joinLinkTranslations, language, legalTranslations, profileTranslations, projectInviteTranslations, projectOverviewTranslations, settingsTranslations, taskPageTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);
@@ -682,8 +664,6 @@ export function LanguageProvider({
                 dateLocale,
                 legalTranslationsReady,
                 loadLegalTranslations,
-                flowStageTranslationsReady,
-                loadFlowStageTranslations,
                 settingsTranslationsReady,
                 loadSettingsTranslations,
                 projectOverviewTranslationsReady,

@@ -1,4 +1,4 @@
-import { Idea, Project, Task, ProjectBlueprint, Milestone, Issue, Activity, StudioTool } from "../types";
+import { Project, Task, ProjectBlueprint, Milestone, Activity, StudioTool } from "../types";
 import { functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
 import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
@@ -235,8 +235,6 @@ export const generateProjectReport = async (
     project: Project,
     tasks: Task[],
     milestones: Milestone[],
-    issues: Issue[],
-    ideas: Idea[],
     activity: Activity[],
     members: any[]
 ): Promise<string> => {
@@ -247,9 +245,6 @@ export const generateProjectReport = async (
 
         const pendingMilestones = milestones.filter(m => m.status !== 'Achieved');
         const nextMilestone = pendingMilestones.sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())[0];
-
-        const openIssues = issues.filter(i => i.status !== 'Closed' && i.status !== 'Resolved');
-        const highPriorityIssues = openIssues.filter(i => i.priority === 'High' || i.priority === 'Urgent');
 
         const recentActivity = activity.slice(0, 5).map(a => `${a.user} ${a.action} ${a.target}`).join('; ');
 
@@ -267,8 +262,6 @@ export const generateProjectReport = async (
         **Key Metrics:**
         - Tasks: ${openTasks.length} open (${highPriorityTasks.length} high priority), ${completedTasks.length} completed.
         - Milestones: ${milestones.filter(m => m.status === 'Achieved').length}/${milestones.length} achieved. Next up: ${nextMilestone ? `${nextMilestone.title} (Due: ${nextMilestone.dueDate})` : "None"}.
-        - Issues/Bugs: ${openIssues.length} open (${highPriorityIssues.length} critical).
-        - Idea Pipeline: ${ideas.length} flows captured.
 
         **Recent Activity:**
         ${recentActivity}

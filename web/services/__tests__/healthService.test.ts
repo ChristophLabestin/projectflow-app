@@ -116,7 +116,6 @@ describe('calculateProjectHealth', () => {
             [
                 milestone({ status: 'Pending', dueDate: '2026-05-18', riskRating: 'High' })
             ],
-            [],
             [
                 sprint({ status: 'Active', startDate: '2026-05-01', endDate: '2026-05-20' })
             ],
@@ -124,8 +123,7 @@ describe('calculateProjectHealth', () => {
             [],
             [
                 initiative({ status: 'Blocked', dueDate: '2026-05-22' })
-            ],
-            []
+            ]
         );
 
         expect(health.score).toBeLessThanOrEqual(34);
@@ -161,7 +159,6 @@ describe('calculateProjectHealth', () => {
             [
                 milestone({ status: 'Achieved', dueDate: '2026-05-10' })
             ],
-            [],
             [
                 sprint({ id: 'sprint-1', status: 'Active', startDate: '2026-05-10', endDate: '2026-06-10' })
             ],
@@ -172,8 +169,7 @@ describe('calculateProjectHealth', () => {
             [],
             [
                 initiative({ status: 'Done', completedAt: '2026-05-23T08:00:00.000Z' })
-            ],
-            []
+            ]
         );
 
         expect(health.score).toBeGreaterThanOrEqual(88);
@@ -233,8 +229,7 @@ describe('calculateProjectHealth', () => {
             ],
             [
                 milestone({ status: 'Pending', dueDate: '2026-05-18', riskRating: 'High' })
-            ],
-            []
+            ]
         );
 
         expect(isProjectExcludedFromHealth(canceledProject)).toBe(true);

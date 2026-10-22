@@ -47,7 +47,7 @@ export const reportError = (
 ): void => {
     if (!initialized) {
         // Keep a console trail in dev / when Sentry is disabled.
-        // eslint-disable-next-line no-console
+         
         console.error('[reportError]', error, context ?? '');
         return;
     }

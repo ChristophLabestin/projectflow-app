@@ -21,7 +21,6 @@ import {
     Initiative,
     Project,
     Task,
-    ProjectRole,
     GeminiReport,
     Milestone,
     ProjectGroup,
@@ -37,7 +36,7 @@ import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
 import { uploadTenantFile } from '../services/fileStorageService';
-import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
+import { getDownloadURL, ref, listAll } from 'firebase/storage';
 import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO, differenceInCalendarDays } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
@@ -58,13 +57,11 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { calculateProjectHealth, isProjectExcludedFromHealth } from '../services/healthService';
-import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
-import { getHealthFactorText } from '../utils/healthLocalization';
 import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
 import { ProjectTriageModal } from '../components/project/ProjectTriageModal';
 import { getStartupJurisdictionTemplate, getStartupSourceReferences, isCompanyProject, isSoftwareProject, STARTUP_JURISDICTION_SEED_TASKS, STARTUP_TRACK_DEFINITIONS } from '../config/projectTemplates';
-import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStageReadinessDefaults, getStartupStagePhase, getStartupStageKey } from '../utils/startupProjects';
+import { calculateCompanyLinkedProjectRollup, calculateStartupReadinessSnapshot, getStageReadinessDefaults, getStartupStageKey } from '../utils/startupProjects';
 import { parseDateValue, isDateOverdue } from '../utils/taskDates';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
@@ -739,7 +736,7 @@ const ProjectOverviewLegacy = () => {
             return;
         }
 
-        const health = calculateProjectHealth(project, tasks, milestones, [], sprints, activity, [], initiatives, []);
+        const health = calculateProjectHealth(project, tasks, milestones, sprints, activity, [], initiatives);
 
         // Save daily health snapshot (uses date as doc ID so won't duplicate)
         saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
@@ -947,8 +944,6 @@ const ProjectOverviewLegacy = () => {
                 project,
                 tasks,
                 milestones,
-                [],
-                [],
                 activity,
                 teamMemberProfiles
             );
@@ -1567,7 +1562,7 @@ const ProjectOverviewLegacy = () => {
 
     const health = isProjectExcludedFromHealth(project)
         ? null
-        : calculateProjectHealth(project, tasks, milestones, [], sprints, activity, [], initiatives, []);
+        : calculateProjectHealth(project, tasks, milestones, sprints, activity, [], initiatives);
     const startupReadiness = projectIsCompanyProject
         ? calculateStartupReadinessSnapshot(project, tasks, milestones, initiatives)
         : null;
@@ -4750,7 +4745,6 @@ const ProjectOverviewLegacy = () => {
                                     health={health}
                                     tasks={tasks}
                                     milestones={milestones}
-                                    issues={[]}
                                     projectTitle={project.title}
                                 />
                             )}

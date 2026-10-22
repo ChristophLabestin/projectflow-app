@@ -1,11 +1,10 @@
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
-import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, incrementAIUsage, incrementImageUsage } from "./dataService";
+import { getAllWorkspaceProjects, getAllWorkspaceTasks, incrementAIUsage, incrementImageUsage } from "./dataService";
 import { getWorkspaceInitiatives } from './domain/initiativesService';
 import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
-import { isPmCoreOnly } from '../config/pmCore';
 import { isProjectIncludedInImportantSignals } from "./healthService";
 
 /**
@@ -28,7 +27,7 @@ export const isQuestionQuery = (input: string): boolean => {
 };
 
 /**
- * Search projects, initiatives, tasks, issues, and ideas locally using keyword matching
+ * Search projects, initiatives, and tasks locally using keyword matching
  */
 export const searchProjectsAndTasks = async (
     query: string,
@@ -41,13 +40,10 @@ export const searchProjectsAndTasks = async (
 
     try {
         // Fetch all searchable entities
-        const pmCore = isPmCoreOnly();
-        const [projects, initiatives, tasks, issues, ideas] = await Promise.all([
+        const [projects, initiatives, tasks] = await Promise.all([
             getAllWorkspaceProjects(tenantId),
             getWorkspaceInitiatives(tenantId),
-            getAllWorkspaceTasks(tenantId),
-            pmCore ? Promise.resolve([]) : getAllWorkspaceIssues(tenantId),
-            pmCore ? Promise.resolve([]) : getAllWorkspaceIdeas(tenantId)
+            getAllWorkspaceTasks(tenantId)
         ]);
 
         // Search projects
@@ -127,54 +123,6 @@ export const searchProjectsAndTasks = async (
             }
         }
 
-        // Search issues
-        for (const issue of issues) {
-            const titleMatch = issue.title.toLowerCase().includes(normalizedQuery);
-            const descMatch = issue.description.toLowerCase().includes(normalizedQuery);
-
-            if (titleMatch || descMatch) {
-                const project = projects.find(p => p.id === issue.projectId);
-                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
-                results.push({
-                    type: 'issue',
-                    id: issue.id,
-                    title: issue.title,
-                    description: issue.description,
-                    projectId: issue.projectId,
-                    projectTitle: project?.title,
-                    tenantId: (issue as any).tenantId || project?.tenantId || tenantId,
-                    companyProjectId: project?.companyProjectId,
-                    companyProjectTitle: companyProject?.title,
-                    status: issue.status,
-                    relevance: titleMatch ? 8 : 4
-                });
-            }
-        }
-
-        // Search ideas
-        for (const idea of ideas) {
-            const titleMatch = idea.title.toLowerCase().includes(normalizedQuery);
-            const descMatch = idea.description.toLowerCase().includes(normalizedQuery);
-
-            if (titleMatch || descMatch) {
-                const project = projects.find(p => p.id === idea.projectId);
-                const companyProject = project?.companyProjectId ? projects.find(p => p.id === project.companyProjectId) : undefined;
-                results.push({
-                    type: 'idea',
-                    id: idea.id,
-                    title: idea.title,
-                    description: idea.description,
-                    projectId: idea.projectId,
-                    projectTitle: project?.title,
-                    tenantId: (idea as any).tenantId || project?.tenantId || tenantId,
-                    companyProjectId: project?.companyProjectId,
-                    companyProjectTitle: companyProject?.title,
-                    status: idea.stage,
-                    relevance: titleMatch ? 8 : 4
-                });
-            }
-        }
-
         // Sort by relevance (higher first), then keep enough variety that one entity type
         // does not crowd out initiatives, tasks, projects, or other workspace matches.
         results.sort((a, b) => (b.relevance || 0) - (a.relevance || 0));
@@ -182,9 +130,7 @@ export const searchProjectsAndTasks = async (
         const perTypeLimit: Partial<Record<SearchResult['type'], number>> = {
             project: 5,
             initiative: 5,
-            task: 6,
-            issue: 4,
-            idea: 4
+            task: 6
         };
         const typeCounts: Partial<Record<SearchResult['type'], number>> = {};
         const diversifiedResults: SearchResult[] = [];

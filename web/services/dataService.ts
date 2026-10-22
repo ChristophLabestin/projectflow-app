@@ -15,7 +15,6 @@ import {
     orderBy,
     limit,
     writeBatch,
-    increment,
     Unsubscribe,
     arrayUnion,
     arrayRemove,
@@ -30,7 +29,7 @@ import {
 import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { db, auth, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, APITokenPermission, PrivacySettings } from '../types';
+import type { Task, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, APITokenPermission, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyComment,
@@ -38,7 +37,6 @@ import {
     createNotification
 } from './notificationService';
 import type { WorkspaceApiToken } from './domain/adminSettingsService';
-import { addGithubIssueComment } from './githubService';
 import { isProjectIncludedInImportantSignals } from './healthService';
 import {
     createWorkspaceApiToken,
@@ -50,9 +48,7 @@ import {
 import {
     ensureCategory,
     ensureTenantAndUser,
-    findIdeaDoc,
     findInitiativeDoc,
-    findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
     clearCachedTenantId,
@@ -72,9 +68,7 @@ import {
 export {
     ensureCategory,
     ensureTenantAndUser,
-    findIdeaDoc,
     findInitiativeDoc,
-    findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
     getProjectContextFromRef,
@@ -90,8 +84,6 @@ const PROJECTS = "projects";
 const USERS = "users";
 const TASKS = "tasks";
 const SUBTASKS = "subtasks";
-export const ISSUES = "issues";
-const IDEAS = "ideas";
 const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
@@ -235,16 +227,6 @@ export const incrementImageUsage = async (userId: string, count: number) => {
     await incrementPrivateImageUsage(userId, count);
 };
 
-export const incrementIdeaAIUsage = async (ideaId: string, tokens: number, projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    await updateDoc(ideaRef, {
-        aiTokensUsed: increment(tokens)
-    });
-};
-
-
-
 // --- User Project Navigation Preferences ---
 
 export const getUserProjectNavPrefs = async (userId: string, projectId: string, tenantId?: string): Promise<ProjectNavPrefs | null> => {
@@ -359,23 +341,6 @@ export const saveProjectOverviewTemplate = async (
 export const deleteProjectOverviewTemplate = async (templateId: string, tenantId?: string): Promise<void> => {
     const resolvedTenant = resolveTenantId(tenantId);
     await deleteDoc(doc(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES, templateId));
-};
-
-export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?: string): Promise<Idea | null> => {
-    void ideaId;
-    void projectId;
-    void tenantId;
-    return null;
-};
-
-export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (idea: Idea) => void, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    return onSnapshot(ideaRef, (snap) => {
-        if (snap.exists()) {
-            onUpdate({ ...snap.data(), id: snap.id } as Idea);
-        }
-    });
 };
 
 export const addActivityEntry = async (projectId: string, payload: Omit<Activity, "id" | "projectId" | "createdAt" | "ownerId">) => {
@@ -1098,70 +1063,6 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
 
 
 
-/**
- * Get all issues across all projects in the workspace for search purposes
- */
-export const getAllWorkspaceIssues = async (tenantId?: string): Promise<Issue[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // Get all projects first
-    const projects = await getAllWorkspaceProjects(resolvedTenant);
-
-    const issuePromises = projects.map(async p => {
-        try {
-            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, ISSUES));
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tenantId: p.tenantId, // Ensure tenantId is set
-                projectId: p.id       // Ensure projectId is set
-            } as Issue));
-        } catch (e) {
-            console.warn(`Failed to fetch issues for project ${p.id}`, e);
-            return [];
-        }
-    });
-
-    const results = await Promise.all(issuePromises);
-    return results.flat();
-};
-
-/**
- * Get all ideas across all projects in the workspace for search purposes
- */
-export const getAllWorkspaceIdeas = async (tenantId?: string): Promise<Idea[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // Get all projects first
-    const projects = await getAllWorkspaceProjects(resolvedTenant);
-
-    const ideaPromises = projects.map(async p => {
-        try {
-            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, "ideas"));
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tenantId: p.tenantId,
-                projectId: p.id
-            } as Idea));
-        } catch (e) {
-            console.warn(`Failed to fetch ideas for project ${p.id}`, e);
-            return [];
-        }
-    });
-
-    const results = await Promise.all(ideaPromises);
-    return results.flat();
-};
-
 // --- Tasks ---
 
 export const addProjectCategory = async (projectId: string, name: string, color: string, tenantId?: string) => {
@@ -1294,7 +1195,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = "Medium",
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
     tenantId?: string
 ) => {
     const { addTask: addTaskDomain } = await import('./domain/tasksService');
@@ -1468,40 +1369,6 @@ export const updateSubtaskFields = async (
 
 // --- Ideas ---
 
-export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
-    void idea;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
-    void ideaId;
-    void updates;
-    void projectId;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const deleteIdea = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    void ideaId;
-    void projectId;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const getUserIdeas = async (): Promise<Idea[]> => {
-    return [];
-};
-
-export const getProjectIdeas = async (projectId: string, tenantId?: string): Promise<Idea[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, IDEAS));
-    return snapshot.docs
-        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-};
-
 // --- Activity ---
 
 export const getProjectActivity = async (projectId: string, tenantId?: string): Promise<Activity[]> => {
@@ -1532,60 +1399,6 @@ export const subscribeTaskActivity = (projectId: string, taskId: string, callbac
         isCancelled = true;
         unsubscribe();
     };
-};
-
-// --- Issues ---
-
-export const createIssue = async (projectId: string, issue: Partial<Issue>, tenantId?: string) => {
-    void projectId;
-    void issue;
-    void tenantId;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const getProjectIssues = async (projectId: string, tenantId?: string): Promise<Issue[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, ISSUES));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-};
-
-export const getIssueById = async (issueId: string, projectId?: string, tenantId?: string): Promise<Issue | null> => {
-    void issueId;
-    void projectId;
-    void tenantId;
-    return null;
-};
-
-
-export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
-    void issueId;
-    void updates;
-    void projectId;
-    void tenantId;
-    void path;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string, path?: string) => {
-    void issueId;
-    void projectId;
-    void tenantId;
-    void path;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const subscribeProjectIssues = (
-    projectId: string,
-    callback: (issues: Issue[]) => void,
-    tenantId?: string
-) => {
-    void projectId;
-    void tenantId;
-    callback([]);
-    return () => undefined;
 };
 
 // --- Realtime subscriptions ---
@@ -1740,17 +1553,6 @@ export const subscribeProject = (
     };
 };
 
-export const subscribeProjectIdeas = (
-    projectId: string,
-    callback: (ideas: Idea[]) => void,
-    tenantId?: string
-) => {
-    void projectId;
-    void tenantId;
-    callback([]);
-    return () => undefined;
-};
-
 export const subscribeProjectActivity = (
     projectId: string,
     callback: (activity: Activity[]) => void,
@@ -1797,7 +1599,7 @@ export const subscribeTenantUsers = (
 export const addComment = async (
     projectId: string,
     targetId: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
+    targetType: 'task' | 'initiative',
     content: string,
     tenantId?: string
 ) => {
@@ -1818,41 +1620,6 @@ export const addComment = async (
         createdAt: serverTimestamp()
     });
 
-    // Optionally increase comment count on the target object
-    if (targetType === 'idea') {
-        // Idea has a comments count
-        const ideaSnap = await findIdeaDoc(targetId, projectId, resolvedTenant);
-        if (ideaSnap) {
-            const current = ideaSnap.data().comments || 0;
-            updateDoc(ideaSnap.ref, { comments: current + 1 });
-        }
-    }
-
-    // GitHub Comment Sync
-    if (targetType === 'issue') {
-        try {
-            const issue = await getIssueById(targetId, projectId, resolvedTenant);
-            if (issue?.githubIssueNumber) {
-                const project = await getProjectById(projectId, resolvedTenant);
-                if (project?.githubIssueSync && project.githubRepo) {
-                    const { getGithubToken } = await import('./domain/usersService');
-                    const githubToken = user.uid ? await getGithubToken(user.uid) : null;
-
-                    if (githubToken) {
-                        await addGithubIssueComment(
-                            project.githubRepo,
-                            githubToken,
-                            issue.githubIssueNumber,
-                            `${content}\n\n— *Shared from ProjectFlow by ${user.displayName || 'User'}*`
-                        );
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to sync comment to GitHub", e);
-        }
-    }
-
     // Notify the owner of the target item
     let targetTitle = '';
     let ownerId = '';
@@ -1863,20 +1630,6 @@ export const addComment = async (
             const task = taskSnap.data() as Task;
             targetTitle = task.title;
             ownerId = task.ownerId;
-        }
-    } else if (targetType === 'issue') {
-        const issueSnap = await findIssueDoc(targetId, projectId, resolvedTenant);
-        if (issueSnap) {
-            const issue = issueSnap.data() as Issue;
-            targetTitle = issue.title;
-            ownerId = issue.ownerId;
-        }
-    } else if (targetType === 'idea') {
-        const ideaSnap = await findIdeaDoc(targetId, projectId, resolvedTenant);
-        if (ideaSnap) {
-            const idea = ideaSnap.data() as Idea;
-            targetTitle = idea.title;
-            ownerId = idea.ownerId || '';
         }
     } else if (targetType === 'initiative') {
         const initiativeSnap = await findInitiativeDoc(targetId, projectId, resolvedTenant);
@@ -1940,10 +1693,6 @@ export const subscribeComments = (
 export const deleteComment = async (commentId: string, projectId: string, tenantId?: string) => {
     const resolvedTenant = resolveTenantId(tenantId);
     await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentId));
-};
-
-export const getUserIssues = async (): Promise<Issue[]> => {
-    return [];
 };
 
 export const subscribeTenantProjects = (
@@ -2371,149 +2120,7 @@ export const validateAPITokenLocally = async (
     };
 };
 
-// --- Idea Interactions (Likes & Comments) ---
-
-export const toggleIdeaLike = async (ideaId: string, projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-
-    const ideaDoc = await getDoc(ideaRef);
-    if (!ideaDoc.exists()) return;
-
-    const data = ideaDoc.data();
-    const likedBy = data.likedBy || [];
-    const dislikedBy = data.dislikedBy || [];
-    const isLiked = likedBy.includes(user.uid);
-
-    if (isLiked) {
-        // Untoggle like
-        await updateDoc(ideaRef, {
-            votes: increment(-1),
-            likedBy: arrayRemove(user.uid)
-        });
-    } else {
-        // Toggle like (and remove dislike if present)
-        const batch = writeBatch(db);
-        batch.update(ideaRef, {
-            votes: increment(1),
-            likedBy: arrayUnion(user.uid),
-            dislikedBy: arrayRemove(user.uid) // Remove from dislikes if they dislike it
-        });
-        await batch.commit();
-
-        // Notify owner if it's not self
-        if (data.ownerId && data.ownerId !== user.uid) {
-            // await createNotification(...) // Optional: Add notification later
-        }
-    }
-};
-
-export const toggleIdeaDislike = async (ideaId: string, projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-
-    const ideaDoc = await getDoc(ideaRef);
-    if (!ideaDoc.exists()) return;
-
-    const data = ideaDoc.data();
-    const likedBy = data.likedBy || [];
-    const dislikedBy = data.dislikedBy || [];
-    const isDisliked = dislikedBy.includes(user.uid);
-
-    if (isDisliked) {
-        // Untoggle dislike
-        await updateDoc(ideaRef, {
-            dislikedBy: arrayRemove(user.uid)
-        });
-    } else {
-        // Toggle dislike (and remove like if present)
-        const batch = writeBatch(db);
-        // We probably don't decrement votes for dislikes unless we want a net score.
-        // Let's assume votes = number of likes for now, or net score.
-        // Prompt didn't specify, but usually dislikes don't affect "votes" count if votes implies positive support,
-        // UNLESS it's a reddit style score.
-        // Existing `votes: number`. Let's assume it tracks LIKES count primarily.
-        // If we remove a like to add a dislike, we must decrement votes.
-
-        let voteChange = 0;
-        if (likedBy.includes(user.uid)) {
-            voteChange = -1;
-        }
-
-        batch.update(ideaRef, {
-            votes: increment(voteChange),
-            dislikedBy: arrayUnion(user.uid),
-            likedBy: arrayRemove(user.uid)
-        });
-        await batch.commit();
-    }
-};
-
-/**
- * Add a comment to an idea.
- * Stored in project subcollection 'comments' with targetId = ideaId
- */
-export const addIdeaComment = async (projectId: string, ideaId: string, content: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // 1. Create Comment
-    const commentData: Omit<ProjectComment, "id"> = {
-        projectId,
-        targetId: ideaId,
-        targetType: 'idea',
-        userId: user.uid,
-        userDisplayName: user.displayName || 'User',
-        userPhotoURL: user.photoURL || '',
-        content,
-        createdAt: serverTimestamp()
-    };
-
-    const commentRef = await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
-
-    // 2. Update Idea comment count
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    await updateDoc(ideaRef, {
-        comments: increment(1)
-    });
-
-    // 3. Notify owner
-    const ideaDoc = await getDoc(ideaRef);
-    if (ideaDoc.exists()) {
-        const idea = ideaDoc.data();
-        if (idea.ownerId && idea.ownerId !== user.uid) {
-            await notifyComment(
-                idea.ownerId,
-                idea.title,
-                'idea',
-                projectId,
-                ideaId,
-                commentRef.id,
-                resolvedTenant
-            );
-        }
-    }
-};
-
-export const getIdeaComments = async (projectId: string, ideaId: string, tenantId?: string): Promise<ProjectComment[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, COMMENTS),
-        where("targetId", "==", ideaId),
-        orderBy("createdAt", "asc") // Oldest first
-    );
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as ProjectComment));
-};
+// --- User Onboarding ---
 
 export const updateUserOnboardingStatus = async (
     userId: string,

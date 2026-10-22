@@ -420,33 +420,12 @@ export const notifyTaskAssignment = async (
 };
 
 /**
- * Helper to send issue assignment notification
- */
-export const notifyIssueAssignment = async (
-    assigneeId: string,
-    issueTitle: string,
-    projectId: string,
-    issueId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId: assigneeId,
-        type: 'issue_assigned',
-        title: 'New Issue Assignment',
-        message: `You've been assigned to issue "${issueTitle}"`,
-        projectId,
-        issueId,
-        tenantId
-    });
-};
-
-/**
  * Helper to send comment notification
  */
 export const notifyComment = async (
     userId: string,
     targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
+    targetType: 'task' | 'initiative',
     projectId: string,
     targetId: string,
     commentId: string,
@@ -460,7 +439,6 @@ export const notifyComment = async (
         projectId,
         taskId: targetType === 'task' ? targetId : undefined,
         initiativeId: targetType === 'initiative' ? targetId : undefined,
-        issueId: targetType === 'issue' ? targetId : undefined,
         commentId,
         tenantId
     });
@@ -513,7 +491,7 @@ export const notifySubtaskAssignment = async (
 export const notifyMention = async (
     userId: string,
     targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
+    targetType: 'task' | 'initiative',
     projectId: string,
     targetId: string,
     commentId: string,
@@ -527,7 +505,6 @@ export const notifyMention = async (
         projectId,
         taskId: targetType === 'task' ? targetId : undefined,
         initiativeId: targetType === 'initiative' ? targetId : undefined,
-        issueId: targetType === 'issue' ? targetId : undefined,
         commentId,
         tenantId
     });

@@ -191,13 +191,6 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/flow-stages-en.ts') ||
-                id.includes('/web/locales/flow-stages-de.ts')
-              ) {
-                return 'flow-stages-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/legal-en.ts') ||
                 id.includes('/web/locales/legal-de.ts')
               ) {
