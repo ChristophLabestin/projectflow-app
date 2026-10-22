@@ -450,54 +450,6 @@ export function isProtectedRole(role: Role): {
 // =============================================================================
 
 /**
- * Check if a permission node belongs to a specific scope
- */
-export function isPermissionInScope(
-    permission: PermissionNode,
-    scope: 'tenant' | 'project' | 'ai' | 'user'
-): boolean {
-    return PERMISSION_CATALOG[permission]?.scope === scope;
-}
-
-/**
- * Get all permission nodes for a scope
- */
-export function getPermissionsForScope(
-    scope: 'tenant' | 'project' | 'ai' | 'user'
-): PermissionNode[] {
-    return Object.entries(PERMISSION_CATALOG)
-        .filter(([_, meta]) => meta.scope === scope)
-        .map(([node]) => node as PermissionNode);
-}
-
-/**
- * Check if permission is high-risk (dangerous)
- */
-export function isDangerousPermission(permission: PermissionNode): boolean {
-    return PERMISSION_CATALOG[permission]?.dangerLevel === 'high';
-}
-
-/**
- * Parse permission node to get its parts
- * e.g., 'project.tasks.create' -> { scope: 'project', module: 'tasks', action: 'create' }
- */
-export function parsePermissionNode(permission: PermissionNode): {
-    scope: string;
-    module?: string;
-    action: string;
-} {
-    const parts = permission.split('.');
-    if (parts.length === 2) {
-        return { scope: parts[0], action: parts[1] };
-    }
-    return {
-        scope: parts[0],
-        module: parts.slice(1, -1).join('.'),
-        action: parts[parts.length - 1],
-    };
-}
-
-/**
  * Group permissions by module for UI display
  */
 export function groupPermissionsByModule(): Map<string, PermissionNode[]> {

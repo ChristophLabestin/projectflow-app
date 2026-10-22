@@ -1,5 +1,4 @@
-import type { Project, ProjectModule } from '../../../../types';
-import { normalizeModulesForPmCore } from '../../../../config/pmCore';
+import type { ProjectModule } from '../../../../types';
 
 /**
  * Workspace tabs in the redesigned overview. The sidebar is the only project
@@ -44,17 +43,6 @@ export const OVERVIEW_VIEWS: ViewDescriptor[] = [
     { id: 'calendar', icon: 'calendar_month', labelKey: 'projectOverview.v2.views.calendar', supportedTabs: ['work', 'milestones'] },
     { id: 'relationships', icon: 'hub', labelKey: 'projectOverview.v2.views.relationships', supportedTabs: ['work'] }
 ];
-
-/** Resolve the project's effective module set (PM-core normalized). */
-export const resolveEnabledModules = (project: Project | null): Set<ProjectModule> => {
-    const modules = project?.modules ?? [];
-    return new Set(normalizeModulesForPmCore([...modules]));
-};
-
-export const resolveEnabledTabs = (project: Project | null): TabDescriptor[] => {
-    const enabled = resolveEnabledModules(project);
-    return OVERVIEW_TABS.filter((tab) => !tab.module || enabled.has(tab.module));
-};
 
 export const resolveViewsForTab = (tab: OverviewTab): ViewDescriptor[] =>
     OVERVIEW_VIEWS.filter((view) => view.supportedTabs.includes(tab));

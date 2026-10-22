@@ -27,9 +27,6 @@ export const PM_CORE_PROJECT_NAV_ORDER = [
     'activity',
 ] as const;
 
-/** Workspace nav paths that move under Advanced when PM core is active. */
-export const PM_CORE_ADVANCED_WORKSPACE_PATHS = ['/finance', '/brainstorm', '/team', '/media'] as const;
-
 const readPmCoreEnv = (): boolean => {
     const raw = import.meta.env.VITE_PM_CORE_ONLY;
     if (raw === undefined || raw === '') return true;
@@ -53,5 +50,3 @@ export const isDeprecatedProjectNavId = (navId: string): boolean => {
     if (!isPmCoreOnly()) return false;
     return PM_CORE_DEPRECATED_MODULES.includes(navId as any);
 };
-
-export const PM_CORE_DEPRECATED_ERROR = 'PM_CORE_DEPRECATED';

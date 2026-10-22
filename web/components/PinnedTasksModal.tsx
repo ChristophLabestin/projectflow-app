@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
-import { FocusItemType, Initiative, Task, SubTask, Project, Member, PersonalTask } from '../types';
+import { FocusItemType, Initiative, Task, SubTask, Project, PersonalTask } from '../types';
 import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
 import { updateInitiative } from '../services/domain/initiativesService';
 import { getProjectById } from '../services/domain/projectsService';

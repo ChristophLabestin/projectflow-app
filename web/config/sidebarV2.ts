@@ -28,16 +28,3 @@ export const isSidebarV2Enabled = (): boolean => {
     }
     return readSidebarV2Env();
 };
-
-export const setSidebarV2Override = (enabled: boolean | null): void => {
-    if (typeof window === 'undefined') return;
-    try {
-        if (enabled === null) {
-            window.localStorage.removeItem(SIDEBAR_V2_STORAGE_KEY);
-        } else {
-            window.localStorage.setItem(SIDEBAR_V2_STORAGE_KEY, enabled ? '1' : '0');
-        }
-    } catch {
-        // Ignore storage write failures.
-    }
-};

@@ -40,8 +40,6 @@ export const isDateOverdue = (value: unknown, now: Date = new Date()) => {
     return diff !== null && diff < 0;
 };
 
-export const isDateToday = (value: unknown, now: Date = new Date()) => daysFromToday(value, now) === 0;
-
 export type DueBucket = 'overdue' | 'today' | 'week' | 'later' | 'none';
 
 /** Groups a due date for "what should I do next" lists. */

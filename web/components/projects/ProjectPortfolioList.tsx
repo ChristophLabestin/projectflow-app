@@ -21,8 +21,6 @@ interface ProjectPortfolioListProps {
 }
 
 type PortfolioGroupKey = 'attention' | 'active' | 'planning' | 'paused' | 'closed';
-
-const ACTIVE_STATUSES = ['Active', 'In Testing', 'Review'];
 const PLANNING_STATUSES = ['Planning', 'Brainstorming', 'Backlog'];
 const CLOSED_STATUSES = ['Completed', 'Canceled'];
 

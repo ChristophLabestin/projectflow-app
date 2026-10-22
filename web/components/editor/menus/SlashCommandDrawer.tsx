@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Editor } from '@tiptap/react';
-import { X, Search, Grid, Star, Layout, Trash2 } from 'lucide-react';
+import { X, Search, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../../../context/UIContext';
 import { useConfirm } from '../../../context/UIContext';

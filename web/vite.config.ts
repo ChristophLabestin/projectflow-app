@@ -44,8 +44,8 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('canvas-confetti')) return 'celebration';
                 if (id.includes('recharts')) return 'charts';
                 if (id.includes('react-colorful')) return 'color-tools';
-                if (id.includes('react-easy-crop') || id.includes('react-image-crop')) return 'media-tools';
-                if (id.includes('papaparse') || id.includes('qrcode') || id.includes('@simplewebauthn/')) return 'data-tools';
+                if (id.includes('react-image-crop')) return 'media-tools';
+                if (id.includes('qrcode') || id.includes('@simplewebauthn/')) return 'data-tools';
                 if (
                   id.includes('@tiptap/react') ||
                   id.includes('@tiptap/core') ||

@@ -1,8 +1,7 @@
-import { orderBy, where } from 'firebase/firestore';
+import { orderBy } from 'firebase/firestore';
 
 import type {
     FinanceJournalEntry,
-    FinanceJournalLine,
     FinanceJournalSourceType,
 } from '../../types';
 import {
@@ -50,19 +49,6 @@ export const subscribeJournalEntries = (
         callback,
         tenantId,
         [orderBy('postingDate', 'desc'), orderBy('createdAt', 'desc')]
-    );
-};
-
-export const subscribeJournalLinesByEntry = (
-    entryId: string,
-    callback: (lines: FinanceJournalLine[]) => void,
-    tenantId?: string
-) => {
-    return subscribeTenantFinanceCollection<FinanceJournalLine>(
-        FINANCE_V2_COLLECTIONS.journalLines,
-        callback,
-        tenantId,
-        [where('entryId', '==', entryId), orderBy('lineNo', 'asc')]
     );
 };
 

@@ -102,14 +102,6 @@ export const shouldAutoPrompt = (): boolean => {
     return localStorage.getItem(AUTO_PROMPT_KEY) === 'true';
 };
 
-export const setAutoPrompt = (enabled: boolean) => {
-    if (enabled) {
-        localStorage.setItem(AUTO_PROMPT_KEY, 'true');
-    } else {
-        localStorage.removeItem(AUTO_PROMPT_KEY);
-    }
-};
-
 /**
  * Check if the user has any passkeys registered.
  * Uses dynamic imports to avoid circular dependencies.

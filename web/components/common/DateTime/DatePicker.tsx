@@ -7,7 +7,6 @@ import {
     MONTH_NAMES,
     getDaysInMonth,
     getFirstDayOfMonth,
-    formatDate,
     isSameDay,
     isToday,
     formatDateDisplay

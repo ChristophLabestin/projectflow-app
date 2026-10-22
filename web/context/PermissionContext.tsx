@@ -336,28 +336,6 @@ export function usePermissionMap(
     }, [getEvaluationContext, nodes, projectId, loading]);
 }
 
-/**
- * Hook for checking if user has ALL specified permissions
- */
-export function useHasAllPermissions(nodes: PermissionNode[], projectId?: string): boolean {
-    const { hasAllPermissions, loading } = usePermissions();
-    return useMemo(() => {
-        if (loading) return false;
-        return hasAllPermissions(nodes, projectId);
-    }, [hasAllPermissions, nodes, projectId, loading]);
-}
-
-/**
- * Hook for checking if user has ANY of the specified permissions
- */
-export function useHasAnyPermission(nodes: PermissionNode[], projectId?: string): boolean {
-    const { hasAnyPermission, loading } = usePermissions();
-    return useMemo(() => {
-        if (loading) return false;
-        return hasAnyPermission(nodes, projectId);
-    }, [hasAnyPermission, nodes, projectId, loading]);
-}
-
 // =============================================================================
 // EXPORTS
 // =============================================================================

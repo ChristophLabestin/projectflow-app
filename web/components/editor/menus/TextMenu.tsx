@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
 import {
-    Bold, Italic, Underline, Strikethrough, Code, Link as LinkIcon,
-    Heading1, Heading2, Quote, Check
+    Bold, Italic, Underline, Strikethrough, Code, Link as LinkIcon, Heading2, Check
 } from 'lucide-react';
 
 interface TextMenuProps {

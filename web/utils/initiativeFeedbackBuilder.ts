@@ -459,22 +459,3 @@ export const buildInitiativeFeedbackEmbedModel = (input: InitiativeFeedbackEmbed
         },
     };
 };
-
-export const getFeedbackFieldRoleIcon = (role?: InitiativeFeedbackFieldRole) => {
-    switch (role) {
-        case 'title':
-            return 'title';
-        case 'description':
-            return 'notes';
-        case 'customerName':
-            return 'person';
-        case 'customerEmail':
-            return 'alternate_email';
-        case 'company':
-            return 'apartment';
-        case 'sourceUrl':
-            return 'language';
-        default:
-            return 'tune';
-    }
-};

@@ -379,26 +379,6 @@ export const deleteAllNotifications = async (userId: string, tenantId?: string):
 };
 
 /**
- * Get unread notification count for a user
- */
-export const getUnreadCount = async (userId: string, tenantId?: string): Promise<number> => {
-    try {
-        const tid = resolveTenantId(tenantId);
-        const q = query(
-            getNotificationsCollection(tid),
-            where('userId', '==', userId),
-            where('read', '==', false)
-        );
-
-        const snapshot = await getDocs(q);
-        return snapshot.size;
-    } catch (error) {
-        console.error('Failed to get unread count:', error);
-        return 0;
-    }
-};
-
-/**
  * Helper to send task assignment notification
  */
 export const notifyTaskAssignment = async (

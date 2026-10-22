@@ -61,7 +61,6 @@ export const setCachedTenantId = (tenantId: string) => {
 // Role of the current user in the active workspace (set by WorkspaceProvider).
 let activeWorkspaceRole: WorkspaceRole | null = null;
 export const setCachedWorkspaceRole = (role: WorkspaceRole | null) => { activeWorkspaceRole = role; };
-export const getCachedWorkspaceRole = () => activeWorkspaceRole;
 export const isGuestInActiveWorkspace = () => activeWorkspaceRole === 'Guest';
 
 export const clearCachedTenantId = () => {

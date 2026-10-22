@@ -3,7 +3,6 @@ import {
     deleteDoc,
     doc,
     getDocs,
-    onSnapshot,
     orderBy,
     query,
     serverTimestamp,
@@ -21,18 +20,6 @@ type Listener<T> = (data: T) => void;
 
 const effortCollection = (tenantId: string, projectId: string) =>
     projectSubCollection(tenantId, projectId, EFFORT);
-
-export const subscribeProjectEffort = (
-    projectId: string,
-    onUpdate: Listener<EffortEntry[]>,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(effortCollection(resolvedTenant, projectId), orderBy('date', 'desc'));
-    return onSnapshot(q, (snapshot) => {
-        onUpdate(snapshot.docs.map(d => ({ id: d.id, ...d.data() } as EffortEntry)));
-    });
-};
 
 export const getProjectEffort = async (projectId: string, tenantId?: string): Promise<EffortEntry[]> => {
     const resolvedTenant = resolveTenantId(tenantId);

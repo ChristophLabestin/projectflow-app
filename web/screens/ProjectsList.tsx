@@ -1,5 +1,4 @@
 import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -17,10 +16,8 @@ import {
 } from '../services/dataService';
 import { collection, getDocs } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
-import { Project, Member, Task, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
+import { Project, Task, Milestone, Activity, Sprint, ProjectOverviewLayout, ProjectOverviewTemplate, ProjectOverviewTemplateVariant, ProjectModule, Initiative } from '../types';
 import { Button } from '../components/common/Button/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/common/Badge/Badge';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -39,15 +36,13 @@ import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useConfirm, useToast, useUIState } from '../context/UIContext';
 import { downloadFile } from '../utils/download';
 import { ensureActiveTenantId, getActiveTenantId } from '../services/domain/authService';
-import { getProjectMembers, getSharedProjects, getUserProjects, hydrateProjectAssets } from '../services/domain/projectsService';
+import { getSharedProjects, getUserProjects, hydrateProjectAssets } from '../services/domain/projectsService';
 import { getTenant } from '../services/domain/workspaceService';
-import { getUserProfile } from '../services/domain/usersService';
 import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';
 import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
-import { isDateOverdue, parseDateValue } from '../utils/taskDates';
+import { parseDateValue } from '../utils/taskDates';
 import { ProjectPortfolioList } from '../components/projects/ProjectPortfolioList';
-import { initialOf } from '../utils/initials';
 
 // --- Types ---
 export type ProjectMetrics = {
@@ -113,71 +108,6 @@ const getProjectSprintsForHealth = async (tenantId: string, projectId: string): 
     return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Sprint));
 };
 
-// --- Health Helpers (using healthService) ---
-const getHealthColor = (status: HealthStatus): string => {
-    switch (status) {
-        case 'critical': return '#ef4444';   // Red-500
-        case 'warning': return '#f59e0b';    // Amber-500  
-        case 'normal': return '#3b82f6';     // Blue-500
-        case 'healthy': return '#22c55e';    // Green-500
-        case 'excellent': return '#10b981';  // Emerald-500
-        case 'stalemate': return '#6b7280';  // Gray-500
-        default: return '#6b7280';
-    }
-};
-
-const getHealthLabel = (status: HealthStatus): string => {
-    switch (status) {
-        case 'critical': return 'Critical';
-        case 'warning': return 'At Risk';
-        case 'normal': return 'Normal';
-        case 'healthy': return 'Healthy';
-        case 'excellent': return 'Excellent';
-        case 'stalemate': return 'Stalled';
-        default: return 'Unknown';
-    }
-};
-
-const getHealthBadgeVariant = (status: HealthStatus): 'error' | 'warning' | 'success' | 'neutral' => {
-    switch (status) {
-        case 'critical': return 'error';
-        case 'warning': return 'warning';
-        case 'healthy':
-        case 'excellent': return 'success';
-        default: return 'neutral';
-    }
-};
-
-// --- Components ---
-
-const TeamAvatars: React.FC<{ projectId: string; limit?: number }> = ({ projectId, limit = 3 }) => {
-    const [members, setMembers] = useState<Member[]>([]);
-
-    useEffect(() => {
-        let mounted = true;
-        getProjectMembers(projectId).then(ids => {
-            if (!mounted) return;
-            Promise.all(ids.map(id => getUserProfile(id))).then(profiles => {
-                if (mounted) setMembers(profiles.filter((m): m is Member => !!m));
-            });
-        });
-        return () => { mounted = false; };
-    }, [projectId]);
-
-    return (
-        <div className="team-avatars">
-            {members.slice(0, limit).map((m, i) => (
-                <div key={m.uid || i} className="avatar-circle" title={m.displayName}>
-                    {m.photoURL ? <img src={m.photoURL} alt={m.displayName} /> : <span>{initialOf(m.displayName)}</span>}
-                </div>
-            ))}
-            {members.length > limit && (
-                <div className="avatar-circle avatar-more">+{members.length - limit}</div>
-            )}
-        </div>
-    );
-};
-
 // 1. Spotlight Hero
 interface SpotlightHeroProps {
     project: Project;
@@ -195,199 +125,6 @@ interface SpotlightHeroProps {
     mode?: 'spotlight' | 'focus';
 }
 
-const SpotlightHero: React.FC<SpotlightHeroProps> = ({
-    project, metrics, healthStatus, healthScore, reasons,
-    pendingTaskCount, completedTaskCount, nextMilestone,
-    daysRemaining, descriptionFallback, onClick,
-    sprintCount = 0,
-    mode = 'spotlight'
-}) => {
-    const { t, dateFormat, dateLocale } = useLanguage();
-    const healthColor = getHealthColor(healthStatus);
-    const primaryReason = reasons[0];
-
-    const kickerText = mode === 'focus'
-        ? `TEAM FOCUS • ${primaryReason?.text || 'TOP PRIORITY'}`
-        : `SPOTLIGHT • ${primaryReason?.text || 'RECENTLY UPDATED'}`;
-
-    const glowColor = mode === 'focus' ? '#6366f1' : healthColor; // Indigo for focus
-
-    // Specialized "Dynamic Alert" based on health and reasons
-    const renderAlert = () => {
-        if (healthStatus === 'critical' || healthStatus === 'warning') {
-            const overdueReason = reasons.find(r => r.key.includes('Overdue') || r.key.includes('overdue'));
-            const count = overdueReason?.meta?.days || overdueReason?.meta?.count;
-
-            return (
-                <div className={`spotlight-alert-badge ${healthStatus}`}>
-                    <span className="material-symbols-outlined pulse-icon">
-                        {healthStatus === 'critical' ? 'gpp_maybe' : 'warning'}
-                    </span>
-                    <span className="alert-text">
-                        {overdueReason ? overdueReason.text : `${healthStatus.toUpperCase()} HEALTH`}
-                    </span>
-                </div>
-            );
-        }
-
-        if (healthStatus === 'stalemate') {
-            return (
-                <div className="spotlight-alert-badge stalemate">
-                    <span className="material-symbols-outlined">pause_circle</span>
-                    <span className="alert-text">STALLED</span>
-                </div>
-            );
-        }
-
-        return null;
-    };
-
-    return (
-        <div
-            className={`spotlight-hero status-${healthStatus} mode-${mode}`}
-            onClick={onClick}
-            style={{ '--spotlight-glow': glowColor } as React.CSSProperties}
-        >
-            {/* 1. Full Size Visual Background */}
-            <div className="spotlight-visual-bg">
-                {project.coverImage ? (
-                    <img src={project.coverImage} alt={project.title} />
-                ) : (
-                    <div className="spotlight-placeholder" style={{ backgroundColor: getDeterministicColor(project.id) }}>
-                        {project.title.substring(0, 2).toUpperCase()}
-                    </div>
-                )}
-            </div>
-
-            {/* 2. Immersive Gradient Overlay */}
-            <div className="spotlight-gradient-overlay"></div>
-
-            {/* 3. Content floating on top - 2 column grid */}
-            <div className="spotlight-content">
-                {/* Left Column: Main Info */}
-                <div className="spotlight-main">
-                    <div className="spotlight-top-row">
-                        <div className="spotlight-kicker" style={{ color: glowColor }}>
-                            {kickerText}
-                        </div>
-                        {renderAlert()}
-                    </div>
-
-                    <h1 className="hero-title-large">{project.title}</h1>
-                    <p className="hero-desc">
-                        {project.description || descriptionFallback}
-                    </p>
-
-                    {/* Secondary Reasons as Pills */}
-                    {reasons.length > 1 && (
-                        <div className="spotlight-reasons-pills">
-                            {reasons.slice(1, 4).map((r, i) => (
-                                <span key={i} className="reason-pill" title={r.text}>
-                                    {r.text}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-
-                    <div className="spotlight-footer">
-                        <div className="health-display">
-                            <span className="health-score" style={{ color: glowColor }}>{healthScore}</span>
-                            <div className="health-meta">
-                                <span className="health-label" style={{ color: glowColor }}>{healthStatus.toUpperCase()} HEALTH</span>
-                                <span className="task-label">{completedTaskCount} / {completedTaskCount + pendingTaskCount} TASKS COMPLETE</span>
-                            </div>
-                        </div>
-
-                        {project.dueDate && (
-                            <div className="due-date-box">
-                                <span className="material-symbols-outlined">calendar_today</span>
-                                <div className="due-date-info">
-                                    <span className="due-label">{t('projects.spotlight.dueDate')}</span>
-                                    <span className="due-value">
-                                        {format(parseDateValue(project.dueDate), dateFormat, { locale: dateLocale })}
-                                        {isDateOverdue(project.dueDate) && project.status !== 'Completed' && (
-                                            <span className="overdue-tag"> {t('projects.spotlight.overdue')}</span>
-                                        )}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right Column: Metrics + CTA */}
-                <div className="spotlight-right">
-                    <div className="meta-pillars">
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Tasks</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon">task_alt</span>
-                                <span className="pillar-value">{completedTaskCount}/{completedTaskCount + pendingTaskCount}</span>
-                            </div>
-                            <span className="pillar-sub">Completed</span>
-                        </div>
-
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Milestone</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon">flag</span>
-                                <span className="pillar-value">{nextMilestone ? '1' : '—'}</span>
-                            </div>
-                            <span className="pillar-sub">{nextMilestone ? 'Upcoming' : 'No Milestones'}</span>
-                        </div>
-
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Progress</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon" style={{ color: (project.progress || 0) >= 75 ? '#10b981' : (project.progress || 0) >= 40 ? '#f59e0b' : '#ef4444' }}>
-                                    {(project.progress || 0) >= 75 ? 'trending_up' : (project.progress || 0) >= 40 ? 'trending_flat' : 'trending_down'}
-                                </span>
-                                <span className="pillar-value">{project.progress || 0}%</span>
-                            </div>
-                            <span className="pillar-sub">{(project.progress || 0) >= 75 ? 'On Track' : (project.progress || 0) >= 40 ? 'In Progress' : 'Getting Started'}</span>
-                        </div>
-
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Team</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon">group</span>
-                                <span className="pillar-value">{project.members?.length || 1}</span>
-                            </div>
-                            <span className="pillar-sub">Members</span>
-                        </div>
-
-                        <div className="pillar-unit">
-                            <span className="pillar-label">Sprints</span>
-                            <div className="pillar-value-row">
-                                <span className="material-symbols-outlined icon">repeat</span>
-                                <span className="pillar-value">{sprintCount}</span>
-                            </div>
-                            <span className="pillar-sub">Total Cycles</span>
-                        </div>
-
-                    </div>
-
-                    <Button
-                        variant="primary"
-                        onClick={onClick}
-                        className="spotlight-cta-btn"
-                        style={{ width: '100%', justifyContent: 'center' }}
-                    >
-                        Open Project
-                    </Button>
-                </div>
-            </div>
-
-            {/* Aurora effect on top for extra pop */}
-            <div className="spotlight-aurora" style={{
-                background: `conic-gradient(from 0deg at 50% 50%, ${glowColor}22 0deg, transparent 60deg, transparent 300deg, ${glowColor}22 360deg)`
-            }} />
-        </div>
-    );
-};
-
-
-
 // 2. Rich Project Card
 interface RichProjectCardProps {
     project: Project;
@@ -402,164 +139,6 @@ interface RichProjectCardProps {
     statusLabel: string;
     onClick: () => void;
 }
-
-const RichProjectCard: React.FC<RichProjectCardProps> = ({
-    project,
-    metrics,
-    healthStatus,
-    healthScore,
-    isFocus,
-    canSetFocus,
-    onSetFocus,
-    companyLabel,
-    descriptionFallback,
-    statusLabel,
-    onClick
-}) => {
-    const healthColor = getHealthColor(healthStatus);
-
-    return (
-        <Card
-            padding="none"
-            className={`rich-card rich-card--${healthStatus} ${isFocus ? 'rich-card--focus' : ''}`}
-            onClick={onClick}
-        >
-            {/* 1. Compact Cover with Overlapping Content */}
-            <div className="rich-card__cover-wrapper">
-                <div
-                    className="rich-card__cover"
-                    style={{
-                        backgroundImage: project.coverImage
-                            ? `url(${project.coverImage})`
-                            : undefined,
-                        backgroundColor: getDeterministicColor(project.id)
-                    }}
-                />
-
-                {/* Badges (Top Right) */}
-                <div className="rich-card__badges">
-                    <div className="badge-pill">
-                        <span className={`material-symbols-outlined icon-xs text-${getHealthBadgeVariant(healthStatus)}`}>
-                            {healthStatus === 'critical' ? 'gpp_maybe' : 'check_circle'}
-                        </span>
-                        <span>{statusLabel}</span>
-                    </div>
-                </div>
-
-                {/* Overlapping Bottom Content */}
-                <div className="rich-card__overlay-content">
-                    {/* Icon */}
-                    <div className="rich-card__icon">
-                        {project.squareIcon ? (
-                            <img src={project.squareIcon} alt="icon" />
-                        ) : legacyProjectIcon(project) ? (
-                            <span>{legacyProjectIcon(project)}</span>
-                        ) : (
-                            <span className="material-symbols-outlined">dataset</span>
-                        )}
-                    </div>
-
-                    {/* Title & Description */}
-                    <div className="rich-card__header">
-                        <h3 className="title">{project.title}</h3>
-                        <p className="description">
-                            {project.description || descriptionFallback}
-                        </p>
-                        {companyLabel && (
-                            <span className="rich-card__company-context">
-                                <span className="material-symbols-outlined">account_tree</span>
-                                {companyLabel}
-                            </span>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="rich-card__body">
-                <div className="rich-card__metrics-grid">
-                    {/* Health Score */}
-                    <div className={`metric-single metric-single--health metric-single--${healthStatus}`}>
-                        <span className="lbl">Health</span>
-                        <span className="val">
-                            <span className="health-score">{healthScore}</span>
-                        </span>
-                    </div>
-
-                    {/* Progress */}
-                    <div className="metric-single">
-                        <span className="lbl">Progress</span>
-                        <span className="val">
-                            <span className="material-symbols-outlined">trending_up</span>
-                            {project.progress || 0}%
-                        </span>
-                    </div>
-
-                    {/* Tasks */}
-                    <div className="metric-single">
-                        <span className="lbl">Tasks</span>
-                        <span className="val">
-                            <span className="material-symbols-outlined">check_circle</span>
-                            {metrics?.taskCompleted}/{metrics?.taskCount}
-                        </span>
-                    </div>
-
-                    {/* Team */}
-                    <div className="metric-single">
-                        <span className="lbl">Team</span>
-                        <span className="val">
-                            <span className="material-symbols-outlined">group</span>
-                            {project.members?.length || 1}
-                        </span>
-                    </div>
-
-                </div>
-
-                {/* Progress Bar */}
-                <div className="rich-card__progress-section">
-                    <div className="progress-header">
-                        <span>Progress</span>
-                        <span>{project.progress || 0}%</span>
-                    </div>
-                    <div className="rich-card__progress-mini">
-                        <div
-                            className="bar"
-                            style={{
-                                width: `${project.progress || 0}%`,
-                                backgroundColor: healthColor
-                            }}
-                        />
-                    </div>
-                </div>
-
-                {/* 5. Footer (2-Column Buttons) */}
-                <div className="rich-card__footer">
-                    {canSetFocus && onSetFocus ? (
-                        <Button
-                            variant="secondary"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onSetFocus();
-                            }}
-                            icon={<span className="material-symbols-outlined">{isFocus ? 'push_pin' : 'keep'}</span>}
-                        >
-                            {isFocus ? 'Focused' : 'Focus'}
-                        </Button>
-                    ) : (
-                        <div></div> // Spacer if cant focus
-                    )}
-
-                    <button className="btn-primary" onClick={(e) => {
-                        e.stopPropagation();
-                        onClick();
-                    }}>
-                        Open Project
-                        <span className="material-symbols-outlined icon-sm">arrow_forward</span>
-                    </button>
-                </div>
-            </div>
-        </Card>
-    );
-};
 
 // 3. Redesigned Compact List Row
 const CompactProjectRow: React.FC<{
@@ -626,30 +205,6 @@ const CompactProjectRow: React.FC<{
                 <span className="material-symbols-outlined">chevron_right</span>
             </div>
         </div>
-    );
-};
-
-const ProjectLifecycleSection: React.FC<{
-    id?: string;
-    title: string;
-    description: string;
-    projects: Project[];
-    renderRow: (project: Project) => React.JSX.Element;
-}> = ({ id, title, description, projects, renderRow }) => {
-    if (projects.length === 0) return null;
-
-    return (
-        <section id={id} className="projects-lifecycle-section">
-            <div className="projects-lifecycle-section__header">
-                <div>
-                    <h2 className="section-title">{title}</h2>
-                    <p>{description}</p>
-                </div>
-            </div>
-            <div className="compact-list">
-                {projects.map(renderRow)}
-            </div>
-        </section>
     );
 };
 
@@ -818,8 +373,6 @@ const CompanyProjectCard: React.FC<{
         </article>
     );
 };
-
-
 
 // Helper to get consistent color from string
 export const getDeterministicColor = (str: string) => {
@@ -2034,8 +1587,6 @@ export const ProjectsList: React.FC = () => {
         });
         return pending[0];
     }, [spotlightProjectMilestones]);
-
-
 
     // Determine what to show in the "Focus/Spotlight" slot
     // Rule: Spotlight overrides Focus if they are DIFFERENT. 

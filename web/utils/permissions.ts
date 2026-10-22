@@ -1,5 +1,4 @@
-import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Tenant, Member, Permission, CustomRole } from '../types';
-import { auth } from '../services/firebase';
+import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Member, Permission, CustomRole } from '../types';
 import { getRolePermissions, getRoleCapabilities } from '../services/rolesService';
 
 /**
@@ -210,42 +209,4 @@ export function getWorkspaceRole(members: Member[] = [], userId?: string): Works
     if (role === 'Viewer') return 'Guest';
 
     return member.role as WorkspaceRole;
-}
-
-/**
- * Check if a user has a specific capability in a workspace
- */
-export function checkWorkspacePermission(
-    members: Member[],
-    userId: string | undefined,
-    capability: keyof WorkspacePermissions
-): boolean {
-    const role = getWorkspaceRole(members, userId);
-    if (role === 'None') return false;
-    return WORKSPACE_CAPABILITIES[role][capability];
-}
-
-/**
- * Migrate legacy members array (string[]) to new format (ProjectMember[])
- */
-export function migrateMembersToRoles(
-    members: string[] | ProjectMember[] | undefined,
-    ownerId: string
-): ProjectMember[] {
-    if (!members || members.length === 0) return [];
-
-    // Already migrated
-    if (typeof members[0] !== 'string') {
-        return members as ProjectMember[];
-    }
-
-    // Migrate: assign Editor role to all non-owner members
-    return (members as string[])
-        .filter(uid => uid !== ownerId) // Owner shouldn't be in members
-        .map(userId => ({
-            userId,
-            role: 'Editor' as ProjectRole,
-            joinedAt: new Date(), // Approximate
-            invitedBy: ownerId, // Assume owner invited
-        }));
 }

@@ -32,8 +32,6 @@ export const initErrorReporting = (): void => {
     initialized = true;
 };
 
-export const isErrorReportingEnabled = (): boolean => initialized;
-
 /** Associate subsequent events with the signed-in user (id only, no PII). */
 export const setErrorUser = (userId: string | null): void => {
     if (!initialized) return;

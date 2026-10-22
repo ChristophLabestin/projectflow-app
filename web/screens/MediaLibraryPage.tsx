@@ -7,8 +7,6 @@ import { getAllWorkspaceProjects } from '../services/dataService';
 import { getActiveTenantId } from '../services/domain/authService';
 import { Project } from '../types';
 import { useConfirm, useToast } from '../context/UIContext';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ImageEditor } from '../components/MediaLibrary/ImageEditor';
 import { downloadFile } from '../utils/download';

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
-import { Check, Save, Settings2, BoxSelect, Maximize, Minimize, Columns, LayoutGrid, Plus } from 'lucide-react';
+import { Check, Save, BoxSelect, Maximize, LayoutGrid, Plus } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { useToast } from '../../../context/UIContext';
 

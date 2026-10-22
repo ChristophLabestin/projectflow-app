@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Comment, Member, ProjectGroup } from '../types';
+import { Comment } from '../types';
 import { addComment, subscribeComments, deleteComment, subscribeTenantUsers, getMembersWithRole } from '../services/dataService';
 import { getProjectMembers } from '../services/domain/projectsService';
 import { getUserProfile } from '../services/domain/usersService';

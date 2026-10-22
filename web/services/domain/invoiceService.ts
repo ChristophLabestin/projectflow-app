@@ -54,12 +54,6 @@ export const getProjectInvoices = async (projectId: string, tenantId?: string): 
     return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Invoice));
 };
 
-export const getInvoice = async (projectId: string, invoiceId: string, tenantId?: string): Promise<Invoice | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snap = await getDoc(doc(invoicesCollection(resolvedTenant, projectId), invoiceId));
-    return snap.exists() ? ({ id: snap.id, ...snap.data() } as Invoice) : null;
-};
-
 export const createInvoice = async (
     projectId: string,
     invoice: Omit<Invoice, 'id' | 'createdAt' | 'updatedAt'>,
@@ -100,16 +94,6 @@ export const getBillingSettings = async (tenantId?: string): Promise<BillingSett
     const resolvedTenant = resolveTenantId(tenantId);
     const snap = await getDoc(billingSettingsRef(resolvedTenant));
     return snap.exists() ? (snap.data() as BillingSettings) : null;
-};
-
-export const subscribeBillingSettings = (
-    onUpdate: Listener<BillingSettings | null>,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return onSnapshot(billingSettingsRef(resolvedTenant), (snap) => {
-        onUpdate(snap.exists() ? (snap.data() as BillingSettings) : null);
-    });
 };
 
 export const saveBillingSettings = async (settings: BillingSettings, tenantId?: string) => {

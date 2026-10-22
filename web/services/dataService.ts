@@ -18,7 +18,6 @@ import {
     Unsubscribe,
     arrayUnion,
     arrayRemove,
-    runTransaction,
     deleteField
 } from "firebase/firestore";
 import {
@@ -29,22 +28,15 @@ import {
 import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { db, auth, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, APITokenPermission, PrivacySettings } from '../types';
+import type { Task, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyComment,
     notifyProjectInvite,
     createNotification
 } from './notificationService';
-import type { WorkspaceApiToken } from './domain/adminSettingsService';
 import { isProjectIncludedInImportantSignals } from './healthService';
-import {
-    createWorkspaceApiToken,
-    deleteWorkspaceApiToken,
-    getWorkspaceSmtpConfig,
-    listWorkspaceApiTokens,
-    saveWorkspaceSmtpConfig
-} from './domain/adminSettingsService';
+
 import {
     ensureCategory,
     ensureTenantAndUser,
@@ -82,12 +74,9 @@ export {
 const TENANTS = "tenants";
 const PROJECTS = "projects";
 const USERS = "users";
-const TASKS = "tasks";
-const SUBTASKS = "subtasks";
 const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
-const GEMINI_REPORTS = "geminiReports";
 const PROJECT_TEMPLATES = "project_templates";
 
 const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
@@ -115,30 +104,7 @@ export const clearActiveTenantId = () => clearCachedTenantId();
 export const getActiveTenantId = () => getCachedTenantId();
 
 const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
-
-export const getTenantSecret = async (tenantId: string, secretName: string) => {
-    if (secretName !== 'smtp') {
-        throw new Error('Only the smtp secret is available through the compatibility facade.');
-    }
-
-    return getWorkspaceSmtpConfig(tenantId);
-};
-
-export const updateTenantSecret = async (tenantId: string, secretName: string, data: any) => {
-    if (secretName !== 'smtp') {
-        throw new Error('Only the smtp secret is available through the compatibility facade.');
-    }
-
-    await saveWorkspaceSmtpConfig(tenantId, data);
-};
-
-// --- Top-level users collection (global user profiles) ---
-const usersCollection = () => collection(db, USERS);
 const userDocRef = (userId: string) => doc(db, USERS, userId);
-
-// --- Tenant members collection (workspace membership) ---
-const tenantMembersCollection = (tenantId: string) => collection(db, TENANTS, tenantId, 'members');
-const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, TENANTS, tenantId, 'members', userId);
 
 // --- Project collections ---
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
@@ -501,30 +467,6 @@ export const getHealthSnapshot = async (
 };
 
 /**
- * Subscribe to health snapshots for a project (last 30 days)
- */
-export const subscribeHealthSnapshots = (
-    projectId: string,
-    onUpdate: (snapshots: HealthSnapshot[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS),
-        orderBy("date", "desc"),
-        limit(30)
-    );
-
-    return onSnapshot(q, (snapshot) => {
-        const snapshots = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as HealthSnapshot));
-        onUpdate(snapshots);
-    });
-};
-
-/**
  * Calculate health delta vs last week
  * Returns the difference in score from 7 days ago, or null if no data
  */
@@ -545,17 +487,6 @@ export const saveGeminiReport = async (projectId: string, content: string, tenan
 export const getLatestGeminiReport = async (projectId: string, tenantId?: string): Promise<GeminiReport | null> => {
     const { getLatestGeminiReport: getLatestGeminiReportDomain } = await import('./domain/projectInsightsService');
     return getLatestGeminiReportDomain(projectId, tenantId);
-};
-
-// Helper to extract tenant ID from a Document Reference path
-const getTenantIdFromRef = (ref: any) => {
-    // Path structure: tenants/{tenantId}/projects/{projectId}
-    // ref.path -> "tenants/abc/projects/xyz"
-    const parts = ref.path.split('/');
-    if (parts[0] === TENANTS && parts.length >= 2) {
-        return parts[1];
-    }
-    return null;
 };
 
 type ProjectHydrationOptions = {
@@ -651,7 +582,6 @@ export const getAllMemberProjects = async (userId: string): Promise<Project[]> =
     const { getAllMemberProjects: getAllMemberProjectsDomain } = await import('./domain/profileService');
     return getAllMemberProjectsDomain(userId);
 };
-
 
 export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
     const { getUserGlobalActivities: getUserGlobalActivitiesDomain } = await import('./domain/profileService');
@@ -902,35 +832,6 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
-export const getOrCreatePersonalProject = async (tenantId?: string): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // 1. Try to find existing personal project
-    const q = query(
-        projectsCollection(resolvedTenant),
-        where("ownerId", "==", user.uid),
-        where("isPersonal", "==", true)
-    );
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-        return snapshot.docs[0].id;
-    }
-
-    // 2. Create if not exists
-    return await createProject({
-        title: "Personal Tasks",
-        description: "Private tasks not associated with a specific project",
-        isPersonal: true,
-        isPrivate: true,
-        status: 'Active'
-    }, undefined, undefined, undefined, [], resolvedTenant);
-};
-
 /**
  * Get all projects in the workspace (not just user-owned) for search purposes
  */
@@ -1059,9 +960,6 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
     const results = await Promise.all(taskPromises);
     return results.flat();
 };
-
-
-
 
 // --- Tasks ---
 
@@ -1479,7 +1377,6 @@ export const subscribeInitiativeTasks = (
     };
 };
 
-
 // --- Presence ---
 // Presence/online-state now lives in Realtime Database (onDisconnect-backed).
 // See web/services/domain/presenceService.ts and web/hooks/usePresence.ts.
@@ -1653,22 +1550,6 @@ export const addComment = async (
         );
     }
     return docRef.id;
-};
-
-export const getComments = async (
-    projectId: string,
-    targetId: string,
-    tenantId?: string
-): Promise<ProjectComment[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, COMMENTS),
-        where("targetId", "==", targetId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as ProjectComment))
-        .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
 };
 
 export const subscribeComments = (
@@ -1854,38 +1735,6 @@ export const addProjectMember = async (
     }
 };
 
-export const requestJoinProject = async (projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const project = await getProjectById(projectId, resolvedTenant);
-    if (!project) throw new Error("Project not found");
-
-    if (project.members?.some(m => m.userId === user.uid) || project.ownerId === user.uid) {
-        throw new Error("Already a member");
-    }
-
-    // Create a notification for the owner
-    // We use createNotification helper which handles valid tenant checks
-    await createNotification({
-        type: 'project_join_request',
-        userId: project.ownerId,
-        title: 'Project Join Request',
-        message: `${user.displayName || 'A user'} requested to join ${project.title}`,
-        projectId: project.id,
-        tenantId: resolvedTenant // Tenant-scoped for the owner
-    });
-
-    await logActivity(
-        projectId,
-        { action: 'requested to join the project', target: 'Team', type: 'member' },
-        resolvedTenant
-    );
-};
-
 export const respondToJoinRequest = async (
     notificationId: string,
     projectId: string,
@@ -1929,54 +1778,6 @@ export const respondToJoinRequest = async (
             // tenantId: resolvedTenant // OMITTED to make it GLOBAL
         });
     }
-};
-
-export const updateProjectMemberRole = async (
-    projectId: string,
-    userId: string,
-    newRole: ProjectRole,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const projectRef = projectDocRef(resolvedTenant, projectId);
-
-    await runTransaction(db, async (transaction) => {
-        const projectDoc = await transaction.get(projectRef);
-        if (!projectDoc.exists()) throw new Error("Project not found");
-
-        const data = projectDoc.data() as Project;
-        const members = data.members || [];
-        const memberIndex = members.findIndex(m => (typeof m === 'string' ? m : m.userId) === userId);
-
-        if (memberIndex === -1) throw new Error("Member not found in project");
-
-        const member = members[memberIndex];
-        let newMemberObj: ProjectMember;
-
-        if (typeof member === 'string') {
-            // Upgrade legacy string member to object
-            newMemberObj = {
-                userId: member,
-                role: newRole,
-                joinedAt: Timestamp.now(),
-                invitedBy: 'system',
-                displayName: 'Member', // Placeholder, ideally fetch or update later
-                email: '',
-                photoURL: ''
-            };
-        } else {
-            newMemberObj = {
-                ...member,
-                role: newRole
-            };
-        }
-
-        // Clone and update
-        const updatedMembers = [...members];
-        updatedMembers[memberIndex] = newMemberObj;
-
-        transaction.update(projectRef, { members: updatedMembers });
-    });
 };
 
 // --- Personal Task Compatibility Facade ---
@@ -2043,83 +1844,6 @@ export const getPersonalTaskById = async (
     return getPersonalTaskByIdDomain(taskId, tenantId);
 };
 
-// --- API Tokens ---
-
-const API_TOKENS = "api_tokens";
-
-/**
- * Generate a cryptographically secure token
- */
-const generateSecureToken = (): string => {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    const base64 = btoa(String.fromCharCode(...array))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-    return `pfat_${base64}`;
-};
-
-/**
- * Hash a token using SHA-256
- */
-const hashToken = async (token: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(token);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-/**
- * Create a new API token. Returns the plain-text token (only shown once).
- */
-export const createAPIToken = async (
-    name: string,
-    permissions: APITokenPermission[],
-    projectScope?: string,
-    expiresAt?: Date,
-    tenantId?: string
-): Promise<{ token: string; id: string }> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return createWorkspaceApiToken(resolvedTenant, name, permissions, projectScope, expiresAt);
-};
-
-/**
- * Get all API tokens for the current tenant (without exposing hashes)
- */
-export const getAPITokens = async (tenantId?: string): Promise<WorkspaceApiToken[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return listWorkspaceApiTokens(resolvedTenant);
-};
-
-/**
- * Delete an API token
- */
-export const deleteAPIToken = async (tokenId: string, tenantId?: string): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await deleteWorkspaceApiToken(resolvedTenant, tokenId);
-};
-
-/**
- * Validate an API token (used by Cloud Functions)
- * This is a client-side version for testing - the real validation happens in Cloud Functions
- */
-export const validateAPITokenLocally = async (
-    plainToken: string,
-    requiredPermission: APITokenPermission,
-    tenantId: string
-): Promise<{ valid: boolean; tokenData?: any; error?: string }> => {
-    void plainToken;
-    void requiredPermission;
-    void tenantId;
-
-    return {
-        valid: false,
-        error: 'Client-side API token validation is no longer supported. Use the backend validation path.'
-    };
-};
-
 // --- User Onboarding ---
 
 export const updateUserOnboardingStatus = async (
@@ -2171,13 +1895,6 @@ export interface FirestoreRole {
     createdBy?: string;
 }
 
-export const getTenantRoles = async (tenantId?: string): Promise<FirestoreRole[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(rolesCollection(resolvedTenant), orderBy("position", "desc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreRole));
-};
-
 export const subscribeTenantRoles = (
     onUpdate: (roles: FirestoreRole[]) => void,
     tenantId?: string
@@ -2226,19 +1943,4 @@ export const deleteTenantRole = async (roleId: string, tenantId?: string): Promi
     const resolvedTenant = resolveTenantId(tenantId);
     const roleRef = doc(rolesCollection(resolvedTenant), roleId);
     await deleteDoc(roleRef);
-};
-
-export const initializeSystemRoles = async (tenantId?: string): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const existingRoles = await getTenantRoles(resolvedTenant);
-
-    // Only initialize if no roles exist
-    if (existingRoles.length > 0) return;
-
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // Create system roles with the SYSTEM_ROLE_DEFAULTS from permissionService
-    // We defer to RoleManagement component for actual defaults to avoid circular imports
-    console.log("System roles should be initialized via RoleManagement component");
 };

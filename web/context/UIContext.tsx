@@ -233,5 +233,3 @@ export const useUIState = () => {
     if (!context) throw new Error('useUIState must be used within a UIProvider');
     return context;
 };
-
-export const useUI = useUIState;

@@ -499,10 +499,6 @@ export const getProjectTemplateDefinition = (templateId?: ProjectTemplateId | st
     PROJECT_TEMPLATE_DEFINITIONS.find((template) => template.id === templateId) || PROJECT_TEMPLATE_DEFINITIONS[0]
 );
 
-export const isCompanyProjectTemplate = (templateId?: ProjectTemplateId | string): boolean => (
-    getProjectTemplateDefinition(templateId).isCompanyProject === true
-);
-
 export const isCompanyProject = (project: Pick<Project, 'projectCategory' | 'templateId' | 'projectType'>): boolean => (
     project.projectCategory === 'startup_company'
     || project.templateId === 'startup_company_formation'

@@ -152,29 +152,6 @@ export const createEmptyFinanceCostItem = (overrides?: Partial<FinanceCostItem>)
     };
 };
 
-export const createDefaultFinanceScenarioDraft = () => {
-    return {
-        projectId: '',
-        name: '',
-        preset: 'software' as const,
-        period: 'monthly' as const,
-        unitLabel: 'User',
-        plannedUnits: 100,
-        pricePerUnit: 0,
-        tokenQuotaPerUnit: 0,
-        discountPercent: 0,
-        salesCommissionPercent: 0,
-        targetProfitPercentOnCost: 20,
-        fixedCostItems: [
-            createEmptyFinanceCostItem({ label: 'Infrastructure', amount: 0 }),
-        ],
-        variableCostItemsPerUnit: [
-            createEmptyFinanceCostItem({ label: 'Support pro User', amount: 0 }),
-        ],
-        notes: '',
-    };
-};
-
 export const sanitizeFinanceCostItems = (items: FinanceCostItem[]) => {
     return (items || [])
         .map((item) => ({

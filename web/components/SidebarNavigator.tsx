@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { auth } from '../services/firebase';
 import { getUserTasks } from '../services/domain/tasksService';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
 import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';

@@ -1,13 +1,8 @@
 import { ProjectGroup } from '../types';
 import { resolveTenantId, projectSubCollection } from './dataService';
 import {
-    addDoc,
-    updateDoc,
-    deleteDoc,
-    doc,
     onSnapshot,
     query,
-    serverTimestamp,
     orderBy,
     getDocs
 } from 'firebase/firestore';
@@ -54,39 +49,3 @@ export const getProjectGroups = async (projectId: string, tenantId?: string): Pr
     } as ProjectGroup));
 };
 
-
-export const createProjectGroup = async (
-    projectId: string,
-    group: Omit<ProjectGroup, 'id' | 'projectId' | 'createdAt' | 'updatedAt'>,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const colRef = groupsCollection(resolvedTenant, projectId);
-    const docRef = await addDoc(colRef, {
-        ...group,
-        projectId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-    return docRef.id;
-};
-
-export const updateProjectGroup = async (
-    projectId: string,
-    groupId: string,
-    updates: Partial<ProjectGroup>,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(groupsCollection(resolvedTenant, projectId), groupId);
-    await updateDoc(ref, {
-        ...updates,
-        updatedAt: serverTimestamp()
-    });
-};
-
-export const deleteProjectGroup = async (projectId: string, groupId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(groupsCollection(resolvedTenant, projectId), groupId);
-    await deleteDoc(ref);
-};

@@ -68,7 +68,6 @@ const TENANTS = 'tenants';
 const tenantRef = (tenantId: string) => doc(db, TENANTS, tenantId);
 const memberRef = (tenantId: string, uid: string) => doc(db, TENANTS, tenantId, 'members', uid);
 const invitationsCol = (tenantId: string) => collection(db, TENANTS, tenantId, 'invitations');
-const userRef = (uid: string) => doc(db, 'users', uid);
 
 const requireUser = () => {
     const user = auth.currentUser;
@@ -81,8 +80,6 @@ const memberProfile = (user: NonNullable<typeof auth.currentUser>) => ({
     email: (user.email || '').toLowerCase(),
     photoURL: user.photoURL || ''
 });
-
-export const getActiveWorkspaceId = () => getCachedTenantId();
 
 export const listMyWorkspaces = async (): Promise<WorkspaceSummary[]> => {
     const user = requireUser();

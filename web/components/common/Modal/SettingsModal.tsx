@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Modal } from './Modal';
-import { Button } from '../Button/Button';
 import './settings-modal.scss';
 
 export interface SettingsTab {
