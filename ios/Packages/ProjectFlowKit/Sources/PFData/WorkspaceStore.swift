@@ -111,8 +111,13 @@ public final class WorkspaceStore {
 
     // MARK: My tasks (contract C7)
 
+    /// Contract C7 collection-group query (`tenantId` + `assigneeIds`). Off by default until the
+    /// production backfill (`scripts/backfill-task-fields.mjs`) has normalised `assigneeIds`; until then
+    /// the per-project listeners mirror the web's "my tasks" filter, including legacy tasks.
+    public nonisolated(unsafe) static var useAssigneeQuery = false
+
     private func listenMyTasks() {
-        guard role.isFullMember else {
+        guard role.isFullMember, Self.useAssigneeQuery else {
             usesProjectFallback = true
             syncFallbackListeners()
             return
