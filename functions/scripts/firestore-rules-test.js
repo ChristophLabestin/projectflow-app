@@ -35,6 +35,21 @@ const seedData = async (testEnv) => {
             memberIds: ['ownerA', 'guestA'],
         });
         await set(`${PROJECT}/tasks/taskA`, { title: 'Task A', tenantId: 'tenantA', projectId: 'projectA' });
+        await set(`${PROJECT}/tasks/taskMine`, {
+            title: 'Assigned to member',
+            tenantId: 'tenantA',
+            projectId: 'projectA',
+            assigneeIds: ['memberA'],
+            isCompleted: false,
+            nextReminderAt: '2026-10-23T06:00:00.000Z',
+        });
+        await set(`${PROJECT}/tasks/taskGuestMine`, {
+            title: 'Assigned to guest',
+            tenantId: 'tenantA',
+            projectId: 'projectA',
+            assigneeIds: ['guestA'],
+            isCompleted: false,
+        });
         await set(MEMBER_PROJECT, {
             title: 'Member project',
             tenantId: 'tenantA',
@@ -42,6 +57,10 @@ const seedData = async (testEnv) => {
             memberIds: ['memberA'],
         });
         await set(`${T}/users/memberA/personalTasks/personalA`, { title: 'Personal Task A' });
+        await set('users/memberA', { uid: 'memberA', displayName: 'Member A' });
+        await set('users/memberA/devices/deviceA', { platform: 'ios', fcmToken: 'token' });
+        await set('users/memberA/liveActivities/activityA', { deviceId: 'deviceA', pushToken: 'push', itemId: 'taskA' });
+        await set('users/memberA/nudgeLog/2026-10-22', { sent: ['morning_briefing'] });
 
         await set('tenants/tenantB', { tenantId: 'tenantB', name: 'Tenant B', ownerId: 'ownerB' });
         await set('tenants/tenantB/members/ownerB', { uid: 'ownerB', role: 'Owner' });
@@ -135,6 +154,37 @@ const run = async () => {
         await check('admin deletes any project', 'allow', () => admin.doc(PROJECT).delete());
         await check('no writes below a deleted project', 'deny', () =>
             member.doc(`${PROJECT}/healthSnapshots/today`).set({ score: 1 }));
+
+        // C7: "my tasks" collection-group query, nextReminderAt scan, iOS device docs
+        await fresh();
+        const myTasks = (ctx, uid) => ctx.collectionGroup('tasks')
+            .where('tenantId', '==', 'tenantA')
+            .where('assigneeIds', 'array-contains', uid)
+            .where('isCompleted', '==', false)
+            .get();
+        await check('member runs the "my tasks" collection-group query', 'allow', () => myTasks(member, 'memberA'));
+        await check('admin runs the "my tasks" collection-group query', 'allow', () => myTasks(admin, 'adminA'));
+        await check('"my tasks" without tenantId is rejected', 'deny', () =>
+            member.collectionGroup('tasks').where('assigneeIds', 'array-contains', 'memberA').get());
+        await check('outsider cannot run the "my tasks" query for tenant A', 'deny', () => myTasks(outsider, 'memberA'));
+        await check('guest cannot run the tenant-wide "my tasks" query', 'deny', () => myTasks(guest, 'guestA'));
+        await check('guest reads own tasks per project', 'allow', () =>
+            guest.collection(`${PROJECT}/tasks`).where('assigneeIds', 'array-contains', 'guestA').get());
+        await check('member reads tasks by nextReminderAt', 'allow', () =>
+            member.collectionGroup('tasks').where('tenantId', '==', 'tenantA').where('nextReminderAt', '<=', '2026-12-31T00:00:00.000Z').get());
+
+        await check('owner reads own device doc', 'allow', () => as('memberA').doc('users/memberA/devices/deviceA').get());
+        await check('owner writes own device doc', 'allow', () =>
+            as('memberA').doc('users/memberA/devices/deviceB').set({ platform: 'ios', fcmToken: 't2', liveActivityStartToken: 's' }));
+        await check('other user cannot read device docs', 'deny', () => admin.doc('users/memberA/devices/deviceA').get());
+        await check('other user cannot write device docs', 'deny', () => admin.doc('users/memberA/devices/deviceA').set({ fcmToken: 'x' }));
+        await check('owner writes own live activity doc', 'allow', () =>
+            as('memberA').doc('users/memberA/liveActivities/activityB').set({ deviceId: 'deviceA', pushToken: 'p', itemId: 'taskA', itemType: 'task' }));
+        await check('other user cannot read live activity docs', 'deny', () => admin.doc('users/memberA/liveActivities/activityA').get());
+        await check('owner cannot read nudgeLog (server only)', 'deny', () => as('memberA').doc('users/memberA/nudgeLog/2026-10-22').get());
+        await check('owner cannot write nudgeLog (server only)', 'deny', () => as('memberA').doc('users/memberA/nudgeLog/2026-10-23').set({ sent: [] }));
+        await check('owner writes notificationPrefs on the profile', 'allow', () =>
+            as('memberA').doc('users/memberA').set({ notificationPrefs: { timezone: 'Europe/Berlin' } }, { merge: true }));
     } finally {
         await testEnv.cleanup();
     }
