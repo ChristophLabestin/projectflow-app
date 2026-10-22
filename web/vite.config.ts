@@ -121,24 +121,10 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/tasks-page-en.ts') ||
-                id.includes('/web/locales/tasks-page-de.ts')
-              ) {
-                return 'tasks-page-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/calendar-en.ts') ||
                 id.includes('/web/locales/calendar-de.ts')
               ) {
                 return 'calendar-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/invite-landing-en.ts') ||
-                id.includes('/web/locales/invite-landing-de.ts')
-              ) {
-                return 'invite-landing-i18n';
               }
 
               if (
@@ -153,20 +139,6 @@ export default defineConfig(({ mode }) => {
                 id.includes('/web/locales/auth-screen-de.ts')
               ) {
                 return 'auth-screen-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/project-invite-en.ts') ||
-                id.includes('/web/locales/project-invite-de.ts')
-              ) {
-                return 'project-invite-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/join-link-en.ts') ||
-                id.includes('/web/locales/join-link-de.ts')
-              ) {
-                return 'join-link-i18n';
               }
 
               if (

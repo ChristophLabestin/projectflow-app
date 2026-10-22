@@ -3,7 +3,6 @@ export default {
     'authAction.status.success': 'Success!',
     'authAction.status.error': 'Action Failed',
     'authAction.status.resetPassword': 'Reset Password',
-    'authAction.message.processing': 'Processing your request...',
     'authAction.message.invalidLink': 'The action link is invalid or has expired.',
     'authAction.message.verifySuccess': 'Your email address has been verified successfully.',
     'authAction.message.verifySuccessWithEmail': 'The email address {email} has been verified successfully.',
