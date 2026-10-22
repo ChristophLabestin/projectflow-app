@@ -13,10 +13,13 @@ public struct TodaySnapshot: Codable, Hashable, Sendable {
         public let tenantId: String
         public let projectId: String?
         public let isPersonal: Bool
+        /// "Low" | "Medium" | "High" | "Urgent" (optional, drives the priority signal in widgets).
+        public var priority: String?
 
-        public init(id: String, title: String, subtitle: String, severity: String, tenantId: String, projectId: String?, isPersonal: Bool) {
+        public init(id: String, title: String, subtitle: String, severity: String, tenantId: String, projectId: String?, isPersonal: Bool,
+                    priority: String? = nil) {
             self.id = id; self.title = title; self.subtitle = subtitle; self.severity = severity
-            self.tenantId = tenantId; self.projectId = projectId; self.isPersonal = isPersonal
+            self.tenantId = tenantId; self.projectId = projectId; self.isPersonal = isPersonal; self.priority = priority
         }
     }
 
@@ -30,11 +33,25 @@ public struct TodaySnapshot: Codable, Hashable, Sendable {
         public let startedAt: Date?
         public let tenantId: String?
         public let projectId: String?
+        /// End of the pause when `status == "snoozed"`.
+        public var snoozedUntil: Date?
 
         public init(itemId: String, itemType: String, title: String, projectName: String?, nextStep: String?, status: String,
-                    startedAt: Date?, tenantId: String?, projectId: String?) {
+                    startedAt: Date?, tenantId: String?, projectId: String?, snoozedUntil: Date? = nil) {
             self.itemId = itemId; self.itemType = itemType; self.title = title; self.projectName = projectName
             self.nextStep = nextStep; self.status = status; self.startedAt = startedAt; self.tenantId = tenantId; self.projectId = projectId
+            self.snoozedUntil = snoozedUntil
+        }
+    }
+
+    /// A project the share extension and widgets can target (title only, no content).
+    public struct ProjectRef: Codable, Hashable, Sendable, Identifiable {
+        public let id: String
+        public let title: String
+        public let tenantId: String
+
+        public init(id: String, title: String, tenantId: String) {
+            self.id = id; self.title = title; self.tenantId = tenantId
         }
     }
 
@@ -50,12 +67,36 @@ public struct TodaySnapshot: Codable, Hashable, Sendable {
     public var moreCount: Int
     public var focus: Focus?
     public var signedIn: Bool
+    /// Projects of the active workspace (share extension targets). Written by the app.
+    public var projects: [ProjectRef]
+    /// App language ("de" | "en") so extensions speak the same language as the app copy in this snapshot.
+    public var language: String?
 
     public init(generatedAt: Date = .now, workspaceName: String, headline: String, summary: String, band: [String],
-                overdueCount: Int, dueTodayCount: Int, stops: [Stop], moreCount: Int, focus: Focus?, signedIn: Bool = true) {
+                overdueCount: Int, dueTodayCount: Int, stops: [Stop], moreCount: Int, focus: Focus?, signedIn: Bool = true,
+                projects: [ProjectRef] = [], language: String? = nil) {
         self.generatedAt = generatedAt; self.workspaceName = workspaceName; self.headline = headline; self.summary = summary
         self.band = band; self.overdueCount = overdueCount; self.dueTodayCount = dueTodayCount; self.stops = stops
         self.moreCount = moreCount; self.focus = focus; self.signedIn = signedIn
+        self.projects = projects; self.language = language
+    }
+
+    // Tolerant decoding: snapshots written by older app versions lack the newer keys.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        generatedAt = try c.decode(Date.self, forKey: .generatedAt)
+        workspaceName = try c.decode(String.self, forKey: .workspaceName)
+        headline = try c.decode(String.self, forKey: .headline)
+        summary = try c.decode(String.self, forKey: .summary)
+        band = try c.decode([String].self, forKey: .band)
+        overdueCount = try c.decode(Int.self, forKey: .overdueCount)
+        dueTodayCount = try c.decode(Int.self, forKey: .dueTodayCount)
+        stops = try c.decode([Stop].self, forKey: .stops)
+        moreCount = try c.decode(Int.self, forKey: .moreCount)
+        focus = try c.decodeIfPresent(Focus.self, forKey: .focus)
+        signedIn = try c.decodeIfPresent(Bool.self, forKey: .signedIn) ?? true
+        projects = try c.decodeIfPresent([ProjectRef].self, forKey: .projects) ?? []
+        language = try c.decodeIfPresent(String.self, forKey: .language)
     }
 
     public static let signedOut = TodaySnapshot(workspaceName: "", headline: "", summary: "", band: [], overdueCount: 0,
@@ -68,13 +109,21 @@ public struct TodaySnapshot: Codable, Hashable, Sendable {
         band: ["overdue", "overdue", "due", "due", "free"],
         overdueCount: 2, dueTodayCount: 2,
         stops: [
-            Stop(id: "t1", title: "Set up 301 redirects", subtitle: "Seit 3 Tagen überfällig", severity: "overdue", tenantId: "t", projectId: "p", isPersonal: false),
-            Stop(id: "t2", title: "Finalize hero copy", subtitle: "Heute fällig", severity: "due", tenantId: "t", projectId: "p", isPersonal: false),
-            Stop(id: "t3", title: "Onboarding screens", subtitle: "Heute fällig", severity: "due", tenantId: "t", projectId: "p", isPersonal: false),
+            Stop(id: "t1", title: "Set up 301 redirects", subtitle: "Seit 3 Tagen überfällig", severity: "overdue", tenantId: "t", projectId: "p", isPersonal: false, priority: "Urgent"),
+            Stop(id: "t2", title: "Finalize hero copy", subtitle: "Heute fällig", severity: "due", tenantId: "t", projectId: "p", isPersonal: false, priority: "High"),
+            Stop(id: "t3", title: "Onboarding screens", subtitle: "Heute fällig", severity: "due", tenantId: "t", projectId: "p", isPersonal: false, priority: "Medium"),
+            Stop(id: "t4", title: "Review Q4 budget", subtitle: "Heute fällig", severity: "due", tenantId: "t", projectId: nil, isPersonal: true),
+            Stop(id: "t5", title: "Send invoice to Studio Nord", subtitle: "Eingeplant", severity: "scheduled", tenantId: "t", projectId: "p", isPersonal: false, priority: "Low"),
         ],
         moreCount: 3,
         focus: Focus(itemId: "t1", itemType: "task", title: "Set up 301 redirects", projectName: "Website Relaunch",
-                     nextStep: "Mapping-Tabelle exportieren", status: "active", startedAt: .now.addingTimeInterval(-2400), tenantId: "t", projectId: "p")
+                     nextStep: "Mapping-Tabelle exportieren", status: "active", startedAt: .now.addingTimeInterval(-2400), tenantId: "t", projectId: "p"),
+        projects: [
+            ProjectRef(id: "p", title: "Website Relaunch", tenantId: "t"),
+            ProjectRef(id: "p2", title: "Brand Refresh", tenantId: "t"),
+            ProjectRef(id: "p3", title: "Mobile App", tenantId: "t"),
+        ],
+        language: "de"
     )
 }
 
