@@ -312,6 +312,14 @@ export interface ProjectReminder {
     isCompleted?: boolean;
     createdAt?: string;
     completedAt?: string;
+    /** uid of the creator; set by the client on create. Legacy reminders without it go to the task assignees / project owner. */
+    createdBy?: string;
+    /** Who gets the reminder; defaults to `[createdBy]`. */
+    recipientIds?: string[];
+    /** "Auch Zuständige erinnern": recipients plus the task assignees at send time. */
+    notifyAssignees?: boolean;
+    /** ISO timestamp, set by the server (`deliverReminders`) when the reminder was delivered. */
+    sentAt?: string;
 }
 
 export interface Project {
@@ -373,6 +381,8 @@ export interface Project {
     intakeForm?: ProjectIntakeFormSettings;
     billingCustomer?: InvoiceParty; // Gespeicherte Kundenanschrift für Rechnungen (Kundenprojekte)
     reminders?: ProjectReminder[];
+    /** Server-maintained: ISO instant of the earliest pending reminder (absent when none). Do not write from clients. */
+    nextReminderAt?: string;
 }
 
 export interface ProjectExternalResource {
@@ -386,6 +396,22 @@ export interface ProjectExternalResource {
     sourceTemplateId?: StartupJurisdictionTemplateId | string;
     sourceReferenceId?: string;
     lastReviewedAt?: string;
+}
+
+export type NotificationPrefCategory = 'assignments' | 'mentions' | 'comments' | 'due' | 'reminders';
+
+/**
+ * `users/{uid}.notificationPrefs` (contract C3). Everything is optional; the server applies defaults:
+ * timezone Europe/Berlin, push all true, email assignments + mentions true (rest false),
+ * morningBriefing off at 08:00, dayClose off at 17:30.
+ */
+export interface NotificationPrefs {
+    /** IANA time zone used for the nudges, e.g. `Europe/Berlin`. */
+    timezone?: string;
+    push?: Partial<Record<NotificationPrefCategory, boolean>>;
+    email?: Partial<Record<NotificationPrefCategory, boolean>>;
+    morningBriefing?: { enabled?: boolean; time?: string };
+    dayClose?: { enabled?: boolean; time?: string };
 }
 
 export type FocusItemType = 'task' | 'issue' | 'initiative' | 'personal-task';
@@ -444,6 +470,7 @@ export interface User {
     }>;
     focusItemId?: string | null;
     focusState?: UserFocusState | null;
+    notificationPrefs?: NotificationPrefs;
     createdAt?: any;
     updatedAt?: any;
 }
@@ -497,6 +524,9 @@ export interface Comment {
     userDisplayName: string;
     userPhotoURL?: string;
     content: string;
+    /** Optional explicit mention ids (native clients); the server also parses `@Name` from `content`. */
+    mentionedUserIds?: string[];
+    updatedBy?: string; // uid of the writer (contract C1)
     createdAt: any;
 }
 
@@ -520,6 +550,8 @@ export interface Task {
     blockerNote?: string;
     reminderAt?: string;
     reminders?: ProjectReminder[];
+    /** Server-maintained: ISO instant of the earliest pending reminder (absent when none). Do not write from clients. */
+    nextReminderAt?: string;
     lastWorkbenchNote?: string;
     category?: IdeaGroup | IdeaGroup[];
     status?: TaskStatus;
@@ -533,6 +565,8 @@ export interface Task {
     legacyInitiativeRoot?: boolean;
     initiativeMigrationDismissed?: boolean;
     createdBy?: string;
+    updatedBy?: string; // uid of the last writer (contract C1); the task triggers use it as the actor
+    updatedAt?: any;
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
     dependencies?: string[]; // IDs of tasks that block this task
@@ -765,6 +799,8 @@ export interface SubTask {
     isCompleted: boolean;
     assigneeId?: string;
     createdAt?: any;
+    updatedBy?: string; // uid of the last writer (contract C1)
+    updatedAt?: any;
     completedBy?: string;
     completedAt?: any;
 }
@@ -1092,7 +1128,11 @@ export type NotificationType =
     | 'project_join_request'
     | 'project_join_request_accepted'
     | 'project_join_request_denied'
-    | 'diagnostic_test';
+    | 'diagnostic_test'
+    | 'reminder'
+    | 'task_due_today'
+    | 'morning_briefing'
+    | 'day_close';
 
 export interface Notification {
     id: string;
@@ -1109,6 +1149,9 @@ export interface Notification {
     issueId?: string;
     commentId?: string;
     inviteId?: string;
+    reminderId?: string;
+    /** In-app route to open (set for server nudges and reminders), e.g. `/tasks` or `/?mode=close`. */
+    deepLink?: string;
     // Actor info
     actorId?: string;
     actorName?: string;
