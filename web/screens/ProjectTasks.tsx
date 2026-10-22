@@ -26,6 +26,10 @@ import { TaskGroupList } from '../components/work/TaskGroupList';
 import { TaskRow } from '../components/work/TaskRow';
 import { groupTasks, summarizeDue, type WorkGroupBy } from '../components/work/workList';
 import { useWorkMembers } from '../components/work/useWorkMembers';
+import { useWorkSelection } from '../components/work/useWorkSelection';
+import { WorkBulkBar } from '../components/work/WorkBulkBar';
+import type { InlineMenuOption } from '../components/work/InlineMenu';
+import { UNASSIGNED_VALUE } from '../components/work/workMenuOptions';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -44,7 +48,6 @@ export const ProjectTasks = () => {
     const [error, setError] = useState<string | null>(null);
     const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('active');
     const [search, setSearch] = useState('');
-    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
@@ -70,6 +73,10 @@ export const ProjectTasks = () => {
     // Permissions
     const { can } = useProjectPermissions(project);
     const members = useWorkMembers(project?.tenantId);
+    const taskIds = useMemo(() => tasks.map((task) => task.id), [tasks]);
+    const selection = useWorkSelection({ enabled: can('canManageTasks'), availableIds: taskIds });
+    const { selectedIds, isSelecting, selectionMode, setSelectionMode, setMany, clear: clearSelection } = selection;
+    const toggleSelect = (taskId: string, options?: { range?: boolean }) => selection.toggle(taskId, options);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem, startFocusItem } = usePinnedTasks();
     const { dateFormat, dateLocale, t } = useLanguage();
 
@@ -150,14 +157,6 @@ export const ProjectTasks = () => {
         setTaskPillEditor((current) => {
             if (!current) return current;
             return tasks.some((task) => task.id === current.taskId) ? current : null;
-        });
-    }, [tasks]);
-
-    useEffect(() => {
-        setSelectedIds((current) => {
-            const availableIds = new Set(tasks.map((task) => task.id));
-            const next = new Set(Array.from(current).filter((taskId) => availableIds.has(taskId)));
-            return next.size === current.size ? current : next;
         });
     }, [tasks]);
 
@@ -302,15 +301,7 @@ export const ProjectTasks = () => {
         { value: 'title', label: t('projectTasks.sort.title') },
         { value: 'createdAt', label: t('projectTasks.sort.created') },
     ]), [t]);
-    const bulkStatusOptions = useMemo<SelectOption[]>(
-        () => TASK_STATUS_OPTIONS.map((status) => ({ value: status, label: statusLabels[status] || status })),
-        [statusLabels]
-    );
-    const bulkPriorityOptions = useMemo<SelectOption[]>(
-        () => TASK_PRIORITY_OPTIONS.map((priority) => ({ value: priority, label: priorityLabels[priority] || priority })),
-        [priorityLabels]
-    );
-    const bulkInitiativeOptions = useMemo<SelectOption[]>(
+    const bulkInitiativeOptions = useMemo<InlineMenuOption[]>(
         () => [
             { value: '__none__', label: t('projectTasks.pill.initiativeNone') },
             ...initiatives.map((initiative) => ({ value: initiative.id, label: initiative.title }))
@@ -435,33 +426,12 @@ export const ProjectTasks = () => {
     const openCount = tasks.filter(t => !t.isCompleted).length;
     const completedCount = tasks.filter(t => t.isCompleted).length;
 
-    const toggleSelect = (taskId: string) => {
-        setSelectedIds(prev => {
-            const next = new Set(prev);
-            if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
-            return next;
-        });
-    };
-
     const visibleTaskIds = filteredTasks.map((task) => task.id);
     const selectedTasks = tasks.filter((task) => selectedIds.has(task.id));
     const selectedVisibleCount = visibleTaskIds.filter((taskId) => selectedIds.has(taskId)).length;
     const allVisibleSelected = visibleTaskIds.length > 0 && selectedVisibleCount === visibleTaskIds.length;
-    const someVisibleSelected = selectedVisibleCount > 0 && !allVisibleSelected;
 
-    const toggleSelectAllVisible = () => {
-        setSelectedIds((current) => {
-            const next = new Set(current);
-            if (allVisibleSelected) {
-                visibleTaskIds.forEach((taskId) => next.delete(taskId));
-            } else {
-                visibleTaskIds.forEach((taskId) => next.add(taskId));
-            }
-            return next;
-        });
-    };
-
-    const clearSelection = () => setSelectedIds(new Set());
+    const toggleSelectAllVisible = () => setMany(visibleTaskIds, !allVisibleSelected);
 
     const applyBulkUpdate = async (updatesForTask: (task: Task) => Partial<Task>) => {
         if (!id || !selectedTasks.length || !can('canManageTasks')) return;
@@ -485,17 +455,27 @@ export const ProjectTasks = () => {
         }
     };
 
-    const handleBulkStatusChange = (value: string | number) => {
+    const handleBulkStatusChange = (value: string) => {
         const status = value as Task['status'];
         void applyBulkUpdate(() => ({ status, isCompleted: status === 'Done' }));
     };
 
-    const handleBulkPriorityChange = (value: string | number) => {
+    const handleBulkPriorityChange = (value: string) => {
         const priority = value as Task['priority'];
         void applyBulkUpdate(() => ({ priority }));
     };
 
-    const handleBulkInitiativeChange = (value: string | number) => {
+    const handleBulkDueChange = (dueDate: string) => {
+        void applyBulkUpdate(() => ({ dueDate }));
+    };
+
+    const handleBulkAssigneeChange = (uid: string) => {
+        void applyBulkUpdate(() => (
+            uid === UNASSIGNED_VALUE ? { assigneeId: '', assigneeIds: [] } : { assigneeId: uid, assigneeIds: [uid] }
+        ));
+    };
+
+    const handleBulkInitiativeChange = (value: string) => {
         const initiativeId = value === '__none__' ? '' : String(value);
         void applyBulkUpdate((task) => (
             task.legacyInitiativeRoot ? {} : { initiativeId }
@@ -516,7 +496,7 @@ export const ProjectTasks = () => {
                 const task = tasks.find((item) => item.id === taskId);
                 return deleteTask(taskId, id, task?.tenantId || project?.tenantId);
             }));
-            setSelectedIds(new Set());
+            clearSelection();
         } catch (e) {
             console.error(e);
             setError(t('projectTasks.error.bulkDelete'));
@@ -1212,6 +1192,17 @@ export const ProjectTasks = () => {
                         <span className="material-symbols-outlined" aria-hidden="true">done_all</span>
                         {t('work.filter.showCompleted')}
                     </button>
+                    {can('canManageTasks') && (
+                        <button
+                            type="button"
+                            className={`work-chip ${isSelecting ? 'is-active' : ''}`}
+                            aria-pressed={isSelecting}
+                            onClick={() => (isSelecting ? clearSelection() : setSelectionMode(true))}
+                        >
+                            <span className="material-symbols-outlined" aria-hidden="true">{isSelecting ? 'close' : 'check_box'}</span>
+                            {t(isSelecting ? 'work.bulk.done' : 'work.bulk.select')}
+                        </button>
+                    )}
                     <div className="work-toolbar__views" role="group" aria-label={t('work.view.label')}>
                         {(['list', 'grid'] as const).map((option) => (
                             <button
@@ -1229,33 +1220,18 @@ export const ProjectTasks = () => {
                     </div>
                 </div>
 
-                {can('canManageTasks') && selectedIds.size > 0 && (
-                    <div className="work-bulk-bar" role="region" aria-label={t('work.bulk.selected').replace('{count}', String(selectedIds.size))}>
-                        <span className="work-bulk-bar__count">{t('work.bulk.selected').replace('{count}', String(selectedIds.size))}</span>
-                        <button type="button" className="work-chip" onClick={toggleSelectAllVisible} disabled={bulkUpdating} aria-pressed={allVisibleSelected}>
-                            <span className="material-symbols-outlined" aria-hidden="true">{allVisibleSelected ? 'check_box' : someVisibleSelected ? 'indeterminate_check_box' : 'check_box_outline_blank'}</span>
-                            {t('work.bulk.selectAll')}
-                        </button>
-                        <Select value={null} onChange={handleBulkStatusChange} options={bulkStatusOptions} placeholder={t('work.bulk.status')} disabled={bulkUpdating} className="work-bulk-bar__select" />
-                        <Select value={null} onChange={handleBulkPriorityChange} options={bulkPriorityOptions} placeholder={t('work.bulk.priority')} disabled={bulkUpdating} className="work-bulk-bar__select" />
-                        {bulkInitiativeOptions.length > 1 && (
-                            <Select value={null} onChange={handleBulkInitiativeChange} options={bulkInitiativeOptions} placeholder={t('work.bulk.initiative')} disabled={bulkUpdating} className="work-bulk-bar__select" />
-                        )}
-                        <Button variant="danger" size="sm" onClick={handleBulkDelete} disabled={bulkUpdating} icon={<span className="material-symbols-outlined">delete</span>}>
-                            {t('work.bulk.delete')}
-                        </Button>
-                        <button type="button" className="work-toolbar__view" onClick={clearSelection} disabled={bulkUpdating} title={t('work.bulk.clear')} aria-label={t('work.bulk.clear')}>
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
-                    </div>
-                )}
-
-                <div data-onboarding-id="project-tasks-view" className="work-page__body">
+                <div data-onboarding-id="project-tasks-view" className="work-page__body" ref={selection.listRef}>
                     {view === 'list' ? (
                         <TaskGroupList
                             groups={groups}
                             storageKey={`projectflow.work.project.${groupBy}.collapsed`}
                             toggleLabel={(label, collapsed) => t(collapsed ? 'work.group.expand' : 'work.group.collapse').replace('{group}', label)}
+                            selection={can('canManageTasks') ? {
+                                active: isSelecting,
+                                isSelected: (task) => selectedIds.has(task.id),
+                                onToggleGroup: (groupTasks, selected) => setMany(groupTasks.map((task) => task.id), selected),
+                                label: (group) => t('work.bulk.selectGroup').replace('{group}', group)
+                            } : undefined}
                             renderRow={(task) => (
                                 <TaskRow
                                     task={task}
@@ -1265,7 +1241,8 @@ export const ProjectTasks = () => {
                                     saving={savingInlineTaskId === task.id}
                                     selectable={can('canManageTasks')}
                                     selected={selectedIds.has(task.id)}
-                                    onSelectChange={(entry) => toggleSelect(entry.id)}
+                                    selectOnClick={selectionMode}
+                                    onSelectChange={(entry, options) => toggleSelect(entry.id, options)}
                                     onToggleComplete={handleToggle}
                                     onUpdate={updateTaskInline}
                                     onOpen={(entry) => navigate(`/project/${id}/tasks/${entry.id}`)}
@@ -1293,6 +1270,24 @@ export const ProjectTasks = () => {
                         </div>
                     )}
                 </div>
+
+                {isSelecting && (
+                    <WorkBulkBar
+                        count={selectedIds.size}
+                        busy={bulkUpdating}
+                        members={members}
+                        allVisibleSelected={allVisibleSelected}
+                        onToggleAllVisible={toggleSelectAllVisible}
+                        onStatus={handleBulkStatusChange}
+                        onPriority={handleBulkPriorityChange}
+                        onDue={handleBulkDueChange}
+                        onAssignee={handleBulkAssigneeChange}
+                        initiativeOptions={bulkInitiativeOptions.length > 1 ? bulkInitiativeOptions : undefined}
+                        onInitiative={handleBulkInitiativeChange}
+                        onDelete={handleBulkDelete}
+                        onClose={clearSelection}
+                    />
+                )}
 
                 {/* Check permission before showing modal */}
                 {showCreateModal && id && can('canManageTasks') && (

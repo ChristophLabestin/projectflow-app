@@ -219,6 +219,13 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `normalizeStatus` (`Todo` → `Open`).
 - `useWorkMembers`: members of the active workspace for assignee menus.
 - `TaskRow` accepts an optional `trailing` action slot (e.g. detach from initiative).
+- Selection (only `screens/ProjectTasks.tsx` uses it so far):
+  - `useWorkSelection`: selected ids, explicit selection mode, Shift-range (in rendered row order via `listRef`, so collapsed groups are skipped), `setMany`, `clear`; keyboard `Esc` clears (only when focus is in `.work-page` or nowhere), `x` toggles the focused row.
+  - `TaskRow` `selectable` renders a themed `role="checkbox"` (`.work-select-box`) in front of the done circle. It is hidden at rest and shows on row hover/focus, when selected or while the list is selecting; on touch (`hover: none`) only while selecting. `selectOnClick` (selection mode) makes a row click select instead of open; Cmd/Ctrl/Shift-click on a row always selects.
+  - `TaskGroupList` `selection` prop adds a per-group select-all checkbox (mixed state) and the `is-selecting` list class.
+  - `WorkBulkBar`: floating bar sticky to the bottom of the work page (no layout shift) with status, priority, due date, assignee (replaces assignees), optional initiative, delete and close; same `InlineMenu`s as a row. Icons only on mobile.
+  - Toolbar "Select" chip toggles selection mode (the entry point on touch devices).
+- `workMenuOptions.tsx`: shared option builders (`statusMenuOptions`, `priorityMenuOptions`, `dueMenuOptions`, `assigneeMenuOptions`), `DueDatePicker` footer, `WorkAvatar`, `UNASSIGNED_VALUE`; reuse them for any new work-list menu.
 - Used by:
   - `screens/Tasks.tsx` (My Tasks);
   - `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card);

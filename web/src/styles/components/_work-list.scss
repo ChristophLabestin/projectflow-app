@@ -236,12 +236,41 @@
     &--accent { --work-group-accent: var(--color-primary); }
     &--neutral { --work-group-accent: var(--color-text-muted); }
 
+    &__head {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin-bottom: 6px;
+        margin-left: 4px;
+    }
+
+    &__select {
+        width: 28px;
+        height: 28px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+
+        &:focus-visible,
+        &[aria-checked='true'],
+        &[aria-checked='mixed'] {
+            opacity: 1;
+        }
+    }
+
+    &__head:hover &__select,
+    .work-groups.is-selecting & &__select {
+        opacity: 1;
+    }
+
     &__header {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         padding: 4px 8px 4px 2px;
-        margin-bottom: 6px;
         border-radius: var(--radius-md);
         font-size: 13px;
         font-weight: 700;
@@ -322,11 +351,30 @@
         opacity: 0.7;
     }
 
-    &__select input {
-        width: 16px;
-        height: 16px;
-        accent-color: var(--color-primary);
-        cursor: pointer;
+    // Selection checkbox: a wide hit target in front of the done circle. It only
+    // shows on hover/focus, for selected rows and while the list is selecting, so
+    // the done circle stays the single visible control at rest.
+    &__select {
+        align-self: stretch;
+        width: 28px;
+        margin: -8px -6px -8px -8px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity var(--transition-fast);
+
+        &:focus-visible {
+            opacity: 1;
+        }
+    }
+
+    &:hover &__select,
+    &:focus-within &__select,
+    &.is-selected &__select,
+    .work-groups.is-selecting & &__select {
+        opacity: 1;
     }
 
     &__check {
@@ -827,28 +875,139 @@
     }
 }
 
+.work-select-box {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-card);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--color-text-main-rgb), 0.28);
+    color: transparent;
+    transition: background var(--transition-fast), box-shadow var(--transition-fast);
+
+    .material-symbols-outlined {
+        font-size: 15px;
+        font-weight: 700;
+    }
+
+    button:hover > & {
+        box-shadow: inset 0 0 0 1.5px rgba(var(--color-text-main-rgb), 0.5);
+    }
+
+    [aria-checked='true'] > &,
+    [aria-checked='mixed'] > & {
+        background: var(--color-primary);
+        box-shadow: none;
+        color: var(--color-primary-text);
+    }
+}
+
+// Floating bar for selected tasks; sticks to the bottom of the viewport so
+// selecting never pushes the list around.
 .work-bulk-bar {
     position: sticky;
-    top: 8px;
+    bottom: 16px;
     z-index: 20;
+    align-self: center;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding: 8px 10px 8px 14px;
-    border-radius: var(--radius-xl);
+    gap: 12px;
+    max-width: 100%;
+    padding: 6px 6px 6px 16px;
+    border-radius: var(--radius-full);
     background: var(--color-surface-card);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(var(--color-text-main-rgb), 0.08);
+    animation: work-bulk-bar-in 160ms ease-out;
+
+    &__summary {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        min-width: 0;
+        white-space: nowrap;
+    }
 
     &__count {
         font-size: 13px;
         font-weight: 700;
         color: var(--color-text-main);
-        margin-right: auto;
     }
 
-    &__select {
-        width: 160px;
+    &__link {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--color-text-muted);
+
+        &:hover:not(:disabled) {
+            color: var(--color-text-main);
+            text-decoration: underline;
+        }
+    }
+
+    &__actions {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        min-width: 0;
+    }
+
+    &__action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 34px;
+        padding: 0 12px;
+        border-radius: var(--radius-full);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-main);
+        white-space: nowrap;
+        transition: background var(--transition-fast), color var(--transition-fast);
+
+        .material-symbols-outlined {
+            font-size: 18px;
+            color: var(--color-text-muted);
+        }
+
+        &:hover:not(:disabled) {
+            background: var(--color-surface-hover);
+        }
+
+        &:disabled {
+            opacity: 0.45;
+            cursor: default;
+        }
+
+        &--danger,
+        &--close {
+            width: 34px;
+            padding: 0;
+            justify-content: center;
+        }
+
+        &--danger:hover:not(:disabled) {
+            background: rgba(var(--color-error-rgb), 0.12);
+
+            .material-symbols-outlined {
+                color: var(--color-error);
+            }
+        }
+    }
+
+    &__divider {
+        width: 1px;
+        height: 20px;
+        margin: 0 4px;
+        background: rgba(var(--color-text-main-rgb), 0.12);
+    }
+}
+
+@keyframes work-bulk-bar-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
     }
 }
 
@@ -929,7 +1088,7 @@
         row-gap: 6px;
 
         &__main {
-            flex-basis: calc(100% - 40px);
+            flex: 1 1 0;
         }
 
         &__controls {
@@ -939,12 +1098,56 @@
         }
     }
 
+    .work-bulk-bar {
+        align-self: stretch;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 10px 8px 6px;
+        border-radius: var(--radius-xl);
+
+        &__summary {
+            justify-content: space-between;
+            padding: 0 8px;
+        }
+
+        &__actions {
+            justify-content: space-between;
+        }
+
+        &__label {
+            display: none;
+        }
+
+        &__action {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            justify-content: center;
+        }
+    }
+
     .work-pill--status {
         min-width: 0;
     }
 
     .work-pill--due {
         min-width: 0;
+    }
+}
+
+// Touch devices have no hover: checkboxes only appear once "Select" is on.
+@media (hover: none) {
+    .work-row__select,
+    .work-group__select {
+        display: none;
+    }
+
+    .work-groups.is-selecting {
+        .work-row__select,
+        .work-group__select {
+            display: inline-flex;
+        }
     }
 }
 
