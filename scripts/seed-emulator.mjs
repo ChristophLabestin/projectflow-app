@@ -19,6 +19,19 @@ const admin = require(require.resolve('firebase-admin', { paths: [process.cwd() 
 process.env.FIRESTORE_EMULATOR_HOST ||= '127.0.0.1:8085';
 process.env.FIREBASE_AUTH_EMULATOR_HOST ||= '127.0.0.1:9099';
 
+// nextReminderAt is normally maintained by onTaskWritten / onProjectWritten, but the seed usually runs before the
+// Functions emulator has registered its triggers, so compute it here when functions/lib has been built.
+let computeNextReminderAt = () => undefined;
+try {
+    ({ computeNextReminderAt } = require(process.cwd() + '/functions/lib/reminder-logic.js'));
+} catch {
+    // Functions not built: nextReminderAt stays unset until the triggers touch the docs.
+}
+const nextReminder = (reminders) => {
+    const next = computeNextReminderAt(reminders);
+    return next ? { nextReminderAt: next } : {};
+};
+
 const PROJECT_ID = 'demo-projectflow';
 admin.initializeApp({ projectId: PROJECT_ID });
 const db = admin.firestore();
@@ -194,18 +207,22 @@ async function main() {
     for (const [pi, p] of PROJECTS.entries()) {
         const base = `tenants/${TID}/projects/${p.id}`;
         const memberIds = people.map((u) => u.uid);
+        const projectReminders = pi === 0
+            ? [{ id: 'r-1', title: 'Check launch checklist with Anna', remindAt: day(1), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, isCompleted: false, createdAt: day(-2) }]
+            : pi === 1
+                ? [{ id: 'r-2', title: 'Book the TestFlight review slot', remindAt: inHours(26), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, createdBy: OWNER.uid, recipientIds: [OWNER.uid, 'demo-luis'], notifyAssignees: false, isCompleted: false, createdAt: day(-1) }]
+                : [];
         await db.doc(base).set({
             title: p.title, description: p.description, status: p.status, priority: p.priority,
-            startDate: p.startDate, dueDate: p.dueDate, progress: p.progress, modules: p.modules,
+            // Same formula as the server-side progress sync (onTaskWritten), so a running Functions emulator never changes it.
+            startDate: p.startDate, dueDate: p.dueDate, modules: p.modules,
+            progress: Math.round((p.tasks.filter((t) => t.done || t.status === 'Done').length / p.tasks.length) * 100),
             ownerId: OWNER.uid, tenantId: TID, memberIds,
             members: people.map((u) => ({ userId: u.uid, role: u.uid === OWNER.uid ? 'Owner' : 'Editor', joinedAt: ts(-70), invitedBy: OWNER.uid })),
             roles: Object.fromEntries(people.map((u) => [u.uid, u.uid === OWNER.uid ? 'Owner' : 'Editor'])),
             projectType: 'standard', createdAt: ts(-70 + pi), updatedAt: ts(-pi),
-            reminders: pi === 0
-                ? [{ id: 'r-1', title: 'Check launch checklist with Anna', remindAt: day(1), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, isCompleted: false, createdAt: day(-2) }]
-                : pi === 1
-                    ? [{ id: 'r-2', title: 'Book the TestFlight review slot', remindAt: inHours(26), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, createdBy: OWNER.uid, recipientIds: [OWNER.uid, 'demo-luis'], notifyAssignees: false, isCompleted: false, createdAt: day(-1) }]
-                    : [],
+            reminders: projectReminders,
+            ...nextReminder(projectReminders),
         });
         for (const i of p.initiatives || []) {
             await db.doc(`${base}/initiatives/${i.id}`).set({ projectId: p.id, tenantId: TID, ownerId: OWNER.uid, title: i.title, status: i.status, priority: i.priority, health: i.health, successMetric: '', outcome: '', color: '', assigneeIds: [OWNER.uid], startDate: p.startDate, dueDate: i.dueDate, createdAt: ts(-40), updatedAt: ts(-2) });
@@ -226,7 +243,7 @@ async function main() {
                 initiativeId: t.initiativeId || null, sprintId: t.sprint ? p.sprint.id : null,
                 dependencies: t.dependencies || [], nextStep: t.nextStep || '', blockerNote: t.blockerNote || '',
                 createdAt: ts(-20 + ti), updatedAt: ts(-1, -ti), updatedBy: t.assignee || OWNER.uid,
-                ...(t.reminders ? { reminders: t.reminders } : {}),
+                ...(t.reminders ? { reminders: t.reminders, ...nextReminder(t.reminders) } : {}),
                 ...SYSTEM_STAMP(),
                 ...(t.done ? { completedAt: ts(-3).toDate().toISOString(), completedBy: t.assignee || OWNER.uid } : {}),
             });
