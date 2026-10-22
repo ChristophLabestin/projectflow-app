@@ -36,6 +36,7 @@ import { ModuleSelection } from '../components/common/ModuleSelection/ModuleSele
 import MemberSelection from '../components/common/MemberSelection/MemberSelection';
 
 import { useModuleAccess } from '../hooks/useModuleAccess';
+import { initialOf } from '../utils/initials';
 
 const STEPS = [
     { id: 0, labelKey: 'createProjectWizard.steps.type' },
@@ -1134,7 +1135,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                                         {member?.photoURL ? (
                                                             <img src={member.photoURL} className="create-project__preview-avatar-image" alt="" />
                                                         ) : (
-                                                            member?.displayName?.charAt(0) || '?'
+                                                            initialOf(member?.displayName)
                                                         )}
                                                     </div>
                                                 );

@@ -7,13 +7,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useToast } from '../../context/UIContext';
 import { acceptInvitation } from '../../services/domain/workspacesService';
+import { initialsOf } from '../../utils/initials';
 
-const initials = (name: string) => name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'W';
+const initials = (name: string) => initialsOf(name, 'W');
 
 /**
  * Workspace list for the sidebar switcher: switch, accept pending invitations

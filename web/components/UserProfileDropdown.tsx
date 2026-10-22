@@ -5,6 +5,7 @@ import { signOut } from 'firebase/auth';
 import { useLanguage } from '../context/LanguageContext';
 import { SettingsModal } from './SettingsModal';
 import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/domain/userStatusService';
+import { initialOf } from '../utils/initials';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -105,7 +106,7 @@ export const UserProfileDropdown: React.FC = () => {
                     />
                 ) : (
                     <div className="size-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                        {user?.displayName?.charAt(0)?.toUpperCase() || t('user.fallbackInitial')}
+                        {initialOf(user?.displayName, t('user.fallbackInitial'))}
                     </div>
                 )}
 
@@ -135,7 +136,7 @@ export const UserProfileDropdown: React.FC = () => {
                                 />
                             ) : (
                                 <div className="size-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-surface">
-                                    {user?.displayName?.charAt(0)?.toUpperCase() || t('user.fallbackInitial')}
+                                    {initialOf(user?.displayName, t('user.fallbackInitial'))}
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">

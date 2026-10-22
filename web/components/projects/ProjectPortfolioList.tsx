@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import type { Milestone, Project, Task } from '../../types';
 import { daysFromToday, isDateOverdue, parseDateValue } from '../../utils/taskDates';
 import type { ProjectHealth } from '../../services/healthService';
+import { initialOf } from '../../utils/initials';
 
 export interface ProjectPortfolioInputs {
     tasks: Task[];
@@ -173,7 +174,7 @@ export const ProjectPortfolioList = ({
                                             onClick={() => onOpen(project)}
                                         >
                                             <span className="portfolio-row__avatar" aria-hidden="true">
-                                                {project.squareIcon ? <img src={project.squareIcon} alt="" /> : project.title.charAt(0).toUpperCase()}
+                                                {project.squareIcon ? <img src={project.squareIcon} alt="" /> : initialOf(project.title)}
                                             </span>
                                             <span className="portfolio-row__main">
                                                 <span className="portfolio-row__title">{project.title}</span>

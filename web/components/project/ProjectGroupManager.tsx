@@ -10,6 +10,7 @@ import { getActiveTenantId } from '../../services/domain/authService';
 import { auth } from '../../services/firebase';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/UIContext';
+import { initialOf } from '../../utils/initials';
 
 interface ProjectGroupManagerProps {
     projectId: string;
@@ -148,7 +149,7 @@ const GroupMemberAvatar: React.FC<{ uid: string, tenantId?: string }> = ({ uid, 
             {profile.photoURL ? (
                 <img src={profile.photoURL} alt="" className="size-full object-cover" />
             ) : (
-                <span className="text-[8px] font-bold text-indigo-600">{profile.displayName.charAt(0)}</span>
+                <span className="text-[8px] font-bold text-indigo-600">{initialOf(profile.displayName)}</span>
             )}
         </div>
     );

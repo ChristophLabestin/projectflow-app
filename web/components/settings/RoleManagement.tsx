@@ -33,6 +33,7 @@ import {
     deleteTenantRole,
     FirestoreRole
 } from '../../services/dataService';
+import { initialOf } from '../../utils/initials';
 
 // =============================================================================
 // TYPES & CONSTANTS
@@ -290,7 +291,7 @@ function DraggableRoleItem({
                         boxShadow: `0 4px 14px ${role.color || '#6366f1'}40`
                     }}
                 >
-                    {role.name.charAt(0).toUpperCase()}
+                    {initialOf(role.name)}
                 </div>
 
                 {/* Role info */}
@@ -364,7 +365,7 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
                             className={`size-10 rounded-full flex items-center justify-center text-white font-bold ${isOwner ? 'bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/25' : ''}`}
                             style={isOwner ? {} : { backgroundColor: role.color || 'var(--color-primary)' }}
                         >
-                            {isOwner ? <span className="material-symbols-outlined">crown</span> : role.name.charAt(0).toUpperCase()}
+                            {isOwner ? <span className="material-symbols-outlined">crown</span> : initialOf(role.name)}
                         </div>
                         <div>
                             <h3 className={`font-bold text-lg ${isOwner ? 'text-amber-600 dark:text-amber-400' : 'text-main'}`}>

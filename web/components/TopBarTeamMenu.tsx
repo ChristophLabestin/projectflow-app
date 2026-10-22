@@ -6,6 +6,7 @@ import { subscribeTenantUsers } from '../services/domain/workspaceMembersService
 import { useLanguage } from '../context/LanguageContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { InviteToWorkspaceModal } from './workspace/InviteToWorkspaceModal';
+import { initialOf } from '../utils/initials';
 
 interface TeamMenuMember {
     id: string;
@@ -101,7 +102,7 @@ export const TopBarTeamMenu: React.FC<TopBarTeamMenuProps> = ({ tenantId }) => {
                                     >
                                         {!m.photoURL && (
                                             <div className="w-full h-full flex items-center justify-center text-[11px] font-bold text-[var(--color-text-muted)]">
-                                                {(m.displayName || '?')[0].toUpperCase()}
+                                                {initialOf(m.displayName)}
                                             </div>
                                         )}
                                     </div>

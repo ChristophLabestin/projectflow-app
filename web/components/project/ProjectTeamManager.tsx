@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../../services/rolesService';
 import { CustomRole } from '../../types';
 import './project-team-manager.scss';
+import { initialOf } from '../../utils/initials';
 
 interface ProjectTeamManagerProps {
     project: Project;
@@ -228,7 +229,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                     <img src={member.photoURL} alt={member.displayName} className="project-team__avatar-image" />
                                                 ) : (
                                                     <span className="project-team__avatar-fallback">
-                                                        {member.displayName?.charAt(0) || '?'}
+                                                        {initialOf(member.displayName)}
                                                     </span>
                                                 )}
                                             </div>

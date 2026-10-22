@@ -12,6 +12,7 @@ import {
     WORK_STATUSES,
     type WorkMember
 } from './workList';
+import { initialsOf } from '../../utils/initials';
 
 interface TaskRowProps {
     task: Task;
@@ -30,7 +31,7 @@ interface TaskRowProps {
     trailing?: React.ReactNode;
 }
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 const Avatar = ({ member, size = 'sm' }: { member?: WorkMember; size?: 'sm' | 'xs' }) => (
     <span className={`work-avatar work-avatar--${size}`} aria-hidden="true">

@@ -8,6 +8,7 @@ import { buildTimeScale, toDate, useBarDrag } from '../../../planning/timeScale'
 import { TimeScaleBackdrop, TimeScaleHeader } from '../../../planning/TimeScaleHeader';
 import { estimateLabelWidth, staggerLabels } from '../../../planning/stagger';
 import { addDaysFromToday, isDateOverdue, nextMonday, toIsoDate } from '../../../../utils/taskDates';
+import { initialsOf } from '../../../../utils/initials';
 
 const DAY_WIDTH = 34;
 const LABEL_WIDTH = 280;
@@ -15,7 +16,7 @@ const LABEL_WIDTH = 280;
 type Row = { item: WorkItem; start: Date; end: Date };
 type Lane = { key: string; label: string; rows: Row[]; unscheduled: WorkItem[] };
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 /**
  * Task timeline: one lane per person so it is obvious who works on what and

@@ -325,6 +325,7 @@ const resolveResumeStatus = (status?: ProjectStatus): ResumableProjectStatus => 
 };
 
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
+import { initialOf } from '../utils/initials';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'executionTasks',
@@ -2806,7 +2807,7 @@ const ProjectOverviewLegacy = () => {
                                             />
                                         ) : (
                                             <div className={`avatar-placeholder ${isOnline ? 'is-online' : ''}`}>
-                                                {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                                                {initialOf(member.displayName)}
                                             </div>
                                         )}
                                         {isOnline && (
@@ -2846,7 +2847,7 @@ const ProjectOverviewLegacy = () => {
                                             {m.photoURL ? (
                                                 <img src={m.photoURL} alt="" className="view-all-avatar__image" />
                                             ) : (
-                                                <div className="view-all-avatar__fallback">{m.displayName?.charAt(0)}</div>
+                                                <div className="view-all-avatar__fallback">{initialOf(m.displayName)}</div>
                                             )}
                                         </div>
                                     ))}
@@ -4300,7 +4301,7 @@ const ProjectOverviewLegacy = () => {
                                         {project.squareIcon ? (
                                             <img src={project.squareIcon} alt="" />
                                         ) : (
-                                            <span className="icon-placeholder-text">{project.title.charAt(0)}</span>
+                                            <span className="icon-placeholder-text">{initialOf(project.title)}</span>
                                         )}
                                     </div>
                                 </div>

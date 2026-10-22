@@ -1,6 +1,7 @@
 import React from 'react';
 import type { Project } from '../../../../types';
 import type { OverviewMember } from '../hooks/useProjectMembers';
+import { initialOf } from '../../../../utils/initials';
 
 export type ReferenceSectionProps = {
     project: Project;
@@ -12,7 +13,7 @@ export type ReferenceSectionProps = {
     t: (key: string, fallback?: string) => string;
 };
 
-const initials = (name: string) => name.trim().charAt(0).toUpperCase() || '?';
+const initials = (name: string) => initialOf(name);
 
 export const ReferenceSection: React.FC<ReferenceSectionProps> = ({
     project,

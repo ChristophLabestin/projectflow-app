@@ -31,6 +31,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/UIContext';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { parseDateValue } from '../utils/taskDates';
+import { initialsOf } from '../utils/initials';
 
 type View = 'current' | 'planning' | 'history';
 type ColumnId = 'open' | 'progress' | 'review' | 'done';
@@ -58,7 +59,7 @@ const toDate = (value: unknown): Date | null => {
     return date && !Number.isNaN(date.getTime()) ? date : null;
 };
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 /** Time and scope progress of a sprint, plus a simple on-track signal. */
 const sprintStats = (sprint: Sprint, sprintTasks: Task[]) => {

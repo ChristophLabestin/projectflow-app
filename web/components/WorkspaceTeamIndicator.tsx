@@ -3,6 +3,7 @@ import { useWorkspaceTeamPresence, useWorkspacePresence } from '../hooks/usePres
 import { auth } from '../services/firebase';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import { initialOf } from '../utils/initials';
 
 interface WorkspaceTeamIndicatorProps {
     tenantId?: string;
@@ -176,7 +177,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                                 >
                                     {!member.photoURL && (
                                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500 text-white text-xs font-bold rounded-full">
-                                            {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                                            {initialOf(member.displayName)}
                                         </div>
                                     )}
                                 </div>
@@ -482,7 +483,7 @@ const MemberRow: React.FC<{
                                 : 'bg-gradient-to-br from-slate-400 to-slate-500 ring-surface opacity-70'
                     }
                 `}>
-                    {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                    {initialOf(member.displayName)}
                 </div>
             )}
 

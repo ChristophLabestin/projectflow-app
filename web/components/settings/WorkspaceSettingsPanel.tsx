@@ -17,6 +17,7 @@ import {
     transferWorkspaceOwnership
 } from '../../services/domain/workspacesService';
 import type { Member } from '../../types';
+import { initialOf } from '../../utils/initials';
 
 type Profile = { name: string; description: string; website: string; contactEmail: string };
 type DangerAction = 'leave' | 'transfer' | 'delete' | null;
@@ -125,7 +126,7 @@ export const WorkspaceSettingsPanel: React.FC<{ section: WorkspaceSettingsSectio
             {section === 'workspace' && (
                 <>
             <header className="ws-settings__head">
-                <div className="ws-settings__badge" aria-hidden="true">{(active.name || '?').trim().charAt(0).toUpperCase()}</div>
+                <div className="ws-settings__badge" aria-hidden="true">{initialOf(active.name)}</div>
                 <div>
                     <h1 className="ws-settings__title">{active.name}</h1>
                     <p className="ws-settings__subtitle">

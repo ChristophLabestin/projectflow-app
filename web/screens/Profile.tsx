@@ -9,6 +9,7 @@ import { Activity, PrivacySettings, Project } from '../types';
 import { ProfileSettingsModal } from '../components/ProfileSettingsModal';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
+import { initialOf } from '../utils/initials';
 
 export const Profile = () => {
     const user = auth.currentUser;
@@ -145,7 +146,7 @@ export const Profile = () => {
                                 <img src={photoURL} alt={t('profile.avatar.alt')} className="w-full h-full object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-6xl font-black text-black dark:text-white bg-white dark:bg-black">
-                                    {displayName[0]?.toUpperCase() || 'U'}
+                                    {initialOf(displayName, 'U')}
                                 </div>
                             )}
                         </div>

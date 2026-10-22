@@ -13,6 +13,7 @@ import { getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
 import { notifyMention } from '../services/notificationService';
 import { useToast } from '../context/UIContext';
+import { initialOf } from '../utils/initials';
 
 // Simple time formatter if date-fns is not available or to reduce deps
 const timeAgo = (date: any) => {
@@ -351,7 +352,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                             >
                                 {!comment.userPhotoURL && (
                                     <div className="flex items-center justify-center w-full h-full text-[12px] font-bold text-[var(--color-text-subtle)]">
-                                        {(comment.userDisplayName || 'U')[0].toUpperCase()}
+                                        {initialOf(comment.userDisplayName, 'U')}
                                     </div>
                                 )}
                             </div>

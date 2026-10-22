@@ -5,6 +5,7 @@ import type { ProjectHealth } from '../../../../services/healthService';
 import { Badge } from '../../../common/Badge/Badge';
 import type { OverviewDerived } from '../hooks/useProjectOverviewDerived';
 import type { OverviewMember } from '../hooks/useProjectMembers';
+import { initialOf } from '../../../../utils/initials';
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error';
 
@@ -103,7 +104,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     const statusLabel = t(`status.${project.status}`, project.status);
     const hasCover = Boolean(project.coverImage);
     const purpose = project.description?.trim();
-    const initial = project.title?.trim().charAt(0).toUpperCase() || '?';
+    const initial = initialOf(project.title);
 
     const completion = Math.max(0, Math.min(100, Math.round(derived.completionPct)));
     const summary = [
@@ -209,7 +210,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                                         className="po-hero__avatar"
                                         style={member.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
                                     >
-                                        {!member.photoURL && (member.displayName.trim().charAt(0).toUpperCase() || '?')}
+                                        {!member.photoURL && (initialOf(member.displayName))}
                                     </span>
                                 ))}
                             </span>

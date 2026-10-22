@@ -20,6 +20,7 @@ import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
 import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { initialOf } from '../utils/initials';
 
 const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
 
@@ -111,7 +112,7 @@ const statusTone = (status?: string): 'success' | 'warning' | 'error' | 'muted' 
     return 'muted';
 };
 
-const projectInitial = (project: Project) => (project.title ? project.title.substring(0, 1).toUpperCase() : 'P');
+const projectInitial = (project: Project) => (initialOf(project.title, 'P'));
 
 const ProjectAvatar: React.FC<{ project: Project; className?: string }> = ({ project, className }) => (
     <span className={`snav-avatar ${isCompanyProject(project) ? 'snav-avatar--company' : ''} ${isClientProject(project) ? 'snav-avatar--client' : ''} ${className || ''}`}>
