@@ -8,6 +8,8 @@ import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 type ApiContext = {
     tenantId: string;
     tokenData: Record<string, any>;
+    // Workspace role of a signed-in caller; null for API tokens.
+    memberRole: string | null;
     actorId: string;
     actorLabel: string;
 };
@@ -347,9 +349,10 @@ const authRequest = async (
     }
 
     // Signed-in users (Firebase ID token) must be full members of the tenant.
+    let memberRole: string | null = null;
     if (validation.tokenData.authType === 'firebase') {
-        const role = await getWorkspaceMemberRole(tenantId, validation.tokenData.uid);
-        if (!role || role === 'Guest') {
+        memberRole = await getWorkspaceMemberRole(tenantId, validation.tokenData.uid);
+        if (!memberRole || memberRole === 'Guest') {
             forbidden(res, 'Not a member of this workspace.');
             return null;
         }
@@ -381,6 +384,7 @@ const authRequest = async (
     return {
         tenantId,
         tokenData: validation.tokenData,
+        memberRole,
         actorId,
         actorLabel
     };
@@ -574,6 +578,18 @@ const deleteProject = async (req: any, res: any, projectId: string) => {
     const projectSnapshot = await projectRef(context.tenantId, projectId).get();
     if (!projectSnapshot.exists) {
         notFound(res, 'Project not found.');
+        return;
+    }
+
+    // Mirrors firestore.rules: signed-in users may delete a project only as
+    // workspace Owner/Admin or as its project owner. API tokens keep their
+    // explicitly granted `projects:delete` permission.
+    if (
+        context.tokenData.authType === 'firebase' &&
+        !['Owner', 'Admin'].includes(context.memberRole || '') &&
+        projectSnapshot.get('ownerId') !== context.tokenData.uid
+    ) {
+        forbidden(res, 'Only workspace admins or the project owner can delete a project.');
         return;
     }
 

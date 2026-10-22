@@ -242,11 +242,25 @@ service cloud.firestore {
         allow read: if isFullMember(tenantId) ||
           (isTenantMember(tenantId) && isProjectMember(resource.data));
         allow create: if isFullMember(tenantId) && request.resource.data.tenantId == tenantId;
-        allow update: if canAccessProjectById(tenantId, projectId);
+        // Ownership moves only via the tenant admins or the current project
+        // owner; guests can edit project content but not its membership.
+        allow update: if canAccessProjectById(tenantId, projectId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId']) &&
+          (
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']) ||
+            isTenantAdmin(tenantId) ||
+            (isFullMember(tenantId) && resource.data.ownerId == request.auth.uid)
+          ) &&
+          (
+            isFullMember(tenantId) ||
+            !request.resource.data.diff(resource.data).affectedKeys().hasAny(['memberIds', 'members'])
+          );
         allow delete: if isTenantAdmin(tenantId) ||
           (isFullMember(tenantId) && resource.data.ownerId == request.auth.uid);
 
-        match /{document=**} {
+        // At least one segment below the project: `/{document=**}` alone also
+        // matches the project doc itself and would bypass the delete rule above.
+        match /{subcollection}/{document=**} {
           allow read, write: if canAccessProjectById(tenantId, projectId);
         }
       }

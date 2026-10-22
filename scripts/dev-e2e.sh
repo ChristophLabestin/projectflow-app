@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# Starts ProjectFlow fully local and already signed in, for E2E/QA sessions:
+#   1. Firebase emulators (Auth, Firestore, Storage) with the repo's rules,
+#   2. the demo workspace from scripts/seed-emulator.mjs plus an outsider account
+#      (no workspace) for permission tests,
+#   3. the Vite dev server in emulator mode, auto-signed-in as the demo owner.
+# Nothing here talks to production: the project id is demo-projectflow.
+#
+#   bash scripts/dev-e2e.sh                         # app on :3000
+#   PORT=3005 bash scripts/dev-e2e.sh               # other app port
+#   E2E_LOGIN=outsider bash scripts/dev-e2e.sh      # sign in as the outsider instead
+#
+# Emulator accounts (emulator only):
+#   demo@projectflow.test     / projectflow-demo     (seeded workspace owner)
+#   outsider@projectflow.test / pf-outsider-e2e      (no workspace membership)
+#
+# Emulator ports default to a block other local Firebase projects rarely use;
+# override with AUTH_PORT, FIRESTORE_PORT, STORAGE_PORT, FUNCTIONS_PORT.
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PROJECT_ID="demo-projectflow"
+PORT="${PORT:-3000}"
+AUTH_PORT="${AUTH_PORT:-9631}"
+FIRESTORE_PORT="${FIRESTORE_PORT:-8631}"
+STORAGE_PORT="${STORAGE_PORT:-9632}"
+FUNCTIONS_PORT="${FUNCTIONS_PORT:-5631}"
+CONFIG="$ROOT/.firebase.e2e.json"
+LOG="$ROOT/.firebase-e2e.log"
+
+case "${E2E_LOGIN:-demo}" in
+    outsider) LOGIN_EMAIL="outsider@projectflow.test"; LOGIN_PASSWORD="pf-outsider-e2e" ;;
+    *)        LOGIN_EMAIL="demo@projectflow.test";     LOGIN_PASSWORD="projectflow-demo" ;;
+esac
+
+# Same config as firebase.json, only with this script's emulator ports.
+node -e '
+const [src, dest, auth, firestore, storage, functions] = process.argv.slice(1);
+const config = JSON.parse(require("fs").readFileSync(src, "utf8"));
+config.emulators = { ...config.emulators,
+    auth: { port: +auth }, firestore: { port: +firestore }, storage: { port: +storage },
+    functions: { port: +functions }, hub: { port: +auth + 10 }, logging: { port: +auth + 11 },
+    ui: { enabled: false } };
+delete config.emulators.database;
+require("fs").writeFileSync(dest, JSON.stringify(config, null, 2));
+' "$ROOT/firebase.json" "$CONFIG" "$AUTH_PORT" "$FIRESTORE_PORT" "$STORAGE_PORT" "$FUNCTIONS_PORT"
+
+cd "$ROOT"
+firebase emulators:start --only auth,firestore,storage --project "$PROJECT_ID" --config "$CONFIG" > "$LOG" 2>&1 &
+EMULATOR_PID=$!
+trap 'kill -INT "$EMULATOR_PID" 2>/dev/null; wait "$EMULATOR_PID" 2>/dev/null || true' EXIT INT TERM
+
+echo "Waiting for Firebase emulators (log: .firebase-e2e.log)..."
+for _ in $(seq 1 90); do
+    if curl -sf "http://127.0.0.1:$AUTH_PORT" > /dev/null && curl -sf "http://127.0.0.1:$FIRESTORE_PORT" > /dev/null; then break; fi
+    kill -0 "$EMULATOR_PID" 2>/dev/null || { tail -n 30 "$LOG"; exit 1; }
+    sleep 1
+done
+
+FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+    node scripts/seed-emulator.mjs
+
+curl -s -X POST "http://127.0.0.1:$AUTH_PORT/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key" \
+    -H 'Content-Type: application/json' \
+    -d '{"email":"outsider@projectflow.test","password":"pf-outsider-e2e","displayName":"Outside Tester"}' > /dev/null
+
+echo "App: http://localhost:$PORT (signed in as $LOGIN_EMAIL)"
+VITE_EMULATOR_AUTH_PORT="$AUTH_PORT" VITE_EMULATOR_FIRESTORE_PORT="$FIRESTORE_PORT" \
+VITE_EMULATOR_STORAGE_PORT="$STORAGE_PORT" VITE_EMULATOR_FUNCTIONS_PORT="$FUNCTIONS_PORT" \
+VITE_E2E_AUTO_LOGIN_EMAIL="$LOGIN_EMAIL" VITE_E2E_AUTO_LOGIN_PASSWORD="$LOGIN_PASSWORD" \
+    npm --prefix "$ROOT/web" run dev:emulator -- --port "$PORT" --strictPort

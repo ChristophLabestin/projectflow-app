@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectAuthEmulator, getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { connectFirestoreEmulator, getFirestore } from "firebase/firestore";
 import { connectStorageEmulator, getStorage } from "firebase/storage";
 import { connectFunctionsEmulator, getFunctions } from "firebase/functions";
@@ -47,10 +47,22 @@ try {
   functions = getFunctions(app, 'europe-west3');
 
   if (useEmulators) {
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    connectFirestoreEmulator(db, '127.0.0.1', 8085);
-    connectStorageEmulator(storage, '127.0.0.1', 9199);
-    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
+    const emulatorPort = (key: string, fallback: number) => Number(import.meta.env[key]) || fallback;
+    connectAuthEmulator(auth, `http://127.0.0.1:${emulatorPort('VITE_EMULATOR_AUTH_PORT', 9099)}`, { disableWarnings: true });
+    connectFirestoreEmulator(db, '127.0.0.1', emulatorPort('VITE_EMULATOR_FIRESTORE_PORT', 8085));
+    connectStorageEmulator(storage, '127.0.0.1', emulatorPort('VITE_EMULATOR_STORAGE_PORT', 9199));
+    connectFunctionsEmulator(functions, '127.0.0.1', emulatorPort('VITE_EMULATOR_FUNCTIONS_PORT', 5001));
+
+    // scripts/dev-e2e.sh starts the app already signed in as a seeded emulator account.
+    const autoLoginEmail = import.meta.env.VITE_E2E_AUTO_LOGIN_EMAIL;
+    const autoLoginPassword = import.meta.env.VITE_E2E_AUTO_LOGIN_PASSWORD;
+    if (import.meta.env.DEV && autoLoginEmail && autoLoginPassword) {
+      void auth.authStateReady().then(() => {
+        if (auth.currentUser) return;
+        signInWithEmailAndPassword(auth, autoLoginEmail, autoLoginPassword)
+          .catch((loginError) => console.error("Emulator auto-login failed:", loginError));
+      });
+    }
   }
 
   // Realtime Database is only initialized when a database URL is configured.
