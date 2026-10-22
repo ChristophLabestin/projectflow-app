@@ -250,11 +250,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     if (projectData) {
                         loadedTenantId = current.tenantId || projectData.tenantId;
                         setProject(projectData);
-                        const collectionName = current.type === 'issue'
-                            ? 'issues'
-                            : current.type === 'initiative'
-                                ? 'initiatives'
-                                : 'tasks';
+                        const collectionName = current.type === 'initiative' ? 'initiatives' : 'tasks';
                         const itemRef = doc(db, `tenants/${projectData.tenantId}/projects/${projectData.id}/${collectionName}/${itemId}`);
                         const snap = await getDoc(itemRef);
                         if (snap.exists() && mounted) {
@@ -861,11 +857,7 @@ export const PinnedTasksModal = () => {
 
     const getPinnedItemPath = (item: PinnedItem) => {
         if (!item.projectId) return null;
-        const resource = item.type === 'issue'
-            ? 'issues'
-            : item.type === 'initiative'
-                ? 'initiatives'
-                : 'tasks';
+        const resource = item.type === 'initiative' ? 'initiatives' : 'tasks';
         return `/project/${item.projectId}/${resource}/${item.id}`;
     };
 

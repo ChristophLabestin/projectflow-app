@@ -374,8 +374,6 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
                                         <span className="material-symbols-outlined">
                                             {key === 'project' ? 'folder' :
                                                 key === 'tasks' ? 'checklist' :
-                                                    key === 'issues' ? 'bug_report' :
-                                                        key === 'ideas' ? 'lightbulb' :
                                                             key === 'groups' ? 'groups' : 'shield_person'}
                                         </span>
                                         {category.label}

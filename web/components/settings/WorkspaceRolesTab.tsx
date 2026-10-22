@@ -436,8 +436,6 @@ export const WorkspaceRolesTab: React.FC<WorkspaceRolesTabProps> = ({ tenant, is
                                                 <span className="material-symbols-outlined text-[20px]">
                                                     {key === 'project' ? 'folder' :
                                                         key === 'tasks' ? 'checklist' :
-                                                            key === 'issues' ? 'bug_report' :
-                                                                key === 'ideas' ? 'lightbulb' :
                                                                     key === 'groups' ? 'groups' : 'shield_person'}
                                                 </span>
                                             </div>

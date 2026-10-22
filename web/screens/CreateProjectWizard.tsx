@@ -89,8 +89,6 @@ const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
     { id: 'initiatives', labelKey: 'createProjectWizard.modules.initiatives.label', descKey: 'createProjectWizard.modules.initiatives.desc', icon: 'rocket_launch' },
     { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
-    { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
-    { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
     { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
     { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign', gatedBy: 'social' },
@@ -457,8 +455,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     };
 
     const handleModuleToggle = (moduleId: string) => {
-        // Map 'flows' from ModuleSelection to 'ideas' used in Wizard/Backend
-        const targetId = moduleId === 'flows' ? 'ideas' : moduleId as ProjectModule;
+        const targetId = moduleId as ProjectModule;
         const option = MODULE_OPTIONS.find(item => item.id === targetId);
         if (!option) return;
         if (
@@ -620,7 +617,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const moduleSelectionItems = wizardModuleOptions.map(option => {
         const isLocked = option.gatedBy ? !moduleAccess[option.gatedBy] : false;
         return {
-            id: option.id === 'ideas' ? 'flows' : option.id,
+            id: option.id,
             title: t(option.labelKey),
             description: t(option.descKey),
             icon: <span className="material-symbols-outlined">{option.icon}</span>,
@@ -861,7 +858,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
                                 <div className="create-project__selection-container">
                                     <ModuleSelection
                                         modules={moduleSelectionItems}
-                                        selectedModules={safeModules.map(m => m === 'ideas' ? 'flows' : m)}
+                                        selectedModules={safeModules}
                                         onToggle={handleModuleToggle}
                                     />
                                 </div>
