@@ -1,0 +1,127 @@
+{
+  "name": "No tasks at all: empty plan, \"the day is yours\" statement",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [],
+    "personalTasks": [],
+    "otherTasks": [],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "stops": [],
+    "moreCount": 0,
+    "isSuggested": false,
+    "statement": {
+      "key": "dashboard.route.statement.clear",
+      "params": {},
+      "value": null,
+      "valueKey": "dashboard.route.statement.clearValue"
+    },
+    "dayShape": "clear",
+    "cause": {
+      "key": "dashboard.today.insight.fresh",
+      "params": {},
+      "text": null
+    },
+    "counts": {
+      "overdue": 0,
+      "dueToday": 0,
+      "scheduledToday": 0,
+      "queue": 0,
+      "blocked": 0,
+      "open": 0,
+      "undated": 0,
+      "completedLast7Days": 0,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 8
+        }
+      ],
+      "caption": []
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.none",
+        "params": {},
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-19",
+          "weekday": 0,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 1,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 2,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 3,
+          "count": 0,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 4,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 0
+    },
+    "overnight": [],
+    "waitingOnMe": [],
+    "topUnlocker": null
+  }
+}

@@ -1,0 +1,269 @@
+{
+  "name": "The same data in Los Angeles (15:30 on the 22nd)",
+  "input": {
+    "now": "2026-10-22T22:30:00.000Z",
+    "timeZone": "America/Los_Angeles",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Due on the 29th",
+        "dueDate": "2026-10-29"
+      },
+      {
+        "id": "b",
+        "title": "Due tomorrow",
+        "dueDate": "2026-10-23"
+      },
+      {
+        "id": "c",
+        "title": "Due today",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "d",
+        "title": "Due ISO Z",
+        "dueDate": "2026-10-29T22:30:00.000Z"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "createdAt": "2026-10-22T08:00:00.000Z"
+      },
+      {
+        "id": "b1",
+        "title": "Task b1",
+        "projectId": "b",
+        "createdAt": "2026-10-22T08:00:00.000Z"
+      },
+      {
+        "id": "c1",
+        "title": "Task c1",
+        "projectId": "c",
+        "createdAt": "2026-10-22T08:00:00.000Z"
+      },
+      {
+        "id": "d1",
+        "title": "Task d1",
+        "projectId": "d",
+        "createdAt": "2026-10-22T08:00:00.000Z"
+      }
+    ],
+    "unlocker": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "America/Los_Angeles",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Due on the 29th",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 0,
+        "deadlineDays": 7,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": [
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 7
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "b",
+        "title": "Due tomorrow",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 0,
+        "deadlineDays": 1,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": [
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 1
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "c",
+        "title": "Due today",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 0,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": []
+      },
+      {
+        "projectId": "d",
+        "title": "Due ISO Z",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 0,
+        "deadlineDays": 7,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": [
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 7
+            }
+          }
+        ]
+      }
+    ],
+    "attention": [],
+    "quietCount": 4,
+    "rail": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "workload": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.steady",
+      "params": {},
+      "value": "4",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.quietAll",
+      "params": {},
+      "text": null
+    },
+    "accent": null,
+    "stats": {
+      "projects": 4,
+      "open": 4,
+      "overdue": 0,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjects",
+        "params": {
+          "count": 4
+        },
+        "text": null
+      }
+    ],
+    "horizon": [
+      {
+        "kind": "project",
+        "id": "b",
+        "title": "Due tomorrow",
+        "projectId": "b",
+        "day": "2026-10-23"
+      },
+      {
+        "kind": "project",
+        "id": "a",
+        "title": "Due on the 29th",
+        "projectId": "a",
+        "day": "2026-10-29"
+      },
+      {
+        "kind": "project",
+        "id": "d",
+        "title": "Due ISO Z",
+        "projectId": "d",
+        "day": "2026-10-29"
+      }
+    ]
+  }
+}

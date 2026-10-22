@@ -1,0 +1,307 @@
+{
+  "name": "Five projects with the same score: only three are listed, ties keep input order",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Project A"
+      },
+      {
+        "id": "b",
+        "title": "Project B"
+      },
+      {
+        "id": "c",
+        "title": "Project C"
+      },
+      {
+        "id": "d",
+        "title": "Project D"
+      },
+      {
+        "id": "e",
+        "title": "Project E"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "dueDate": "2026-10-20",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b1",
+        "title": "Task b1",
+        "projectId": "b",
+        "dueDate": "2026-10-20",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "c1",
+        "title": "Task c1",
+        "projectId": "c",
+        "dueDate": "2026-10-20",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "d1",
+        "title": "Task d1",
+        "projectId": "d",
+        "dueDate": "2026-10-20",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "e1",
+        "title": "Task e1",
+        "projectId": "e",
+        "dueDate": "2026-10-20",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      }
+    ],
+    "unlocker": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Project A",
+        "openCount": 1,
+        "overdueCount": 1,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "overdue",
+            "tone": "danger",
+            "labelKey": "dashboard.pulse.chip.overdue",
+            "params": {
+              "count": 1
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "b",
+        "title": "Project B",
+        "openCount": 1,
+        "overdueCount": 1,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "overdue",
+            "tone": "danger",
+            "labelKey": "dashboard.pulse.chip.overdue",
+            "params": {
+              "count": 1
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "c",
+        "title": "Project C",
+        "openCount": 1,
+        "overdueCount": 1,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "overdue",
+            "tone": "danger",
+            "labelKey": "dashboard.pulse.chip.overdue",
+            "params": {
+              "count": 1
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "d",
+        "title": "Project D",
+        "openCount": 1,
+        "overdueCount": 1,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "overdue",
+            "tone": "danger",
+            "labelKey": "dashboard.pulse.chip.overdue",
+            "params": {
+              "count": 1
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "e",
+        "title": "Project E",
+        "openCount": 1,
+        "overdueCount": 1,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "overdue",
+            "tone": "danger",
+            "labelKey": "dashboard.pulse.chip.overdue",
+            "params": {
+              "count": 1
+            }
+          }
+        ]
+      }
+    ],
+    "attention": [
+      "a",
+      "b",
+      "c"
+    ],
+    "quietCount": 2,
+    "rail": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "workload": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.drifting",
+      "params": {
+        "total": 5
+      },
+      "value": "3",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.worst",
+      "params": {
+        "project": "Project A"
+      },
+      "text": null,
+      "chips": [
+        {
+          "key": "overdue",
+          "tone": "danger",
+          "labelKey": "dashboard.pulse.chip.overdue",
+          "params": {
+            "count": 1
+          }
+        }
+      ]
+    },
+    "accent": null,
+    "stats": {
+      "projects": 5,
+      "open": 5,
+      "overdue": 5,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjects",
+        "params": {
+          "count": 2
+        },
+        "text": null
+      }
+    ],
+    "horizon": []
+  }
+}

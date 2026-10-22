@@ -1,0 +1,15 @@
+{
+  "name": "An exact title match adds 3",
+  "input": {
+    "terms": [
+      "fix",
+      "the",
+      "checkout"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 13
+  }
+}

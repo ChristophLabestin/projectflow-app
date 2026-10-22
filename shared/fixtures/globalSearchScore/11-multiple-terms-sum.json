@@ -1,0 +1,14 @@
+{
+  "name": "Term scores add up",
+  "input": {
+    "terms": [
+      "fix",
+      "check"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 7
+  }
+}

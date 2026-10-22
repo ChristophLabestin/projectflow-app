@@ -1,0 +1,15 @@
+{
+  "name": "A term found only in secondary text scores 0.75",
+  "input": {
+    "terms": [
+      "relaunch"
+    ],
+    "title": "Fix the checkout",
+    "secondary": [
+      "Website Relaunch"
+    ]
+  },
+  "expected": {
+    "score": 0.75
+  }
+}

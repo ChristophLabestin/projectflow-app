@@ -1,0 +1,17 @@
+{
+  "name": "A colon word that is no filter stays a term",
+  "input": {
+    "query": "time:10 meeting"
+  },
+  "expected": {
+    "raw": "time:10 meeting",
+    "prefixScope": null,
+    "terms": [
+      "time:10",
+      "meeting"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "Empty query",
+  "input": {
+    "query": ""
+  },
+  "expected": {
+    "raw": "",
+    "prefixScope": null,
+    "terms": [],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

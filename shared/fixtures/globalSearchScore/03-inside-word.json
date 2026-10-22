@@ -1,0 +1,13 @@
+{
+  "name": "Term inside a word scores 1.5",
+  "input": {
+    "terms": [
+      "heck"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 1.5
+  }
+}

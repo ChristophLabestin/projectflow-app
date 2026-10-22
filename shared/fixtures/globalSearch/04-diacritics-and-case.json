@@ -1,0 +1,17 @@
+{
+  "name": "Diacritics and case are stripped",
+  "input": {
+    "query": "ÜBERSICHT Café"
+  },
+  "expected": {
+    "raw": "ÜBERSICHT Café",
+    "prefixScope": null,
+    "terms": [
+      "ubersicht",
+      "cafe"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

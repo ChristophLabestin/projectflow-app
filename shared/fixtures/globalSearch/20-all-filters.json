@@ -1,0 +1,20 @@
+{
+  "name": "All task filters and priorities are recognised",
+  "input": {
+    "query": "is:open is:done is:overdue is:today is:mine prio:low"
+  },
+  "expected": {
+    "raw": "is:open is:done is:overdue is:today is:mine prio:low",
+    "prefixScope": null,
+    "terms": [],
+    "taskFilters": [
+      "open",
+      "done",
+      "overdue",
+      "today",
+      "mine"
+    ],
+    "priority": "low",
+    "hasTaskFilters": true
+  }
+}

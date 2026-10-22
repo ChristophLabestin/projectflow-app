@@ -1,0 +1,65 @@
+{
+  "name": "Berlin at 00:30 on the 23rd: yesterday's date-only task is overdue",
+  "input": {
+    "now": "2026-10-22T22:30:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Date-only 22nd",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "b",
+        "title": "Date-only 23rd",
+        "dueDate": "2026-10-23"
+      },
+      {
+        "id": "c",
+        "title": "ISO 21:30Z (22nd evening / 23rd 23:30)",
+        "dueDate": "2026-10-22T21:30:00.000Z"
+      },
+      {
+        "id": "d",
+        "title": "ISO 22:00Z",
+        "dueDate": "2026-10-22T22:00:00.000Z"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "overdue",
+        "tasks": [
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "c",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "b",
+            "status": "Open"
+          },
+          {
+            "id": "d",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 2,
+      "today": 2,
+      "week": 0,
+      "open": 4
+    }
+  }
+}

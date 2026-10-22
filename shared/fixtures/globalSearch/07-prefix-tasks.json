@@ -1,0 +1,17 @@
+{
+  "name": "Prefix ! selects tasks",
+  "input": {
+    "query": "!fix bug"
+  },
+  "expected": {
+    "raw": "!fix bug",
+    "prefixScope": "tasks",
+    "terms": [
+      "fix",
+      "bug"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

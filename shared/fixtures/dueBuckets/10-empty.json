@@ -1,0 +1,17 @@
+{
+  "name": "No tasks: no groups, zero summary",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": []
+  },
+  "expected": {
+    "groups": [],
+    "summary": {
+      "overdue": 0,
+      "today": 0,
+      "week": 0,
+      "open": 0
+    }
+  }
+}

@@ -1,0 +1,233 @@
+{
+  "name": "Deadline within 7 days adds score only with more than three open tasks",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Three open",
+        "dueDate": "2026-10-26"
+      },
+      {
+        "id": "b",
+        "title": "Four open",
+        "dueDate": "2026-10-26"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "a2",
+        "title": "Task a2",
+        "projectId": "a",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "a3",
+        "title": "Task a3",
+        "projectId": "a",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b1",
+        "title": "Task b1",
+        "projectId": "b",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b2",
+        "title": "Task b2",
+        "projectId": "b",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b3",
+        "title": "Task b3",
+        "projectId": "b",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b4",
+        "title": "Task b4",
+        "projectId": "b",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      }
+    ],
+    "unlocker": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Three open",
+        "openCount": 3,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": 4,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": [
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 4
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "b",
+        "title": "Four open",
+        "openCount": 4,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": 4,
+        "completedWeek": 0,
+        "score": 2,
+        "chips": [
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 4
+            }
+          }
+        ]
+      }
+    ],
+    "attention": [],
+    "quietCount": 2,
+    "rail": [
+      "b",
+      "a"
+    ],
+    "workload": [
+      "b",
+      "a"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.steady",
+      "params": {},
+      "value": "2",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.quietAll",
+      "params": {},
+      "text": null
+    },
+    "accent": null,
+    "stats": {
+      "projects": 2,
+      "open": 7,
+      "overdue": 0,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjects",
+        "params": {
+          "count": 2
+        },
+        "text": null
+      }
+    ],
+    "horizon": [
+      {
+        "kind": "project",
+        "id": "a",
+        "title": "Three open",
+        "projectId": "a",
+        "day": "2026-10-26"
+      },
+      {
+        "kind": "project",
+        "id": "b",
+        "title": "Four open",
+        "projectId": "b",
+        "day": "2026-10-26"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "Prefix > selects commands",
+  "input": {
+    "query": ">new task"
+  },
+  "expected": {
+    "raw": ">new task",
+    "prefixScope": "commands",
+    "terms": [
+      "new",
+      "task"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

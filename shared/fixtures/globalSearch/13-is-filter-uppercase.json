@@ -1,0 +1,16 @@
+{
+  "name": "Filters are case-insensitive",
+  "input": {
+    "query": "IS:Today"
+  },
+  "expected": {
+    "raw": "IS:Today",
+    "prefixScope": null,
+    "terms": [],
+    "taskFilters": [
+      "today"
+    ],
+    "priority": null,
+    "hasTaskFilters": true
+  }
+}

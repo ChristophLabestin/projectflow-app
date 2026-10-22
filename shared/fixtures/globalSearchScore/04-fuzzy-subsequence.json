@@ -1,0 +1,13 @@
+{
+  "name": "Fuzzy subsequence of at least three characters scores 0.5",
+  "input": {
+    "terms": [
+      "fxt"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 0.5
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Only the first two colon-separated parts are read",
+  "input": {
+    "query": "is:open:later"
+  },
+  "expected": {
+    "raw": "is:open:later",
+    "prefixScope": null,
+    "terms": [],
+    "taskFilters": [
+      "open"
+    ],
+    "priority": null,
+    "hasTaskFilters": true
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "name": "Los Angeles at 15:30 on the 22nd: the same data, a day earlier",
+  "input": {
+    "now": "2026-10-22T22:30:00.000Z",
+    "timeZone": "America/Los_Angeles",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Date-only 22nd",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "b",
+        "title": "Date-only 23rd",
+        "dueDate": "2026-10-23"
+      },
+      {
+        "id": "c",
+        "title": "ISO 21:30Z (22nd evening / 23rd 23:30)",
+        "dueDate": "2026-10-22T21:30:00.000Z"
+      },
+      {
+        "id": "d",
+        "title": "ISO 22:00Z",
+        "dueDate": "2026-10-22T22:00:00.000Z"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "c",
+            "status": "Open"
+          },
+          {
+            "id": "d",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "b",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 3,
+      "week": 1,
+      "open": 4
+    }
+  }
+}

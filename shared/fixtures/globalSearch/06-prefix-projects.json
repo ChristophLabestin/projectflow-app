@@ -1,0 +1,16 @@
+{
+  "name": "Prefix # selects projects",
+  "input": {
+    "query": "#website"
+  },
+  "expected": {
+    "raw": "#website",
+    "prefixScope": "projects",
+    "terms": [
+      "website"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

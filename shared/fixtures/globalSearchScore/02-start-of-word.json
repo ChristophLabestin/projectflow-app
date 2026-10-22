@@ -1,0 +1,13 @@
+{
+  "name": "Term at a word boundary scores 3",
+  "input": {
+    "terms": [
+      "checkout"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 3
+  }
+}

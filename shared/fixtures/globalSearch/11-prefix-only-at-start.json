@@ -1,0 +1,17 @@
+{
+  "name": "A prefix elsewhere is just text",
+  "input": {
+    "query": "fix #web"
+  },
+  "expected": {
+    "raw": "fix #web",
+    "prefixScope": null,
+    "terms": [
+      "fix",
+      "#web"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "name": "Completed tasks form a trailing group sorted by due date descending, undated first",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Done old",
+        "dueDate": "2026-09-01",
+        "isCompleted": true
+      },
+      {
+        "id": "b",
+        "title": "Done recent",
+        "dueDate": "2026-10-20",
+        "isCompleted": true
+      },
+      {
+        "id": "c",
+        "title": "Done undated",
+        "isCompleted": true
+      },
+      {
+        "id": "d",
+        "title": "Open",
+        "dueDate": "2026-10-22"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "d",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "done",
+        "tasks": [
+          {
+            "id": "c",
+            "status": "Done"
+          },
+          {
+            "id": "b",
+            "status": "Done"
+          },
+          {
+            "id": "a",
+            "status": "Done"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 1,
+      "week": 0,
+      "open": 1
+    }
+  }
+}

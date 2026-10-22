@@ -1,0 +1,11 @@
+{
+  "name": "No terms always scores 1",
+  "input": {
+    "terms": [],
+    "title": "Anything",
+    "secondary": []
+  },
+  "expected": {
+    "score": 1
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "name": "Seven days ahead is still \"next 7 days\", eight days ahead is \"later\"",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "d6",
+        "title": "In six days",
+        "dueDate": "2026-10-28"
+      },
+      {
+        "id": "d7",
+        "title": "In seven days",
+        "dueDate": "2026-10-29"
+      },
+      {
+        "id": "d8",
+        "title": "In eight days",
+        "dueDate": "2026-10-30"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "d6",
+            "status": "Open"
+          },
+          {
+            "id": "d7",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "later",
+        "tasks": [
+          {
+            "id": "d8",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 0,
+      "week": 2,
+      "open": 3
+    }
+  }
+}

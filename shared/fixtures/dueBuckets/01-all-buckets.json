@@ -1,0 +1,113 @@
+{
+  "name": "Overdue, today, next 7 days, later, no date and completed in one list",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Overdue long ago",
+        "dueDate": "2026-09-01"
+      },
+      {
+        "id": "b",
+        "title": "Overdue yesterday",
+        "dueDate": "2026-10-21"
+      },
+      {
+        "id": "c",
+        "title": "Today",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "d",
+        "title": "Tomorrow",
+        "dueDate": "2026-10-23"
+      },
+      {
+        "id": "e",
+        "title": "In a month",
+        "dueDate": "2026-11-22"
+      },
+      {
+        "id": "f",
+        "title": "No date"
+      },
+      {
+        "id": "g",
+        "title": "Completed",
+        "dueDate": "2026-10-10",
+        "isCompleted": true,
+        "status": "Done"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "overdue",
+        "tasks": [
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "b",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "c",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "d",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "later",
+        "tasks": [
+          {
+            "id": "e",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "none",
+        "tasks": [
+          {
+            "id": "f",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "done",
+        "tasks": [
+          {
+            "id": "g",
+            "status": "Done"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 2,
+      "today": 1,
+      "week": 1,
+      "open": 6
+    }
+  }
+}

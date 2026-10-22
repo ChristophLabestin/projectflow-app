@@ -1,0 +1,13 @@
+{
+  "name": "Fuzzy match needs three characters",
+  "input": {
+    "terms": [
+      "ft"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 0
+  }
+}
