@@ -3,41 +3,43 @@ import { format } from 'date-fns';
 
 import { useLanguage } from '../../context/LanguageContext';
 import type { Task } from '../../types';
-import { addDaysFromToday, daysFromToday, nextMonday, parseDateValue, toIsoDate } from '../../utils/taskDates';
-import { InlineMenu, type InlineMenuOption } from './InlineMenu';
+import { daysFromToday, parseDateValue } from '../../utils/taskDates';
+import { InlineMenu } from './InlineMenu';
+import { getAssigneeIds, normalizeStatus, type WorkMember } from './workList';
 import {
-    getAssigneeIds,
-    normalizeStatus,
-    WORK_PRIORITIES,
-    WORK_STATUSES,
-    type WorkMember
-} from './workList';
-import { initialsOf } from '../../utils/initials';
+    assigneeMenuOptions,
+    DueDatePicker,
+    dueMenuOptions,
+    priorityMenuOptions,
+    shortDateFormat,
+    statusMenuOptions,
+    UNASSIGNED_VALUE,
+    WorkAvatar
+} from './workMenuOptions';
 
 interface TaskRowProps {
     task: Task;
     members: WorkMember[];
     projectTitle?: string;
+    initiativeTitle?: string;
+    /** `card` lays the same content out as a grid tile. */
+    variant?: 'row' | 'card';
     subtasks?: { done: number; total: number };
     canEdit: boolean;
     saving?: boolean;
+    /** Shows the selection checkbox (on hover, or always while the list is selecting). */
     selectable?: boolean;
     selected?: boolean;
-    onSelectChange?: (task: Task, selected: boolean) => void;
+    /** Explicit selection mode: a row click selects instead of opening. */
+    selectOnClick?: boolean;
+    /** `range` is set for Shift-clicks (select everything since the last click). */
+    onSelectChange?: (task: Task, options: { range: boolean }) => void;
     onToggleComplete: (task: Task) => void;
     onUpdate: (task: Task, updates: Partial<Task>) => void;
     onOpen: (task: Task) => void;
     /** Context-specific trailing action (e.g. detach from initiative). */
     trailing?: React.ReactNode;
 }
-
-const initials = (name: string) => initialsOf(name, '?');
-
-const Avatar = ({ member, size = 'sm' }: { member?: WorkMember; size?: 'sm' | 'xs' }) => (
-    <span className={`work-avatar work-avatar--${size}`} aria-hidden="true">
-        {member?.photoURL ? <img src={member.photoURL} alt="" /> : initials(member?.displayName || '?')}
-    </span>
-);
 
 /**
  * One task in a work list. Frequent edits (status, priority, due date,
@@ -47,11 +49,14 @@ export const TaskRow = memo(({
     task,
     members,
     projectTitle,
+    initiativeTitle,
+    variant = 'row',
     subtasks,
     canEdit,
     saving,
     selectable,
     selected,
+    selectOnClick,
     onSelectChange,
     onToggleComplete,
     onUpdate,
@@ -59,8 +64,6 @@ export const TaskRow = memo(({
     trailing
 }: TaskRowProps) => {
     const { t, dateLocale } = useLanguage();
-    const isGerman = dateLocale?.code?.startsWith('de');
-    const shortDate = isGerman ? 'd. MMM' : 'MMM d';
     const status = normalizeStatus(task);
     const priority = task.priority || 'Medium';
     const assigneeIds = getAssigneeIds(task);
@@ -74,30 +77,9 @@ export const TaskRow = memo(({
         if (diff === 1) return t('work.due.tomorrow');
         const date = parseDateValue(task.dueDate);
         if (diff > 1 && diff < 7) return format(date, 'EEEE', { locale: dateLocale });
-        return format(date, shortDate, { locale: dateLocale });
+        return format(date, shortDateFormat(dateLocale), { locale: dateLocale });
     })();
     const dueTone = task.isCompleted || diff === null ? 'muted' : diff < 0 ? 'danger' : diff === 0 ? 'warning' : 'neutral';
-
-    const statusOptions: InlineMenuOption[] = WORK_STATUSES.map((value) => ({
-        value,
-        label: t(`work.status.${value}`),
-        leading: <span className={`work-status-dot work-status-dot--${value.replace(/\s+/g, '-').toLowerCase()}`} />
-    }));
-    const priorityOptions: InlineMenuOption[] = WORK_PRIORITIES.map((value) => ({
-        value,
-        label: t(`work.priority.${value}`),
-        leading: <span className={`work-priority work-priority--${value.toLowerCase()}`} />
-    }));
-    const dueOptions: InlineMenuOption[] = [
-        { value: toIsoDate(new Date()), label: t('work.due.today'), hint: format(new Date(), 'EEE', { locale: dateLocale }) },
-        { value: toIsoDate(addDaysFromToday(1)), label: t('work.due.tomorrow'), hint: format(addDaysFromToday(1), 'EEE', { locale: dateLocale }) },
-        { value: toIsoDate(nextMonday()), label: t('work.due.nextWeek'), hint: format(nextMonday(), `EEE ${shortDate}`, { locale: dateLocale }) },
-        ...(task.dueDate ? [{ value: '', label: t('work.due.clear') }] : [])
-    ];
-    const assigneeOptions: InlineMenuOption[] = [
-        ...members.map((member) => ({ value: member.uid, label: member.displayName, leading: <Avatar member={member} size="xs" /> })),
-        { value: '__none__', label: t('work.assignee.unassigned'), leading: <span className="material-symbols-outlined">person_off</span> }
-    ];
 
     const setStatus = (next: string) => {
         onUpdate(task, next === 'Done'
@@ -106,7 +88,7 @@ export const TaskRow = memo(({
     };
 
     const toggleAssignee = (uid: string) => {
-        if (uid === '__none__') {
+        if (uid === UNASSIGNED_VALUE) {
             onUpdate(task, { assigneeId: '', assigneeIds: [] });
             return;
         }
@@ -114,21 +96,39 @@ export const TaskRow = memo(({
         onUpdate(task, { assigneeId: next[0] || '', assigneeIds: next });
     };
 
-    const openFromRow = (event: React.MouseEvent | React.KeyboardEvent) => {
+    const selectLabel = t('work.row.select').replace('{title}', task.title);
+
+    const openFromRow = (event: React.MouseEvent) => {
         if ((event.target as HTMLElement).closest('button, input, a, label')) return;
+        // Cmd/Ctrl-click and Shift-click select like in a file list; so does any click in selection mode.
+        if (selectable && (selectOnClick || event.metaKey || event.ctrlKey || event.shiftKey)) {
+            onSelectChange?.(task, { range: event.shiftKey });
+            return;
+        }
         onOpen(task);
     };
 
     return (
         <div
-            className={`work-row ${task.isCompleted ? 'is-done' : ''} ${selected ? 'is-selected' : ''} ${saving ? 'is-saving' : ''}`}
+            className={`work-row work-row--${variant} ${task.isCompleted ? 'is-done' : ''} ${selected ? 'is-selected' : ''} ${saving ? 'is-saving' : ''}`}
             role="listitem"
+            data-task-id={task.id}
             onClick={openFromRow}
         >
             {selectable && (
-                <label className="work-row__select" aria-label={t('work.row.select').replace('{title}', task.title)}>
-                    <input type="checkbox" aria-label={t('work.row.select').replace('{title}', task.title)} checked={!!selected} onChange={(event) => onSelectChange?.(task, event.target.checked)} />
-                </label>
+                <button
+                    type="button"
+                    role="checkbox"
+                    className="work-row__select"
+                    aria-checked={!!selected}
+                    aria-label={selectLabel}
+                    title={selectLabel}
+                    onClick={(event) => onSelectChange?.(task, { range: event.shiftKey })}
+                >
+                    <span className="work-select-box" aria-hidden="true">
+                        <span className="material-symbols-outlined">check</span>
+                    </span>
+                </button>
             )}
             <button
                 type="button"
@@ -142,11 +142,16 @@ export const TaskRow = memo(({
             </button>
 
             <div className="work-row__main">
-                <button type="button" className="work-row__title" onClick={() => onOpen(task)}>
+                <button type="button" className="work-row__title" onClick={(event) => (selectOnClick && selectable ? onSelectChange?.(task, { range: event.shiftKey }) : onOpen(task))}>
                     {task.title}
                 </button>
                 <div className="work-row__meta">
                     {projectTitle && <span className="work-row__project">{projectTitle}</span>}
+                    {initiativeTitle && (
+                        <span className="work-row__initiative">
+                            <span className="material-symbols-outlined">rocket_launch</span>{initiativeTitle}
+                        </span>
+                    )}
                     {status === 'Blocked' && task.blockerNote && (
                         <span className="work-row__blocker" title={task.blockerNote}>
                             <span className="material-symbols-outlined">block</span>{task.blockerNote}
@@ -165,7 +170,7 @@ export const TaskRow = memo(({
                     label={`${t('work.row.changeStatus')}: ${t(`work.status.${status}`)}`}
                     triggerClassName={`work-pill work-pill--status work-pill--${status.replace(/\s+/g, '-').toLowerCase()}`}
                     trigger={t(`work.status.${status}`)}
-                    options={statusOptions}
+                    options={statusMenuOptions(t)}
                     value={status}
                     onSelect={setStatus}
                     disabled={!canEdit}
@@ -175,7 +180,7 @@ export const TaskRow = memo(({
                     label={`${t('work.row.changePriority')}: ${t(`work.priority.${priority}`)}`}
                     triggerClassName="work-pill work-pill--icon"
                     trigger={<span className={`work-priority work-priority--${priority.toLowerCase()}`} />}
-                    options={priorityOptions}
+                    options={priorityMenuOptions(t)}
                     value={priority}
                     onSelect={(next) => onUpdate(task, { priority: next as Task['priority'] })}
                     disabled={!canEdit}
@@ -190,24 +195,13 @@ export const TaskRow = memo(({
                             <span>{dueLabel}</span>
                         </>
                     )}
-                    options={dueOptions}
+                    options={dueMenuOptions(t, dateLocale, !!task.dueDate)}
                     value={task.dueDate || null}
                     onSelect={(next) => onUpdate(task, { dueDate: next })}
                     disabled={!canEdit}
                     width={230}
                     footer={(close) => (
-                        <label className="inline-menu__date">
-                            <span>{t('work.due.pick')}</span>
-                            <input
-                                type="date"
-                                defaultValue={task.dueDate?.slice(0, 10) || ''}
-                                onChange={(event) => {
-                                    if (!event.target.value) return;
-                                    onUpdate(task, { dueDate: event.target.value });
-                                    close();
-                                }}
-                            />
-                        </label>
+                        <DueDatePicker label={t('work.due.pick')} value={task.dueDate} onPick={(date) => onUpdate(task, { dueDate: date })} close={close} />
                     )}
                 />
                 <InlineMenu
@@ -217,7 +211,7 @@ export const TaskRow = memo(({
                     triggerClassName="work-pill work-pill--assignee"
                     trigger={assignees.length ? (
                         <span className="work-avatars">
-                            {assignees.slice(0, 3).map((member) => <Avatar key={member.uid} member={member} />)}
+                            {assignees.slice(0, 3).map((member) => <WorkAvatar key={member.uid} member={member} />)}
                             {assignees.length > 3 && <span className="work-avatars__more">+{assignees.length - 3}</span>}
                         </span>
                     ) : (
@@ -225,8 +219,8 @@ export const TaskRow = memo(({
                             <span className="material-symbols-outlined">person_add</span>
                         </span>
                     )}
-                    options={assigneeOptions}
-                    selectedValues={assigneeIds.length ? assigneeIds : ['__none__']}
+                    options={assigneeMenuOptions(t, members)}
+                    selectedValues={assigneeIds.length ? assigneeIds : [UNASSIGNED_VALUE]}
                     onSelect={toggleAssignee}
                     disabled={!canEdit}
                     width={240}
