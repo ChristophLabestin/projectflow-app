@@ -66,10 +66,6 @@ export const ProjectMilestones = () => {
                 snapshot.forEach(doc => {
                     lookup[doc.id] = doc.data().title;
                 });
-                const legacyIdeaSnapshot = await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas'));
-                legacyIdeaSnapshot.forEach(doc => {
-                    lookup[doc.id] = doc.data().title;
-                });
                 if (mounted) setInitiativeLookup(lookup);
             } catch (e) {
                 console.error('Failed to fetch initiative lookup', e);

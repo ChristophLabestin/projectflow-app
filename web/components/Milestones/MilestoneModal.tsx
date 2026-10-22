@@ -63,14 +63,7 @@ export const MilestoneModal = ({ projectId, tenantId, isOpen, onClose, milestone
                     : await getDocs(query(collectionGroup(db, 'initiatives'), where('projectId', '==', projectId)));
                 const nextInitiatives = initiativesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                if (nextInitiatives.length > 0) {
-                    setAvailableInitiatives(nextInitiatives);
-                } else {
-                    const ideasSnap = tenantId
-                        ? await getDocs(collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas'))
-                        : await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
-                    setAvailableInitiatives(ideasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-                }
+                setAvailableInitiatives(nextInitiatives);
             } catch (e) {
                 console.error('Error fetching dependencies', e);
             }

@@ -1,5 +1,4 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onRequest } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import { db } from "./init";
 import { FieldValue } from 'firebase-admin/firestore';
@@ -84,6 +83,8 @@ export const publishScheduledPosts = async (log?: (msg: string) => void) => {
     const snapshot = await db.collectionGroup('social_posts')
         .where('status', '==', 'Scheduled')
         .where('scheduledFor', '<=', now.toISOString())
+        .orderBy('scheduledFor', 'asc')
+        .limit(50)
         .get();
 
     if (snapshot.empty) {
@@ -171,20 +172,8 @@ export const publishScheduledPosts = async (log?: (msg: string) => void) => {
     logger("Finished processing.");
 };
 
-export const checkScheduledPosts = onSchedule({ schedule: "every 1 minutes", region: "europe-west3" }, async (event) => {
+export const checkScheduledPosts = onSchedule({ schedule: "every 5 minutes", region: "europe-west3" }, async (event) => {
     await publishScheduledPosts();
-});
-
-export const debugScheduler = onRequest({ region: "europe-west3" }, async (req, res) => {
-    const logs: string[] = [];
-    const log = (msg: string) => logs.push(msg);
-
-    try {
-        await publishScheduledPosts(log);
-        res.status(200).send(`LOGS:\n${logs.join('\n')}`);
-    } catch (e: any) {
-        res.status(500).send(`ERROR:\n${e.message}\n\nLOGS:\n${logs.join('\n')}`);
-    }
 });
 
 // ─────────────────────────────────────────────────────────────
@@ -395,69 +384,3 @@ export const dailyHealthSnapshots = onSchedule(
     }
 );
 
-/**
- * Debug endpoint for testing health snapshots manually
- */
-export const debugHealthSnapshots = onRequest({ region: "europe-west3" }, async (req, res) => {
-    const today = new Date().toISOString().split('T')[0];
-    const logs: string[] = [];
-    const log = (msg: string) => { logs.push(msg); console.log(msg); };
-
-    log(`[HealthSnapshots] Manual run for ${today}`);
-
-    try {
-        const tenantsSnap = await db.collection('tenants').get();
-        log(`Found ${tenantsSnap.size} tenants`);
-
-        let projectCount = 0;
-        let snapshotCount = 0;
-
-        for (const tenantDoc of tenantsSnap.docs) {
-            const tenantId = tenantDoc.id;
-            const projectsSnap = await db.collection('tenants').doc(tenantId)
-                .collection('projects').get();
-
-            log(`Tenant ${tenantId}: ${projectsSnap.size} projects`);
-
-            for (const projectDoc of projectsSnap.docs) {
-                projectCount++;
-                const projectId = projectDoc.id;
-                const projectData = projectDoc.data();
-
-                try {
-                    const tasksSnap = await db.collection('tenants').doc(tenantId)
-                        .collection('projects').doc(projectId)
-                        .collection('tasks').get();
-
-                    const health = calculateSimpleHealthScore(tasksSnap.docs);
-
-                    const snapshotRef = db.collection('tenants').doc(tenantId)
-                        .collection('projects').doc(projectId)
-                        .collection('healthSnapshots').doc(today);
-
-                    await snapshotRef.set({
-                        projectId,
-                        tenantId,
-                        score: health.score,
-                        status: health.status,
-                        trend: health.trend,
-                        date: today,
-                        timestamp: FieldValue.serverTimestamp()
-                    });
-
-                    log(`  Project "${projectData.title || projectId}": Score ${health.score} (${health.status})`);
-                    snapshotCount++;
-                } catch (err: any) {
-                    log(`  Error on project ${projectId}: ${err.message}`);
-                }
-            }
-        }
-
-        log(`Done. ${projectCount} projects, ${snapshotCount} snapshots.`);
-        res.status(200).send(`LOGS:\n${logs.join('\n')}`);
-
-    } catch (error: any) {
-        log(`ERROR: ${error.message}`);
-        res.status(500).send(`ERROR:\n${error.message}\n\nLOGS:\n${logs.join('\n')}`);
-    }
-});

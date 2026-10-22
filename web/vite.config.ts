@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
       },
       plugins: [react()],
+      // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
+      define: { 'process.env': {} },
       // Strip noisy debug logging from production bundles. console.warn/error are
       // kept so genuine problems still surface (and feed Sentry breadcrumbs).
       esbuild: isProd
@@ -23,7 +25,7 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
-        chunkSizeWarningLimit: 1500,
+        chunkSizeWarningLimit: 900,
         rollupOptions: {
           output: {
             manualChunks(id) {
@@ -62,7 +64,7 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('date-fns') || id.includes('lucide-react') || id.includes('framer-motion')) {
                   return 'ui-vendor';
                 }
-                return 'vendor';
+                return undefined;
               }
 
               if (
@@ -209,10 +211,9 @@ export default defineConfig(({ mode }) => {
                 return 'legal-i18n';
               }
 
-              if (
-                id.includes('/web/context/LanguageContext.tsx') ||
-                id.includes('/web/locales/')
-              ) {
+              // LanguageContext pulls in firebase auth/data services; keep it out of the
+              // locale chunk (and in the default chunk) to avoid circular chunks.
+              if (id.includes('/web/locales/')) {
                 return 'app-i18n';
               }
 

@@ -343,7 +343,7 @@ export const syncSocialStrategyPlatforms = async (
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    const ideasRef = projectSubCollection(resolvedTenant, projectId, 'ideas');
+    const ideasRef = projectSubCollection(resolvedTenant, projectId, 'initiatives');
     const ideasQuery = query(ideasRef, where('type', '==', 'Marketing'), where('campaignType', '==', 'social'));
     const snapshot = await getDocs(ideasQuery);
     const batch = writeBatch(db);
