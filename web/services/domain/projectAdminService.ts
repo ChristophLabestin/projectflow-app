@@ -1,14 +1,15 @@
 import {
     addDoc,
     collection,
-    deleteDoc,
     deleteField,
     getDoc,
     serverTimestamp,
     updateDoc
 } from 'firebase/firestore';
 
-import { auth, db } from '../firebase';
+import { httpsCallable } from 'firebase/functions';
+
+import { auth, db, functions } from '../firebase';
 import { ensureTenantAndUser, logActivity, projectDocRef, resolveTenantId } from '../internal/workspaceDataCore';
 import { uploadTenantFile } from '../fileStorageService';
 import type { Activity, Project, ProjectRole } from '../../types';
@@ -198,6 +199,7 @@ export const updateProjectFields = async (
 
 export const deleteProjectById = async (projectId: string, tenantId?: string) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    await deleteDoc(projectDocRef(resolvedTenant, projectId));
+    // Cascading delete (subcollections, storage) runs server-side.
+    await httpsCallable(functions, 'deleteProject')({ tenantId: resolvedTenant, projectId });
 };
 

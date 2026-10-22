@@ -55,6 +55,7 @@ import { Checkbox } from '../components/common/Checkbox/Checkbox';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { InviteToWorkspaceModal } from '../components/workspace/InviteToWorkspaceModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
@@ -489,6 +490,8 @@ const ProjectOverviewLegacy = () => {
 
     // Permission system
     const { can, isOwner } = useProjectPermissions(project);
+    const { isOwner: isWorkspaceOwner, isAdmin: isWorkspaceAdmin } = useWorkspacePermissions();
+    const canDeleteProject = isOwner || isWorkspaceOwner || isWorkspaceAdmin;
 
     const [showGalleryModal, setShowGalleryModal] = useState(false);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
@@ -1385,8 +1388,12 @@ const ProjectOverviewLegacy = () => {
         if (!project) return;
         setDeletingProject(true);
         try {
-            await deleteProjectById(project.id, project.tenantId);
-            navigate('/projects');
+            const deletedId = project.id;
+            await deleteProjectById(deletedId, project.tenantId);
+            if (pinnedProjectId === deletedId) {
+                void unpinProject();
+            }
+            navigate('/projects', { replace: true });
         } catch (err) {
             console.error(err);
             setError(t('projectOverview.error.delete'));
@@ -4487,6 +4494,19 @@ const ProjectOverviewLegacy = () => {
                                                     </Button>
                                                 </>
                                             )}
+                                            {canDeleteProject && (
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="project-overview-compact-hero__action-button project-delete-btn"
+                                                    onClick={() => setShowDeleteModal(true)}
+                                                    aria-label={t('projectOverview.delete.title')}
+                                                    title={t('projectOverview.delete.title')}
+                                                >
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -4640,6 +4660,19 @@ const ProjectOverviewLegacy = () => {
                                         <span className="material-symbols-outlined">settings</span>
                                     </Button>
                                 )}
+                                {canDeleteProject && (
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="project-delete-btn"
+                                                onClick={() => setShowDeleteModal(true)}
+                                                aria-label={t('projectOverview.delete.title')}
+                                                title={t('projectOverview.delete.title')}
+                                            >
+                                                <span className="material-symbols-outlined">delete</span>
+                                            </Button>
+                                        )}
                             </div>
                         </div>
                     </div>
