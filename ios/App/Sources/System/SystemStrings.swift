@@ -1,13 +1,53 @@
-// Copy for system integrations (push actions, widgets, intents). DE/EN.
+// Copy for system integrations (push actions, App Intents, Spotlight, design catalog). DE/EN.
+// Extensions (widgets, share, notification service) use `Shared/ExtensionStrings.swift` instead.
 enum SystemStrings {
     static let de: [String: String] = [
         "push.action.done": "Erledigt", "push.action.today": "Heute", "push.action.tomorrow": "Morgen",
         "push.action.reply": "Antworten", "push.action.send": "Senden", "push.action.replyPlaceholder": "Antwort…",
         "push.action.snoozeHour": "In 1 Stunde", "push.action.resume": "Weiter",
+        // App Intents / Siri / Shortcuts dialogs
+        "intent.notSignedIn": "Bitte öffne ProjectFlow und melde dich an.",
+        "intent.notReady": "ProjectFlow lädt noch. Versuch es gleich noch einmal.",
+        "intent.noFocus": "Du hast gerade keinen Fokus.",
+        "intent.taskNotFound": "Diese Aufgabe habe ich nicht gefunden.",
+        "intent.taskDone": "„{title}“ ist erledigt.",
+        "intent.focusDone": "Fokus erledigt: „{title}“.",
+        "intent.focusPaused": "Fokus pausiert. Bis gleich.",
+        "intent.focusResumed": "Weiter im Fokus.",
+        "intent.focusStarted": "Fokus gestartet: „{title}“.",
+        "intent.captured": "Erfasst: „{title}“.",
+        "intent.capturedIn": "Erfasst in {project}: „{title}“.",
+        "intent.captureFailed": "Das Erfassen hat nicht geklappt.",
+        "intent.whatsNext.empty": "Für heute ist nichts offen.",
+        "intent.whatsNext.next": "Als Nächstes: {list}.",
+        "intent.whatsNext.more.one": "Dazu noch {count} weitere.",
+        "intent.whatsNext.more.other": "Dazu noch {count} weitere.",
+        "intent.projectNotFound": "Dieses Projekt habe ich nicht gefunden.",
+        "intent.entity.personal": "Persönlich",
+        "intent.entity.today": "Heute",
     ]
     static let en: [String: String] = [
         "push.action.done": "Done", "push.action.today": "Today", "push.action.tomorrow": "Tomorrow",
         "push.action.reply": "Reply", "push.action.send": "Send", "push.action.replyPlaceholder": "Reply…",
         "push.action.snoozeHour": "In 1 hour", "push.action.resume": "Resume",
+        "intent.notSignedIn": "Please open ProjectFlow and sign in.",
+        "intent.notReady": "ProjectFlow is still loading. Try again in a moment.",
+        "intent.noFocus": "You have no focus right now.",
+        "intent.taskNotFound": "I couldn't find that task.",
+        "intent.taskDone": "“{title}” is done.",
+        "intent.focusDone": "Focus done: “{title}”.",
+        "intent.focusPaused": "Focus paused. See you in a bit.",
+        "intent.focusResumed": "Back in focus.",
+        "intent.focusStarted": "Focus started: “{title}”.",
+        "intent.captured": "Captured: “{title}”.",
+        "intent.capturedIn": "Captured in {project}: “{title}”.",
+        "intent.captureFailed": "Capturing didn't work.",
+        "intent.whatsNext.empty": "Nothing open for today.",
+        "intent.whatsNext.next": "Up next: {list}.",
+        "intent.whatsNext.more.one": "Plus {count} more.",
+        "intent.whatsNext.more.other": "Plus {count} more.",
+        "intent.projectNotFound": "I couldn't find that project.",
+        "intent.entity.personal": "Personal",
+        "intent.entity.today": "Today",
     ]
 }

@@ -26,6 +26,17 @@ final class LiveActivityBridge {
         }
     }
 
+    /// Ends every focus activity (sign-out: nothing of the account may stay on the lock screen).
+    func endAll() {
+        tokenTasks.values.forEach { $0.cancel() }
+        tokenTasks.removeAll()
+        Task {
+            for activity in Activity<FocusActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
+    }
+
     func sync(focus: FocusState?, model: AppModel) {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let state = focus.map { contentState(for: $0, model: model) }

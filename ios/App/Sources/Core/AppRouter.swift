@@ -33,6 +33,8 @@ final class AppRouter {
     let searchStack = PFNavigationModel<AppRoute>()
     /// A deep link that arrived before sign-in; replayed once the session is ready.
     var pendingURL: URL?
+    /// Opens the capture composer (`projectflow://capture`, Control Center, Action Button). Set by `AppIntentBridge`.
+    @ObservationIgnored var onCapture: ((CaptureContext) -> Void)?
 
     enum TodayMode: Equatable { case normal, dayClose }
 
@@ -86,6 +88,14 @@ final class AppRouter {
             select(.inbox)
         case "focus":
             isFocusRoomOpen = true
+        case "capture":
+            let items = components?.queryItems
+            onCapture?(CaptureContext(projectId: items?.first(where: { $0.name == "project" })?.value,
+                                      initialText: items?.first(where: { $0.name == "text" })?.value))
+        case "catalog":
+            #if DEBUG
+            open(.designCatalog, in: .today)
+            #endif
         case "personal-tasks" where parts.count >= 2:
             open(.personalTask(tenantId: tenant, id: parts[1]), in: .work)
         default:
