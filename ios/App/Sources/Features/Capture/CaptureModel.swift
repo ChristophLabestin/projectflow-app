@@ -120,6 +120,8 @@ final class CaptureModel {
         guard value != text else { return }
         text = value
         reparse()
+        // Typing a `#`/`@` fragment brings the suggestions back instead of an open panel.
+        if panel != nil, !suggestions.isEmpty { withAnimation(PFMotion.respecting(PFMotion.snappy)) { panel = nil } }
     }
 
     func dismissToken(at range: NSRange) {

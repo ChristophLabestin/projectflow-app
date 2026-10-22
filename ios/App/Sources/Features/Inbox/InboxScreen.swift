@@ -85,11 +85,16 @@ struct InboxScreen: View {
         } else {
             ForEach(InboxLogic.grouped(visible), id: \.group) { section in
                 PFSectionHeader(section.group.title) { PFCountPill(section.items.count) }
-                PFCardList {
-                    ForEach(section.items) { item in
-                        row(item, proxy: proxy).id(item.id)
+                VStack(spacing: 0) {
+                    ForEach(Array(section.items.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { PFRowDivider() }
+                        // iOS 26 gives `.background`/`.clipped` rows a concentric (rounded) shape inside a clipped card;
+                        // rows are straight, the card does the rounding.
+                        row(item, proxy: proxy).containerShape(Rectangle()).id(item.id)
                     }
                 }
+                .clipShape(.rect(cornerRadius: PFRadius.card, style: .continuous))
+                .pfCard()
             }
         }
     }

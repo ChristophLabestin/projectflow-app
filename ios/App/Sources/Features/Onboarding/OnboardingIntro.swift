@@ -18,12 +18,32 @@ struct OnboardingHost: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .task(id: model.workspaceGeneration) { presentIntroIfNeeded() }
+            .task(id: model.workspaceGeneration) {
+                presentIntroIfNeeded()
+                runQAHooks()
+            }
             .onChange(of: model.router.pendingInvite, initial: true) { _, link in
                 guard let link else { return }
                 model.router.pendingInvite = nil
                 model.presenter.present(detents: [.fit]) { InviteAcceptSheet(link: link) }
             }
+    }
+
+    /// Debug/QA launch arguments used for screenshots: `-pfCapture [text]`, `-pfSearch`, `-pfAccount`.
+    private func runQAHooks() {
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        guard model.workspace != nil else { return }
+        if let index = arguments.firstIndex(of: "-pfCapture") {
+            let text = arguments.count > index + 1 && !arguments[index + 1].hasPrefix("-") ? arguments[index + 1] : nil
+            Task {
+                try? await Task.sleep(for: .milliseconds(600))
+                CaptureLauncher.present(model: model, context: CaptureContext(initialText: text))
+            }
+        }
+        if arguments.contains("-pfSearch") { model.router.openSearch() }
+        if arguments.contains("-pfAccount") { model.router.push(.account) }
+        #endif
     }
 
     private func presentIntroIfNeeded() {

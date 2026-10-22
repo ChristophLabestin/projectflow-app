@@ -44,10 +44,10 @@ struct CaptureComposerView: View {
             }
 
             Group {
-                if !capture.suggestions.isEmpty {
-                    suggestionRow
-                } else if let panel = capture.panel {
+                if let panel = capture.panel {
                     panelView(panel)
+                } else if !capture.suggestions.isEmpty {
+                    suggestionRow
                 }
             }
             .padding(.top, PFSpace.s)

@@ -140,21 +140,24 @@ public struct PFInboxMiniTask: View {
     }
 
     public var body: some View {
-        HStack(spacing: 8) {
-            PFPill(statusLabel, tone: .status(statusTone), compact: true)
+        VStack(alignment: .leading, spacing: 6) {
             Text(title)
                 .pfText(.metaStrong)
                 .foregroundStyle(isDone ? PFColor.textMuted : PFColor.textMain)
                 .strikethrough(isDone, color: PFColor.textMuted)
-                .lineLimit(1)
-            if let meta {
-                Text("·").pfText(.meta).foregroundStyle(PFColor.textMuted)
-                Text(meta).pfText(.meta).foregroundStyle(PFColor.severityText(metaSeverity)).lineLimit(1).layoutPriority(1)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            HStack(spacing: 8) {
+                PFPill(statusLabel, tone: .status(statusTone), compact: true).fixedSize()
+                if let meta {
+                    Text(meta).pfText(.meta).foregroundStyle(PFColor.severityText(metaSeverity)).lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
-        .frame(minHeight: 34)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
         .accessibilityElement(children: .combine)
     }

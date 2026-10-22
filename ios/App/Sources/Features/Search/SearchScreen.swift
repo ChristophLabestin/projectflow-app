@@ -300,8 +300,8 @@ struct SearchScreen: View {
             if !tasks.isEmpty {
                 PFSectionHeader(L10n.t("search.scope.tasks")) { PFCountPill(tasks.count) }
                 PFCardList {
-                    ForEach(tasks.prefix(Self.taskLimit)) { item in
-                        WorkItemRow(item: item, onOpen: { open(task: item) })
+                    ForEach(Array(tasks.prefix(Self.taskLimit))) { item in
+                        WorkItemRow(item: item, onOpen: { open(task: item) }).containerShape(Rectangle())
                     }
                 }
                 if tasks.count > Self.taskLimit {

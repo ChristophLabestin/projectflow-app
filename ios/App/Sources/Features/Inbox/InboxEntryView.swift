@@ -55,7 +55,7 @@ struct InboxEntryView: View {
                 title: task.title,
                 statusLabel: task.status.label,
                 statusTone: task.status.tone,
-                meta: Formatting.dueText(task.dueDate),
+                meta: task.isCompleted ? nil : Formatting.dueText(task.dueDate),
                 metaSeverity: Formatting.severity(due: task.dueDate, isDone: task.isCompleted),
                 isDone: task.isCompleted
             )
