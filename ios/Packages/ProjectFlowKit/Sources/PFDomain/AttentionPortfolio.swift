@@ -40,19 +40,30 @@ public struct PortfolioInput: Sendable, Decodable {
     }
 }
 
+/// The moment and zone that define "today" (the clock is always passed in, never read).
+public struct AttentionClock: Sendable, Hashable {
+    public var now: AttentionDate
+    public var timeZone: String?
+
+    public init(now: AttentionDate, timeZone: String? = nil) {
+        self.now = now
+        self.timeZone = timeZone
+    }
+}
+
 public extension Attention {
     private static let planningStatuses: Set<String> = ["Planning", "Brainstorming", "Backlog"]
     private static let closedStatuses: Set<String> = ["Completed", "Canceled"]
 
     /// Group of a project in the portfolio list.
     static func portfolioGroup(status: String?, dueDate: AttentionDate?, signals: PortfolioSignals?, healthStatus: String?,
-                               now: AttentionDate, timeZone: String?) -> PortfolioGroup {
+                               clock: AttentionClock) -> PortfolioGroup {
         let status = status ?? ""
         if closedStatuses.contains(status) { return .closed }
         if status == "On Hold" { return .paused }
         if planningStatuses.contains(status) { return .planning }
-        let zone = AttentionZone.zone(timeZone)
-        let today = AttentionZone.dayOfInstant(AttentionZone.toInstantOrZero(now, zone), zone)
+        let zone = AttentionZone.zone(clock.timeZone)
+        let today = AttentionZone.dayOfInstant(AttentionZone.toInstantOrZero(clock.now, zone), zone)
         let dueDay = AttentionZone.toDay(dueDate, zone)
         let dueOverdue = dueDay.flatMap { AttentionZone.daysBetween(today, $0) }.map { $0 < 0 } ?? false
         let needsAttention = (signals.map { $0.overdue > 0 || $0.blocked > 0 } ?? false)
@@ -81,7 +92,7 @@ public extension Attention {
             return PortfolioClassification(
                 projectId: project.id,
                 group: portfolioGroup(status: project.status, dueDate: project.dueDate, signals: signals, healthStatus: project.health?.status,
-                                      now: input.now, timeZone: input.timeZone))
+                                      clock: AttentionClock(now: input.now, timeZone: input.timeZone)))
         }
     }
 }

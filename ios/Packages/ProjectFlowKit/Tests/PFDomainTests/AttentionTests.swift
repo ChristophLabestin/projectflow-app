@@ -102,7 +102,7 @@ struct AttentionTests {
     @Test func portfolioGroupByStatusAndSignals() {
         func group(_ status: String, signals: PortfolioSignals? = nil, health: String? = nil, due: String? = nil) -> PortfolioGroup {
             Attention.portfolioGroup(status: status, dueDate: due.map(AttentionDate.text), signals: signals, healthStatus: health,
-                                     now: .text("2026-10-22T10:00:00Z"), timeZone: "Europe/Berlin")
+                                     clock: AttentionClock(now: .text("2026-10-22T10:00:00Z"), timeZone: "Europe/Berlin"))
         }
         #expect(group("Completed") == .closed)
         #expect(group("On Hold") == .paused)

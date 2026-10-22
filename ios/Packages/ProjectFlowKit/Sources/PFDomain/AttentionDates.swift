@@ -115,13 +115,18 @@ enum AttentionZone {
         Double(zone.secondsFromGMT(for: Date(timeIntervalSince1970: (instant / 1000).rounded(.down)))) * 1000
     }
 
-    static func utcMillis(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int, _ s: Int) -> Double {
-        Double(daysFromCivil(y, mo, d)) * dayMs + Double(h) * 3_600_000 + Double(mi) * 60_000 + Double(s) * 1000
+    struct WallClock {
+        var year: Int, month: Int, day: Int
+        var hour = 0, minute = 0, second = 0
+    }
+
+    static func utcMillis(_ c: WallClock) -> Double {
+        Double(daysFromCivil(c.year, c.month, c.day)) * dayMs + Double(c.hour) * 3_600_000 + Double(c.minute) * 60_000 + Double(c.second) * 1000
     }
 
     /// The instant at which the wall clock in `zone` reads the given fields.
-    static func wallTimeToInstant(_ y: Int, _ mo: Int, _ d: Int, _ h: Int, _ mi: Int, _ s: Int, _ zone: TimeZone) -> Double {
-        let guess = utcMillis(y, mo, d, h, mi, s)
+    static func wallTimeToInstant(_ clock: WallClock, _ zone: TimeZone) -> Double {
+        let guess = utcMillis(clock)
         let firstOffset = offsetAt(guess, zone)
         let first = guess - firstOffset
         let secondOffset = offsetAt(first, zone)
@@ -136,12 +141,12 @@ enum AttentionZone {
     }
 
     static func startOfDay(_ day: String, _ zone: TimeZone) -> Double? {
-        parseDay(day).map { wallTimeToInstant($0.year, $0.month, $0.day, 0, 0, 0, zone) }
+        parseDay(day).map { wallTimeToInstant(WallClock(year: $0.year, month: $0.month, day: $0.day), zone) }
     }
 
     // MARK: Values
 
-    private static let dateTime = try! NSRegularExpression(
+    private static let dateTime = try? NSRegularExpression(
         pattern: #"^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:[.,]\d+)?)?\s*(Z|[+-]\d{2}(?::?\d{2})?)?$"#,
         options: [.caseInsensitive])
 
@@ -167,15 +172,15 @@ enum AttentionZone {
             if text.isEmpty { return nil }
             if parseDay(text) != nil { return startOfDay(text, zone) }
             let range = NSRange(text.startIndex..., in: text)
-            guard let match = dateTime.firstMatch(in: text, range: range) else { return nil }
+            guard let match = dateTime?.firstMatch(in: text, range: range) else { return nil }
             func group(_ index: Int) -> String? {
                 Range(match.range(at: index), in: text).map { String(text[$0]) }
             }
             guard let y = group(1).flatMap(Int.init), let mo = group(2).flatMap(Int.init), let d = group(3).flatMap(Int.init),
                   let h = group(4).flatMap(Int.init), let mi = group(5).flatMap(Int.init) else { return nil }
-            let s = group(6).flatMap(Int.init) ?? 0
-            if let offset = group(7) { return utcMillis(y, mo, d, h, mi, s) - parseOffset(offset) }
-            return wallTimeToInstant(y, mo, d, h, mi, s, zone)
+            let clock = WallClock(year: y, month: mo, day: d, hour: h, minute: mi, second: group(6).flatMap(Int.init) ?? 0)
+            if let offset = group(7) { return utcMillis(clock) - parseOffset(offset) }
+            return wallTimeToInstant(clock, zone)
         }
     }
 
