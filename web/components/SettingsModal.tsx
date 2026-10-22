@@ -33,6 +33,7 @@ import { format } from 'date-fns';
 import { linkWithGithub, resetUserOnboarding } from '../services/dataService';
 import { registerPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from './ui/Checkbox';
+import { NotificationSettingsPanel } from './settings/NotificationSettingsPanel';
 import { AppleLogo } from './ui/AppleLogo';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
@@ -59,7 +60,7 @@ import {
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
 import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithubToken, updateUserData } from '../services/domain/usersService';
 
-type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
+type SettingsTab = 'account' | 'preferences' | 'notifications' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
     | WorkspaceSettingsSection;
 
 const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'api', 'danger'];
@@ -1205,6 +1206,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         : [
             { id: 'account', label: t('settings.tabs.account'), icon: 'person' },
             { id: 'preferences', label: t('settings.tabs.preferences'), icon: 'tune' },
+            { id: 'notifications', label: t('settings.tabs.notifications'), icon: 'notifications' },
             { id: 'security', label: t('settings.tabs.security'), icon: 'security' },
             { id: 'prebeta', label: t('settings.tabs.prebeta'), icon: 'science' },
         ];
@@ -1217,6 +1219,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 return <WorkspaceSettingsPanel section={activeTab} onNavigate={onClose} />;
             case 'roles':
                 return <RoleManagement />;
+            case 'notifications':
+                return <NotificationSettingsPanel />;
             case 'prebeta':
                 return (
                     <div className="space-y-6 animate-fade-in">

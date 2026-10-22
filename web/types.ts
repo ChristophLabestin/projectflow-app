@@ -396,6 +396,26 @@ export interface ProjectExternalResource {
     lastReviewedAt?: string;
 }
 
+/** users/{uid}.notificationPrefs (contract C3). All fields optional; the server applies defaults. */
+export interface NotificationChannelPrefs {
+    assignments?: boolean;
+    mentions?: boolean;
+    comments?: boolean;
+    due?: boolean;
+    reminders?: boolean;
+}
+
+export interface NotificationPrefs {
+    /** IANA time zone, default 'Europe/Berlin'. */
+    timezone?: string;
+    push?: NotificationChannelPrefs;
+    email?: NotificationChannelPrefs;
+    /** time is 'HH:mm'; default off, '08:00'. */
+    morningBriefing?: { enabled?: boolean; time?: string };
+    /** time is 'HH:mm'; default off, '17:30'. */
+    dayClose?: { enabled?: boolean; time?: string };
+}
+
 export type FocusItemType = 'task' | 'issue' | 'initiative' | 'personal-task';
 export type UserFocusStatus = 'active' | 'snoozed' | 'blocked';
 export type UserFocusLastAction = 'started' | 'resumed' | 'snoozed' | 'blocked' | 'completed' | 'cleared';
@@ -452,6 +472,7 @@ export interface User {
     }>;
     focusItemId?: string | null;
     focusState?: UserFocusState | null;
+    notificationPrefs?: NotificationPrefs;
     createdAt?: any;
     updatedAt?: any;
 }
