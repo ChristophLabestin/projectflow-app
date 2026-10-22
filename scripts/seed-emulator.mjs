@@ -38,7 +38,12 @@ const day = (offset) => {
     d.setDate(d.getDate() + offset);
     return d.toISOString().slice(0, 10);
 };
+const inHours = (hours) => new Date(Date.now() + hours * 3600000).toISOString();
 const ts = (offsetDays = 0, hours = 0) => Timestamp.fromDate(new Date(Date.now() + offsetDays * 86400000 + hours * 3600000));
+
+// Server-side triggers (activity, notifications, progress) skip docs that carry a changed `systemWriteAt`,
+// so seeded data stays exactly as written here when the Functions emulator is running.
+const SYSTEM_STAMP = () => ({ systemWriteAt: Timestamp.now() });
 
 const upsertUser = async (u, password) => {
     try { await auth.deleteUser(u.uid); } catch { /* not present */ }
@@ -67,10 +72,16 @@ const PROJECTS = [
             { id: 'm-design', title: 'Design sign-off', dueDate: day(-10), status: 'Achieved', riskRating: 'Low' },
         ],
         tasks: [
-            { id: 't-hero', title: 'Finalize homepage hero copy', status: 'In Progress', priority: 'High', dueDate: day(0), assignee: OWNER.uid, initiativeId: 'i-signup', nextStep: 'Send two variants to Anna for review', subtasks: ['Draft variant A', 'Draft variant B', 'Collect feedback'], subtasksDone: 1 },
+            { id: 't-hero', title: 'Finalize homepage hero copy', status: 'In Progress', priority: 'High', dueDate: day(0), assignee: OWNER.uid, initiativeId: 'i-signup', nextStep: 'Send two variants to Anna for review', subtasks: ['Draft variant A', 'Draft variant B', 'Collect feedback'], subtasksDone: 1,
+              reminders: [
+                  { id: 'rem-hero-1', title: 'Send the two hero variants to Anna', remindAt: inHours(3), createdBy: OWNER.uid, recipientIds: [OWNER.uid], notifyAssignees: false, createdAt: day(-1), isCompleted: false },
+                  { id: 'rem-hero-2', title: 'Check feedback on the hero copy', remindAt: day(2), createdBy: 'demo-anna', recipientIds: ['demo-anna'], notifyAssignees: true, createdAt: day(-1), isCompleted: false },
+              ] },
             { id: 't-cms-schema', title: 'Define CMS content schema', status: 'Review', priority: 'Urgent', dueDate: day(-2), assignee: 'demo-anna', initiativeId: 'i-cms', sprint: true },
             { id: 't-cms-import', title: 'Import legacy blog posts', status: 'Blocked', priority: 'High', dueDate: day(3), assignee: 'demo-luis', initiativeId: 'i-cms', dependencies: ['t-cms-schema'], blockerNote: 'Waiting for final schema', sprint: true },
-            { id: 't-redirects', title: 'Set up 301 redirects for old URLs', status: 'Open', priority: 'Medium', dueDate: day(-4), assignee: OWNER.uid, sprint: true },
+            { id: 't-redirects', title: 'Set up 301 redirects for old URLs', status: 'Open', priority: 'Medium', dueDate: day(-4), assignee: OWNER.uid, sprint: true,
+              // Legacy reminder (no createdBy): goes to the task assignees.
+              reminders: [{ id: 'rem-legacy-1', title: 'Verify the redirect map', remindAt: day(1), isCompleted: false, createdAt: day(-3) }] },
             { id: 't-perf', title: 'Lighthouse performance pass', status: 'Open', priority: 'Medium', dueDate: day(5) },
             { id: 't-analytics', title: 'Wire up analytics events', status: 'Backlog', priority: 'Low' },
             { id: 't-a11y', title: 'Accessibility audit of templates', status: 'Open', priority: 'High', assignee: 'demo-anna' },
@@ -93,7 +104,8 @@ const PROJECTS = [
             { id: 't-widget', title: 'Focus widget: show next task', status: 'Open', priority: 'Medium', dueDate: day(6), assignee: 'demo-luis' },
             { id: 't-push', title: 'APNs production certificate', status: 'On Hold', priority: 'High', dueDate: day(4), assignee: OWNER.uid, blockerNote: 'Needs Apple developer account access' },
             { id: 't-icons', title: 'App icon variants', status: 'Done', priority: 'Low', done: true, assignee: 'demo-anna', dueDate: day(-3) },
-            { id: 't-onboard', title: 'Onboarding screens', status: 'Open', priority: 'Medium', dueDate: day(0), assignee: OWNER.uid },
+            { id: 't-onboard', title: 'Onboarding screens', status: 'Open', priority: 'Medium', dueDate: day(0), assignee: OWNER.uid,
+              reminders: [{ id: 'rem-onboard-1', title: 'Review onboarding copy', remindAt: inHours(6), createdBy: OWNER.uid, recipientIds: [OWNER.uid], notifyAssignees: false, createdAt: day(-1), isCompleted: false }] },
         ],
     },
     {
@@ -133,7 +145,17 @@ async function main() {
     for (const u of people) {
         batch.set(db.doc(`tenants/${TID}/members/${u.uid}`), { uid: u.uid, email: u.email, displayName: u.displayName, photoURL: '', joinedAt: ts(-80), role: u.uid === OWNER.uid ? 'Owner' : (u.uid === 'demo-anna' ? 'Admin' : 'Member'), roleIds: [] });
     }
-    batch.set(db.doc(`users/${OWNER.uid}`), { lastTenantId: TID }, { merge: true });
+    batch.set(db.doc(`users/${OWNER.uid}`), {
+        lastTenantId: TID,
+        // Contract C3: per-category push/email, nudges and the user's time zone (used by the iOS app and sendNudges).
+        notificationPrefs: {
+            timezone: 'Europe/Berlin',
+            push: { assignments: true, mentions: true, comments: true, due: true, reminders: true },
+            email: { assignments: true, mentions: true, comments: false, due: false, reminders: false },
+            morningBriefing: { enabled: true, time: '08:00' },
+            dayClose: { enabled: true, time: '17:30' },
+        },
+    }, { merge: true });
 
     // Cross-tenant: Anna's agency workspace where the demo user is a Guest on one project.
     const AGENCY = 'ws-berger-agency';
@@ -150,7 +172,7 @@ async function main() {
     batch.set(db.doc(`tenants/${AGENCY}/projects/p-client-shop/tasks/t-shop-copy`), {
         projectId: 'p-client-shop', tenantId: AGENCY, ownerId: 'demo-anna', createdBy: 'demo-anna', title: 'Review product page copy',
         description: '', isCompleted: false, status: 'Open', priority: 'High', dueDate: day(1), startDate: '', assigneeId: OWNER.uid,
-        assigneeIds: [OWNER.uid], assignedGroupIds: [], category: [], dependencies: [], createdAt: ts(-3), updatedAt: ts(-1)
+        assigneeIds: [OWNER.uid], assignedGroupIds: [], category: [], dependencies: [], createdAt: ts(-3), updatedAt: ts(-1), updatedBy: 'demo-anna', ...SYSTEM_STAMP()
     });
     batch.set(db.doc(`tenants/${AGENCY}/projects/p-internal`), {
         title: 'Agency Internal', description: 'Not visible to guests.', status: 'Active', priority: 'Low', progress: 10,
@@ -179,7 +201,11 @@ async function main() {
             members: people.map((u) => ({ userId: u.uid, role: u.uid === OWNER.uid ? 'Owner' : 'Editor', joinedAt: ts(-70), invitedBy: OWNER.uid })),
             roles: Object.fromEntries(people.map((u) => [u.uid, u.uid === OWNER.uid ? 'Owner' : 'Editor'])),
             projectType: 'standard', createdAt: ts(-70 + pi), updatedAt: ts(-pi),
-            reminders: pi === 0 ? [{ id: 'r-1', title: 'Check launch checklist with Anna', remindAt: day(1), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, isCompleted: false, createdAt: day(-2) }] : [],
+            reminders: pi === 0
+                ? [{ id: 'r-1', title: 'Check launch checklist with Anna', remindAt: day(1), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, isCompleted: false, createdAt: day(-2) }]
+                : pi === 1
+                    ? [{ id: 'r-2', title: 'Book the TestFlight review slot', remindAt: inHours(26), linkedType: 'project', linkedId: p.id, linkedTitle: p.title, createdBy: OWNER.uid, recipientIds: [OWNER.uid, 'demo-luis'], notifyAssignees: false, isCompleted: false, createdAt: day(-1) }]
+                    : [],
         });
         for (const i of p.initiatives || []) {
             await db.doc(`${base}/initiatives/${i.id}`).set({ projectId: p.id, tenantId: TID, ownerId: OWNER.uid, title: i.title, status: i.status, priority: i.priority, health: i.health, successMetric: '', outcome: '', color: '', assigneeIds: [OWNER.uid], startDate: p.startDate, dueDate: i.dueDate, createdAt: ts(-40), updatedAt: ts(-2) });
@@ -199,11 +225,13 @@ async function main() {
                 dueDate: t.dueDate || '', startDate: '', assigneeId: t.assignee || '', assigneeIds, assignedGroupIds: [], category: [],
                 initiativeId: t.initiativeId || null, sprintId: t.sprint ? p.sprint.id : null,
                 dependencies: t.dependencies || [], nextStep: t.nextStep || '', blockerNote: t.blockerNote || '',
-                createdAt: ts(-20 + ti), updatedAt: ts(-1, -ti),
+                createdAt: ts(-20 + ti), updatedAt: ts(-1, -ti), updatedBy: t.assignee || OWNER.uid,
+                ...(t.reminders ? { reminders: t.reminders } : {}),
+                ...SYSTEM_STAMP(),
                 ...(t.done ? { completedAt: ts(-3).toDate().toISOString(), completedBy: t.assignee || OWNER.uid } : {}),
             });
             for (const [si, title] of (t.subtasks || []).entries()) {
-                await db.doc(`${base}/tasks/${t.id}/subtasks/st-${t.id}-${si}`).set({ taskId: t.id, projectId: p.id, ownerId: OWNER.uid, title, isCompleted: si < (t.subtasksDone || 0), createdAt: ts(-5 + si) });
+                await db.doc(`${base}/tasks/${t.id}/subtasks/st-${t.id}-${si}`).set({ taskId: t.id, projectId: p.id, ownerId: OWNER.uid, title, isCompleted: si < (t.subtasksDone || 0), createdAt: ts(-5 + si), updatedBy: OWNER.uid, ...SYSTEM_STAMP() });
             }
         }
         const acts = p.tasks.slice(0, 4).map((t, ai) => ({ user: nameOf(t.assignee || OWNER.uid) || OWNER.displayName, action: ai % 2 ? 'updated status of' : 'created task', target: t.title, relatedId: t.id, type: 'task', createdAt: ts(0, -(ai + 1) * 5) }));
@@ -211,6 +239,45 @@ async function main() {
             await db.doc(`${base}/activities/a-${p.id}-${ai}`).set({ projectId: p.id, tenantId: TID, ownerId: OWNER.uid, userAvatar: '', details: '', ...a });
         }
     }
+    // Comments (one with an @mention of the demo user), seeded directly: the stamp keeps onCommentCreated from
+    // adding a second notification, the matching notification docs are written below.
+    const web = `tenants/${TID}/projects/p-website`;
+    await db.doc(`${web}/comments/c-hero-1`).set({
+        projectId: 'p-website', targetId: 't-hero', targetType: 'task', userId: 'demo-anna', userDisplayName: 'Anna Berger', userPhotoURL: '',
+        content: `@${OWNER.displayName} I drafted two variants of the hero copy - could you take a quick look before lunch?`,
+        mentionedUserIds: [OWNER.uid], updatedBy: 'demo-anna', createdAt: ts(-1, -3), ...SYSTEM_STAMP(),
+    });
+    await db.doc(`${web}/comments/c-hero-2`).set({
+        projectId: 'p-website', targetId: 't-hero', targetType: 'task', userId: OWNER.uid, userDisplayName: OWNER.displayName, userPhotoURL: '',
+        content: 'Looks good. Variant B reads clearer, let us go with that one.',
+        updatedBy: OWNER.uid, createdAt: ts(-1, -1), ...SYSTEM_STAMP(),
+    });
+    await db.doc(`${web}/comments/c-cms-1`).set({
+        projectId: 'p-website', targetId: 't-cms-schema', targetType: 'task', userId: OWNER.uid, userDisplayName: OWNER.displayName, userPhotoURL: '',
+        content: 'Can you share the draft of the schema today? The import is blocked on it.',
+        updatedBy: OWNER.uid, createdAt: ts(-2), ...SYSTEM_STAMP(),
+    });
+
+    // Notifications for the demo user (what onTaskWritten / onCommentCreated would have produced), read and unread.
+    const actor = (uid) => ({ actorId: uid, actorName: nameOf(uid), actorPhotoURL: '' });
+    const notifications = [
+        { id: 'n-mention', type: 'comment_mention', title: 'New Mention', message: 'You were mentioned in a comment on task "Finalize homepage hero copy"', projectId: 'p-website', taskId: 't-hero', commentId: 'c-hero-1', ...actor('demo-anna'), read: false, createdAt: ts(-1, -3) },
+        { id: 'n-assign', type: 'task_assigned', title: 'New Task Assignment', message: 'You\'ve been assigned to "Conflict resolution for offline edits"', projectId: 'p-app', taskId: 't-sync', ...actor('demo-luis'), read: false, createdAt: ts(-1, -6) },
+        { id: 'n-comment', type: 'comment_added', title: 'New Comment', message: 'New comment on task "Wire up analytics events"', projectId: 'p-website', taskId: 't-analytics', ...actor('demo-anna'), read: true, createdAt: ts(-2) },
+        { id: 'n-done', type: 'task_completed', title: 'Task Completed', message: 'Anna Berger completed "Social preview images"', projectId: 'p-website', taskId: 't-og', ...actor('demo-anna'), read: true, createdAt: ts(-3) },
+        { id: 'n-reminder', type: 'reminder', title: 'Send the two hero variants to Anna', message: 'Task: "Finalize homepage hero copy"', projectId: 'p-website', taskId: 't-hero', deepLink: '/project/p-website/tasks/t-hero', reminderId: 'rem-hero-1', read: false, createdAt: ts(0, -1) },
+    ];
+    for (const n of notifications) {
+        const { id, ...data } = n;
+        await db.doc(`tenants/${TID}/notifications/${id}`).set({ userId: OWNER.uid, tenantId: TID, ...data });
+    }
+
+    // Personal tasks (private to the demo user, shown in Today / Tasks on iOS).
+    const personal = `tenants/${TID}/users/${OWNER.uid}/personalTasks`;
+    await db.doc(`${personal}/pt-1`).set({ ownerId: OWNER.uid, tenantId: TID, title: 'Book dentist appointment', isCompleted: false, status: 'Open', priority: 'Low', dueDate: day(0), createdAt: ts(-3) });
+    await db.doc(`${personal}/pt-2`).set({ ownerId: OWNER.uid, tenantId: TID, title: 'Plan the weekend trip', isCompleted: false, status: 'Open', priority: 'Medium', scheduledDate: day(0), createdAt: ts(-2) });
+    await db.doc(`${personal}/pt-3`).set({ ownerId: OWNER.uid, tenantId: TID, title: 'Renew passport', isCompleted: false, status: 'Open', priority: 'High', dueDate: day(-2), createdAt: ts(-9) });
+
     console.log(`Seeded ${PROJECTS.length} projects. Login: ${OWNER.email} / ${OWNER.password}`);
 }
 
