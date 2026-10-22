@@ -41,6 +41,15 @@ export type Permission =
     | 'task.view'
     | 'task.assign'
     | 'task.comment'
+    // Legacy ideas / issues
+    | 'idea.create'
+    | 'idea.update'
+    | 'idea.delete'
+    | 'idea.view'
+    | 'issue.create'
+    | 'issue.update'
+    | 'issue.delete'
+    | 'issue.view'
     // Groups
     | 'group.create'
     | 'group.update'
@@ -69,6 +78,9 @@ export interface ProjectMember {
     role: ProjectRole | string; // Legacy ProjectRole or custom role ID
     joinedAt: any; // Firestore Timestamp
     invitedBy: string; // User ID of inviter
+    displayName?: string;
+    email?: string;
+    photoURL?: string;
 }
 
 export interface RoleCapabilities {
@@ -129,6 +141,8 @@ export type ProjectOverviewCardId =
     | 'contract'
     | 'snapshot'
     | 'executionTasks'
+    | 'executionFlows'
+    | 'executionIssues'
     | 'updates'
     | 'resources'
     | 'planning'
@@ -348,6 +362,7 @@ export interface Project {
     members?: ProjectMember[]; // Team members with roles (replaces string[])
     roles?: { [userId: string]: ProjectRole | string }; // Map for O(1) access in rules. Can be legacy ProjectRole or custom workspace role ID
     memberIds?: string[]; // IDs of all members for collectionGroup queries
+    defaultRoleId?: string; // Default custom role ID for new members
     createdAt?: any; // Firestore Timestamp
     updatedAt?: any; // Firestore Timestamp
     tenantId?: string;
@@ -417,6 +432,9 @@ export interface User {
         tokenLimit: number;
     };
     privacySettings?: PrivacySettings;
+    language?: string; // Preferred UI language code (e.g. 'en', 'de')
+    dateFormat?: string; // Preferred date format token
+    theme?: 'light' | 'dark' | 'system';
     pinnedItems?: Array<{
         id: string;
         type: FocusItemType;
@@ -508,6 +526,9 @@ export interface Task {
     category?: IdeaGroup | IdeaGroup[];
     status?: TaskStatus;
     scheduledDate?: string; // Smart Schedule Date
+    linkedIssueId?: string; // Legacy: issue this task was created from
+    convertedIdeaId?: string; // Legacy lineage
+    originIdeaId?: string; // Legacy lineage
     createdAt?: any;
     tenantId?: string; // For path resolution
     initiativeId?: string;
@@ -718,6 +739,7 @@ export interface Initiative {
     createdAt?: any;
     updatedAt?: any;
     completedAt?: any;
+    originIdeaId?: string; // Legacy lineage: flow/idea this initiative was created from
 }
 
 export interface Sprint {
@@ -765,6 +787,105 @@ export interface PersonalTask {
     completedAt?: any;
 }
 
+export type IdeaStage =
+    // Generic / Feature
+    | 'Brainstorm' | 'Refining' | 'Concept' | 'Review' | 'Approved'
+    // Marketing
+    | 'Ideation' | 'Content' | 'Scheduled' | 'Live'
+    // Moonshot
+    | 'Feasibility' | 'Prototype' | 'Greenlight'
+    // Optimization
+    | 'Analysis' | 'Proposal' | 'Benchmark' | 'Implementation'
+    // Product
+    | 'Strategy' | 'Discovery' | 'Definition' | 'Development' | 'Launch'
+    // Paid Ads
+    | 'Brief' | 'Research' | 'Creative' | 'Targeting' | 'Budget' | 'Build' | 'Optimization'
+    | (string & {});
+
+/** Legacy flow/idea record shape (still present in older Firestore data and legacy service paths). */
+export interface Idea {
+    id: string;
+    projectId?: string;
+    ownerId?: string;
+    title: string;
+    description: string;
+    type: IdeaGroup;
+    stage: IdeaStage;
+    parentIdeaId?: string;
+    votes: number;
+    likedBy?: string[];
+    dislikedBy?: string[];
+    comments: number;
+    impact?: 'Low' | 'Medium' | 'High';
+    effort?: 'Low' | 'Medium' | 'High';
+    generated?: boolean;
+    tenantId?: string;
+    convertedTaskId?: string;
+    convertedInitiativeId?: string;
+    convertedAt?: any;
+    createdAt?: any;
+    posX?: number;
+    posY?: number;
+    concept?: string;
+    aiSessionId?: string;
+    approvedBy?: string;
+    approvedAt?: any;
+    analysis?: {
+        strengths: string[];
+        weaknesses: string[];
+        opportunities: string[];
+        threats: string[];
+    };
+    riskWinAnalysis?: RiskWinAnalysis;
+    keywords?: string[];
+    dismissedSuggestions?: string[];
+    tags?: string[];
+    requirements?: string; // JSON string for Discovery/Definition data
+    devPlan?: string; // JSON string for Development data
+    launchPlan?: string; // JSON string for Launch data
+    convertedCampaignId?: string;
+    campaignType?: 'email' | 'ad' | 'marketing' | 'social';
+    socialType?: 'post' | 'campaign';
+    marketingType?: 'paidAd' | 'emailMarketing';
+    lastRejectionReason?: string;
+    originIdeaId?: string;
+    assignedUserIds?: string[];
+    aiTokensUsed?: number;
+    vision?: string;
+    targetAudience?: string;
+    adData?: Record<string, any>;
+}
+
+/** Legacy issue record shape (still present in older Firestore data and legacy service paths). */
+export interface Issue {
+    id: string;
+    projectId: string;
+    tenantId: string;
+    ownerId: string;
+    title: string;
+    description: string;
+    status: 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+    priority: 'Low' | 'Medium' | 'High' | 'Urgent';
+    reporter: string;
+    reporterId?: string;
+    assignee?: string;
+    assigneeId?: string;
+    assigneeIds?: string[];
+    assignedGroupIds?: string[];
+    scheduledDate?: string;
+    startDate?: string;
+    dueDate?: string;
+    createdAt: any;
+    linkedTaskId?: string;
+    githubIssueUrl?: string;
+    githubIssueNumber?: number;
+    createdBy?: string;
+    completedBy?: string;
+    completedAt?: any;
+    originIdeaId?: string;
+    path?: string;
+}
+
 export interface RiskWinAnalysis {
     successProbability: number; // 0-100
     marketFitScore: number; // 0-10
@@ -784,8 +905,9 @@ export interface Activity {
     target: string;
     details?: string;
     relatedId?: string;
-    type: 'comment' | 'task' | 'initiative' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'codex';
+    type: 'comment' | 'task' | 'initiative' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'codex' | 'issue';
     createdAt?: any;
+    originIdeaId?: string; // Legacy lineage field
 }
 
 export type CodexSessionStatus = 'running' | 'completed' | 'blocked' | 'partial';
@@ -931,6 +1053,7 @@ export type StudioChatSession = {
 
 // AI Search Types
 export interface SearchResult {
+    originIdeaId?: string; // Legacy lineage
     type: 'project' | 'initiative' | 'task' | 'issue' | 'idea' | 'answer' | 'help_page' | 'help_section';
     id?: string;
     title: string;
@@ -1021,6 +1144,7 @@ export interface ApprovalEvent {
 
 export interface SocialCampaign {
     id: string;
+    originIdeaId?: string; // Legacy lineage: flow/idea this campaign was created from
     projectId: string;
     name: string;
     goal?: string;
@@ -1171,7 +1295,6 @@ export interface SocialPost {
 
     // Publishing Metadata
     externalId?: string; // ID from the platform (e.g. IG Media ID)
-    error?: string; // Last error message if failed
     platforms?: SocialPlatform[]; // For concepts/flows that target multiple platforms
 }
 
@@ -1239,7 +1362,7 @@ export interface AdTargetAudience {
     placements?: string[];
 }
 
-export interface AdCreative {
+export interface AdCreativeDraft {
     headline1?: string;
     headline2?: string;
     primaryText?: string;
@@ -1268,6 +1391,8 @@ export interface AdMetrics {
 
 export interface AdCampaign {
     id: string;
+    originIdeaId?: string; // Legacy lineage: flow/idea this campaign was created from
+    deletedAt?: any;
     projectId: string;
     name: string;
     description?: string;
@@ -1353,6 +1478,7 @@ export interface AdPerformanceSnapshot {
 // Email Marketing
 export interface EmailCampaign {
     id: string;
+    originIdeaId?: string; // Legacy lineage: flow/idea this campaign was created from
     projectId: string;
     marketingCampaignId?: string;
     name: string;
@@ -1405,7 +1531,7 @@ export interface AdData {
     brandGuardrails?: string;
 
     // Creative
-    creative?: AdCreative;
+    creative?: AdCreativeDraft;
 
     // Targeting
     targeting?: AdTargetAudience;
@@ -2066,7 +2192,6 @@ export interface FinanceBill {
     journalEntryId?: string;
     sourceDocumentId?: string;
     sourceDocumentVersionId?: string;
-    sourceDocumentFileId?: string;
     createdBy: string;
     createdAt?: any;
     updatedAt?: any;
