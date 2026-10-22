@@ -11,8 +11,8 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 - 2026-10-22 — Social removed, Marketing reduced to the blog, Flows/Ideas/Issues remnants and dead code removed (see decision-log 2026-10-22).
   - Web: Social module/routes/nav/help/permissions gone; Marketing keeps `marketing/blog*` and `marketing/settings` (blog API wizard); Swift `ProjectModule.social` removed.
   - Functions removed: getFacebookAuthUrl, facebookCallback, getTikTokAuthUrl, tiktokCallback, getYouTubeAuthUrl, youtubeCallback, checkScheduledPosts. Public blog/newsletter/waitlist/contact/`api` kept.
-  - Rules: `isRetiredProjectCollection()` closes retired social/marketing project subcollections; composite indexes for marketing_campaigns/marketing_recipients/social_posts removed.
-  - PENDING DEPLOY (not yet done): `firebase deploy --only functions --force` (deletes the 7 functions), `firebase deploy --only firestore:rules,firestore:indexes`, then hosting.
+  - Rules: `isRetiredProjectCollection()` closes retired social/marketing project subcollections; composite indexes for marketing_campaigns/marketing_recipients/social_posts/ad_campaigns removed.
+  - Deployed to production 2026-10-22 (main `899e2103` + index fix): all functions; the 7 social functions deleted (a `deploy --force` did not delete them, `firebase functions:delete` did); rules; indexes (4 social/marketing indexes deleted incl. `ad_campaigns`); hosting.
 
 - 2026-09-26 — Firebase project `projectflow-labestin` + multi-workspace tenancy + PM focus UI (see `plans/pm-focus-ui-redesign.md`, decision-log 2026-09-26). Implemented, verified in the local emulators and deployed to production on 2026-09-26 (commit `282abaa3`: all 111 functions, rules, indexes, storage, hosting).
 
