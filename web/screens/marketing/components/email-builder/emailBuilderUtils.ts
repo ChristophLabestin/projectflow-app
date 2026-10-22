@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { EmailBlock, EmailBlockType } from '../../../types';
+import { EmailBlock, EmailBlockType } from '../../../../types';
 import { arrayMove } from '@dnd-kit/sortable';
 
 // Find the container array (could be root or a column inner array) that contains the block id
@@ -168,6 +168,7 @@ export function createBlock(type: EmailBlockType): EmailBlock {
     if (type === 'header') return { ...base, content: { text: 'Header' }, styles: { ...base.styles, fontSize: 48, fontWeight: 'bold' } };
     if (type === 'solid') return {
         ...base,
+        content: {},
         styles: {
             ...base.styles,
             backgroundColor: '#e4e4e7', // zinc-200

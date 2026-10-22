@@ -119,7 +119,7 @@ export const CampaignDetailView = () => {
                 scheduledDate.setDate(scheduledDate.getDate() + draft.scheduledDayOffset + 1); // Start tomorrow
 
                 // 1. Sanitize Platforms to array
-                const draftPlatforms = draft.platforms || [draft.platform];
+                const draftPlatforms = draft.platforms || [];
                 const validPlatformsList = validPlatforms.map(p => p.toLowerCase());
 
                 // Filter valid platforms
@@ -782,7 +782,7 @@ export const CampaignDetailView = () => {
                                         {t('social.campaignDetail.plan.day').replace('{day}', String(draft.scheduledDayOffset + 1))}
                                     </span>
                                     <div className="flex gap-1">
-                                        {(draft.platforms || [draft.platform]).map(p => (
+                                        {(draft.platforms || []).map(p => (
                                             <span key={p} className="text-xs font-bold text-muted">{p}</span>
                                         ))}
                                     </div>

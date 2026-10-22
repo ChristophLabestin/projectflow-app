@@ -194,12 +194,13 @@ export const ProjectInitiativeDetail = () => {
         };
     }, [projectId, initiativeId]);
 
+    const originIdeaId = (initiative as (Initiative & { originIdeaId?: string }) | null)?.originIdeaId;
     const linkedMilestones = useMemo(
         () => milestones.filter((milestone) => (
             milestone.linkedInitiativeId === initiativeId
-            || (initiative?.originIdeaId && milestone.linkedInitiativeId === initiative.originIdeaId)
+            || (originIdeaId && milestone.linkedInitiativeId === originIdeaId)
         )),
-        [initiative?.originIdeaId, initiativeId, milestones]
+        [originIdeaId, initiativeId, milestones]
     );
 
     const initiativeHealth = useMemo(

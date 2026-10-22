@@ -2,7 +2,7 @@ import React, { useState, createContext, useContext } from 'react';
 import { useSortable, SortableContext, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { EmailBlock } from '../../../types';
+import { EmailBlock } from '../../../../types';
 import { BlockRenderer } from './BlockRenderer';
 
 // Context to track which block is currently being hovered

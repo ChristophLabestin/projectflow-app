@@ -1,5 +1,5 @@
 import React from 'react';
-import { EmailBlock } from '../../../types';
+import { EmailBlock } from '../../../../types';
 import { sanitizeHtml } from '../../../../utils/sanitizeHtml';
 
 export const BlockRenderer = ({ block, variables, preview = false }: { block: EmailBlock, variables?: any[], preview?: boolean }) => {
@@ -411,7 +411,7 @@ export const BlockRenderer = ({ block, variables, preview = false }: { block: Em
                                 alignItems: styles.alignItems || 'stretch',
                                 gap: `${styles.gap ?? 0}px`
                             }}>
-                                {col.children?.map((child) => (
+                                {col.map((child) => (
                                     <BlockRenderer key={child.id} block={child} preview={true} />
                                 ))}
                             </div>

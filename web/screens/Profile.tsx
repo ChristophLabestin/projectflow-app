@@ -314,7 +314,7 @@ export const Profile = () => {
                                 <div className="animate-fade-in space-y-6">
                                     <div className="flex items-center justify-between">
                                         <h2 className="text-xl font-bold font-display">{t('profile.sections.projects')}</h2>
-                                        <Button size="sm" variant="outline">{t('profile.actions.filter')}</Button>
+                                        <Button size="sm" variant="secondary">{t('profile.actions.filter')}</Button>
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {projects.length > 0 ? projects.map(project => (
@@ -417,7 +417,7 @@ export const Profile = () => {
                                     <Card className="p-6">
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">{t('profile.about.skills')}</h3>
                                         <div className="flex flex-wrap gap-2">
-                                            {(skills || 'React, TypeScript, Firebase, Tailwind CSS, UI/UX Design').split(',').map((skill, i) => (
+                                            {(skills.length > 0 ? skills : 'React, TypeScript, Firebase, Tailwind CSS, UI/UX Design'.split(',').map(item => item.trim())).map((skill, i) => (
                                                 <span key={i} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-medium border border-surface">
                                                     {skill.trim()}
                                                 </span>

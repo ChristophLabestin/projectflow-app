@@ -76,6 +76,9 @@ const EMPTY_PROJECT_METRICS: ProjectMetrics = {
     taskCompleted: 0
 };
 
+// Emoji icon from older project documents; no longer part of the Project type.
+const legacyProjectIcon = (project: Project) => (project as Project & { icon?: string }).icon;
+
 const shouldLoadProjectInsights = (project: Project) => (
     !isContainerProject(project) && (project.status === 'Active' || project.status === 'In Testing')
 );
@@ -449,8 +452,8 @@ const RichProjectCard: React.FC<RichProjectCardProps> = ({
                     <div className="rich-card__icon">
                         {project.squareIcon ? (
                             <img src={project.squareIcon} alt="icon" />
-                        ) : project.icon ? (
-                            <span>{project.icon}</span>
+                        ) : legacyProjectIcon(project) ? (
+                            <span>{legacyProjectIcon(project)}</span>
                         ) : (
                             <span className="material-symbols-outlined">dataset</span>
                         )}
@@ -581,8 +584,8 @@ const CompactProjectRow: React.FC<{
             <div className="compact-icon">
                 {project.squareIcon ? (
                     <img src={project.squareIcon} alt="" />
-                ) : project.icon ? (
-                    <span>{project.icon}</span>
+                ) : legacyProjectIcon(project) ? (
+                    <span>{legacyProjectIcon(project)}</span>
                 ) : (
                     <span className="material-symbols-outlined">folder</span>
                 )}
@@ -631,7 +634,7 @@ const ProjectLifecycleSection: React.FC<{
     title: string;
     description: string;
     projects: Project[];
-    renderRow: (project: Project) => JSX.Element;
+    renderRow: (project: Project) => React.JSX.Element;
 }> = ({ id, title, description, projects, renderRow }) => {
     if (projects.length === 0) return null;
 
@@ -709,8 +712,8 @@ const CompanyProjectCard: React.FC<{
                     <div className="company-project-card__icon">
                         {companyProject.squareIcon ? (
                             <img src={companyProject.squareIcon} alt="" />
-                        ) : companyProject.icon ? (
-                            <span>{companyProject.icon}</span>
+                        ) : legacyProjectIcon(companyProject) ? (
+                            <span>{legacyProjectIcon(companyProject)}</span>
                         ) : (
                             <span className="material-symbols-outlined">domain</span>
                         )}
@@ -881,8 +884,6 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
         { id: 'contract', enabled: true, span: 12, placement: 'primary' },
         { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
         { id: 'executionTasks', enabled: true, span: 12, placement: 'primary' },
-        { id: 'executionFlows', enabled: true, span: 6, placement: 'primary' },
-        { id: 'executionIssues', enabled: true, span: 6, placement: 'primary' },
         { id: 'updates', enabled: true, span: 12, placement: 'primary' },
         { id: 'resources', enabled: true, span: 12, placement: 'primary' },
         { id: 'planning', enabled: true, span: 3, placement: 'secondary' },
@@ -1081,7 +1082,7 @@ export const ProjectsList: React.FC = () => {
     const normalizeResources = (value: unknown): ProjectImportItem['externalResources'] => {
         if (!Array.isArray(value)) return undefined;
         const resources = value
-            .map((entry) => {
+            .map((entry): { title: string; url: string; icon?: string } | null => {
                 if (!entry || typeof entry !== 'object') return null;
                 const data = entry as Record<string, unknown>;
                 const title = typeof data.title === 'string' ? data.title.trim() : '';

@@ -42,7 +42,7 @@ export const SocialDashboard = () => {
         scheduled: posts.filter(p => p.status === 'Scheduled').length,
         published: posts.filter(p => p.status === 'Published').length,
         drafts: posts.filter(p => p.status === 'Draft').length,
-        inReview: posts.filter(p => p.status === 'In Review' || p.status === 'PendingReview').length,
+        inReview: posts.filter(p => p.status === 'In Review').length,
         activeCampaigns: campaigns.filter(c => c.status === 'Active' || c.status === 'Planning').length,
         conceptCampaigns: conceptCampaigns.length,
     };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TemplateVariable } from '../../../types';
+import { TemplateVariable } from '../../../../types';
 import { useConfirm } from '../../../../context/UIContext';
 import { Input } from '../../../../components/ui/Input';
 import { Select } from '../../../../components/ui/Select';

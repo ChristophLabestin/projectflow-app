@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { TemplateVariable } from '../../../types';
+import { TemplateVariable } from '../../../../types';
 
 interface VariablePickerProps {
     variables: TemplateVariable[];

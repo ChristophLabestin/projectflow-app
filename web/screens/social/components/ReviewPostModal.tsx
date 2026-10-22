@@ -102,7 +102,7 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                             <>
                                 <Button variant="ghost" onClick={() => setRejectMode(false)}>{t('social.reviewPost.cancel')}</Button>
                                 <Button
-                                    variant="destructive"
+                                    variant="danger"
                                     onClick={() => onReject(post, rejectionReason)}
                                     disabled={!rejectionReason.trim()}
                                 >

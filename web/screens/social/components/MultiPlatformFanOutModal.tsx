@@ -183,7 +183,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                         caption: custom.caption,
                         hashtags: custom.hashtags.split(' ').filter(h => h.startsWith('#')),
                         mentions: [],
-                        links: post.content.links || []
+                        linkInBio: post.content.linkInBio
                     },
                     status: 'Draft',
                     isConcept: false,

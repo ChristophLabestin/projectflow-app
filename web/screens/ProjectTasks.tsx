@@ -574,7 +574,7 @@ export const ProjectTasks = () => {
         const isActiveEditor = (type: TaskPillEditorType) => taskPillEditor?.taskId === task.id && taskPillEditor.type === type;
         const isSavingInline = savingInlineTaskId === task.id;
         const canQuickEditDates = can('canManageTasks');
-        const isStrategic = Boolean(task.convertedIdeaId || task.legacyInitiativeRoot);
+        const isStrategic = Boolean((task as Task & { convertedIdeaId?: string }).convertedIdeaId || task.legacyInitiativeRoot);
         const isInitiativeTask = Boolean(task.initiativeId && !task.legacyInitiativeRoot);
         const hasStart = Boolean(task.startDate);
         const hasDue = Boolean(task.dueDate);

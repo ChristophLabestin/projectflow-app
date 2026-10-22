@@ -22,7 +22,7 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable, EmailTemplate } from '../../../types';
+import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable, EmailTemplate } from '../../../../types';
 import { saveEmailComponent, getEmailComponents, deleteEmailComponent } from '../../../../services/domain/emailComponentsService';
 import { useToast, useConfirm } from '../../../../context/UIContext';
 import { format } from 'date-fns';
@@ -314,11 +314,6 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         <BlockRenderer
                                             key={block.id}
                                             block={block}
-                                            isSelected={false}
-                                            onClick={(e) => { }}
-                                            onUpdate={(id, updates) => { }}
-                                            onDelete={(id) => { }}
-                                            viewMode={viewMode}
                                             variables={variables}
                                         />
                                     ))}
@@ -353,8 +348,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
-            activationConstraint: { distance: 5 },
-            disabled: readOnly
+            activationConstraint: { distance: 5 }
         }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,

@@ -1377,7 +1377,7 @@ export const FinanceTracking = () => {
         setAnalyzingInvoiceUpload(true);
         try {
             const contentBase64 = await fileToBase64(invoiceUploadFile);
-            const uploaded = await uploadFinanceDocument({
+            const uploaded = (await uploadFinanceDocument({
                 tenantId,
                 title: invoiceUploadFile.name,
                 documentType: isPdf ? 'pdf' : 'xml',
@@ -1385,7 +1385,7 @@ export const FinanceTracking = () => {
                 fileName: invoiceUploadFile.name,
                 mimeType: invoiceUploadFile.type || (isPdf ? 'application/pdf' : 'application/xml'),
                 contentBase64,
-            });
+            })) as { documentId?: string; versionId?: string };
             const extracted = await extractInvoiceFromDocument({
                 tenantId,
                 documentId: uploaded.documentId,
@@ -1441,7 +1441,7 @@ export const FinanceTracking = () => {
 
         setSavingInvoiceUpload(true);
         try {
-            const response = await confirmExtractedInvoiceDraft({
+            const response = (await confirmExtractedInvoiceDraft({
                 tenantId,
                 documentId: invoiceUploadReview.documentId || undefined,
                 documentVersionId: invoiceUploadReview.documentVersionId || undefined,
@@ -1467,7 +1467,7 @@ export const FinanceTracking = () => {
                 taxRatePercent: safeTaxRate,
                 notes: confirmationNotes || undefined,
                 autoPost: true,
-            });
+            })) as { vendorId?: string | number } | null;
 
             if (invoiceUploadReview.cadence === 'recurring') {
                 showSuccess(t('finance.v2.payables.upload.confirmSuccessRecurring'));
@@ -3935,7 +3935,7 @@ export const FinanceTracking = () => {
                                         <Select
                                             label={t('finance.project.filter')}
                                             value={filters.projectId}
-                                            onChange={(value) => setFilters((prev) => ({ ...prev, projectId: value }))}
+                                            onChange={(value) => setFilters((prev) => ({ ...prev, projectId: String(value) }))}
                                             options={projectFilterOptions}
                                         />
                                         <div className="finance-filters__categories">

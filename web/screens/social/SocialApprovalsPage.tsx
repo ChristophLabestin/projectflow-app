@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { subscribeSocialPosts, updateSocialPost } from '../../services/domain/socialService';
 import { SocialPost } from '../../types';
+import { auth } from '../../services/firebase';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { PlatformIcon } from './components/PlatformIcon';
@@ -25,9 +26,7 @@ export const SocialApprovalsPage = () => {
 
         const unsubscribe = subscribeSocialPosts(projectId, (data) => {
             const pendingPosts = data.filter(p =>
-                p.status === 'In Review' ||
-                p.status === 'PendingReview' ||
-                p.status === 'Pending Approval' // Handle potential legacy or varied status strings
+                p.status === 'In Review'
             ).sort((a, b) => {
                 // Sort by schedule date if available, else created date
                 const dateA = a.scheduledFor ? new Date(a.scheduledFor).getTime() : new Date(a.createdAt).getTime();
@@ -45,8 +44,12 @@ export const SocialApprovalsPage = () => {
         try {
             await updateSocialPost(projectId!, post.id, {
                 status: post.scheduledFor ? 'Scheduled' : 'Approved',
-                approvedBy: 'current-user', // Should be auth.currentUser.uid
-                approvedAt: new Date().toISOString()
+                approvals: [{
+                    required: true,
+                    status: 'Approved',
+                    approvedBy: auth.currentUser?.uid,
+                    approvedAt: new Date().toISOString()
+                }]
             });
             setIsReviewOpen(false);
             setSelectedPost(null);
@@ -58,7 +61,7 @@ export const SocialApprovalsPage = () => {
     const handleReject = async (post: SocialPost, reason: string) => {
         try {
             await updateSocialPost(projectId!, post.id, {
-                status: 'Changes Requested',
+                status: 'Draft', // No dedicated changes-requested status; back to draft with feedback
                 rejectionReason: reason
             });
             setIsReviewOpen(false);

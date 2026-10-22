@@ -8,13 +8,34 @@ import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getUnassignedTasks, getUsersTasks } from '../services/dataService';
 import { getUserTasks, updateTask } from '../services/domain/tasksService';
-import { Task, Issue } from '../types';
+import { Task } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
 import { auth } from '../services/firebase';
 import { hasTimeComponent, parseDateValue } from '../utils/taskDates';
 
+// Issues are retired from the product; the calendar keeps a minimal local shape for legacy scheduling.
+interface Issue {
+    id: string;
+    projectId: string;
+    tenantId?: string;
+    title: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    reporter?: string;
+    scheduledDate?: string | number | Date | null;
+    assigneeIds?: string[];
+    assigneeId?: string;
+}
+
 const getUserIssues = async (): Promise<Issue[]> => [];
-const updateIssue = async () => undefined;
+const updateIssue = async (
+    _id: string,
+    _updates: Record<string, unknown>,
+    _projectId: string,
+    _tenantId?: string,
+    _path?: string
+): Promise<void> => undefined;
 
 export const Calendar = () => {
     const { t, dateLocale, calendarTranslationsReady, loadCalendarTranslations } = useLanguage();

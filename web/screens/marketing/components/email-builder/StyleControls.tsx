@@ -1,5 +1,5 @@
 import React, { useState, useId } from 'react';
-import { EmailBlockStyle } from '../../../types';
+import { EmailBlockStyle } from '../../../../types';
 
 // --- Reusable Section ---
 export const SettingsGroup = ({ title, children, defaultOpen = true }: { title: string, children: React.ReactNode, defaultOpen?: boolean }) => {
@@ -160,6 +160,16 @@ export const ScrubbableInput = ({ id, label, icon, value, onChange, min = -1000,
     );
 };
 
+interface SliderInputProps {
+    id?: string;
+    label?: string;
+    value: number;
+    onChange: (v: number) => void;
+    min?: number;
+    max?: number;
+    step?: number;
+    unit?: string;
+}
 export const SliderInput = ({ id, label, value, onChange, min = 0, max = 100, step = 1, unit = 'px' }: SliderInputProps) => {
     const inputId = id || useId();
 
@@ -268,6 +278,11 @@ const BRAND_COLORS = [
     '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#000000', '#ffffff', 'transparent'
 ];
 
+interface ColorPickerProps {
+    label?: string;
+    value: string;
+    onChange: (v: string) => void;
+}
 export const ColorPicker = ({ label, value, onChange }: ColorPickerProps) => {
     const inputId = useId();
     const isTransparent = !value || value === 'transparent';
