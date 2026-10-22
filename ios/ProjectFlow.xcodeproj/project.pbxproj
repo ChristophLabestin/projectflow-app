@@ -1,0 +1,1026 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0052960083999BA394065F2E /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64D7132E70DAF556DD1C34FA /* WidgetKit.framework */; };
+		06F3EC6F46F041CF08CAABC6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D624A20279473CC1BFD1AEF9 /* ShareViewController.swift */; };
+		0B7011A77F1252E8A1D32074 /* ProjectFlowWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 036CE6C4557C9EFEBD2C7FD8 /* ProjectFlowWidgets.swift */; };
+		0EE879D540D2B75F14A4CB73 /* PFModel in Frameworks */ = {isa = PBXBuildFile; productRef = E1065FACB8E51F518519604B /* PFModel */; };
+		1CD798E4D7ED183EA08065A9 /* SharedConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D5563C7557A94E3F9547D3 /* SharedConstants.swift */; };
+		240F1BD55EB301BBBE2661B4 /* ProjectFlowShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		3A7518D76289BDE9278DAE92 /* PFDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 1C5605F09BE7BDA435182116 /* PFDesign */; };
+		4993A897E4D481BCEEECB915 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */; };
+		4ECBBBB8AE89471D404FEADF /* PFSnapshot in Frameworks */ = {isa = PBXBuildFile; productRef = AF65F6C4898A59FDEA10E996 /* PFSnapshot */; };
+		4F7249CB76C4FD1F09397862 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E962C4EB40FCEF33B2D4918 /* SwiftUI.framework */; };
+		6B499F1018DF4501D4FE7D92 /* PFModel in Frameworks */ = {isa = PBXBuildFile; productRef = 5D714314D86EC4611BD1A0A7 /* PFModel */; };
+		7E1631D2C6DB79B48D951707 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 8EE8FA01C10F73FEEA517238 /* GoogleService-Info.plist */; };
+		8034547D3F3636B09D07244E /* SharedConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D5563C7557A94E3F9547D3 /* SharedConstants.swift */; };
+		8CA1AD2E1B2DE9C44E18205F /* PFSnapshot in Frameworks */ = {isa = PBXBuildFile; productRef = FCC80AE2C2D0E4F31DD509D9 /* PFSnapshot */; };
+		8F612D6F82F3A594E9544236 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C235E6B619C86CA4DA87D382 /* NotificationService.swift */; };
+		92B27CB1D6855A7333AB2222 /* PFSnapshot in Frameworks */ = {isa = PBXBuildFile; productRef = B1E3E524B99DA009BB15CD2D /* PFSnapshot */; };
+		A26A9DB169938AEED8E98EC3 /* PFDesign in Frameworks */ = {isa = PBXBuildFile; productRef = 9F06AC3B6186753189A0058B /* PFDesign */; };
+		B8196847215B682555856570 /* PFData in Frameworks */ = {isa = PBXBuildFile; productRef = 12A624F706976698CADA8E0E /* PFData */; };
+		BD4BA189A9DA5A89BFC9AFE7 /* PFModel in Frameworks */ = {isa = PBXBuildFile; productRef = AC6FF759E469EF66ABE3C0FA /* PFModel */; };
+		C7357C170DCBF7D6632EF28C /* ProjectFlowNotificationService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 35B48FF264D306493C02F408 /* ProjectFlowNotificationService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D1B3AB482A4C739ACC21496D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 056FC2B89815A2FCCAB80BB1 /* Assets.xcassets */; };
+		E1207494DCE3EC373AFD993E /* PFDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 651EE6F626E3317EB82CE461 /* PFDomain */; };
+		F45ED2E488FAC281C0965256 /* ProjectFlowWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F53FEE6D1E995307D39B022A /* ProjectFlowApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFB5BEB5DC2BF20E0CF0E1C1 /* ProjectFlowApp.swift */; };
+		FA1CFF704066660FAAE6B5BA /* PFDesign in Frameworks */ = {isa = PBXBuildFile; productRef = CA00BD4D2634C5905C5F40E5 /* PFDesign */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		713045C6442E16BD2787E3C4 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6601940503354DEE4B735E7B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1B16D17CCE648FC04E895EDE;
+			remoteInfo = ProjectFlowShare;
+		};
+		D044A7468822055867D55D50 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6601940503354DEE4B735E7B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AB3D3B98DD9D458E5E0190C4;
+			remoteInfo = ProjectFlowWidgets;
+		};
+		D4D01D6D8EEA9D88230103F8 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 6601940503354DEE4B735E7B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4DD65F1432420CDCDD40BB58;
+			remoteInfo = ProjectFlowNotificationService;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		85C0AAD9FA1EEE4680D8A566 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F45ED2E488FAC281C0965256 /* ProjectFlowWidgets.appex in Embed Foundation Extensions */,
+				240F1BD55EB301BBBE2661B4 /* ProjectFlowShare.appex in Embed Foundation Extensions */,
+				C7357C170DCBF7D6632EF28C /* ProjectFlowNotificationService.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		036CE6C4557C9EFEBD2C7FD8 /* ProjectFlowWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFlowWidgets.swift; sourceTree = "<group>"; };
+		056FC2B89815A2FCCAB80BB1 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		27D5563C7557A94E3F9547D3 /* SharedConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConstants.swift; sourceTree = "<group>"; };
+		35B48FF264D306493C02F408 /* ProjectFlowNotificationService.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowNotificationService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		3E962C4EB40FCEF33B2D4918 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		5D56841466F74DCEA5EE2CE2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		61439DD5936214CB7C196125 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		64D7132E70DAF556DD1C34FA /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		6DE69F3BA9E022FA8B1726AA /* Widgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Widgets.entitlements; sourceTree = "<group>"; };
+		7C4E6EFB2DF4CAF68CE81B44 /* Share.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Share.entitlements; sourceTree = "<group>"; };
+		830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8EE8FA01C10F73FEEA517238 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		939AE0BDE889F1161652064A /* ProjectFlow.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = ProjectFlow.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BE94790BBB9E141C03FD0446 /* ProjectFlowKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ProjectFlowKit; path = Packages/ProjectFlowKit; sourceTree = SOURCE_ROOT; };
+		C235E6B619C86CA4DA87D382 /* NotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationService.swift; sourceTree = "<group>"; };
+		C4F32593F2AB75DB92FB76F1 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D624A20279473CC1BFD1AEF9 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		E5397319D34CD5A58EB1F1C1 /* NotificationService.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = NotificationService.entitlements; sourceTree = "<group>"; };
+		F801426F42AF8C5AB9B8912E /* ProjectFlow.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ProjectFlow.entitlements; sourceTree = "<group>"; };
+		F87D8765D82F284CCB4F651D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FFB5BEB5DC2BF20E0CF0E1C1 /* ProjectFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFlowApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4F0718DED450803A1A549C53 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				FA1CFF704066660FAAE6B5BA /* PFDesign in Frameworks */,
+				BD4BA189A9DA5A89BFC9AFE7 /* PFModel in Frameworks */,
+				E1207494DCE3EC373AFD993E /* PFDomain in Frameworks */,
+				B8196847215B682555856570 /* PFData in Frameworks */,
+				92B27CB1D6855A7333AB2222 /* PFSnapshot in Frameworks */,
+				4993A897E4D481BCEEECB915 /* FirebaseMessaging in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8933DDACE0A1C721BAD92A1F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A26A9DB169938AEED8E98EC3 /* PFDesign in Frameworks */,
+				6B499F1018DF4501D4FE7D92 /* PFModel in Frameworks */,
+				8CA1AD2E1B2DE9C44E18205F /* PFSnapshot in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F141065944FACF65D63C7B56 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3A7518D76289BDE9278DAE92 /* PFDesign in Frameworks */,
+				0EE879D540D2B75F14A4CB73 /* PFModel in Frameworks */,
+				4ECBBBB8AE89471D404FEADF /* PFSnapshot in Frameworks */,
+				0052960083999BA394065F2E /* WidgetKit.framework in Frameworks */,
+				4F7249CB76C4FD1F09397862 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		1519C7AF4930011A3E9826D3 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				FFB5BEB5DC2BF20E0CF0E1C1 /* ProjectFlowApp.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		2032CBE7E10CD59CBCC8A7A2 = {
+			isa = PBXGroup;
+			children = (
+				745DC5394048E823AD1E73BA /* App */,
+				4957E70ABD9345252750A345 /* NotificationService */,
+				E79B915851AA31E72BD339BA /* Packages */,
+				28CF1597A0134490D9E0C584 /* Share */,
+				A705E00EC2C2813081A27132 /* Shared */,
+				731D919DC8E174F3519EFC48 /* Widgets */,
+				91CA527865C0C2E488D703D7 /* Frameworks */,
+				D211EEBCB6489EF615750B86 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		28CF1597A0134490D9E0C584 /* Share */ = {
+			isa = PBXGroup;
+			children = (
+				C4F32593F2AB75DB92FB76F1 /* Info.plist */,
+				7C4E6EFB2DF4CAF68CE81B44 /* Share.entitlements */,
+				D624A20279473CC1BFD1AEF9 /* ShareViewController.swift */,
+			);
+			path = Share;
+			sourceTree = "<group>";
+		};
+		4957E70ABD9345252750A345 /* NotificationService */ = {
+			isa = PBXGroup;
+			children = (
+				5D56841466F74DCEA5EE2CE2 /* Info.plist */,
+				E5397319D34CD5A58EB1F1C1 /* NotificationService.entitlements */,
+				C235E6B619C86CA4DA87D382 /* NotificationService.swift */,
+			);
+			path = NotificationService;
+			sourceTree = "<group>";
+		};
+		731D919DC8E174F3519EFC48 /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				F87D8765D82F284CCB4F651D /* Info.plist */,
+				036CE6C4557C9EFEBD2C7FD8 /* ProjectFlowWidgets.swift */,
+				6DE69F3BA9E022FA8B1726AA /* Widgets.entitlements */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		745DC5394048E823AD1E73BA /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B75C3565F1F383AA05932B44 /* Resources */,
+				1519C7AF4930011A3E9826D3 /* Sources */,
+				61439DD5936214CB7C196125 /* Info.plist */,
+				F801426F42AF8C5AB9B8912E /* ProjectFlow.entitlements */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		91CA527865C0C2E488D703D7 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				3E962C4EB40FCEF33B2D4918 /* SwiftUI.framework */,
+				64D7132E70DAF556DD1C34FA /* WidgetKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A705E00EC2C2813081A27132 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				27D5563C7557A94E3F9547D3 /* SharedConstants.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		B75C3565F1F383AA05932B44 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F5C09E55C290BAEF6318D7E8 /* Firebase */,
+				056FC2B89815A2FCCAB80BB1 /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		D211EEBCB6489EF615750B86 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				939AE0BDE889F1161652064A /* ProjectFlow.app */,
+				35B48FF264D306493C02F408 /* ProjectFlowNotificationService.appex */,
+				830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */,
+				1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E79B915851AA31E72BD339BA /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				BE94790BBB9E141C03FD0446 /* ProjectFlowKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		F5C09E55C290BAEF6318D7E8 /* Firebase */ = {
+			isa = PBXGroup;
+			children = (
+				8EE8FA01C10F73FEEA517238 /* GoogleService-Info.plist */,
+			);
+			path = Firebase;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1B16D17CCE648FC04E895EDE /* ProjectFlowShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 06016767CD2A2ACA28DF9CC3 /* Build configuration list for PBXNativeTarget "ProjectFlowShare" */;
+			buildPhases = (
+				CF229FC6A94BC90DC1CDE52C /* Sources */,
+				8933DDACE0A1C721BAD92A1F /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ProjectFlowShare;
+			packageProductDependencies = (
+				9F06AC3B6186753189A0058B /* PFDesign */,
+				5D714314D86EC4611BD1A0A7 /* PFModel */,
+				FCC80AE2C2D0E4F31DD509D9 /* PFSnapshot */,
+			);
+			productName = ProjectFlowShare;
+			productReference = 830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		4DD65F1432420CDCDD40BB58 /* ProjectFlowNotificationService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D748B2D68EA171CC6F631756 /* Build configuration list for PBXNativeTarget "ProjectFlowNotificationService" */;
+			buildPhases = (
+				1147749AC3300AD7536AAE6F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ProjectFlowNotificationService;
+			packageProductDependencies = (
+			);
+			productName = ProjectFlowNotificationService;
+			productReference = 35B48FF264D306493C02F408 /* ProjectFlowNotificationService.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		AB3D3B98DD9D458E5E0190C4 /* ProjectFlowWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 562668EF50F94EA9F012C686 /* Build configuration list for PBXNativeTarget "ProjectFlowWidgets" */;
+			buildPhases = (
+				52271BD28D85F469A09E15FA /* Sources */,
+				F141065944FACF65D63C7B56 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ProjectFlowWidgets;
+			packageProductDependencies = (
+				1C5605F09BE7BDA435182116 /* PFDesign */,
+				E1065FACB8E51F518519604B /* PFModel */,
+				AF65F6C4898A59FDEA10E996 /* PFSnapshot */,
+			);
+			productName = ProjectFlowWidgets;
+			productReference = 1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		FF6C32C2BACA16AA8A92D07A /* ProjectFlow */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1BB25D1B85A53F8C1040C02A /* Build configuration list for PBXNativeTarget "ProjectFlow" */;
+			buildPhases = (
+				E26B44AD61053823178DEFB1 /* Sources */,
+				D836428E8F5EA45EA82273AC /* Resources */,
+				4F0718DED450803A1A549C53 /* Frameworks */,
+				85C0AAD9FA1EEE4680D8A566 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B61AE97A79199771650EB15C /* PBXTargetDependency */,
+				35AC7248769017E0EBC2425A /* PBXTargetDependency */,
+				9A726BF7A2B2333172B42ED6 /* PBXTargetDependency */,
+			);
+			name = ProjectFlow;
+			packageProductDependencies = (
+				CA00BD4D2634C5905C5F40E5 /* PFDesign */,
+				AC6FF759E469EF66ABE3C0FA /* PFModel */,
+				651EE6F626E3317EB82CE461 /* PFDomain */,
+				12A624F706976698CADA8E0E /* PFData */,
+				B1E3E524B99DA009BB15CD2D /* PFSnapshot */,
+				7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */,
+			);
+			productName = ProjectFlow;
+			productReference = 939AE0BDE889F1161652064A /* ProjectFlow.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		6601940503354DEE4B735E7B /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 2710;
+				TargetAttributes = {
+					1B16D17CCE648FC04E895EDE = {
+						DevelopmentTeam = 48BM67TY9G;
+						ProvisioningStyle = Automatic;
+					};
+					4DD65F1432420CDCDD40BB58 = {
+						DevelopmentTeam = 48BM67TY9G;
+						ProvisioningStyle = Automatic;
+					};
+					AB3D3B98DD9D458E5E0190C4 = {
+						DevelopmentTeam = 48BM67TY9G;
+						ProvisioningStyle = Automatic;
+					};
+					FF6C32C2BACA16AA8A92D07A = {
+						DevelopmentTeam = 48BM67TY9G;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = E317764D6DA36EA1AD6658E1 /* Build configuration list for PBXProject "ProjectFlow" */;
+			developmentRegion = de;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				de,
+			);
+			mainGroup = 2032CBE7E10CD59CBCC8A7A2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				EA16C933CED5F775572DD253 /* XCLocalSwiftPackageReference "Packages/ProjectFlowKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = D211EEBCB6489EF615750B86 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FF6C32C2BACA16AA8A92D07A /* ProjectFlow */,
+				AB3D3B98DD9D458E5E0190C4 /* ProjectFlowWidgets */,
+				1B16D17CCE648FC04E895EDE /* ProjectFlowShare */,
+				4DD65F1432420CDCDD40BB58 /* ProjectFlowNotificationService */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		D836428E8F5EA45EA82273AC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D1B3AB482A4C739ACC21496D /* Assets.xcassets in Resources */,
+				7E1631D2C6DB79B48D951707 /* GoogleService-Info.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1147749AC3300AD7536AAE6F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8F612D6F82F3A594E9544236 /* NotificationService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		52271BD28D85F469A09E15FA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0B7011A77F1252E8A1D32074 /* ProjectFlowWidgets.swift in Sources */,
+				1CD798E4D7ED183EA08065A9 /* SharedConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CF229FC6A94BC90DC1CDE52C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				06F3EC6F46F041CF08CAABC6 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E26B44AD61053823178DEFB1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F53FEE6D1E995307D39B022A /* ProjectFlowApp.swift in Sources */,
+				8034547D3F3636B09D07244E /* SharedConstants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		35AC7248769017E0EBC2425A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1B16D17CCE648FC04E895EDE /* ProjectFlowShare */;
+			targetProxy = 713045C6442E16BD2787E3C4 /* PBXContainerItemProxy */;
+		};
+		9A726BF7A2B2333172B42ED6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4DD65F1432420CDCDD40BB58 /* ProjectFlowNotificationService */;
+			targetProxy = D4D01D6D8EEA9D88230103F8 /* PBXContainerItemProxy */;
+		};
+		B61AE97A79199771650EB15C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AB3D3B98DD9D458E5E0190C4 /* ProjectFlowWidgets */;
+			targetProxy = D044A7468822055867D55D50 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		10C58558407962B6970CCD70 /* Emulator */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG EMULATOR";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Emulator;
+		};
+		1262A8125544F7704F45A2AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/ProjectFlow.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow;
+				PRODUCT_NAME = ProjectFlow;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		151A2A0384D197D7AEB99133 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.widgets;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		18A0F57E386B6AB4CAF2DD04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Share/Share.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Share/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.share;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3B2EE0280E79AD26C4E04B01 /* Emulator */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Share/Share.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Share/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.share;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Emulator;
+		};
+		5B81606BD3DE19B963CB403E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Share/Share.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Share/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.share;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		6CD5AC7593492EA2FDB829DD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		8A600E01BB7290036EB794B9 /* Emulator */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.widgets;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Emulator;
+		};
+		9920785435C8C289707F44F6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/ProjectFlow.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow;
+				PRODUCT_NAME = ProjectFlow;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A575C6DE52285F6B444F50C8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationService/NotificationService.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.notificationservice;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C315AD7BB4E3D078974FCBD6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 48BM67TY9G;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		CF7652B0288B93DA5C6EC26B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widgets/Widgets.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Widgets/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.widgets;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E415752018AD3515D9B39F22 /* Emulator */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/ProjectFlow.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow;
+				PRODUCT_NAME = ProjectFlow;
+				SDKROOT = iphoneos;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Emulator;
+		};
+		EB0AAA24DD32DD92AF06D677 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationService/NotificationService.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.notificationservice;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EB4C1C2F238A4993A3954532 /* Emulator */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = NotificationService/NotificationService.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = NotificationService/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = de.christophlabestin.projectflow.notificationservice;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Emulator;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		06016767CD2A2ACA28DF9CC3 /* Build configuration list for PBXNativeTarget "ProjectFlowShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B81606BD3DE19B963CB403E /* Debug */,
+				3B2EE0280E79AD26C4E04B01 /* Emulator */,
+				18A0F57E386B6AB4CAF2DD04 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Emulator;
+		};
+		1BB25D1B85A53F8C1040C02A /* Build configuration list for PBXNativeTarget "ProjectFlow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9920785435C8C289707F44F6 /* Debug */,
+				E415752018AD3515D9B39F22 /* Emulator */,
+				1262A8125544F7704F45A2AA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Emulator;
+		};
+		562668EF50F94EA9F012C686 /* Build configuration list for PBXNativeTarget "ProjectFlowWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CF7652B0288B93DA5C6EC26B /* Debug */,
+				8A600E01BB7290036EB794B9 /* Emulator */,
+				151A2A0384D197D7AEB99133 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Emulator;
+		};
+		D748B2D68EA171CC6F631756 /* Build configuration list for PBXNativeTarget "ProjectFlowNotificationService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A575C6DE52285F6B444F50C8 /* Debug */,
+				EB4C1C2F238A4993A3954532 /* Emulator */,
+				EB0AAA24DD32DD92AF06D677 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Emulator;
+		};
+		E317764D6DA36EA1AD6658E1 /* Build configuration list for PBXProject "ProjectFlow" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C315AD7BB4E3D078974FCBD6 /* Debug */,
+				10C58558407962B6970CCD70 /* Emulator */,
+				6CD5AC7593492EA2FDB829DD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Emulator;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		EA16C933CED5F775572DD253 /* XCLocalSwiftPackageReference "Packages/ProjectFlowKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/ProjectFlowKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		12A624F706976698CADA8E0E /* PFData */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFData;
+		};
+		1C5605F09BE7BDA435182116 /* PFDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFDesign;
+		};
+		5D714314D86EC4611BD1A0A7 /* PFModel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFModel;
+		};
+		651EE6F626E3317EB82CE461 /* PFDomain */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFDomain;
+		};
+		7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		9F06AC3B6186753189A0058B /* PFDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFDesign;
+		};
+		AC6FF759E469EF66ABE3C0FA /* PFModel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFModel;
+		};
+		AF65F6C4898A59FDEA10E996 /* PFSnapshot */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFSnapshot;
+		};
+		B1E3E524B99DA009BB15CD2D /* PFSnapshot */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFSnapshot;
+		};
+		CA00BD4D2634C5905C5F40E5 /* PFDesign */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFDesign;
+		};
+		E1065FACB8E51F518519604B /* PFModel */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFModel;
+		};
+		FCC80AE2C2D0E4F31DD509D9 /* PFSnapshot */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PFSnapshot;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 6601940503354DEE4B735E7B /* Project object */;
+}

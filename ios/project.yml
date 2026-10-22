@@ -1,0 +1,137 @@
+name: ProjectFlow
+options:
+  bundleIdPrefix: de.christophlabestin
+  deploymentTarget:
+    iOS: "26.2"
+  xcodeVersion: "27.1"
+  developmentLanguage: de
+  defaultConfig: Emulator
+  createIntermediateGroups: true
+  groupSortPosition: top
+configs:
+  Debug: debug
+  Emulator: debug
+  Release: release
+settings:
+  base:
+    DEVELOPMENT_TEAM: 48BM67TY9G
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "6.0"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    TARGETED_DEVICE_FAMILY: "1"
+    SUPPORTS_MACCATALYST: NO
+  configs:
+    Emulator:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG EMULATOR"
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG"
+packages:
+  ProjectFlowKit:
+    path: Packages/ProjectFlowKit
+  Firebase:
+    url: https://github.com/firebase/firebase-ios-sdk
+    from: 13.1.0
+targets:
+  ProjectFlow:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow
+        PRODUCT_NAME: ProjectFlow
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/ProjectFlow.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: ProjectFlowKit
+        product: PFDesign
+      - package: ProjectFlowKit
+        product: PFModel
+      - package: ProjectFlowKit
+        product: PFDomain
+      - package: ProjectFlowKit
+        product: PFData
+      - package: ProjectFlowKit
+        product: PFSnapshot
+      - package: Firebase
+        product: FirebaseMessaging
+      - target: ProjectFlowWidgets
+      - target: ProjectFlowShare
+      - target: ProjectFlowNotificationService
+  ProjectFlowWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widgets
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow.widgets
+        INFOPLIST_FILE: Widgets/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widgets/Widgets.entitlements
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: ProjectFlowKit
+        product: PFDesign
+      - package: ProjectFlowKit
+        product: PFModel
+      - package: ProjectFlowKit
+        product: PFSnapshot
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+  ProjectFlowShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow.share
+        INFOPLIST_FILE: Share/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Share/Share.entitlements
+        SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        GENERATE_INFOPLIST_FILE: NO
+    dependencies:
+      - package: ProjectFlowKit
+        product: PFDesign
+      - package: ProjectFlowKit
+        product: PFModel
+      - package: ProjectFlowKit
+        product: PFSnapshot
+  ProjectFlowNotificationService:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: NotificationService
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: de.christophlabestin.projectflow.notificationservice
+        INFOPLIST_FILE: NotificationService/Info.plist
+        CODE_SIGN_ENTITLEMENTS: NotificationService/NotificationService.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+schemes:
+  ProjectFlow:
+    build:
+      targets:
+        ProjectFlow: all
+    run:
+      config: Emulator
+    test:
+      config: Emulator
+    profile:
+      config: Release
+    analyze:
+      config: Debug
+    archive:
+      config: Release

@@ -1,0 +1,105 @@
+import Foundation
+import Observation
+import PFDesign
+import PFModel
+
+enum AppTab: String, CaseIterable, Hashable {
+    case today, work, projects, inbox
+}
+
+/// Every pushable screen. Feature screens are resolved in `RouteDestination`.
+enum AppRoute: Hashable {
+    case task(TaskRef)
+    case personalTask(tenantId: String, id: String)
+    case project(tenantId: String, projectId: String)
+    case initiative(tenantId: String, projectId: String, initiativeId: String)
+    case account
+    case notificationSettings
+    case securitySettings
+    case appearanceSettings
+    case team
+    case designCatalog
+}
+
+/// Navigation state: selected tab, one stack per tab (+ search), focus room, deep links.
+@Observable
+final class AppRouter {
+    var tab: AppTab = .today
+    var isSearchActive = false
+    var isFocusRoomOpen = false
+    /// Today opens in day-close mode (`/?mode=close`, day_close push).
+    var todayMode: TodayMode = .normal
+    let stacks: [AppTab: PFNavigationModel<AppRoute>] = Dictionary(uniqueKeysWithValues: AppTab.allCases.map { ($0, PFNavigationModel<AppRoute>()) })
+    let searchStack = PFNavigationModel<AppRoute>()
+    /// A deep link that arrived before sign-in; replayed once the session is ready.
+    var pendingURL: URL?
+
+    enum TodayMode: Equatable { case normal, dayClose }
+
+    var current: PFNavigationModel<AppRoute> { isSearchActive ? searchStack : stacks[tab]! }
+    var isDeep: Bool { !current.path.isEmpty }
+
+    func select(_ tab: AppTab) {
+        isSearchActive = false
+        self.tab = tab
+    }
+
+    func push(_ route: AppRoute) { current.push(route) }
+    func pop() { current.pop() }
+
+    func reselect(_ tab: AppTab) { stacks[tab]?.popToRoot() }
+
+    func openSearch() { isSearchActive = true }
+
+    /// Opens a route from outside (push, widget, deep link): switches to the matching tab first.
+    func open(_ route: AppRoute, in tab: AppTab? = nil) {
+        isFocusRoomOpen = false
+        if let tab { select(tab) }
+        current.replace(with: [route])
+    }
+
+    /// Parses web routes (contract C8) and `projectflow://` URLs.
+    /// Returns false when the URL needs a signed-in session that is not ready yet.
+    @discardableResult
+    func handle(url: URL, activeTenant: String?) -> Bool {
+        guard let activeTenant else {
+            pendingURL = url
+            return false
+        }
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let tenant = components?.queryItems?.first(where: { $0.name == "tenant" })?.value ?? activeTenant
+        var parts = url.pathComponents.filter { $0 != "/" }
+        if url.scheme == "projectflow", let host = url.host() { parts.insert(host, at: 0) }
+        switch parts.first {
+        case "project" where parts.count >= 2:
+            let projectId = parts[1]
+            if parts.count >= 4, parts[2] == "tasks" {
+                open(.task(TaskRef(tenantId: tenant, projectId: projectId, taskId: parts[3])), in: .work)
+            } else if parts.count >= 4, parts[2] == "initiatives" {
+                open(.initiative(tenantId: tenant, projectId: projectId, initiativeId: parts[3]), in: .projects)
+            } else {
+                open(.project(tenantId: tenant, projectId: projectId), in: .projects)
+            }
+        case "tasks":
+            select(.work)
+        case "notifications":
+            select(.inbox)
+        case "focus":
+            isFocusRoomOpen = true
+        case "personal-tasks" where parts.count >= 2:
+            open(.personalTask(tenantId: tenant, id: parts[1]), in: .work)
+        default:
+            select(.today)
+            todayMode = components?.queryItems?.first(where: { $0.name == "mode" })?.value == "close" ? .dayClose : .normal
+        }
+        return true
+    }
+
+    func reset() {
+        stacks.values.forEach { $0.path.removeAll() }
+        searchStack.path.removeAll()
+        tab = .today
+        isSearchActive = false
+        isFocusRoomOpen = false
+    }
+}

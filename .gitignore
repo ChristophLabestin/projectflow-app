@@ -167,3 +167,11 @@ functions/.env
 functions/lib/
 web/.vite/
 web/test-results/
+
+# iOS app build output
+ios/build/
+ios/**/xcuserdata/
+ios/ProjectFlow.xcodeproj/project.xcworkspace/xcuserdata/
+ios/Packages/ProjectFlowKit/.build/
+ios/Packages/ProjectFlowKit/.swiftpm/
+ios/Packages/ProjectFlowKit/Package.resolved
