@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { auth } from '../services/firebase';
 import { subscribeTenantUsers } from '../services/dataService';
 import { WorkspaceRole, WorkspacePermissions, Member } from '../types';
+import type { LegacyWorkspaceRole } from '../types/permissions';
 import { WORKSPACE_CAPABILITIES, getWorkspaceRole } from '../utils/permissions';
 import { TenantPermissionNode, AIPermissionNode, PermissionNode, Role } from '../types/permissions';
 import { getActiveTenantId } from '../services/domain/authService';
@@ -71,7 +72,7 @@ export const useWorkspacePermissions = () => {
         if (role === 'None') return [];
 
         // Build role from legacy data
-        const legacyRole = role as WorkspaceRole;
+        const legacyRole = role as LegacyWorkspaceRole;
         const permissions = getLegacyWorkspaceRolePermissions(legacyRole);
 
         if (legacyRole === 'Owner') {

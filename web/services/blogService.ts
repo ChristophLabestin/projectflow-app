@@ -1,3 +1,4 @@
+import type { ApiResourceConfig } from '../types';
 import { getMarketingSettings } from './marketingSettingsService';
 import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';

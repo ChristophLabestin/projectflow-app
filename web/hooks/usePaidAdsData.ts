@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { PaidAd, AdCreative, AdTargetAudience, AdObjective, AdCampaign, AdPlatform } from '../types';
+import { PaidAd, AdCreativeDraft, AdTargetAudience, AdObjective, AdCampaign, AdPlatform } from '../types';
 import { createAdCampaign } from '../services/marketingService';
 import { auth } from '../services/firebase';
 import { updatePaidAd } from '../services/domain/paidAdsService';
@@ -15,7 +15,7 @@ export interface AdData {
     landingPage?: string;
     conversionEvent?: string;
     brandGuardrails?: string;
-    creative?: AdCreative;
+    creative?: AdCreativeDraft;
     targeting?: AdTargetAudience;
     budget?: {
         amount: number;
@@ -118,13 +118,15 @@ export const usePaidAdsData = (paidAd: PaidAd, onUpdate: (updates: Partial<PaidA
         return merged;
     }, [paidAd.adData]);
 
-    const updateAdData = useCallback((updates: Partial<AdData>) => {
+    const updateAdData = useCallback((updates: Omit<Partial<AdData>, 'budget'> & { budget?: Partial<NonNullable<AdData['budget']>> }) => {
         const next: AdData = {
             ...adData,
             ...updates,
             creative: updates.creative ? { ...adData.creative, ...updates.creative } : adData.creative,
             targeting: updates.targeting ? { ...adData.targeting, ...updates.targeting } : adData.targeting,
-            budget: updates.budget ? { ...adData.budget, ...updates.budget } : adData.budget,
+            budget: updates.budget
+                ? { amount: 0, type: 'Daily', currency: 'USD', ...adData.budget, ...updates.budget }
+                : adData.budget,
             research: updates.research ? { ...adData.research, ...updates.research } : adData.research,
             setup: updates.setup ? { ...adData.setup, ...updates.setup } : adData.setup,
             optimization: updates.optimization ? { ...adData.optimization, ...updates.optimization } : adData.optimization,
@@ -203,7 +205,7 @@ export const usePaidAdsData = (paidAd: PaidAd, onUpdate: (updates: Partial<PaidA
         adData,
         updateAdData,
         createCampaign,
-        updateCreative: (creative: Partial<AdCreative>) => updateAdData({ creative }),
+        updateCreative: (creative: Partial<AdCreativeDraft>) => updateAdData({ creative }),
         updateTargeting: (targeting: Partial<AdTargetAudience>) => updateAdData({ targeting }),
         updateBudget: (budget: Partial<AdData['budget']>) => updateAdData({ budget }),
     };

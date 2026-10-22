@@ -1,4 +1,4 @@
-import { Idea, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool } from "../types";
+import { Idea, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member, StudioTool, SocialPlatform } from "../types";
 import { functions } from "./firebase";
 import { httpsCallable } from 'firebase/functions';
 import { incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
@@ -1431,7 +1431,7 @@ export const generateYouTubeScript = async (title: string, thumbnailIdea: string
     }
 };
 
-export const generateProductDefinitionAI = async (idea: Idea): Promise<{ scope: string, outOfScope: string, successCriteria: string, requirements: import("../types").Requirement[] }> => {
+export const generateProductDefinitionAI = async (idea: Idea): Promise<{ scope: string, outOfScope: string, successCriteria: string, requirements: Array<{ id: string; [key: string]: unknown }> }> => {
     try {
         const ai = getAiClient();
         const responseSchema: Schema = {

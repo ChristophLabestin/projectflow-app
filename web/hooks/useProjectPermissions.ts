@@ -50,7 +50,7 @@ export function useProjectPermissions(project: Project | null) {
                 }];
             }
 
-            const projectPerms = getLegacyProjectRolePermissions(legacyRole);
+            const projectPerms = getLegacyProjectRolePermissions(legacyRole as LegacyProjectRole);
             return [{
                 id: `project-${legacyRole.toLowerCase()}`,
                 name: legacyRole,

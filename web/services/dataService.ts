@@ -34,7 +34,7 @@ import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission } from '../types';
+import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission, TemplateVariable, EmailTemplate, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -44,6 +44,7 @@ import {
     notifyProjectInvite,
     createNotification
 } from './notificationService';
+import type { WorkspaceApiToken } from './domain/adminSettingsService';
 import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
 import { isProjectIncludedInImportantSignals } from './healthService';
 import {
@@ -326,9 +327,9 @@ export const subscribeUserStatusPreference = (userId: string, onUpdate: (status:
     const ref = doc(db, TENANTS, resolvedTenant, USERS, userId);
     return onSnapshot(ref, (snap) => {
         if (snap.exists()) {
-            onUpdate(snap.data().statusPreference || 'auto');
+            onUpdate(snap.data().statusPreference || 'online');
         } else {
-            onUpdate('auto');
+            onUpdate('online');
         }
     });
 };
@@ -2230,7 +2231,6 @@ export const respondToJoinRequest = async (
             title: 'Request Approved',
             message: `Your request to join ${project?.title || 'a project'} was approved.`,
             projectId: projectId,
-            actorId: user?.uid,
             // tenantId: resolvedTenant // OMITTED to make it GLOBAL so user sees it anywhere
         });
     } else {
@@ -2242,7 +2242,6 @@ export const respondToJoinRequest = async (
             title: 'Request Denied',
             message: `Your request to join ${project?.title || 'a project'} was denied.`,
             projectId: projectId,
-            actorId: user?.uid,
             // tenantId: resolvedTenant // OMITTED to make it GLOBAL
         });
     }
@@ -2696,16 +2695,7 @@ export const createAPIToken = async (
 /**
  * Get all API tokens for the current tenant (without exposing hashes)
  */
-export const getAPITokens = async (tenantId?: string): Promise<{
-    id: string;
-    name: string;
-    tokenPrefix: string;
-    permissions: string[];
-    projectScope?: string;
-    createdAt: any;
-    lastUsedAt?: any;
-    expiresAt?: any;
-}[]> => {
+export const getAPITokens = async (tenantId?: string): Promise<WorkspaceApiToken[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
     return listWorkspaceApiTokens(resolvedTenant);
 };
@@ -2840,7 +2830,7 @@ export const addIdeaComment = async (projectId: string, ideaId: string, content:
         createdAt: serverTimestamp()
     };
 
-    await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
+    const commentRef = await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
 
     // 2. Update Idea comment count
     const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
@@ -2855,11 +2845,12 @@ export const addIdeaComment = async (projectId: string, ideaId: string, content:
         if (idea.ownerId && idea.ownerId !== user.uid) {
             await notifyComment(
                 idea.ownerId,
+                idea.title,
+                'idea',
                 projectId,
-                `New comment on idea: ${idea.title}`,
-                content,
-                ideaId, // using ideaId as context
-                'idea'
+                ideaId,
+                commentRef.id,
+                resolvedTenant
             );
         }
     }

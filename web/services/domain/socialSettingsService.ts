@@ -272,10 +272,6 @@ export const connectIntegration = async (
         throw error;
     }
 
-    if (platform === 'Facebook' || platform === 'Instagram') {
-        return;
-    }
-
     const mockUsernames: Record<string, string> = {
         Instagram: '@projectflow_ig',
         Facebook: 'ProjectFlow Page',
