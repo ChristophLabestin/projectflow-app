@@ -246,20 +246,20 @@ struct FocusRoomView: View {
         HStack(spacing: PFSpace.xs) {
             switch focus.status {
             case .active:
-                PFButton(L10n.t("focus.action.block"), systemImage: "exclamationmark.octagon", kind: .secondary, size: .large, fullWidth: true) {
+                PFButton(L10n.t("focus.action.block"), kind: .secondary, size: .large, fullWidth: true) {
                     presentBlockerSheet()
                 }
                 .disabled(!isTask)
-                PFButton(L10n.t("focus.action.pause"), systemImage: "pause", kind: .secondary, size: .large, fullWidth: true) { pause() }
+                PFButton(L10n.t("focus.action.pause"), kind: .secondary, size: .large, fullWidth: true) { pause() }
             case .snoozed:
-                PFButton(L10n.t("focus.action.resume"), systemImage: "play.fill", kind: .secondary, size: .large, fullWidth: true) {
+                PFButton(L10n.t("focus.action.resume"), kind: .secondary, size: .large, fullWidth: true) {
                     Task { await controller.resume() }
                 }
             case .blocked:
-                PFButton(L10n.t("focus.action.unblock"), systemImage: "lock.open", kind: .secondary, size: .large, fullWidth: true) {
+                PFButton(L10n.t("focus.action.unblock"), kind: .secondary, size: .large, fullWidth: true) {
                     unblock(focus)
                 }
-                PFButton(L10n.t("focus.action.pause"), systemImage: "pause", kind: .secondary, size: .large, fullWidth: true) { pause() }
+                PFButton(L10n.t("focus.action.pause"), kind: .secondary, size: .large, fullWidth: true) { pause() }
             }
             PFButton(L10n.t("focus.action.done"), systemImage: "checkmark", kind: .primary, size: .large, fullWidth: true) { complete() }
         }

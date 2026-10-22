@@ -94,7 +94,6 @@ struct TodayScreen: View {
 private struct TodayContent: View {
     let plan: DayPlan
     let now: Date
-    @Environment(AppModel.self) private var model
 
     var body: some View {
         let statement = TodayText.statement(plan.statement)

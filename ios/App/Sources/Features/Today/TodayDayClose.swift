@@ -88,7 +88,7 @@ struct TodayDayClose: View {
         if let workspace = model.workspace, let item = TodayPlanner.item(for: stop, workspace: workspace) {
             let done = item.isCompleted
             let state = handled[stop.id]
-            TodayCard {
+            PFRowCard {
                 WorkItemRow(item: item, showsProject: false, subtitleOverride: TodayText.subtitle(stop))
                 if !done {
                     if let state {

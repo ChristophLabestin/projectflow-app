@@ -136,6 +136,7 @@ public enum ZonedDate {
     }
 
     /// The instant at which the wall clock in `zone` reads the given fields (DST-safe two-pass lookup).
+    // swiftlint:disable:next function_parameter_count
     public static func wallTimeToInstant(year: Int, month: Int, day: Int, hour: Int, minute: Int, second: Int, in zone: TimeZone) -> Double {
         let guess = utcMs(year: year, month: month, day: day, hour: hour, minute: minute, second: second)
         let firstOffset = offsetMs(at: guess, in: zone)

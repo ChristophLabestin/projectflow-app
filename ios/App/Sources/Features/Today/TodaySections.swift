@@ -58,7 +58,7 @@ struct TodayPlanSection: View {
     }
 
     private var stopsCard: some View {
-        TodayCard {
+        PFRowCard {
             ForEach(displayedStops) { stop in
                 TodayStopRow(stop: stop)
                     .transition(.asymmetric(insertion: .opacity, removal: .opacity.combined(with: .move(edge: .leading))))
@@ -209,7 +209,7 @@ struct TodayWaitingSection: View {
         if !plan.waitingOnMe.isEmpty {
             VStack(alignment: .leading, spacing: 0) {
                 PFSectionHeader(L10n.t("dashboard.waiting.title")) { PFCountPill(plan.waitingOnMe.count) }
-                TodayCard {
+                PFRowCard {
                     ForEach(visible) { entry in TodayWaitingRow(entry: entry) }
                 }
                 if plan.waitingOnMe.count > 3 {
@@ -320,24 +320,13 @@ struct TodayWeekSection: View {
         let calendar = Formatting.calendar
         let symbols = calendar.veryShortWeekdaySymbols
         let number = Int(day.date.suffix(2)) ?? 0
-        let longDate = ISO8601DateFormatter.dayFormatter.date(from: day.date)?
-            .formatted(.dateTime.weekday(.wide).day().month(.wide).locale(L10n.locale)) ?? day.date
+        let longDate = DayString.longDate(day.date)
         return PFWeekStrip.Day(
             id: day.date, weekday: symbols[(day.weekday + 1) % 7], number: String(number), count: day.count,
             isToday: day.isToday, isWeekend: day.isWeekend,
             accessibilityLabel: L10n.plural("today.week.dayLabel", day.count, ["day": longDate])
         )
     }
-}
-
-extension ISO8601DateFormatter {
-    /// Parses "YYYY-MM-DD" days (UTC midnight; only used to format them again).
-    nonisolated(unsafe) static let dayFormatter: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter
-    }()
 }
 
 // MARK: - Overnight
@@ -356,7 +345,7 @@ struct TodayNightSection: View {
                     .foregroundStyle(PFColor.textMuted)
                     .padding(.horizontal, 4)
             } else {
-                TodayCard(dividerInset: 56) {
+                PFRowCard(dividerInset: 56) {
                     ForEach(plan.overnight.reversed()) { entry in row(entry) }
                 }
             }
@@ -404,41 +393,5 @@ struct TodayNightSection: View {
         } else if let task = workspace.task(entry.taskId) {
             model.router.push(.task(task.ref))
         }
-    }
-}
-
-/// A white card around a stack of rows, with hairlines between them.
-///
-/// The chrome (fill, ring, shadow) is one shape behind the rows. Rows are clipped one by one with
-/// only the outer corners rounded: rows that carry gesture recognisers (`PFSwipeRow`) are separate
-/// platform layers, and a single `clipShape` or `shadow` on the container would round and shadow
-/// every one of them on its own.
-struct TodayCard<Content: View>: View {
-    var dividerInset: CGFloat = PFSpace.m
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        Group(subviews: content) { subviews in
-            VStack(spacing: 0) {
-                ForEach(Array(subviews.enumerated()), id: \.element.id) { index, subview in
-                    VStack(spacing: 0) {
-                        if index > 0 { PFRowDivider(leadingInset: dividerInset) }
-                        subview.clipShape(corners(first: index == 0, last: index == subviews.count - 1))
-                    }
-                }
-            }
-        }
-        .background {
-            RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
-                .fill(PFColor.card)
-                .pfElevation(.card, radius: PFRadius.card)
-        }
-    }
-
-    private func corners(first: Bool, last: Bool) -> UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: first ? PFRadius.card : 0, bottomLeadingRadius: last ? PFRadius.card : 0,
-            bottomTrailingRadius: last ? PFRadius.card : 0, topTrailingRadius: first ? PFRadius.card : 0, style: .continuous
-        )
     }
 }

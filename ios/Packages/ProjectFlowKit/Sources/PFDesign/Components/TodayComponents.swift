@@ -138,6 +138,49 @@ public struct PFWeekStrip: View {
     }
 }
 
+// MARK: - Row card
+
+/// A white card around a stack of rows, with hairlines between them.
+///
+/// The chrome (fill, ring, shadow) is one shape behind the rows. Rows are clipped one by one with
+/// only the outer corners rounded: rows that carry gesture recognisers (`PFSwipeRow`) are separate
+/// platform layers, and a single `clipShape` or `shadow` on the container would round and shadow
+/// every one of them on its own.
+public struct PFRowCard<Content: View>: View {
+    let dividerInset: CGFloat
+    let content: Content
+
+    public init(dividerInset: CGFloat = PFSpace.m, @ViewBuilder content: () -> Content) {
+        self.dividerInset = dividerInset
+        self.content = content()
+    }
+
+    public var body: some View {
+        Group(subviews: content) { subviews in
+            VStack(spacing: 0) {
+                ForEach(Array(subviews.enumerated()), id: \.element.id) { index, subview in
+                    VStack(spacing: 0) {
+                        if index > 0 { PFRowDivider(leadingInset: dividerInset) }
+                        subview.clipShape(corners(first: index == 0, last: index == subviews.count - 1))
+                    }
+                }
+            }
+        }
+        .background {
+            RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
+                .fill(PFColor.card)
+                .pfElevation(.card, radius: PFRadius.card)
+        }
+    }
+
+    private func corners(first: Bool, last: Bool) -> UnevenRoundedRectangle {
+        UnevenRoundedRectangle(
+            topLeadingRadius: first ? PFRadius.card : 0, bottomLeadingRadius: last ? PFRadius.card : 0,
+            bottomTrailingRadius: last ? PFRadius.card : 0, topTrailingRadius: first ? PFRadius.card : 0, style: .continuous
+        )
+    }
+}
+
 // MARK: - Glyph badge
 
 /// Small round glyph tile tinted by meaning (overnight feed, waiting list).
