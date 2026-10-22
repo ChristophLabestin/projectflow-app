@@ -312,13 +312,13 @@ export interface ProjectReminder {
     isCompleted?: boolean;
     createdAt?: string;
     completedAt?: string;
-    /** uid of the creator; set by the client on create. Legacy reminders without it go to the task assignees / project owner. */
+    /** uid of the creator; set by the client on create (contract C2). */
     createdBy?: string;
-    /** Who gets the reminder; defaults to `[createdBy]`. */
+    /** uid list that gets the reminder; defaults to [createdBy]. */
     recipientIds?: string[];
-    /** "Auch Zuständige erinnern": recipients plus the task assignees at send time. */
+    /** "Also remind assignees": recipients ∪ task assignees at send time. */
     notifyAssignees?: boolean;
-    /** ISO timestamp, set by the server (`deliverReminders`) when the reminder was delivered. */
+    /** ISO timestamp set by the server when the reminder was delivered. */
     sentAt?: string;
 }
 
@@ -400,17 +400,23 @@ export interface ProjectExternalResource {
 
 export type NotificationPrefCategory = 'assignments' | 'mentions' | 'comments' | 'due' | 'reminders';
 
-/**
- * `users/{uid}.notificationPrefs` (contract C3). Everything is optional; the server applies defaults:
- * timezone Europe/Berlin, push all true, email assignments + mentions true (rest false),
- * morningBriefing off at 08:00, dayClose off at 17:30.
- */
+/** users/{uid}.notificationPrefs (contract C3). All fields optional; the server applies defaults. */
+export interface NotificationChannelPrefs {
+    assignments?: boolean;
+    mentions?: boolean;
+    comments?: boolean;
+    due?: boolean;
+    reminders?: boolean;
+}
+
 export interface NotificationPrefs {
-    /** IANA time zone used for the nudges, e.g. `Europe/Berlin`. */
+    /** IANA time zone, default 'Europe/Berlin'. */
     timezone?: string;
-    push?: Partial<Record<NotificationPrefCategory, boolean>>;
-    email?: Partial<Record<NotificationPrefCategory, boolean>>;
+    push?: NotificationChannelPrefs;
+    email?: NotificationChannelPrefs;
+    /** time is 'HH:mm'; default off, '08:00'. */
     morningBriefing?: { enabled?: boolean; time?: string };
+    /** time is 'HH:mm'; default off, '17:30'. */
     dayClose?: { enabled?: boolean; time?: string };
 }
 

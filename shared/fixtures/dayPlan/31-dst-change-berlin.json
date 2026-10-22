@@ -1,0 +1,293 @@
+{
+  "name": "The night clocks go back (Sun 25 Oct 2026): ambiguous 02:30 local times, today is Monday the 26th",
+  "input": {
+    "now": "2026-10-25T23:30:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Done at 02:30 CEST",
+        "projectId": "p-web",
+        "isCompleted": true,
+        "completedAt": "2026-10-25T00:30:00.000Z"
+      },
+      {
+        "id": "b",
+        "title": "Done at 02:30 CET",
+        "projectId": "p-web",
+        "isCompleted": true,
+        "completedAt": "2026-10-25T01:30:00.000Z"
+      },
+      {
+        "id": "c",
+        "title": "Due on the DST day",
+        "projectId": "p-web",
+        "dueDate": "2026-10-25"
+      },
+      {
+        "id": "d",
+        "title": "Due today (Monday)",
+        "projectId": "p-web",
+        "dueDate": "2026-10-26"
+      },
+      {
+        "id": "e",
+        "title": "Created 24 h and 1 min before now",
+        "projectId": "p-web",
+        "createdAt": "2026-10-24T23:29:00.000Z"
+      },
+      {
+        "id": "f",
+        "title": "Created just inside 24 h",
+        "projectId": "p-web",
+        "createdAt": "2026-10-24T23:31:00.000Z"
+      }
+    ],
+    "personalTasks": [],
+    "otherTasks": [],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-26",
+    "timeZone": "Europe/Berlin",
+    "stops": [
+      {
+        "id": "c",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "c",
+        "itemType": "task",
+        "title": "Due on the DST day",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.overdueYesterday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "d",
+        "kind": "dueToday",
+        "tone": "warning",
+        "proposed": false,
+        "taskId": "d",
+        "itemType": "task",
+        "title": "Due today (Monday)",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.dueToday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "suggest:e",
+        "kind": "suggestion",
+        "tone": "neutral",
+        "proposed": true,
+        "taskId": "e",
+        "itemType": "task",
+        "title": "Created 24 h and 1 min before now",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.route.suggest.pick",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      }
+    ],
+    "moreCount": 1,
+    "isSuggested": false,
+    "statement": {
+      "key": "dashboard.route.statement.behind",
+      "params": {},
+      "value": "3",
+      "valueKey": null
+    },
+    "dayShape": "behind",
+    "cause": {
+      "key": "dashboard.today.insight.oldestOverdueOne",
+      "params": {
+        "title": "Due on the DST day"
+      },
+      "text": null
+    },
+    "counts": {
+      "overdue": 1,
+      "dueToday": 1,
+      "scheduledToday": 0,
+      "queue": 2,
+      "blocked": 0,
+      "open": 4,
+      "undated": 2,
+      "completedLast7Days": 2,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "overdue-0",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "due-0",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 5.7
+        }
+      ],
+      "caption": [
+        {
+          "key": "overdue",
+          "tone": "danger",
+          "count": 1
+        },
+        {
+          "key": "due",
+          "tone": "warning",
+          "count": 1
+        }
+      ]
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.more",
+        "params": {
+          "count": 2,
+          "diff": 2
+        },
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-26",
+          "weekday": 0,
+          "count": 1,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-27",
+          "weekday": 1,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-28",
+          "weekday": 2,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-29",
+          "weekday": 3,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-30",
+          "weekday": 4,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-31",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-11-01",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 1
+    },
+    "overnight": [
+      {
+        "key": "new:f",
+        "kind": "new",
+        "taskId": "f",
+        "title": "Created just inside 24 h",
+        "timeMs": 1792884660000,
+        "time": "01:31",
+        "tone": "info"
+      },
+      {
+        "key": "done:a",
+        "kind": "done",
+        "taskId": "a",
+        "title": "Done at 02:30 CEST",
+        "timeMs": 1792888200000,
+        "time": "02:30",
+        "tone": "success"
+      },
+      {
+        "key": "done:b",
+        "kind": "done",
+        "taskId": "b",
+        "title": "Done at 02:30 CET",
+        "timeMs": 1792891800000,
+        "time": "02:30",
+        "tone": "success"
+      },
+      {
+        "key": "overdue:c",
+        "kind": "overdue",
+        "taskId": "c",
+        "title": "Due on the DST day",
+        "timeMs": 1792969200000,
+        "time": "00:00",
+        "tone": "warning"
+      }
+    ],
+    "waitingOnMe": [],
+    "topUnlocker": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "A prefix alone leaves no terms",
+  "input": {
+    "query": ">"
+  },
+  "expected": {
+    "raw": ">",
+    "prefixScope": "commands",
+    "terms": [],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

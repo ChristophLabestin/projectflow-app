@@ -1,0 +1,253 @@
+{
+  "name": "Nothing dated: up to three backlog suggestions ranked by priority then age (missing createdAt counts as oldest); dated and completed tasks are not suggested; personal undated tasks may be",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "s1",
+        "title": "Medium, old",
+        "projectId": "p-web",
+        "createdAt": "2026-10-01T09:00:00.000Z",
+        "priority": "Medium"
+      },
+      {
+        "id": "s2",
+        "title": "Urgent, new",
+        "projectId": "p-web",
+        "createdAt": "2026-10-21T09:00:00.000Z",
+        "priority": "Urgent"
+      },
+      {
+        "id": "s3",
+        "title": "Low, yesterday",
+        "projectId": "p-web",
+        "createdAt": "2026-10-21T08:00:00.000Z",
+        "priority": "Low"
+      },
+      {
+        "id": "s4",
+        "title": "Medium without createdAt",
+        "projectId": "p-web"
+      },
+      {
+        "id": "s5",
+        "title": "Future due date",
+        "projectId": "p-web",
+        "dueDate": "2026-11-15",
+        "priority": "Urgent"
+      },
+      {
+        "id": "s6",
+        "title": "Completed backlog item",
+        "projectId": "p-web",
+        "isCompleted": true,
+        "completedAt": "2026-10-20T09:00:00.000Z"
+      }
+    ],
+    "personalTasks": [
+      {
+        "id": "pt1",
+        "title": "Call the dentist",
+        "createdAt": {
+          "seconds": 1791619200,
+          "nanoseconds": 0
+        },
+        "priority": "High"
+      },
+      {
+        "id": "pt2",
+        "title": "Personal, due next month",
+        "dueDate": "2026-11-30",
+        "priority": "High"
+      }
+    ],
+    "otherTasks": [],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "stops": [
+      {
+        "id": "suggest:s2",
+        "kind": "suggestion",
+        "tone": "neutral",
+        "proposed": true,
+        "taskId": "s2",
+        "itemType": "task",
+        "title": "Urgent, new",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": "Urgent",
+        "reason": {
+          "key": "dashboard.route.suggest.important",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "suggest:personal:pt1",
+        "kind": "suggestion",
+        "tone": "neutral",
+        "proposed": true,
+        "taskId": "pt1",
+        "itemType": "personal",
+        "title": "Call the dentist",
+        "projectId": null,
+        "projectName": "",
+        "tenantId": null,
+        "isPersonal": true,
+        "priority": "High",
+        "reason": {
+          "key": "dashboard.route.suggest.important",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": false
+      },
+      {
+        "id": "suggest:s4",
+        "kind": "suggestion",
+        "tone": "neutral",
+        "proposed": true,
+        "taskId": "s4",
+        "itemType": "task",
+        "title": "Medium without createdAt",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.route.suggest.pick",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      }
+    ],
+    "moreCount": 4,
+    "isSuggested": true,
+    "statement": {
+      "key": "dashboard.route.statement.suggest",
+      "params": {},
+      "value": "3",
+      "valueKey": null
+    },
+    "dayShape": "clear",
+    "cause": {
+      "key": "dashboard.today.insight.momentum",
+      "params": {
+        "count": 1
+      },
+      "text": null
+    },
+    "counts": {
+      "overdue": 0,
+      "dueToday": 0,
+      "scheduledToday": 0,
+      "queue": 0,
+      "blocked": 0,
+      "open": 7,
+      "undated": 5,
+      "completedLast7Days": 1,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 8
+        }
+      ],
+      "caption": []
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.more",
+        "params": {
+          "count": 1,
+          "diff": 1
+        },
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-19",
+          "weekday": 0,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 1,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 2,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 3,
+          "count": 0,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 4,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 0
+    },
+    "overnight": [],
+    "waitingOnMe": [],
+    "topUnlocker": null
+  }
+}

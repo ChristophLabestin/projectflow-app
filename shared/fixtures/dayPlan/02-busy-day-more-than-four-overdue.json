@@ -1,0 +1,401 @@
+{
+  "name": "Six overdue tasks: plan is capped at four stops, oldest due date first, with \"frees up N\" and a moreCount",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1",
+        "title": "Set up 301 redirects",
+        "projectId": "p-web",
+        "dueDate": "2026-10-19",
+        "priority": "High"
+      },
+      {
+        "id": "t2",
+        "title": "Conflict resolution",
+        "projectId": "p-web",
+        "dueDate": "2026-10-21",
+        "priority": "Medium"
+      },
+      {
+        "id": "t3",
+        "title": "Finalize hero copy",
+        "projectId": "p-web",
+        "dueDate": "2026-10-20",
+        "dependencies": [
+          "t1"
+        ]
+      },
+      {
+        "id": "t4",
+        "title": "Fix checkout bug",
+        "projectId": "p-web",
+        "dueDate": "2026-10-10",
+        "priority": "Urgent"
+      },
+      {
+        "id": "t5",
+        "title": "Review analytics",
+        "projectId": "p-web",
+        "dueDate": "2026-10-15"
+      },
+      {
+        "id": "t6",
+        "title": "Renew certificates",
+        "projectId": "p-ops",
+        "dueDate": "2026-10-01"
+      },
+      {
+        "id": "t7",
+        "title": "Onboarding screens",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22",
+        "priority": "Medium"
+      },
+      {
+        "id": "t8",
+        "title": "Prepare standup",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22",
+        "priority": "Low"
+      },
+      {
+        "id": "t9",
+        "title": "Write release notes",
+        "projectId": "p-app",
+        "scheduledDate": "2026-10-22"
+      },
+      {
+        "id": "t10",
+        "title": "Backlog idea",
+        "projectId": "p-web",
+        "createdAt": "2026-10-01T09:00:00.000Z"
+      },
+      {
+        "id": "t11",
+        "title": "Already done",
+        "projectId": "p-web",
+        "isCompleted": true,
+        "status": "Done",
+        "completedAt": "2026-10-20T08:00:00.000Z",
+        "dueDate": "2026-10-20"
+      }
+    ],
+    "personalTasks": [],
+    "otherTasks": [
+      {
+        "id": "o1",
+        "title": "Hero copy",
+        "projectId": "p-web",
+        "assigneeIds": [
+          "u-lena"
+        ],
+        "dependencies": [
+          "t1"
+        ],
+        "status": "In Progress"
+      }
+    ],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "stops": [
+      {
+        "id": "t6",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "t6",
+        "itemType": "task",
+        "title": "Renew certificates",
+        "projectId": "p-ops",
+        "projectName": "Operations",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.overdueDays",
+          "params": {
+            "days": 21
+          },
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "t4",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "t4",
+        "itemType": "task",
+        "title": "Fix checkout bug",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": "Urgent",
+        "reason": {
+          "key": "dashboard.today.reason.overdueDays",
+          "params": {
+            "days": 12
+          },
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "t5",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "t5",
+        "itemType": "task",
+        "title": "Review analytics",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.overdueDays",
+          "params": {
+            "days": 7
+          },
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "t1",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "t1",
+        "itemType": "task",
+        "title": "Set up 301 redirects",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": "High",
+        "reason": {
+          "key": "dashboard.today.reason.overdueDays",
+          "params": {
+            "days": 3
+          },
+          "text": null
+        },
+        "unblocksCount": 2,
+        "canFocus": true
+      }
+    ],
+    "moreCount": 6,
+    "isSuggested": false,
+    "statement": {
+      "key": "dashboard.route.statement.behind",
+      "params": {},
+      "value": "4",
+      "valueKey": null
+    },
+    "dayShape": "behind",
+    "cause": {
+      "key": "dashboard.today.insight.oldestOverdue",
+      "params": {
+        "days": 21,
+        "title": "Renew certificates"
+      },
+      "text": null
+    },
+    "counts": {
+      "overdue": 6,
+      "dueToday": 2,
+      "scheduledToday": 1,
+      "queue": 9,
+      "blocked": 0,
+      "open": 10,
+      "undated": 1,
+      "completedLast7Days": 1,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "overdue-0",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "overdue-1",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "overdue-2",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "overdue-3",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "overdue-4",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "overdue-5",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "due-0",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "due-1",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "due-2",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 2
+        }
+      ],
+      "caption": [
+        {
+          "key": "overdue",
+          "tone": "danger",
+          "count": 6
+        },
+        {
+          "key": "due",
+          "tone": "warning",
+          "count": 3
+        }
+      ]
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.more",
+        "params": {
+          "count": 1,
+          "diff": 1
+        },
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-19",
+          "weekday": 0,
+          "count": 1,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 1,
+          "count": 1,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 2,
+          "count": 1,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 3,
+          "count": 3,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 4,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 6
+    },
+    "overnight": [
+      {
+        "key": "overdue:t2",
+        "kind": "overdue",
+        "taskId": "t2",
+        "title": "Conflict resolution",
+        "timeMs": 1792620000000,
+        "time": "00:00",
+        "tone": "warning"
+      }
+    ],
+    "waitingOnMe": [
+      {
+        "kind": "dependent",
+        "taskId": "o1",
+        "title": "Hero copy",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "assigneeIds": [
+          "u-lena"
+        ],
+        "blockerTaskId": "t1",
+        "blockerTitle": "Set up 301 redirects",
+        "note": null
+      }
+    ],
+    "topUnlocker": {
+      "taskId": "t1",
+      "title": "Set up 301 redirects",
+      "count": 2
+    }
+  }
+}

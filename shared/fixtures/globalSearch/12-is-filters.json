@@ -1,0 +1,19 @@
+{
+  "name": "is: filters collect task filters in order",
+  "input": {
+    "query": "is:overdue is:mine report"
+  },
+  "expected": {
+    "raw": "is:overdue is:mine report",
+    "prefixScope": null,
+    "terms": [
+      "report"
+    ],
+    "taskFilters": [
+      "overdue",
+      "mine"
+    ],
+    "priority": null,
+    "hasTaskFilters": true
+  }
+}

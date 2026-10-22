@@ -1,0 +1,51 @@
+{
+  "name": "Two tasks on the same day: date-only sorts before a time of day, times sort by instant",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "late",
+        "title": "Late",
+        "dueDate": "2026-10-22T16:00:00.000Z"
+      },
+      {
+        "id": "early",
+        "title": "Early",
+        "dueDate": "2026-10-22T07:00:00.000Z"
+      },
+      {
+        "id": "dateonly",
+        "title": "Date only",
+        "dueDate": "2026-10-22"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "dateonly",
+            "status": "Open"
+          },
+          {
+            "id": "early",
+            "status": "Open"
+          },
+          {
+            "id": "late",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 3,
+      "week": 0,
+      "open": 3
+    }
+  }
+}

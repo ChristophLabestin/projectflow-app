@@ -1,0 +1,16 @@
+{
+  "name": "Every term has to match, otherwise the score is 0",
+  "input": {
+    "terms": [
+      "fix",
+      "unrelated"
+    ],
+    "title": "Fix the checkout",
+    "secondary": [
+      "Website"
+    ]
+  },
+  "expected": {
+    "score": 0
+  }
+}

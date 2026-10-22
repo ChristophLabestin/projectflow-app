@@ -1,0 +1,85 @@
+{
+  "name": "Legacy Todo reads as Open; isCompleted wins over status in both directions",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Legacy todo",
+        "status": "Todo",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "b",
+        "title": "No status",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "c",
+        "title": "Status Done but open",
+        "status": "Done",
+        "isCompleted": false,
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "d",
+        "title": "Status Blocked but completed",
+        "status": "Blocked",
+        "isCompleted": true,
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "e",
+        "title": "In progress",
+        "status": "In Progress",
+        "dueDate": "2026-10-23"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "b",
+            "status": "Open"
+          },
+          {
+            "id": "c",
+            "status": "Done"
+          }
+        ]
+      },
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "e",
+            "status": "In Progress"
+          }
+        ]
+      },
+      {
+        "key": "done",
+        "tasks": [
+          {
+            "id": "d",
+            "status": "Done"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 3,
+      "week": 1,
+      "open": 4
+    }
+  }
+}

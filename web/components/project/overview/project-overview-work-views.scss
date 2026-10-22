@@ -16,6 +16,7 @@
     gap: 0.55rem;
     min-width: 0;
     --board-status-rgb: var(--status-open-rgb);
+    --board-status-text: var(--color-status-open-text);
     --board-accent: rgb(var(--board-status-rgb));
     --board-surface: var(--color-surface-card);
     --board-header: var(--color-surface-card);
@@ -23,31 +24,38 @@
 
 .project-overview-work-board__lane[data-status='Backlog'] {
     --board-status-rgb: var(--status-backlog-rgb);
+    --board-status-text: var(--color-status-backlog-text);
 }
 
 .project-overview-work-board__lane[data-status='Open'],
 .project-overview-work-board__lane[data-status='Todo'] {
     --board-status-rgb: var(--status-open-rgb);
+    --board-status-text: var(--color-status-open-text);
 }
 
 .project-overview-work-board__lane[data-status='In Progress'] {
     --board-status-rgb: var(--status-in-progress-rgb);
+    --board-status-text: var(--color-status-in-progress-text);
 }
 
 .project-overview-work-board__lane[data-status='Review'] {
     --board-status-rgb: var(--status-review-rgb);
+    --board-status-text: var(--color-status-review-text);
 }
 
 .project-overview-work-board__lane[data-status='On Hold'] {
     --board-status-rgb: var(--status-on-hold-rgb);
+    --board-status-text: var(--color-status-on-hold-text);
 }
 
 .project-overview-work-board__lane[data-status='Blocked'] {
     --board-status-rgb: var(--status-blocked-rgb);
+    --board-status-text: var(--color-status-blocked-text);
 }
 
 .project-overview-work-board__lane[data-status='Done'] {
     --board-status-rgb: var(--status-done-rgb);
+    --board-status-text: var(--color-status-done-text);
 }
 
 .project-overview-work-board__lane-head {
@@ -116,7 +124,7 @@
     padding: 0 0.38rem;
     border-radius: var(--radius-full);
     background: rgba(var(--board-status-rgb), 0.16);
-    color: color-mix(in srgb, var(--board-accent) 72%, var(--color-text-ondark) 28%);
+    color: var(--board-status-text);
     font-size: 0.72rem;
     font-weight: 800;
 }

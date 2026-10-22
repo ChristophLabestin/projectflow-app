@@ -1,0 +1,189 @@
+{
+  "name": "Status decides closed/paused/planning; active projects move to \"attention\" on overdue, blocked, critical health or an overdue deadline",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "closed",
+        "title": "Completed project",
+        "status": "Completed"
+      },
+      {
+        "id": "canceled",
+        "title": "Canceled project",
+        "status": "Canceled"
+      },
+      {
+        "id": "paused",
+        "title": "On hold project",
+        "status": "On Hold"
+      },
+      {
+        "id": "planning",
+        "title": "Planning project",
+        "status": "Planning"
+      },
+      {
+        "id": "brainstorm",
+        "title": "Brainstorming project",
+        "status": "Brainstorming"
+      },
+      {
+        "id": "backlog",
+        "title": "Backlog project",
+        "status": "Backlog"
+      },
+      {
+        "id": "overdue",
+        "title": "Has overdue task",
+        "status": "Active"
+      },
+      {
+        "id": "blocked",
+        "title": "Has blocked task",
+        "status": "In Testing"
+      },
+      {
+        "id": "critical",
+        "title": "Critical health",
+        "status": "Review",
+        "health": {
+          "status": "critical"
+        }
+      },
+      {
+        "id": "late",
+        "title": "Deadline passed",
+        "status": "Active",
+        "dueDate": "2026-10-21"
+      },
+      {
+        "id": "today",
+        "title": "Deadline today",
+        "status": "Active",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "fine",
+        "title": "Fine",
+        "status": "Active",
+        "health": {
+          "status": "warning"
+        }
+      },
+      {
+        "id": "notloaded",
+        "title": "Tasks not loaded, overdue elsewhere",
+        "status": "Active"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "t1",
+        "title": "Task t1",
+        "projectId": "overdue",
+        "dueDate": "2026-10-20"
+      },
+      {
+        "id": "t2",
+        "title": "Task t2",
+        "projectId": "blocked",
+        "status": "Blocked"
+      },
+      {
+        "id": "t3",
+        "title": "Task t3",
+        "projectId": "fine",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "t4",
+        "title": "Task t4",
+        "projectId": "fine",
+        "dueDate": "2026-10-20",
+        "isCompleted": true
+      },
+      {
+        "id": "t5",
+        "title": "Task t5",
+        "projectId": "notloaded",
+        "dueDate": "2026-10-01"
+      },
+      {
+        "id": "t6",
+        "title": "Task t6",
+        "projectId": "closed",
+        "dueDate": "2026-10-01"
+      }
+    ],
+    "loadedProjectIds": [
+      "closed",
+      "canceled",
+      "paused",
+      "planning",
+      "brainstorm",
+      "backlog",
+      "overdue",
+      "blocked",
+      "critical",
+      "late",
+      "today",
+      "fine"
+    ]
+  },
+  "expected": [
+    {
+      "projectId": "closed",
+      "group": "closed"
+    },
+    {
+      "projectId": "canceled",
+      "group": "closed"
+    },
+    {
+      "projectId": "paused",
+      "group": "paused"
+    },
+    {
+      "projectId": "planning",
+      "group": "planning"
+    },
+    {
+      "projectId": "brainstorm",
+      "group": "planning"
+    },
+    {
+      "projectId": "backlog",
+      "group": "planning"
+    },
+    {
+      "projectId": "overdue",
+      "group": "attention"
+    },
+    {
+      "projectId": "blocked",
+      "group": "attention"
+    },
+    {
+      "projectId": "critical",
+      "group": "attention"
+    },
+    {
+      "projectId": "late",
+      "group": "attention"
+    },
+    {
+      "projectId": "today",
+      "group": "active"
+    },
+    {
+      "projectId": "fine",
+      "group": "active"
+    },
+    {
+      "projectId": "notloaded",
+      "group": "active"
+    }
+  ]
+}

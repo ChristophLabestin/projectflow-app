@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 
 import { useLanguage } from '../../context/LanguageContext';
 import type { Milestone, Project, Task } from '../../types';
+import { portfolioGroup, type PortfolioGroup } from '../../utils/attention';
 import { daysFromToday, isDateOverdue, parseDateValue } from '../../utils/taskDates';
 import type { ProjectHealth } from '../../services/healthService';
 import { initialOf } from '../../utils/initials';
@@ -20,10 +21,8 @@ interface ProjectPortfolioListProps {
     storageKey?: string;
 }
 
-type PortfolioGroupKey = 'attention' | 'active' | 'planning' | 'paused' | 'closed';
+type PortfolioGroupKey = PortfolioGroup;
 
-const ACTIVE_STATUSES = ['Active', 'In Testing', 'Review'];
-const PLANNING_STATUSES = ['Planning', 'Brainstorming', 'Backlog'];
 const CLOSED_STATUSES = ['Completed', 'Canceled'];
 
 interface ProjectSignals {
@@ -55,15 +54,9 @@ const computeSignals = (inputs?: ProjectPortfolioInputs): ProjectSignals | null 
     return signals;
 };
 
-const groupFor = (project: Project, signals: ProjectSignals | null, health?: ProjectHealth): PortfolioGroupKey => {
-    if (CLOSED_STATUSES.includes(project.status)) return 'closed';
-    if (project.status === 'On Hold') return 'paused';
-    if (PLANNING_STATUSES.includes(project.status)) return 'planning';
-    const needsAttention = !!signals && (signals.overdue > 0 || signals.blocked > 0)
-        || health?.status === 'critical'
-        || (!!project.dueDate && isDateOverdue(project.dueDate));
-    return needsAttention ? 'attention' : 'active';
-};
+const groupFor = (project: Project, signals: ProjectSignals | null, health?: ProjectHealth): PortfolioGroupKey => (
+    portfolioGroup(project, signals, health?.status, { now: Date.now() })
+);
 
 const GROUP_ORDER: { key: PortfolioGroupKey; tone: string }[] = [
     { key: 'attention', tone: 'danger' },

@@ -1,0 +1,13 @@
+{
+  "name": "Term at the start of the title scores 4",
+  "input": {
+    "terms": [
+      "fix"
+    ],
+    "title": "Fix the checkout",
+    "secondary": []
+  },
+  "expected": {
+    "score": 4
+  }
+}

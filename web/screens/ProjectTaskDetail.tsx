@@ -19,6 +19,7 @@ import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
 import { auth } from '../services/firebase';
+import { ReminderNotifyToggle, ReminderSentBadge } from '../components/reminders/ReminderControls';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -128,6 +129,7 @@ export const ProjectTaskDetail = () => {
     const [quickLogDraft, setQuickLogDraft] = useState('');
     const [newReminderTitle, setNewReminderTitle] = useState('');
     const [newReminderDate, setNewReminderDate] = useState<Date | null>(null);
+    const [newReminderNotifyAssignees, setNewReminderNotifyAssignees] = useState(false);
     const [savingWorkbenchField, setSavingWorkbenchField] = useState<string | null>(null);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const priorityMenuRef = useRef<HTMLDivElement | null>(null);
@@ -452,12 +454,18 @@ export const ProjectTaskDetail = () => {
             linkedTitle: task.title,
             isCompleted: false,
             createdAt: new Date().toISOString(),
-            // Recipients default to the creator on the server (deliverReminders).
-            ...(auth.currentUser?.uid ? { createdBy: auth.currentUser.uid } : {})
+            notifyAssignees: newReminderNotifyAssignees
         };
+        // Contract C2: the creator is the default recipient; assignees are opt-in.
+        const uid = auth.currentUser?.uid;
+        if (uid) {
+            reminder.createdBy = uid;
+            reminder.recipientIds = [uid];
+        }
         const nextReminders = [...(task.reminders || []), reminder];
         setNewReminderTitle('');
         setNewReminderDate(null);
+        setNewReminderNotifyAssignees(false);
         await saveTaskReminders(nextReminders);
     };
 
@@ -982,6 +990,12 @@ export const ProjectTaskDetail = () => {
                                             <div className="task-detail__reminder-copy">
                                                 <strong>{reminder.title}</strong>
                                                 <span>{reminderDate ? format(reminderDate, dateFormat, { locale: dateLocale }) : reminder.remindAt}</span>
+                                                <ReminderSentBadge
+                                                    sentAt={reminder.sentAt}
+                                                    label={t('taskDetail.reminders.sent')}
+                                                    dateFormat={dateFormat}
+                                                    dateLocale={dateLocale}
+                                                />
                                             </div>
                                             <button
                                                 type="button"
@@ -1008,6 +1022,12 @@ export const ProjectTaskDetail = () => {
                                 value={newReminderDate}
                                 onChange={setNewReminderDate}
                                 placeholder={t('taskDetail.workbench.reminderPlaceholder')}
+                            />
+                            <ReminderNotifyToggle
+                                checked={newReminderNotifyAssignees}
+                                onChange={setNewReminderNotifyAssignees}
+                                label={t('taskDetail.reminders.notifyAssignees')}
+                                hint={t('taskDetail.reminders.notifyAssigneesHint')}
                             />
                             <button type="button" onClick={() => void handleAddReminder()} disabled={!newReminderDate}>
                                 <span className="material-symbols-outlined">add_alert</span>

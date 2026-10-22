@@ -1,0 +1,266 @@
+{
+  "name": "Same instant, Los Angeles: 22:30Z is 15:30 on the 22nd, so \"today\" is the 22nd",
+  "input": {
+    "now": "2026-10-22T22:30:00.000Z",
+    "timeZone": "America/Los_Angeles",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Date-only 22 Oct",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "b",
+        "title": "Date-only 23 Oct",
+        "projectId": "p-web",
+        "dueDate": "2026-10-23"
+      },
+      {
+        "id": "c",
+        "title": "ISO 21:30Z on the 22nd",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22T21:30:00.000Z"
+      },
+      {
+        "id": "d",
+        "title": "ISO 22:00Z on the 22nd",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22T22:00:00.000Z"
+      },
+      {
+        "id": "e",
+        "title": "Scheduled for the 23rd",
+        "projectId": "p-web",
+        "scheduledDate": "2026-10-23"
+      },
+      {
+        "id": "f",
+        "title": "Completed 20:00Z",
+        "projectId": "p-web",
+        "isCompleted": true,
+        "completedAt": "2026-10-22T20:00:00.000Z"
+      }
+    ],
+    "personalTasks": [],
+    "otherTasks": [],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "America/Los_Angeles",
+    "stops": [
+      {
+        "id": "a",
+        "kind": "dueToday",
+        "tone": "warning",
+        "proposed": false,
+        "taskId": "a",
+        "itemType": "task",
+        "title": "Date-only 22 Oct",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.dueToday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "c",
+        "kind": "dueToday",
+        "tone": "warning",
+        "proposed": false,
+        "taskId": "c",
+        "itemType": "task",
+        "title": "ISO 21:30Z on the 22nd",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.dueToday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "d",
+        "kind": "dueToday",
+        "tone": "warning",
+        "proposed": false,
+        "taskId": "d",
+        "itemType": "task",
+        "title": "ISO 22:00Z on the 22nd",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.dueToday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      }
+    ],
+    "moreCount": 2,
+    "isSuggested": false,
+    "statement": {
+      "key": "dashboard.route.statement.clean",
+      "params": {},
+      "value": "3",
+      "valueKey": null
+    },
+    "dayShape": "doable",
+    "cause": {
+      "key": "dashboard.today.insight.loadCenter",
+      "params": {
+        "project": "Website Relaunch",
+        "count": 3
+      },
+      "text": null
+    },
+    "counts": {
+      "overdue": 0,
+      "dueToday": 3,
+      "scheduledToday": 0,
+      "queue": 3,
+      "blocked": 0,
+      "open": 5,
+      "undated": 0,
+      "completedLast7Days": 1,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "due-0",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "due-1",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "due-2",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 5
+        }
+      ],
+      "caption": [
+        {
+          "key": "due",
+          "tone": "warning",
+          "count": 3
+        }
+      ]
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.more",
+        "params": {
+          "count": 1,
+          "diff": 1
+        },
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-19",
+          "weekday": 0,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 1,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 2,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 3,
+          "count": 3,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 4,
+          "count": 2,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 5
+    },
+    "overnight": [
+      {
+        "key": "done:f",
+        "kind": "done",
+        "taskId": "f",
+        "title": "Completed 20:00Z",
+        "timeMs": 1792699200000,
+        "time": "13:00",
+        "tone": "success"
+      }
+    ],
+    "waitingOnMe": [],
+    "topUnlocker": null
+  }
+}

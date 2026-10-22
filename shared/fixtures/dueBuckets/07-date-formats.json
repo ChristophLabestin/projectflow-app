@@ -1,0 +1,119 @@
+{
+  "name": "Due dates as date-only, ISO, offset-less ISO, Timestamp-like, epoch ms, empty and invalid",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Date-only",
+        "dueDate": "2026-10-22"
+      },
+      {
+        "id": "b",
+        "title": "ISO Z yesterday Berlin",
+        "dueDate": "2026-10-21T21:30:00.000Z"
+      },
+      {
+        "id": "c",
+        "title": "Offset-less ISO today",
+        "dueDate": "2026-10-22T23:30:00"
+      },
+      {
+        "id": "d",
+        "title": "Timestamp-like tomorrow",
+        "dueDate": {
+          "seconds": 1792746000,
+          "nanoseconds": 999000000
+        }
+      },
+      {
+        "id": "e",
+        "title": "Epoch ms later",
+        "dueDate": 1798113600000
+      },
+      {
+        "id": "f",
+        "title": "Empty string",
+        "dueDate": ""
+      },
+      {
+        "id": "g",
+        "title": "Invalid",
+        "dueDate": "soon"
+      },
+      {
+        "id": "h",
+        "title": "Null",
+        "dueDate": null
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "overdue",
+        "tasks": [
+          {
+            "id": "b",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "today",
+        "tasks": [
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "c",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "d",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "later",
+        "tasks": [
+          {
+            "id": "e",
+            "status": "Open"
+          }
+        ]
+      },
+      {
+        "key": "none",
+        "tasks": [
+          {
+            "id": "f",
+            "status": "Open"
+          },
+          {
+            "id": "g",
+            "status": "Open"
+          },
+          {
+            "id": "h",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 1,
+      "today": 2,
+      "week": 1,
+      "open": 8
+    }
+  }
+}

@@ -1,0 +1,229 @@
+{
+  "name": "A project untouched for 12 days with a deadline: stalled chip, deadline chip and the stalled-deadline accent line",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Quiet launch",
+        "dueDate": "2026-10-30"
+      },
+      {
+        "id": "b",
+        "title": "Busy project"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "createdAt": "2026-10-05T09:00:00.000Z"
+      },
+      {
+        "id": "b1",
+        "title": "Task b1",
+        "projectId": "b",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      }
+    ],
+    "unlocker": {
+      "title": "CMS schema",
+      "count": 3
+    }
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Quiet launch",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 17,
+        "deadlineDays": 8,
+        "completedWeek": 0,
+        "score": 3,
+        "chips": [
+          {
+            "key": "stalled",
+            "tone": "warning",
+            "labelKey": "dashboard.pulse.chip.stalled",
+            "params": {
+              "days": 17
+            }
+          },
+          {
+            "key": "deadline",
+            "tone": "info",
+            "labelKey": "dashboard.pulse.chip.deadline",
+            "params": {
+              "days": 8
+            }
+          }
+        ]
+      },
+      {
+        "projectId": "b",
+        "title": "Busy project",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": []
+      }
+    ],
+    "attention": [
+      "a"
+    ],
+    "quietCount": 1,
+    "rail": [
+      "a",
+      "b"
+    ],
+    "workload": [
+      "a",
+      "b"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.driftingOne",
+      "params": {
+        "total": 2
+      },
+      "value": "1",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.worst",
+      "params": {
+        "project": "Quiet launch"
+      },
+      "text": null,
+      "chips": [
+        {
+          "key": "stalled",
+          "tone": "warning",
+          "labelKey": "dashboard.pulse.chip.stalled",
+          "params": {
+            "days": 17
+          }
+        },
+        {
+          "key": "deadline",
+          "tone": "info",
+          "labelKey": "dashboard.pulse.chip.deadline",
+          "params": {
+            "days": 8
+          }
+        }
+      ]
+    },
+    "accent": {
+      "key": "dashboard.accent.stalledDeadline",
+      "params": {
+        "project": "Quiet launch",
+        "deadline": 8,
+        "days": 17
+      },
+      "text": null
+    },
+    "stats": {
+      "projects": 2,
+      "open": 2,
+      "overdue": 0,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjectsOne",
+        "params": {
+          "count": 1
+        },
+        "text": null
+      }
+    ],
+    "horizon": [
+      {
+        "kind": "project",
+        "id": "a",
+        "title": "Quiet launch",
+        "projectId": "a",
+        "day": "2026-10-30"
+      }
+    ]
+  }
+}

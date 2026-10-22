@@ -1,0 +1,17 @@
+{
+  "name": "Plain terms are normalized and split on whitespace",
+  "input": {
+    "query": "  Fix   Checkout  "
+  },
+  "expected": {
+    "raw": "  Fix   Checkout  ",
+    "prefixScope": null,
+    "terms": [
+      "fix",
+      "checkout"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

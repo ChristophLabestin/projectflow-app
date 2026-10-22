@@ -1,0 +1,13 @@
+{
+  "name": "Titles are normalized before matching",
+  "input": {
+    "terms": [
+      "uber"
+    ],
+    "title": "Übersicht",
+    "secondary": []
+  },
+  "expected": {
+    "score": 4
+  }
+}

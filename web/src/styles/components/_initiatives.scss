@@ -410,23 +410,23 @@
 
 /* Status Colors mapped directly to _tokens.scss RGB variables */
 .initiative-detail__status--active {
-    color: rgb(var(--status-in-progress-rgb));
-    .material-symbols-outlined { color: rgb(var(--status-in-progress-rgb)); }
+    color: var(--color-status-in-progress-text);
+    .material-symbols-outlined { color: var(--color-status-in-progress-text); }
 }
 
 .initiative-detail__status--open {
-    color: rgb(var(--status-open-rgb));
-    .material-symbols-outlined { color: rgb(var(--status-open-rgb)); }
+    color: var(--color-status-open-text);
+    .material-symbols-outlined { color: var(--color-status-open-text); }
 }
 
 .initiative-detail__status--paused {
-    color: rgb(var(--status-blocked-rgb)); // Mapping paused to blocked red for visibility
-    .material-symbols-outlined { color: rgb(var(--status-blocked-rgb)); }
+    color: var(--color-status-blocked-text); // Mapping paused to blocked red for visibility
+    .material-symbols-outlined { color: var(--color-status-blocked-text); }
 }
 
 .initiative-detail__status--completed {
-    color: rgb(var(--status-done-rgb));
-    .material-symbols-outlined { color: rgb(var(--status-done-rgb)); }
+    color: var(--color-status-done-text);
+    .material-symbols-outlined { color: var(--color-status-done-text); }
 }
 
 .initiative-detail__status--cancelled {

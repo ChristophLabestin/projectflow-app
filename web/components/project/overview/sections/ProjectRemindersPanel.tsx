@@ -5,6 +5,7 @@ import type { Initiative, Project, ProjectReminder, Task } from '../../../../typ
 import { DatePicker } from '../../../common/DateTime/DatePicker';
 import { parseDateValue } from '../../../../utils/taskDates';
 import { auth } from '../../../../services/firebase';
+import { ReminderNotifyToggle, ReminderSentBadge } from '../../../reminders/ReminderControls';
 
 type ReminderSource = 'project' | 'task';
 
@@ -75,6 +76,7 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
     const [title, setTitle] = useState('');
     const [remindDate, setRemindDate] = useState<Date | null>(null);
     const [linkTarget, setLinkTarget] = useState('project');
+    const [notifyAssignees, setNotifyAssignees] = useState(false);
     const [open, setOpen] = useState(false);
     const [composerOpen, setComposerOpen] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -164,6 +166,13 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
                 // Recipients default to the creator on the server (deliverReminders).
                 ...(auth.currentUser?.uid ? { createdBy: auth.currentUser.uid } : {})
             };
+            // Contract C2: the creator is the default recipient; assignees are opt-in (task reminders only).
+            const uid = auth.currentUser?.uid;
+            if (uid) {
+                reminder.createdBy = uid;
+                reminder.recipientIds = [uid];
+            }
+            if (linkedTask) reminder.notifyAssignees = notifyAssignees;
 
             if (linkedTask) {
                 await saveTaskReminderList(linkedTask, [...(linkedTask.reminders || []), reminder]);
@@ -174,6 +183,7 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
             setTitle('');
             setRemindDate(null);
             setLinkTarget('project');
+            setNotifyAssignees(false);
             setComposerOpen(false);
         } finally {
             setSaving(false);
@@ -277,6 +287,14 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
                                     </option>
                                 ))}
                             </select>
+                            {linkTarget.startsWith('task:') && (
+                                <ReminderNotifyToggle
+                                    checked={notifyAssignees}
+                                    onChange={setNotifyAssignees}
+                                    label={t('projectOverview.reminders.notifyAssignees', 'Also remind assignees')}
+                                    hint={t('projectOverview.reminders.notifyAssigneesHint', 'The task assignees get this reminder too, in addition to you.')}
+                                />
+                            )}
                             <button type="button" onClick={() => void handleAdd()} disabled={!remindDate || saving}>
                                 <span className="material-symbols-outlined">add_alert</span>
                                 <span>{t('projectOverview.reminders.add', 'Add')}</span>
@@ -316,6 +334,12 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
                                                 {formatReminderDate(reminder.remindAt, dateFormat, dateLocale)}
                                                 {isDue ? ` · ${t('projectOverview.reminders.dueNow', 'due')}` : ''}
                                             </span>
+                                            <ReminderSentBadge
+                                                sentAt={reminder.sentAt}
+                                                label={t('projectOverview.reminders.sent', 'Sent')}
+                                                dateFormat={dateFormat}
+                                                dateLocale={dateLocale}
+                                            />
                                         </div>
                                         {linkTitle && reminder.linkedType !== 'project' && reminder.linkedId && (
                                             <button

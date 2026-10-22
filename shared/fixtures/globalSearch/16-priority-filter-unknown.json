@@ -1,0 +1,16 @@
+{
+  "name": "An unknown priority stays a term",
+  "input": {
+    "query": "prio:asap"
+  },
+  "expected": {
+    "raw": "prio:asap",
+    "prefixScope": null,
+    "terms": [
+      "prio:asap"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

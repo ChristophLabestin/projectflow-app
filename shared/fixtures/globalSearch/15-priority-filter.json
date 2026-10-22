@@ -1,0 +1,16 @@
+{
+  "name": "prio: and priority: set the priority, the last one wins",
+  "input": {
+    "query": "prio:high priority:urgent launch"
+  },
+  "expected": {
+    "raw": "prio:high priority:urgent launch",
+    "prefixScope": null,
+    "terms": [
+      "launch"
+    ],
+    "taskFilters": [],
+    "priority": "urgent",
+    "hasTaskFilters": true
+  }
+}

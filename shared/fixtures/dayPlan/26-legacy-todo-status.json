@@ -1,0 +1,247 @@
+{
+  "name": "Legacy status Todo (and missing status) behaves like Open, never like Blocked",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "p-web",
+        "title": "Website Relaunch"
+      },
+      {
+        "id": "p-app",
+        "title": "Mobile App"
+      },
+      {
+        "id": "p-ops",
+        "title": "Operations"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Legacy todo, overdue",
+        "projectId": "p-web",
+        "status": "Todo",
+        "dueDate": "2026-10-21"
+      },
+      {
+        "id": "b",
+        "title": "Legacy todo, backlog",
+        "projectId": "p-web",
+        "status": "Todo",
+        "createdAt": "2026-10-01T09:00:00.000Z"
+      },
+      {
+        "id": "c",
+        "title": "No status",
+        "projectId": "p-web",
+        "dueDate": "2026-10-22"
+      }
+    ],
+    "personalTasks": [],
+    "otherTasks": [],
+    "focus": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "stops": [
+      {
+        "id": "a",
+        "kind": "overdue",
+        "tone": "danger",
+        "proposed": false,
+        "taskId": "a",
+        "itemType": "task",
+        "title": "Legacy todo, overdue",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.overdueYesterday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "c",
+        "kind": "dueToday",
+        "tone": "warning",
+        "proposed": false,
+        "taskId": "c",
+        "itemType": "task",
+        "title": "No status",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.today.reason.dueToday",
+          "params": {},
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      },
+      {
+        "id": "suggest:b",
+        "kind": "suggestion",
+        "tone": "neutral",
+        "proposed": true,
+        "taskId": "b",
+        "itemType": "task",
+        "title": "Legacy todo, backlog",
+        "projectId": "p-web",
+        "projectName": "Website Relaunch",
+        "tenantId": null,
+        "isPersonal": false,
+        "priority": null,
+        "reason": {
+          "key": "dashboard.route.suggest.aged",
+          "params": {
+            "days": 21
+          },
+          "text": null
+        },
+        "unblocksCount": 0,
+        "canFocus": true
+      }
+    ],
+    "moreCount": 0,
+    "isSuggested": false,
+    "statement": {
+      "key": "dashboard.route.statement.behind",
+      "params": {},
+      "value": "3",
+      "valueKey": null
+    },
+    "dayShape": "behind",
+    "cause": {
+      "key": "dashboard.today.insight.oldestOverdueOne",
+      "params": {
+        "title": "Legacy todo, overdue"
+      },
+      "text": null
+    },
+    "counts": {
+      "overdue": 1,
+      "dueToday": 1,
+      "scheduledToday": 0,
+      "queue": 2,
+      "blocked": 0,
+      "open": 3,
+      "undated": 1,
+      "completedLast7Days": 0,
+      "completedPrevious7Days": 0
+    },
+    "band": {
+      "segments": [
+        {
+          "key": "overdue-0",
+          "type": "overdue",
+          "flex": 1.3
+        },
+        {
+          "key": "due-0",
+          "type": "due",
+          "flex": 1
+        },
+        {
+          "key": "rest",
+          "type": "rest",
+          "flex": 5.7
+        }
+      ],
+      "caption": [
+        {
+          "key": "overdue",
+          "tone": "danger",
+          "count": 1
+        },
+        {
+          "key": "due",
+          "tone": "warning",
+          "count": 1
+        }
+      ]
+    },
+    "week": {
+      "badge": {
+        "key": "dashboard.week.none",
+        "params": {},
+        "text": null
+      },
+      "days": [
+        {
+          "date": "2026-10-19",
+          "weekday": 0,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-20",
+          "weekday": 1,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-21",
+          "weekday": 2,
+          "count": 1,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-22",
+          "weekday": 3,
+          "count": 1,
+          "isToday": true,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-23",
+          "weekday": 4,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": false
+        },
+        {
+          "date": "2026-10-24",
+          "weekday": 5,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        },
+        {
+          "date": "2026-10-25",
+          "weekday": 6,
+          "count": 0,
+          "isToday": false,
+          "isWeekend": true
+        }
+      ],
+      "total": 2
+    },
+    "overnight": [
+      {
+        "key": "overdue:a",
+        "kind": "overdue",
+        "taskId": "a",
+        "title": "Legacy todo, overdue",
+        "timeMs": 1792620000000,
+        "time": "00:00",
+        "tone": "warning"
+      }
+    ],
+    "waitingOnMe": [],
+    "topUnlocker": null
+  }
+}

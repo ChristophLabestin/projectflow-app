@@ -2442,6 +2442,9 @@ const en = {
     'taskDetail.reminders.complete': 'Complete reminder',
     'taskDetail.reminders.reopen': 'Reopen reminder',
     'taskDetail.reminders.delete': 'Delete reminder',
+    'taskDetail.reminders.notifyAssignees': 'Also remind assignees',
+    'taskDetail.reminders.notifyAssigneesHint': 'The task assignees get this reminder too, in addition to you.',
+    'taskDetail.reminders.sent': 'Sent',
 
     'aiStudio.hero.badge': 'ProjectFlow CORA Studio',
     'aiStudio.greeting.hello': 'Hello,',
@@ -3236,6 +3239,8 @@ const en = {
     'workspace.accept.home': 'Go to my workspace',
     'workspace.accept.mismatchTitle': 'This invitation is for a different email',
     'workspace.accept.mismatchText': 'It was sent to {email}, but you are signed in as {current}. Sign in with the invited address to accept it.',
+    'workspace.accept.mismatchApple': 'If you chose "Hide My Email" when signing in with Apple, ProjectFlow only sees a private relay address ({current}) and it can never match an email invitation. Ask the person who invited you for an invite link instead (it works with any account), or sign in with the invited address and link Apple under Settings > Account > Connected accounts.',
+    'workspace.accept.mismatchHint': 'Tip: an invite link works with any account. If you only have a different address, ask the person who invited you for a link invite.',
     'projectTeam.invite.cta': 'Invite people',
     'projectTeam.invite.adminOnly': 'Only workspace admins can invite new people.',
     'projects.spotlight.dueDate': 'Due date',

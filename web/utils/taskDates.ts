@@ -6,6 +6,9 @@
 // that is due today count as overdue after midnight UTC. Always parse through
 // `parseDateValue` and compare whole days with the helpers below.
 
+import { getDueBucket as getPureDueBucket, type DueBucket } from './dueBuckets';
+import { daysBetween, resolveTimeZone, toDay } from './zonedDate';
+
 const DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Like `new Date(value)`, but date-only strings become local midnight. */
@@ -24,14 +27,18 @@ export const parseDateValue = (value: unknown): Date => {
 /** True when the value carries a real time of day (not a date-only field). */
 export const hasTimeComponent = (value: unknown) => typeof value === 'string' && !DATE_ONLY.test(value) && value.includes('T');
 
-const startOfLocalDay = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-/** Whole-day difference between the date and today (negative = past). */
+/**
+ * Whole-day difference between the date and today (negative = past).
+ * Calendar math lives in `zonedDate` (shared with the golden-fixture modules);
+ * here "today" is the browser's local day.
+ */
 export const daysFromToday = (value: unknown, now: Date = new Date()): number | null => {
     if (value === null || value === undefined || value === '') return null;
-    const date = parseDateValue(value);
-    if (Number.isNaN(date.getTime())) return null;
-    return Math.round((startOfLocalDay(date).getTime() - startOfLocalDay(now).getTime()) / 86400000);
+    const timeZone = resolveTimeZone();
+    const day = toDay(value, timeZone);
+    const today = toDay(now.getTime(), timeZone);
+    if (day === null || today === null) return null;
+    return daysBetween(today, day);
 };
 
 /** Overdue = the due *day* is before today. A task due today is not overdue. */
@@ -42,17 +49,12 @@ export const isDateOverdue = (value: unknown, now: Date = new Date()) => {
 
 export const isDateToday = (value: unknown, now: Date = new Date()) => daysFromToday(value, now) === 0;
 
-export type DueBucket = 'overdue' | 'today' | 'week' | 'later' | 'none';
+export type { DueBucket };
 
 /** Groups a due date for "what should I do next" lists. */
-export const getDueBucket = (value: unknown, now: Date = new Date()): DueBucket => {
-    const diff = daysFromToday(value, now);
-    if (diff === null) return 'none';
-    if (diff < 0) return 'overdue';
-    if (diff === 0) return 'today';
-    if (diff <= 7) return 'week';
-    return 'later';
-};
+export const getDueBucket = (value: unknown, now: Date = new Date()): DueBucket => (
+    getPureDueBucket(value as string | number | Date | null | undefined, { now: now.getTime() })
+);
 
 /** Local calendar date as a date-only ISO string ("2026-09-26"). */
 export const toIsoDate = (date: Date) => {

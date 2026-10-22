@@ -1,0 +1,169 @@
+{
+  "name": "Everything is fine: \"steady\" statement, quiet-all insight, no attention list",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Project A"
+      },
+      {
+        "id": "b",
+        "title": "Project B"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      },
+      {
+        "id": "b1",
+        "title": "Task b1",
+        "projectId": "b",
+        "createdAt": "2026-10-20T09:00:00.000Z",
+        "dueDate": "2026-11-30"
+      }
+    ],
+    "unlocker": null
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Project A",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": []
+      },
+      {
+        "projectId": "b",
+        "title": "Project B",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 2,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": []
+      }
+    ],
+    "attention": [],
+    "quietCount": 2,
+    "rail": [
+      "a",
+      "b"
+    ],
+    "workload": [
+      "a",
+      "b"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.steady",
+      "params": {},
+      "value": "2",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.quietAll",
+      "params": {},
+      "text": null
+    },
+    "accent": null,
+    "stats": {
+      "projects": 2,
+      "open": 2,
+      "overdue": 0,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjects",
+        "params": {
+          "count": 2
+        },
+        "text": null
+      }
+    ],
+    "horizon": []
+  }
+}

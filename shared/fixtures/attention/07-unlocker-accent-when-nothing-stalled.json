@@ -1,0 +1,154 @@
+{
+  "name": "Without a stalled project the accent line falls back to the top unlocker",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "projects": [
+      {
+        "id": "a",
+        "title": "Project A"
+      }
+    ],
+    "tasks": [
+      {
+        "id": "a1",
+        "title": "Task a1",
+        "projectId": "a",
+        "createdAt": "2026-10-21T09:00:00.000Z"
+      }
+    ],
+    "unlocker": {
+      "title": "CMS schema",
+      "count": 2
+    }
+  },
+  "expected": {
+    "today": "2026-10-22",
+    "timeZone": "Europe/Berlin",
+    "entries": [
+      {
+        "projectId": "a",
+        "title": "Project A",
+        "openCount": 1,
+        "overdueCount": 0,
+        "blockedCount": 0,
+        "stalledDays": 1,
+        "deadlineDays": null,
+        "completedWeek": 0,
+        "score": 0,
+        "chips": []
+      }
+    ],
+    "attention": [],
+    "quietCount": 1,
+    "rail": [
+      "a"
+    ],
+    "workload": [
+      "a"
+    ],
+    "bestRun": null,
+    "statement": {
+      "key": "dashboard.pulse.statement.steadyOne",
+      "params": {},
+      "value": "1",
+      "valueKey": null
+    },
+    "insight": {
+      "key": "dashboard.pulse.insight.quietAll",
+      "params": {},
+      "text": null
+    },
+    "accent": {
+      "key": "dashboard.accent.unlock",
+      "params": {
+        "title": "CMS schema",
+        "count": 2
+      },
+      "text": null
+    },
+    "stats": {
+      "projects": 1,
+      "open": 1,
+      "overdue": 0,
+      "doneWeek": 0
+    },
+    "momentum": {
+      "current": 0,
+      "previous": 0,
+      "caption": {
+        "key": "dashboard.pulse.momentum.flat",
+        "params": {},
+        "text": null
+      },
+      "trend": [
+        {
+          "date": "2026-10-09",
+          "value": 0
+        },
+        {
+          "date": "2026-10-10",
+          "value": 0
+        },
+        {
+          "date": "2026-10-11",
+          "value": 0
+        },
+        {
+          "date": "2026-10-12",
+          "value": 0
+        },
+        {
+          "date": "2026-10-13",
+          "value": 0
+        },
+        {
+          "date": "2026-10-14",
+          "value": 0
+        },
+        {
+          "date": "2026-10-15",
+          "value": 0
+        },
+        {
+          "date": "2026-10-16",
+          "value": 0
+        },
+        {
+          "date": "2026-10-17",
+          "value": 0
+        },
+        {
+          "date": "2026-10-18",
+          "value": 0
+        },
+        {
+          "date": "2026-10-19",
+          "value": 0
+        },
+        {
+          "date": "2026-10-20",
+          "value": 0
+        },
+        {
+          "date": "2026-10-21",
+          "value": 0
+        },
+        {
+          "date": "2026-10-22",
+          "value": 0
+        }
+      ]
+    },
+    "wins": [
+      {
+        "key": "dashboard.pulse.wins.quietProjectsOne",
+        "params": {
+          "count": 1
+        },
+        "text": null
+      }
+    ],
+    "horizon": []
+  }
+}

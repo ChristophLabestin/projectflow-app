@@ -1,0 +1,16 @@
+{
+  "name": "Leading whitespace is trimmed before the prefix is read",
+  "input": {
+    "query": "   #web"
+  },
+  "expected": {
+    "raw": "   #web",
+    "prefixScope": "projects",
+    "terms": [
+      "web"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

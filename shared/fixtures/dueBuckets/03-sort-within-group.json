@@ -1,0 +1,103 @@
+{
+  "name": "Within a group: earliest due first, then higher priority, then title; missing priority counts as Medium",
+  "input": {
+    "now": "2026-10-22T10:00:00.000Z",
+    "timeZone": "Europe/Berlin",
+    "tasks": [
+      {
+        "id": "a",
+        "title": "Banana",
+        "dueDate": "2026-10-25",
+        "priority": "Medium"
+      },
+      {
+        "id": "b",
+        "title": "Apple",
+        "dueDate": "2026-10-25",
+        "priority": "Medium"
+      },
+      {
+        "id": "c",
+        "title": "Zebra urgent",
+        "dueDate": "2026-10-25",
+        "priority": "Urgent"
+      },
+      {
+        "id": "d",
+        "title": "Cherry low",
+        "dueDate": "2026-10-25",
+        "priority": "Low"
+      },
+      {
+        "id": "e",
+        "title": "Earlier",
+        "dueDate": "2026-10-24",
+        "priority": "Low"
+      },
+      {
+        "id": "f",
+        "title": "No priority",
+        "dueDate": "2026-10-25"
+      },
+      {
+        "id": "g",
+        "title": "High",
+        "dueDate": "2026-10-25",
+        "priority": "High"
+      },
+      {
+        "id": "h",
+        "title": "Unknown priority",
+        "dueDate": "2026-10-25",
+        "priority": "Whenever"
+      }
+    ]
+  },
+  "expected": {
+    "groups": [
+      {
+        "key": "week",
+        "tasks": [
+          {
+            "id": "e",
+            "status": "Open"
+          },
+          {
+            "id": "c",
+            "status": "Open"
+          },
+          {
+            "id": "g",
+            "status": "Open"
+          },
+          {
+            "id": "b",
+            "status": "Open"
+          },
+          {
+            "id": "a",
+            "status": "Open"
+          },
+          {
+            "id": "f",
+            "status": "Open"
+          },
+          {
+            "id": "d",
+            "status": "Open"
+          },
+          {
+            "id": "h",
+            "status": "Open"
+          }
+        ]
+      }
+    ],
+    "summary": {
+      "overdue": 0,
+      "today": 0,
+      "week": 8,
+      "open": 8
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "An unknown is: value stays a search term",
+  "input": {
+    "query": "is:bogus thing"
+  },
+  "expected": {
+    "raw": "is:bogus thing",
+    "prefixScope": null,
+    "terms": [
+      "is:bogus",
+      "thing"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

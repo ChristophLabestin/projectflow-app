@@ -1,0 +1,14 @@
+{
+  "name": "Only whitespace",
+  "input": {
+    "query": "   "
+  },
+  "expected": {
+    "raw": "   ",
+    "prefixScope": null,
+    "terms": [],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}

@@ -22,6 +22,7 @@ import {
     reauthenticateWithPopup,
     GithubAuthProvider,
     GoogleAuthProvider,
+    OAuthProvider,
     linkWithPopup,
     sendEmailVerification,
     unlink,
@@ -32,6 +33,8 @@ import { format } from 'date-fns';
 import { linkWithGithub, resetUserOnboarding } from '../services/dataService';
 import { registerPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from './ui/Checkbox';
+import { NotificationSettingsPanel } from './settings/NotificationSettingsPanel';
+import { AppleLogo } from './ui/AppleLogo';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
 import { RoleManagement } from './settings/RoleManagement';
@@ -57,7 +60,7 @@ import {
 import { getTenant, updateTenant } from '../services/domain/workspaceService';
 import { clearGithubToken, getAIUsage, getGithubToken, getUserProfile, setGithubToken, updateUserData } from '../services/domain/usersService';
 
-type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
+type SettingsTab = 'account' | 'preferences' | 'notifications' | 'security' | 'general' | 'roles' | 'api' | 'billing' | 'email' | 'integrations' | 'prebeta'
     | WorkspaceSettingsSection;
 
 const WORKSPACE_TABS: SettingsTab[] = ['workspace', 'members', 'roles', 'general', 'api', 'danger'];
@@ -225,6 +228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const [githubMfaResolver, setGithubMfaResolver] = useState<MultiFactorResolver | null>(null);
     const [showGithubMfaModal, setShowGithubMfaModal] = useState(false);
     const [connectingGoogle, setConnectingGoogle] = useState(false);
+    const [connectingApple, setConnectingApple] = useState(false);
     const [providers, setProviders] = useState<string[]>([]);
     const [showSetPassword, setShowSetPassword] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -416,6 +420,50 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             showError(e.message || t('settings.account.google.error'));
         } finally {
             setConnectingGoogle(false);
+        }
+    };
+
+    const createAppleProvider = () => {
+        const provider = new OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+        return provider;
+    };
+
+    // Link Sign in with Apple. Apple "Hide My Email" users get a relay address,
+    // so linking from here is how they connect their real ProjectFlow account.
+    const handleConnectApple = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        setConnectingApple(true);
+        try {
+            const currentProviders = user.providerData.map(p => p.providerId);
+            try {
+                await linkWithPopup(user, createAppleProvider());
+            } catch (linkError: any) {
+                if (linkError.code === 'auth/requires-recent-login') {
+                    if (currentProviders.includes('github.com')) {
+                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                    } else if (currentProviders.includes('google.com')) {
+                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                    }
+                    await linkWithPopup(user, createAppleProvider());
+                } else {
+                    throw linkError;
+                }
+            }
+            setProviders(user.providerData.map(p => p.providerId));
+            showSuccess(t('settings.account.apple.connected'));
+        } catch (e: any) {
+            console.error('Failed to link Apple', e);
+            if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
+            if (e.code === 'auth/credential-already-in-use' || e.code === 'auth/email-already-in-use') {
+                showError(t('settings.account.apple.inUse'));
+            } else {
+                showError(e.message || t('settings.account.apple.error'));
+            }
+        } finally {
+            setConnectingApple(false);
         }
     };
 
@@ -1158,6 +1206,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         : [
             { id: 'account', label: t('settings.tabs.account'), icon: 'person' },
             { id: 'preferences', label: t('settings.tabs.preferences'), icon: 'tune' },
+            { id: 'notifications', label: t('settings.tabs.notifications'), icon: 'notifications' },
             { id: 'security', label: t('settings.tabs.security'), icon: 'security' },
             { id: 'prebeta', label: t('settings.tabs.prebeta'), icon: 'science' },
         ];
@@ -1170,6 +1219,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                 return <WorkspaceSettingsPanel section={activeTab} onNavigate={onClose} />;
             case 'roles':
                 return <RoleManagement />;
+            case 'notifications':
+                return <NotificationSettingsPanel />;
             case 'prebeta':
                 return (
                     <div className="space-y-6 animate-fade-in">
@@ -1679,6 +1730,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                             </Button>
                                         ) : (
                                             <Button variant="secondary" size="sm" onClick={handleConnectGoogle} loading={connectingGoogle}>
+                                                {t('settings.account.connected.connect')}
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Apple */}
+                                    <div className="flex items-center justify-between p-4 rounded-xl bg-surface-hover transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-main">
+                                                <AppleLogo />
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-sm text-main">Apple</div>
+                                                <div className="text-xs text-muted mt-0.5">
+                                                    {providers.includes('apple.com')
+                                                        ? t('settings.account.connected.connected')
+                                                        : t('settings.account.apple.hint')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {providers.includes('apple.com') ? (
+                                            <Button variant="ghost" disabled size="sm" className="text-emerald-500">
+                                                <span className="material-symbols-outlined mr-1 text-lg">check_circle</span>
+                                                {t('settings.account.connected.linked')}
+                                            </Button>
+                                        ) : (
+                                            <Button variant="secondary" size="sm" onClick={handleConnectApple} loading={connectingApple}>
                                                 {t('settings.account.connected.connect')}
                                             </Button>
                                         )}

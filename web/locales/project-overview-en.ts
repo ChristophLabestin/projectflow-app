@@ -712,6 +712,9 @@ const enProjectOverview = {
     'projectOverview.reminders.complete': 'Complete reminder',
     'projectOverview.reminders.reopen': 'Reopen reminder',
     'projectOverview.reminders.delete': 'Delete reminder',
+    'projectOverview.reminders.notifyAssignees': 'Also remind assignees',
+    'projectOverview.reminders.notifyAssigneesHint': 'The task assignees get this reminder too, in addition to you.',
+    'projectOverview.reminders.sent': 'Sent',
     'projectOverview.execution.subtasksLabel': 'Subtasks',
     'projectOverview.delete.done': 'Project deleted.',
 };

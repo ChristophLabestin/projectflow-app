@@ -1,5 +1,13 @@
 import type { Task } from '../../types';
-import { daysFromToday, getDueBucket, parseDateValue, type DueBucket } from '../../utils/taskDates';
+import {
+    compareWork as compareDueWork,
+    groupByDueBucket,
+    normalizeStatus as normalizeTaskStatus,
+    summarizeDue as summarizeDueTasks,
+    type DueBucket,
+    type DueGroupKey
+} from '../../utils/dueBuckets';
+import { dateSortKey, resolveTimeZone } from '../../utils/zonedDate';
 
 export type WorkGroupBy = 'due' | 'status' | 'assignee';
 export type WorkGroupTone = 'danger' | 'warning' | 'accent' | 'neutral' | 'muted';
@@ -20,36 +28,26 @@ export interface WorkGroup {
 export const WORK_STATUSES = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
 export const WORK_PRIORITIES = ['Urgent', 'High', 'Medium', 'Low'] as const;
 
-const PRIORITY_RANK: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
-
 /** `Todo` is a legacy alias of `Open`; completed tasks always read as `Done`. */
-export const normalizeStatus = (task: Task): string => {
-    if (task.isCompleted) return 'Done';
-    if (!task.status || task.status === 'Todo') return 'Open';
-    return task.status;
-};
+export const normalizeStatus = (task: Task): string => normalizeTaskStatus(task);
 
 export const getAssigneeIds = (task: Task): string[] => {
     if (task.assigneeIds && task.assigneeIds.length) return task.assigneeIds;
     return task.assigneeId ? [task.assigneeId] : [];
 };
 
-const dueTime = (task: Task) => (task.dueDate ? parseDateValue(task.dueDate).getTime() : Number.MAX_SAFE_INTEGER);
+const dueTime = (task: Task) => dateSortKey(task.dueDate, resolveTimeZone());
 
-/** Earliest due first, then higher priority, then title. */
-export const compareWork = (a: Task, b: Task) => (
-    dueTime(a) - dueTime(b)
-    || (PRIORITY_RANK[b.priority || 'Medium'] || 0) - (PRIORITY_RANK[a.priority || 'Medium'] || 0)
-    || a.title.localeCompare(b.title)
-);
+/** Earliest due first, then higher priority, then title (shared with iOS, see utils/dueBuckets.ts). */
+export const compareWork = (a: Task, b: Task) => compareDueWork(a, b);
 
-const DUE_ORDER: { bucket: DueBucket; tone: WorkGroupTone }[] = [
-    { bucket: 'overdue', tone: 'danger' },
-    { bucket: 'today', tone: 'warning' },
-    { bucket: 'week', tone: 'accent' },
-    { bucket: 'later', tone: 'neutral' },
-    { bucket: 'none', tone: 'muted' }
-];
+const DUE_TONE: Record<DueBucket, WorkGroupTone> = {
+    overdue: 'danger',
+    today: 'warning',
+    week: 'accent',
+    later: 'neutral',
+    none: 'muted'
+};
 
 const STATUS_TONE: Record<string, WorkGroupTone> = {
     Blocked: 'danger',
@@ -75,12 +73,16 @@ export const groupTasks = (tasks: Task[], { groupBy, t, members = [], currentUse
     let groups: WorkGroup[] = [];
 
     if (groupBy === 'due') {
-        groups = DUE_ORDER.map(({ bucket, tone }) => ({
-            key: `due:${bucket}`,
-            label: t(`work.group.due.${bucket}`),
-            tone,
-            tasks: open.filter((task) => getDueBucket(task.dueDate) === bucket)
-        }));
+        // Overdue → Today → Next 7 days → Later → No date → Completed (the trailing
+        // completed group is added below for every grouping).
+        groups = groupByDueBucket(tasks, { now: Date.now() })
+            .filter((group): group is { key: Exclude<DueGroupKey, 'done'>; tasks: Task[] } => group.key !== 'done')
+            .map((group) => ({
+                key: `due:${group.key}`,
+                label: t(`work.group.due.${group.key}`),
+                tone: DUE_TONE[group.key],
+                tasks: group.tasks
+            }));
     } else if (groupBy === 'status') {
         groups = WORK_STATUSES.filter((status) => status !== 'Done').map((status) => ({
             key: `status:${status}`,
@@ -125,16 +127,4 @@ export const groupTasks = (tasks: Task[], { groupBy, t, members = [], currentUse
 };
 
 /** Summary counts for the page header ("2 overdue · 1 today · 4 this week"). */
-export const summarizeDue = (tasks: Task[]) => {
-    const summary = { overdue: 0, today: 0, week: 0, open: 0 };
-    tasks.forEach((task) => {
-        if (task.isCompleted) return;
-        summary.open += 1;
-        const diff = daysFromToday(task.dueDate);
-        if (diff === null) return;
-        if (diff < 0) summary.overdue += 1;
-        else if (diff === 0) summary.today += 1;
-        else if (diff <= 7) summary.week += 1;
-    });
-    return summary;
-};
+export const summarizeDue = (tasks: Task[]) => summarizeDueTasks(tasks, { now: Date.now() });

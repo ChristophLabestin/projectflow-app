@@ -21,6 +21,7 @@ export default {
     'login.error.mfaInvalid': 'Ungültiger 2FA-Code. Bitte versuche es erneut.',
     'login.error.mfaSetup': 'Die Zwei-Faktor-Anmeldung konnte nicht vorbereitet werden. Bitte lade die Seite neu und versuche es erneut.',
     'login.error.google': 'Anmeldung mit Google fehlgeschlagen.',
+    'login.error.apple': 'Anmeldung mit Apple fehlgeschlagen.',
     'login.error.github': 'Anmeldung mit GitHub fehlgeschlagen.',
     'login.action.createAccount': 'Konto erstellen',
     'login.action.signIn': 'Anmelden',
@@ -41,6 +42,7 @@ export default {
     'login.mfa.back': 'Zurück zum Login',
     'login.social.google': 'Google',
     'login.social.github': 'GitHub',
+    'login.social.apple': 'Weiter mit Apple',
     'login.footer.copyright': '© {year} {company}',
     'passkey.login.action': 'Mit Passkey anmelden',
     'passkey.login.error': 'Anmeldung mit Passkey fehlgeschlagen'

@@ -1,0 +1,16 @@
+{
+  "name": "Prefix ? selects help",
+  "input": {
+    "query": "?shortcuts"
+  },
+  "expected": {
+    "raw": "?shortcuts",
+    "prefixScope": "help",
+    "terms": [
+      "shortcuts"
+    ],
+    "taskFilters": [],
+    "priority": null,
+    "hasTaskFilters": false
+  }
+}
