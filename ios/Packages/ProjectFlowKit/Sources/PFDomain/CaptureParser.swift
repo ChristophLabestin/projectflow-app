@@ -43,6 +43,11 @@ public struct CaptureParseResult: Equatable, Sendable {
     /// Active tokens, sorted by position.
     public var tokens: [CaptureToken]
 
+    public init(title: String, tokens: [CaptureToken]) {
+        self.title = title
+        self.tokens = tokens
+    }
+
     public var projectId: String? { tokens.first { $0.kind == .project }?.entityId }
     public var personId: String? { tokens.first { $0.kind == .person }?.entityId }
     public var dueDate: FlexDate? { tokens.first { $0.kind == .date }?.day }
