@@ -86,7 +86,7 @@ export const WORKSPACE_CAPABILITIES: Record<WorkspaceRole, WorkspacePermissions>
 /**
  * Get the role of the current user in a project
  */
-export function getUserRole(project: Project | null, userId?: string): ProjectRole | null {
+export function getUserRole(project: Project | null, userId?: string): ProjectRole | (string & {}) | null {
     if (!project || !userId) return null;
 
     // Owner always has Owner role

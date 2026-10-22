@@ -72,10 +72,10 @@ export const subscribeTenantFinanceCollection = <T extends DocumentData>(
     const q = constraints.length > 0 ? query(ref, ...constraints) : query(ref);
 
     return onSnapshot(q, (snapshot) => {
-        const rows = snapshot.docs.map((docSnap) => ({
+        const rows: T[] = snapshot.docs.map((docSnap) => ({
             id: docSnap.id,
-            ...docSnap.data(),
-        })) as T[];
+            ...(docSnap.data() as T),
+        }));
 
         callback(rows);
     });
@@ -90,7 +90,7 @@ export const callFinanceFunction = async <TData = unknown, TResult = unknown>(
     return response.data;
 };
 
-export const withTenant = <T extends Record<string, unknown>>(payload: T, tenantId?: string) => ({
+export const withTenant = <T extends object>(payload: T, tenantId?: string): T & { tenantId: string } => ({
     ...payload,
     tenantId: resolveFinanceTenantId(tenantId),
 });

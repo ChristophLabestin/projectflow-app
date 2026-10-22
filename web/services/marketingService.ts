@@ -56,7 +56,7 @@ export const subscribeMarketingCampaigns = (projectId: string, onUpdate: (data: 
 
 // --- Ad Campaigns ---
 
-export const createAdCampaign = async (campaign: Omit<AdCampaign, 'id'>) => {
+export const createAdCampaign = async (campaign: Omit<AdCampaign, 'id' | 'createdAt'>) => {
     const colRef = collection(db, 'ad_campaigns');
     const docRef = await addDoc(colRef, {
         ...campaign,
@@ -383,11 +383,12 @@ export const createAdCampaignFromIdea = async (
         console.warn("Failed to parse flow concept for conversion", e);
     }
 
-    const campaignData: Omit<AdCampaign, 'id'> = {
+    const campaignData: Omit<AdCampaign, 'id' | 'createdAt'> = {
         projectId,
         name: conceptData.adPlatform ? `${idea.title} - ${conceptData.adPlatform}` : idea.title,
         platform: (conceptData.adPlatform?.split(' ')[0] as any) || 'Google',
         status: 'Paused', // Default to paused
+        budgetType: 'Daily',
         budgetDaily: Number(conceptData.dailyBudget) || 0,
         budgetTotal: 0,
         spend: 0,

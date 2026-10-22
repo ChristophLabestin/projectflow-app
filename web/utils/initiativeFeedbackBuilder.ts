@@ -123,7 +123,7 @@ const normalizeFieldId = (value: string | undefined, fallback: string) => {
 
 const normalizeOptionValue = (label: string) => label.trim();
 
-export const prepareInitiativeFeedbackFieldsForSave = (fields: InitiativeFeedbackField[]) => {
+export const prepareInitiativeFeedbackFieldsForSave = (fields: InitiativeFeedbackField[]): InitiativeFeedbackField[] => {
     const seenIds = new Set<string>();
 
     return fields.slice(0, MAX_INITIATIVE_FEEDBACK_FIELDS).map((field, index) => {

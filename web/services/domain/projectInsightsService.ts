@@ -34,7 +34,7 @@ const projectSubCollection = (tenantId: string, projectId: string, collectionNam
 const logProjectActivity = async (
     projectId: string,
     tenantId: string,
-    payload: Omit<Activity, 'id' | 'projectId' | 'createdAt' | 'ownerId'>
+    payload: Omit<Activity, 'id' | 'projectId' | 'createdAt' | 'ownerId' | 'user'> & { user?: string }
 ) => {
     const user = auth.currentUser;
     if (!user) {

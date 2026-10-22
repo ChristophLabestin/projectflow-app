@@ -1,7 +1,15 @@
 import { useState } from 'react';
 import { ref, uploadBytesResumable, getDownloadURL, listAll } from 'firebase/storage';
 import { storage } from '../services/firebase';
-import type { Asset } from '../services/storage/types';
+
+export interface Asset {
+    id: string;
+    name: string;
+    url: string;
+    type: 'image' | 'video' | 'file';
+    size: number;
+    createdAt: string;
+}
 
 export const useStorage = () => {
     const [progress, setProgress] = useState(0);
