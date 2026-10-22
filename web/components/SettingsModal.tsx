@@ -1322,38 +1322,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                         </div>
 
                         <div className="space-y-6 max-w-4xl">
-                            <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
-                                <h3 className="text-lg font-bold text-main">{t('settings.general.company.title')}</h3>
-                                <div className="space-y-5">
-                                    <Input
-                                        label={t('settings.general.company.name')}
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder={t('settings.general.company.namePlaceholder')}
-                                    />
-                                    <Textarea
-                                        label={t('settings.general.company.description')}
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder={t('settings.general.company.descriptionPlaceholder')}
-                                    />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                        <Input
-                                            label={t('settings.general.company.website')}
-                                            value={website}
-                                            onChange={(e) => setWebsite(e.target.value)}
-                                            placeholder="https://"
-                                        />
-                                        <Input
-                                            label={t('settings.general.company.contactEmail')}
-                                            value={contactEmail}
-                                            onChange={(e) => setContactEmail(e.target.value)}
-                                            placeholder="contact@company.com"
-                                        />
-                                    </div>
-                                </div>
-                            </section>
-
+                            {/* Company details live in the Workspace tab; this tab only holds email and storage services. */}
                             <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-6">
                                 <h3 className="text-lg font-bold text-main">{t('settings.general.smtp.title')}</h3>
                                 <div className="space-y-5">

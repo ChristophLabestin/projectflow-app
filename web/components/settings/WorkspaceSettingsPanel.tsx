@@ -69,8 +69,8 @@ export const WorkspaceSettingsPanel: React.FC<{ section: WorkspaceSettingsSectio
 
     const dirty = savedProfile !== null && JSON.stringify(profile) !== JSON.stringify(savedProfile);
     const counts = useMemo(() => ({
-        admins: members.filter((member) => member.role === 'Owner' || member.role === 'Admin').length,
-        guests: members.filter((member) => member.role === 'Guest').length
+        admins: members.filter((member) => ['owner', 'admin'].includes(String(member.role || '').toLowerCase())).length,
+        guests: members.filter((member) => String(member.role || '').toLowerCase() === 'guest').length
     }), [members]);
 
     const saveProfile = async () => {

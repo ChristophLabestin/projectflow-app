@@ -3572,7 +3572,7 @@ const de = {
     'workspaceSettings.general.saved': 'Workspace gespeichert',
     'workspaceSettings.general.nameRequired': 'Der Workspace braucht einen Namen.',
     'workspaceSettings.members.title': 'Mitglieder',
-    'workspaceSettings.members.total': 'Mitglieder',
+    'workspaceSettings.members.total': 'Personen gesamt',
     'workspaceSettings.members.admins': 'Eigentümer & Admins',
     'workspaceSettings.members.guests': 'Gäste',
     'workspaceSettings.members.pending': 'Offene Einladungen',

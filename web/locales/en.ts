@@ -3569,7 +3569,7 @@ const en = {
     'workspaceSettings.general.saved': 'Workspace saved',
     'workspaceSettings.general.nameRequired': 'The workspace needs a name.',
     'workspaceSettings.members.title': 'Members',
-    'workspaceSettings.members.total': 'Members',
+    'workspaceSettings.members.total': 'Total people',
     'workspaceSettings.members.admins': 'Owners & admins',
     'workspaceSettings.members.guests': 'Guests',
     'workspaceSettings.members.pending': 'Open invitations',
