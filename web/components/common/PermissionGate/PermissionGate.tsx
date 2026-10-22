@@ -27,8 +27,8 @@
  */
 
 import React, { ReactNode, useMemo } from 'react';
-import { PermissionNode } from '../../types/permissions';
-import { usePermissions } from '../../context/PermissionContext';
+import { PermissionNode } from '../../../types/permissions';
+import { usePermissions } from '../../../context/PermissionContext';
 
 interface PermissionGateProps {
     /** Single permission to check */
@@ -61,7 +61,7 @@ export function PermissionGate({
     children,
     fallback = null,
     showFallbackWhileLoading = false,
-}: PermissionGateProps): JSX.Element | null {
+}: PermissionGateProps): React.JSX.Element | null {
     const { hasPermission, hasAllPermissions, hasAnyPermission, loading } = usePermissions();
 
     const isGranted = useMemo(() => {

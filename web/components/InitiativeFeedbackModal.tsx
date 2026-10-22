@@ -316,7 +316,7 @@ export const InitiativeFeedbackModal: React.FC<InitiativeFeedbackModalProps> = (
         return {
             ...field,
             type: templateId,
-            width: templateId === 'longText' ? 'full' : 'half',
+            width: templateId === 'longText' ? ('full' as const) : ('half' as const),
             options: templateId === 'select' ? defaultOptionsForField(field.id) : [],
         };
     };

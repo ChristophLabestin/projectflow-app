@@ -9,7 +9,7 @@ export interface TextInputProps extends React.InputHTMLAttributes<HTMLInputEleme
     rightElement?: React.ReactNode;
 }
 
-export const TextInput: React.FC<TextInputProps> = ({
+export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(({
     label,
     error,
     helpText,
@@ -18,7 +18,7 @@ export const TextInput: React.FC<TextInputProps> = ({
     className = '',
     id,
     ...props
-}) => {
+}, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
     const helpId = helpText ? `${inputId}-help` : undefined;
@@ -38,6 +38,7 @@ export const TextInput: React.FC<TextInputProps> = ({
                     </div>
                 )}
                 <input
+                    ref={ref}
                     id={inputId}
                     className={`text-input ${error ? 'text-input--error' : ''}`}
                     aria-invalid={!!error}
@@ -67,4 +68,6 @@ export const TextInput: React.FC<TextInputProps> = ({
             )}
         </div>
     );
-};
+});
+
+TextInput.displayName = 'TextInput';

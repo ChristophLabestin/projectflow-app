@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
 import { Check, Save, Settings2, BoxSelect, Maximize, Minimize, Columns, LayoutGrid, Plus } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
-import { useUI } from '../../../context/UIContext';
+import { useToast } from '../../../context/UIContext';
 
 interface CardMenuProps {
     editor: Editor;
@@ -35,7 +35,7 @@ const areValuesUnified = (vals: { t: string, r: string, b: string, l: string }) 
 };
 
 export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
-    const { showSuccess } = useUI();
+    const { showSuccess } = useToast();
     const [isVisible, setIsVisible] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef<HTMLDivElement>(null);

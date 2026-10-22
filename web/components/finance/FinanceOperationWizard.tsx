@@ -127,7 +127,7 @@ export const FinanceOperationWizard = ({
         ];
     }, []);
 
-    const buildPayload = () => {
+    const buildPayload = (): { payload: Record<string, unknown>; error: string | null } => {
         const parsed = parsePayloadText(payloadText, t);
         if (parsed.error) {
             return { payload: {}, error: parsed.error };
@@ -157,7 +157,7 @@ export const FinanceOperationWizard = ({
         };
     };
 
-    const validatePayload = () => {
+    const validatePayload = (): { payload: Record<string, unknown>; error: string | null } => {
         const { payload, error } = buildPayload();
         if (error) {
             return { payload: {}, error };

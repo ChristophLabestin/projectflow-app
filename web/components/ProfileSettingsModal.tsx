@@ -259,7 +259,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                 value={address}
                                 onChange={(e) => setAddress(e.target.value)}
                                 placeholder="e.g. San Francisco, CA"
-                                icon={<span className="material-symbols-outlined text-sm">location_on</span>}
+                                icon="location_on"
                             />
                             <Textarea
                                 label="Short Bio"

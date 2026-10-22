@@ -7,14 +7,14 @@ export interface TextAreaProps extends React.TextareaHTMLAttributes<HTMLTextArea
     helpText?: string;
 }
 
-export const TextArea: React.FC<TextAreaProps> = ({
+export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(({
     label,
     error,
     helpText,
     className = '',
     id,
     ...props
-}) => {
+}, ref) => {
     const generatedId = useId();
     const inputId = id || generatedId;
     const helpId = helpText ? `${inputId}-help` : undefined;
@@ -28,6 +28,7 @@ export const TextArea: React.FC<TextAreaProps> = ({
                 </label>
             )}
             <textarea
+                ref={ref}
                 id={inputId}
                 className={`text-area ${error ? 'text-area--error' : ''}`}
                 aria-invalid={!!error}
@@ -46,4 +47,6 @@ export const TextArea: React.FC<TextAreaProps> = ({
             )}
         </div>
     );
-};
+});
+
+TextArea.displayName = 'TextArea';

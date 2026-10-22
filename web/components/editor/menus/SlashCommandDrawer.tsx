@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Editor } from '@tiptap/react';
 import { X, Search, Grid, Star, Layout, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useUI } from '../../../context/UIContext';
+import { useToast } from '../../../context/UIContext';
 import { useConfirm } from '../../../context/UIContext';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -16,7 +16,7 @@ interface SlashCommandDrawerProps {
 export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, onClose, editor, commands }) => {
     const [filter, setFilter] = useState<'all' | 'general' | 'custom'>('all');
     const [search, setSearch] = useState('');
-    const { showSuccess } = useUI();
+    const { showSuccess } = useToast();
     const confirm = useConfirm();
     const { t } = useLanguage();
 

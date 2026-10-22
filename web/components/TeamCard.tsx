@@ -9,7 +9,7 @@ import { getUserProfile } from '../services/domain/usersService';
 import { auth } from '../services/firebase';
 import { UserHoverCard } from './ui/UserHoverCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
-import { Project, ProjectMember, EmailTemplate } from '../types';
+import { Project, ProjectMember, ProjectRole, EmailTemplate } from '../types';
 import { useToast } from '../context/UIContext';
 import { initialOf } from '../utils/initials';
 
