@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions/v1';
 import * as admin from 'firebase-admin';
 import { sendEmail } from './email';
 import { FieldValue } from 'firebase-admin/firestore';
+import { buildPushPayload, decideChannels, resolveNotificationPrefs } from './notification-prefs';
 
 const auth = admin.auth();
 const db = admin.firestore();
@@ -25,33 +26,6 @@ const escapeHtml = (value: string): string =>
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
-
-const compactData = (payload: Record<string, unknown>): Record<string, string> =>
-    Object.entries(payload).reduce((acc, [key, value]) => {
-        if (typeof value === 'string' && value.trim().length > 0) {
-            acc[key] = value;
-        }
-        return acc;
-    }, {} as Record<string, string>);
-
-const buildDeepLink = (notification: Record<string, unknown>): string => {
-    const projectId = getString(notification.projectId);
-    if (!projectId) {
-        return '/notifications';
-    }
-
-    const taskId = getString(notification.taskId);
-    if (taskId) {
-        return `/project/${projectId}/tasks/${taskId}`;
-    }
-
-    const initiativeId = getString(notification.initiativeId);
-    if (initiativeId) {
-        return `/project/${projectId}/initiatives/${initiativeId}`;
-    }
-
-    return `/project/${projectId}`;
-};
 
 const logDelivery = async (
     tenantId: string,
@@ -102,14 +76,29 @@ const removeInvalidTokens = async (userId: string, tokens: string[]) => {
     }, { merge: true });
 };
 
+/** Unread notification docs of this user in this tenant (the APNs badge). Undefined when the count fails. */
+const countUnread = async (tenantId: string, userId: string): Promise<number | undefined> => {
+    try {
+        const snapshot = await db.collection('tenants').doc(tenantId).collection('notifications')
+            .where('userId', '==', userId)
+            .where('read', '==', false)
+            .count()
+            .get();
+        return snapshot.data().count;
+    } catch (error) {
+        console.warn('Unread count for badge failed:', error);
+        return undefined;
+    }
+};
+
 const sendPushNotification = async (
     tenantId: string,
     notificationId: string,
     notification: Record<string, unknown>,
-    userId: string
+    userId: string,
+    userData: Record<string, unknown>
 ) => {
-    const userDoc = await db.collection('users').doc(userId).get();
-    const fcmTokens = userDoc.data()?.fcmTokens;
+    const fcmTokens = userData.fcmTokens;
     const tokens = Array.isArray(fcmTokens)
         ? Array.from(new Set(fcmTokens.filter((token): token is string => typeof token === 'string' && token.trim().length > 0)))
         : [];
@@ -119,42 +108,16 @@ const sendPushNotification = async (
         return;
     }
 
-    const title = getString(notification.title, 'ProjectFlow');
-    const body = getString(notification.message, 'You have a new ProjectFlow update.');
-    const deepLink = buildDeepLink(notification);
-    const data = compactData({
-        notificationId,
-        tenantId,
-        title,
-        message: body,
-        type: getString(notification.type),
-        projectId: getString(notification.projectId),
-        taskId: getString(notification.taskId),
-        initiativeId: getString(notification.initiativeId),
-        deepLink
-    });
+    const badge = await countUnread(tenantId, userId);
+    const payload = buildPushPayload(tenantId, notificationId, notification, badge);
 
     try {
         const response = await admin.messaging().sendEachForMulticast({
             tokens,
-            notification: {
-                title,
-                body
-            },
-            data,
-            apns: {
-                payload: {
-                    aps: {
-                        sound: 'default',
-                        category: 'PROJECTFLOW_NOTIFICATION'
-                    }
-                }
-            },
-            webpush: {
-                fcmOptions: {
-                    link: deepLink
-                }
-            }
+            notification: payload.notification,
+            data: payload.data,
+            apns: payload.apns,
+            webpush: payload.webpush
         });
 
         const invalidTokens = response.responses.reduce((acc, result, index) => {
@@ -182,7 +145,8 @@ const sendPushNotification = async (
                 attempted: tokens.length,
                 successCount: response.successCount,
                 failureCount: response.failureCount,
-                invalidTokenCount: invalidTokens.length
+                invalidTokenCount: invalidTokens.length,
+                badge: badge ?? null
             }
         );
     } catch (error: any) {
@@ -261,10 +225,25 @@ export const onNotificationCreated = functions.region(REGION).firestore
             return;
         }
 
-        await sendPushNotification(tenantId, notificationId, notification, userId);
+        // Preferences decide the channels; the in-app notification doc is always kept.
+        const userDoc = await db.collection('users').doc(userId).get();
+        const userData = (userDoc.data() || {}) as Record<string, unknown>;
+        const type = getString(notification.type);
+        const decision = decideChannels(type, resolveNotificationPrefs(userData.notificationPrefs));
+
+        if (decision.push) {
+            await sendPushNotification(tenantId, notificationId, notification, userId, userData);
+        } else {
+            await logDelivery(tenantId, notificationId, userId, 'fcm', 'skipped', `Push disabled in notification preferences (${decision.category}).`);
+        }
+
+        if (!decision.email) {
+            await logDelivery(tenantId, notificationId, userId, 'email', 'skipped', `Email disabled in notification preferences (${decision.category}).`);
+            return;
+        }
 
         try {
-            // 1. Get user email and preferences
+            // 1. Get the user's email address
             const userRecord = await auth.getUser(userId);
             const email = userRecord.email;
 
@@ -273,10 +252,6 @@ export const onNotificationCreated = functions.region(REGION).firestore
                 await logDelivery(tenantId, notificationId, userId, 'email', 'skipped', 'User has no email address.');
                 return;
             }
-
-            // TODO: Check user preferences for email notifications if we implement that later
-            // const userPrefs = await db.doc(`tenants/${context.params.tenantId}/users/${notification.userId}`).get();
-            // if (userPrefs.exists && userPrefs.data()?.notificationsDisabled) return;
 
             // 2. Construct email content
             const subject = getString(notification.title, 'New Notification from ProjectFlow');
