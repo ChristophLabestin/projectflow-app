@@ -58,6 +58,8 @@ public struct PFSwipeRow<Content: View>: View {
                 .allowsHitTesting(true)
         }
         .clipped()
+        // iOS 26 resolves backgrounds against the container shape; inside a card that would round every row.
+        .containerShape(Rectangle())
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .onChange(of: coordinator?.openRow) { _, open in if open != rowID, offset != 0 { close() } }
         .accessibilityActions {
