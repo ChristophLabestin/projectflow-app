@@ -33,6 +33,8 @@ final class AppRouter {
     let searchStack = PFNavigationModel<AppRoute>()
     /// A deep link that arrived before sign-in; replayed once the session is ready.
     var pendingURL: URL?
+    /// `/invite/<tenantId>/<inviteId>` waiting to be shown (Onboarding feature presents the accept sheet).
+    var pendingInvite: InviteLink?
 
     enum TodayMode: Equatable { case normal, dayClose }
 
@@ -86,6 +88,8 @@ final class AppRouter {
             select(.inbox)
         case "focus":
             isFocusRoomOpen = true
+        case "invite" where parts.count >= 3:
+            pendingInvite = InviteLink(tenantId: parts[1], inviteId: parts[2])
         case "personal-tasks" where parts.count >= 2:
             open(.personalTask(tenantId: tenant, id: parts[1]), in: .work)
         default:
