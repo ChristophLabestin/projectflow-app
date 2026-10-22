@@ -166,8 +166,9 @@ public struct PFDockItem: Identifiable, Hashable {
     }
 }
 
-/// Floating glass dock with a gliding selection pill, plus a separate round search button —
-/// the web's floating frosted pills, rebuilt for the thumb.
+/// ProjectFlow's own navigation bar (not a system tab bar): a frosted card floating above the
+/// content, items with heavy Jakarta labels and the web sidebar's "glider" — a raised pill plus a
+/// glowing primary bar that slide to the active item. Search lives in the same bar, set apart by a hairline.
 public struct PFDock: View {
     let items: [PFDockItem]
     @Binding var selection: String
@@ -176,6 +177,9 @@ public struct PFDock: View {
     let onSearch: () -> Void
     let onReselect: (String) -> Void
     @Namespace private var glider
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private static let searchId = "__search"
 
     public init(items: [PFDockItem], selection: Binding<String>, searchLabel: String, isSearchSelected: Bool,
                 onSearch: @escaping () -> Void, onReselect: @escaping (String) -> Void) {
@@ -187,75 +191,92 @@ public struct PFDock: View {
         self.onReselect = onReselect
     }
 
+    private var activeId: String { isSearchSelected ? Self.searchId : selection }
+
     public var body: some View {
-        HStack(spacing: 10) {
-            HStack(spacing: 0) {
-                ForEach(items) { item in
-                    dockButton(item)
+        HStack(spacing: 2) {
+            ForEach(items) { item in
+                itemButton(id: item.id, title: item.title, systemImage: item.systemImage, badge: item.badge) {
+                    if item.id == selection && !isSearchSelected {
+                        onReselect(item.id)
+                    } else {
+                        withAnimation(PFMotion.respecting(PFMotion.snappy)) { selection = item.id }
+                    }
                 }
             }
-            .padding(5)
-            .pfGlass(in: .capsule)
-
-            Button(action: {
-                PFHaptics.selection()
-                onSearch()
-            }) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(isSearchSelected ? PFColor.onPrimary : PFColor.textMain)
-                    .frame(width: 62, height: 62)
-                    .background { if isSearchSelected { Circle().fill(PFColor.primary).padding(5) } }
-                    .contentShape(.circle)
+            Capsule()
+                .fill(PFColor.hairlineStrong)
+                .frame(width: 1, height: 28)
+                .padding(.horizontal, 3)
+                .accessibilityHidden(true)
+            itemButton(id: Self.searchId, title: searchLabel, systemImage: "magnifyingglass", badge: 0, compact: true) {
+                withAnimation(PFMotion.respecting(PFMotion.snappy)) { onSearch() }
             }
-            .buttonStyle(.pfPressable)
-            .pfGlass(in: .circle)
-            .accessibilityLabel(searchLabel)
-            .accessibilityAddTraits(isSearchSelected ? [.isButton, .isSelected] : .isButton)
         }
+        .padding(6)
+        .pfFrost(in: RoundedRectangle(cornerRadius: 26, style: .continuous))
         .padding(.horizontal, PFSpace.m)
+        .animation(reduceMotion ? .easeInOut(duration: 0.15) : PFMotion.snappy, value: activeId)
     }
 
-    private func dockButton(_ item: PFDockItem) -> some View {
-        let selected = item.id == selection && !isSearchSelected
+    private func itemButton(id: String, title: String, systemImage: String, badge: Int, compact: Bool = false,
+                            action: @escaping () -> Void) -> some View {
+        let selected = id == activeId
         return Button {
-            if item.id == selection && !isSearchSelected {
-                onReselect(item.id)
-            } else {
-                PFHaptics.selection()
-                withAnimation(PFMotion.respecting(PFMotion.snappy)) { selection = item.id }
-            }
+            PFHaptics.selection()
+            action()
         } label: {
-            VStack(spacing: 2) {
-                Image(systemName: item.systemImage)
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
                     .font(.system(size: 18, weight: selected ? .semibold : .regular))
-                    .symbolVariant(selected ? .fill : .none)
+                    .symbolVariant(selected && id != Self.searchId ? .fill : .none)
                     .frame(width: 28, height: 24)
                     .overlay(alignment: .topTrailing) {
-                        if item.badge > 0 {
-                            Text(item.badge > 99 ? "99+" : "\(item.badge)")
-                                .font(.system(size: 10, weight: .bold)).monospacedDigit()
+                        if badge > 0 {
+                            Text(badge > 99 ? "99+" : "\(badge)")
+                                .font(.system(size: 10, weight: .heavy)).monospacedDigit()
                                 .foregroundStyle(Color.white)
                                 .padding(.horizontal, 4)
                                 .frame(minWidth: 16, minHeight: 16)
                                 .background(PFColor.danger, in: .capsule)
-                                .offset(x: 10, y: -6)
+                                .overlay { Capsule().stroke(PFColor.card, lineWidth: 2) }
+                                .offset(x: 10, y: -5)
                         }
                     }
-                Text(item.title).font(.system(size: 10, weight: .semibold)).lineLimit(1)
+                Text(title)
+                    .pfText(.tab)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
-            .frame(maxWidth: .infinity, minHeight: 52)
+            .frame(maxWidth: compact ? 64 : .infinity, minHeight: 54)
             .background {
                 if selected {
-                    Capsule().fill(PFColor.raised.opacity(0.9)).matchedGeometryEffect(id: "dock-glider", in: glider)
+                    RoundedRectangle(cornerRadius: 19, style: .continuous)
+                        .fill(PFColor.raised)
+                        .overlay(alignment: .top) {
+                            Capsule()
+                                .fill(PFColor.primary)
+                                .frame(width: 18, height: 3)
+                                .shadow(color: PFColor.primary.opacity(0.45), radius: 5, y: 1)
+                                .offset(y: -1)
+                        }
+                        .matchedGeometryEffect(id: "pf-dock-glider", in: glider)
                 }
             }
-            .contentShape(.capsule)
+            .contentShape(.rect(cornerRadius: 19))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(item.badge > 0 ? "\(item.title), \(item.badge)" : item.title)
+        .buttonStyle(PFDockPressStyle())
+        .accessibilityLabel(badge > 0 ? "\(title), \(badge)" : title)
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+}
+
+struct PFDockPressStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.94 : 1)
+            .animation(PFMotion.fast, value: configuration.isPressed)
     }
 }
 
