@@ -148,28 +148,28 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                     <div className="flex flex-col gap-1.5 w-full">
                                         <div className="text-[11px] text-muted font-medium">Style</div>
                                         <div className="flex gap-1">
-                                            <button
+                                            <button aria-label="Bold"
                                                 onClick={() => updateStyle('fontWeight', block.styles.fontWeight === 'bold' ? 'normal' : 'bold')}
                                                 title="Bold"
                                                 className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontWeight === 'bold' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_bold</span>
                                             </button>
-                                            <button
+                                            <button aria-label="Italic"
                                                 onClick={() => updateStyle('fontStyle', block.styles.fontStyle === 'italic' ? 'normal' : 'italic')}
                                                 title="Italic"
                                                 className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontStyle === 'italic' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_italic</span>
                                             </button>
-                                            <button
+                                            <button aria-label="Underline"
                                                 onClick={() => updateStyle('textDecoration', block.styles.textDecoration === 'underline' ? 'none' : 'underline')}
                                                 title="Underline"
                                                 className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textDecoration === 'underline' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_underlined</span>
                                             </button>
-                                            <button
+                                            <button aria-label="Uppercase"
                                                 onClick={() => updateStyle('textTransform', block.styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
                                                 title="Uppercase"
                                                 className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textTransform === 'uppercase' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}

@@ -365,7 +365,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         {timeAgo(comment.createdAt)}
                                     </span>
                                     {(isProjectOwner || user?.uid === comment.userId) && (
-                                        <button
+                                        <button aria-label="Delete comment"
                                             onClick={() => handleDelete(comment.id)}
                                             className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-opacity"
                                             title="Delete comment"

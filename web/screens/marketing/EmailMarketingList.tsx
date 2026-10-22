@@ -251,7 +251,7 @@ export const EmailMarketingList = () => {
                         <div className="h-6 w-px bg-surface-border mx-1 hidden sm:block"></div>
 
                         <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg">
-                            <button
+                            <button aria-label="Grid View"
                                 onClick={() => setViewMode('grid')}
                                 className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
                                     ? 'bg-card text-primary shadow-sm'
@@ -260,7 +260,7 @@ export const EmailMarketingList = () => {
                             >
                                 <span className="material-symbols-outlined text-[20px]">grid_view</span>
                             </button>
-                            <button
+                            <button aria-label="List View"
                                 onClick={() => setViewMode('list')}
                                 className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
                                     ? 'bg-card text-primary shadow-sm'
@@ -345,7 +345,7 @@ export const EmailMarketingList = () => {
                                                     </span>
 
                                                     {/* Direct Delete Button */}
-                                                    <button
+                                                    <button aria-label="Delete Template"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setTemplateToDelete(template);
@@ -421,12 +421,12 @@ export const EmailMarketingList = () => {
                                                         <td className="px-4 py-3 text-right">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <Link to={`builder?templateId=${template.id}`}>
-                                                                    <button className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors" title="Edit">
+                                                                    <button aria-label="Edit" className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors" title="Edit">
                                                                         <span className="material-symbols-outlined text-[20px]">edit</span>
                                                                     </button>
                                                                 </Link>
 
-                                                                <button
+                                                                <button aria-label="Delete"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setTemplateToDelete(template);

@@ -274,7 +274,7 @@ export const CreateEmailPage = () => {
                                                             className="flex-1"
                                                             autoFocus={false}
                                                         />
-                                                        <button
+                                                        <button aria-label="Select from Media Library"
                                                             onClick={() => {
                                                                 setActiveVariableForMedia(variable.name);
                                                                 setIsMediaLibraryOpen(true);

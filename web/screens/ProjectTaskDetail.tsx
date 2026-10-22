@@ -820,7 +820,7 @@ export const ProjectTaskDetail = () => {
                                             </>
                                         )}
                                     </div>
-                                    <button type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
+                                    <button aria-label={t('taskDetail.subtasks.delete')} type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
@@ -1025,7 +1025,7 @@ export const ProjectTaskDetail = () => {
                                     <span key={catName} className="task-detail__label-pill" style={{ color }}>
                                         <span className="task-detail__label-dot" style={{ backgroundColor: color }} />
                                         <span>{catName}</span>
-                                        <button
+                                        <button aria-label={t('common.close')}
                                             type="button"
                                             onClick={() => {
                                                 const next = filteredCats.filter(c => c !== catName);
@@ -1081,7 +1081,7 @@ export const ProjectTaskDetail = () => {
                                     <strong>{linkedMilestone.title}</strong>
                                     {linkedMilestone.dueDate && <small>{t('taskDetail.details.milestone.duePrefix').replace('{date}', format(parseDateValue(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}</small>}
                                 </div>
-                                <button type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
+                                <button aria-label={t('taskDetail.details.milestone.unlink')} type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">link_off</span>
                                 </button>
                             </div>

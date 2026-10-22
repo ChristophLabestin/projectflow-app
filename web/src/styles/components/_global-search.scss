@@ -465,3 +465,10 @@
     .gsearch,
     .gsearch__panel { animation: none; }
 }
+
+/* Keyboard hint is meaningless on touch devices. */
+@media (hover: none), (pointer: coarse) {
+    .gsearch-trigger__shortcut {
+        display: none;
+    }
+}

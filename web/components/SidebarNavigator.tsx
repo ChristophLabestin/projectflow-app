@@ -632,7 +632,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
                     {/* Workspace identity — opens the inline project switcher */}
                     <div className="snav-top">
-                        <button type="button" className="snav-ws" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}>
+                        <button type="button" className="snav-ws" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen} aria-label={`${t('sidebar.switchWorkspace')}: ${activeWorkspace?.name || t('app.brand')}`}>
                             <span className="snav-ws__logo"><img src={logo} alt="" /></span>
                             <span className="snav-ws__name">{activeWorkspace?.name || t('app.brand')}</span>
                             <span className="material-symbols-outlined snav-ws__chev">unfold_more</span>

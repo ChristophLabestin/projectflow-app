@@ -79,7 +79,7 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
 
                     {/* Week Navigator */}
                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
-                        <button
+                        <button aria-label={t('common.previous')}
                             onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
                             disabled={weekOffset === 0}
                             className="p-1 rounded hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
@@ -91,7 +91,7 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
                                 .replace('{week}', String(weekOffset + 1))
                                 .replace('{total}', String(totalWeeks))}
                         </span>
-                        <button
+                        <button aria-label={t('common.next')}
                             onClick={() => setWeekOffset(Math.min(totalWeeks - 1, weekOffset + 1))}
                             disabled={weekOffset >= totalWeeks - 1}
                             className="p-1 rounded hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"

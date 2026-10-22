@@ -390,7 +390,7 @@ export const Notifications = () => {
                                         {!notification.read && (
                                             <span className="notification-unread-dot" />
                                         )}
-                                        <button
+                                        <button aria-label={t('notifications.actions.delete')}
                                             onClick={(e) => handleDelete(e, notification.id, notification.tenantId)}
                                             className="notification-delete"
                                             title={t('notifications.actions.delete')}

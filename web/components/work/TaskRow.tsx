@@ -127,7 +127,7 @@ export const TaskRow = memo(({
         >
             {selectable && (
                 <label className="work-row__select" aria-label={t('work.row.select').replace('{title}', task.title)}>
-                    <input type="checkbox" checked={!!selected} onChange={(event) => onSelectChange?.(task, event.target.checked)} />
+                    <input type="checkbox" aria-label={t('work.row.select').replace('{title}', task.title)} checked={!!selected} onChange={(event) => onSelectChange?.(task, event.target.checked)} />
                 </label>
             )}
             <button

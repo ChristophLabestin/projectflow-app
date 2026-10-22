@@ -88,7 +88,11 @@ export const UserProfileDropdown: React.FC = () => {
         <div ref={dropdownRef} className="relative">
             {/* Avatar Button */}
             <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
+                aria-label={t('user.menu')}
+                aria-haspopup="menu"
+                aria-expanded={isOpen}
                 className={`
                     relative size-10 rounded-full transition-all duration-200
                     ring-2 ring-offset-2 ring-offset-[var(--color-surface-card)]

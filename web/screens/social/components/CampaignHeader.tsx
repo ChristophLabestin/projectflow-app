@@ -52,7 +52,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         {/* Identity */}
                         <div className="flex items-center gap-3 min-w-0">
-                            <button
+                            <button aria-label={t('social.campaignHeader.backTitle')}
                                 onClick={onBack}
                                 className="text-muted hover:text-main transition-colors p-1.5 -ml-1.5 rounded-md hover:bg-surface-hover"
                                 title={t('social.campaignHeader.backTitle')}
@@ -71,7 +71,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
 
                         {/* Actions */}
                         <div className="flex gap-2 items-center self-end md:self-auto pl-8 md:pl-0">
-                            <button
+                            <button aria-label={t('social.campaignHeader.editTitle')}
                                 onClick={onEdit}
                                 className="h-8 w-8 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-surface-hover transition-colors border border-transparent hover:border-surface"
                                 title={t('social.campaignHeader.editTitle')}

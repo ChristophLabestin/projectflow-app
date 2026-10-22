@@ -302,7 +302,7 @@ export const CreateCampaignPage = () => {
             <div className={`w-full ${editMode === 'simple' ? 'max-w-4xl' : 'max-w-6xl'} bg-card rounded-3xl shadow-xl border border-surface overflow-hidden flex flex-col md:flex-row animate-fade-in relative transition-all duration-300`}>
 
                 {/* Close Button */}
-                <button
+                <button aria-label={t('common.close')}
                     onClick={() => navigate(-1)}
                     className="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
                 >
@@ -478,7 +478,7 @@ export const CreateCampaignPage = () => {
                                     {tags.map(tag => (
                                         <span key={tag} className="px-2 py-1 bg-surface-hover rounded-md text-xs font-medium flex items-center gap-1 group">
                                             #{tag}
-                                            <button onClick={() => removeTag(tag)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                                            <button aria-label={t('common.close')} onClick={() => removeTag(tag)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
                                         </span>
                                     ))}
                                     <input
@@ -568,7 +568,7 @@ export const CreateCampaignPage = () => {
                                             {audienceSegments.map(seg => (
                                                 <span key={seg} className="px-2 py-1 bg-surface-hover rounded-md text-xs font-medium flex items-center gap-1 group">
                                                     {seg}
-                                                    <button onClick={() => removeSegment(seg)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                                                    <button aria-label={t('common.close')} onClick={() => removeSegment(seg)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
                                                 </span>
                                             ))}
                                             <input
@@ -600,7 +600,7 @@ export const CreateCampaignPage = () => {
                                                         value={phase.name}
                                                         onChange={e => updatePhase(idx, 'name', e.target.value)}
                                                     />
-                                                    <button onClick={() => removePhase(idx)} className="text-muted hover:text-red-500">
+                                                    <button aria-label={t('common.delete')} onClick={() => removePhase(idx)} className="text-muted hover:text-red-500">
                                                         <span className="material-symbols-outlined text-[16px]">delete</span>
                                                     </button>
                                                 </div>
@@ -651,7 +651,7 @@ export const CreateCampaignPage = () => {
                                                     value={kpi.target}
                                                     onChange={e => updateKPI(idx, 'target', e.target.value)}
                                                 />
-                                                <button onClick={() => removeKPI(idx)} className="text-muted hover:text-red-500 px-1">
+                                                <button aria-label={t('common.delete')} onClick={() => removeKPI(idx)} className="text-muted hover:text-red-500 px-1">
                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                 </button>
                                             </div>

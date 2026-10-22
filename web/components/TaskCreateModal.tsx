@@ -356,7 +356,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                                     style={{ backgroundColor: color }}
                                 >
                                     <span className="task-create__category-text">{catName}</span>
-                                    <button
+                                    <button aria-label={t('common.close')}
                                         type="button"
                                         onClick={() => setSelectedCategories(prev => prev.filter(x => x !== catName))}
                                         className="task-create__category-remove"
@@ -463,7 +463,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                                     <div key={idx} className="subtask-item">
                                         <span className="material-symbols-outlined subtask-icon">check_box_outline_blank</span>
                                         <span className="subtask-text">{subtask}</span>
-                                        <button
+                                        <button aria-label={t('common.close')}
                                             type="button"
                                             onClick={() => handleRemoveSubtask(idx)}
                                             className="remove-btn"

@@ -154,7 +154,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const submitInFlightRef = useRef(false);
-    const submitInFlightRef = useRef(false);
 
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
     const filterAccessibleModules = (nextModules: ProjectModule[]) => {
@@ -341,7 +340,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             return;
         }
         submitInFlightRef.current = true;
-        submitInFlightRef.current = true;
         setIsSubmitting(true);
         try {
             const trimmedName = name.trim();
@@ -448,7 +446,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             );
         } catch (e) {
             console.error(e);
-            submitInFlightRef.current = false;
             submitInFlightRef.current = false;
             setIsSubmitting(false);
             showToast(t('createProjectWizard.errors.createProject'), 'error');

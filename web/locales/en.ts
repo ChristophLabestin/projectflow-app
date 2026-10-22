@@ -3623,6 +3623,13 @@ const en = {
     'notFound.description': 'The page you are looking for does not exist or was moved.',
     'notFound.backToDashboard': 'Back to dashboard',
     'pinnedTasks.dialogLabel': 'Quick access',
+    'common.previous': 'Previous',
+    'common.next': 'Next',
+    'common.back': 'Back',
+    'sidebar.switchWorkspace': 'Switch workspace',
+    'user.menu': 'Account menu',
+    'common.selectAll': 'Select all',
+    'common.select': 'Select',
 };
 
 export default en;

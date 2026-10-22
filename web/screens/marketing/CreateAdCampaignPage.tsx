@@ -199,7 +199,7 @@ export const CreateAdCampaignPage = () => {
                                 Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].label}
                             </p>
                         </div>
-                        <button
+                        <button aria-label={t('common.close')}
                             onClick={() => navigate(-1)}
                             className="w-10 h-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
                         >
@@ -370,7 +370,7 @@ export const CreateAdCampaignPage = () => {
                                     {targeting.locations?.map(loc => (
                                         <span key={loc} className="px-3 py-1.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-lg text-xs font-bold flex items-center gap-1">
                                             {loc}
-                                            <button onClick={() => handleRemoveLocation(loc)} className="hover:text-red-500">
+                                            <button aria-label={t('common.close')} onClick={() => handleRemoveLocation(loc)} className="hover:text-red-500">
                                                 <span className="material-symbols-outlined text-[14px]">close</span>
                                             </button>
                                         </span>
@@ -436,7 +436,7 @@ export const CreateAdCampaignPage = () => {
                                     {targeting.interests?.map(interest => (
                                         <span key={interest} className="px-3 py-1.5 bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 rounded-lg text-xs font-bold flex items-center gap-1">
                                             {interest}
-                                            <button onClick={() => handleRemoveInterest(interest)} className="hover:text-red-500">
+                                            <button aria-label={t('common.close')} onClick={() => handleRemoveInterest(interest)} className="hover:text-red-500">
                                                 <span className="material-symbols-outlined text-[14px]">close</span>
                                             </button>
                                         </span>

@@ -119,7 +119,7 @@ export const SocialAssets = () => {
                             >
                                 <span className="material-symbols-outlined text-[20px]">visibility</span>
                             </button>
-                            <button
+                            <button aria-label={t('common.delete')}
                                 onClick={() => handleDelete(asset.id)}
                                 className="p-2 bg-red-500/80 hover:bg-red-500 rounded-lg text-white backdrop-blur-sm transition-colors"
                             >

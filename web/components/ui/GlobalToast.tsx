@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUIState } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const GlobalToast = () => {
     const { toast, closeToast } = useUIState();
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [isVisible, setIsVisible] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -87,6 +89,7 @@ export const GlobalToast = () => {
 
                     <button
                         onClick={closeToast}
+                        aria-label={t('common.close')}
                         className="global-toast__btn global-toast__btn--close"
                     >
                         <span className="material-symbols-outlined">close</span>

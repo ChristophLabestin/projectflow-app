@@ -334,7 +334,7 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                         <h3 className="text-lg font-bold text-main">{t('social.campaignStrategy.timeline.title')}</h3>
                         <p className="text-xs text-muted">{t('social.campaignStrategy.timeline.subtitle')}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
+                    <button aria-label={t('common.close')} onClick={onClose} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
                         <span className="material-symbols-outlined text-muted">close</span>
                     </button>
                 </div>
@@ -343,7 +343,7 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                     <div className="space-y-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                <button
+                                <button aria-label={t('common.previous')}
                                     onClick={() => setWeekOffset(prev => Math.max(0, prev - 1))}
                                     disabled={weekOffset === 0}
                                     className="p-1 hover:bg-surface-hover rounded-lg disabled:opacity-30 transition-colors"
@@ -353,7 +353,7 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                                 <span className="text-sm font-bold text-main">
                                     {t('social.campaignStrategy.timeline.week').replace('{week}', String(weekOffset + 1)).replace('{total}', String(totalWeeks))}
                                 </span>
-                                <button
+                                <button aria-label={t('common.next')}
                                     onClick={() => setWeekOffset(prev => Math.min(totalWeeks - 1, prev + 1))}
                                     disabled={weekOffset >= totalWeeks - 1}
                                     className="p-1 hover:bg-surface-hover rounded-lg disabled:opacity-30 transition-colors"

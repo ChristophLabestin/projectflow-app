@@ -306,7 +306,7 @@ export const CreateSocialPost = () => {
             <div className="w-full max-w-6xl h-[850px] bg-card rounded-3xl shadow-2xl border border-surface flex overflow-hidden animate-fade-in relative">
 
                 {/* Close Button */}
-                <button
+                <button aria-label={t('common.close')}
                     onClick={() => navigate(-1)}
                     className="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
                 >
@@ -343,7 +343,7 @@ export const CreateSocialPost = () => {
                                     </p>
                                 </div>
                                 {postId && (
-                                    <button
+                                    <button aria-label={t('social.postForm.delete.title')}
                                         onClick={handleDeletePost}
                                         className="w-10 h-10 flex items-center justify-center text-muted hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                         title={t('social.postForm.delete.title')}
@@ -467,8 +467,8 @@ export const CreateSocialPost = () => {
                                             <div className="flex gap-4">
                                                 {thumbnailUrl ? (
                                                     <div className="relative aspect-video w-48 rounded-lg overflow-hidden bg-black/5 group border border-surface shrink-0">
-                                                        <img src={thumbnailUrl} className="w-full h-full object-cover" />
-                                                        <button
+                                                        <img alt="" src={thumbnailUrl} className="w-full h-full object-cover" />
+                                                        <button aria-label={t('common.close')}
                                                             onClick={() => setThumbnailUrl('')}
                                                             className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
                                                         >
@@ -549,10 +549,10 @@ export const CreateSocialPost = () => {
                                                             {asset.type === 'video' ? (
                                                                 <video src={asset.url} className="w-full h-full object-cover" muted playsInline />
                                                             ) : (
-                                                                <img src={asset.url} className="w-full h-full object-cover" />
+                                                                <img alt="" src={asset.url} className="w-full h-full object-cover" />
                                                             )}
                                                             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-                                                            <button
+                                                            <button aria-label={t('common.close')}
                                                                 onClick={() => setAssets(prev => prev.filter((_, i) => i !== idx))}
                                                                 className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
                                                             >
@@ -674,7 +674,7 @@ export const CreateSocialPost = () => {
                                                     {hashtags.map(tag => (
                                                         <span key={tag} className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isOverLimit ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
                                                             {tag}
-                                                            <button
+                                                            <button aria-label={t('common.close')}
                                                                 onClick={() => removeHashtag(tag)}
                                                                 className="hover:text-red-600 dark:hover:text-red-400"
                                                             >

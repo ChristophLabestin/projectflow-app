@@ -628,7 +628,7 @@ export const Calendar = () => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <button
+                                                    <button aria-label={t('calendar.actions.unschedule')}
                                                         type="button"
                                                         onClick={(e) => handleUnschedule(e, item, itemType)}
                                                         className="calendar-item__action"

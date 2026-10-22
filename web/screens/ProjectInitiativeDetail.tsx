@@ -418,7 +418,7 @@ export const ProjectInitiativeDetail = () => {
                             </span>
                         </button>
                         {canManageInitiative && (
-                            <button
+                            <button aria-label={t('common.delete')}
                                 type="button"
                                 className="initiative-detail__icon-button initiative-detail__icon-button--danger"
                                 onClick={handleDelete}

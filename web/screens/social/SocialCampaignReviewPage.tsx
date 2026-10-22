@@ -543,7 +543,7 @@ export const SocialCampaignReviewPage = () => {
 
                                 <div className="flex flex-wrap items-center gap-3">
                                     <div className="flex items-center gap-2">
-                                        <button
+                                        <button aria-label={t('common.previous')}
                                             type="button"
                                             onClick={() => setWeekOffset((prev) => Math.max(0, prev - 1))}
                                             disabled={weekOffset === 0}
@@ -561,7 +561,7 @@ export const SocialCampaignReviewPage = () => {
                                                 </span>
                                             )}
                                         </div>
-                                        <button
+                                        <button aria-label={t('common.next')}
                                             type="button"
                                             onClick={() => setWeekOffset((prev) => Math.min(totalWeeks - 1, prev + 1))}
                                             disabled={weekOffset >= totalWeeks - 1}

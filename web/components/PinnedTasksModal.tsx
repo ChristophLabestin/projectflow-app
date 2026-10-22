@@ -506,7 +506,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         <div className="pinned-tasks-modal-container">
             {/* Header (Title Only - Actions moved to Parent) */}
             <div className="pinned-header">
-                <button
+                <button aria-label={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
                     onClick={handleToggleCompletion}
                     className={`completion-toggle ${isCompleted ? (itemType === 'task' ? 'completed-task' : 'completed') : ''}`}
                     title={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
@@ -661,7 +661,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         <div className="subtasks-list">
                             {subtasks.filter(sub => showCompletedSubtasks || !sub.isCompleted).map(sub => (
                                 <div key={sub.id} className="subtask-row">
-                                    <button
+                                    <button aria-label={t('common.save')}
                                         onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
                                         className={`check-box ${sub.isCompleted ? 'completed' : ''}`}
                                     >
@@ -1247,7 +1247,7 @@ export const PinnedTasksModal = () => {
                                 >
                                     <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                                 </button>
-                                <button
+                                <button aria-label={t('pinnedTasks.actions.unpin')}
                                     onClick={() => {
                                         unpinItem(activeItemId);
                                         if (pinnedItems.length <= 1) toggleModal();
@@ -1260,14 +1260,14 @@ export const PinnedTasksModal = () => {
                                 <div className="pinned-tasks-compact__divider" />
                             </>
                         )}
-                        <button
+                        <button aria-label={t('pinnedTasks.actions.expand')}
                             onClick={() => setIsCompactMode(false)}
                             className="pinned-tasks-compact__action"
                             title={t('pinnedTasks.actions.expand')}
                         >
                             <span className="material-symbols-outlined">open_in_full</span>
                         </button>
-                        <button
+                        <button aria-label={t('pinnedTasks.actions.close')}
                             onClick={toggleModal}
                             className="pinned-tasks-compact__action is-danger"
                             title={t('pinnedTasks.actions.close')}
@@ -1413,7 +1413,7 @@ export const PinnedTasksModal = () => {
                             >
                                 <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                             </button>
-                            <button
+                            <button aria-label={t('pinnedTasks.actions.unpin')}
                                 onClick={() => {
                                     unpinItem(activeItemId);
                                 }}
@@ -1425,14 +1425,14 @@ export const PinnedTasksModal = () => {
                             <div className="divider" />
                         </>
                     )}
-                    <button
+                    <button aria-label={t('pinnedTasks.actions.compactMode')}
                         onClick={() => setIsCompactMode(true)}
                         className="action-btn"
                         title={t('pinnedTasks.actions.compactMode')}
                     >
                         <span className="material-symbols-outlined">picture_in_picture_alt</span>
                     </button>
-                    <button
+                    <button aria-label={t('pinnedTasks.actions.closeEsc')}
                         onClick={toggleModal}
                         className="action-btn danger"
                         title={t('pinnedTasks.actions.closeEsc')}

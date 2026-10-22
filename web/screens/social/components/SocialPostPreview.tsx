@@ -93,7 +93,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             {currentAsset.type === 'video' ? (
                                 <video src={currentAsset.url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
                             ) : (
-                                <img src={currentAsset.url} className="w-full h-full object-cover" />
+                                <img alt="" src={currentAsset.url} className="w-full h-full object-cover" />
                             )}
 
                             {instagramAssets.length > 1 && (
@@ -168,7 +168,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 {/* Header */}
                 <div className="p-3 flex gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full bg-blue-100" />
+                        <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full bg-blue-100" />
                     </div>
                     <div className="flex-1 leading-tight">
                         <div className="flex items-center gap-1">
@@ -232,7 +232,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 {/* Header */}
                 <div className="p-3 flex gap-3">
                     <div className="w-12 h-12 rounded-full overflow-hidden shrink-0">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full bg-blue-100" />
+                        <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full bg-blue-100" />
                     </div>
                     <div className="flex-1 leading-tight">
                         <div className="flex items-center gap-1">
@@ -263,7 +263,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             assets[0].type === 'video' ? (
                                 <video src={assets[0].url} className="w-full h-auto max-h-[400px] object-cover" autoPlay muted loop playsInline />
                             ) : (
-                                <img src={assets[0].url} className="w-full h-auto max-h-[400px] object-cover" />
+                                <img alt="" src={assets[0].url} className="w-full h-auto max-h-[400px] object-cover" />
                             )
                         ) : assets.length > 1 ? (
                             <div className="grid grid-cols-2 gap-0.5">
@@ -271,7 +271,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                                     a.type === 'video' ? (
                                         <video key={i} src={a.url} className="w-full aspect-square object-cover" autoPlay muted loop playsInline />
                                     ) : (
-                                        <img key={i} src={a.url} className="w-full aspect-square object-cover" />
+                                        <img alt="" key={i} src={a.url} className="w-full aspect-square object-cover" />
                                     )
                                 ))}
                             </div>
@@ -322,7 +322,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
             <div className="w-[370px] bg-black text-white rounded-xl border border-gray-800 p-4 font-sans mx-auto">
                 <div className="flex gap-3">
                     <div className="size-10 rounded-full bg-gray-700 shrink-0 overflow-hidden">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
+                        <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
                     </div>
                     <div className="flex-1 min-w-0">
                         {/* Header */}
@@ -375,7 +375,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
             <div className="w-[370px] bg-black text-white rounded-xl border border-gray-800 p-4 font-sans mx-auto">
                 <div className="flex gap-3">
                     <div className="size-10 rounded-full bg-gray-700 shrink-0 overflow-hidden">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
+                        <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
                     </div>
                     <div className="flex-1 min-w-0">
                         {/* Header */}
@@ -401,7 +401,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                                     a.type === 'video' ? (
                                         <video key={i} src={a.url} className="w-full h-full object-cover" autoPlay muted loop playsInline />
                                     ) : (
-                                        <img key={i} src={a.url} className="w-full h-full object-cover" />
+                                        <img alt="" key={i} src={a.url} className="w-full h-full object-cover" />
                                     )
                                 ))}
                             </div>
@@ -456,7 +456,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             playsInline
                         />
                     ) : (
-                        <img key={currentAsset.id} src={thumbnailUrl || mediaUrl} className="absolute inset-0 w-full h-full object-cover" />
+                        <img alt="" key={currentAsset.id} src={thumbnailUrl || mediaUrl} className="absolute inset-0 w-full h-full object-cover" />
                     )
                 ) : (
                     <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-gray-700">
@@ -479,10 +479,10 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             <span>{t('social.preview.common.friends')}</span>
                             <div className="flex -space-x-1.5 align-middle">
                                 <div className="w-4 h-4 rounded-full border border-white overflow-hidden bg-gray-500">
-                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" className="w-full h-full" />
+                                    <img alt="" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" className="w-full h-full" />
                                 </div>
                                 <div className="w-4 h-4 rounded-full border border-white overflow-hidden bg-gray-600">
-                                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" className="w-full h-full" />
+                                    <img alt="" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah" className="w-full h-full" />
                                 </div>
                                 <div className="w-4 h-4 rounded-full border border-white overflow-hidden bg-gray-700 flex items-center justify-center text-[6px]">
                                     <PlatformIcon name="person" className="text-[10px]" />
@@ -528,7 +528,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 <div className="absolute bottom-16 left-0 right-14 p-4 z-20">
                     <div className="flex items-center gap-2 mb-3">
                         <div className="w-8 h-8 rounded-full overflow-hidden border border-white/50">
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Lufthansa`} className="w-full h-full" />
+                            <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Lufthansa`} className="w-full h-full" />
                         </div>
                         <span className="font-bold text-[13px] drop-shadow-md">lufthansa and lufthansaviews</span>
                         <button className="px-3 py-1 rounded-lg border border-white text-[11px] font-bold bg-transparent">{t('social.preview.facebook.follow')}</button>
@@ -561,7 +561,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                     <PlatformIcon name="add_box" className="text-2xl opacity-70" />
                     <PlatformIcon name="search" className="text-2xl opacity-70" />
                     <div className="w-7 h-7 rounded-full bg-gray-700 overflow-hidden ring-2 ring-white/20">
-                        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Admin`} className="w-full h-full" />
+                        <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Admin`} className="w-full h-full" />
                     </div>
                 </div>
 
@@ -625,7 +625,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             }}
                         />
                     ) : (
-                        <img key={currentAsset.id} src={mediaUrl} className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-500" />
+                        <img alt="" key={currentAsset.id} src={mediaUrl} className="absolute inset-0 w-full h-full object-cover opacity-90 transition-opacity duration-500" />
                     )
                 ) : (
                     <div className="absolute inset-0 bg-gray-800 flex items-center justify-center text-gray-600">
@@ -684,7 +684,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         <div className="flex justify-between items-center px-1">
                             <div className="flex items-center gap-2.5">
                                 <div className="w-8 h-8 rounded-full overflow-hidden border border-white/30 shadow-sm">
-                                    <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=ProjectFlow`} className="w-full h-full" />
+                                    <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=ProjectFlow`} className="w-full h-full" />
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-[13px] font-bold text-white drop-shadow-md leading-none">projectflow.app</span>
@@ -704,7 +704,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                     <div className="absolute bottom-20 right-2 z-20 flex flex-col items-center gap-4">
                         <div className="relative">
                             <div className="w-10 h-10 rounded-full border border-white overflow-hidden">
-                                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Chris`} className="w-full h-full" />
+                                <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Chris`} className="w-full h-full" />
                             </div>
                             <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-4 h-4 bg-pink-500 rounded-full flex items-center justify-center text-white">
                                 <PlatformIcon name="add" className="text-[12px] font-bold" />
@@ -796,7 +796,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             playsInline
                         />
                     ) : (
-                        <img key={currentAsset.id} src={thumbnailUrl || mediaUrl} className="absolute inset-0 w-full h-full object-cover" />
+                        <img alt="" key={currentAsset.id} src={thumbnailUrl || mediaUrl} className="absolute inset-0 w-full h-full object-cover" />
                     )
                 ) : (
                     <div className="absolute inset-0 bg-gray-900 flex items-center justify-center text-gray-700">
@@ -842,7 +842,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 <div className="absolute bottom-20 left-0 right-12 p-4 z-20">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/50">
-                            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
+                            <img alt="" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${mockUser.name}`} className="w-full h-full" />
                         </div>
                         <span className="font-semibold text-[14px] drop-shadow-md">{mockUser.name}</span>
                         <span className="material-symbols-outlined text-[#0866FF] text-[14px] filled">verified</span>
@@ -1071,7 +1071,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 {/* Thumbnail */}
                 <div className="aspect-video bg-gray-100 relative group cursor-pointer">
                     {(thumbnailUrl || assets.length > 0) ? (
-                        <img src={thumbnailUrl || assets[0].url} className="w-full h-full object-cover" />
+                        <img alt="" src={thumbnailUrl || assets[0].url} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
                             <PlatformIcon name="play_circle" className="text-5xl" />

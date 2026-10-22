@@ -152,6 +152,7 @@ export const Profile = () => {
                         </div>
                         <button
                             onClick={() => setShowEditModal(true)}
+                            aria-label={t('profile.actions.edit')}
                             className="absolute bottom-2 right-2 z-20 size-10 bg-black text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg border-2 border-white dark:border-zinc-800"
                         >
                             <span className="material-symbols-outlined text-[20px]">photo_camera</span>
@@ -275,7 +276,6 @@ export const Profile = () => {
                                             <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.teams')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.teams}</div>
                                         </div>
-                                    </div>
                                     </div>
 
                                     <Card className="p-6">

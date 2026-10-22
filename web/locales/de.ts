@@ -3626,6 +3626,13 @@ const de = {
     'notFound.description': 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
     'notFound.backToDashboard': 'Zurück zum Dashboard',
     'pinnedTasks.dialogLabel': 'Schnellzugriff',
+    'common.previous': 'Zurück',
+    'common.next': 'Weiter',
+    'common.back': 'Zurück',
+    'sidebar.switchWorkspace': 'Workspace wechseln',
+    'user.menu': 'Kontomenü',
+    'common.selectAll': 'Alle auswählen',
+    'common.select': 'Auswählen',
 };
 
 export default de;

@@ -150,7 +150,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                         <h2 className="text-xl font-bold text-main">{t('social.captionPresetManager.title')}</h2>
                         <p className="text-sm text-muted">{t('social.captionPresetManager.subtitle')}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover transition-colors">
+                    <button aria-label={t('common.close')} onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover transition-colors">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -217,13 +217,13 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                                             <span className="font-semibold text-main">{preset.name}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                            <button
+                                                            <button aria-label={t('common.edit')}
                                                                 onClick={(e) => { e.stopPropagation(); handleEdit(preset); }}
                                                                 className="p-1.5 rounded-lg hover:bg-surface-hover text-muted"
                                                             >
                                                                 <span className="material-symbols-outlined text-[16px]">edit</span>
                                                             </button>
-                                                            <button
+                                                            <button aria-label={t('common.delete')}
                                                                 onClick={(e) => { e.stopPropagation(); handleDelete(preset); }}
                                                                 className="p-1.5 rounded-lg hover:bg-red-50 text-muted hover:text-red-600"
                                                             >

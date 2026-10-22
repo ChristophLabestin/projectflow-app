@@ -319,7 +319,7 @@ export const NestedBlock: React.FC<NestedBlockProps> = ({ block, selectedId, onS
                 <div className="w-px h-4 bg-white/20 mx-0.5" />
 
                 {/* Duplicate */}
-                <button
+                <button aria-label="Duplicate"
                     onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
                     className="p-1 hover:bg-white/20 rounded transition-colors"
                     title="Duplicate"
@@ -328,7 +328,7 @@ export const NestedBlock: React.FC<NestedBlockProps> = ({ block, selectedId, onS
                 </button>
 
                 {/* Delete */}
-                <button
+                <button aria-label="Delete"
                     onClick={(e) => { e.stopPropagation(); onDelete(block.id); }}
                     className="p-1 hover:bg-red-500/80 rounded transition-colors"
                     title="Delete"

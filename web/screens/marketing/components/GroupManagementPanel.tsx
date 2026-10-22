@@ -121,7 +121,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-surface">
                     <h2 className="h4">{t('marketing.groupManager.title')}</h2>
-                    <button onClick={onClose} className="text-muted hover:text-main">
+                    <button aria-label={t('common.close')} onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -230,13 +230,13 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button
+                                                    <button aria-label={t('common.edit')}
                                                         onClick={() => startEditing(group)}
                                                         className="p-1 text-muted hover:text-main transition-colors"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                                     </button>
-                                                    <button
+                                                    <button aria-label={t('common.delete')}
                                                         onClick={() => handleDelete(group)}
                                                         className="p-1 text-muted hover:text-red-500 transition-colors"
                                                     >

@@ -211,7 +211,7 @@ const LegacySidebar = ({ isDrawer = false, collapsed = false, onClose, workspace
                             />
                         </div>
                         {isDrawer && (
-                            <button
+                            <button aria-label={t('common.close')}
                                 onClick={onClose}
                                 className="size-8 rounded-full hover:bg-surface-hover flex items-center justify-center text-muted shrink-0"
                             >

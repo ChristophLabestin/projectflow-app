@@ -188,13 +188,13 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                                 {format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}
                             </h2>
                             <div className="flex bg-card rounded-lg border border-surface p-0.5">
-                                <button onClick={prevMonth} className="p-1 hover:bg-surface-hover rounded-md transition-colors text-muted">
+                                <button aria-label={t('common.previous')} onClick={prevMonth} className="p-1 hover:bg-surface-hover rounded-md transition-colors text-muted">
                                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                 </button>
                                 <button onClick={today} className="px-3 text-xs font-bold hover:bg-surface-hover rounded-md transition-colors text-muted">
                                     {t('social.calendar.today')}
                                 </button>
-                                <button onClick={nextMonth} className="p-1 hover:bg-surface-hover rounded-md transition-colors text-muted">
+                                <button aria-label={t('common.next')} onClick={nextMonth} className="p-1 hover:bg-surface-hover rounded-md transition-colors text-muted">
                                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                                 </button>
                             </div>

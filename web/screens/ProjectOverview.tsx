@@ -2565,7 +2565,7 @@ const ProjectOverviewLegacy = () => {
                                 </div>
                             ))}
                             {projectAssets.length < 3 && (
-                                <button onClick={() => setShowMediaLibrary(true)} className="add-btn">
+                                <button aria-label={t('common.add')} onClick={() => setShowMediaLibrary(true)} className="add-btn">
                                     <span className="material-symbols-outlined">add</span>
                                 </button>
                             )}
@@ -2584,7 +2584,7 @@ const ProjectOverviewLegacy = () => {
                         <h3 className="planning-card__title">{t('projectOverview.planning.title')}</h3>
                     </div>
                     {isOwner && (
-                        <button
+                        <button aria-label={t('projectOverview.planning.editDates')}
                             onClick={() => {
                                 setEditModalTab('general');
                                 setShowEditModal(true);
@@ -2693,7 +2693,7 @@ const ProjectOverviewLegacy = () => {
                                                 </div>
 
                                                 {isFirst && (
-                                                    <button
+                                                    <button aria-label={t('projectOverview.milestones.markAchieved')}
                                                         onClick={() => handleToggleMilestone(milestone)}
                                                         className="milestone-action"
                                                         title={t('projectOverview.milestones.markAchieved')}
@@ -2757,7 +2757,7 @@ const ProjectOverviewLegacy = () => {
                     </h3>
                     <div className="team-card__actions">
                         {can('canInvite') && (
-                            <button
+                            <button aria-label={t('projectOverview.team.invite')}
                                 onClick={handleInvite}
                                 className="icon-btn"
                                 title={t('projectOverview.team.invite')}
@@ -3518,7 +3518,7 @@ const ProjectOverviewLegacy = () => {
                         <span className="material-symbols-outlined">domain</span>
                         {t('projectOverview.company.contextTitle')}
                     </h2>
-                    <button
+                    <button aria-label={t('projectOverview.startup.briefing.editAction')}
                         type="button"
                         className="project-overview__company-context-action-icon"
                         onClick={() => openFoundingBrief()}
@@ -4488,7 +4488,7 @@ const ProjectOverviewLegacy = () => {
                                             <>
                                                 <img src={projectAssets[selectedImageIndex]} alt={t('projectOverview.gallery.imageAlt')} />
                                                 {selectedImageIndex > 0 && (
-                                                    <button
+                                                    <button aria-label={t('common.previous')}
                                                         className="nav-btn prev"
                                                         onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex - 1); }}
                                                     >
@@ -4496,7 +4496,7 @@ const ProjectOverviewLegacy = () => {
                                                     </button>
                                                 )}
                                                 {selectedImageIndex < projectAssets.length - 1 && (
-                                                    <button
+                                                    <button aria-label={t('common.next')}
                                                         className="nav-btn next"
                                                         onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex + 1); }}
                                                     >

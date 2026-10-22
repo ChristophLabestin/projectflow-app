@@ -73,7 +73,7 @@ export const PostList = () => {
                         mainAsset.type === 'video' ? (
                             <video src={mainAsset.url} className="w-full h-full object-cover" muted />
                         ) : (
-                            <img src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
+                            <img alt="" src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
                         )
                     ) : (
                         <span className="material-symbols-outlined text-4xl text-subtle">
@@ -130,7 +130,7 @@ export const PostList = () => {
 
                 {/* Hover Actions */}
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    <button
+                    <button aria-label={t('social.postForm.delete.title')}
                         onClick={(e) => handleDelete(e, post)}
                         className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-red-200 rounded-lg shadow-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-all"
                         title={t('social.postForm.delete.title')}

@@ -320,7 +320,7 @@ export const WorkspaceRolesTab: React.FC<WorkspaceRolesTabProps> = ({ tenant, is
                 <div className="roles-sidebar-header">
                     <div className="header-content">
                         <h2>{t('roles.force_list_title', 'Roles')}</h2>
-                        <button
+                        <button aria-label={t('roles.form.createTitle')}
                             onClick={startCreateRole}
                             className="add-btn"
                             title={t('roles.form.createTitle')}

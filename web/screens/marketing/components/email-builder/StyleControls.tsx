@@ -515,28 +515,28 @@ export const TypographyControl = ({ styles, onChange, hideDivider }: { styles: E
                 <div className="flex flex-col gap-1.5 w-full">
                     <div className="text-[11px] text-muted font-medium">Decoration</div>
                     <div className="flex gap-1">
-                        <button
+                        <button aria-label="Uppercase"
                             onClick={() => onChange('textTransform', styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
                             title="Uppercase"
                             className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textTransform === 'uppercase' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">abc</span>
                         </button>
-                        <button
+                        <button aria-label="Italic"
                             onClick={() => onChange('fontStyle', styles.fontStyle === 'italic' ? 'normal' : 'italic')}
                             title="Italic"
                             className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.fontStyle === 'italic' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">format_italic</span>
                         </button>
-                        <button
+                        <button aria-label="Underline"
                             onClick={() => onChange('textDecoration', styles.textDecoration === 'underline' ? 'none' : 'underline')}
                             title="Underline"
                             className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'underline' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">format_underlined</span>
                         </button>
-                        <button
+                        <button aria-label="Strikethrough"
                             onClick={() => onChange('textDecoration', styles.textDecoration === 'line-through' ? 'none' : 'line-through')}
                             title="Strikethrough"
                             className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'line-through' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
