@@ -1,4 +1,5 @@
 import { McpConnectPanel } from './settings/McpConnectPanel';
+import { AccountDataSection } from './settings/AccountDataSection';
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
 import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
@@ -1764,6 +1765,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                     </div>
                                 )}
                             </section>
+
+                            <AccountDataSection />
                         </div>
                     </div>
                 );
