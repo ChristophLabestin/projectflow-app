@@ -97,4 +97,6 @@ Verified after all fixes were merged: `tsc --noEmit` 0 errors (was 335, CI typec
 - Realtime DB presence reads are not membership-checked (RTDB cannot read Firestore); needs a function-maintained member mirror or custom claims.
 - `npm audit --omit=dev`: web 6 (4 high, `@grpc/grpc-js` via firebase), functions 9 (1 high, `nodemailer` ≤10.0.5 needs a major bump).
 - No staging Firebase project yet; Tailwind utilities still compiled alongside SCSS; remaining hardcoded English strings outside the reported screens; Gemini key in git history (`1095e0bb`) should be rotated if still valid.
-- Not yet deployed: rules, storage rules, RTDB rules, functions and hosting all need a deploy after review.
+- GitHub hosting deploy is broken since the move to `projectflow-labestin`: the repo lacks the `FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN` secret and the `VITE_FIREBASE_*` secrets still date from the old project. Until fixed, deploy hosting locally (`cd web && npm run build && firebase deploy --only hosting`).
+
+**Deployed 2026-10-22** (commit `8217efc6`, project `projectflow-labestin`): Firestore, Storage and RTDB rules; all functions (112 updated, `deleteProject`/`exportMyData`/`deleteMyAccount` created, `debugScheduler`/`debugHealthSnapshots` deleted); hosting built locally from `main`. Verified: debug endpoint 404, unauthenticated `deleteProject` 401, security headers served, login page loads without console errors.
