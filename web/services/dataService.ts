@@ -12,16 +12,12 @@ import {
     Timestamp,
     serverTimestamp,
     setDoc,
-    collectionGroup,
-    documentId,
     orderBy,
     limit,
     writeBatch,
-    increment,
     Unsubscribe,
     arrayUnion,
     arrayRemove,
-    runTransaction,
     deleteField
 } from "firebase/firestore";
 import {
@@ -29,12 +25,10 @@ import {
     incrementAIUsage as incrementPrivateAIUsage,
     incrementImageUsage as incrementPrivateImageUsage
 } from "./domain/userPrivateData";
-import { httpsCallable } from "firebase/functions";
 import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
+import { db, auth, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission, TemplateVariable, EmailTemplate, PrivacySettings } from '../types';
+import type { Task, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
 // Task / subtask / comment notifications are created by Cloud Functions (onTaskWritten,
 // onSubtaskWritten, onCommentCreated). Project and workspace invites stay client-side.
@@ -42,22 +36,12 @@ import {
     notifyProjectInvite,
     createNotification
 } from './notificationService';
-import type { WorkspaceApiToken } from './domain/adminSettingsService';
-import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
 import { isProjectIncludedInImportantSignals } from './healthService';
-import {
-    createWorkspaceApiToken,
-    deleteWorkspaceApiToken,
-    getWorkspaceSmtpConfig,
-    listWorkspaceApiTokens,
-    saveWorkspaceSmtpConfig
-} from './domain/adminSettingsService';
+
 import {
     ensureCategory,
     ensureTenantAndUser,
-    findIdeaDoc,
     findInitiativeDoc,
-    findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
     clearCachedTenantId,
@@ -77,9 +61,7 @@ import {
 export {
     ensureCategory,
     ensureTenantAndUser,
-    findIdeaDoc,
     findInitiativeDoc,
-    findIssueDoc,
     findSubtaskDoc,
     findTaskDoc,
     getProjectContextFromRef,
@@ -93,20 +75,10 @@ export {
 const TENANTS = "tenants";
 const PROJECTS = "projects";
 const USERS = "users";
-const TASKS = "tasks";
-const SUBTASKS = "subtasks";
-export const ISSUES = "issues";
-const IDEAS = "ideas";
 const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
-const GEMINI_REPORTS = "geminiReports";
 const PROJECT_TEMPLATES = "project_templates";
-export const SOCIAL_CAMPAIGNS = "social_campaigns";
-export const SOCIAL_POSTS = "social_posts";
-export const SOCIAL_ASSETS = "social_assets";
-export const CAPTION_PRESETS = "caption_presets";
-export const SOCIAL_STRATEGY = "social_strategy";
 
 const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
     layoutVersion: 3,
@@ -133,30 +105,7 @@ export const clearActiveTenantId = () => clearCachedTenantId();
 export const getActiveTenantId = () => getCachedTenantId();
 
 const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
-
-export const getTenantSecret = async (tenantId: string, secretName: string) => {
-    if (secretName !== 'smtp') {
-        throw new Error('Only the smtp secret is available through the compatibility facade.');
-    }
-
-    return getWorkspaceSmtpConfig(tenantId);
-};
-
-export const updateTenantSecret = async (tenantId: string, secretName: string, data: any) => {
-    if (secretName !== 'smtp') {
-        throw new Error('Only the smtp secret is available through the compatibility facade.');
-    }
-
-    await saveWorkspaceSmtpConfig(tenantId, data);
-};
-
-// --- Top-level users collection (global user profiles) ---
-const usersCollection = () => collection(db, USERS);
 const userDocRef = (userId: string) => doc(db, USERS, userId);
-
-// --- Tenant members collection (workspace membership) ---
-const tenantMembersCollection = (tenantId: string) => collection(db, TENANTS, tenantId, 'members');
-const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, TENANTS, tenantId, 'members', userId);
 
 // --- Project collections ---
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
@@ -243,28 +192,6 @@ export const incrementAIUsage = async (userId: string, tokens: number) => {
 
 export const incrementImageUsage = async (userId: string, count: number) => {
     await incrementPrivateImageUsage(userId, count);
-};
-
-export const incrementIdeaAIUsage = async (ideaId: string, tokens: number, projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    await updateDoc(ideaRef, {
-        aiTokensUsed: increment(tokens)
-    });
-};
-
-export const incrementCampaignAIUsage = async (campaignId: string, tokens: number, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const campaignRef = doc(db, SOCIAL_CAMPAIGNS, campaignId);
-    await updateDoc(campaignRef, {
-        aiTokensUsed: increment(tokens)
-    });
-};
-
-
-export const deleteSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
-    const { deleteSocialCampaign: deleteSocialCampaignDomain } = await import('./domain/socialService');
-    return deleteSocialCampaignDomain(projectId, campaignId, tenantId);
 };
 
 // --- User Project Navigation Preferences ---
@@ -381,23 +308,6 @@ export const saveProjectOverviewTemplate = async (
 export const deleteProjectOverviewTemplate = async (templateId: string, tenantId?: string): Promise<void> => {
     const resolvedTenant = resolveTenantId(tenantId);
     await deleteDoc(doc(db, TENANTS, resolvedTenant, PROJECT_TEMPLATES, templateId));
-};
-
-export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?: string): Promise<Idea | null> => {
-    void ideaId;
-    void projectId;
-    void tenantId;
-    return null;
-};
-
-export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (idea: Idea) => void, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    return onSnapshot(ideaRef, (snap) => {
-        if (snap.exists()) {
-            onUpdate({ ...snap.data(), id: snap.id } as Idea);
-        }
-    });
 };
 
 export const addActivityEntry = async (projectId: string, payload: Omit<Activity, "id" | "projectId" | "createdAt" | "ownerId">) => {
@@ -558,30 +468,6 @@ export const getHealthSnapshot = async (
 };
 
 /**
- * Subscribe to health snapshots for a project (last 30 days)
- */
-export const subscribeHealthSnapshots = (
-    projectId: string,
-    onUpdate: (snapshots: HealthSnapshot[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS),
-        orderBy("date", "desc"),
-        limit(30)
-    );
-
-    return onSnapshot(q, (snapshot) => {
-        const snapshots = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as HealthSnapshot));
-        onUpdate(snapshots);
-    });
-};
-
-/**
  * Calculate health delta vs last week
  * Returns the difference in score from 7 days ago, or null if no data
  */
@@ -602,56 +488,6 @@ export const saveGeminiReport = async (projectId: string, content: string, tenan
 export const getLatestGeminiReport = async (projectId: string, tenantId?: string): Promise<GeminiReport | null> => {
     const { getLatestGeminiReport: getLatestGeminiReportDomain } = await import('./domain/projectInsightsService');
     return getLatestGeminiReportDomain(projectId, tenantId);
-};
-
-// --- Email Templates (Main Drafts/Templates) ---
-
-export const EMAIL_TEMPLATES = "email_templates";
-
-export const getProjectTemplates = async (projectId: string, tenantId?: string) => {
-    const { getProjectTemplates: getProjectTemplatesDomain } = await import('./domain/marketingTemplatesService');
-    return getProjectTemplatesDomain(projectId, tenantId);
-};
-
-export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string, status: 'draft' | 'published' = 'draft', templateId?: string) => {
-    const { saveEmailTemplateDraft: saveEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
-    return saveEmailTemplateDraftDomain(projectId, blocks, variables, tenantId, name, status, templateId);
-};
-
-export const getTemplateVersions = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const { getTemplateVersions: getTemplateVersionsDomain } = await import('./domain/marketingTemplatesService');
-    return getTemplateVersionsDomain(projectId, templateId, tenantId);
-};
-
-export const getLatestEmailTemplateDraft = async (projectId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const { getLatestEmailTemplateDraft: getLatestEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
-    return getLatestEmailTemplateDraftDomain(projectId, tenantId);
-};
-
-export const getEmailTemplateDrafts = async (projectId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const { getEmailTemplateDrafts: getEmailTemplateDraftsDomain } = await import('./domain/marketingTemplatesService');
-    return getEmailTemplateDraftsDomain(projectId, tenantId);
-};
-
-export const deleteEmailTemplate = async (projectId: string, templateId: string, tenantId?: string) => {
-    const { deleteEmailTemplate: deleteEmailTemplateDomain } = await import('./domain/marketingTemplatesService');
-    return deleteEmailTemplateDomain(projectId, templateId, tenantId);
-};
-
-export const getEmailTemplateById = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const { getEmailTemplateById: getEmailTemplateByIdDomain } = await import('./domain/marketingTemplatesService');
-    return getEmailTemplateByIdDomain(projectId, templateId, tenantId);
-};
-
-// Helper to extract tenant ID from a Document Reference path
-const getTenantIdFromRef = (ref: any) => {
-    // Path structure: tenants/{tenantId}/projects/{projectId}
-    // ref.path -> "tenants/abc/projects/xyz"
-    const parts = ref.path.split('/');
-    if (parts[0] === TENANTS && parts.length >= 2) {
-        return parts[1];
-    }
-    return null;
 };
 
 type ProjectHydrationOptions = {
@@ -747,7 +583,6 @@ export const getAllMemberProjects = async (userId: string): Promise<Project[]> =
     const { getAllMemberProjects: getAllMemberProjectsDomain } = await import('./domain/profileService');
     return getAllMemberProjectsDomain(userId);
 };
-
 
 export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
     const { getUserGlobalActivities: getUserGlobalActivitiesDomain } = await import('./domain/profileService');
@@ -998,35 +833,6 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
-export const getOrCreatePersonalProject = async (tenantId?: string): Promise<string> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // 1. Try to find existing personal project
-    const q = query(
-        projectsCollection(resolvedTenant),
-        where("ownerId", "==", user.uid),
-        where("isPersonal", "==", true)
-    );
-    const snapshot = await getDocs(q);
-
-    if (!snapshot.empty) {
-        return snapshot.docs[0].id;
-    }
-
-    // 2. Create if not exists
-    return await createProject({
-        title: "Personal Tasks",
-        description: "Private tasks not associated with a specific project",
-        isPersonal: true,
-        isPrivate: true,
-        status: 'Active'
-    }, undefined, undefined, undefined, [], resolvedTenant);
-};
-
 /**
  * Get all projects in the workspace (not just user-owned) for search purposes
  */
@@ -1153,73 +959,6 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
     });
 
     const results = await Promise.all(taskPromises);
-    return results.flat();
-};
-
-
-
-
-/**
- * Get all issues across all projects in the workspace for search purposes
- */
-export const getAllWorkspaceIssues = async (tenantId?: string): Promise<Issue[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // Get all projects first
-    const projects = await getAllWorkspaceProjects(resolvedTenant);
-
-    const issuePromises = projects.map(async p => {
-        try {
-            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, ISSUES));
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tenantId: p.tenantId, // Ensure tenantId is set
-                projectId: p.id       // Ensure projectId is set
-            } as Issue));
-        } catch (e) {
-            console.warn(`Failed to fetch issues for project ${p.id}`, e);
-            return [];
-        }
-    });
-
-    const results = await Promise.all(issuePromises);
-    return results.flat();
-};
-
-/**
- * Get all ideas across all projects in the workspace for search purposes
- */
-export const getAllWorkspaceIdeas = async (tenantId?: string): Promise<Idea[]> => {
-    const user = auth.currentUser;
-    if (!user) return [];
-
-    const resolvedTenant = tenantId || getCachedTenantId();
-    await ensureTenantAndUser(resolvedTenant);
-
-    // Get all projects first
-    const projects = await getAllWorkspaceProjects(resolvedTenant);
-
-    const ideaPromises = projects.map(async p => {
-        try {
-            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, "ideas"));
-            return snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                tenantId: p.tenantId,
-                projectId: p.id
-            } as Idea));
-        } catch (e) {
-            console.warn(`Failed to fetch ideas for project ${p.id}`, e);
-            return [];
-        }
-    });
-
-    const results = await Promise.all(ideaPromises);
     return results.flat();
 };
 
@@ -1355,7 +1094,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = "Medium",
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'initiativeId' | 'legacyInitiativeRoot' | 'startDate'>>,
     tenantId?: string
 ) => {
     const { addTask: addTaskDomain } = await import('./domain/tasksService');
@@ -1529,40 +1268,6 @@ export const updateSubtaskFields = async (
 
 // --- Ideas ---
 
-export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
-    void idea;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
-    void ideaId;
-    void updates;
-    void projectId;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const deleteIdea = async (ideaId: string, projectId?: string, tenantId?: string) => {
-    void ideaId;
-    void projectId;
-    void tenantId;
-    throw new Error('Ideas are removed in PM-core mode.');
-};
-
-export const getUserIdeas = async (): Promise<Idea[]> => {
-    return [];
-};
-
-export const getProjectIdeas = async (projectId: string, tenantId?: string): Promise<Idea[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, IDEAS));
-    return snapshot.docs
-        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-};
-
 // --- Activity ---
 
 export const getProjectActivity = async (projectId: string, tenantId?: string): Promise<Activity[]> => {
@@ -1593,60 +1298,6 @@ export const subscribeTaskActivity = (projectId: string, taskId: string, callbac
         isCancelled = true;
         unsubscribe();
     };
-};
-
-// --- Issues ---
-
-export const createIssue = async (projectId: string, issue: Partial<Issue>, tenantId?: string) => {
-    void projectId;
-    void issue;
-    void tenantId;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const getProjectIssues = async (projectId: string, tenantId?: string): Promise<Issue[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, ISSUES));
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
-};
-
-export const getIssueById = async (issueId: string, projectId?: string, tenantId?: string): Promise<Issue | null> => {
-    void issueId;
-    void projectId;
-    void tenantId;
-    return null;
-};
-
-
-export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
-    void issueId;
-    void updates;
-    void projectId;
-    void tenantId;
-    void path;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string, path?: string) => {
-    void issueId;
-    void projectId;
-    void tenantId;
-    void path;
-    throw new Error('Issues are removed in PM-core mode.');
-};
-
-export const subscribeProjectIssues = (
-    projectId: string,
-    callback: (issues: Issue[]) => void,
-    tenantId?: string
-) => {
-    void projectId;
-    void tenantId;
-    callback([]);
-    return () => undefined;
 };
 
 // --- Realtime subscriptions ---
@@ -1727,7 +1378,6 @@ export const subscribeInitiativeTasks = (
     };
 };
 
-
 // --- Presence ---
 // Presence/online-state now lives in Realtime Database (onDisconnect-backed).
 // See web/services/domain/presenceService.ts and web/hooks/usePresence.ts.
@@ -1801,17 +1451,6 @@ export const subscribeProject = (
     };
 };
 
-export const subscribeProjectIdeas = (
-    projectId: string,
-    callback: (ideas: Idea[]) => void,
-    tenantId?: string
-) => {
-    void projectId;
-    void tenantId;
-    callback([]);
-    return () => undefined;
-};
-
 export const subscribeProjectActivity = (
     projectId: string,
     callback: (activity: Activity[]) => void,
@@ -1858,7 +1497,7 @@ export const subscribeTenantUsers = (
 export const addComment = async (
     projectId: string,
     targetId: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
+    targetType: 'task' | 'initiative',
     content: string,
     tenantId?: string
 ) => {
@@ -1880,60 +1519,9 @@ export const addComment = async (
         createdAt: serverTimestamp()
     });
 
-    // Optionally increase comment count on the target object
-    if (targetType === 'idea') {
-        // Idea has a comments count
-        const ideaSnap = await findIdeaDoc(targetId, projectId, resolvedTenant);
-        if (ideaSnap) {
-            const current = ideaSnap.data().comments || 0;
-            updateDoc(ideaSnap.ref, { comments: current + 1 });
-        }
-    }
-
-    // GitHub Comment Sync
-    if (targetType === 'issue') {
-        try {
-            const issue = await getIssueById(targetId, projectId, resolvedTenant);
-            if (issue?.githubIssueNumber) {
-                const project = await getProjectById(projectId, resolvedTenant);
-                if (project?.githubIssueSync && project.githubRepo) {
-                    const { getGithubToken } = await import('./domain/usersService');
-                    const githubToken = user.uid ? await getGithubToken(user.uid) : null;
-
-                    if (githubToken) {
-                        await addGithubIssueComment(
-                            project.githubRepo,
-                            githubToken,
-                            issue.githubIssueNumber,
-                            `${content}\n\n— *Shared from ProjectFlow by ${user.displayName || 'User'}*`
-                        );
-                    }
-                }
-            }
-        } catch (e) {
-            console.warn("Failed to sync comment to GitHub", e);
-        }
-    }
-
     // comment_added / comment_mention notifications and the comment activity entry are created by the
     // onCommentCreated Cloud Function (mentions are parsed server-side from `@Name` in the text).
     return docRef.id;
-};
-
-export const getComments = async (
-    projectId: string,
-    targetId: string,
-    tenantId?: string
-): Promise<ProjectComment[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, COMMENTS),
-        where("targetId", "==", targetId)
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as ProjectComment))
-        .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
 };
 
 export const subscribeComments = (
@@ -1958,10 +1546,6 @@ export const subscribeComments = (
 export const deleteComment = async (commentId: string, projectId: string, tenantId?: string) => {
     const resolvedTenant = resolveTenantId(tenantId);
     await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentId));
-};
-
-export const getUserIssues = async (): Promise<Issue[]> => {
-    return [];
 };
 
 export const subscribeTenantProjects = (
@@ -2123,38 +1707,6 @@ export const addProjectMember = async (
     }
 };
 
-export const requestJoinProject = async (projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("Must be logged in");
-
-    const resolvedTenant = resolveTenantId(tenantId);
-    await ensureTenantAndUser(resolvedTenant);
-
-    const project = await getProjectById(projectId, resolvedTenant);
-    if (!project) throw new Error("Project not found");
-
-    if (project.members?.some(m => m.userId === user.uid) || project.ownerId === user.uid) {
-        throw new Error("Already a member");
-    }
-
-    // Create a notification for the owner
-    // We use createNotification helper which handles valid tenant checks
-    await createNotification({
-        type: 'project_join_request',
-        userId: project.ownerId,
-        title: 'Project Join Request',
-        message: `${user.displayName || 'A user'} requested to join ${project.title}`,
-        projectId: project.id,
-        tenantId: resolvedTenant // Tenant-scoped for the owner
-    });
-
-    await logActivity(
-        projectId,
-        { action: 'requested to join the project', target: 'Team', type: 'member' },
-        resolvedTenant
-    );
-};
-
 export const respondToJoinRequest = async (
     notificationId: string,
     projectId: string,
@@ -2198,345 +1750,6 @@ export const respondToJoinRequest = async (
             // tenantId: resolvedTenant // OMITTED to make it GLOBAL
         });
     }
-};
-
-export const updateProjectMemberRole = async (
-    projectId: string,
-    userId: string,
-    newRole: ProjectRole,
-    tenantId?: string
-) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const projectRef = projectDocRef(resolvedTenant, projectId);
-
-    await runTransaction(db, async (transaction) => {
-        const projectDoc = await transaction.get(projectRef);
-        if (!projectDoc.exists()) throw new Error("Project not found");
-
-        const data = projectDoc.data() as Project;
-        const members = data.members || [];
-        const memberIndex = members.findIndex(m => (typeof m === 'string' ? m : m.userId) === userId);
-
-        if (memberIndex === -1) throw new Error("Member not found in project");
-
-        const member = members[memberIndex];
-        let newMemberObj: ProjectMember;
-
-        if (typeof member === 'string') {
-            // Upgrade legacy string member to object
-            newMemberObj = {
-                userId: member,
-                role: newRole,
-                joinedAt: Timestamp.now(),
-                invitedBy: 'system',
-                displayName: 'Member', // Placeholder, ideally fetch or update later
-                email: '',
-                photoURL: ''
-            };
-        } else {
-            newMemberObj = {
-                ...member,
-                role: newRole
-            };
-        }
-
-        // Clone and update
-        const updatedMembers = [...members];
-        updatedMembers[memberIndex] = newMemberObj;
-
-        transaction.update(projectRef, { members: updatedMembers });
-    });
-};
-
-// --- Social Media Module Services ---
-
-// Campaigns
-export const createCampaign = async (
-    projectId: string,
-    campaignData: Omit<SocialCampaign, "id" | "createdAt" | "updatedAt" | "tenantId" | "ownerId">,
-    tenantId?: string
-) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), {
-        ...campaignData,
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-
-    await logActivity(
-        projectId,
-        { action: `Created campaign "${campaignData.name}"`, target: "Campaign", type: "status" },
-        resolvedTenant
-    );
-
-    return docRef.id;
-};
-
-export const getCampaignById = async (
-    projectId: string,
-    campaignId: string,
-    tenantId?: string
-): Promise<SocialCampaign | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), campaignId);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-        return { id: snap.id, ...snap.data() } as SocialCampaign;
-    }
-    return null;
-};
-
-export const getSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
-    const { getSocialCampaign: getSocialCampaignDomain } = await import('./domain/socialService');
-    return getSocialCampaignDomain(projectId, campaignId, tenantId);
-};
-
-
-export const createSocialCampaign = async (
-    projectId: string,
-    campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'>,
-    tenantId?: string
-) => {
-    const { createSocialCampaign: createSocialCampaignDomain } = await import('./domain/socialService');
-    return createSocialCampaignDomain(projectId, campaignData, tenantId);
-};
-
-export const subscribeCampaigns = (
-    projectId: string,
-    onUpdate: (campaigns: SocialCampaign[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeCampaigns: subscribeCampaignsDomain }) => {
-        const nextUnsubscribe = subscribeCampaignsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateCampaign = async (
-    projectId: string,
-    campaignId: string,
-    updates: Partial<SocialCampaign>,
-    tenantId?: string
-) => {
-    const { updateCampaign: updateCampaignDomain } = await import('./domain/socialService');
-    return updateCampaignDomain(projectId, campaignId, updates, tenantId);
-};
-
-export const deleteCampaign = async (
-    projectId: string,
-    campaignId: string,
-    tenantId?: string
-) => {
-    const { deleteCampaign: deleteCampaignDomain } = await import('./domain/socialService');
-    return deleteCampaignDomain(projectId, campaignId, tenantId);
-};
-
-// Social Posts
-export const createSocialPost = async (
-    projectId: string,
-    postData: Omit<SocialPost, "id" | "createdAt" | "updatedAt" | "createdBy">,
-    tenantId?: string
-) => {
-    const { createSocialPost: createSocialPostDomain } = await import('./domain/socialService');
-    return createSocialPostDomain(projectId, postData, tenantId);
-};
-
-export const subscribeSocialPosts = (
-    projectId: string,
-    onUpdate: (posts: SocialPost[]) => void,
-    tenantId?: string,
-    campaignId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeSocialPosts: subscribeSocialPostsDomain }) => {
-        const nextUnsubscribe = subscribeSocialPostsDomain(projectId, onUpdate, tenantId, campaignId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateSocialPost = async (
-    projectId: string,
-    postId: string,
-    updates: Partial<SocialPost>,
-    tenantId?: string
-) => {
-    const { updateSocialPost: updateSocialPostDomain } = await import('./domain/socialService');
-    return updateSocialPostDomain(projectId, postId, updates, tenantId);
-};
-
-export const deleteSocialPost = async (
-    projectId: string,
-    postId: string,
-    tenantId?: string
-) => {
-    const { deleteSocialPost: deleteSocialPostDomain } = await import('./domain/socialService');
-    return deleteSocialPostDomain(projectId, postId, tenantId);
-};
-
-export const getSocialPostById = async (
-    projectId: string,
-    postId: string,
-    tenantId?: string
-): Promise<SocialPost | null> => {
-    const { getSocialPostById: getSocialPostByIdDomain } = await import('./domain/socialService');
-    return getSocialPostByIdDomain(projectId, postId, tenantId);
-};
-
-// Assets
-export const createSocialAsset = async (
-    projectId: string,
-    assetData: Omit<SocialAsset, "id" | "createdAt" | "createdBy">,
-    tenantId?: string
-) => {
-    const { createSocialAsset: createSocialAssetDomain } = await import('./domain/socialService');
-    return createSocialAssetDomain(projectId, assetData, tenantId);
-};
-
-export const subscribeSocialAssets = (
-    projectId: string,
-    onUpdate: (assets: SocialAsset[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeSocialAssets: subscribeSocialAssetsDomain }) => {
-        const nextUnsubscribe = subscribeSocialAssetsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const deleteSocialAsset = async (projectId: string, assetId: string, tenantId?: string) => {
-    const { deleteSocialAsset: deleteSocialAssetDomain } = await import('./domain/socialService');
-    return deleteSocialAssetDomain(projectId, assetId, tenantId);
-};
-
-// Social Integrations
-export const SOCIAL_INTEGRATIONS = 'social_integrations';
-
-// --- Caption Presets ---
-
-export const createCaptionPreset = async (
-    projectId: string,
-    presetData: Omit<CaptionPreset, "id" | "createdAt" | "createdBy">,
-    tenantId?: string
-): Promise<string> => {
-    const { createCaptionPreset: createCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return createCaptionPresetDomain(projectId, presetData, tenantId);
-};
-
-export const subscribeCaptionPresets = (
-    projectId: string,
-    onUpdate: (presets: CaptionPreset[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeCaptionPresets: subscribeCaptionPresetsDomain }) => {
-        const nextUnsubscribe = subscribeCaptionPresetsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateCaptionPreset = async (
-    projectId: string,
-    presetId: string,
-    updates: Partial<CaptionPreset>,
-    tenantId?: string
-): Promise<void> => {
-    const { updateCaptionPreset: updateCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return updateCaptionPresetDomain(projectId, presetId, updates, tenantId);
-};
-
-export const deleteCaptionPreset = async (
-    projectId: string,
-    presetId: string,
-    tenantId?: string
-): Promise<void> => {
-    const { deleteCaptionPreset: deleteCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return deleteCaptionPresetDomain(projectId, presetId, tenantId);
-};
-
-export const subscribeIntegrations = (
-    projectId: string,
-    onUpdate: (integrations: SocialIntegration[]) => void,
-    tenantId?: string
-) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeIntegrations: subscribeIntegrationsDomain }) => {
-        const nextUnsubscribe = subscribeIntegrationsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const connectIntegration = async (projectId: string, platform: SocialPlatform, existingAccessToken?: string, tenantId?: string) => {
-    const { connectIntegration: connectIntegrationDomain } = await import('./domain/socialSettingsService');
-    return connectIntegrationDomain(projectId, platform, existingAccessToken, tenantId);
-};
-
-export const disconnectIntegration = async (projectId: string, integrationId: string, tenantId?: string) => {
-    const { disconnectIntegration: disconnectIntegrationDomain } = await import('./domain/socialSettingsService');
-    return disconnectIntegrationDomain(projectId, integrationId, tenantId);
 };
 
 // --- Personal Task Compatibility Facade ---
@@ -2603,255 +1816,8 @@ export const getPersonalTaskById = async (
     return getPersonalTaskByIdDomain(taskId, tenantId);
 };
 
-// --- API Tokens ---
+// --- User Onboarding ---
 
-const API_TOKENS = "api_tokens";
-
-/**
- * Generate a cryptographically secure token
- */
-const generateSecureToken = (): string => {
-    const array = new Uint8Array(32);
-    crypto.getRandomValues(array);
-    const base64 = btoa(String.fromCharCode(...array))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=/g, '');
-    return `pfat_${base64}`;
-};
-
-/**
- * Hash a token using SHA-256
- */
-const hashToken = async (token: string): Promise<string> => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(token);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-/**
- * Create a new API token. Returns the plain-text token (only shown once).
- */
-export const createAPIToken = async (
-    name: string,
-    permissions: APITokenPermission[],
-    projectScope?: string,
-    expiresAt?: Date,
-    tenantId?: string
-): Promise<{ token: string; id: string }> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return createWorkspaceApiToken(resolvedTenant, name, permissions, projectScope, expiresAt);
-};
-
-/**
- * Get all API tokens for the current tenant (without exposing hashes)
- */
-export const getAPITokens = async (tenantId?: string): Promise<WorkspaceApiToken[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    return listWorkspaceApiTokens(resolvedTenant);
-};
-
-/**
- * Delete an API token
- */
-export const deleteAPIToken = async (tokenId: string, tenantId?: string): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    await deleteWorkspaceApiToken(resolvedTenant, tokenId);
-};
-
-/**
- * Validate an API token (used by Cloud Functions)
- * This is a client-side version for testing - the real validation happens in Cloud Functions
- */
-export const validateAPITokenLocally = async (
-    plainToken: string,
-    requiredPermission: APITokenPermission,
-    tenantId: string
-): Promise<{ valid: boolean; tokenData?: any; error?: string }> => {
-    void plainToken;
-    void requiredPermission;
-    void tenantId;
-
-    return {
-        valid: false,
-        error: 'Client-side API token validation is no longer supported. Use the backend validation path.'
-    };
-};
-
-// --- Idea Interactions (Likes & Comments) ---
-
-export const toggleIdeaLike = async (ideaId: string, projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-
-    const ideaDoc = await getDoc(ideaRef);
-    if (!ideaDoc.exists()) return;
-
-    const data = ideaDoc.data();
-    const likedBy = data.likedBy || [];
-    const dislikedBy = data.dislikedBy || [];
-    const isLiked = likedBy.includes(user.uid);
-
-    if (isLiked) {
-        // Untoggle like
-        await updateDoc(ideaRef, {
-            votes: increment(-1),
-            likedBy: arrayRemove(user.uid)
-        });
-    } else {
-        // Toggle like (and remove dislike if present)
-        const batch = writeBatch(db);
-        batch.update(ideaRef, {
-            votes: increment(1),
-            likedBy: arrayUnion(user.uid),
-            dislikedBy: arrayRemove(user.uid) // Remove from dislikes if they dislike it
-        });
-        await batch.commit();
-
-        // Notify owner if it's not self
-        if (data.ownerId && data.ownerId !== user.uid) {
-            // await createNotification(...) // Optional: Add notification later
-        }
-    }
-};
-
-export const toggleIdeaDislike = async (ideaId: string, projectId: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-
-    const ideaDoc = await getDoc(ideaRef);
-    if (!ideaDoc.exists()) return;
-
-    const data = ideaDoc.data();
-    const likedBy = data.likedBy || [];
-    const dislikedBy = data.dislikedBy || [];
-    const isDisliked = dislikedBy.includes(user.uid);
-
-    if (isDisliked) {
-        // Untoggle dislike
-        await updateDoc(ideaRef, {
-            dislikedBy: arrayRemove(user.uid)
-        });
-    } else {
-        // Toggle dislike (and remove like if present)
-        const batch = writeBatch(db);
-        // We probably don't decrement votes for dislikes unless we want a net score.
-        // Let's assume votes = number of likes for now, or net score.
-        // Prompt didn't specify, but usually dislikes don't affect "votes" count if votes implies positive support,
-        // UNLESS it's a reddit style score.
-        // Existing `votes: number`. Let's assume it tracks LIKES count primarily.
-        // If we remove a like to add a dislike, we must decrement votes.
-
-        let voteChange = 0;
-        if (likedBy.includes(user.uid)) {
-            voteChange = -1;
-        }
-
-        batch.update(ideaRef, {
-            votes: increment(voteChange),
-            dislikedBy: arrayUnion(user.uid),
-            likedBy: arrayRemove(user.uid)
-        });
-        await batch.commit();
-    }
-};
-
-/**
- * Add a comment to an idea.
- * Stored in project subcollection 'comments' with targetId = ideaId
- */
-export const addIdeaComment = async (projectId: string, ideaId: string, content: string, tenantId?: string) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    // 1. Create Comment
-    const commentData: Omit<ProjectComment, "id"> = {
-        projectId,
-        targetId: ideaId,
-        targetType: 'idea',
-        userId: user.uid,
-        userDisplayName: user.displayName || 'User',
-        userPhotoURL: user.photoURL || '',
-        content,
-        updatedBy: user.uid,
-        createdAt: serverTimestamp()
-    };
-
-    await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
-
-    // 2. Update Idea comment count
-    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
-    await updateDoc(ideaRef, {
-        comments: increment(1)
-    });
-
-    // The owner notification (comment_added) is created by the onCommentCreated Cloud Function.
-};
-
-export const getIdeaComments = async (projectId: string, ideaId: string, tenantId?: string): Promise<ProjectComment[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(
-        projectSubCollection(resolvedTenant, projectId, COMMENTS),
-        where("targetId", "==", ideaId),
-        orderBy("createdAt", "asc") // Oldest first
-    );
-
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-    } as ProjectComment));
-};
-
-// --- Social Strategy ---
-
-export const subscribeSocialStrategy = (
-    projectId: string,
-    onUpdate: (strategy: SocialStrategy | null) => void,
-    tenantId?: string
-) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeSocialStrategy: subscribeSocialStrategyDomain }) => {
-        const nextUnsubscribe = subscribeSocialStrategyDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateSocialStrategy = async (projectId: string, updates: Partial<SocialStrategy>, tenantId?: string) => {
-    const { updateSocialStrategy: updateSocialStrategyDomain } = await import('./domain/socialSettingsService');
-    return updateSocialStrategyDomain(projectId, updates, tenantId);
-};
-
-export const syncSocialStrategyPlatforms = async (projectId: string, platformToRemove: SocialPlatform, tenantId?: string) => {
-    const { syncSocialStrategyPlatforms: syncSocialStrategyPlatformsDomain } = await import('./domain/socialSettingsService');
-    return syncSocialStrategyPlatformsDomain(projectId, platformToRemove, tenantId);
-};
-
-// --- Onboarding Persistence ---
-
-/**
- * Updates a specific onboarding tour status for a user.
- * Uses strict object structure to ensure Firestore merges nested maps correctly 
- * rather than creating dot-notation field keys.
- */
 export const updateUserOnboardingStatus = async (
     userId: string,
     tourKey: string,
@@ -2901,13 +1867,6 @@ export interface FirestoreRole {
     createdBy?: string;
 }
 
-export const getTenantRoles = async (tenantId?: string): Promise<FirestoreRole[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const q = query(rolesCollection(resolvedTenant), orderBy("position", "desc"));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreRole));
-};
-
 export const subscribeTenantRoles = (
     onUpdate: (roles: FirestoreRole[]) => void,
     tenantId?: string
@@ -2956,19 +1915,4 @@ export const deleteTenantRole = async (roleId: string, tenantId?: string): Promi
     const resolvedTenant = resolveTenantId(tenantId);
     const roleRef = doc(rolesCollection(resolvedTenant), roleId);
     await deleteDoc(roleRef);
-};
-
-export const initializeSystemRoles = async (tenantId?: string): Promise<void> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const existingRoles = await getTenantRoles(resolvedTenant);
-
-    // Only initialize if no roles exist
-    if (existingRoles.length > 0) return;
-
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // Create system roles with the SYSTEM_ROLE_DEFAULTS from permissionService
-    // We defer to RoleManagement component for actual defaults to avoid circular imports
-    console.log("System roles should be initialized via RoleManagement component");
 };

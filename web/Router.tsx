@@ -31,14 +31,6 @@ import LegalPage from './screens/LegalPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
-import { PmCoreDeprecatedRedirect } from './components/routing/PmCoreDeprecatedRedirect';
-
-const withPmCoreGuard = (
-    element: React.ReactNode,
-    fallback: 'tasks' | 'overview' = 'tasks'
-) => (
-    <PmCoreDeprecatedRedirect fallback={fallback}>{element}</PmCoreDeprecatedRedirect>
-);
 
 // Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
 const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));
@@ -65,28 +57,7 @@ const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').the
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
-const SocialLayout = React.lazy(() => import('./screens/social/SocialLayout').then((module) => ({ default: module.SocialLayout })));
-const SocialDashboard = React.lazy(() => import('./screens/social/SocialDashboard').then((module) => ({ default: module.SocialDashboard })));
-const CampaignList = React.lazy(() => import('./screens/social/CampaignList').then((module) => ({ default: module.CampaignList })));
-const CampaignDetailView = React.lazy(() => import('./screens/social/CampaignDetailView').then((module) => ({ default: module.CampaignDetailView })));
-const PostList = React.lazy(() => import('./screens/social/PostList').then((module) => ({ default: module.PostList })));
-const SocialCalendar = React.lazy(() => import('./screens/social/SocialCalendar').then((module) => ({ default: module.SocialCalendar })));
-const SocialSettings = React.lazy(() => import('./screens/social/SocialSettings').then((module) => ({ default: module.SocialSettings })));
-const SocialAssets = React.lazy(() => import('./screens/social/SocialAssets').then((module) => ({ default: module.SocialAssets })));
-const CreateSocialPost = React.lazy(() => import('./screens/social/CreateSocialPost').then((module) => ({ default: module.CreateSocialPost })));
-const CreateCampaignPage = React.lazy(() => import('./screens/social/CreateCampaignPage').then((module) => ({ default: module.CreateCampaignPage })));
-const SocialCampaignReviewPage = React.lazy(() => import('./screens/social/SocialCampaignReviewPage').then((module) => ({ default: module.SocialCampaignReviewPage })));
-const SocialApprovalsPage = React.lazy(() => import('./screens/social/SocialApprovalsPage').then((module) => ({ default: module.SocialApprovalsPage })));
-const SocialPostArchive = React.lazy(() => import('./screens/social/SocialPostArchive').then((module) => ({ default: module.SocialPostArchive })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
-const MarketingDashboard = React.lazy(() => import('./screens/marketing/MarketingDashboard').then((module) => ({ default: module.MarketingDashboard })));
-const PaidAdsList = React.lazy(() => import('./screens/marketing/PaidAdsList').then((module) => ({ default: module.PaidAdsList })));
-const AdCampaignDetail = React.lazy(() => import('./screens/marketing/AdCampaignDetail').then((module) => ({ default: module.AdCampaignDetail })));
-const CreateAdCampaignPage = React.lazy(() => import('./screens/marketing/CreateAdCampaignPage').then((module) => ({ default: module.CreateAdCampaignPage })));
-const EmailMarketingList = React.lazy(() => import('./screens/marketing/EmailMarketingList').then((module) => ({ default: module.EmailMarketingList })));
-const CreateEmailPage = React.lazy(() => import('./screens/marketing/CreateEmailPage').then((module) => ({ default: module.CreateEmailPage })));
-const EmailBuilderPage = React.lazy(() => import('./screens/marketing/EmailBuilderPage').then((module) => ({ default: module.EmailBuilderPage })));
-const RecipientList = React.lazy(() => import('./screens/marketing/RecipientList').then((module) => ({ default: module.RecipientList })));
 const MarketingSettings = React.lazy(() => import('./screens/marketing/MarketingSettings').then((module) => ({ default: module.MarketingSettings })));
 const BlogList = React.lazy(() => import('./screens/marketing/BlogList').then((module) => ({ default: module.BlogList })));
 const BlogEditor = React.lazy(() => import('./screens/marketing/BlogEditor').then((module) => ({ default: module.BlogEditor })));
@@ -109,15 +80,9 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
 
 const RequireModuleAccess = ({ module, children }: { module: string; children?: React.ReactNode }) => {
     const { hasAccess, isLoading } = useModuleAccess(module);
-    const { t, socialTranslationsReady, loadSocialTranslations } = useLanguage();
+    const { t } = useLanguage();
 
-    useEffect(() => {
-        if (module === 'social') {
-            void loadSocialTranslations();
-        }
-    }, [loadSocialTranslations, module]);
-
-    if (isLoading || (module === 'social' && !socialTranslationsReady)) {
+    if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center h-full p-10 text-center">
                 <span className="material-symbols-outlined text-4xl text-gray-400 mb-4">hourglass_top</span>
@@ -292,59 +257,6 @@ export const AppRouter = () => {
                             />
 
                             <Route
-                                path="social"
-                                element={
-                                    <RequireModuleAccess module="social">
-                                        {withRouteSuspense(<SocialLayout />)}
-                                    </RequireModuleAccess>
-                                }
-                            >
-                                <Route index element={withRouteSuspense(<SocialDashboard />)} />
-                                <Route path="campaigns" element={withRouteSuspense(<CampaignList />)} />
-                                <Route path="campaigns/create" element={withRouteSuspense(<CreateCampaignPage />)} />
-                                <Route path="campaigns/edit/:campaignId" element={withRouteSuspense(<CreateCampaignPage />)} />
-                                <Route path="campaigns/:campaignId" element={withRouteSuspense(<CampaignDetailView />)} />
-                                <Route path="review/:ideaId" element={withRouteSuspense(<SocialCampaignReviewPage />)} />
-
-                                <Route path="posts" element={withRouteSuspense(<PostList />)} />
-                                <Route path="calendar" element={withRouteSuspense(<SocialCalendar />)} />
-                                <Route path="settings" element={withRouteSuspense(<SocialSettings />)} />
-                                <Route path="assets" element={withRouteSuspense(<SocialAssets />)} />
-                            </Route>
-                            <Route
-                                path="social/create"
-                                element={
-                                    <RequireModuleAccess module="social">
-                                        {withRouteSuspense(<CreateSocialPost />)}
-                                    </RequireModuleAccess>
-                                }
-                            />
-                            <Route
-                                path="social/edit/:postId"
-                                element={
-                                    <RequireModuleAccess module="social">
-                                        {withRouteSuspense(<CreateSocialPost />)}
-                                    </RequireModuleAccess>
-                                }
-                            />
-                            <Route
-                                path="social/approvals"
-                                element={
-                                    <RequireModuleAccess module="social">
-                                        {withRouteSuspense(<SocialApprovalsPage />)}
-                                    </RequireModuleAccess>
-                                }
-                            />
-                            <Route
-                                path="social/archive"
-                                element={
-                                    <RequireModuleAccess module="social">
-                                        {withRouteSuspense(<SocialPostArchive />)}
-                                    </RequireModuleAccess>
-                                }
-                            />
-
-                            <Route
                                 path="marketing"
                                 element={
                                     <RequireModuleAccess module="marketing">
@@ -352,15 +264,7 @@ export const AppRouter = () => {
                                     </RequireModuleAccess>
                                 }
                             >
-                                <Route index element={withRouteSuspense(<MarketingDashboard />)} />
-                                <Route path="ads" element={withRouteSuspense(<PaidAdsList />)} />
-                                <Route path="ads/create" element={withRouteSuspense(<CreateAdCampaignPage />)} />
-                                <Route path="ads/:campaignId" element={withRouteSuspense(<AdCampaignDetail />)} />
-                                <Route path="ads/:campaignId/edit" element={withRouteSuspense(<CreateAdCampaignPage />)} />
-                                <Route path="email" element={withRouteSuspense(<EmailMarketingList />)} />
-                                <Route path="email/create" element={withRouteSuspense(<CreateEmailPage />)} />
-                                <Route path="email/builder" element={withRouteSuspense(<EmailBuilderPage />)} />
-                                <Route path="recipients" element={withRouteSuspense(<RecipientList />)} />
+                                <Route index element={<Navigate to="blog" replace />} />
                                 <Route path="blog" element={withRouteSuspense(<BlogList />)} />
                                 <Route path="blog/create" element={withRouteSuspense(<BlogEditor />)} />
                                 <Route path="blog/:blogId" element={withRouteSuspense(<BlogEditor />)} />

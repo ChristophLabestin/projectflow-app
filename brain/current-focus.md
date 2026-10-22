@@ -1,6 +1,6 @@
 # Current Focus
 
-Last updated: 2026-06-30
+Last updated: 2026-10-22
 
 ## Current Objective
 
@@ -9,6 +9,11 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 ## Active Threads
 
 - 2026-10-22 — **Native iOS app reset.** The old `swift/` app (incl. widgets, share extension, build output) and its docs (IOS_APP_IMPLEMENTATION_PLAN, MOBILE_SITEMAP, MOBILE_INNOVATION, mobile_feature_report, SITEMAP §7, COMPONENTS native section, app-specific GOTCHAS) were deleted. A from-scratch concept lives in [plans/ios-app-concept.md](./plans/ios-app-concept.md) (v2, revised after a critical review agent) with visual sketches in [plans/ios-app-concept-mockups.html](./plans/ios-app-concept-mockups.html). Owner decisions for §12 were taken on 2026-10-22 (decision-log). Next: Phase 0 (backend prerequisites, logic extraction + shared golden fixtures, new `ios/` Xcode project, PFDesign).
+- 2026-10-22 — Social removed, Marketing reduced to the blog, Flows/Ideas/Issues remnants and dead code removed (see decision-log 2026-10-22).
+  - Web: Social module/routes/nav/help/permissions gone; Marketing keeps `marketing/blog*` and `marketing/settings` (blog API wizard); Swift `ProjectModule.social` removed.
+  - Functions removed: getFacebookAuthUrl, facebookCallback, getTikTokAuthUrl, tiktokCallback, getYouTubeAuthUrl, youtubeCallback, checkScheduledPosts. Public blog/newsletter/waitlist/contact/`api` kept.
+  - Rules: `isRetiredProjectCollection()` closes retired social/marketing project subcollections; composite indexes for marketing_campaigns/marketing_recipients/social_posts/ad_campaigns removed.
+  - Deployed to production 2026-10-22 (main `899e2103` + index fix): all functions; the 7 social functions deleted (a `deploy --force` did not delete them, `firebase functions:delete` did); rules; indexes (4 social/marketing indexes deleted incl. `ad_campaigns`); hosting.
 
 - 2026-09-26 — Firebase project `projectflow-labestin` + multi-workspace tenancy + PM focus UI (see `plans/pm-focus-ui-redesign.md`, decision-log 2026-09-26). Implemented, verified in the local emulators and deployed to production on 2026-09-26 (commit `282abaa3`: all 111 functions, rules, indexes, storage, hosting).
 
@@ -16,7 +21,7 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 - Documentation migration: former root docs moved into `brain/reference/app/`; former `docs/` content moved into `brain/plans/`, `brain/operations/`, `brain/audits/`, and `brain/reference/legacy-agent/`.
 - Entry-point cleanup: root `README.md`, `AGENTS.md`, and `GEMINI.md` now point to `brain/`.
 - ProjectFlow tracking: attempted to create a ProjectFlow initiative, but the local environment lacks `PROJECTFLOW_API_TOKEN`.
-- PM-core module policy: `tasks`, `initiatives`, `sprints`, `milestones`, `activity`, `social`, `marketing`, `accounting`, and `codex` are available; legacy `ideas`/`flows` and `issues` are deprecated, filtered from PM-core module controls, and guarded from direct project nav.
+- PM-core module policy: `tasks`, `initiatives`, `sprints`, `milestones`, `activity`, `marketing` (blog only), `accounting`, and `codex` are available; legacy `ideas`/`flows`, `issues` and `social` are deprecated (in `PM_CORE_DEPRECATED_MODULES`), filtered from PM-core module controls, and guarded from direct project nav.
 - Follow-up removal pass: Web no longer imports deleted Flow/Issue component/service modules; global create shortcuts, pinned project actions, search sections, Project Settings module options, project-list counters, and Health scoring no longer surface Flow/Issue modules. Swift builds after the deleted Flow/Issue views/stores and remaining pinned-copy cleanup.
 - Task detail Full Workbench: `/project/:id/tasks/:taskId` was redesigned with an open header, single command rail, Work/Discussion/History tabs, flatter screenshot-aligned work area, next-step/blocker/reminder/quick-log fields, subtasks table, and inspector rail.
 - Task relationships: task detail now supports blocked-by, is-blocking, parent task, and child task links in the inspector; blocked-by/is-blocking actions automatically set the blocked task status to `Blocked`.

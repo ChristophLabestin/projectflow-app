@@ -1,16 +1,14 @@
 import { WelcomeDialog } from './onboarding/WelcomeDialog';
 import React, { Suspense, lazy, useEffect, useState, useMemo } from 'react';
-import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
+import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
 import { subscribeUserProjectNavPrefs } from '../services/dataService';
 import { Project, ProjectExternalResource } from '../types';
 import { useWorkspacePresence } from '../hooks/usePresence';
-import { SubTask } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 import { getProjectById, subscribeProject } from '../services/domain/projectsService';
-import { getSocialCampaign } from '../services/domain/socialService';
 import { subscribeUserStatusPreference } from '../services/domain/userStatusService';
 import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
@@ -32,8 +30,7 @@ export const AppLayout = () => {
         isProjectCreateModalOpen, closeProjectCreateModal
     } = useUIState();
     const location = useLocation();
-    const isFullWidthRoute = location.pathname.includes('/social')
-        || location.pathname.includes('/marketing')
+    const isFullWidthRoute = location.pathname.includes('/marketing')
         || location.pathname.includes('/activity')
         || location.pathname.includes('/team')
         || location.pathname.includes('/brainstorm');
@@ -56,7 +53,6 @@ export const AppLayout = () => {
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [projectOptions, setProjectOptions] = useState<Project[]>([]);
     const [taskTitle, setTaskTitle] = useState<string | null>(null);
-    const [campaignName, setCampaignName] = useState<string | null>(null);
     // Full-width content mode (toggled from the project overview "stretch" button).
     // When on, the content area uses the full available width and the sidebar
     // collapses to icon-only.
@@ -101,36 +97,7 @@ export const AppLayout = () => {
         setNavOpen(false);
         setProjectMenuOpen(false);
         setTaskTitle(null);
-        setCampaignName(null);
     }, [location.pathname]);
-
-    // Fetch campaign name when viewing a campaign detail page or editing/creating a post within a campaign
-    useEffect(() => {
-        // Check for campaign detail page pattern: /project/:id/social/campaigns/:campaignId
-        const pathMatch = location.pathname.match(/\/project\/([^/]+)\/social\/campaigns\/([^/]+)/);
-        if (pathMatch && pathMatch[1] && pathMatch[2]) {
-            const [, pId, campId] = pathMatch;
-            getSocialCampaign(pId, campId).then(campaign => {
-                setCampaignName(campaign?.name || null);
-            }).catch(() => setCampaignName(null));
-            return;
-        }
-
-        // Check for create/edit page with campaignId query param
-        const createEditMatch = location.pathname.match(/\/project\/([^/]+)\/social\/(create|edit)/);
-        const searchParams = new URLSearchParams(location.search);
-        const queryCampaignId = searchParams.get('campaignId');
-
-        if (createEditMatch && createEditMatch[1] && queryCampaignId) {
-            const pId = createEditMatch[1];
-            getSocialCampaign(pId, queryCampaignId).then(campaign => {
-                setCampaignName(campaign?.name || null);
-            }).catch(() => setCampaignName(null));
-            return;
-        }
-
-        setCampaignName(null);
-    }, [location.pathname, location.search]);
 
     // Fetch Project Data if we are in a project
     useEffect(() => {
@@ -267,40 +234,6 @@ export const AppLayout = () => {
                     case 'activity':
                         rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
                         break;
-                    case 'social':
-                        rawItems.push({ label: t('breadcrumbs.socialStudio'), to: `/project/${parts[1]}/social` });
-                        // Handle social sub-menus
-                        if (parts[3]) {
-                            const socialSub = parts[3];
-                            const socialLabels: Record<string, string> = {
-                                'calendar': t('breadcrumbs.calendar'),
-                                'campaigns': t('breadcrumbs.campaigns'),
-                                'posts': t('breadcrumbs.posts'),
-                                'assets': t('breadcrumbs.assets'),
-                                'settings': t('breadcrumbs.settings')
-                            };
-
-                            // Check for campaignId in query params (for create/edit pages)
-                            const searchParams = new URLSearchParams(location.search);
-                            const queryCampaignId = searchParams.get('campaignId');
-
-                            // Check if we're on a campaign detail page (has campaignId at parts[4])
-                            if (socialSub === 'campaigns' && parts[4]) {
-                                rawItems.push({ label: t('breadcrumbs.campaigns'), to: `/project/${parts[1]}/social/campaigns` });
-                                rawItems.push({ label: campaignName || t('breadcrumbs.loading') });
-                            } else if ((socialSub === 'create' || socialSub === 'edit') && queryCampaignId && campaignName) {
-                                // Creating or editing a post within a campaign context
-                                rawItems.push({ label: t('breadcrumbs.campaigns'), to: `/project/${parts[1]}/social/campaigns` });
-                                rawItems.push({ label: campaignName, to: `/project/${parts[1]}/social/campaigns/${queryCampaignId}` });
-                                rawItems.push({ label: socialSub === 'create' ? t('breadcrumbs.newPost') : t('breadcrumbs.editPost') });
-                            } else {
-                                rawItems.push({ label: socialLabels[socialSub] || socialSub.charAt(0).toUpperCase() + socialSub.slice(1) });
-                            }
-                        } else {
-                            // Default is Dashboard when no sub-path
-                            rawItems.push({ label: t('breadcrumbs.dashboard') });
-                        }
-                        break;
                     default:
                         rawItems.push({ label: sub.charAt(0).toUpperCase() + sub.slice(1) });
                 }
@@ -332,7 +265,7 @@ export const AppLayout = () => {
             }
             return item;
         });
-    }, [location.pathname, project, companyProject, taskTitle, campaignName, t]);
+    }, [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
         <div className="flex h-screen w-full bg-surface overflow-hidden relative">

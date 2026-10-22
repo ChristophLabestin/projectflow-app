@@ -1,13 +1,10 @@
 import { McpConnectPanel } from './settings/McpConnectPanel';
 import { AccountDataSection } from './settings/AccountDataSection';
 import React, { useState, useEffect } from 'react';
-import { remove } from 'firebase/database';
 import { collection, query, getDocs, deleteDoc, updateDoc, doc } from 'firebase/firestore';
-import { Card } from './ui/Card';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
-import { Textarea } from './ui/Textarea';
 import { useToast, useConfirm } from '../context/UIContext';
 import { auth, functions, db } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';

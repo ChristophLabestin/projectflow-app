@@ -1,7 +1,6 @@
 import { orderBy } from 'firebase/firestore';
 
 import type {
-    FinanceBankAccount,
     FinanceBankTransaction,
     FinanceReconciliation,
 } from '../../types';
@@ -48,18 +47,6 @@ export interface ConfirmReconciliationInput {
     unmatchedTransactionIds?: string[];
     notes?: string;
 }
-
-export const subscribeFinanceBankAccounts = (
-    callback: (rows: FinanceBankAccount[]) => void,
-    tenantId?: string
-) => {
-    return subscribeTenantFinanceCollection<FinanceBankAccount>(
-        FINANCE_V2_COLLECTIONS.bankAccounts,
-        callback,
-        tenantId,
-        [orderBy('name', 'asc')]
-    );
-};
 
 export const subscribeFinanceBankTransactions = (
     callback: (rows: FinanceBankTransaction[]) => void,

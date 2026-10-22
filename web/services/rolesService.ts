@@ -1,6 +1,6 @@
-import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayRemove, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { CustomRole, Permission, Project, ProjectRole, Tenant } from '../types';
+import { CustomRole, Permission, ProjectRole } from '../types';
 import { getActiveTenantId } from './domain/authService';
 import { getTenant } from './domain/workspaceService';
 import { RoleCapabilities } from '../types';
@@ -199,32 +199,6 @@ export const deleteCustomRole = async (
 };
 
 /**
- * Reorder custom roles in a workspace
- */
-export const reorderCustomRoles = async (
-    orderedRoleIds: string[],
-    currentRoles: CustomRole[],
-    tenantId?: string
-): Promise<void> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error('Authentication required');
-
-    const tid = tenantId || getActiveTenantId();
-    const tenantRef = doc(db, 'tenants', tid);
-
-    // Update positions based on new order
-    const updatedRoles = currentRoles.map(role => {
-        const newPosition = orderedRoleIds.indexOf(role.id);
-        return { ...role, position: newPosition >= 0 ? newPosition : role.position };
-    }).sort((a, b) => a.position - b.position);
-
-    await updateDoc(tenantRef, {
-        customRoles: updatedRoles,
-        updatedAt: serverTimestamp()
-    });
-};
-
-/**
  * Set the default role for new members in a workspace
  */
 export const setDefaultRole = async (
@@ -265,36 +239,6 @@ export const getRolePermissions = (
 
     // Fallback to Viewer permissions
     return ROLE_PERMISSIONS.Viewer;
-};
-
-/**
- * Check if a user has a specific permission in a project
- */
-export const hasProjectPermission = (
-    customRoles: CustomRole[] | undefined,
-    project: Project | null,
-    userId: string | undefined,
-    permission: Permission
-): boolean => {
-    if (!project || !userId) return false;
-
-    // Owner always has all permissions
-    if (project.ownerId === userId) return true;
-
-    // Get user's role
-    const userRole = project.roles?.[userId];
-    if (!userRole) {
-        // Check legacy members array
-        const member = project.members?.find(m =>
-            typeof m === 'string' ? m === userId : m.userId === userId
-        );
-        if (!member) return false;
-
-        const memberRole = typeof member === 'string' ? 'Editor' : member.role;
-        return getRolePermissions(customRoles, memberRole).includes(permission);
-    }
-
-    return getRolePermissions(customRoles, userRole).includes(permission);
 };
 
 /**

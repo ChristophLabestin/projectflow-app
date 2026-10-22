@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ProjectHealth, HealthStatus, HealthFactor } from '../../services/healthService';
-import { Task, Milestone, Issue } from '../../types';
+import { Task, Milestone } from '../../types';
 import { Button } from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
 import { getHealthFactorText, getHealthRecommendations } from '../../utils/healthLocalization';
@@ -13,7 +13,6 @@ interface HealthDetailModalProps {
     health: ProjectHealth;
     tasks?: Task[];
     milestones?: Milestone[];
-    issues?: Issue[];
     projectTitle?: string;
 }
 
@@ -62,7 +61,6 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
     health,
     tasks = [],
     milestones = [],
-    issues = [],
     projectTitle
 }) => {
     const { t } = useLanguage();
@@ -106,20 +104,14 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
             if (milestone.status === 'Achieved' || !milestone.dueDate) return false;
             return parseDateValue(milestone.dueDate).getTime() < now;
         });
-        const urgentIssues = issues.filter(issue =>
-            (issue.priority === 'Urgent' || issue.priority === 'High') &&
-            issue.status !== 'Resolved' &&
-            issue.status !== 'Closed'
-        );
 
         return [
             { id: 'overdue-tasks', icon: 'event_busy', label: t('healthDetail.attention.overdueTasks'), count: overdueTasks.length, tone: 'critical' as AttentionTone },
             { id: 'due-soon', icon: 'schedule', label: t('healthDetail.attention.dueSoon'), count: dueSoonTasks.length, tone: 'warning' as AttentionTone },
             { id: 'blocked-tasks', icon: 'block', label: t('healthDetail.attention.blocked'), count: blockedTasks.length, tone: 'critical' as AttentionTone },
-            { id: 'overdue-milestones', icon: 'flag', label: t('healthDetail.attention.milestones'), count: overdueMilestones.length, tone: 'warning' as AttentionTone },
-            { id: 'urgent-issues', icon: 'bug_report', label: t('healthDetail.attention.criticalIssues'), count: urgentIssues.length, tone: 'critical' as AttentionTone }
+            { id: 'overdue-milestones', icon: 'flag', label: t('healthDetail.attention.milestones'), count: overdueMilestones.length, tone: 'warning' as AttentionTone }
         ].filter(item => item.count > 0);
-    }, [issues, milestones, now, t, tasks]);
+    }, [milestones, now, t, tasks]);
 
     const sortedFactors = useMemo(() => {
         return [...health.factors].sort((a, b) => {

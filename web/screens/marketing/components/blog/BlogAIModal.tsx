@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { X, Sparkles, Wand2, Search } from 'lucide-react';
 import { useLanguage } from '../../../../context/LanguageContext';
 import { generateBlogPostAI, suggestBlogTopicsAI } from '../../../../services/geminiService';

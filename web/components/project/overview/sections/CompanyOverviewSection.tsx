@@ -23,7 +23,6 @@ const STARTUP_TRACK_DISPLAY_ORDER: StartupTrackId[] = [
 const STARTUP_TRACK_DEFINITION_BY_ID = new Map(STARTUP_TRACK_DEFINITIONS.map((d) => [d.id, d]));
 
 const parse = (value?: string) => (value ? new Date(value) : null);
-const isOpen = (task: Task) => !task.legacyInitiativeRoot && !task.isCompleted && task.status !== 'Done';
 
 export type CompanyOverviewSectionProps = {
     project: Project;

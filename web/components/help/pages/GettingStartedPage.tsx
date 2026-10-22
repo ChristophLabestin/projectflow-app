@@ -85,23 +85,6 @@ const ProgressStep = ({
     </div>
 );
 
-const AnatomyLabel = ({
-    label,
-    description,
-    position
-}: {
-    label: string;
-    description: string;
-    position: string;
-}) => (
-    <div className={`absolute ${position} z-10`}>
-        <div className="bg-card border border-surface rounded-xl p-3 shadow-lg max-w-[180px]">
-            <div className="text-xs font-bold text-primary uppercase tracking-wider">{label}</div>
-            <div className="text-[11px] text-muted mt-1 leading-relaxed">{description}</div>
-        </div>
-    </div>
-);
-
 const Keycap = ({ children }: { children: React.ReactNode }) => (
     <span className="px-2 py-1 rounded-lg border border-surface bg-card text-xs font-semibold text-main font-mono">
         {children}

@@ -62,7 +62,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
     }, [loadProjectOverviewTranslations]);
 
     const data = useProjectOverviewData(projectId, t);
-    const { project, tasks, initiatives, milestones, sprints, activity, issues, ideas, workspaceRoles, health } = data;
+    const { project, tasks, initiatives, milestones, sprints, activity, workspaceRoles, health } = data;
 
     const members = useProjectMembers(project);
     const { companyContextProject, linkedCompanyProjects } = useCompanyContext(project);
@@ -350,7 +350,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         if (!project) return;
         setReportLoading(true);
         try {
-            const result = await generateProjectReport(project, tasks, milestones, issues, ideas, activity, members);
+            const result = await generateProjectReport(project, tasks, milestones, activity, members);
             setReport(result);
             void saveGeminiReport(project.id, result, project.tenantId).catch(() => undefined);
         } catch {
@@ -671,7 +671,6 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
                     health={health}
                     tasks={tasks}
                     milestones={milestones}
-                    issues={issues}
                     projectTitle={project.title}
                 />
             )}

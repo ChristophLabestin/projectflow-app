@@ -148,7 +148,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'campaign',
         projectCategory: 'marketing',
         legacyProjectType: 'standard',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'marketing', 'social']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'marketing']),
         defaultOperatingMode: 'ship',
         defaultCadence: 'weekly'
     },
@@ -497,10 +497,6 @@ export const STARTUP_SEED_MILESTONES: StartupSeedMilestoneDefinition[] = [
 
 export const getProjectTemplateDefinition = (templateId?: ProjectTemplateId | string): ProjectTemplateDefinition => (
     PROJECT_TEMPLATE_DEFINITIONS.find((template) => template.id === templateId) || PROJECT_TEMPLATE_DEFINITIONS[0]
-);
-
-export const isCompanyProjectTemplate = (templateId?: ProjectTemplateId | string): boolean => (
-    getProjectTemplateDefinition(templateId).isCompanyProject === true
 );
 
 export const isCompanyProject = (project: Pick<Project, 'projectCategory' | 'templateId' | 'projectType'>): boolean => (

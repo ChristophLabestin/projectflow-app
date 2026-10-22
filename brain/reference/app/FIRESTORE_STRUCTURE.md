@@ -51,11 +51,11 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `enabled`: boolean
   - `lastTokenSyncAt`: Timestamp
   - `permission`: string (`granted`, `denied`, `default`)
-- `pinnedItems`: Object[] (quick-access task/issue/personal-task cache)
+- `pinnedItems`: Object[] (quick-access task/personal-task cache)
 - `focusItemId`: string | null (currently selected focus item)
 - `focusState`: Object | null (persisted cross-device focus loop)
   - `itemId`: string
-  - `itemType`: `"task" | "issue" | "personal-task"`
+  - `itemType`: `"task" | "personal-task"` (legacy `"issue"` may exist in stored data)
   - `title`: string
   - `projectId`: string (optional for personal tasks)
   - `tenantId`: string (optional)
@@ -329,7 +329,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `startupReadiness`: Object (optional readiness checklist summary for company/startup projects)
   - `legalStructureDecided`, `founderAgreementReady`, `ipAssignmentReady`, `registrationSubmitted`, `registrationConfirmed`, `taxSetupReady`, `bankAccountReady`, `bookkeepingReady`, `privacyDocsReady`, `requiredPermitsKnown`, `launchOfferReady`, `firstChannelReady`: boolean
 - `ownerId`: string
-- `modules`: string[] (Enabled modules like 'tasks', 'ideas')
+- `modules`: string[] (Enabled modules like 'tasks', 'marketing'; deprecated ids such as 'social' are dropped via `PM_CORE_DEPRECATED_MODULES`)
 - `externalResources`: Array of sidebar resources with optional `{ type, sensitivity, restrictedToRoleIds, advisorReviewRequired, sourceTemplateId, sourceReferenceId, lastReviewedAt }` metadata. Legal, finance, compliance, funding, and advisor resources should be classified so the UI can warn/filter by project role.
 - `visibilityGroupIds`: string[]
 - `coverImage`: string (Legacy URL)
@@ -356,10 +356,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
         *   GitHub Issues are imported as tasks with `source: "github_issue"` and `externalKey: "github:{owner/repo}:issue:{number}"`. GitHub Projects v2 field snapshots live in `githubProjectV2Fields`. ProjectFlow-to-GitHub sync uses `githubIssueNumber`, `githubIssueUrl`, `githubIssueState`, and `githubSyncedAt`; `githubSyncDisabled` opts out per task.
     *   📄 `Initiative`: `{ title, status, priority, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, successMetric, ... }`
     *   📄 `Milestone`: `{ title, status, dueDate, riskRating, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, ... }`
-*   **`issues`**
-    *   📄 `Issue`: `{ title, status, severity, reporterId, ... }`
-*   **`ideas`**
-    *   📄 `Idea`: `{ title, stage, impact, effort, ... }`
+*   **Retired (data retained, closed to clients by `isRetiredProjectCollection()` in `firestore.rules`, 2026-10-22):** `socialCampaigns`, `socialPosts`, `socialAssets`, `social_integrations` (platform tokens), `social_strategy`, `caption_presets`, `paidAds`, `emailTemplates`, `email_templates`, `email_components`, `marketing_recipients`, `marketing_recipient_columns`, `marketing_groups`, `marketing_group_columns`. Also removed from the app earlier: `issues`, `ideas`, `flows`. Only the Marketing blog remains in use.
 *   **`sprints`**
     *   📄 `Sprint`: `{ name, goal, startDate, endDate, status }`
 *   **`submissions`** *(External project intake — see `intakeForm` above)*
@@ -377,30 +374,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 ## **Global Module Collections**
 These collections are at the root level but often contain `projectId` references to link them to specific projects.
 
-### 📂 **`social_campaigns`**
-**Path:** `/social_campaigns/{campaignId}`
-**Schema:** `SocialCampaign`
-- `projectId`: string (Link to Project)
-- `name`: string
-- `platforms`: string[] (Instagram, LinkedIn, etc.)
-- `status`: "Planning" | "Active" | ...
-
-### 📂 **`social_posts`**
-**Path:** `/social_posts/{postId}`
-**Schema:** `SocialPost`
-- `projectId`: string (Link to Project)
-- `campaignId`: string (Optional link to Campaign)
-- `content`: string
-- `platform`: "Instagram" | "Twitter" | ...
-- `status`: "Draft" | "Scheduled" | "Published"
-
-### 📂 **`social_assets`**
-**Path:** `/social_assets/{assetId}`
-**Schema:** `SocialAsset`
-- `projectId`: string
-- `url`: string
-- `storagePath`: string
-- `type`: "image" | "video"
+_Legacy top-level `social_*` collections have no rules anymore (client access denied); the Social module is removed._
 
 ---
 
@@ -430,4 +404,4 @@ Workspace isolation: screens only show data of the active workspace. Collection-
 *   **`tasks`** / **`initiatives`**: always with `where tenantId == activeTenant`.
     *   "My tasks" (full members, iOS): `collectionGroup('tasks').where('tenantId','==',t).where('assigneeIds','array-contains',uid)` — composite index `tasks(tenantId ASC, assigneeIds CONTAINS)` (and `+ isCompleted ASC` for open-only). Allowed by `canAccessScopedDoc` for full members; guests and queries without `tenantId` are rejected (covered by `functions/scripts/firestore-rules-test.js`). Guests: one listener per project they belong to.
     *   Reminder scan (server): `nextReminderAt <= now` on collection groups `tasks` and `projects` (single-field collection-group index overrides in `firestore.indexes.json`).
-*   `activities`, `subtasks`, `ideas`, `issues`: no collection-group rule — read them via their project path.
+*   `activities`, `subtasks`: no collection-group rule — read them via their project path.

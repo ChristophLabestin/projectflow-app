@@ -1,6 +1,6 @@
 import { doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore';
 
-import { auth, db } from '../firebase';
+import { db } from '../firebase';
 import { resolveActiveTenantId } from './authService';
 
 const TENANTS = 'tenants';

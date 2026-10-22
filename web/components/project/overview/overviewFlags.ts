@@ -37,8 +37,3 @@ export const isOverviewV2Enabled = (): boolean => {
 
     return true;
 };
-
-export const setOverviewV2Enabled = (enabled: boolean): void => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(OVERVIEW_V2_STORAGE_KEY, enabled ? '1' : '0');
-};

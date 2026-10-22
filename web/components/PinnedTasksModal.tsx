@@ -1,8 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
-import { isPmCoreOnly } from '../config/pmCore';
-import { FocusItemType, Initiative, Task, SubTask, Project, Member, PersonalTask } from '../types';
+import { FocusItemType, Initiative, Task, SubTask, Project, PersonalTask } from '../types';
 import { createSubTask, deleteSubTask, deleteTask, getSubTasks, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
 import { updateInitiative } from '../services/domain/initiativesService';
 import { getProjectById } from '../services/domain/projectsService';
@@ -13,23 +12,17 @@ import {
     togglePersonalTaskStatus,
     updatePersonalTask
 } from '../services/domain/personalTasksService';
-import { getGithubToken } from '../services/domain/usersService';
 import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
 import { useConfirm } from '../context/UIContext';
 import { CommentSection } from './CommentSection';
-import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
 import { useLanguage } from '../context/LanguageContext';
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
-const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
 const INITIATIVE_STATUS_OPTIONS = ['Planning', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
 
-const updateIssue = async (..._args: unknown[]): Promise<void> => undefined;
-const deleteIssue = async (..._args: unknown[]): Promise<void> => undefined;
-
-type StatusKind = 'task' | 'issue' | 'initiative';
+type StatusKind = 'task' | 'initiative';
 
 const getStatusClass = (status?: string) => {
     if (!status) return 'status-badge--default';
@@ -42,20 +35,10 @@ const getStatusClass = (status?: string) => {
     if (normalized === 'backlog') return 'status-badge--backlog';
     if (normalized === 'on-hold') return 'status-badge--on-hold';
     if (normalized === 'blocked') return 'status-badge--blocked';
-    if (normalized === 'resolved') return 'status-badge--resolved';
-    if (normalized === 'closed') return 'status-badge--closed';
     return 'status-badge--default';
 };
 
 const getStatusIcon = (status?: string, kind: StatusKind = 'task') => {
-    if (kind === 'issue') {
-        return status === 'Resolved' ? 'check_circle' :
-            status === 'Closed' ? 'cancel' :
-                status === 'In Progress' ? 'sync' :
-                    status === 'Open' ? 'error' :
-                        'report';
-    }
-
     return status === 'Done' ? 'check_circle' :
         status === 'In Progress' ? 'sync' :
             status === 'Review' ? 'visibility' :
@@ -129,8 +112,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const [loading, setLoading] = useState(true);
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
     const [project, setProject] = useState<Project | null>(null);
-    const [relatedCommits, setRelatedCommits] = useState<GithubCommit[]>([]);
-    const [loadingCommits, setLoadingCommits] = useState(false);
     const [commentCount, setCommentCount] = useState(0);
     const [isDescExpanded, setIsDescExpanded] = useState(() => {
         const saved = localStorage.getItem(`pinned_desc_expanded_${itemId}`);
@@ -157,12 +138,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         Review: t('tasks.status.review'),
         Todo: t('tasks.status.todo')
     };
-    const issueStatusLabels: Record<string, string> = {
-        Open: t('projectIssues.status.open'),
-        'In Progress': t('projectIssues.status.inProgress'),
-        Resolved: t('projectIssues.status.resolved'),
-        Closed: t('projectIssues.status.closed')
-    };
     const initiativeStatusLabels: Record<string, string> = {
         Planning: t('initiatives.status.planning'),
         Open: t('initiatives.status.open'),
@@ -173,11 +148,9 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         Done: t('initiatives.status.done')
     };
     const getStatusLabel = (status: string, kind: StatusKind) => (
-        kind === 'issue'
-            ? issueStatusLabels[status] || status
-            : kind === 'initiative'
-                ? initiativeStatusLabels[status] || status
-                : taskStatusLabels[status] || status
+        kind === 'initiative'
+            ? initiativeStatusLabels[status] || status
+            : taskStatusLabels[status] || status
     );
 
 
@@ -244,7 +217,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         }
                     }
                 }
-                // Fetch Project Task / Issue
+                // Fetch Project Task
                 else if (current.projectId) {
                     const projectData = await getProjectById(current.projectId, current.tenantId);
                     if (projectData) {
@@ -298,35 +271,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             if (itemType === 'personal-task' && (item as PersonalTask).isCompleted) {
                 onComplete(item.id);
             }
-            if (itemType === 'issue' && ((item as any).status === 'Resolved' || (item as any).status === 'Closed')) {
-                onComplete(item.id);
-            }
         }
     }, [loading, item, itemType, onComplete]);
-
-    useEffect(() => {
-        if (itemType === 'issue' && item?.githubIssueNumber && project?.githubRepo) {
-            const fetchCommits = async () => {
-                setLoadingCommits(true);
-                try {
-                    const user = auth.currentUser;
-                    const token = user?.uid ? (await getGithubToken(user.uid)) ?? undefined : undefined;
-
-                    const commits = await fetchCommitsReferencingIssue(
-                        project.githubRepo!,
-                        token,
-                        item.githubIssueNumber!
-                    );
-                    setRelatedCommits(commits);
-                } catch (err) {
-                    console.error("Failed to fetch related commits", err);
-                } finally {
-                    setLoadingCommits(false);
-                }
-            };
-            fetchCommits();
-        }
-    }, [itemType, item?.githubIssueNumber, project?.githubRepo]);
 
 
     const handleToggleCompletion = async () => {
@@ -356,19 +302,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             if (nextStatus === 'Done' && onComplete) {
                 onComplete(initiative.id);
             }
-        } else {
-            const i = item as any; // Issue
-            const isResolved = i.status === 'Resolved' || i.status === 'Closed';
-            const newStatus = isResolved ? 'Open' : 'Resolved';
-            setItem(prev => prev ? { ...prev, status: newStatus } : null);
-
-            if (project) {
-                await updateIssue(i.id, { status: newStatus }, project.id, project.tenantId);
-            }
-
-            if (newStatus === 'Resolved' && onComplete) {
-                onComplete(item.id);
-            }
         }
     };
 
@@ -380,14 +313,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             setItem(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
             await updateTaskFields(item.id, { status: newStatus as any, isCompleted: isDone }, item.projectId, item.tenantId || project?.tenantId);
             if (isDone && onComplete) {
-                onComplete(item.id);
-            }
-        } else if (itemType === 'issue') {
-            setItem(prev => prev ? { ...prev, status: newStatus } : null);
-            if (project) {
-                await updateIssue(item.id, { status: newStatus }, project.id, project.tenantId);
-            }
-            if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
                 onComplete(item.id);
             }
         } else if (itemType === 'initiative') {
@@ -445,8 +370,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 await updatePersonalTask(item.id, { description: descValue }, item.tenantId);
             } else if (itemType === 'initiative') {
                 await updateInitiative(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
-            } else {
-                await updateIssue(item.id, { description: descValue }, item.projectId, item.tenantId || project?.tenantId);
             }
             setItem(prev => prev ? { ...prev, description: descValue } : null);
             setIsEditingDesc(false);
@@ -459,14 +382,12 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         ? (item as Task | PersonalTask)?.isCompleted
         : itemType === 'initiative'
             ? (item as Initiative)?.status === 'Done'
-            : (item as any)?.status === 'Resolved' || (item as any)?.status === 'Closed';
-    const statusKind: StatusKind = itemType === 'issue' ? 'issue' : itemType === 'initiative' ? 'initiative' : 'task';
+            : false;
+    const statusKind: StatusKind = itemType === 'initiative' ? 'initiative' : 'task';
     const currentStatus = item?.status || 'Open';
-    const statusOptions = itemType === 'issue'
-        ? ISSUE_STATUS_OPTIONS
-        : itemType === 'initiative'
-            ? INITIATIVE_STATUS_OPTIONS
-            : TASK_STATUS_OPTIONS;
+    const statusOptions = itemType === 'initiative'
+        ? INITIATIVE_STATUS_OPTIONS
+        : TASK_STATUS_OPTIONS;
 
     if (loading) return <div className="pinned-tasks__loading">{t('pinnedTasks.loading')}</div>;
     if (!item) {
@@ -506,10 +427,10 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         <div className="pinned-tasks-modal-container">
             {/* Header (Title Only - Actions moved to Parent) */}
             <div className="pinned-header">
-                <button aria-label={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
+                <button aria-label={t('pinnedTasks.actions.markComplete')}
                     onClick={handleToggleCompletion}
                     className={`completion-toggle ${isCompleted ? (itemType === 'task' ? 'completed-task' : 'completed') : ''}`}
-                    title={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
+                    title={t('pinnedTasks.actions.markComplete')}
                 >
                     <span className="material-symbols-outlined pinned-tasks__completion-icon">check</span>
                 </button>
@@ -519,7 +440,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     </h3>
                     <div className="meta-badges">
                         {item.priority && <PriorityBadge priority={item.priority} />}
-                        {(itemType === 'task' || itemType === 'issue' || itemType === 'initiative') && (
+                        {(itemType === 'task' || itemType === 'initiative') && (
                             <div ref={statusMenuRef} className="status-dropdown">
                                 <button
                                     type="button"
@@ -706,7 +627,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         </div>
                     </div>
                 ) : itemType === 'personal-task' ? null : itemType === 'initiative' ? (
-                    <div className="pinned-tasks__issue-sections">
+                    <div className="pinned-tasks__detail-sections">
                         <div>
                             <h4 className="pinned-tasks__section-title">
                                 <span className="material-symbols-outlined pinned-tasks__section-title-icon">chat</span>
@@ -726,80 +647,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                             </div>
                         </div>
                     </div>
-                ) : (
-                    <div className="pinned-tasks__issue-sections">
-                        {/* Discussion / Comments for Issues */}
-                        <div>
-                            <h4 className="pinned-tasks__section-title">
-                                <span className="material-symbols-outlined pinned-tasks__section-title-icon">chat</span>
-                                {t('pinnedTasks.sections.discussion').replace('{count}', String(commentCount))}
-                            </h4>
-                            <div className="pinned-tasks__comment-section">
-                                <CommentSection
-                                    projectId={project?.id || ''}
-                                    targetId={itemId}
-                                    targetType="issue"
-                                    tenantId={project?.tenantId}
-                                    isProjectOwner={project?.ownerId === auth.currentUser?.uid}
-                                    targetTitle={item?.title}
-                                    hideHeader={true}
-                                    onCountChange={setCommentCount}
-                                />
-                            </div>
-                        </div>
-
-                        {/* GitHub reference for Issues */}
-                        {item.githubIssueNumber && (
-                            <div className="pinned-tasks__github-section">
-                                <h4 className="pinned-tasks__section-title">
-                                    <span className="material-symbols-outlined pinned-tasks__section-title-icon pinned-tasks__section-title-icon--github">terminal</span>
-                                    {t('pinnedTasks.sections.githubReference')}
-                                </h4>
-                                <a
-                                    href={item.githubIssueUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="pinned-tasks__github-link"
-                                >
-                                    <div className="pinned-tasks__github-link-content">
-                                        <span className="material-symbols-outlined pinned-tasks__github-link-icon">open_in_new</span>
-                                        <span className="pinned-tasks__github-link-title">
-                                            {t('pinnedTasks.github.issueLabel').replace('{number}', String(item.githubIssueNumber))}
-                                        </span>
-                                    </div>
-                                    <span className="pinned-tasks__github-link-meta">{t('pinnedTasks.github.viewOnGithub')}</span>
-                                </a>
-
-                                {loadingCommits ? (
-                                    <div className="pinned-tasks__github-loading">
-                                        <span className="material-symbols-outlined pinned-tasks__spinner">progress_activity</span>
-                                        <span className="pinned-tasks__github-loading-text">{t('pinnedTasks.github.searchingCommits')}</span>
-                                    </div>
-                                ) : relatedCommits.length > 0 && (
-                                    <div className="pinned-tasks__commit-list">
-                                        {relatedCommits.map(commit => (
-                                            <a
-                                                key={commit.sha}
-                                                href={commit.html_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="pinned-tasks__commit"
-                                            >
-                                                <p className="pinned-tasks__commit-title">
-                                                    {commit.commit.message}
-                                                </p>
-                                                <div className="pinned-tasks__commit-meta">
-                                                    <span className="pinned-tasks__commit-author">@{commit.author?.login}</span>
-                                                    <span className="pinned-tasks__commit-sha">{commit.sha.slice(0, 7)}</span>
-                                                </div>
-                                            </a>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
+                ) : null}
 
 
             </div>
@@ -829,14 +677,13 @@ export const PinnedTasksModal = () => {
     const [addingItems, setAddingItems] = useState<string[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [isCreatingTask, setIsCreatingTask] = useState(false);
-    const [pinnedFilter, setPinnedFilter] = useState<'all' | 'task' | 'issue' | 'initiative'>('all');
+    const [pinnedFilter, setPinnedFilter] = useState<'all' | 'task' | 'initiative'>('all');
     const navigate = useNavigate();
     const confirm = useConfirm();
     const { t } = useLanguage();
 
     const itemTypeLabels: Record<string, string> = {
         task: t('pinnedTasks.types.task'),
-        issue: t('pinnedTasks.types.issue'),
         initiative: t('pinnedTasks.types.initiative'),
         'personal-task': t('pinnedTasks.types.personalTask')
     };
@@ -849,7 +696,6 @@ export const PinnedTasksModal = () => {
     const filterLabels = {
         all: t('pinnedTasks.tabs.all'),
         task: t('pinnedTasks.tabs.tasks'),
-        issue: t('pinnedTasks.tabs.issues'),
         initiative: t('pinnedTasks.tabs.initiatives')
     };
     const pressEnterHint = t('pinnedTasks.hint.pressEnter');
@@ -1043,8 +889,6 @@ export const PinnedTasksModal = () => {
             try {
                 if (item.type === 'personal-task') {
                     await deletePersonalTask(item.id);
-                } else if (item.type === 'issue') {
-                    await deleteIssue(item.id, item.projectId, item.tenantId);
                 } else {
                     await deleteTask(item.id, item.projectId, item.tenantId);
                 }
@@ -1186,8 +1030,6 @@ export const PinnedTasksModal = () => {
             await updateTaskFields(item.id, { status: 'Done', isCompleted: true }, item.projectId, item.tenantId);
         } else if (item.type === 'personal-task') {
             await togglePersonalTaskStatus(item.id, false, item.tenantId);
-        } else if (item.type === 'issue') {
-            await updateIssue(item.id, { status: 'Resolved' }, item.projectId, item.tenantId);
         } else if (item.type === 'initiative') {
             await updateInitiative(item.id, { status: 'Done' }, item.projectId, item.tenantId);
         }
@@ -1453,10 +1295,7 @@ export const PinnedTasksModal = () => {
 
                     {/* Filter Tabs */}
                     <div className="filter-tabs">
-                        {(isPmCoreOnly()
-                            ? (['all', 'task', 'initiative'] as const)
-                            : (['all', 'task', 'issue', 'initiative'] as const)
-                        ).map(tab => {
+                        {(['all', 'task', 'initiative'] as const).map(tab => {
                             const count = tab === 'all'
                                 ? pinnedItems.length
                                 : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;
@@ -1479,16 +1318,13 @@ export const PinnedTasksModal = () => {
                                     ? t('pinnedTasks.empty.all')
                                     : pinnedFilter === 'task'
                                         ? t('pinnedTasks.empty.tasks')
-                                        : pinnedFilter === 'issue'
-                                            ? t('pinnedTasks.empty.issues')
-                                            : t('pinnedTasks.empty.initiatives')}
+                                        : t('pinnedTasks.empty.initiatives')}
                             </div>
                         )}
 
                         {pinnedItems.filter(matchesPinnedFilter).map(item => {
                             const isFocus = item.id === focusItemId;
                             const isSelected = item.id === activeItemId;
-                            const isIssue = item.type === 'issue';
                             const isInitiative = item.type === 'initiative';
                             const isCompleting = completingItems.includes(item.id);
                             const isAdding = addingItems.includes(item.id);
@@ -1503,8 +1339,8 @@ export const PinnedTasksModal = () => {
                                     className={`pinned-item-btn ${isSelected ? 'selected' : ''} ${isAdding ? 'adding' : ''}`}
                                 >
                                     <div className={`icon-box ${isFocus ? 'focused' : ''}`}>
-                                        <span className={`material-symbols-outlined pinned-item-icon ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : isInitiative ? 'is-initiative' : 'is-task'}`}>
-                                            {isIssue ? 'bug_report' : isInitiative ? 'rocket_launch' : 'task_alt'}
+                                        <span className={`material-symbols-outlined pinned-item-icon ${isFocus ? 'is-focus' : isInitiative ? 'is-initiative' : 'is-task'}`}>
+                                            {isInitiative ? 'rocket_launch' : 'task_alt'}
                                         </span>
                                         {isFocus && <div className="indicator-dot" />}
                                     </div>
@@ -1513,7 +1349,7 @@ export const PinnedTasksModal = () => {
                                             {item.title}
                                         </p>
                                         <div className="item-meta">
-                                            <span className={`item-type-badge ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : isInitiative ? 'is-initiative' : 'is-task'}`}>
+                                            <span className={`item-type-badge ${isFocus ? 'is-focus' : isInitiative ? 'is-initiative' : 'is-task'}`}>
                                                 {itemTypeLabels[item.type] || item.type}
                                             </span>
 

@@ -434,8 +434,3 @@ export const downloadInvoicePdf = async (invoice: Invoice): Promise<void> => {
     const doc = await buildInvoicePdf(invoice);
     doc.save(invoiceFileName(invoice));
 };
-
-export const getInvoicePdfBlobUrl = async (invoice: Invoice): Promise<string> => {
-    const doc = await buildInvoicePdf(invoice);
-    return doc.output('bloburl').toString();
-};

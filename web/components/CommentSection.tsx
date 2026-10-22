@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Comment, Member, ProjectGroup } from '../types';
+import { Comment } from '../types';
 import { addComment, subscribeComments, deleteComment, subscribeTenantUsers } from '../services/dataService';
 import { getProjectMembers } from '../services/domain/projectsService';
 import { getUserProfile } from '../services/domain/usersService';
@@ -32,7 +32,7 @@ const timeAgo = (date: any) => {
 interface CommentSectionProps {
     projectId: string;
     targetId: string;
-    targetType: 'task' | 'issue' | 'idea' | 'initiative';
+    targetType: 'task' | 'initiative';
     targetTitle?: string; // Descriptive title for notifications
     tenantId?: string;
     isProjectOwner?: boolean;

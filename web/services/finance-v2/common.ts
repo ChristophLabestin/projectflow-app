@@ -54,8 +54,6 @@ export const FINANCE_V2_COLLECTIONS = {
     operationApprovals: 'finance_operation_approvals',
 } as const;
 
-export type FinanceV2CollectionKey = keyof typeof FINANCE_V2_COLLECTIONS;
-
 export const resolveFinanceTenantId = (tenantId?: string) => resolveTenantId(tenantId);
 
 const tenantCollection = (tenantId: string, collectionName: string) =>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../services/firebase';
 import {
     getPersonalTasks,
     addPersonalTask,

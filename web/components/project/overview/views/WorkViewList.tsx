@@ -8,7 +8,6 @@ import { TaskRow } from '../../../work/TaskRow';
 import { compareWork, type WorkGroup, type WorkGroupTone } from '../../../work/workList';
 
 const STATUS_VALUES = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'];
-const PRIORITY_VALUES = ['Low', 'Medium', 'High', 'Urgent'];
 
 const Row: React.FC<{ item: WorkItem; ctx: WorkViewContext }> = ({ item, ctx }) => {
     const { labels, dateFormat, dateLocale, canManageTasks, t, onItemClick, onToggleComplete, onUpdateItemStatus, initiativeColors } = ctx;

@@ -54,10 +54,9 @@ export const AIFeaturesPage = (_props: HelpCenterPageProps) => (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <CapabilityCard icon="analytics" name="SWOT Analysis" description="Generate comprehensive strengths, weaknesses, opportunities, and threats." location="Flows → CORA Studio" />
                 <CapabilityCard icon="architecture" name="Blueprint" description="Create structured execution plans with phases and timelines." location="Flows → CORA Studio" />
-                <CapabilityCard icon="warning" name="Risk Analysis" description="Identify potential risks with probability and mitigations." location="Flows, Campaigns" />
+                <CapabilityCard icon="warning" name="Risk Analysis" description="Identify potential risks with probability and mitigations." location="CORA Studio" />
                 <CapabilityCard icon="search" name="CORA Search" description="Ask questions and get summarized answers from your data." location="Global Search" />
                 <CapabilityCard icon="image" name="Image Generation" description="Create images from text prompts with various styles." location="Media Library" />
-                <CapabilityCard icon="campaign" name="Campaign Strategy" description="Generate channel strategies and audience targeting." location="Social Studio" />
             </div>
         </section>
 
@@ -65,7 +64,6 @@ export const AIFeaturesPage = (_props: HelpCenterPageProps) => (
             <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Context</div><h3 className="text-xl font-bold text-main mt-2">CORA by Module</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <ModuleAICard icon="flow_chart" module="Flows" color="bg-sky-500" features={['SWOT Analysis', 'Blueprint Generation', 'Risk Analysis', 'Discovery & Strategy']} />
-                <ModuleAICard icon="campaign" module="Social Studio" color="bg-pink-500" features={['Campaign Strategy', 'Caption Generator', 'Hashtag Suggestions', 'Win/Risk Analysis']} />
                 <ModuleAICard icon="photo_library" module="Media Library" color="bg-purple-500" features={['Image Generation', 'Style Transfer', 'Image Variations']} />
                 <ModuleAICard icon="search" module="Global Search" color="bg-emerald-500" features={['CORA Answers', 'Context Search']} />
             </div>

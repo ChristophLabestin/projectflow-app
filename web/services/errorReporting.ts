@@ -32,8 +32,6 @@ export const initErrorReporting = (): void => {
     initialized = true;
 };
 
-export const isErrorReportingEnabled = (): boolean => initialized;
-
 /** Associate subsequent events with the signed-in user (id only, no PII). */
 export const setErrorUser = (userId: string | null): void => {
     if (!initialized) return;
@@ -47,7 +45,7 @@ export const reportError = (
 ): void => {
     if (!initialized) {
         // Keep a console trail in dev / when Sentry is disabled.
-        // eslint-disable-next-line no-console
+         
         console.error('[reportError]', error, context ?? '');
         return;
     }

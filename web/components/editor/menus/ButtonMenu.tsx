@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
-import { Link, Palette, BoxSelect, AlignLeft, AlignCenter, AlignRight, Save, Check, LayoutGrid, Maximize } from 'lucide-react';
+import { BoxSelect, AlignLeft, AlignCenter, AlignRight, Maximize } from 'lucide-react';
 
 interface ButtonMenuProps {
     editor: Editor;

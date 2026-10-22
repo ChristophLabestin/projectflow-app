@@ -11,7 +11,6 @@ import { SubTask, Task, Project, Activity, Milestone, TaskCategory, ProjectRemin
 import { CommentSection } from '../components/CommentSection';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
-import { TextArea } from '../components/common/Input/TextArea';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
@@ -1270,35 +1269,6 @@ const PriorityIcon = ({ priority }: { priority: string }) => {
     return (
         <span className="material-symbols-outlined" style={{ fontSize: '18px', color: `var(--priority-${priority.toLowerCase()})` }}>
             {icons[priority]}
-        </span>
-    );
-};
-
-const PriorityBadge = ({ priority }: { priority: string }) => {
-    const { t } = useLanguage();
-    const icons: Record<string, string> = {
-        Urgent: 'error',
-        High: 'keyboard_double_arrow_up',
-        Medium: 'drag_handle',
-        Low: 'keyboard_arrow_down',
-    };
-
-    const priorityLabels: Record<string, string> = {
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low'),
-    };
-
-    const toneClass = priority === 'Urgent' ? 'task-detail__priority--urgent' :
-                      priority === 'High' ? 'task-detail__priority--high' :
-                      priority === 'Medium' ? 'task-detail__priority--medium' :
-                      'task-detail__priority--low';
-
-    return (
-        <span className={`task-detail__priority-pill ${toneClass}`}>
-            <span className="material-symbols-outlined">{icons[priority]}</span>
-            {priorityLabels[priority] || priority}
         </span>
     );
 };

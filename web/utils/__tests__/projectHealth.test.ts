@@ -42,7 +42,7 @@ const done = (extra: Partial<Task> = {}) => task({
     ...extra
 } as Partial<Task>);
 
-const health = (p: Project, tasks: Task[]) => calculateProjectHealth(p, tasks, [], [], [], [], [], [], []);
+const health = (p: Project, tasks: Task[]) => calculateProjectHealth(p, tasks, [], [], [], [], []);
 
 describe('project health calibration', () => {
     it('rates a well-run active project as healthy', () => {

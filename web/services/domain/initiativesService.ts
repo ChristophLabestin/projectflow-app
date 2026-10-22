@@ -3,7 +3,6 @@ import {
     collectionGroup,
     deleteDoc,
     doc,
-    getDoc,
     getDocs,
     onSnapshot,
     orderBy,

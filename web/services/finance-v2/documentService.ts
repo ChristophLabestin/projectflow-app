@@ -1,8 +1,7 @@
-import { orderBy, where } from 'firebase/firestore';
+import { orderBy } from 'firebase/firestore';
 
 import type {
     FinanceDocument,
-    FinanceDocumentVersion,
 } from '../../types';
 import {
     FINANCE_V2_COLLECTIONS,
@@ -78,19 +77,6 @@ export const subscribeFinanceDocuments = (
         callback,
         tenantId,
         [orderBy('updatedAt', 'desc')],
-    );
-};
-
-export const subscribeFinanceDocumentVersions = (
-    documentId: string,
-    callback: (rows: FinanceDocumentVersion[]) => void,
-    tenantId?: string,
-) => {
-    return subscribeTenantFinanceCollection<FinanceDocumentVersion>(
-        FINANCE_V2_COLLECTIONS.documentVersions,
-        callback,
-        tenantId,
-        [where('documentId', '==', documentId), orderBy('versionNo', 'desc')],
     );
 };
 

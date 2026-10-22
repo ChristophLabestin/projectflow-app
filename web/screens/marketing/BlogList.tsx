@@ -7,35 +7,6 @@ import { subscribeMarketingSettings } from '../../services/marketingSettingsServ
 import { useToast, useConfirm } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
 
-
-// Mock data for initial development
-const MOCK_BLOGS: BlogPost[] = [
-    {
-        id: '1',
-        title: 'Getting Started with ProjectFlow',
-        excerpt: 'Learn the basics of managing your projects efficiently...',
-        content: '',
-        coverImage: 'https://images.unsplash.com/photo-1499750310159-52f8f6f32fe1?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80',
-        author: 'Christoph L.',
-        status: 'published',
-        createdAt: new Date(2025, 11, 28),
-        category: { name: 'Product', slug: 'product' },
-        tags: ['guide', 'basics']
-    },
-    {
-        id: '2',
-        title: 'Q4 2025 Roadmap',
-        excerpt: 'Here is what we are planning for the next quarter...',
-        content: '',
-        coverImage: null,
-        author: 'Sarah M.',
-        status: 'draft',
-        createdAt: new Date(2025, 11, 29),
-        category: { name: 'Announcements', slug: 'announcements' },
-        tags: ['roadmap', 'planning']
-    }
-];
-
 const BlogList = () => {
     const { t, language } = useLanguage();
     const navigate = useNavigate();

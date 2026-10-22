@@ -13,9 +13,6 @@
 
 import {
     PermissionNode,
-    TenantPermissionNode,
-    ProjectPermissionNode,
-    AIPermissionNode,
     Role,
     RolePermissions,
     PermissionEvaluationContext,
@@ -167,72 +164,6 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'project.tasks.comment': { scope: 'project', description: 'Comment on tasks' },
     'project.tasks.attachFiles': { scope: 'project', description: 'Attach files/media to tasks' },
     'project.tasks.manageCustomFields': { scope: 'project', description: 'Create/edit custom fields for tasks', dangerLevel: 'medium' },
-
-    // Project - Flows
-    'project.flows.view': { scope: 'project', description: 'View flows list and flow details' },
-    'project.flows.create': { scope: 'project', description: 'Create flows' },
-    'project.flows.edit': { scope: 'project', description: 'Edit flow content' },
-    'project.flows.delete': { scope: 'project', description: 'Delete flows', dangerLevel: 'medium' },
-    'project.flows.comment': { scope: 'project', description: 'Comment on flows' },
-    'project.flows.attachFiles': { scope: 'project', description: 'Attach files/media to flows' },
-    'project.flows.advanceStep': { scope: 'project', description: 'Move flow to the next pipeline step' },
-    'project.flows.revertStep': { scope: 'project', description: 'Move flow to a previous step' },
-    'project.flows.setStep': { scope: 'project', description: 'Set flow to any step (jump)', dangerLevel: 'medium' },
-    'project.flows.requestReview': { scope: 'project', description: 'Mark/request review for a flow' },
-    'project.flows.approve': { scope: 'project', description: 'Approve a flow review', dangerLevel: 'medium' },
-    'project.flows.reject': { scope: 'project', description: 'Reject a flow review' },
-    'project.flows.handoffToTasks': { scope: 'project', description: 'Convert/handoff flow to tasks' },
-    'project.flows.convertToInitiatives': { scope: 'project', description: 'Convert approved flows into initiatives' },
-    'project.flows.handoffToSocial': { scope: 'project', description: 'Handoff flow to Social module' },
-    'project.flows.handoffToMarketing': { scope: 'project', description: 'Handoff flow to Marketing module' },
-
-    // Project - Issues
-    'project.issues.view': { scope: 'project', description: 'View issues' },
-    'project.issues.create': { scope: 'project', description: 'Create issues' },
-    'project.issues.edit': { scope: 'project', description: 'Edit issues' },
-    'project.issues.delete': { scope: 'project', description: 'Delete issues', dangerLevel: 'medium' },
-    'project.issues.assign': { scope: 'project', description: 'Assign/unassign issues' },
-    'project.issues.changeStatus': { scope: 'project', description: 'Change issue status/state' },
-    'project.issues.comment': { scope: 'project', description: 'Comment on issues' },
-    'project.issues.linkGithub': { scope: 'project', description: 'Link issue to GitHub' },
-    'project.issues.unlinkGithub': { scope: 'project', description: 'Unlink issue from GitHub' },
-
-    // Project - Social Accounts
-    'project.social.accounts.view': { scope: 'project', description: 'View connected social accounts' },
-    'project.social.accounts.connect': { scope: 'project', description: 'Connect a social account', dangerLevel: 'medium' },
-    'project.social.accounts.disconnect': { scope: 'project', description: 'Disconnect a social account', dangerLevel: 'medium' },
-
-    // Project - Social Campaigns
-    'project.social.campaigns.view': { scope: 'project', description: 'View campaigns' },
-    'project.social.campaigns.create': { scope: 'project', description: 'Create campaigns' },
-    'project.social.campaigns.edit': { scope: 'project', description: 'Edit campaigns' },
-    'project.social.campaigns.delete': { scope: 'project', description: 'Delete campaigns', dangerLevel: 'medium' },
-
-    // Project - Social Posts
-    'project.social.posts.view': { scope: 'project', description: 'View posts' },
-    'project.social.posts.create': { scope: 'project', description: 'Create posts' },
-    'project.social.posts.edit': { scope: 'project', description: 'Edit posts' },
-    'project.social.posts.delete': { scope: 'project', description: 'Delete posts', dangerLevel: 'medium' },
-    'project.social.posts.schedule': { scope: 'project', description: 'Schedule posts' },
-    'project.social.posts.publish': { scope: 'project', description: 'Publish posts', dangerLevel: 'high' },
-    'project.social.posts.approve': { scope: 'project', description: 'Approve posts' },
-    'project.social.posts.archive': { scope: 'project', description: 'Archive posts' },
-
-    // Project - Social Assets
-    'project.social.assets.manage': { scope: 'project', description: 'Manage social assets' },
-
-    // Project - Marketing Ads
-    'project.marketing.ads.view': { scope: 'project', description: 'View paid ad campaigns' },
-    'project.marketing.ads.create': { scope: 'project', description: 'Create ad campaigns' },
-    'project.marketing.ads.edit': { scope: 'project', description: 'Edit ad campaigns' },
-    'project.marketing.ads.delete': { scope: 'project', description: 'Delete ad campaigns', dangerLevel: 'medium' },
-
-    // Project - Marketing Email
-    'project.marketing.email.view': { scope: 'project', description: 'View email campaigns' },
-    'project.marketing.email.create': { scope: 'project', description: 'Create email campaigns' },
-    'project.marketing.email.edit': { scope: 'project', description: 'Edit email campaigns' },
-    'project.marketing.email.send': { scope: 'project', description: 'Send email campaigns', dangerLevel: 'high' },
-    'project.marketing.email.manageRecipients': { scope: 'project', description: 'Manage recipient lists' },
 
     // Project - Marketing Blog
     'project.marketing.blog.view': { scope: 'project', description: 'View blog posts' },
@@ -519,54 +450,6 @@ export function isProtectedRole(role: Role): {
 // =============================================================================
 
 /**
- * Check if a permission node belongs to a specific scope
- */
-export function isPermissionInScope(
-    permission: PermissionNode,
-    scope: 'tenant' | 'project' | 'ai' | 'user'
-): boolean {
-    return PERMISSION_CATALOG[permission]?.scope === scope;
-}
-
-/**
- * Get all permission nodes for a scope
- */
-export function getPermissionsForScope(
-    scope: 'tenant' | 'project' | 'ai' | 'user'
-): PermissionNode[] {
-    return Object.entries(PERMISSION_CATALOG)
-        .filter(([_, meta]) => meta.scope === scope)
-        .map(([node]) => node as PermissionNode);
-}
-
-/**
- * Check if permission is high-risk (dangerous)
- */
-export function isDangerousPermission(permission: PermissionNode): boolean {
-    return PERMISSION_CATALOG[permission]?.dangerLevel === 'high';
-}
-
-/**
- * Parse permission node to get its parts
- * e.g., 'project.tasks.create' -> { scope: 'project', module: 'tasks', action: 'create' }
- */
-export function parsePermissionNode(permission: PermissionNode): {
-    scope: string;
-    module?: string;
-    action: string;
-} {
-    const parts = permission.split('.');
-    if (parts.length === 2) {
-        return { scope: parts[0], action: parts[1] };
-    }
-    return {
-        scope: parts[0],
-        module: parts.slice(1, -1).join('.'),
-        action: parts[parts.length - 1],
-    };
-}
-
-/**
  * Group permissions by module for UI display
  */
 export function groupPermissionsByModule(): Map<string, PermissionNode[]> {
@@ -622,14 +505,6 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.tasks.manageChecklists',
                 'project.tasks.comment',
                 'project.tasks.attachFiles',
-                'project.flows.convertToInitiatives',
-                'project.issues.view',
-                'project.issues.create',
-                'project.issues.edit',
-                'project.issues.delete',
-                'project.issues.assign',
-                'project.issues.changeStatus',
-                'project.issues.comment',
                 'project.media.view',
                 'project.media.upload',
             ];
@@ -640,7 +515,6 @@ export function getLegacyProjectRolePermissions(role: LegacyProjectRole): Permis
                 'project.initiatives.view',
                 'project.tasks.view',
                 'project.tasks.comment',
-                'project.issues.view',
                 'project.media.view',
             ];
         default:

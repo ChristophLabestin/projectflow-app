@@ -9,7 +9,7 @@ It is the product-level source of truth for scope, entities, relationships, subs
 
 **Primary audience:** B2B software companies, founders, startup operators, and teams working in the digital sector (product, engineering, marketing, design, growth), plus freelancers/solo operators.
 
-**Primary value proposition:** A workspace that combines execution (projects/tasks/issues) with structured ideation (Flows) and optional operational modules (Social, Marketing, Sprints, Accounting).
+**Primary value proposition:** A workspace that combines execution (projects/tasks/initiatives) with optional operational modules (Marketing blog, Sprints, Accounting).
 
 The system is multi-tenant: each tenant represents a **workspace** (company/team environment) that can contain multiple projects.
 
@@ -51,10 +51,9 @@ ProjectFlow distinguishes between two collaboration scopes:
 A **Project** exists under a tenant and represents a unit of work (product, client project, internal initiative, or company/startup founding effort).
 Projects contain their own operational data such as:
 - Tasks, subtasks
-- Issues (optional module)
-- Flows (signature feature)
+- Initiatives
 - Milestones, sprints (optional module)
-- Social/marketing artifacts (optional modules)
+- Marketing blog artifacts (optional module)
 - Project membership (including externals)
 - Project lifecycle state: active delivery, planning/backlog, paused recovery, completed archive, and canceled work are distinct so the workspace can separate active planning from stopped or finished projects. Canceled projects stay visible in their archive section but are excluded from health scoring, spotlight selection, and global task scheduling/priority surfaces.
 - Project delivery setup: one project purpose, success criteria, scope boundary, decision owner, operating cadence, date confidence, and primary risks. The purpose is entered once and reused internally so ProjectFlow and Codex can judge whether work is moving toward the intended outcome without asking users for a duplicate objective.
@@ -67,11 +66,9 @@ Each project can be configured with **modules** that can be enabled/disabled at 
 
 Example modules:
 - Tasks (core)
-- Issues (optional)
-- Flows (core signature feature)
+- Initiatives (core)
 - Codex (core automation surface; not stored as a disableable project module)
-- Social (optional)
-- Marketing (optional)
+- Marketing (optional, blog only)
 - Sprints (optional)
 - Accounting (optional)
 
@@ -270,10 +267,6 @@ Standard project tasks with:
 - comments/activity
 - optional statuses/columns
 
-### 6.2 Issues (Optional)
-Issues behave similarly to tasks, but represent engineering issues/bugs/blockers with optional GitHub linkage.
-If the Issues module is disabled, issues must not appear in navigation or creation flows.
-
 ### 6.2.1 Codex Automation (Core)
 Codex sessions represent implementation work performed by Codex outside the web app. Sessions can start, checkpoint, finish, and create follow-up tasks through the ProjectFlow API.
 
@@ -284,72 +277,8 @@ Core capabilities:
 - Codex follow-up inbox backed by normal project tasks
 - API-token based repo/plugin integration
 
-### 6.3 Social Module (Optional)
-Purpose: plan, schedule, and (optionally) automatically publish social media content (especially Instagram).
-
-Core capabilities:
-- connect social accounts
-- plan campaigns and posts
-- schedule and publish automatically (where supported)
-- manage assets and approvals/review workflows
-
----
-
-## 7) Signature Feature: Flows
-
-### 7.1 What is a Flow?
-A **Flow** is a structured ideation-and-refinement object that moves through a defined pipeline of sequential steps.  
-Flows transform raw ideas into execution-ready outputs and can be linked to modules.
-
-Flows must support:
-- a **Flow Type** (e.g., Social Campaign Flow, Feature/Initiative Flow)
-- a pipeline with **ordered steps**
-- artifacts per step (notes, drafts, attachments, decisions)
-- collaboration (comments, mentions, assignments, review)
-
-### 7.2 Flow Types, Pipelines, and Module Visibility
-
-#### Pipeline definition
-Flows are generally **hard-coded** by Flow Type (pipelines and steps are defined in code).
-
-**Organization-tier exception:**
-- Organization tenants can request **custom flow pipelines**, which are implemented as **bespoke, tenant-specific code** (not self-configured in the UI).
-- The codebase must support adding tenant-specific pipeline definitions cleanly (without rewriting existing flow logic).
-
-#### Module-driven availability
-Flow types must be **conditioned by the project’s enabled modules**:
-- If the Social module is not enabled in a project, **Social Campaign Flows must not be available** (not shown in UI, not creatable).
-- If a module is enabled, related Flow types may appear and become creatable.
-- Enforcement must exist in UI + backend.
-
-### 7.3 Flow Types and Handoffs
-
-#### A) Social Campaign Flow
-Creates a campaign concept and hands off into the Social module for scheduling/production:
-1. Idea capture
-2. Concept expansion
-3. Asset planning
-4. Drafting
-5. Review / approval
-6. Handoff to Social module (create or update campaign)
-
-#### B) Feature Flow (Initiative Flow)
-Creates an execution-ready “Initiative” and optionally generates tasks:
-1. Problem statement
-2. Requirements / acceptance criteria
-3. Technical approach / risks
-4. Breakdown (tasks)
-5. Review / approval
-6. Handoff to execution (Initiative + tasks)
-
-### 7.4 Linking Flows to Modules
-Flows must be linkable to:
-- Tasks (execution output)
-- Social campaigns (planning output)
-- Issues (if relevant)
-- Marketing artifacts (future extension)
-
-A Flow should store references to created artifacts after handoff (e.g., `linkedCampaignId`, `linkedInitiativeId`).
+### 6.3 Marketing Module (Optional, blog only)
+Purpose: manage blog posts for the public website and the blog API connection (settings wizard). Social, paid ads, email campaigns and recipients were removed 2026-10-22; their data stays in Firestore but is closed to clients by `isRetiredProjectCollection()`. Flows, Ideas and Issues are also removed (legacy lineage fields `convertedIdeaId`/`originIdeaId`/`linkedIssueId` remain for existing data).
 
 ---
 
@@ -365,11 +294,8 @@ Within `tenants/{tenantId}/projects/{projectId}`:
 - `members/{memberId}` — project membership (workspace users and externals)
   - must distinguish workspace members vs externals
 - `tasks/{taskId}`
-- `issues/{issueId}` (only if Issues module enabled)
-- `flows/{flowId}`
 - `milestones/{milestoneId}`
 - `sprints/{sprintId}` (only if Sprints module enabled)
-- `social/...` (only if Social module enabled)
 - `marketing/...` (only if Marketing module enabled)
 
 Within `users/{userId}`:
@@ -408,7 +334,6 @@ User-facing text must not be hardcoded; it must come from the language dictionar
 - Define `brain/reference/app/PERMISSIONS.md` (roles, actions, module gates, enforcement).
 - Specify Organization SSO configuration structure and supported providers.
 - Define Organization custom AI limits and governance policies (exact fields + UI).
-- Define a clean code structure for tenant-specific custom Flow pipelines (Organization bespoke implementations).
 
 ## Media Library & Asset Management (Core Capability)
 
@@ -438,7 +363,7 @@ No feature is allowed to implement its own standalone upload picker. Any place w
 - Initiatives are now first-class project resources stored under `tenants/{tenantId}/projects/{projectId}/initiatives/{initiativeId}`.
 - An initiative is a mini-project inside a project: it owns outcome context, success metrics, health, dates, and aggregate progress.
 - Regular tasks remain the execution unit and can belong to an initiative through `task.initiativeId`.
-- Flow conversion should create an initiative first and preserve the originating idea reference as `originIdeaId`.
+- Legacy records may carry `originIdeaId` from the removed Flow conversion; no new ones are created.
 - Milestones should link to initiative ids directly, with temporary fallback support for legacy idea-linked records during migration.
 
 4) **Free stock images (Unsplash)**
@@ -451,9 +376,8 @@ No feature is allowed to implement its own standalone upload picker. Any place w
 
 ### Usage across modules
 The media library is used by:
-- Task and Flow attachments
-- Social module (post assets, campaign media)
-- Marketing module (email/blog/ads assets)
+- Task attachments
+- Marketing module (blog assets)
 - Project and tenant branding (logos, cover images)
 - Any future feature requiring files or images
 

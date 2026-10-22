@@ -118,7 +118,7 @@ export const PinnedProjectPill = () => {
 
     useEffect(() => {
         if (!pinnedProject) return;
-        const h = calculateProjectHealth(pinnedProject, tasks, milestones, [], [], activity, [], initiatives, []);
+        const h = calculateProjectHealth(pinnedProject, tasks, milestones, [], activity, [], initiatives);
         setHealth(h);
     }, [pinnedProject, tasks, initiatives, milestones, activity]);
 

@@ -44,8 +44,8 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('canvas-confetti')) return 'celebration';
                 if (id.includes('recharts')) return 'charts';
                 if (id.includes('react-colorful')) return 'color-tools';
-                if (id.includes('react-easy-crop') || id.includes('react-image-crop')) return 'media-tools';
-                if (id.includes('papaparse') || id.includes('qrcode') || id.includes('@simplewebauthn/')) return 'data-tools';
+                if (id.includes('react-image-crop')) return 'media-tools';
+                if (id.includes('qrcode') || id.includes('@simplewebauthn/')) return 'data-tools';
                 if (
                   id.includes('@tiptap/react') ||
                   id.includes('@tiptap/core') ||
@@ -121,24 +121,10 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/tasks-page-en.ts') ||
-                id.includes('/web/locales/tasks-page-de.ts')
-              ) {
-                return 'tasks-page-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/calendar-en.ts') ||
                 id.includes('/web/locales/calendar-de.ts')
               ) {
                 return 'calendar-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/invite-landing-en.ts') ||
-                id.includes('/web/locales/invite-landing-de.ts')
-              ) {
-                return 'invite-landing-i18n';
               }
 
               if (
@@ -153,20 +139,6 @@ export default defineConfig(({ mode }) => {
                 id.includes('/web/locales/auth-screen-de.ts')
               ) {
                 return 'auth-screen-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/project-invite-en.ts') ||
-                id.includes('/web/locales/project-invite-de.ts')
-              ) {
-                return 'project-invite-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/join-link-en.ts') ||
-                id.includes('/web/locales/join-link-de.ts')
-              ) {
-                return 'join-link-i18n';
               }
 
               if (
@@ -191,20 +163,6 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/social-en.ts') ||
-                id.includes('/web/locales/social-de.ts')
-              ) {
-                return 'social-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/flow-stages-en.ts') ||
-                id.includes('/web/locales/flow-stages-de.ts')
-              ) {
-                return 'flow-stages-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/legal-en.ts') ||
                 id.includes('/web/locales/legal-de.ts')
               ) {
@@ -218,19 +176,8 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/screens/social/') ||
-                id.includes('/web/services/domain/socialService.ts') ||
-                id.includes('/web/services/domain/socialSettingsService.ts')
-              ) {
-                return 'social';
-              }
-
-              if (
                 id.includes('/web/screens/marketing/') ||
-                id.includes('/web/services/domain/marketingTemplatesService.ts') ||
-                id.includes('/web/services/marketing') ||
                 id.includes('/web/services/marketingSettingsService') ||
-                id.includes('/web/services/recipientService') ||
                 id.includes('/web/services/blogService')
               ) {
                 return 'marketing';

@@ -1,5 +1,5 @@
-import { addDays, isBefore, isSameDay, startOfDay, isWeekend, isAfter } from 'date-fns';
-import { Task, Issue, TaskStatus } from '../types';
+import { addDays, isBefore, isSameDay, startOfDay, isWeekend } from 'date-fns';
+import { Task } from '../types';
 
 export interface SchedulerPreferences {
     maxItemsPerDay: number;
@@ -9,7 +9,7 @@ export interface SchedulerPreferences {
 
 export interface ProposedSchedule {
     taskId: string;
-    type: 'task' | 'issue';
+    type: 'task';
     newDate: Date;
     originalDate?: Date;
     reason: string;
@@ -17,11 +17,11 @@ export interface ProposedSchedule {
 
 type SchedulableItem = {
     id: string;
-    type: 'task' | 'issue';
+    type: 'task';
     title: string;
     dueDate?: Date;
     priorityWeight: number;
-    originalItem: Task | Issue;
+    originalItem: Task;
     assigneeIds: string[];
 };
 
@@ -35,23 +35,21 @@ const PRIORITY_WEIGHTS = {
 
 export const distributeTasks = (
     tasks: Task[], // CURRENT user's tasks
-    issues: Issue[], // CURRENT user's issues
     preferences: SchedulerPreferences = { maxItemsPerDay: 5, includeWeekends: false, prioritizeOverdue: true },
     teamTasks: Task[] = [] // Co-assignees' tasks for global optimization
 ): ProposedSchedule[] => {
     // 1. Pool All Items for Optimization
     const allItems: SchedulableItem[] = [];
 
-    const processItem = (item: Task | Issue, type: 'task' | 'issue') => {
-        const isCompleted = type === 'task' ? (item as Task).isCompleted : (item as Issue).status === 'Resolved' || (item as Issue).status === 'Closed';
-        if (isCompleted) return;
+    const processItem = (item: Task, type: 'task') => {
+        if (item.isCompleted) return;
 
         let weight = 1;
         if (item.priority && item.priority in PRIORITY_WEIGHTS) {
             weight = PRIORITY_WEIGHTS[item.priority as keyof typeof PRIORITY_WEIGHTS];
         }
 
-        const dateStr = item.scheduledDate || (type === 'task' ? (item as Task).dueDate : undefined);
+        const dateStr = item.scheduledDate || item.dueDate;
 
         let assigneeIds: string[] = [];
         if ((item as any).assigneeIds && (item as any).assigneeIds.length > 0) {
@@ -74,7 +72,6 @@ export const distributeTasks = (
     };
 
     tasks.forEach(t => processItem(t, 'task'));
-    issues.forEach(i => processItem(i, 'issue'));
     teamTasks.forEach(tt => processItem(tt, 'task'));
 
     // Deduplicate pool

@@ -1,6 +1,6 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Project, RoleCapabilities } from '../types';
-import { getUserRole, getUserCapabilities, checkPermission, hasPermission as legacyHasPermission } from '../utils/permissions';
+import { getUserRole, getUserCapabilities, checkPermission } from '../utils/permissions';
 import { auth } from '../services/firebase';
 import { getActiveTenantId } from '../services/domain/authService';
 import { ProjectPermissionNode, Role, LegacyProjectRole } from '../types/permissions';

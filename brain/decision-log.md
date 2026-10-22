@@ -59,6 +59,10 @@ Last updated: 2026-06-04
   - Security: email invitations require a verified address (checked in `acceptWorkspaceInvite` via the user record), signup sends a confirmation mail; `users` can be fetched by uid but not listed; AI usage and last workspace moved to `users/{uid}/private/*`.
   - First run: welcome dialog → one-step project create (starter tasks optional) → dashboard "Getting started" checklist; empty states with actions; PM-core default modules reduced to tasks/initiatives/milestones/activity; Codex hidden for projects created from non-software templates; Finance/Media behind "More" for new accounts; overview view state and sidebar width stored per user instead of per device; team badge removed, invite action in the team menu.
   - Why: the audit showed new users landed on an empty dashboard with no guidance, a 6-step project wizard and an 11-item project sidebar.
+- 2026-10-22: Social removed, Marketing reduced to blog; data retained but closed by rules.
+  - Decision: remove the Social module, Marketing dashboard/ads/email/recipients, their Cloud Functions and permission nodes, plus Flows/Ideas/Issues remnants and ~40 dead files.
+  - Data: Firestore data is kept (no migration); `isRetiredProjectCollection()` denies client access, including platform tokens in `social_integrations`.
+  - Consequence: removed functions stay live until deployed with `--force`; newsletter subscribers remain in `marketing_recipients` (Admin SDK only).
 
 ## Follow-Ups
 

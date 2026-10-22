@@ -3,7 +3,6 @@ export default {
     'authAction.status.success': 'Erfolg!',
     'authAction.status.error': 'Aktion fehlgeschlagen',
     'authAction.status.resetPassword': 'Passwort zurücksetzen',
-    'authAction.message.processing': 'Deine Anfrage wird verarbeitet...',
     'authAction.message.invalidLink': 'Der Aktionslink ist ungültig oder abgelaufen.',
     'authAction.message.verifySuccess': 'Deine E-Mail-Adresse wurde erfolgreich verifiziert.',
     'authAction.message.verifySuccessWithEmail': 'Die E-Mail-Adresse {email} wurde erfolgreich verifiziert.',

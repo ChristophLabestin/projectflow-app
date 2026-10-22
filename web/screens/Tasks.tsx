@@ -34,7 +34,7 @@ const isTypingTarget = (target: EventTarget | null) => {
  * what needs attention first (overdue → today → this week → later).
  */
 export const Tasks = () => {
-    const { t, taskPageTranslationsReady, loadTaskPageTranslations } = useLanguage();
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const { showError } = useToast();
     const members = useWorkMembers();
@@ -56,10 +56,6 @@ export const Tasks = () => {
     const [quickTitle, setQuickTitle] = useState('');
     const [quickProjectId, setQuickProjectId] = useState('');
     const [quickAdding, setQuickAdding] = useState(false);
-
-    useEffect(() => {
-        void loadTaskPageTranslations();
-    }, [loadTaskPageTranslations]);
 
     const refreshTasks = useCallback(async () => {
         setTasks(await getUserTasks());
@@ -205,7 +201,7 @@ export const Tasks = () => {
         summary.week ? { tone: 'neutral', text: t('work.summary.week').replace('{count}', String(summary.week)) } : null
     ].filter(Boolean) as { tone: string; text: string }[];
 
-    if (loading || !taskPageTranslationsReady) {
+    if (loading) {
         return (
             <div className="work-page work-page--loading" aria-busy="true">
                 <span className="material-symbols-outlined work-page__spinner">progress_activity</span>

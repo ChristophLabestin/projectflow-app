@@ -20,7 +20,6 @@ import {
     createCustomInitiativeFeedbackField,
     ensureInitiativeFeedbackFields,
     feedbackFieldNeedsOptions,
-    getFeedbackFieldTypeIcon,
     getInitiativeFeedbackBuilderIssues,
     localizeDefaultInitiativeFeedbackField,
     prepareInitiativeFeedbackFieldsForSave,

@@ -7,7 +7,6 @@ import {
     markAllNotificationsAsRead,
 } from '../services/notificationService';
 import { respondToJoinRequest } from '../services/dataService';
-import { Button } from './ui/Button';
 import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';

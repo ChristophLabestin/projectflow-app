@@ -34,8 +34,6 @@ const READINESS_TASK_SEED_MAP: Partial<Record<StartupReadinessKey, string[]>> = 
     firstChannelReady: ['marketing-channel']
 };
 
-const STAGE_ORDER: StartupStage[] = ['idea', 'validating', 'preparing', 'filed', 'registered', 'operating'];
-
 // Readiness items that are logically already complete once a company reaches a given stage.
 // Lets a founder register an already-operating company without showing 0% readiness.
 const STAGE_READINESS_DEFAULTS: Record<NonNullable<StartupStage>, StartupReadinessKey[]> = {

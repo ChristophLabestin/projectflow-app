@@ -13,7 +13,6 @@ import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
-import { getWorkspaceGroups } from '../../services/domain/workspaceGroupsService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
 import { RolesTab } from './RolesTab';
@@ -43,7 +42,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     initialTab = 'general'
 }) => {
     const { t } = useLanguage();
-    const { hasAccess: isSocialAllowed } = useModuleAccess('social');
     const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
     const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
     const { hasAccess: isSprintsAllowed } = useModuleAccess('sprints');
@@ -115,7 +113,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
         { id: 'sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
         { id: 'milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
-        { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
         { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
         { id: 'activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
     ];
@@ -394,7 +391,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         milestones: t('nav.milestones'),
 
         activity: t('nav.activity'),
-        social: t('nav.social'),
         marketing: t('nav.marketing'),
         accounting: t('nav.accounting') || 'Accounting',
         sprints: t('nav.sprints') || 'Sprints'
@@ -912,8 +908,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="project-edit-modal__panel project-edit-modal__panel--modules animate-fade-in">
                         <p className="project-edit-modal__hint">{t('projectSettings.modules.description')}</p>
                         <div className="project-edit-modal__modules-grid">
-                            {['tasks', 'initiatives', 'sprints', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
-                                if (mod === 'social' && !isSocialAllowed) return null;
+                            {['tasks', 'initiatives', 'sprints', 'milestones', 'activity', 'marketing', 'accounting'].map((mod) => {
                                 if (mod === 'marketing' && !isMarketingAllowed) return null;
                                 if (mod === 'accounting' && !isAccountingAllowed) return null;
 
@@ -938,7 +933,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 {mod === 'tasks' ? 'check_circle' :
                                                     mod === 'initiatives' ? 'rocket_launch' :
                                                     mod === 'milestones' ? 'flag' :
-                                                        mod === 'social' ? 'campaign' :
                                                             mod === 'marketing' ? 'ads_click' :
                                                                 mod === 'accounting' ? 'receipt_long' :
                                                                     mod === 'sprints' ? 'directions_run' :

@@ -2,8 +2,6 @@ import { orderBy } from 'firebase/firestore';
 
 import type {
     FinancePayment,
-    FinanceSubscription,
-    FinanceSubscriptionEvent,
 } from '../../types';
 import {
     FINANCE_V2_COLLECTIONS,
@@ -42,30 +40,6 @@ export const subscribeFinancePayments = (
         callback,
         tenantId,
         [orderBy('paymentDate', 'desc'), orderBy('createdAt', 'desc')]
-    );
-};
-
-export const subscribeFinanceSubscriptions = (
-    callback: (rows: FinanceSubscription[]) => void,
-    tenantId?: string
-) => {
-    return subscribeTenantFinanceCollection<FinanceSubscription>(
-        FINANCE_V2_COLLECTIONS.subscriptions,
-        callback,
-        tenantId,
-        [orderBy('createdAt', 'desc')]
-    );
-};
-
-export const subscribeFinanceSubscriptionEvents = (
-    callback: (rows: FinanceSubscriptionEvent[]) => void,
-    tenantId?: string
-) => {
-    return subscribeTenantFinanceCollection<FinanceSubscriptionEvent>(
-        FINANCE_V2_COLLECTIONS.subscriptionEvents,
-        callback,
-        tenantId,
-        [orderBy('createdAt', 'desc')]
     );
 };
 

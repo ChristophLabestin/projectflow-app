@@ -25,10 +25,6 @@ interface LanguageProviderState {
     dateLocale: Locale;
     legalTranslationsReady: boolean;
     loadLegalTranslations: () => Promise<void>;
-    flowStageTranslationsReady: boolean;
-    loadFlowStageTranslations: () => Promise<void>;
-    socialTranslationsReady: boolean;
-    loadSocialTranslations: () => Promise<void>;
     settingsTranslationsReady: boolean;
     loadSettingsTranslations: () => Promise<void>;
     projectOverviewTranslationsReady: boolean;
@@ -41,20 +37,12 @@ interface LanguageProviderState {
     loadProfileTranslations: () => Promise<void>;
     teamTranslationsReady: boolean;
     loadTeamTranslations: () => Promise<void>;
-    taskPageTranslationsReady: boolean;
-    loadTaskPageTranslations: () => Promise<void>;
     calendarTranslationsReady: boolean;
     loadCalendarTranslations: () => Promise<void>;
-    inviteLandingTranslationsReady: boolean;
-    loadInviteLandingTranslations: () => Promise<void>;
     authActionTranslationsReady: boolean;
     loadAuthActionTranslations: () => Promise<void>;
     authScreenTranslationsReady: boolean;
     loadAuthScreenTranslations: () => Promise<void>;
-    projectInviteTranslationsReady: boolean;
-    loadProjectInviteTranslations: () => Promise<void>;
-    joinLinkTranslationsReady: boolean;
-    loadJoinLinkTranslations: () => Promise<void>;
 }
 
 const isValidLanguage = (lang: any): lang is Language => {
@@ -70,10 +58,6 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     dateLocale: enUS,
     legalTranslationsReady: true,
     loadLegalTranslations: async () => undefined,
-    flowStageTranslationsReady: true,
-    loadFlowStageTranslations: async () => undefined,
-    socialTranslationsReady: true,
-    loadSocialTranslations: async () => undefined,
     settingsTranslationsReady: true,
     loadSettingsTranslations: async () => undefined,
     projectOverviewTranslationsReady: true,
@@ -86,20 +70,12 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     loadProfileTranslations: async () => undefined,
     teamTranslationsReady: true,
     loadTeamTranslations: async () => undefined,
-    taskPageTranslationsReady: true,
-    loadTaskPageTranslations: async () => undefined,
     calendarTranslationsReady: true,
     loadCalendarTranslations: async () => undefined,
-    inviteLandingTranslationsReady: true,
-    loadInviteLandingTranslations: async () => undefined,
     authActionTranslationsReady: true,
     loadAuthActionTranslations: async () => undefined,
     authScreenTranslationsReady: true,
     loadAuthScreenTranslations: async () => undefined,
-    projectInviteTranslationsReady: true,
-    loadProjectInviteTranslations: async () => undefined,
-    joinLinkTranslationsReady: true,
-    loadJoinLinkTranslations: async () => undefined,
 });
 
 export function LanguageProvider({
@@ -112,45 +88,32 @@ export function LanguageProvider({
         de,
     }), []);
     const [legalTranslations, setLegalTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [flowStageTranslations, setFlowStageTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [socialTranslations, setSocialTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [settingsTranslations, setSettingsTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [projectOverviewTranslations, setProjectOverviewTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [dashboardTranslations, setDashboardTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [financeTranslations, setFinanceTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [profileTranslations, setProfileTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [teamTranslations, setTeamTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [taskPageTranslations, setTaskPageTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [calendarTranslations, setCalendarTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [inviteLandingTranslations, setInviteLandingTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authActionTranslations, setAuthActionTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [authScreenTranslations, setAuthScreenTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [projectInviteTranslations, setProjectInviteTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [joinLinkTranslations, setJoinLinkTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [legalTranslationsReady, setLegalTranslationsReady] = useState<boolean>(() => {
         if (typeof window === 'undefined') {
             return false;
         }
         return !window.location.pathname.startsWith('/legal');
     });
-    const [flowStageTranslationsReady, setFlowStageTranslationsReady] = useState<boolean>(true);
 
     const hasLegalTranslations = Boolean(legalTranslations.en && legalTranslations.de);
-    const hasFlowStageTranslations = Boolean(flowStageTranslations.en && flowStageTranslations.de);
-    const hasSocialTranslations = Boolean(socialTranslations.en && socialTranslations.de);
     const hasSettingsTranslations = Boolean(settingsTranslations.en && settingsTranslations.de);
     const hasProjectOverviewTranslations = Boolean(projectOverviewTranslations.en && projectOverviewTranslations.de);
     const hasDashboardTranslations = Boolean(dashboardTranslations.en && dashboardTranslations.de);
     const hasFinanceTranslations = Boolean(financeTranslations.en && financeTranslations.de);
     const hasProfileTranslations = Boolean(profileTranslations.en && profileTranslations.de);
     const hasTeamTranslations = Boolean(teamTranslations.en && teamTranslations.de);
-    const hasTaskPageTranslations = Boolean(taskPageTranslations.en && taskPageTranslations.de);
     const hasCalendarTranslations = Boolean(calendarTranslations.en && calendarTranslations.de);
-    const hasInviteLandingTranslations = Boolean(inviteLandingTranslations.en && inviteLandingTranslations.de);
     const hasAuthActionTranslations = Boolean(authActionTranslations.en && authActionTranslations.de);
     const hasAuthScreenTranslations = Boolean(authScreenTranslations.en && authScreenTranslations.de);
-    const hasProjectInviteTranslations = Boolean(projectInviteTranslations.en && projectInviteTranslations.de);
-    const hasJoinLinkTranslations = Boolean(joinLinkTranslations.en && joinLinkTranslations.de);
     const loadLegalTranslations = useCallback(async () => {
         if (hasLegalTranslations) {
             setLegalTranslationsReady(true);
@@ -168,40 +131,15 @@ export function LanguageProvider({
         });
         setLegalTranslationsReady(true);
     }, [hasLegalTranslations]);
-    const loadFlowStageTranslations = useCallback(async () => {
-        setFlowStageTranslationsReady(true);
-    }, []);
-    const [socialTranslationsReady, setSocialTranslationsReady] = useState<boolean>(false);
     const [settingsTranslationsReady, setSettingsTranslationsReady] = useState<boolean>(false);
     const [projectOverviewTranslationsReady, setProjectOverviewTranslationsReady] = useState<boolean>(false);
     const [dashboardTranslationsReady, setDashboardTranslationsReady] = useState<boolean>(false);
     const [financeTranslationsReady, setFinanceTranslationsReady] = useState<boolean>(false);
     const [profileTranslationsReady, setProfileTranslationsReady] = useState<boolean>(false);
     const [teamTranslationsReady, setTeamTranslationsReady] = useState<boolean>(false);
-    const [taskPageTranslationsReady, setTaskPageTranslationsReady] = useState<boolean>(false);
     const [calendarTranslationsReady, setCalendarTranslationsReady] = useState<boolean>(false);
-    const [inviteLandingTranslationsReady, setInviteLandingTranslationsReady] = useState<boolean>(false);
     const [authActionTranslationsReady, setAuthActionTranslationsReady] = useState<boolean>(false);
     const [authScreenTranslationsReady, setAuthScreenTranslationsReady] = useState<boolean>(false);
-    const [projectInviteTranslationsReady, setProjectInviteTranslationsReady] = useState<boolean>(false);
-    const [joinLinkTranslationsReady, setJoinLinkTranslationsReady] = useState<boolean>(false);
-    const loadSocialTranslations = useCallback(async () => {
-        if (hasSocialTranslations) {
-            setSocialTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextSocialEn }, { default: nextSocialDe }] = await Promise.all([
-            import('../locales/social-en'),
-            import('../locales/social-de')
-        ]);
-
-        setSocialTranslations({
-            en: nextSocialEn,
-            de: nextSocialDe
-        });
-        setSocialTranslationsReady(true);
-    }, [hasSocialTranslations]);
     const loadSettingsTranslations = useCallback(async () => {
         if (hasSettingsTranslations) {
             setSettingsTranslationsReady(true);
@@ -304,23 +242,6 @@ export function LanguageProvider({
         });
         setTeamTranslationsReady(true);
     }, [hasTeamTranslations]);
-    const loadTaskPageTranslations = useCallback(async () => {
-        if (hasTaskPageTranslations) {
-            setTaskPageTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextTasksPageEn }, { default: nextTasksPageDe }] = await Promise.all([
-            import('../locales/tasks-page-en'),
-            import('../locales/tasks-page-de')
-        ]);
-
-        setTaskPageTranslations({
-            en: nextTasksPageEn,
-            de: nextTasksPageDe
-        });
-        setTaskPageTranslationsReady(true);
-    }, [hasTaskPageTranslations]);
     const loadCalendarTranslations = useCallback(async () => {
         if (hasCalendarTranslations) {
             setCalendarTranslationsReady(true);
@@ -338,23 +259,6 @@ export function LanguageProvider({
         });
         setCalendarTranslationsReady(true);
     }, [hasCalendarTranslations]);
-    const loadInviteLandingTranslations = useCallback(async () => {
-        if (hasInviteLandingTranslations) {
-            setInviteLandingTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextInviteLandingEn }, { default: nextInviteLandingDe }] = await Promise.all([
-            import('../locales/invite-landing-en'),
-            import('../locales/invite-landing-de')
-        ]);
-
-        setInviteLandingTranslations({
-            en: nextInviteLandingEn,
-            de: nextInviteLandingDe
-        });
-        setInviteLandingTranslationsReady(true);
-    }, [hasInviteLandingTranslations]);
     const loadAuthActionTranslations = useCallback(async () => {
         if (hasAuthActionTranslations) {
             setAuthActionTranslationsReady(true);
@@ -389,40 +293,6 @@ export function LanguageProvider({
         });
         setAuthScreenTranslationsReady(true);
     }, [hasAuthScreenTranslations]);
-    const loadProjectInviteTranslations = useCallback(async () => {
-        if (hasProjectInviteTranslations) {
-            setProjectInviteTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextProjectInviteEn }, { default: nextProjectInviteDe }] = await Promise.all([
-            import('../locales/project-invite-en'),
-            import('../locales/project-invite-de')
-        ]);
-
-        setProjectInviteTranslations({
-            en: nextProjectInviteEn,
-            de: nextProjectInviteDe
-        });
-        setProjectInviteTranslationsReady(true);
-    }, [hasProjectInviteTranslations]);
-    const loadJoinLinkTranslations = useCallback(async () => {
-        if (hasJoinLinkTranslations) {
-            setJoinLinkTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextJoinLinkEn }, { default: nextJoinLinkDe }] = await Promise.all([
-            import('../locales/join-link-en'),
-            import('../locales/join-link-de')
-        ]);
-
-        setJoinLinkTranslations({
-            en: nextJoinLinkEn,
-            de: nextJoinLinkDe
-        });
-        setJoinLinkTranslationsReady(true);
-    }, [hasJoinLinkTranslations]);
 
     const [language, setLanguageState] = useState<Language>(() => {
         const stored = localStorage.getItem(storageKey);
@@ -478,21 +348,15 @@ export function LanguageProvider({
             const targetLang = isValidLanguage(language) ? language : 'en';
             const currentTranslations = translations[targetLang] || translations.en;
             const currentLegalTranslations = legalTranslations[targetLang];
-            const currentFlowStageTranslations = flowStageTranslations[targetLang];
-            const currentSocialTranslations = socialTranslations[targetLang];
             const currentSettingsTranslations = settingsTranslations[targetLang];
             const currentProjectOverviewTranslations = projectOverviewTranslations[targetLang];
             const currentDashboardTranslations = dashboardTranslations[targetLang];
             const currentFinanceTranslations = financeTranslations[targetLang];
             const currentProfileTranslations = profileTranslations[targetLang];
             const currentTeamTranslations = teamTranslations[targetLang];
-            const currentTaskPageTranslations = taskPageTranslations[targetLang];
             const currentCalendarTranslations = calendarTranslations[targetLang];
-            const currentInviteLandingTranslations = inviteLandingTranslations[targetLang];
             const currentAuthActionTranslations = authActionTranslations[targetLang];
             const currentAuthScreenTranslations = authScreenTranslations[targetLang];
-            const currentProjectInviteTranslations = projectInviteTranslations[targetLang];
-            const currentJoinLinkTranslations = joinLinkTranslations[targetLang];
 
             // 1. Try direct lookup (fast path for flat keys)
             if (currentTranslations && currentTranslations[key] !== undefined) {
@@ -500,12 +364,6 @@ export function LanguageProvider({
             }
             if (currentLegalTranslations && currentLegalTranslations[key] !== undefined) {
                 return currentLegalTranslations[key];
-            }
-            if (currentFlowStageTranslations && currentFlowStageTranslations[key] !== undefined) {
-                return currentFlowStageTranslations[key];
-            }
-            if (currentSocialTranslations && currentSocialTranslations[key] !== undefined) {
-                return currentSocialTranslations[key];
             }
             if (currentSettingsTranslations && currentSettingsTranslations[key] !== undefined) {
                 return currentSettingsTranslations[key];
@@ -525,26 +383,14 @@ export function LanguageProvider({
             if (currentTeamTranslations && currentTeamTranslations[key] !== undefined) {
                 return currentTeamTranslations[key];
             }
-            if (currentTaskPageTranslations && currentTaskPageTranslations[key] !== undefined) {
-                return currentTaskPageTranslations[key];
-            }
             if (currentCalendarTranslations && currentCalendarTranslations[key] !== undefined) {
                 return currentCalendarTranslations[key];
-            }
-            if (currentInviteLandingTranslations && currentInviteLandingTranslations[key] !== undefined) {
-                return currentInviteLandingTranslations[key];
             }
             if (currentAuthActionTranslations && currentAuthActionTranslations[key] !== undefined) {
                 return currentAuthActionTranslations[key];
             }
             if (currentAuthScreenTranslations && currentAuthScreenTranslations[key] !== undefined) {
                 return currentAuthScreenTranslations[key];
-            }
-            if (currentProjectInviteTranslations && currentProjectInviteTranslations[key] !== undefined) {
-                return currentProjectInviteTranslations[key];
-            }
-            if (currentJoinLinkTranslations && currentJoinLinkTranslations[key] !== undefined) {
-                return currentJoinLinkTranslations[key];
             }
 
             // 2. Try nested lookup (for structured legal keys)
@@ -584,33 +430,21 @@ export function LanguageProvider({
 
             const englishTranslations = translations.en;
             const englishLegalTranslations = legalTranslations.en;
-            const englishFlowStageTranslations = flowStageTranslations.en;
-            const englishSocialTranslations = socialTranslations.en;
             const englishSettingsTranslations = settingsTranslations.en;
             const englishProjectOverviewTranslations = projectOverviewTranslations.en;
             const englishDashboardTranslations = dashboardTranslations.en;
             const englishFinanceTranslations = financeTranslations.en;
             const englishProfileTranslations = profileTranslations.en;
             const englishTeamTranslations = teamTranslations.en;
-            const englishTaskPageTranslations = taskPageTranslations.en;
             const englishCalendarTranslations = calendarTranslations.en;
-            const englishInviteLandingTranslations = inviteLandingTranslations.en;
             const englishAuthActionTranslations = authActionTranslations.en;
             const englishAuthScreenTranslations = authScreenTranslations.en;
-            const englishProjectInviteTranslations = projectInviteTranslations.en;
-            const englishJoinLinkTranslations = joinLinkTranslations.en;
             // 3a. Direct English lookup
             if (englishTranslations[key] !== undefined) {
                 return englishTranslations[key];
             }
             if (englishLegalTranslations && englishLegalTranslations[key] !== undefined) {
                 return englishLegalTranslations[key];
-            }
-            if (englishFlowStageTranslations && englishFlowStageTranslations[key] !== undefined) {
-                return englishFlowStageTranslations[key];
-            }
-            if (englishSocialTranslations && englishSocialTranslations[key] !== undefined) {
-                return englishSocialTranslations[key];
             }
             if (englishSettingsTranslations && englishSettingsTranslations[key] !== undefined) {
                 return englishSettingsTranslations[key];
@@ -630,26 +464,14 @@ export function LanguageProvider({
             if (englishTeamTranslations && englishTeamTranslations[key] !== undefined) {
                 return englishTeamTranslations[key];
             }
-            if (englishTaskPageTranslations && englishTaskPageTranslations[key] !== undefined) {
-                return englishTaskPageTranslations[key];
-            }
             if (englishCalendarTranslations && englishCalendarTranslations[key] !== undefined) {
                 return englishCalendarTranslations[key];
-            }
-            if (englishInviteLandingTranslations && englishInviteLandingTranslations[key] !== undefined) {
-                return englishInviteLandingTranslations[key];
             }
             if (englishAuthActionTranslations && englishAuthActionTranslations[key] !== undefined) {
                 return englishAuthActionTranslations[key];
             }
             if (englishAuthScreenTranslations && englishAuthScreenTranslations[key] !== undefined) {
                 return englishAuthScreenTranslations[key];
-            }
-            if (englishProjectInviteTranslations && englishProjectInviteTranslations[key] !== undefined) {
-                return englishProjectInviteTranslations[key];
-            }
-            if (englishJoinLinkTranslations && englishJoinLinkTranslations[key] !== undefined) {
-                return englishJoinLinkTranslations[key];
             }
 
             // 3b. Nested English lookup
@@ -679,7 +501,7 @@ export function LanguageProvider({
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, flowStageTranslations, joinLinkTranslations, language, legalTranslations, profileTranslations, projectInviteTranslations, projectOverviewTranslations, settingsTranslations, socialTranslations, taskPageTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, language, legalTranslations, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);
@@ -714,10 +536,6 @@ export function LanguageProvider({
                 dateLocale,
                 legalTranslationsReady,
                 loadLegalTranslations,
-                flowStageTranslationsReady,
-                loadFlowStageTranslations,
-                socialTranslationsReady,
-                loadSocialTranslations,
                 settingsTranslationsReady,
                 loadSettingsTranslations,
                 projectOverviewTranslationsReady,
@@ -730,20 +548,12 @@ export function LanguageProvider({
                 loadProfileTranslations,
                 teamTranslationsReady,
                 loadTeamTranslations,
-                taskPageTranslationsReady,
-                loadTaskPageTranslations,
                 calendarTranslationsReady,
                 loadCalendarTranslations,
-                inviteLandingTranslationsReady,
-                loadInviteLandingTranslations,
                 authActionTranslationsReady,
                 loadAuthActionTranslations,
                 authScreenTranslationsReady,
                 loadAuthScreenTranslations,
-                projectInviteTranslationsReady,
-                loadProjectInviteTranslations,
-                joinLinkTranslationsReady,
-                loadJoinLinkTranslations
             }}
         >
             {children}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useWorkspaceTeamPresence, useWorkspacePresence } from '../hooks/usePresence';
+import { useWorkspaceTeamPresence } from '../hooks/usePresence';
 import { auth } from '../services/firebase';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
