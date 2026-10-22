@@ -493,6 +493,8 @@ export const FinanceTracking = () => {
     const [financialUsageError, setFinancialUsageError] = useState<string | null>(null);
     const [financialConfigLoading, setFinancialConfigLoading] = useState(false);
     const [financialConfigPermissionDenied, setFinancialConfigPermissionDenied] = useState(false);
+    const [financialConfigError, setFinancialConfigError] = useState<string | null>(null);
+    const [financialConfigRetryNonce, setFinancialConfigRetryNonce] = useState(0);
     const [savingFinancialConfig, setSavingFinancialConfig] = useState(false);
     const [financialConnectionForm, setFinancialConnectionForm] = useState<FinancialConnectionFormState>(buildEmptyFinancialConnectionForm);
     const [customersV2, setCustomersV2] = useState<FinanceCustomer[]>([]);
@@ -734,6 +736,7 @@ export const FinanceTracking = () => {
 
         setFinancialConfigLoading(true);
         setFinancialConfigPermissionDenied(false);
+        setFinancialConfigError(null);
 
         getWorkspaceFinancialConfig(tenantId)
             .then((config) => {
@@ -757,13 +760,15 @@ export const FinanceTracking = () => {
                 if (code.includes('permission-denied')) {
                     setFinancialConfigPermissionDenied(true);
                 } else {
-                    showError(t('finance.ai.config.toastError'), error?.message);
+                    setFinancialConfigError(error?.message || t('finance.ai.config.toastError'));
                 }
             })
             .finally(() => {
                 setFinancialConfigLoading(false);
             });
-    }, [tenantId, canManage, showError, t]);
+    // Fetch once per tenant (and on explicit retry); errors are surfaced inline, never via re-triggering toasts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tenantId, canManage, financialConfigRetryNonce]);
 
     const categoryOptions = useMemo(() => {
         const defaults = [
@@ -3523,6 +3528,14 @@ export const FinanceTracking = () => {
 
     return (
         <div className="finance-tracker">
+            {financialConfigError && (
+                <div className="finance-inline-error" role="alert">
+                    <span>{financialConfigError}</span>
+                    <Button variant="secondary" onClick={() => setFinancialConfigRetryNonce((n) => n + 1)}>
+                        {t('common.retry')}
+                    </Button>
+                </div>
+            )}
             <div className="finance-header">
                 <div>
                     <h1 className="h2">{t('finance.title')}</h1>

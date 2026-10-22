@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { usePinnedProject } from './PinnedProjectContext';
 
 type ToastType = 'success' | 'error' | 'info';
@@ -211,12 +211,14 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 export const useToast = () => {
     const context = useContext(UIContext);
     if (!context) throw new Error('useToast must be used within a UIProvider');
-    return {
-        showToast: context.showToast,
-        showError: (msg: string, details?: string) => context.showToast(msg, 'error', undefined, details),
-        showSuccess: (msg: string) => context.showToast(msg, 'success'),
-        showInfo: (msg: string) => context.showToast(msg, 'info'),
-    };
+    const { showToast } = context;
+    // Memoized so effects/callbacks depending on these helpers do not re-run on every render.
+    return useMemo(() => ({
+        showToast,
+        showError: (msg: string, details?: string) => showToast(msg, 'error', undefined, details),
+        showSuccess: (msg: string) => showToast(msg, 'success'),
+        showInfo: (msg: string) => showToast(msg, 'info'),
+    }), [showToast]);
 };
 
 export const useConfirm = () => {
