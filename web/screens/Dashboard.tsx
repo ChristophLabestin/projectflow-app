@@ -6,10 +6,11 @@ import { getAllWorkspaceProjects } from '../services/dataService';
 import { ensureActiveTenantId } from '../services/domain/authService';
 import { getWorkspaceInitiatives } from '../services/domain/initiativesService';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
-import { getUserTasksForProjects, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
+import { toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
+import { getWorkspaceTasks } from '../services/domain/workspaceTasksService';
+import { getPersonalTasks, updatePersonalTask } from '../services/domain/personalTasksService';
 import { getUserProfile } from '../services/domain/usersService';
-import { Project, Task, Initiative } from '../types';
-import { toDate, toMillis } from '../utils/time';
+import { Project, Task, Initiative, PersonalTask } from '../types';
 import { calculateProjectHealth, isProjectActiveForGlobalSignals, ProjectHealth } from '../services/healthService';
 import { GettingStartedCard } from '../components/onboarding/GettingStartedCard';
 import { useOnboarding } from '../hooks/useOnboarding';
@@ -21,7 +22,11 @@ import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 import { InlineMenu } from '../components/work/InlineMenu';
+import { useWorkMembers } from '../components/work/useWorkMembers';
+import { buildAttention, type AttentionChip } from '../utils/attention';
+import { buildDayPlan } from '../utils/dayPlan';
 import { addDaysFromToday, nextMonday, toIsoDate } from '../utils/taskDates';
+import { browserTimeZone } from '../utils/zonedDate';
 
 type DashboardTone = 'danger' | 'warning' | 'info' | 'success' | 'neutral';
 
@@ -39,6 +44,7 @@ interface DashboardRouteStop {
     tone: DashboardTone;
     focus?: PinnedItem;
     proposed?: boolean;
+    isPersonal?: boolean;
     taskId?: string;
     projectId?: string;
     tenantId?: string;
@@ -76,55 +82,7 @@ interface DashboardRailListItem {
     tone: DashboardTone;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 const cssVars = (vars: Record<string, string>) => vars as React.CSSProperties;
-
-const startOfToday = () => {
-    const date = new Date();
-    date.setHours(0, 0, 0, 0);
-    return date;
-};
-
-const isToday = (value?: any) => {
-    const date = toDate(value);
-    if (!date) return false;
-
-    const start = startOfToday();
-    const end = new Date(start);
-    end.setDate(start.getDate() + 1);
-    const time = date.getTime();
-
-    return time >= start.getTime() && time < end.getTime();
-};
-
-const isPastDue = (value?: any) => {
-    const date = toDate(value);
-    return date ? date.getTime() < startOfToday().getTime() : false;
-};
-
-const bucketByDay = (items: Task[], days: number, getValue: (task: Task) => any) => {
-    const buckets = Array.from({ length: days }, (_, index) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (days - index - 1));
-        date.setHours(0, 0, 0, 0);
-        return { date, value: 0 };
-    });
-    const firstDay = buckets[0]?.date.getTime() ?? Date.now();
-
-    items.forEach((item) => {
-        const itemDate = toDate(getValue(item));
-        if (!itemDate) return;
-        const normalized = new Date(itemDate);
-        normalized.setHours(0, 0, 0, 0);
-        const index = Math.floor((normalized.getTime() - firstDay) / DAY_MS);
-        if (index >= 0 && index < buckets.length) {
-            buckets[index].value += 1;
-        }
-    });
-
-    return buckets;
-};
 
 const renderDashboardStatement = (statement: DashboardStatement) => {
     if (!statement.template.includes('{value}')) {
@@ -151,11 +109,15 @@ export const Dashboard = () => {
     const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
     const [projects, setProjects] = useState<Project[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [otherTasks, setOtherTasks] = useState<Task[]>([]);
+    const [personalTasks, setPersonalTasks] = useState<PersonalTask[]>([]);
     const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [loading, setLoading] = useState(true);
     const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
     const [activeDashboardStep, setActiveDashboardStep] = useState(0);
     const dashboardStageRef = useRef<HTMLDivElement | null>(null);
+    const members = useWorkMembers();
+    const timeZone = useMemo(() => browserTimeZone(), []);
 
     // Browsers scroll overflow-hidden containers to reveal focused/clicked
     // content; the slide transform owns the horizontal position, so pin the
@@ -201,6 +163,8 @@ export const Dashboard = () => {
         if (!authUserId) {
             setProjects([]);
             setTasks([]);
+            setOtherTasks([]);
+            setPersonalTasks([]);
             setInitiatives([]);
             setUserName('');
             setLoading(false);
@@ -236,19 +200,24 @@ export const Dashboard = () => {
                 if (cancelled) return;
                 setProjects(workspaceProjects);
                 setTasks([]);
+                setOtherTasks([]);
+                setPersonalTasks([]);
                 setInitiatives([]);
 
                 const displayName = user?.displayName || auth.currentUser?.displayName || profile?.displayName;
                 setUserName(displayName ? displayName.split(' ')[0] : '');
                 setLoading(false);
 
-                const [workspaceTasks, workspaceInitiatives] = await Promise.all([
-                    getUserTasksForProjects(workspaceProjects).catch(() => []),
-                    getWorkspaceInitiatives(resolvedTenantId).catch(() => [])
+                const [workspaceTasks, workspaceInitiatives, workspacePersonalTasks] = await Promise.all([
+                    getWorkspaceTasks(workspaceProjects).catch(() => ({ mine: [] as Task[], others: [] as Task[] })),
+                    getWorkspaceInitiatives(resolvedTenantId).catch(() => []),
+                    getPersonalTasks(resolvedTenantId).catch(() => [] as PersonalTask[])
                 ]);
 
                 if (cancelled) return;
-                setTasks(workspaceTasks);
+                setTasks(workspaceTasks.mine);
+                setOtherTasks(workspaceTasks.others);
+                setPersonalTasks(workspacePersonalTasks);
                 setInitiatives(workspaceInitiatives);
             } catch (err) {
                 console.error(err);
@@ -310,11 +279,6 @@ export const Dashboard = () => {
         [activeProjectIds, initiatives]
     );
 
-    const openTasks = useMemo(
-        () => activeTasks.filter((task) => !task.isCompleted),
-        [activeTasks]
-    );
-
     const tasksByProject = useMemo(() => {
         const map: Record<string, Task[]> = {};
         activeTasks.forEach((task) => {
@@ -351,622 +315,238 @@ export const Dashboard = () => {
         return healthMap;
     }, [activeProjects, initiativesByProject, tasksByProject]);
 
-    const overdueTasks = useMemo(
-        () => openTasks.filter((task) => isPastDue(task.dueDate)),
-        [openTasks]
-    );
-
-    const dueTodayTasks = useMemo(
-        () => openTasks.filter((task) => isToday(task.dueDate)),
-        [openTasks]
-    );
-
-    const scheduledTodayTasks = useMemo(
-        () => openTasks.filter((task) => isToday(task.scheduledDate) && !isToday(task.dueDate) && !isPastDue(task.dueDate)),
-        [openTasks]
-    );
-
-    const blockedTasks = useMemo(
-        () => openTasks.filter((task) => task.status === 'Blocked'),
-        [openTasks]
-    );
-
-    // Everything that should realistically happen today, deduplicated.
-    const todayQueue = useMemo(() => {
-        const seen = new Set<string>();
-        return [...overdueTasks, ...dueTodayTasks, ...scheduledTodayTasks].filter((task) => {
-            if (seen.has(task.id)) return false;
-            seen.add(task.id);
-            return true;
-        });
-    }, [dueTodayTasks, overdueTasks, scheduledTodayTasks]);
-
-    // How many open tasks each open task is blocking (reverse dependency count).
-    const unblocksCount = useMemo(() => {
-        const map = new Map<string, number>();
-        openTasks.forEach((task) => {
-            (task.dependencies || []).forEach((dependencyId) => {
-                map.set(dependencyId, (map.get(dependencyId) || 0) + 1);
-            });
-        });
-        return map;
-    }, [openTasks]);
-
-    const taskById = useMemo(() => {
-        const map = new Map<string, Task>();
-        activeTasks.forEach((task) => map.set(task.id, task));
-        return map;
-    }, [activeTasks]);
-
-    const completedLast7Days = useMemo(() => {
-        const threshold = Date.now() - (7 * DAY_MS);
-        return activeTasks.filter((task) => task.isCompleted && toMillis(task.completedAt) >= threshold);
-    }, [activeTasks]);
-
-    const completedPrevious7Days = useMemo(() => {
-        const now = Date.now();
-        return activeTasks.filter((task) => {
-            if (!task.isCompleted) return false;
-            const completed = toMillis(task.completedAt);
-            return completed >= now - (14 * DAY_MS) && completed < now - (7 * DAY_MS);
-        });
-    }, [activeTasks]);
-
-    const completionTrend = useMemo(
-        () => bucketByDay(activeTasks.filter((task) => task.isCompleted), 14, (task) => task.completedAt),
-        [activeTasks]
-    );
-
-    const maxCompletionValue = useMemo(
-        () => Math.max(...completionTrend.map((item) => item.value), 1),
-        [completionTrend]
-    );
-
     const todayLongLabel = useMemo(
         () => format(new Date(), 'PPPP', { locale: dateLocale }),
         [dateLocale, language]
     );
 
-    const overdueDaysOf = (task: Task) => {
-        const due = toDate(task.dueDate);
-        if (!due) return 0;
-        return Math.max(1, Math.floor((startOfToday().getTime() - due.getTime()) / DAY_MS));
+    // --- Shared logic (utils/dayPlan.ts, utils/attention.ts) -------------------
+    // The plan, headline, band, week strip, overnight feed and the portfolio
+    // ranking are computed by pure modules that the iOS app ports; this screen
+    // only localizes the keys they return and renders them.
+
+    const dayPlan = useMemo(() => buildDayPlan({
+        now: Date.now(),
+        timeZone,
+        projects: activeProjects.map((project) => ({ id: project.id, title: project.title, dueDate: project.dueDate })),
+        tasks,
+        personalTasks,
+        otherTasks,
+        focus: focusItem
+            ? {
+                id: focusItem.id,
+                type: focusItem.type,
+                title: focusItem.title,
+                projectId: focusItem.projectId,
+                tenantId: focusItem.tenantId,
+                isCompleted: focusItem.isCompleted,
+                status: focusState?.status,
+                snoozedUntil: focusState?.snoozedUntil
+            }
+            : null
+    }), [activeProjects, focusItem, focusState?.snoozedUntil, focusState?.status, otherTasks, personalTasks, tasks, timeZone]);
+
+    const attention = useMemo(() => buildAttention({
+        now: Date.now(),
+        timeZone,
+        projects: activeProjects.map((project) => {
+            const health = projectHealthMap[project.id];
+            return {
+                id: project.id,
+                title: project.title,
+                status: project.status,
+                dueDate: project.dueDate,
+                health: health ? { status: health.status, trend: health.trend } : null
+            };
+        }),
+        tasks: activeTasks,
+        unlocker: dayPlan.topUnlocker ? { title: dayPlan.topUnlocker.title, count: dayPlan.topUnlocker.count } : null
+    }), [activeProjects, activeTasks, dayPlan.topUnlocker, projectHealthMap, timeZone]);
+
+    const fillMessage = (template: string, params: Record<string, string | number>) => (
+        Object.entries(params).reduce((text, [key, value]) => text.split(`{${key}}`).join(String(value)), template)
+    );
+
+    const formatMessage = (message: { key: string | null; params: Record<string, string | number>; text: string | null }) => (
+        message.key ? fillMessage(t(message.key), message.params) : (message.text || '')
+    );
+
+    const unblocksSuffix = (count: number) => {
+        if (count === 0) return '';
+        const text = count === 1
+            ? t('dashboard.today.reason.unblocksOne')
+            : t('dashboard.today.reason.unblocks').replace('{count}', String(count));
+        return ` · ${text}`;
     };
 
-    // --- Step 1: day band + route ------------------------------------------
+    /* eslint-disable react-hooks/exhaustive-deps */
+    const routeStops = useMemo<DashboardRouteStop[]>(() => dayPlan.stops.map((stop) => {
+        const isFocusStop = stop.kind === 'focus';
+        const itemPath = stop.itemType === 'initiative' ? 'initiatives' : 'tasks';
+        let href = '/tasks';
+        if (stop.isPersonal) href = `/personal-tasks/${stop.taskId}`;
+        else if (stop.projectId) href = `/project/${stop.projectId}/${itemPath}/${stop.taskId}`;
 
-    const isFocusSnoozed = useMemo(() => (
-        focusState?.status === 'snoozed'
-            && Boolean(focusState.snoozedUntil)
-            && new Date(focusState.snoozedUntil || '').getTime() > Date.now()
-    ), [focusState?.snoozedUntil, focusState?.status]);
+        let focus: PinnedItem | undefined;
+        if (isFocusStop && focusItem) {
+            focus = focusItem;
+        } else if (stop.canFocus && stop.projectId) {
+            focus = {
+                id: stop.taskId,
+                type: 'task',
+                title: stop.title,
+                projectId: stop.projectId,
+                tenantId: stop.tenantId || undefined,
+                priority: (stop.priority || undefined) as Task['priority'],
+                isCompleted: false
+            };
+        }
 
-    const routeStops = useMemo<DashboardRouteStop[]>(() => {
-        const items: DashboardRouteStop[] = [];
-        const seen = new Set<string>();
-        const projectLabel = (projectId?: string) => (projectId && projectById.get(projectId)) || '';
-        const taskFocus = (task: Task): PinnedItem | undefined => (
-            task.projectId
-                ? {
-                    id: task.id,
-                    type: 'task',
-                    title: task.title,
-                    projectId: task.projectId,
-                    tenantId: task.tenantId,
-                    priority: task.priority,
-                    isCompleted: task.isCompleted
-                }
-                : undefined
-        );
-        const freesSuffix = (taskId: string) => {
-            const count = unblocksCount.get(taskId) || 0;
-            if (count === 0) return '';
-            const text = count === 1
-                ? t('dashboard.today.reason.unblocksOne')
-                : t('dashboard.today.reason.unblocks').replace('{count}', String(count));
-            return ` · ${text}`;
+        return {
+            id: stop.id,
+            href,
+            title: stop.kind === 'followUp' ? t('dashboard.route.followUp').replace('{title}', stop.title) : stop.title,
+            meta: stop.projectName,
+            reason: `${formatMessage(stop.reason)}${unblocksSuffix(stop.unblocksCount)}`,
+            tone: stop.tone as DashboardTone,
+            focus,
+            proposed: stop.proposed,
+            isPersonal: stop.isPersonal,
+            taskId: stop.taskId,
+            projectId: stop.projectId || undefined,
+            tenantId: stop.tenantId || undefined
         };
-        const pushTask = (task: Task, reason: string, tone: DashboardTone) => {
-            if (items.length >= 4 || seen.has(task.id)) return;
-            seen.add(task.id);
-            items.push({
-                id: task.id,
-                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
-                title: task.title,
-                meta: projectLabel(task.projectId),
-                reason,
-                tone,
-                focus: taskFocus(task),
-                taskId: task.id,
-                projectId: task.projectId,
-                tenantId: task.tenantId
-            });
+    }), [dayPlan.stops, focusItem, t]);
+
+    const routeStatement = useMemo<DashboardStatement>(() => ({
+        template: fillMessage(t(dayPlan.statement.key), dayPlan.statement.params),
+        value: dayPlan.statement.valueKey ? t(dayPlan.statement.valueKey) : (dayPlan.statement.value || '')
+    }), [dayPlan.statement, t]);
+
+    const causeLine = useMemo(() => formatMessage(dayPlan.cause), [dayPlan.cause, t]);
+    const weekBadge = useMemo(() => formatMessage(dayPlan.week.badge), [dayPlan.week.badge, t]);
+    /* eslint-enable react-hooks/exhaustive-deps */
+
+    const routeIsSuggested = dayPlan.isSuggested;
+    const dayShape = dayPlan.dayShape;
+    const undatedOpenCount = dayPlan.counts.undated;
+    const moreCount = dayPlan.moreCount;
+
+    // "Diese Woche": always-on 7-day strip (Mon–Sun) with a count of dated work per day.
+    const weekStrip = useMemo<DashboardWeekDay[]>(() => dayPlan.week.days.map((day) => {
+        const [year, month, dayOfMonth] = day.date.split('-').map(Number);
+        const date = new Date(year, month - 1, dayOfMonth, 12);
+        return {
+            key: day.date,
+            label: format(date, 'EEEEE', { locale: dateLocale }),
+            dayNum: format(date, 'd', { locale: dateLocale }),
+            count: day.count,
+            isToday: day.isToday,
+            isWeekend: day.isWeekend
         };
+    }), [dateLocale, dayPlan.week.days]);
 
-        if (focusItem && focusItem.projectId && activeProjectIds.has(focusItem.projectId) && !isFocusSnoozed && !focusItem.isCompleted) {
-            const focusTask = taskById.get(focusItem.id);
-            if (!focusTask || !focusTask.isCompleted) {
-                seen.add(focusItem.id);
-                const focusPath = focusItem.type === 'initiative' ? 'initiatives' : 'tasks';
-                items.push({
-                    id: focusItem.id,
-                    href: `/project/${focusItem.projectId}/${focusPath}/${focusItem.id}`,
-                    title: focusItem.title,
-                    meta: projectById.get(focusItem.projectId) || '',
-                    reason: focusTask?.nextStep
-                        ? t('dashboard.today.reason.focusNext').replace('{next}', focusTask.nextStep)
-                        : t('dashboard.today.reason.focusResume'),
-                    tone: 'info',
-                    focus: focusItem,
-                    taskId: focusItem.id,
-                    projectId: focusItem.projectId,
-                    tenantId: focusItem.tenantId
-                });
-            }
-        }
-
-        const byDueDate = (a: Task, b: Task) => (
-            (toDate(a.dueDate || a.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY)
-                - (toDate(b.dueDate || b.scheduledDate)?.getTime() ?? Number.POSITIVE_INFINITY)
-        );
-
-        [...overdueTasks].sort(byDueDate).forEach((task) => {
-            const days = overdueDaysOf(task);
-            const reason = days <= 1
-                ? t('dashboard.today.reason.overdueYesterday')
-                : t('dashboard.today.reason.overdueDays').replace('{days}', String(days));
-            pushTask(task, `${reason}${freesSuffix(task.id)}`, 'danger');
-        });
-
-        const priorityRank = { Urgent: 0, High: 1, Medium: 2, Low: 3 } as Record<string, number>;
-        [...dueTodayTasks]
-            .sort((a, b) => (priorityRank[a.priority || 'Medium'] ?? 2) - (priorityRank[b.priority || 'Medium'] ?? 2))
-            .forEach((task) => {
-                pushTask(task, `${t('dashboard.today.reason.dueToday')}${freesSuffix(task.id)}`, 'warning');
-            });
-
-        scheduledTodayTasks.forEach((task) => {
-            pushTask(task, t('dashboard.today.reason.scheduled'), 'neutral');
-        });
-
-        // Fill remaining stops with quick follow-ups on blocked work.
-        blockedTasks.forEach((task) => {
-            if (items.length >= 4 || seen.has(task.id)) return;
-            seen.add(task.id);
-            let why = task.blockerNote || '';
-            if (!why && task.dependencies && task.dependencies.length > 0) {
-                const dependency = taskById.get(task.dependencies[0]);
-                if (dependency && !dependency.isCompleted) {
-                    why = t('dashboard.today.blockedRail.dependency').replace('{title}', dependency.title);
-                }
-            }
-            items.push({
-                id: `follow:${task.id}`,
-                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
-                title: t('dashboard.route.followUp').replace('{title}', task.title),
-                meta: projectLabel(task.projectId),
-                reason: why || t('dashboard.today.blockedRail.fallback'),
-                tone: 'neutral',
-                taskId: task.id,
-                projectId: task.projectId,
-                tenantId: task.tenantId
-            });
-        });
-
-        // Quiet day: nothing dated drove the route. Propose a plan from the
-        // backlog so the route is never empty — ranked by priority, then age.
-        const datedCount = items.length;
-        if (datedCount < 3) {
-            const ageDays = (task: Task) => {
-                const created = toDate(task.createdAt);
-                return created ? Math.max(0, Math.floor((Date.now() - created.getTime()) / DAY_MS)) : 0;
-            };
-            const backlog = openTasks
-                .filter((task) => (
-                    !seen.has(task.id)
-                        && task.status !== 'Blocked'
-                        && !task.dueDate
-                        && !task.scheduledDate
-                ))
-                .sort((a, b) => {
-                    const rank = (priorityRank[a.priority || 'Medium'] ?? 2) - (priorityRank[b.priority || 'Medium'] ?? 2);
-                    if (rank !== 0) return rank;
-                    return toMillis(a.createdAt) - toMillis(b.createdAt);
-                });
-
-            backlog.forEach((task) => {
-                if (items.length >= 3 || seen.has(task.id)) return;
-                seen.add(task.id);
-                const age = ageDays(task);
-                let reason: string;
-                if (task.priority === 'Urgent' || task.priority === 'High') {
-                    reason = t('dashboard.route.suggest.important');
-                } else if (age >= 7) {
-                    reason = t('dashboard.route.suggest.aged').replace('{days}', String(age));
-                } else {
-                    reason = t('dashboard.route.suggest.pick');
-                }
-                items.push({
-                    id: `suggest:${task.id}`,
-                    href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
-                    title: task.title,
-                    meta: projectLabel(task.projectId),
-                    reason,
-                    tone: 'neutral',
-                    proposed: true,
-                    focus: taskFocus(task),
-                    taskId: task.id,
-                    projectId: task.projectId,
-                    tenantId: task.tenantId
-                });
-            });
-        }
-
-        return items;
-    }, [
-        activeProjectIds,
-        blockedTasks,
-        dueTodayTasks,
-        focusItem,
-        isFocusSnoozed,
-        openTasks,
-        overdueTasks,
-        projectById,
-        scheduledTodayTasks,
-        t,
-        taskById,
-        unblocksCount
-    ]);
-
-    const routeRealCount = useMemo(() => routeStops.filter((stop) => !stop.proposed).length, [routeStops]);
-    const routeIsSuggested = routeStops.length > 0 && routeRealCount === 0;
-
-    const undatedOpenCount = useMemo(() => (
-        openTasks.filter((task) => !task.dueDate && !task.scheduledDate && task.status !== 'Blocked').length
-    ), [openTasks]);
-
-    const routeStatement = useMemo<DashboardStatement>(() => {
-        if (routeStops.length === 0) {
-            return {
-                template: t('dashboard.route.statement.clear'),
-                value: t('dashboard.route.statement.clearValue')
-            };
-        }
-        if (routeIsSuggested) {
-            return {
-                template: t(routeStops.length === 1 ? 'dashboard.route.statement.suggestOne' : 'dashboard.route.statement.suggest'),
-                value: String(routeStops.length)
-            };
-        }
-        if (todayQueue.length === 0 && blockedTasks.length > 0) {
-            return {
-                template: t(blockedTasks.length === 1 ? 'dashboard.route.statement.waitingOne' : 'dashboard.route.statement.waiting'),
-                value: String(blockedTasks.length)
-            };
-        }
-        if (routeStops.length === 1) {
-            return { template: t('dashboard.route.statement.one'), value: routeStops[0].title };
-        }
-        if (overdueTasks.length > 0) {
-            return {
-                template: t(routeStops[0].tone === 'danger' ? 'dashboard.route.statement.behind' : 'dashboard.route.statement.behindLater'),
-                value: String(routeStops.length)
-            };
-        }
-        return { template: t('dashboard.route.statement.clean'), value: String(routeStops.length) };
-    }, [blockedTasks.length, overdueTasks.length, routeIsSuggested, routeStops, t, todayQueue.length]);
-
-    // "Diese Woche": always-on 7-day strip (Mon–Sun) with a count of dated work
-    // per day. Structural even when quiet, so the rail never reads as empty.
-    const weekStrip = useMemo<DashboardWeekDay[]>(() => {
-        const today = startOfToday();
-        const monday = new Date(today);
-        const offset = (today.getDay() + 6) % 7; // Mon = 0
-        monday.setDate(today.getDate() - offset);
-
-        const dayCounts = new Map<number, number>();
-        const bump = (value: any) => {
-            const date = toDate(value);
-            if (!date) return;
-            const d = new Date(date);
-            d.setHours(0, 0, 0, 0);
-            dayCounts.set(d.getTime(), (dayCounts.get(d.getTime()) || 0) + 1);
-        };
-        openTasks.forEach((task) => {
-            bump(task.dueDate);
-            if (task.scheduledDate) bump(task.scheduledDate);
-        });
-        activeProjects.forEach((project) => bump(project.dueDate));
-
-        return Array.from({ length: 7 }, (_, index) => {
-            const date = new Date(monday);
-            date.setDate(monday.getDate() + index);
-            const key = date.getTime();
-            return {
-                key: String(key),
-                label: format(date, 'EEEEE', { locale: dateLocale }),
-                dayNum: format(date, 'd', { locale: dateLocale }),
-                count: dayCounts.get(key) || 0,
-                isToday: key === today.getTime(),
-                isWeekend: index >= 5
-            };
-        });
-    }, [activeProjects, dateLocale, openTasks]);
-
-    const weekStripTotal = useMemo(() => weekStrip.reduce((sum, day) => sum + day.count, 0), [weekStrip]);
-
-    const dayShape = useMemo(() => {
-        if (todayQueue.length === 0 && blockedTasks.length > 0) return 'waiting';
-        if (todayQueue.length === 0) return 'clear';
-        if (overdueTasks.length > 0) return 'behind';
-        if (todayQueue.length >= 6) return 'heavy';
-        return 'doable';
-    }, [blockedTasks.length, overdueTasks.length, todayQueue.length]);
-
-    const oldestOverdueTask = useMemo(() => {
-        if (overdueTasks.length === 0) return null;
-        return [...overdueTasks].sort((a, b) => (
-            (toDate(a.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY) - (toDate(b.dueDate)?.getTime() ?? Number.POSITIVE_INFINITY)
-        ))[0];
-    }, [overdueTasks]);
-
-    const todayLoadLeader = useMemo(() => {
-        const counts = new Map<string, number>();
-        todayQueue.forEach((task) => {
-            if (!task.projectId) return;
-            counts.set(task.projectId, (counts.get(task.projectId) || 0) + 1);
-        });
-        let leader: { title: string; count: number } | null = null;
-        counts.forEach((count, projectId) => {
-            const title = projectById.get(projectId);
-            if (!title) return;
-            if (!leader || count > leader.count) {
-                leader = { title, count };
-            }
-        });
-        return { leader, projectCount: counts.size };
-    }, [projectById, todayQueue]);
-
-    const causeLine = useMemo(() => {
-        if (dayShape === 'behind' && oldestOverdueTask) {
-            const days = overdueDaysOf(oldestOverdueTask);
-            if (days <= 1) {
-                return t('dashboard.today.insight.oldestOverdueOne').replace('{title}', oldestOverdueTask.title);
-            }
-            return t('dashboard.today.insight.oldestOverdue')
-                .replace('{days}', String(days))
-                .replace('{title}', oldestOverdueTask.title);
-        }
-        if (dayShape === 'waiting' && blockedTasks.length > 0) {
-            const first = blockedTasks[0];
-            if (first.blockerNote) {
-                return t('dashboard.today.insight.blockedNote')
-                    .replace('{title}', first.title)
-                    .replace('{note}', first.blockerNote);
-            }
-            return t('dashboard.today.insight.blockedPlain').replace('{title}', first.title);
-        }
-        if ((dayShape === 'heavy' || dayShape === 'doable') && todayLoadLeader.leader && todayLoadLeader.leader.count > 1) {
-            return t('dashboard.today.insight.loadCenter')
-                .replace('{project}', todayLoadLeader.leader.title)
-                .replace('{count}', String(todayLoadLeader.leader.count));
-        }
-        if ((dayShape === 'heavy' || dayShape === 'doable') && todayLoadLeader.projectCount > 1) {
-            return t('dashboard.today.insight.spread').replace('{count}', String(todayLoadLeader.projectCount));
-        }
-        if (dayShape === 'clear' && focusItem && activeProjectIds.has(focusItem.projectId || '')) {
-            return t('dashboard.today.insight.focusOpen').replace('{title}', focusItem.title);
-        }
-        if (completedLast7Days.length > 0) {
-            return t('dashboard.today.insight.momentum').replace('{count}', String(completedLast7Days.length));
-        }
-        return t('dashboard.today.insight.fresh');
-    }, [
-        activeProjectIds,
-        blockedTasks,
-        completedLast7Days.length,
-        dayShape,
-        focusItem,
-        oldestOverdueTask,
-        t,
-        todayLoadLeader
-    ]);
+    const weekStripTotal = dayPlan.week.total;
 
     // Day band: one segment per piece of today's work, plus the free rest.
-    const bandSegments = useMemo(() => {
-        const segments: Array<{ key: string; type: 'overdue' | 'due' | 'waiting' | 'rest'; flex: number }> = [];
-        const cap = (count: number) => Math.min(count, 6);
-        const dueCount = todayQueue.length - overdueTasks.length;
-
-        for (let i = 0; i < cap(overdueTasks.length); i += 1) {
-            segments.push({ key: `overdue-${i}`, type: 'overdue', flex: 1.3 });
-        }
-        for (let i = 0; i < cap(dueCount); i += 1) {
-            segments.push({ key: `due-${i}`, type: 'due', flex: 1 });
-        }
-        for (let i = 0; i < cap(blockedTasks.length); i += 1) {
-            segments.push({ key: `waiting-${i}`, type: 'waiting', flex: 0.8 });
-        }
-        const used = segments.reduce((sum, segment) => sum + segment.flex, 0);
-        segments.push({ key: 'rest', type: 'rest', flex: Math.max(used > 0 ? 2 : 8, 8 - used) });
-        return segments;
-    }, [blockedTasks.length, overdueTasks.length, todayQueue.length]);
-
-    const bandCaptionParts = useMemo(() => {
-        const parts: Array<{ key: string; tone: DashboardTone; label: string }> = [];
-        if (overdueTasks.length > 0) {
-            parts.push({
-                key: 'overdue',
-                tone: 'danger',
-                label: t('dashboard.band.overdue').replace('{count}', String(overdueTasks.length))
-            });
-        }
-        const dueCount = todayQueue.length - overdueTasks.length;
-        if (dueCount > 0) {
-            parts.push({
-                key: 'due',
-                tone: 'warning',
-                label: t('dashboard.band.due').replace('{count}', String(dueCount))
-            });
-        }
-        if (blockedTasks.length > 0) {
-            parts.push({
-                key: 'waiting',
-                tone: 'neutral',
-                label: t('dashboard.band.waiting').replace('{count}', String(blockedTasks.length))
-            });
-        }
-        return parts;
-    }, [blockedTasks.length, overdueTasks.length, t, todayQueue.length]);
-
-    const weekBadge = useMemo(() => {
-        const current = completedLast7Days.length;
-        const previous = completedPrevious7Days.length;
-        if (current === 0) {
-            return t('dashboard.week.none');
-        }
-        if (current > previous) {
-            return t('dashboard.week.more')
-                .replace('{count}', String(current))
-                .replace('{diff}', String(current - previous));
-        }
-        if (current < previous) {
-            return t('dashboard.week.fewer')
-                .replace('{count}', String(current))
-                .replace('{diff}', String(previous - current));
-        }
-        return t('dashboard.week.same').replace('{count}', String(current));
-    }, [completedLast7Days.length, completedPrevious7Days.length, t]);
+    const bandSegments = dayPlan.band.segments;
+    const bandCaptionParts = useMemo(() => dayPlan.band.caption.map((part) => ({
+        key: part.key,
+        tone: part.tone as DashboardTone,
+        label: t(`dashboard.band.${part.key}`).replace('{count}', String(part.count))
+    })), [dayPlan.band.caption, t]);
 
     // "Overnight": real movement from the last 24 hours.
-    const nightEntries = useMemo<DashboardNightEntry[]>(() => {
-        const dayAgo = Date.now() - DAY_MS;
-        const todayStart = startOfToday().getTime();
-        const entries: DashboardNightEntry[] = [];
+    const nightEntries = useMemo<DashboardNightEntry[]>(() => dayPlan.overnight.map((entry) => ({
+        key: entry.key,
+        timeMs: entry.timeMs,
+        time: entry.time,
+        symbol: entry.kind === 'done' ? '✓' : entry.kind === 'new' ? '+' : '!',
+        tone: entry.tone as DashboardTone,
+        text: entry.kind === 'overdue' ? t('dashboard.night.becameOverdue').replace('{title}', entry.title) : entry.title
+    })), [dayPlan.overnight, t]);
 
-        activeTasks.forEach((task) => {
-            const completedMs = toMillis(task.completedAt);
-            if (task.isCompleted && completedMs >= dayAgo) {
-                const date = toDate(task.completedAt);
-                entries.push({
-                    key: `done:${task.id}`,
-                    timeMs: completedMs,
-                    time: date ? format(date, 'HH:mm') : '',
-                    symbol: '✓',
-                    tone: 'success',
-                    text: task.title
-                });
-                return;
-            }
-            const createdMs = toMillis(task.createdAt);
-            if (!task.isCompleted && createdMs >= dayAgo) {
-                const date = toDate(task.createdAt);
-                entries.push({
-                    key: `new:${task.id}`,
-                    timeMs: createdMs,
-                    time: date ? format(date, 'HH:mm') : '',
-                    symbol: '+',
-                    tone: 'info',
-                    text: task.title
-                });
-            }
-        });
+    // "Waiting on you": other people's tasks that hang on mine, plus my blocked tasks.
+    const waitingItems = useMemo(() => dayPlan.waitingOnMe.slice(0, 3).map((entry) => {
+        const names = entry.assigneeIds
+            .map((uid) => members.find((member) => member.uid === uid)?.displayName)
+            .filter((name): name is string => Boolean(name));
+        const who = names.length > 1 ? `${names[0]} +${names.length - 1}` : (names[0] || '');
+        let detail: string;
+        if (entry.kind === 'dependent') {
+            detail = t('dashboard.waiting.dependent').replace('{blocker}', entry.blockerTitle || '');
+            if (who) detail = `${who} · ${detail}`;
+        } else if (entry.note) {
+            detail = entry.note;
+        } else if (entry.blockerTitle) {
+            detail = t('dashboard.today.blockedRail.dependency').replace('{title}', entry.blockerTitle);
+        } else {
+            detail = t('dashboard.today.blockedRail.fallback');
+        }
+        return {
+            key: `${entry.kind}:${entry.taskId}`,
+            href: entry.projectId ? `/project/${entry.projectId}/tasks/${entry.taskId}` : '/tasks',
+            title: entry.title,
+            detail
+        };
+    }), [dayPlan.waitingOnMe, members, t]);
 
-        overdueTasks.forEach((task) => {
-            const due = toDate(task.dueDate)?.getTime() ?? 0;
-            if (due >= todayStart - DAY_MS && due < todayStart) {
-                entries.push({
-                    key: `overdue:${task.id}`,
-                    timeMs: todayStart,
-                    time: '00:00',
-                    symbol: '!',
-                    tone: 'warning',
-                    text: t('dashboard.night.becameOverdue').replace('{title}', task.title)
-                });
-            }
-        });
+    // --- Portfolio pulse (step 2) ------------------------------------------------
 
-        return entries.sort((a, b) => a.timeMs - b.timeMs).slice(-4);
-    }, [activeTasks, overdueTasks, t]);
+    const pulseEntry = (projectId: string) => {
+        const entry = attention.entries.find((candidate) => candidate.projectId === projectId);
+        return entry ? { ...entry, project: { id: entry.projectId, title: entry.title } } : null;
+    };
 
-    // --- Portfolio pulse (step 2) and shared project diagnostics ------------
+    const chipLabel = (chip: { labelKey: string; params: Record<string, string | number> }) => fillMessage(t(chip.labelKey), chip.params);
 
-    const projectPulse = useMemo(() => {
-        const now = Date.now();
-        return activeProjects.map((project) => {
-            const projectTasks = tasksByProject[project.id] || [];
-            const open = projectTasks.filter((task) => !task.isCompleted);
-            const overdue = open.filter((task) => isPastDue(task.dueDate));
-            const blocked = open.filter((task) => task.status === 'Blocked');
-            const health = projectHealthMap[project.id];
-            const completedWeek = projectTasks.filter((task) => (
-                task.isCompleted && toMillis(task.completedAt) >= now - (7 * DAY_MS)
-            )).length;
+    const withChipLabels = <T extends { chips: AttentionChip[] }>(entry: T): Omit<T, 'chips'> & { chips: DashboardAttentionChip[] } => ({
+        ...entry,
+        chips: entry.chips.map((chip) => ({ key: chip.key, tone: chip.tone as DashboardTone, label: chipLabel(chip) }))
+    });
 
-            let lastActivity = 0;
-            projectTasks.forEach((task) => {
-                lastActivity = Math.max(lastActivity, toMillis(task.createdAt), toMillis(task.completedAt));
+    /* eslint-disable react-hooks/exhaustive-deps */
+    const projectsRail = useMemo(
+        () => attention.rail.map(pulseEntry).filter((entry): entry is NonNullable<ReturnType<typeof pulseEntry>> => entry !== null),
+        [attention]
+    );
+
+    const attentionProjects = useMemo(
+        () => attention.attention
+            .map(pulseEntry)
+            .filter((entry): entry is NonNullable<ReturnType<typeof pulseEntry>> => entry !== null)
+            .map(withChipLabels),
+        [attention, t]
+    );
+
+    const pulseStatement = useMemo<DashboardStatement>(() => ({
+        template: fillMessage(t(attention.statement.key), attention.statement.params),
+        value: attention.statement.valueKey ? t(attention.statement.valueKey) : (attention.statement.value || '')
+    }), [attention.statement, t]);
+
+    const pulseInsight = useMemo(() => {
+        const insight = attention.insight;
+        if (insight.chips) {
+            return fillMessage(t(insight.key as string), {
+                ...insight.params,
+                reasons: insight.chips.map(chipLabel).join(', ')
             });
-            const stalledDays = lastActivity > 0 ? Math.floor((now - lastActivity) / DAY_MS) : null;
+        }
+        return formatMessage(insight);
+    }, [attention.insight, t]);
 
-            const projectDue = toDate(project.dueDate)?.getTime();
-            const deadlineDays = projectDue !== undefined && projectDue > now
-                ? Math.ceil((projectDue - now) / DAY_MS)
-                : null;
+    const winItems = useMemo(
+        () => attention.wins.map(formatMessage),
+        [attention.wins, t]
+    );
 
-            const declining = health?.trend === 'declining';
-            const critical = health?.status === 'critical';
-            const warning = health?.status === 'warning';
+    const workloadProjects = useMemo(
+        () => attention.workload.map(pulseEntry).filter((entry): entry is NonNullable<ReturnType<typeof pulseEntry>> => entry !== null),
+        [attention]
+    );
+    /* eslint-enable react-hooks/exhaustive-deps */
 
-            let score = (overdue.length * 3) + (blocked.length * 2);
-            if (critical) score += 6;
-            else if (warning) score += 3;
-            if (declining) score += 3;
-            if (stalledDays !== null && stalledDays >= 7 && open.length > 0) score += 3;
-            if (deadlineDays !== null && deadlineDays <= 7 && open.length > 3) score += 2;
-
-            const chips: DashboardAttentionChip[] = [];
-            if (overdue.length > 0) {
-                chips.push({ key: 'overdue', tone: 'danger', label: t('dashboard.pulse.chip.overdue').replace('{count}', String(overdue.length)) });
-            }
-            if (blocked.length > 0) {
-                chips.push({ key: 'blocked', tone: 'danger', label: t('dashboard.pulse.chip.blocked').replace('{count}', String(blocked.length)) });
-            }
-            if (stalledDays !== null && stalledDays >= 7 && open.length > 0) {
-                chips.push({ key: 'stalled', tone: 'warning', label: t('dashboard.pulse.chip.stalled').replace('{days}', String(stalledDays)) });
-            }
-            if (declining) {
-                chips.push({ key: 'declining', tone: 'warning', label: t('dashboard.pulse.chip.declining') });
-            } else if (critical) {
-                chips.push({ key: 'critical', tone: 'danger', label: t('dashboard.pulse.chip.critical') });
-            } else if (warning) {
-                chips.push({ key: 'warning', tone: 'warning', label: t('dashboard.pulse.chip.warning') });
-            }
-            if (deadlineDays !== null && deadlineDays <= 14) {
-                chips.push({ key: 'deadline', tone: 'info', label: t('dashboard.pulse.chip.deadline').replace('{days}', String(deadlineDays)) });
-            }
-
-            return {
-                project,
-                openCount: open.length,
-                overdueCount: overdue.length,
-                stalledDays,
-                deadlineDays,
-                completedWeek,
-                score,
-                chips: chips.slice(0, 3)
-            };
-        });
-    }, [activeProjects, projectHealthMap, t, tasksByProject]);
-
-    const projectsRail = useMemo(() => (
-        projectPulse
-            .filter((entry) => entry.openCount > 0)
-            .sort((a, b) => b.openCount - a.openCount)
-            .slice(0, 4)
-    ), [projectPulse]);
-
-    const projectRailSignal = (entry: typeof projectPulse[number]): { label: string; tone: DashboardTone } => {
+    const projectRailSignal = (entry: { overdueCount: number; stalledDays: number | null }): { label: string; tone: DashboardTone } => {
         if (entry.overdueCount > 0) {
             return { label: t('dashboard.projectsRail.overdue').replace('{count}', String(entry.overdueCount)), tone: 'danger' };
         }
@@ -976,191 +556,62 @@ export const Dashboard = () => {
         return { label: t('dashboard.projectsRail.steady'), tone: 'neutral' };
     };
 
-    const accentInsight = useMemo(() => {
-        const stalled = projectPulse
-            .filter((entry) => entry.stalledDays !== null && entry.stalledDays >= 7 && entry.openCount > 0)
-            .sort((a, b) => (b.stalledDays || 0) - (a.stalledDays || 0))[0];
-        if (stalled) {
-            if (stalled.deadlineDays !== null) {
-                return t('dashboard.accent.stalledDeadline')
-                    .replace('{project}', stalled.project.title)
-                    .replace('{deadline}', String(stalled.deadlineDays))
-                    .replace('{days}', String(stalled.stalledDays));
-            }
-            return t('dashboard.accent.stalled')
-                .replace('{project}', stalled.project.title)
-                .replace('{days}', String(stalled.stalledDays));
-        }
-        const unlocker = [...openTasks]
-            .filter((task) => (unblocksCount.get(task.id) || 0) > 0)
-            .sort((a, b) => (unblocksCount.get(b.id) || 0) - (unblocksCount.get(a.id) || 0))[0];
-        if (unlocker) {
-            return t('dashboard.accent.unlock')
-                .replace('{title}', unlocker.title)
-                .replace('{count}', String(unblocksCount.get(unlocker.id) || 0));
-        }
-        return '';
-    }, [openTasks, projectPulse, t, unblocksCount]);
+    const accentInsight = attention.accent ? formatMessage(attention.accent) : '';
+    const quietProjectCount = attention.quietCount;
+    const momentumCaption = formatMessage(attention.momentum.caption);
+    const completedLast7Days = attention.momentum.current;
+    const completionTrend = attention.momentum.trend;
+    const maxCompletionValue = Math.max(...completionTrend.map((item) => item.value), 1);
+    const maxWorkload = Math.max(...workloadProjects.map((entry) => entry.openCount), 1);
 
-    const attentionProjects = useMemo(
-        () => projectPulse.filter((entry) => entry.score >= 3).sort((a, b) => b.score - a.score).slice(0, 3),
-        [projectPulse]
-    );
-
-    const quietProjectCount = Math.max(activeProjects.length - attentionProjects.length, 0);
-
-    const bestRunProject = useMemo(() => {
-        const sorted = [...projectPulse].sort((a, b) => b.completedWeek - a.completedWeek);
-        const best = sorted[0];
-        return best && best.completedWeek > 0 ? best : null;
-    }, [projectPulse]);
-
-    const pulseStatement = useMemo<DashboardStatement>(() => {
-        if (activeProjects.length === 0) {
+    const horizonItems = useMemo<DashboardRailListItem[]>(() => attention.horizon.map((item) => {
+        const [year, month, dayOfMonth] = item.day.split('-').map(Number);
+        const dateLabel = format(new Date(year, month - 1, dayOfMonth, 12), 'EEE d. MMM', { locale: dateLocale });
+        if (item.kind === 'project') {
             return {
-                template: t('dashboard.pulse.statement.none'),
-                value: t('dashboard.pulse.statement.noneValue')
+                id: `project:${item.id}`,
+                href: `/project/${item.id}`,
+                title: t('dashboard.pulse.horizon.projectDeadline').replace('{project}', item.title),
+                meta: dateLabel,
+                tone: 'info' as DashboardTone
             };
         }
-        if (attentionProjects.length > 0) {
-            const template = t(attentionProjects.length === 1 ? 'dashboard.pulse.statement.driftingOne' : 'dashboard.pulse.statement.drifting')
-                .replace('{total}', String(activeProjects.length));
-            return { template, value: String(attentionProjects.length) };
-        }
         return {
-            template: t(activeProjects.length === 1 ? 'dashboard.pulse.statement.steadyOne' : 'dashboard.pulse.statement.steady'),
-            value: String(activeProjects.length)
+            id: `task:${item.id}`,
+            href: item.projectId ? `/project/${item.projectId}/tasks/${item.id}` : '/tasks',
+            title: item.title,
+            meta: `${dateLabel} · ${projectById.get(item.projectId || '') || ''}`,
+            tone: 'neutral' as DashboardTone
         };
-    }, [activeProjects.length, attentionProjects.length, t]);
-
-    const pulseInsight = useMemo(() => {
-        const worst = attentionProjects[0];
-        if (worst && worst.chips.length > 0) {
-            return t('dashboard.pulse.insight.worst')
-                .replace('{project}', worst.project.title)
-                .replace('{reasons}', worst.chips.map((chip) => chip.label).join(', '));
-        }
-        if (bestRunProject) {
-            return t('dashboard.pulse.insight.bestRun')
-                .replace('{project}', bestRunProject.project.title)
-                .replace('{count}', String(bestRunProject.completedWeek));
-        }
-        return t('dashboard.pulse.insight.quietAll');
-    }, [attentionProjects, bestRunProject, t]);
-
-    const momentumCaption = useMemo(() => {
-        const current = completedLast7Days.length;
-        const previous = completedPrevious7Days.length;
-        if (previous === 0 && current > 0) {
-            return t('dashboard.pulse.momentum.firstWeek');
-        }
-        if (current > previous) {
-            return t('dashboard.pulse.momentum.up').replace('{diff}', String(current - previous));
-        }
-        if (current < previous) {
-            return t('dashboard.pulse.momentum.down').replace('{diff}', String(previous - current));
-        }
-        return t('dashboard.pulse.momentum.flat');
-    }, [completedLast7Days.length, completedPrevious7Days.length, t]);
-
-    const horizonItems = useMemo<DashboardRailListItem[]>(() => {
-        const todayEnd = startOfToday().getTime() + DAY_MS;
-        const horizon = todayEnd + (14 * DAY_MS);
-        const dateLabel = (date: Date) => format(date, 'EEE d. MMM', { locale: dateLocale });
-
-        const taskEntries = openTasks
-            .map((task) => ({ task, due: toDate(task.dueDate) }))
-            .filter((entry): entry is { task: Task; due: Date } => (
-                entry.due !== null && entry.due.getTime() >= todayEnd && entry.due.getTime() < horizon
-            ))
-            .map(({ task, due }) => ({
-                id: `task:${task.id}`,
-                href: task.projectId ? `/project/${task.projectId}/tasks/${task.id}` : '/tasks',
-                title: task.title,
-                meta: `${dateLabel(due)} · ${projectById.get(task.projectId) || ''}`,
-                tone: 'neutral' as DashboardTone,
-                dateMs: due.getTime()
-            }));
-
-        const projectEntries = activeProjects
-            .map((project) => ({ project, due: toDate(project.dueDate) }))
-            .filter((entry): entry is { project: Project; due: Date } => (
-                entry.due !== null && entry.due.getTime() >= todayEnd && entry.due.getTime() < horizon
-            ))
-            .map(({ project, due }) => ({
-                id: `project:${project.id}`,
-                href: `/project/${project.id}`,
-                title: t('dashboard.pulse.horizon.projectDeadline').replace('{project}', project.title),
-                meta: dateLabel(due),
-                tone: 'info' as DashboardTone,
-                dateMs: due.getTime()
-            }));
-
-        return [...taskEntries, ...projectEntries]
-            .sort((a, b) => a.dateMs - b.dateMs)
-            .slice(0, 4)
-            .map(({ dateMs: _dateMs, ...item }) => item);
-    }, [activeProjects, dateLocale, openTasks, projectById, t]);
-
-    const winItems = useMemo(() => {
-        const items: string[] = [];
-        if (completedLast7Days.length > 0) {
-            items.push(t('dashboard.pulse.wins.completedWeek').replace('{count}', String(completedLast7Days.length)));
-        }
-        if (bestRunProject) {
-            items.push(
-                t('dashboard.pulse.wins.bestProject')
-                    .replace('{project}', bestRunProject.project.title)
-                    .replace('{count}', String(bestRunProject.completedWeek))
-            );
-        }
-        if (quietProjectCount > 0 && activeProjects.length > 0) {
-            items.push(
-                t(quietProjectCount === 1 ? 'dashboard.pulse.wins.quietProjectsOne' : 'dashboard.pulse.wins.quietProjects')
-                    .replace('{count}', String(quietProjectCount))
-            );
-        }
-        return items.slice(0, 3);
-    }, [activeProjects.length, bestRunProject, completedLast7Days.length, quietProjectCount, t]);
+    }), [attention.horizon, dateLocale, projectById, t]);
 
     // Portfolio at a glance: the workspace in four numbers.
     const portfolioStats = useMemo(() => ([
         {
             key: 'projects',
-            value: activeProjects.length,
+            value: attention.stats.projects,
             label: t('dashboard.pulse.stat.projects'),
             tone: 'neutral' as DashboardTone
         },
         {
             key: 'open',
-            value: openTasks.length,
+            value: attention.stats.open,
             label: t('dashboard.pulse.stat.open'),
             tone: 'neutral' as DashboardTone
         },
         {
             key: 'overdue',
-            value: overdueTasks.length,
+            value: attention.stats.overdue,
             label: t('dashboard.pulse.stat.overdue'),
             tone: 'danger' as DashboardTone
         },
         {
             key: 'doneWeek',
-            value: completedLast7Days.length,
+            value: attention.stats.doneWeek,
             label: t('dashboard.pulse.stat.doneWeek'),
             tone: 'success' as DashboardTone
         }
-    ]), [activeProjects.length, completedLast7Days.length, openTasks.length, overdueTasks.length, t]);
-
-    // Where the open work actually sits — volume per project, with bars.
-    const workloadProjects = useMemo(
-        () => projectPulse.filter((entry) => entry.openCount > 0).sort((a, b) => b.openCount - a.openCount).slice(0, 5),
-        [projectPulse]
-    );
-
-    const maxWorkload = useMemo(
-        () => Math.max(...workloadProjects.map((entry) => entry.openCount), 1),
-        [workloadProjects]
-    );
+    ]), [attention.stats, t]);
 
     const getStepTabIndex = (step: number) => activeDashboardStep === step ? undefined : -1;
 
@@ -1176,19 +627,22 @@ export const Dashboard = () => {
 
     const todayIso = () => format(new Date(), 'yyyy-MM-dd');
 
+    const patchStopTask = (stop: DashboardRouteStop, patch: Partial<Task> & Partial<PersonalTask>) => {
+        const apply = <T extends { id: string }>(list: T[]) => list.map((task) => (task.id === stop.taskId ? { ...task, ...patch } : task));
+        if (stop.isPersonal) setPersonalTasks((prev) => apply(prev) as PersonalTask[]);
+        else setTasks((prev) => apply(prev) as Task[]);
+    };
+
     const handleToggleComplete = async (stop: DashboardRouteStop) => {
         if (!stop.taskId) return;
         const { taskId, projectId, tenantId } = stop;
-        setTasks((prev) => prev.map((task) => (
-            task.id === taskId ? { ...task, isCompleted: true, completedAt: new Date(), completedBy: authUserId || undefined } : task
-        )));
+        patchStopTask(stop, { isCompleted: true, completedAt: new Date(), completedBy: authUserId || undefined });
         try {
-            await toggleTaskStatus(taskId, false, projectId, tenantId);
+            if (stop.isPersonal) await updatePersonalTask(taskId, { isCompleted: true }, tenantId);
+            else await toggleTaskStatus(taskId, false, projectId, tenantId);
         } catch (error) {
             console.error('Dashboard complete failed', error);
-            setTasks((prev) => prev.map((task) => (
-                task.id === taskId ? { ...task, isCompleted: false, completedAt: undefined, completedBy: undefined } : task
-            )));
+            patchStopTask(stop, { isCompleted: false, completedAt: undefined, completedBy: undefined });
         }
     };
 
@@ -1196,29 +650,27 @@ export const Dashboard = () => {
         if (!stop.taskId) return;
         const { taskId, projectId, tenantId } = stop;
         const iso = todayIso();
-        setTasks((prev) => prev.map((task) => (
-            task.id === taskId ? { ...task, scheduledDate: iso } : task
-        )));
+        patchStopTask(stop, { scheduledDate: iso });
         try {
-            await updateTaskFields(taskId, { scheduledDate: iso }, projectId, tenantId);
+            if (stop.isPersonal) await updatePersonalTask(taskId, { scheduledDate: iso }, tenantId);
+            else await updateTaskFields(taskId, { scheduledDate: iso }, projectId, tenantId);
         } catch (error) {
             console.error('Dashboard schedule failed', error);
-            setTasks((prev) => prev.map((task) => (
-                task.id === taskId ? { ...task, scheduledDate: undefined } : task
-            )));
+            patchStopTask(stop, { scheduledDate: undefined });
         }
     };
 
     const handleReschedule = async (stop: DashboardRouteStop, dueDate: string) => {
         if (!stop.taskId) return;
         const { taskId, projectId, tenantId } = stop;
-        const previous = tasks.find((task) => task.id === taskId)?.dueDate;
-        setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, dueDate } : task)));
+        const previous = (stop.isPersonal ? personalTasks : tasks).find((task) => task.id === taskId)?.dueDate;
+        patchStopTask(stop, { dueDate });
         try {
-            await updateTaskFields(taskId, { dueDate }, projectId, tenantId);
+            if (stop.isPersonal) await updatePersonalTask(taskId, { dueDate }, tenantId);
+            else await updateTaskFields(taskId, { dueDate }, projectId, tenantId);
         } catch (error) {
             console.error('Dashboard reschedule failed', error);
-            setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, dueDate: previous } : task)));
+            patchStopTask(stop, { dueDate: previous });
         }
     };
 
@@ -1229,7 +681,7 @@ export const Dashboard = () => {
     ];
 
     // Nothing to plan yet: talk about getting started instead of "a free day".
-    const isFirstRun = projects.length === 0 && tasks.length === 0;
+    const isFirstRun = projects.length === 0 && tasks.length === 0 && personalTasks.length === 0;
 
     if (loading || !dashboardTranslationsReady) {
         return (
@@ -1341,7 +793,20 @@ export const Dashboard = () => {
                                                     <Link to={stop.href} className="dashboard-plan__copy" tabIndex={getStepTabIndex(0)}>
                                                         <span className="dashboard-plan__title">{stop.title}</span>
                                                         <span className="dashboard-plan__reason">
-                                                            {stop.reason}{stop.meta ? ` · ${stop.meta}` : ''}
+                                                            {stop.reason}
+                                                            {stop.isPersonal ? (
+                                                                <>
+                                                                    {' · '}
+                                                                    <span
+                                                                        className="material-symbols-outlined dashboard-plan__lock"
+                                                                        role="img"
+                                                                        aria-label={t('dashboard.route.personal')}
+                                                                        title={t('dashboard.route.personal')}
+                                                                    >
+                                                                        lock
+                                                                    </span>
+                                                                </>
+                                                            ) : (stop.meta ? ` · ${stop.meta}` : '')}
                                                         </span>
                                                     </Link>
                                                     <div className="dashboard-plan__actions">
@@ -1386,6 +851,12 @@ export const Dashboard = () => {
                                             ))}
                                         </div>
 
+                                        {moreCount > 0 && (
+                                            <Link to="/tasks" className="dashboard-plan__footer" tabIndex={getStepTabIndex(0)}>
+                                                {t(moreCount === 1 ? 'dashboard.route.moreOne' : 'dashboard.route.more').replace('{count}', String(moreCount))}
+                                            </Link>
+                                        )}
+
                                         {undatedOpenCount > 0 && (
                                             <Link to="/tasks" className="dashboard-plan__footer" tabIndex={getStepTabIndex(0)}>
                                                 {t('dashboard.route.end.backlog').replace('{count}', String(undatedOpenCount))}
@@ -1394,6 +865,20 @@ export const Dashboard = () => {
                                     </div>
 
                                     <aside className="dashboard-today__rail">
+                                        {waitingItems.length > 0 && (
+                                            <section aria-label={t('dashboard.waiting.title')}>
+                                                <h2 className="dashboard-side-title">{t('dashboard.waiting.title')}</h2>
+                                                <div className="dashboard-waiting">
+                                                    {waitingItems.map((item) => (
+                                                        <Link key={item.key} to={item.href} className="dashboard-waiting__row" tabIndex={getStepTabIndex(0)}>
+                                                            <span className="dashboard-waiting__title">{item.title}</span>
+                                                            <span className="dashboard-waiting__detail">{item.detail}</span>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            </section>
+                                        )}
+
                                         <section aria-label={t('dashboard.thisWeek.title')}>
                                             <h2 className="dashboard-side-title">{t('dashboard.thisWeek.title')}</h2>
                                             <div className="dashboard-week" aria-hidden="true">
@@ -1536,14 +1021,14 @@ export const Dashboard = () => {
                                         <h2 className="dashboard-editorial__section-title">{t('dashboard.pulse.momentum.title')}</h2>
                                         <div className="dashboard-momentum">
                                             <div className="dashboard-momentum__figure">
-                                                <strong>{completedLast7Days.length}</strong>
+                                                <strong>{completedLast7Days}</strong>
                                                 <span>{t('dashboard.pulse.momentum.completed')}</span>
                                                 <small>{momentumCaption}</small>
                                             </div>
                                             <div className="dashboard-momentum__chart" aria-hidden="true">
                                                 {completionTrend.map((day) => (
                                                     <span
-                                                        key={day.date.toISOString()}
+                                                        key={day.date}
                                                         className="dashboard-momentum__bar"
                                                         style={cssVars({ '--dashboard-bar-height': `${Math.max(5, (day.value / maxCompletionValue) * 100)}%` })}
                                                     />
