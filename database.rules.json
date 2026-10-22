@@ -2,10 +2,18 @@
   "rules": {
     "status": {
       "$tenantId": {
-        ".read": "auth != null",
+        ".read": "auth != null && $tenantId.length > 0 && $tenantId.length <= 128",
         "$uid": {
           ".write": "auth != null && auth.uid == $uid",
-          ".validate": "newData.hasChild('state') && newData.child('uid').val() == $uid"
+          ".validate": "newData.hasChildren(['uid', 'state']) && newData.child('uid').val() == $uid",
+          "uid": { ".validate": "newData.isString()" },
+          "displayName": { ".validate": "newData.isString() && newData.val().length <= 200" },
+          "photoURL": { ".validate": "newData.isString() && newData.val().length <= 2048" },
+          "email": { ".validate": "newData.isString() && newData.val().length <= 320" },
+          "state": { ".validate": "newData.isString() && (newData.val() == 'online' || newData.val() == 'idle' || newData.val() == 'busy' || newData.val() == 'offline')" },
+          "currentProjectId": { ".validate": "newData.val() == null || (newData.isString() && newData.val().length <= 128)" },
+          "lastChanged": { ".validate": "newData.isNumber()" },
+          "$other": { ".validate": false }
         }
       }
     }
