@@ -3239,6 +3239,8 @@ const de = {
     'workspace.accept.home': 'Zu meinem Workspace',
     'workspace.accept.mismatchTitle': 'Diese Einladung gilt für eine andere E-Mail',
     'workspace.accept.mismatchText': 'Sie wurde an {email} geschickt, du bist aber als {current} angemeldet. Melde dich mit der eingeladenen Adresse an, um sie anzunehmen.',
+    'workspace.accept.mismatchApple': 'Wenn du beim Anmelden mit Apple „E-Mail-Adresse verbergen“ gewählt hast, sieht ProjectFlow nur eine private Weiterleitungsadresse ({current}) – sie passt nie zu einer E-Mail-Einladung. Bitte die einladende Person stattdessen um einen Einladungslink (der funktioniert mit jedem Konto), oder melde dich mit der eingeladenen Adresse an und verknüpfe Apple unter Einstellungen > Konto > Verbundene Konten.',
+    'workspace.accept.mismatchHint': 'Tipp: Ein Einladungslink funktioniert mit jedem Konto. Hast du nur eine andere Adresse, bitte die einladende Person um eine Link-Einladung.',
     'projectTeam.invite.cta': 'Personen einladen',
     'projectTeam.invite.adminOnly': 'Nur Workspace-Admins können neue Personen einladen.',
     'projects.spotlight.dueDate': 'Fällig am',

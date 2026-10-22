@@ -224,9 +224,17 @@
     justify-content: center;
 }
 
+.login-page__social-button--apple {
+    grid-column: 1 / -1;
+}
+
 .login-page__social-icon {
     width: 20px;
     height: 20px;
+}
+
+.login-page__social-icon--glyph {
+    color: currentColor;
 }
 
 html.dark .login-page__social-icon--invert {

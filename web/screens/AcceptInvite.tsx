@@ -36,6 +36,11 @@ export const AcceptInvite = () => {
     const [verifyHint, setVerifyHint] = useState<string | null>(null);
     const returnTo = encodeURIComponent(`/invite/${tenantId}/${inviteId}`);
     const isMember = workspace.workspaces.some((entry) => entry.id === tenantId);
+    // Sign in with Apple + "Hide My Email" gives ProjectFlow only a relay address, which never matches the invited one.
+    const isAppleRelayUser = Boolean(user && (
+        user.providerData.some((provider) => provider.providerId === 'apple.com')
+        || (user.email || '').toLowerCase().endsWith('@privaterelay.appleid.com')
+    ));
 
     useEffect(() => {
         if (!user) return;
@@ -168,6 +173,11 @@ export const AcceptInvite = () => {
                     <h1 className="accept-invite__title">{t('workspace.accept.mismatchTitle')}</h1>
                     <p className="accept-invite__text">
                         {t('workspace.accept.mismatchText').replace('{email}', invite.email || '').replace('{current}', user.email || '')}
+                    </p>
+                    <p className="accept-invite__text">
+                        {isAppleRelayUser
+                            ? t('workspace.accept.mismatchApple').replace('{current}', user.email || '')
+                            : t('workspace.accept.mismatchHint')}
                     </p>
                 </>
             );

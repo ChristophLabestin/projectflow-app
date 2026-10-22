@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, type AuthProvider, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, type AuthProvider, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { sendVerificationEmail } from '../services/domain/emailVerification';
 import { auth } from '../services/firebase';
 import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCore';
@@ -9,6 +9,7 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { COMPANY_NAME } from '../config/company';
+import { AppleLogo } from '../components/ui/AppleLogo';
 import './login.scss';
 
 const OAUTH_REDIRECT_KEY = 'pf.oauthRedirect';
@@ -214,6 +215,15 @@ export const Login = () => {
     const handleGoogleSignIn = () => handleOAuthSignIn(new GoogleAuthProvider(), 'login.error.google');
 
     const handleGithubSignIn = () => handleOAuthSignIn(new GithubAuthProvider(), 'login.error.github');
+
+    // Sign in with Apple (Firebase provider apple.com). Apple only returns the
+    // name on the very first authorization, so request both scopes.
+    const handleAppleSignIn = () => {
+        const provider = new OAuthProvider('apple.com');
+        provider.addScope('email');
+        provider.addScope('name');
+        return handleOAuthSignIn(provider, 'login.error.apple');
+    };
 
     // Completes a sign-in that went through signInWithRedirect.
     useEffect(() => {
@@ -482,6 +492,16 @@ export const Login = () => {
                                     icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
                                 >
                                     {t('login.social.github')}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    className="login-page__social-button login-page__social-button--apple"
+                                    onClick={handleAppleSignIn}
+                                    disabled={isLoading}
+                                    icon={<AppleLogo className="login-page__social-icon login-page__social-icon--glyph" />}
+                                >
+                                    {t('login.social.apple')}
                                 </Button>
                             </div>
                         </>
