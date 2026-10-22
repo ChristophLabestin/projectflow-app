@@ -1,6 +1,7 @@
 
 import * as functions from 'firebase-functions/v1';
 import { db } from './init';
+import { consumeOAuthState, createOAuthState } from './oauthState';
 
 const getFunctionUrl = (name: string) => {
     const projectId = process.env.GCLOUD_PROJECT || 'projectflow-labestin';
@@ -25,17 +26,7 @@ export const getFacebookAuthUrl = functions.region('europe-west3').https.onCall(
     }
 
     const redirectUri = getFunctionUrl('facebookCallback');
-    const csrfState = Math.random().toString(36).substring(2);
-
-    // Create state object
-    const stateObj = {
-        projectId,
-        tenantId,
-        userId: context.auth.uid,
-        csrf: csrfState
-    };
-
-    const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+    const state = await createOAuthState('facebook', data, context);
 
     // Scopes for Instagram and Pages
     const scopes = [
@@ -56,7 +47,7 @@ export const facebookCallback = functions.region('europe-west3').https.onRequest
     const { code, state, error } = req.query;
 
     if (error) {
-        res.status(400).send(`Error from Facebook: ${error}`);
+        res.status(400).send('Facebook authorization was cancelled or failed.');
         return;
     }
 
@@ -73,8 +64,12 @@ export const facebookCallback = functions.region('europe-west3').https.onRequest
             throw new Error('Facebook config missing in backend');
         }
 
-        const decodedState = JSON.parse(Buffer.from(state as string, 'base64').toString());
-        const { projectId, tenantId, userId } = decodedState;
+        const storedState = await consumeOAuthState('facebook', state);
+        if (!storedState) {
+            res.status(400).send('Invalid or expired authorization request. Please start the connection again.');
+            return;
+        }
+        const { projectId, tenantId, userId } = storedState;
 
         const redirectUri = getFunctionUrl('facebookCallback');
 
@@ -145,6 +140,6 @@ export const facebookCallback = functions.region('europe-west3').https.onRequest
 
     } catch (e: any) {
         console.error("Facebook Callback Error", e);
-        res.status(500).send('Authentication processing failed: ' + e.message);
+        res.status(500).send('Authentication processing failed. Please try again.');
     }
 });

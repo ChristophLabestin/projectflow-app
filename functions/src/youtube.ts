@@ -2,6 +2,7 @@
 import * as functions from 'firebase-functions/v1';
 import { OAuth2Client } from 'google-auth-library';
 import { db } from './init';
+import { consumeOAuthState, createOAuthState } from './oauthState';
 
 // TODO: User to provide these
 const CLIENT_ID = '69028404212-6omiot90lrpgouq53tbhjuqbug03bg9s.apps.googleusercontent.com';
@@ -32,15 +33,7 @@ export const getYouTubeAuthUrl = functions.region('europe-west3').https.onCall(a
 
     const oauth2Client = getOAuthClient();
 
-    // Generate a secure state
-    const csrfState = Math.random().toString(36).substring(2);
-    const stateObj = {
-        projectId,
-        tenantId,
-        userId: context.auth.uid,
-        csrf: csrfState
-    };
-    const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+    const state = await createOAuthState('youtube', data, context);
 
     const scopes = [
         'https://www.googleapis.com/auth/youtube.upload',
@@ -62,7 +55,7 @@ export const youtubeCallback = functions.region('europe-west3').https.onRequest(
     const { code, state, error } = req.query;
 
     if (error) {
-        res.status(400).send(`Error from Google: ${error}`);
+        res.status(400).send('Google authorization was cancelled or failed.');
         return;
     }
 
@@ -72,8 +65,12 @@ export const youtubeCallback = functions.region('europe-west3').https.onRequest(
     }
 
     try {
-        const decodedState = JSON.parse(Buffer.from(state as string, 'base64').toString());
-        const { projectId, tenantId, userId } = decodedState;
+        const storedState = await consumeOAuthState('youtube', state);
+        if (!storedState) {
+            res.status(400).send('Invalid or expired authorization request. Please start the connection again.');
+            return;
+        }
+        const { projectId, tenantId, userId } = storedState;
 
         const oauth2Client = getOAuthClient();
         const { tokens } = await oauth2Client.getToken(code as string);
@@ -152,6 +149,6 @@ export const youtubeCallback = functions.region('europe-west3').https.onRequest(
 
     } catch (e: any) {
         console.error("YouTube Callback Error", e);
-        res.status(500).send('Authentication processing failed: ' + e.message);
+        res.status(500).send('Authentication processing failed. Please try again.');
     }
 });

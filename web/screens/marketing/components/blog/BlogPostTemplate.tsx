@@ -4,6 +4,7 @@ import { ArrowLeft, User, Calendar, Clock, Share2, Bookmark } from 'lucide-react
 import { format } from 'date-fns';
 import { BlogPost } from '../../../../services/blogService';
 import { auth } from '../../../../services/firebase';
+import { sanitizeHtml } from '../../../../utils/sanitizeHtml';
 import '../../../../components/editor/editorStyles.css'; // Import editor styles for preview
 
 interface BlogPostTemplateProps {
@@ -87,7 +88,7 @@ export const BlogPostTemplate: React.FC<BlogPostTemplateProps> = ({ post, onBack
                             {/* Render HTML Content */}
                             <div
                                 className="ProseMirror"
-                                dangerouslySetInnerHTML={{ __html: content }}
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(content) }}
                             />
                         </div>
 

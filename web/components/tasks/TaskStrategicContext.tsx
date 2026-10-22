@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Idea } from '../../types';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 interface TaskStrategicContextProps {
     projectId: string;
@@ -69,7 +70,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                     {idea.concept ? (
                         <div className="prose prose-sm dark:prose-invert max-w-none">
                             <h1>{idea.title}</h1>
-                            <div dangerouslySetInnerHTML={{ __html: idea.concept }} />
+                            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(idea.concept) }} />
                         </div>
                     ) : (
                         <div className=" h-full flex flex-col items-center justify-center opacity-40 select-none py-20">

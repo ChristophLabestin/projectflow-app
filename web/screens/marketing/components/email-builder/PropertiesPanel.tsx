@@ -19,6 +19,7 @@ import {
     LayoutControl,
     ShadowControl,
 } from './StyleControls';
+import { sanitizeHtml } from '../../../../utils/sanitizeHtml';
 
 // --- Compact Pro Settings Input ---
 const SettingsInput = ({ label, value, onChange, placeholder = '', type = 'text', variables, icon }: any) => {
@@ -190,7 +191,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                 <div className="p-3 bg-surface-sunken rounded-lg border border-surface">
                                     <div
                                         className="prose prose-sm max-w-none text-sm line-clamp-3 opacity-70"
-                                        dangerouslySetInnerHTML={{ __html: block.content.text || '<p>No content yet...</p>' }}
+                                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(block.content.text || '<p>No content yet...</p>') }}
                                     />
                                 </div>
                                 <button

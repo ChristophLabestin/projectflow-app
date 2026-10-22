@@ -1,6 +1,7 @@
 
 import * as functions from 'firebase-functions/v1';
 import { db } from './init';
+import { consumeOAuthState, createOAuthState } from './oauthState';
 
 const CLIENT_KEY = 'sbaw900ci7fk07ygnz';
 const CLIENT_SECRET = 'shqFCCdjvbIgkeSPxBP0ZhKLtaDEOChJ';
@@ -22,17 +23,7 @@ export const getTikTokAuthUrl = functions.region('europe-west3').https.onCall(as
     }
 
     const redirectUri = getFunctionUrl('tiktokCallback');
-    const csrfState = Math.random().toString(36).substring(2);
-
-    // Create state object
-    const stateObj = {
-        projectId,
-        tenantId,
-        userId: context.auth.uid,
-        csrf: csrfState
-    };
-
-    const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+    const state = await createOAuthState('tiktok', data, context);
     const scopes = 'user.info.basic,video.publish,video.upload,video.list';
 
     const url = `https://www.tiktok.com/v2/auth/authorize/?client_key=${CLIENT_KEY}&response_type=code&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
@@ -44,7 +35,7 @@ export const tiktokCallback = functions.region('europe-west3').https.onRequest(a
     const { code, state, error } = req.query;
 
     if (error) {
-        res.status(400).send(`Error from TikTok: ${error}`);
+        res.status(400).send('TikTok authorization was cancelled or failed.');
         return;
     }
 
@@ -54,8 +45,12 @@ export const tiktokCallback = functions.region('europe-west3').https.onRequest(a
     }
 
     try {
-        const decodedState = JSON.parse(Buffer.from(state as string, 'base64').toString());
-        const { projectId, tenantId, userId } = decodedState;
+        const storedState = await consumeOAuthState('tiktok', state);
+        if (!storedState) {
+            res.status(400).send('Invalid or expired authorization request. Please start the connection again.');
+            return;
+        }
+        const { projectId, tenantId, userId } = storedState;
 
         const redirectUri = getFunctionUrl('tiktokCallback');
 
@@ -147,6 +142,6 @@ export const tiktokCallback = functions.region('europe-west3').https.onRequest(a
 
     } catch (e: any) {
         console.error("TikTok Callback Error", e);
-        res.status(500).send('Authentication processing failed: ' + e.message);
+        res.status(500).send('Authentication processing failed. Please try again.');
     }
 });

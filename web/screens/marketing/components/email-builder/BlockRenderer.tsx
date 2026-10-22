@@ -1,5 +1,6 @@
 import React from 'react';
 import { EmailBlock } from '../../../types';
+import { sanitizeHtml } from '../../../../utils/sanitizeHtml';
 
 export const BlockRenderer = ({ block, variables, preview = false }: { block: EmailBlock, variables?: any[], preview?: boolean }) => {
     const { content, styles } = block;
@@ -53,7 +54,7 @@ export const BlockRenderer = ({ block, variables, preview = false }: { block: Em
                     <div
                         className="prose prose-sm max-w-none"
                         style={{ color: styles.color || '#000000' }}
-                        dangerouslySetInnerHTML={{ __html: content.text || (preview ? '' : '<p>Start typing your rich content here...</p>') }}
+                        dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.text || (preview ? '' : '<p>Start typing your rich content here...</p>')) }}
                     />
                 </div>
             );
@@ -107,7 +108,7 @@ export const BlockRenderer = ({ block, variables, preview = false }: { block: Em
             return (
                 <div style={commonStyle}>
                     {content.text ? (
-                        <div dangerouslySetInnerHTML={{ __html: content.text }} />
+                        <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(content.text) }} />
                     ) : (
                         !preview && (
                             <div className="p-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded text-center text-xs text-zinc-400 font-mono">

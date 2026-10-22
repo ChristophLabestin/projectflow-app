@@ -68,7 +68,7 @@ export function createBlogMetaFunction(db: admin.firestore.Firestore, indexHtmlP
             if (postData) {
                 const title = postData.title || "Project Flow";
                 const description = postData.excerpt || "Project Flow Blog";
-                const image = postData.coverImage || "/og-image.png";
+                const image = safeImageUrl(postData.coverImage);
 
                 // Replace meta tags
                 html = html.replace(/<meta property="og:title" content="[^"]+"[^>]*>/g, `<meta property="og:title" content="${escapeHtml(title)} | Project Flow" />`);
@@ -100,7 +100,19 @@ function escapeHtml(text: string): string {
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
+        .replace(/'/g, "&#039;")
+        // `$` would be read as a replacement pattern by String.replace.
+        .replace(/\$/g, "&#36;");
+}
+
+/**
+ * Only absolute http(s) or root-relative image URLs may reach the meta tags.
+ */
+function safeImageUrl(url: unknown): string {
+    if (typeof url === "string" && (/^https?:\/\//i.test(url) || /^\/(?!\/)/.test(url))) {
+        return escapeHtml(url);
+    }
+    return "/og-image.png";
 }
 
 // ============================================================
@@ -152,7 +164,7 @@ export const blogMetaHandler = functions.https.onRequest(async (req, res) => {
         if (postData) {
             const title = postData.title || "Project Flow";
             const description = postData.excerpt || "Project Flow Blog";
-            const image = postData.coverImage || "/og-image.png";
+            const image = safeImageUrl(postData.coverImage);
 
             html = html.replace(/<meta property="og:title" content="[^"]+"[^>]*>/g, `<meta property="og:title" content="${escapeHtml(title)} | Project Flow" />`);
             html = html.replace(/<meta property="og:description" content="[^"]+"[^>]*>/g, `<meta property="og:description" content="${escapeHtml(description)}" />`);
