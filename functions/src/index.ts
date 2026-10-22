@@ -1,4 +1,8 @@
 import './init'; // Ensure init runs
+import { setGlobalOptions } from 'firebase-functions/v2';
+
+// Defaults for v2 functions only (v1 functions set their own region via functions.region()).
+setGlobalOptions({ region: 'europe-west3', maxInstances: 10, timeoutSeconds: 60, memory: '256MiB' });
 
 import { testSMTPConnection } from './email';
 import { newsletterSubscribe, newsletterUnsubscribe, api } from './newsletter';
@@ -15,7 +19,7 @@ import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiati
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
-import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
+import { checkScheduledPosts, autoStartSprints, dailyHealthSnapshots } from './scheduler';
 import { getFacebookAuthUrl, facebookCallback } from './facebook';
 import { onProjectTaskGitHubSync } from './github-task-sync';
 import {
@@ -128,10 +132,8 @@ export {
     getYouTubeAuthUrl,
     youtubeCallback,
     checkScheduledPosts,
-    debugScheduler,
     autoStartSprints,
     dailyHealthSnapshots,
-    debugHealthSnapshots,
     getFacebookAuthUrl,
     facebookCallback,
     onProjectTaskGitHubSync,

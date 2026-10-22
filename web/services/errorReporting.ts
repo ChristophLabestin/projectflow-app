@@ -54,3 +54,23 @@ export const reportError = (
 
     Sentry.captureException(error, context ? { extra: context } : undefined);
 };
+
+let globalHandlersInstalled = false;
+
+/**
+ * Forward uncaught errors and unhandled promise rejections to reportError.
+ * Safe without a DSN: reportError falls back to a console trail.
+ */
+export const installGlobalErrorHandlers = (): void => {
+    if (globalHandlersInstalled || typeof window === 'undefined') return;
+    globalHandlersInstalled = true;
+
+    window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+        reportError(event.reason, { source: 'unhandledrejection' });
+    });
+    window.addEventListener('error', (event: ErrorEvent) => {
+        // Ignore resource load errors (no ErrorEvent.error) and benign ResizeObserver noise.
+        if (!event.error) return;
+        reportError(event.error, { source: 'window.onerror', filename: event.filename, lineno: event.lineno });
+    });
+};
