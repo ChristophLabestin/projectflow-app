@@ -101,36 +101,33 @@ struct BoardTaskCard: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        Button {
-            model.router.push(.task(task.ref))
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                Text(task.title)
-                    .pfText(.rowTitle)
-                    .foregroundStyle(task.isCompleted ? PFColor.textMuted : PFColor.textMain)
-                    .strikethrough(task.isCompleted, color: PFColor.textMuted)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                HStack(spacing: 8) {
-                    if let due = Formatting.dueText(task.dueDate) {
-                        Text(due).pfText(.metaStrong).foregroundStyle(PFColor.severityText(task.isCompleted ? .neutral : Formatting.severity(due: task.dueDate))).lineLimit(1)
-                    }
-                    Spacer(minLength: 0)
-                    PFPrioritySignal(task.priority)
-                    if let workspace = model.workspace {
-                        let people = task.effectiveAssignees.compactMap { workspace.person($0) }
-                        if !people.isEmpty {
-                            PFAvatarStack(people: people.map { ($0.id, $0.displayName, $0.photoURL) }, size: 22, limit: 2)
-                        }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(task.title)
+                .pfText(.rowTitle)
+                .foregroundStyle(task.isCompleted ? PFColor.textMuted : PFColor.textMain)
+                .strikethrough(task.isCompleted, color: PFColor.textMuted)
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+            HStack(spacing: 8) {
+                if let due = Formatting.dueText(task.dueDate) {
+                    Text(due).pfText(.metaStrong).foregroundStyle(PFColor.severityText(task.isCompleted ? .neutral : Formatting.severity(due: task.dueDate))).lineLimit(1)
+                }
+                Spacer(minLength: 0)
+                PFPrioritySignal(task.priority)
+                if let workspace = model.workspace {
+                    let people = task.effectiveAssignees.compactMap { workspace.person($0) }
+                    if !people.isEmpty {
+                        PFAvatarStack(people: people.map { ($0.id, $0.displayName, $0.photoURL) }, size: 22, limit: 2)
                     }
                 }
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .pfCard(radius: 14)
-            .contentShape(.rect)
         }
-        .buttonStyle(.pfPressable)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pfCard(radius: 14)
+        .contentShape(.rect)
+        .onTapGesture { model.router.push(.task(task.ref)) }
+        .accessibilityAddTraits(.isButton)
         .accessibilityElement(children: .combine)
     }
 }

@@ -103,7 +103,7 @@ public struct PFTabStrip<Value: Hashable>: View {
                                 .pfText(.buttonSmall)
                                 .foregroundStyle(selected ? PFColor.textMain : PFColor.textMuted)
                                 .lineLimit(1)
-                                .padding(.horizontal, 16)
+                                .padding(.horizontal, 11)
                                 .frame(minHeight: 34)
                                 .background {
                                     if selected {
@@ -285,10 +285,14 @@ public struct PFHealthCard: View {
         } label: {
             VStack(alignment: .leading, spacing: PFSpace.s) {
                 HStack(alignment: .center, spacing: 10) {
-                    PFHealthRing(score: score, size: 46, lineWidth: 5)
-                    if let trend { PFTrendArrow(trend, size: 15) }
+                    if score == nil {
+                        glyph
+                    } else {
+                        PFHealthRing(score: score, size: 46, lineWidth: 5)
+                        if let trend { PFTrendArrow(trend, size: 15) }
+                    }
                     Spacer(minLength: 0)
-                    glyph
+                    if score != nil { glyph }
                 }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(2).multilineTextAlignment(.leading)

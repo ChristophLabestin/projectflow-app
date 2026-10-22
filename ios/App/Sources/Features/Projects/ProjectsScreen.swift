@@ -138,7 +138,7 @@ struct ProjectsScreen: View {
             reasons: reasons,
             action: { model.router.push(.project(tenantId: project.tenantId, projectId: project.id)) }
         ) {
-            PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: 30)
+            PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: snapshot?.score == nil ? 46 : 30)
         }
     }
 
@@ -277,11 +277,13 @@ struct ProjectRowView: View {
                 Text(L10n.t(row.total - row.done > 0 ? "projects.portfolio.onTrack" : "projects.portfolio.noOpenTasks"))
                     .pfText(.meta).foregroundStyle(PFColor.successText).lineLimit(1)
             } else {
-                HStack(spacing: 6) {
-                    ForEach(parts, id: \.text) { part in
-                        Text(part.text).pfText(.metaStrong).foregroundStyle(part.color).lineLimit(1)
-                    }
+                parts.enumerated().reduce(Text("")) { result, entry in
+                    let piece = Text(entry.element.text).foregroundStyle(entry.element.color)
+                    return entry.offset == 0 ? piece : result + Text(" · ").foregroundStyle(PFColor.textMuted) + piece
                 }
+                .pfText(.metaStrong)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
             }
         } else {
             Text(row.project.status.label).pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(1)

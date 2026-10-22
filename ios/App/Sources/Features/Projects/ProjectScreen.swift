@@ -124,7 +124,7 @@ struct ProjectScreen: View {
                     summary.text.pfText(.meta).lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                PFHealthRing(score: health?.score, size: 40, lineWidth: 4)
+                if health?.score != nil { PFHealthRing(score: health?.score, size: 40, lineWidth: 4) }
             }
             .padding(.horizontal, PFSpace.page)
             tabs.padding(.top, PFSpace.s)
@@ -165,9 +165,11 @@ struct ProjectScreen: View {
                     }
                 }
                 Spacer(minLength: 0)
-                VStack(spacing: 6) {
-                    PFHealthRing(score: health?.score, size: 56, lineWidth: 5)
-                    if let trend = PFTrend(raw: health?.trend) { PFTrendArrow(trend, size: 13) }
+                if health?.score != nil {
+                    VStack(spacing: 6) {
+                        PFHealthRing(score: health?.score, size: 56, lineWidth: 5)
+                        if let trend = PFTrend(raw: health?.trend) { PFTrendArrow(trend, size: 13) }
+                    }
                 }
             }
             summary.text.pfText(.metaStrong)

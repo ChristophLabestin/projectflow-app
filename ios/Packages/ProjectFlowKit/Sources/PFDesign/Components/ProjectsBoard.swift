@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 // MARK: - Board
 
@@ -116,11 +115,7 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
                     ForEach(cards) { item in
                         card(item)
                             .opacity(drag?.item.id == item.id ? 0.25 : 1)
-                            .gesture(PFBoardPressDrag(
-                                enabled: canMove,
-                                onBegan: { began(item, from: column.id, at: $0) },
-                                onMoved: { moved($0) },
-                                onEnded: { ended($0, cancelled: $1) }))
+                            .gesture(dragGesture(item, from: column.id), isEnabled: canMove)
                     }
                     if cards.isEmpty {
                         Text(emptyText)
@@ -149,6 +144,20 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
     }
 
     // MARK: Drag
+
+    /// Long-press, then drag. Starts only after the press, so vertical scrolling stays untouched.
+    private func dragGesture(_ item: Item, from source: String) -> some Gesture {
+        LongPressGesture(minimumDuration: 0.35, maximumDistance: 12)
+            .sequenced(before: DragGesture(minimumDistance: 0, coordinateSpace: .global))
+            .onChanged { value in
+                guard case .second(true, let drag?) = value else { return }
+                if self.drag == nil { began(item, from: source, at: drag.startLocation) }
+                moved(drag.location)
+            }
+            .onEnded { value in
+                if case .second(true, let drag?) = value { ended(drag.location, cancelled: false) } else { ended(.zero, cancelled: true) }
+            }
+    }
 
     private func local(_ window: CGPoint) -> CGPoint { CGPoint(x: window.x - boardOrigin.x, y: window.y - boardOrigin.y) }
 
@@ -214,37 +223,6 @@ public struct PFBoard<Item: Identifiable, Card: View>: View where Item.ID == Str
                 }
                 try? await Task.sleep(for: .milliseconds(700))
             }
-        }
-    }
-}
-
-/// Long-press that keeps reporting while the finger moves (UIKit, so vertical scrolling stays intact
-/// until the press has been recognised). Points are in window coordinates.
-struct PFBoardPressDrag: UIGestureRecognizerRepresentable {
-    let enabled: Bool
-    let onBegan: (CGPoint) -> Void
-    let onMoved: (CGPoint) -> Void
-    let onEnded: (CGPoint, Bool) -> Void
-
-    func makeUIGestureRecognizer(context: Context) -> UILongPressGestureRecognizer {
-        let recognizer = UILongPressGestureRecognizer()
-        recognizer.minimumPressDuration = 0.35
-        recognizer.allowableMovement = 10
-        return recognizer
-    }
-
-    func updateUIGestureRecognizer(_ recognizer: UILongPressGestureRecognizer, context: Context) {
-        recognizer.isEnabled = enabled
-    }
-
-    func handleUIGestureRecognizerAction(_ recognizer: UILongPressGestureRecognizer, context: Context) {
-        let point = recognizer.location(in: nil)
-        switch recognizer.state {
-        case .began: onBegan(point)
-        case .changed: onMoved(point)
-        case .ended: onEnded(point, false)
-        case .cancelled, .failed: onEnded(point, true)
-        default: break
         }
     }
 }
