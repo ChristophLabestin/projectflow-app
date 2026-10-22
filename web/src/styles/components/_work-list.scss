@@ -486,6 +486,15 @@
 // Same row content laid out as tiles: select + done circle + title on top,
 // meta below, the inline controls pinned to the bottom.
 
+// Tiles have no hover checkboxes: they only appear once "Select" is on (or a
+// Cmd/Shift-click started a selection).
+.work-groups--grid:not(.is-selecting) {
+    .work-row__select,
+    .work-group__select {
+        display: none;
+    }
+}
+
 .work-groups--grid .work-group__rows {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(232px, 1fr));
