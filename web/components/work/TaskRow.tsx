@@ -12,6 +12,7 @@ import {
     WORK_STATUSES,
     type WorkMember
 } from './workList';
+import { initialsOf } from '../../utils/initials';
 
 interface TaskRowProps {
     task: Task;
@@ -30,7 +31,7 @@ interface TaskRowProps {
     trailing?: React.ReactNode;
 }
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 const Avatar = ({ member, size = 'sm' }: { member?: WorkMember; size?: 'sm' | 'xs' }) => (
     <span className={`work-avatar work-avatar--${size}`} aria-hidden="true">
@@ -126,7 +127,7 @@ export const TaskRow = memo(({
         >
             {selectable && (
                 <label className="work-row__select" aria-label={t('work.row.select').replace('{title}', task.title)}>
-                    <input type="checkbox" checked={!!selected} onChange={(event) => onSelectChange?.(task, event.target.checked)} />
+                    <input type="checkbox" aria-label={t('work.row.select').replace('{title}', task.title)} checked={!!selected} onChange={(event) => onSelectChange?.(task, event.target.checked)} />
                 </label>
             )}
             <button

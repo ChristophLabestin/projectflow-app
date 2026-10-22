@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { differenceInCalendarDays, format } from 'date-fns';
 import { useNavigate, useOutletContext, useParams } from 'react-router-dom';
@@ -31,6 +31,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useToast } from '../context/UIContext';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { parseDateValue } from '../utils/taskDates';
+import { initialsOf } from '../utils/initials';
 
 type View = 'current' | 'planning' | 'history';
 type ColumnId = 'open' | 'progress' | 'review' | 'done';
@@ -58,7 +59,7 @@ const toDate = (value: unknown): Date | null => {
     return date && !Number.isNaN(date.getTime()) ? date : null;
 };
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 /** Time and scope progress of a sprint, plus a simple on-track signal. */
 const sprintStats = (sprint: Sprint, sprintTasks: Task[]) => {
@@ -158,13 +159,18 @@ export const ProjectSprints: React.FC = () => {
     const memberName = (uid: string) => workMembers.find((member) => member.uid === uid)?.displayName || '';
 
     // --- Mutations ---------------------------------------------------------------
+    const runInFlightRef = useRef(false);
     const run = async (action: () => Promise<unknown>, success?: string) => {
+        if (runInFlightRef.current) return;
+        runInFlightRef.current = true;
         try {
             await action();
             if (success) showSuccess(success);
         } catch (error: any) {
             console.error(error);
             showError(error?.message || t('sprintsV2.errors.generic'));
+        } finally {
+            runInFlightRef.current = false;
         }
     };
 

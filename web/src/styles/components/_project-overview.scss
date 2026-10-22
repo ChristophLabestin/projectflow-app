@@ -2846,6 +2846,7 @@ a.project-overview__company-context-chip:hover {
                 }
 
                 .project-pin-btn,
+                .project-delete-btn,
                 .project-settings-btn {
                     position: static;
                     z-index: auto;
@@ -8158,4 +8159,12 @@ body:has(.project-overview-container) :where(
 ) {
     border-color: transparent !important;
     box-shadow: none !important;
+}
+
+.project-delete-btn {
+    &:hover,
+    &:focus-visible {
+        color: var(--color-error);
+        background: rgba(var(--color-error-rgb), 0.1);
+    }
 }

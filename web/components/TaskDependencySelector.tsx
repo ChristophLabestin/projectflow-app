@@ -84,7 +84,7 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
                         <div key={task.id} className="task-dependency-selector__tag">
                             <span className="material-symbols-outlined task-dependency-selector__tag-icon">link</span>
                             <span className="task-dependency-selector__tag-text">{task.title}</span>
-                            <button
+                            <button aria-label={t('common.close')}
                                 type="button"
                                 onClick={() => removeDependency(task.id)}
                                 className="task-dependency-selector__tag-remove"

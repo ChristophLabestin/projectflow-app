@@ -91,7 +91,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
             <div className="bg-card border border-surface rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[80vh]">
                 <div className="p-4 border-b border-surface flex justify-between items-center">
                     <h3 className="font-bold text-lg">{t('marketing.categoryManager.title')}</h3>
-                    <button onClick={onClose} className="p-1 hover:bg-surface-hover rounded-full">
+                    <button aria-label={t('common.close')} onClick={onClose} className="p-1 hover:bg-surface-hover rounded-full">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -116,20 +116,20 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
                                 <div className="text-xs text-muted">/{cat.slug}</div>
                             </div>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
+                                <button aria-label={t('common.edit')}
                                     onClick={() => startEdit(cat)}
                                     className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-white"
                                 >
                                     <span className="material-symbols-outlined text-sm">edit</span>
                                 </button>
-                                <button
+                                <button aria-label={t('common.delete')}
                                     onClick={() => handleDelete(cat.id)}
                                     className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-red-500"
                                 >
                                     <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>
                                 {onSelect && (
-                                    <button
+                                    <button aria-label={t('marketing.categoryManager.actions.select')}
                                         onClick={() => { onSelect(cat); onClose(); }}
                                         className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-primary"
                                         title={t('marketing.categoryManager.actions.select')}

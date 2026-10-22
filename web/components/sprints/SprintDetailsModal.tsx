@@ -7,6 +7,7 @@ import { Badge } from '../common/Badge/Badge';
 import { Card } from '../common/Card/Card';
 import { useLanguage } from '../../context/LanguageContext';
 import { parseDateValue } from '../../utils/taskDates';
+import { initialOf } from '../../utils/initials';
 
 interface SprintDetailsModalProps {
     isOpen: boolean;
@@ -246,7 +247,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                                     <img src={member.photoURL} alt={member.displayName} />
                                                                 ) : (
                                                                     <div className="sprint-detail__menu-avatar">
-                                                                        {(member.displayName || member.email || '?').charAt(0)}
+                                                                        {initialOf(member.displayName || member.email)}
                                                                     </div>
                                                                 )}
                                                                 <span>{member.displayName || member.email}</span>
@@ -271,7 +272,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                         <img src={member.photoURL} alt={member.displayName} />
                                                     ) : (
                                                         <div className="sprint-detail__member-avatar">
-                                                            {(member.displayName || member.email || '?').charAt(0)}
+                                                            {initialOf(member.displayName || member.email)}
                                                         </div>
                                                     )}
                                                     <div>
@@ -320,7 +321,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                         <img src={member.photoURL} alt={member.displayName} />
                                                     ) : (
                                                         <div className="sprint-detail__member-avatar">
-                                                            {(member.displayName || member.email || '?').charAt(0)}
+                                                            {initialOf(member.displayName || member.email)}
                                                         </div>
                                                     )}
                                                     <div>

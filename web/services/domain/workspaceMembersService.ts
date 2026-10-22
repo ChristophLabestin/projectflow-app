@@ -25,8 +25,13 @@ export const getWorkspaceMembers = async (tenantId?: string): Promise<Member[]> 
     const members = await Promise.all(
         memberRefs.docs.map(async (memberDoc) => {
             const membership = memberDoc.data();
-            const userSnap = await getDoc(userDocRef(memberDoc.id));
-            const userData = userSnap.exists() ? userSnap.data() : {};
+            // A missing/unreadable user profile must not drop the member (or fail the whole list).
+            const userSnap = await getDoc(userDocRef(memberDoc.id)).catch(() => null);
+            const userData = userSnap?.exists() ? userSnap.data() : {
+                email: membership.email,
+                displayName: membership.displayName,
+                photoURL: membership.photoURL
+            };
             return {
                 ...userData,
                 uid: memberDoc.id,

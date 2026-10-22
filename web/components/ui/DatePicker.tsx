@@ -29,7 +29,7 @@ interface DatePickerProps {
 import { useLanguage } from '../../context/LanguageContext';
 
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeholder = "Select date", className = "", align = 'left', disabled = false, label }) => {
-    const { dateFormat, dateLocale } = useLanguage();
+    const { dateFormat, dateLocale, t } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [popoverPosition, setPopoverPosition] = useState<{ top?: number; bottom?: number; left: number; transformOrigin?: string }>({ top: 0, left: 0 });
@@ -168,13 +168,13 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <button onClick={handlePrevMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
+                <button type="button" aria-label={t('common.previous')} onClick={handlePrevMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
                     <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                 </button>
                 <span className="font-bold text-sm text-main">
                     {format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}
                 </span>
-                <button onClick={handleNextMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
+                <button type="button" aria-label={t('common.next')} onClick={handleNextMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
                     <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                 </button>
             </div>

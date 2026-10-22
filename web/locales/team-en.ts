@@ -95,6 +95,7 @@ const enTeam = {
     'team.v2.detail.agentBriefing': 'The briefing thread "📥 Briefing: {name}" lives in the project — add information there, the agent reads and replies.',
     'team.v2.detail.remove': 'Remove from workspace',
     'team.v2.detail.roleUpdated': 'Access updated',
+    'team.members.toast.roleUpdated': 'Role updated.',
 };
 
 export default enTeam;

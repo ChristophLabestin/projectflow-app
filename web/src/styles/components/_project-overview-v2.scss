@@ -20,6 +20,16 @@
 
 /* ---------- States ---------- */
 .po-state {
+    &__link {
+        color: var(--color-primary);
+        font-weight: 600;
+        text-decoration: none;
+
+        &:hover {
+            text-decoration: underline;
+        }
+    }
+
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -198,6 +208,8 @@
         font-weight: 800;
         color: var(--color-text-main);
         line-height: 1.2;
+        min-width: 0;
+        overflow-wrap: anywhere;
     }
 
     &__priority {
@@ -1928,7 +1940,10 @@ html:not(.dark) .po-board {
     .po-reminders__item { grid-template-columns: auto minmax(0, 1fr) auto; }
     .po-reminders__link { grid-column: 2 / -1; justify-self: start; max-width: 100%; }
     /* Initiative rows: name + status on the first line, progress/actions below. */
-    .po-inits__row { flex-wrap: wrap; row-gap: 8px; }
+    .po-inits__row { flex-wrap: wrap; row-gap: 8px; padding-left: 0; }
+    .po-inits__name { white-space: normal; overflow-wrap: anywhere; }
+    .po-inits__row-actions .po-inits__icon-btn,
+    .po-inits__row-actions .po-inits__color { opacity: 1; }
     .po-inits__main { flex-basis: calc(100% - 20px); }
     .po-inits__metrics { width: 100%; padding-left: 15px; gap: 10px; }
     .po-inits__progress { width: auto; flex: 1; }

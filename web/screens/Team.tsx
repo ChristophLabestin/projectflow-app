@@ -14,6 +14,7 @@ import { Project, WorkspaceRole, Member, CustomRole, Task } from '../types';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
+import { initialOf } from '../utils/initials';
 
 // Member erbt bereits von User (displayName/email/photoURL/role). Wir ergänzen nur id + Agent-Felder.
 type TeamMember = Member & {
@@ -228,7 +229,7 @@ export const Team = () => {
                 <div className="flex items-start gap-3">
                     <div className="relative shrink-0">
                         <div className="w-11 h-11 rounded-full bg-cover bg-center" style={{ backgroundColor: SURFACE_HOVER, backgroundImage: m.photoURL ? `url(${m.photoURL})` : undefined }}>
-                            {!m.photoURL && <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[var(--color-text-muted)]">{(m.displayName || '?')[0].toUpperCase()}</div>}
+                            {!m.photoURL && <div className="w-full h-full flex items-center justify-center text-sm font-bold text-[var(--color-text-muted)]">{initialOf(m.displayName)}</div>}
                         </div>
                         {isAgent(m) && (
                             <span className="absolute -bottom-1 -right-1 px-1 h-[15px] rounded-full text-[9px] font-black flex items-center justify-center"
@@ -366,7 +367,7 @@ export const Team = () => {
                         <div className="flex flex-col items-center text-center">
                             <div className="relative">
                                 <div className="w-24 h-24 rounded-full bg-cover bg-center" style={{ backgroundColor: SURFACE_HOVER, backgroundImage: selected.photoURL ? `url(${selected.photoURL})` : undefined }}>
-                                    {!selected.photoURL && <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[var(--color-text-subtle)]">{(selected.displayName || '?')[0].toUpperCase()}</div>}
+                                    {!selected.photoURL && <div className="w-full h-full flex items-center justify-center text-3xl font-bold text-[var(--color-text-subtle)]">{initialOf(selected.displayName)}</div>}
                                 </div>
                                 {isAgent(selected) && <span className="absolute bottom-0 right-0 px-1.5 h-5 rounded-full text-[10px] font-black flex items-center justify-center" style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}>AI</span>}
                             </div>

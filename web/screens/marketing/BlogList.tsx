@@ -207,7 +207,7 @@ const BlogList = () => {
                     )}
 
                     <div className="flex items-center p-1 bg-surface-hover rounded-lg">
-                        <button
+                        <button aria-label="Grid View"
                             onClick={() => setViewMode('grid')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
                                 ? 'bg-white shadow-sm text-main dark:bg-card'
@@ -216,7 +216,7 @@ const BlogList = () => {
                         >
                             <span className="material-symbols-outlined text-[20px]">grid_view</span>
                         </button>
-                        <button
+                        <button aria-label="List View"
                             onClick={() => setViewMode('list')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
                                 ? 'bg-white shadow-sm text-main dark:bg-card'
@@ -294,7 +294,7 @@ const BlogList = () => {
                                 </div>
 
                                 {/* Delete Button (Visible on hover) */}
-                                <button
+                                <button aria-label="Delete Post"
                                     onClick={(e) => handleDelete(e, blog.id)}
                                     className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-sm"
                                     title="Delete Post"
@@ -437,7 +437,7 @@ const BlogList = () => {
                                                 {format(new Date(blog.createdAt), 'MMM d, yyyy')}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                <button
+                                                <button aria-label="Delete"
                                                     onClick={(e) => handleDelete(e, blog.id)}
                                                     className="p-1.5 rounded-md text-muted hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                                                     title="Delete"

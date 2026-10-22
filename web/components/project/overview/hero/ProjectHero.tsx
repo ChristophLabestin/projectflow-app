@@ -5,6 +5,8 @@ import type { ProjectHealth } from '../../../../services/healthService';
 import { Badge } from '../../../common/Badge/Badge';
 import type { OverviewDerived } from '../hooks/useProjectOverviewDerived';
 import type { OverviewMember } from '../hooks/useProjectMembers';
+import { translateProjectStatus } from '../../../../utils/projectStatus';
+import { initialOf } from '../../../../utils/initials';
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error';
 
@@ -29,6 +31,8 @@ export type ProjectHeroProps = {
     linkedCompanyCount?: number;
     canManageTasks: boolean;
     isOwner: boolean;
+    canDelete?: boolean;
+    onDelete?: () => void;
     isPinned: boolean;
     onNewTask: () => void;
     onTogglePin: () => void;
@@ -60,6 +64,8 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     linkedCompanyCount,
     canManageTasks,
     isOwner,
+    canDelete,
+    onDelete,
     isPinned,
     onNewTask,
     onTogglePin,
@@ -96,10 +102,10 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     }, [menuOpen]);
 
     const statusVariant = STATUS_VARIANT[project.status] || 'neutral';
-    const statusLabel = t(`status.${project.status}`, project.status);
+    const statusLabel = translateProjectStatus(t, project.status);
     const hasCover = Boolean(project.coverImage);
     const purpose = project.description?.trim();
-    const initial = project.title?.trim().charAt(0).toUpperCase() || '?';
+    const initial = initialOf(project.title);
 
     const completion = Math.max(0, Math.min(100, Math.round(derived.completionPct)));
     const summary = [
@@ -205,7 +211,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                                         className="po-hero__avatar"
                                         style={member.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
                                     >
-                                        {!member.photoURL && (member.displayName.trim().charAt(0).toUpperCase() || '?')}
+                                        {!member.photoURL && (initialOf(member.displayName))}
                                     </span>
                                 ))}
                             </span>
@@ -273,6 +279,15 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
                                         <button type="button" role="menuitem" className="po-hero__menu-danger" onClick={() => { setMenuOpen(false); onCancel(); }}>
                                             <span className="material-symbols-outlined">cancel</span>
                                             {t('projectOverview.v2.lifecycle.cancel', 'Cancel project')}
+                                        </button>
+                                    </>
+                                )}
+                                {canDelete && onDelete && (
+                                    <>
+                                        <span className="po-hero__menu-divider" />
+                                        <button type="button" role="menuitem" className="po-hero__menu-danger" onClick={() => { setMenuOpen(false); onDelete(); }}>
+                                            <span className="material-symbols-outlined">delete</span>
+                                            {t('projectOverview.delete.title', 'Delete project')}
                                         </button>
                                     </>
                                 )}

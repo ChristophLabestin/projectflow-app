@@ -1,5 +1,6 @@
 import { parseDateValue } from '../utils/taskDates';
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { TASK_TITLE_MAX_LENGTH } from '../utils/taskLimits';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
@@ -54,6 +55,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
     const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const inFlightRef = useRef(false);
     const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [categories, setCategories] = useState<TaskCategory[]>([]);
@@ -158,11 +160,12 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
 
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
-        if (!title.trim()) return;
+        if (inFlightRef.current || !title.trim()) return;
         if (!activeProjectId) {
             setError(t('taskCreate.errors.noProject'));
             return;
         }
+        inFlightRef.current = true;
         setIsAdding(true);
         setError(null);
         try {
@@ -213,6 +216,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
             console.error('Failed to add task', err);
             setError(t('taskCreate.errors.createFailed'));
         } finally {
+            inFlightRef.current = false;
             setIsAdding(false);
         }
     };
@@ -287,7 +291,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                             onChange={handleTitleChange}
                             placeholder={t('tasks.quickAdd.placeholder')}
                             autoFocus
-                            maxLength={100}
+                            maxLength={TASK_TITLE_MAX_LENGTH}
                             aria-label={t('tasks.quickAdd.placeholder')}
                             className="task-create__title-input"
                         />
@@ -352,7 +356,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                                     style={{ backgroundColor: color }}
                                 >
                                     <span className="task-create__category-text">{catName}</span>
-                                    <button
+                                    <button aria-label={t('common.close')}
                                         type="button"
                                         onClick={() => setSelectedCategories(prev => prev.filter(x => x !== catName))}
                                         className="task-create__category-remove"
@@ -459,7 +463,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                                     <div key={idx} className="subtask-item">
                                         <span className="material-symbols-outlined subtask-icon">check_box_outline_blank</span>
                                         <span className="subtask-text">{subtask}</span>
-                                        <button
+                                        <button aria-label={t('common.close')}
                                             type="button"
                                             onClick={() => handleRemoveSubtask(idx)}
                                             className="remove-btn"

@@ -250,11 +250,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     if (projectData) {
                         loadedTenantId = current.tenantId || projectData.tenantId;
                         setProject(projectData);
-                        const collectionName = current.type === 'issue'
-                            ? 'issues'
-                            : current.type === 'initiative'
-                                ? 'initiatives'
-                                : 'tasks';
+                        const collectionName = current.type === 'initiative' ? 'initiatives' : 'tasks';
                         const itemRef = doc(db, `tenants/${projectData.tenantId}/projects/${projectData.id}/${collectionName}/${itemId}`);
                         const snap = await getDoc(itemRef);
                         if (snap.exists() && mounted) {
@@ -510,7 +506,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         <div className="pinned-tasks-modal-container">
             {/* Header (Title Only - Actions moved to Parent) */}
             <div className="pinned-header">
-                <button
+                <button aria-label={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
                     onClick={handleToggleCompletion}
                     className={`completion-toggle ${isCompleted ? (itemType === 'task' ? 'completed-task' : 'completed') : ''}`}
                     title={itemType === 'issue' ? t('pinnedTasks.actions.markResolved') : t('pinnedTasks.actions.markComplete')}
@@ -665,7 +661,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         <div className="subtasks-list">
                             {subtasks.filter(sub => showCompletedSubtasks || !sub.isCompleted).map(sub => (
                                 <div key={sub.id} className="subtask-row">
-                                    <button
+                                    <button aria-label={t('common.save')}
                                         onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
                                         className={`check-box ${sub.isCompleted ? 'completed' : ''}`}
                                     >
@@ -861,11 +857,7 @@ export const PinnedTasksModal = () => {
 
     const getPinnedItemPath = (item: PinnedItem) => {
         if (!item.projectId) return null;
-        const resource = item.type === 'issue'
-            ? 'issues'
-            : item.type === 'initiative'
-                ? 'initiatives'
-                : 'tasks';
+        const resource = item.type === 'initiative' ? 'initiatives' : 'tasks';
         return `/project/${item.projectId}/${resource}/${item.id}`;
     };
 
@@ -900,6 +892,17 @@ export const PinnedTasksModal = () => {
             setSelectedItemId(null);
         }
     }, [isModalOpen, focusItemId, pinnedItems, selectedItemId]);
+
+    // Esc closes the full modal (same behavior as the shared Modal); inner handlers can opt out via preventDefault.
+    useEffect(() => {
+        if (!isModalOpen || isCompactMode) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape' || event.defaultPrevented) return;
+            toggleModal();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isModalOpen, isCompactMode, toggleModal]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {
@@ -1244,7 +1247,7 @@ export const PinnedTasksModal = () => {
                                 >
                                     <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                                 </button>
-                                <button
+                                <button aria-label={t('pinnedTasks.actions.unpin')}
                                     onClick={() => {
                                         unpinItem(activeItemId);
                                         if (pinnedItems.length <= 1) toggleModal();
@@ -1257,14 +1260,14 @@ export const PinnedTasksModal = () => {
                                 <div className="pinned-tasks-compact__divider" />
                             </>
                         )}
-                        <button
+                        <button aria-label={t('pinnedTasks.actions.expand')}
                             onClick={() => setIsCompactMode(false)}
                             className="pinned-tasks-compact__action"
                             title={t('pinnedTasks.actions.expand')}
                         >
                             <span className="material-symbols-outlined">open_in_full</span>
                         </button>
-                        <button
+                        <button aria-label={t('pinnedTasks.actions.close')}
                             onClick={toggleModal}
                             className="pinned-tasks-compact__action is-danger"
                             title={t('pinnedTasks.actions.close')}
@@ -1379,6 +1382,9 @@ export const PinnedTasksModal = () => {
     return (
         <div className="modal-overlay modal-overlay--open task-modal center-aligned" onClick={toggleModal}>
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('pinnedTasks.dialogLabel')}
                 className="pinned-tasks-layout"
                 onClick={(e) => e.stopPropagation()}
             >
@@ -1407,7 +1413,7 @@ export const PinnedTasksModal = () => {
                             >
                                 <span className="material-symbols-outlined">{focusItemId === activeItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                             </button>
-                            <button
+                            <button aria-label={t('pinnedTasks.actions.unpin')}
                                 onClick={() => {
                                     unpinItem(activeItemId);
                                 }}
@@ -1419,14 +1425,14 @@ export const PinnedTasksModal = () => {
                             <div className="divider" />
                         </>
                     )}
-                    <button
+                    <button aria-label={t('pinnedTasks.actions.compactMode')}
                         onClick={() => setIsCompactMode(true)}
                         className="action-btn"
                         title={t('pinnedTasks.actions.compactMode')}
                     >
                         <span className="material-symbols-outlined">picture_in_picture_alt</span>
                     </button>
-                    <button
+                    <button aria-label={t('pinnedTasks.actions.closeEsc')}
                         onClick={toggleModal}
                         className="action-btn danger"
                         title={t('pinnedTasks.actions.closeEsc')}

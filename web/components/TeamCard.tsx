@@ -11,6 +11,7 @@ import { UserHoverCard } from './ui/UserHoverCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { Project, ProjectMember, EmailTemplate } from '../types';
 import { useToast } from '../context/UIContext';
+import { initialOf } from '../utils/initials';
 
 interface TeamCardProps {
     projectId: string;
@@ -272,7 +273,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                                     <div className={`size-10 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer border-2 transition-colors ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-transparent'
                                                         }`}
                                                         style={{ backgroundColor: 'var(--color-primary)' }}>
-                                                        {(displayName || '?').charAt(0).toUpperCase()}
+                                                        {initialOf(displayName)}
                                                     </div>
                                                 )}
                                             </UserHoverCard>

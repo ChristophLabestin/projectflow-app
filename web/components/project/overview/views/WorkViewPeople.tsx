@@ -4,12 +4,13 @@ import { format } from 'date-fns';
 import type { WorkViewContext } from './shared/viewTypes';
 import type { WorkItem } from './shared/useWorkItems';
 import { daysFromToday, parseDateValue } from '../../../../utils/taskDates';
+import { initialsOf } from '../../../../utils/initials';
 
 const UNASSIGNED = '__unassigned__';
 /** More than this many open tasks due within 7 days flags a person as overloaded. */
 const WEEK_LOAD_LIMIT = 5;
 
-const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?';
+const initials = (name: string) => initialsOf(name, '?');
 
 type Column = {
     key: string;

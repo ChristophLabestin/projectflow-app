@@ -88,10 +88,10 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
                                 </div>
                                 {!isSystem && (
                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => handleEdit(v)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-500">
+                                        <button aria-label={t('common.edit')} onClick={() => handleEdit(v)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-zinc-500">
                                             <span className="material-symbols-outlined text-[16px]">edit</span>
                                         </button>
-                                        <button onClick={() => handleDelete(v.id)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-red-500">
+                                        <button aria-label={t('common.delete')} onClick={() => handleDelete(v.id)} className="p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded text-red-500">
                                             <span className="material-symbols-outlined text-[16px]">delete</span>
                                         </button>
                                     </div>

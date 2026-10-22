@@ -47,6 +47,7 @@ import { calculateCompanyLinkedProjectRollup } from '../utils/startupProjects';
 import './projects-list.scss';
 import { isDateOverdue, parseDateValue } from '../utils/taskDates';
 import { ProjectPortfolioList } from '../components/projects/ProjectPortfolioList';
+import { initialOf } from '../utils/initials';
 
 // --- Types ---
 export type ProjectMetrics = {
@@ -164,7 +165,7 @@ const TeamAvatars: React.FC<{ projectId: string; limit?: number }> = ({ projectI
         <div className="team-avatars">
             {members.slice(0, limit).map((m, i) => (
                 <div key={m.uid || i} className="avatar-circle" title={m.displayName}>
-                    {m.photoURL ? <img src={m.photoURL} alt={m.displayName} /> : <span>{m.displayName?.charAt(0)}</span>}
+                    {m.photoURL ? <img src={m.photoURL} alt={m.displayName} /> : <span>{initialOf(m.displayName)}</span>}
                 </div>
             ))}
             {members.length > limit && (

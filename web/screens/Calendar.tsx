@@ -245,11 +245,8 @@ export const Calendar = () => {
     const handleItemClick = (e: React.MouseEvent, item: Task | Issue, type: 'task' | 'issue') => {
         e.stopPropagation();
         const tenantId = (item as any).tenantId;
-        if (type === 'task') {
-            navigate(`/project/${item.projectId}/tasks/${item.id}${tenantId ? `?tenant=${tenantId}` : ''}`);
-        } else {
-            navigate(`/project/${item.projectId}/issues/${item.id}${tenantId ? `?tenant=${tenantId}` : ''}`);
-        }
+        // Issues were folded into tasks; every item opens the task detail view.
+        navigate(`/project/${item.projectId}/tasks/${item.id}${tenantId ? `?tenant=${tenantId}` : ''}`);
     };
 
     const handleUnschedule = async (e: React.MouseEvent, item: Task | Issue, type: 'task' | 'issue') => {
@@ -631,7 +628,7 @@ export const Calendar = () => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <button
+                                                    <button aria-label={t('calendar.actions.unschedule')}
                                                         type="button"
                                                         onClick={(e) => handleUnschedule(e, item, itemType)}
                                                         className="calendar-item__action"

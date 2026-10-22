@@ -11,6 +11,7 @@ import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { subscribeProjectInitiatives } from '../services/domain/initiativesService';
 import { subscribeProjectMilestones } from '../services/domain/projectMetaService';
 import { subscribeProjectActivity } from '../services/domain/activityService';
+import { initialOf } from '../utils/initials';
 
 const DROPDOWN_WIDTH = 376;
 const DROPDOWN_GAP = 12;
@@ -176,7 +177,7 @@ export const PinnedProjectPill = () => {
                     {pinnedProject.squareIcon ? (
                         <img src={pinnedProject.squareIcon} alt="" />
                     ) : (
-                        <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
+                        <span>{initialOf(pinnedProject.title)}</span>
                     )}
                 </span>
 
@@ -212,7 +213,7 @@ export const PinnedProjectPill = () => {
                                     {pinnedProject.squareIcon ? (
                                         <img src={pinnedProject.squareIcon} alt="" />
                                     ) : (
-                                        <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
+                                        <span>{initialOf(pinnedProject.title)}</span>
                                     )}
                                 </span>
 

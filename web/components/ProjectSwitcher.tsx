@@ -8,6 +8,7 @@ import { useUIState } from '../context/UIContext';
 import { getUserProjects, getSharedProjects } from '../services/domain/projectsService';
 import { isCompanyProject, isClientProject, isContainerProject } from '../config/projectTemplates';
 import logo from '../assets/logo.svg';
+import { initialOf } from '../utils/initials';
 
 const RECENT_PROJECTS_STORAGE_PREFIX = 'projectflow.recentProjects';
 const MAX_RECENT_PROJECTS = 100;
@@ -250,7 +251,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
             ) : isClientProject(project) ? (
                 <span className="material-symbols-outlined">handshake</span>
             ) : (
-                <span>{project.title ? project.title.substring(0, 1).toUpperCase() : 'P'}</span>
+                <span>{initialOf(project.title, 'P')}</span>
             )}
         </span>
     );

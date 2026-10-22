@@ -165,7 +165,7 @@ export const AdCampaignDetail = () => {
                         <span className="material-symbols-outlined text-[18px]">edit</span>
                         Edit
                     </Link>
-                    <button
+                    <button aria-label={t('common.delete')}
                         onClick={handleDelete}
                         className="w-10 h-10 rounded-xl bg-card border border-surface flex items-center justify-center text-muted hover:text-red-500 hover:border-red-500 transition-all"
                     >

@@ -20,6 +20,8 @@ import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
 import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { translateProjectStatus } from '../utils/projectStatus';
+import { initialOf } from '../utils/initials';
 
 const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
 
@@ -111,7 +113,7 @@ const statusTone = (status?: string): 'success' | 'warning' | 'error' | 'muted' 
     return 'muted';
 };
 
-const projectInitial = (project: Project) => (project.title ? project.title.substring(0, 1).toUpperCase() : 'P');
+const projectInitial = (project: Project) => (initialOf(project.title, 'P'));
 
 const ProjectAvatar: React.FC<{ project: Project; className?: string }> = ({ project, className }) => (
     <span className={`snav-avatar ${isCompanyProject(project) ? 'snav-avatar--company' : ''} ${isClientProject(project) ? 'snav-avatar--client' : ''} ${className || ''}`}>
@@ -445,7 +447,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     {project.status && (
                         <span className="snav-ws-row__meta">
                             <span className={`snav-dot snav-dot--${statusTone(project.status)}`} aria-hidden="true" />
-                            {project.status}
+                            {translateProjectStatus(t, project.status)}
                         </span>
                     )}
                 </div>
@@ -631,7 +633,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
                     {/* Workspace identity — opens the inline project switcher */}
                     <div className="snav-top">
-                        <button type="button" className="snav-ws" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}>
+                        <button type="button" className="snav-ws" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen} aria-label={`${t('sidebar.switchWorkspace')}: ${activeWorkspace?.name || t('app.brand')}`}>
                             <span className="snav-ws__logo"><img src={logo} alt="" /></span>
                             <span className="snav-ws__name">{activeWorkspace?.name || t('app.brand')}</span>
                             <span className="material-symbols-outlined snav-ws__chev">unfold_more</span>

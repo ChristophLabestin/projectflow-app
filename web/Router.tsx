@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, Outlet } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -18,7 +18,7 @@ import { Profile } from './screens/Profile';
 import { Notifications } from './screens/Notifications';
 import { MediaLibraryPage } from './screens/MediaLibraryPage';
 import { PersonalTasksPage } from './screens/PersonalTasksPage';
-import { StyleGuidePage } from './screens/StyleGuidePage';
+import { NotFound } from './screens/NotFound';
 import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
 import { auth } from './services/firebase';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
@@ -39,6 +39,19 @@ const withPmCoreGuard = (
 ) => (
     <PmCoreDeprecatedRedirect fallback={fallback}>{element}</PmCoreDeprecatedRedirect>
 );
+
+// Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
+const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));
+
+/** Old project sub-routes now live inside the overview (query params pick the view). */
+const LegacyProjectRedirect = ({ query }: { query: string }) => {
+    const { id } = useParams<{ id: string }>();
+    const location = useLocation();
+    const params = new URLSearchParams(location.search);
+    const [key, value] = query.split('=');
+    params.set(key, value);
+    return <Navigate to={`/project/${id}?${params.toString()}`} replace />;
+};
 
 const ProjectOverview = React.lazy(() => import('./screens/ProjectOverview').then((module) => ({ default: module.ProjectOverview })));
 const ProjectTasks = React.lazy(() => import('./screens/ProjectTasks').then((module) => ({ default: module.ProjectTasks })));
@@ -219,14 +232,16 @@ export const AppRouter = () => {
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 
-                    <Route
-                        path="/ui"
-                        element={
-                            <RequireAuth>
-                                <StyleGuidePage />
-                            </RequireAuth>
-                        }
-                    />
+                    {import.meta.env.DEV && (
+                        <Route
+                            path="/ui"
+                            element={
+                                <RequireAuth>
+                                    {withRouteSuspense(<StyleGuidePage />)}
+                                </RequireAuth>
+                            }
+                        />
+                    )}
 
                     {/* Authenticated Routes Block */}
                     <Route element={<AuthenticatedLayout user={user} />}>
@@ -254,6 +269,11 @@ export const AppRouter = () => {
                             <Route path="tasks/:taskId" element={withRouteSuspense(<ProjectTaskDetail />)} />
                             <Route path="initiatives" element={withRouteSuspense(<ProjectInitiatives />)} />
                             <Route path="initiatives/:initiativeId" element={withRouteSuspense(<ProjectInitiativeDetail />)} />
+                            <Route path="team" element={<LegacyProjectRedirect query="view=people" />} />
+                            <Route path="roadmap" element={<LegacyProjectRedirect query="view=roadmap" />} />
+                            <Route path="timeline" element={<LegacyProjectRedirect query="view=timeline" />} />
+                            <Route path="board" element={<LegacyProjectRedirect query="view=board" />} />
+                            <Route path="settings" element={<LegacyProjectRedirect query="settings=general" />} />
                             <Route path="intake" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="invoices" element={withRouteSuspense(<ProjectInvoices />)} />
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
@@ -358,7 +378,7 @@ export const AppRouter = () => {
                         </Route>
                     </Route>
 
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFound />} />
                 </Route>
             )
         );

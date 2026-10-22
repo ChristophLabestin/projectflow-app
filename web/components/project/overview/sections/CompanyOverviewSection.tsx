@@ -187,7 +187,7 @@ export const CompanyOverviewSection: React.FC<CompanyOverviewSectionProps> = ({
         <div className="project-overview__company-card project-overview__company-context-card">
             <div className="project-overview__company-section-header">
                 <h2><span className="material-symbols-outlined">domain</span>{t('projectOverview.company.contextTitle')}</h2>
-                <button type="button" className="project-overview__company-context-action-icon" onClick={onEditBrief} title={t('projectOverview.startup.briefing.editAction')}>
+                <button aria-label={t('projectOverview.startup.briefing.editAction')} type="button" className="project-overview__company-context-action-icon" onClick={onEditBrief} title={t('projectOverview.startup.briefing.editAction')}>
                     <span className="material-symbols-outlined">edit</span>
                 </button>
             </div>

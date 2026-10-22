@@ -6,6 +6,7 @@ import { timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
 import { useLanguage } from '../context/LanguageContext';
 import { Card } from './common/Card/Card';
+import { localizeActivityAction } from '../utils/activityText';
 
 export const RecentActivityCard = ({ projectId }: { projectId: string }) => {
     const { t } = useLanguage();
@@ -48,7 +49,7 @@ export const RecentActivityCard = ({ projectId }: { projectId: string }) => {
                                 <div className="recent-activity-card__body">
                                     <p className="recent-activity-card__text">
                                         <span className="recent-activity-card__user">{item.user}</span>
-                                        <span className="recent-activity-card__action">{item.action}</span>
+                                        <span className="recent-activity-card__action">{localizeActivityAction(item.action, t)}</span>
                                     </p>
                                     <p className="recent-activity-card__time">{timeAgo(item.createdAt)}</p>
                                 </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { Button } from './common/Button/Button';
@@ -43,6 +43,7 @@ export const InitiativeCreateModal: React.FC<InitiativeCreateModalProps> = ({
     const [title, setTitle] = useState('');
     const [form, setForm] = useState<InitiativeFormState>(INITIAL_FORM);
     const [saving, setSaving] = useState(false);
+    const inFlightRef = useRef(false);
     const [error, setError] = useState<string | null>(null);
 
     const statusOptions = useMemo<SelectOption[]>(() => ([
@@ -110,8 +111,9 @@ export const InitiativeCreateModal: React.FC<InitiativeCreateModalProps> = ({
     };
 
     const handleCreate = async () => {
-        if (!validateForm()) return;
+        if (inFlightRef.current || !validateForm()) return;
 
+        inFlightRef.current = true;
         setSaving(true);
         try {
             const initiativeId = await createInitiative(
@@ -132,6 +134,7 @@ export const InitiativeCreateModal: React.FC<InitiativeCreateModalProps> = ({
             console.error('Failed to create initiative', createError);
             setError(t('initiatives.create.validation.createFailed'));
         } finally {
+            inFlightRef.current = false;
             setSaving(false);
         }
     };

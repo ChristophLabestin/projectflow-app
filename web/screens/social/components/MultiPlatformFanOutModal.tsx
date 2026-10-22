@@ -227,7 +227,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                             </p>
                         </div>
                     </div>
-                    <button
+                    <button aria-label={t('common.close')}
                         onClick={onClose}
                         className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-hover transition-colors text-muted"
                     >

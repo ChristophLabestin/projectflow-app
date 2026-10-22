@@ -245,7 +245,7 @@ export const ProjectEffort: React.FC = () => {
                                     <span className="material-symbols-outlined">lock</span>
                                 </span>
                             ) : (
-                                <button type="button" className="inv-icon-btn inv-icon-btn--danger" title={t('common.delete', 'Löschen')} onClick={() => removeRow(row.id)}>
+                                <button aria-label={t('common.delete', 'Löschen')} type="button" className="inv-icon-btn inv-icon-btn--danger" title={t('common.delete', 'Löschen')} onClick={() => removeRow(row.id)}>
                                     <span className="material-symbols-outlined">delete</span>
                                 </button>
                             )}

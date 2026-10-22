@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 
 import { Modal } from '../common/Modal/Modal';
 import { Button } from '../common/Button/Button';
@@ -7,13 +7,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useToast } from '../../context/UIContext';
 import { acceptInvitation } from '../../services/domain/workspacesService';
+import { initialsOf } from '../../utils/initials';
 
-const initials = (name: string) => name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'W';
+const initials = (name: string) => initialsOf(name, 'W');
 
 /**
  * Workspace list for the sidebar switcher: switch, accept pending invitations
@@ -26,10 +22,12 @@ export const WorkspaceMenuSection = () => {
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [name, setName] = useState('');
     const [busyId, setBusyId] = useState<string | null>(null);
+    const createInFlightRef = useRef(false);
 
     const handleCreate = async (event?: React.FormEvent) => {
         event?.preventDefault();
-        if (!name.trim()) return;
+        if (!name.trim() || busyId === 'create' || createInFlightRef.current) return;
+        createInFlightRef.current = true;
         setBusyId('create');
         try {
             const id = await createWorkspace(name);
@@ -37,6 +35,7 @@ export const WorkspaceMenuSection = () => {
         } catch (error) {
             console.error(error);
             showError(t('workspace.create.error'));
+            createInFlightRef.current = false;
             setBusyId(null);
         }
     };

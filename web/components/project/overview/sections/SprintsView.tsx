@@ -6,6 +6,7 @@ import type { Sprint, Task } from '../../../../types';
 import type { OverviewMember } from '../hooks/useProjectMembers';
 import type { OverviewLabels } from '../hooks/useProjectOverviewLabels';
 import { parseDateValue } from '../../../../utils/taskDates';
+import { initialOf } from '../../../../utils/initials';
 
 type SprintsViewProps = {
     sprints: Sprint[];
@@ -69,7 +70,7 @@ const Avatars: React.FC<{ ids: string[]; members: OverviewMember[] }> = ({ ids, 
                         title={name}
                         style={member?.photoURL ? { backgroundImage: `url(${member.photoURL})` } : undefined}
                     >
-                        {!member?.photoURL && name.trim().charAt(0).toUpperCase()}
+                        {!member?.photoURL && initialOf(name, '')}
                     </span>
                 );
             })}

@@ -1017,7 +1017,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                                 onClick={() => addBlock(comp.block.type as EmailBlockType, comp.block)}
                                                 savedBlock={comp.block}
                                             />
-                                            <button
+                                            <button aria-label="Delete Component"
                                                 onClick={(e) => { e.stopPropagation(); handleDeleteComponent(comp.id); }}
                                                 className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
                                                 title="Delete Component"
@@ -1045,10 +1045,10 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                     {/* Left: View Controls & History */}
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-0.5">
-                            <button onClick={undo} disabled={!canUndo} className={`p-1.5 rounded-lg transition-colors ${!canUndo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Undo">
+                            <button aria-label="Undo" onClick={undo} disabled={!canUndo} className={`p-1.5 rounded-lg transition-colors ${!canUndo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Undo">
                                 <span className="material-symbols-outlined text-[18px]">undo</span>
                             </button>
-                            <button onClick={redo} disabled={!canRedo} className={`p-1.5 rounded-lg transition-colors ${!canRedo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Redo">
+                            <button aria-label="Redo" onClick={redo} disabled={!canRedo} className={`p-1.5 rounded-lg transition-colors ${!canRedo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Redo">
                                 <span className="material-symbols-outlined text-[18px]">redo</span>
                             </button>
                         </div>

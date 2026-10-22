@@ -191,7 +191,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                         <div className="project-labels__actions">
                                             {editingLabelId === label.id ? (
                                                 <div className="project-labels__edit-actions">
-                                                    <button
+                                                    <button aria-label={t('common.cancel')}
                                                         type="button"
                                                         onClick={() => setEditingLabelId(null)}
                                                         className="project-labels__icon-btn"
@@ -199,7 +199,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     >
                                                         <span className="material-symbols-outlined">close</span>
                                                     </button>
-                                                    <button
+                                                    <button aria-label={t('projectLabels.actions.save')}
                                                         type="button"
                                                         onClick={() => handleUpdateLabel(label.id, { name: editName.trim(), color: editColor })}
                                                         disabled={!editName.trim() || isSaving}
@@ -211,7 +211,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                 </div>
                                             ) : (
                                                 <div className="project-labels__view-actions">
-                                                    <button
+                                                    <button aria-label={t('common.edit')}
                                                         type="button"
                                                         onClick={() => {
                                                             setEditingLabelId(label.id);
@@ -222,7 +222,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     >
                                                         <span className="material-symbols-outlined">edit</span>
                                                     </button>
-                                                    <button
+                                                    <button aria-label={t('common.delete')}
                                                         type="button"
                                                         onClick={() => handleDeleteLabel(label.id)}
                                                         className="project-labels__icon-btn project-labels__icon-btn--danger"

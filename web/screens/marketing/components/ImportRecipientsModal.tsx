@@ -202,7 +202,7 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
             <div className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full border border-surface flex flex-col max-h-[90vh]">
                 <div className="flex justify-between items-center p-6 border-b border-surface">
                     <h2 className="text-xl font-bold">{t('marketing.importRecipients.title')}</h2>
-                    <button onClick={onClose} className="text-muted hover:text-main">
+                    <button aria-label={t('common.close')} onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>

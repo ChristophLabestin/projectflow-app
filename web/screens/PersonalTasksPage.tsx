@@ -246,7 +246,7 @@ export const PersonalTasksPage = () => {
                             className="group bg-surface-paper hover:bg-surface-hover border border-surface rounded-xl p-4 flex items-center gap-4 transition-all shadow-sm hover:shadow-md relative cursor-pointer"
                         >
                             {/* Checkbox */}
-                            <button
+                            <button aria-label={t('common.save')}
                                 onClick={(e) => handleToggle(e, task.id, task.isCompleted)}
                                 className={`
                                     flex-shrink-0 size-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300
@@ -325,7 +325,7 @@ export const PersonalTasksPage = () => {
                                 </div>
 
                                 {/* Delete Button */}
-                                <button
+                                <button aria-label={t('personalTasks.actions.delete')}
                                     onClick={(e) => handleDelete(e, task.id)}
                                     className="p-2 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-500 transition-all"
                                     title={t('personalTasks.actions.delete')}

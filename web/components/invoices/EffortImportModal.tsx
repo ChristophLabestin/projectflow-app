@@ -139,7 +139,7 @@ export const EffortImportModal: React.FC<EffortImportModalProps> = ({ isOpen, on
 
                     <div className="effort-import__list">
                         <label className="effort-import__row effort-import__row--head">
-                            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                            <input type="checkbox" aria-label={t('common.selectAll')} checked={allSelected} onChange={toggleAll} />
                             <span>{t('effort.col.date', 'Datum')}</span>
                             <span>{t('effort.col.task', 'Aufgabe')}</span>
                             <span className="is-num">{t('effort.col.duration', 'Dauer')}</span>
@@ -147,7 +147,7 @@ export const EffortImportModal: React.FC<EffortImportModalProps> = ({ isOpen, on
                         </label>
                         {entries.map(e => (
                             <label className="effort-import__row" key={e.id}>
-                                <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggle(e.id)} />
+                                <input type="checkbox" aria-label={t('common.select')} checked={selected.has(e.id)} onChange={() => toggle(e.id)} />
                                 <span>{formatInvoiceDate(e.date)}</span>
                                 <span className="effort-import__task">{e.task}</span>
                                 <span className="is-num">{e.durationValue ? `${formatNumber(e.durationValue)} ${e.durationUnit}` : '—'}</span>

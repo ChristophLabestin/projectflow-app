@@ -840,7 +840,7 @@ Only include fields that need to be updated. Be intelligent about what to change
                                                     <span className="material-symbols-outlined">chat</span>
                                                     Refine Blueprint
                                                 </h3>
-                                                <button
+                                                <button aria-label={t('common.close')}
                                                     type="button"
                                                     className="ai-studio__suggestion-chip ai-studio__suggestion-chip--back"
                                                     onClick={() => {

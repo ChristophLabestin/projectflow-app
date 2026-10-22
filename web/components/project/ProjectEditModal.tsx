@@ -847,7 +847,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             <div className="project-edit-modal__media-overlay">
                                                 <span className="project-edit-modal__media-overlay-text">{t('projectSettings.appearance.coverChange')}</span>
                                             </div>
-                                            <button
+                                            <button aria-label={t('common.close')}
                                                 type="button"
                                                 className="project-edit-modal__media-remove"
                                                 onClick={(e) => { e.stopPropagation(); setCoverImage(undefined); }}
@@ -888,7 +888,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             <div className="project-edit-modal__media-overlay">
                                                 <span className="project-edit-modal__media-overlay-text">{t('projectSettings.appearance.iconChange')}</span>
                                             </div>
-                                            <button
+                                            <button aria-label={t('common.close')}
                                                 type="button"
                                                 className="project-edit-modal__media-remove project-edit-modal__media-remove--compact"
                                                 onClick={(e) => { e.stopPropagation(); setSquareIcon(undefined); }}
@@ -1194,7 +1194,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <button
+                                        <button aria-label={t('common.delete')}
                                             type="button"
                                             onClick={() => setLinks(links.filter((_, i) => i !== idx))}
                                             className="project-edit-modal__resource-remove"
@@ -1285,7 +1285,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 </div>
                                             </div>
                                         )}
-                                        <button
+                                        <button aria-label={t('common.delete')}
                                             type="button"
                                             onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
                                             className="project-edit-modal__resource-remove"

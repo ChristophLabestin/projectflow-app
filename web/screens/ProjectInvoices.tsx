@@ -167,12 +167,12 @@ export const ProjectInvoices: React.FC = () => {
                             </span>
                             <span className="is-num">{formatCurrency(computeInvoiceTotals(inv).gross, inv.currency)}</span>
                             <span className="is-actions" onClick={(e) => e.stopPropagation()}>
-                                <button type="button" className="inv-icon-btn" title={t('invoice.builder.downloadPdf', 'PDF')} disabled={busyId === inv.id} onClick={() => handleDownload(inv)}>
+                                <button aria-label={t('invoice.builder.downloadPdf', 'PDF')} type="button" className="inv-icon-btn" title={t('invoice.builder.downloadPdf', 'PDF')} disabled={busyId === inv.id} onClick={() => handleDownload(inv)}>
                                     <span className="material-symbols-outlined">picture_as_pdf</span>
                                 </button>
                                 {inv.status === 'draft'
                                     ? (
-                                        <button type="button" className="inv-icon-btn inv-icon-btn--danger" title={t('common.delete', 'Löschen')} onClick={() => setDeleteTarget(inv)}>
+                                        <button aria-label={t('common.delete', 'Löschen')} type="button" className="inv-icon-btn inv-icon-btn--danger" title={t('common.delete', 'Löschen')} onClick={() => setDeleteTarget(inv)}>
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     )

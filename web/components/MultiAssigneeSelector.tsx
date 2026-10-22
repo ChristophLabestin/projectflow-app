@@ -9,6 +9,7 @@ import { auth } from '../services/firebase';
 import { Input } from './ui/Input';
 import { useLanguage } from '../context/LanguageContext';
 import './multi-assignee-selector.scss';
+import { initialOf } from '../utils/initials';
 
 interface MultiAssigneeSelectorProps {
     projectId: string;
@@ -247,7 +248,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                                 <img src={user.photoURL} alt="" className="assignee-select__avatar-image" />
                                             ) : (
                                                 <span className="assignee-select__avatar-fallback">
-                                                    {user?.displayName?.slice(0, 1) || t('assignees.unknownUser').slice(0, 1)}
+                                                    {initialOf(user?.displayName || t('assignees.unknownUser'))}
                                                 </span>
                                             )}
                                         </div>
@@ -325,7 +326,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                                     <img src={user.photoURL} alt="" className="assignee-select__avatar-image" />
                                                 ) : (
                                                     <span className="assignee-select__avatar-fallback">
-                                                        {user?.displayName?.slice(0, 1) || t('assignees.unknownUser').slice(0, 1)}
+                                                        {initialOf(user?.displayName || t('assignees.unknownUser'))}
                                                     </span>
                                                 )}
                                             </div>

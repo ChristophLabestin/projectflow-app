@@ -712,6 +712,8 @@ const deProjectOverview = {
     'projectOverview.reminders.reopen': 'Reminder wieder öffnen',
     'projectOverview.reminders.delete': 'Reminder löschen',
     'projectOverview.team.status.offline': 'Offline',
+    'projectOverview.execution.subtasksLabel': 'Unteraufgaben',
+    'projectOverview.delete.done': 'Projekt gelöscht.',
 };
 
 export default deProjectOverview;

@@ -76,7 +76,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                     </div>
 
                     {onDelete && (
-                        <button
+                        <button aria-label={t('common.delete')}
                             onClick={(e) => { e.stopPropagation(); onDelete(e); }}
                             className="text-yellow-600/60 hover:text-red-500 dark:text-yellow-500/50 dark:hover:text-red-400 transition-colors p-1"
                         >
@@ -159,7 +159,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         </div>
 
                         {onDelete && (
-                            <button
+                            <button aria-label={t('common.close')}
                                 onClick={(e) => { e.stopPropagation(); onDelete(e); }}
                                 className="text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                             >

@@ -243,13 +243,13 @@ export const SocialCalendar = () => {
             <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="flex bg-card rounded-lg border border-surface p-1">
-                        <button
+                        <button aria-label={t('common.previous')}
                             onClick={handlePrev}
                             className="p-1 hover:bg-surface-hover rounded"
                         >
                             <span className="material-symbols-outlined">chevron_left</span>
                         </button>
-                        <button
+                        <button aria-label={t('common.next')}
                             onClick={handleNext}
                             className="p-1 hover:bg-surface-hover rounded"
                         >

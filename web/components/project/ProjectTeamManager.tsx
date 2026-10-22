@@ -20,6 +20,7 @@ import { format } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../../services/rolesService';
 import { CustomRole } from '../../types';
 import './project-team-manager.scss';
+import { initialOf } from '../../utils/initials';
 
 interface ProjectTeamManagerProps {
     project: Project;
@@ -57,13 +58,20 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
         const unsubscribe = onSnapshot(projectRef, async (snap) => {
             if (snap.exists()) {
                 const data = snap.data() as Project;
-                const projectMembers = data.members || [];
+                const projectMembers = [...(data.members || [])];
+                // The project owner always appears as Owner (legacy string members default to Viewer).
+                if (data.ownerId && !projectMembers.some((m) => (typeof m === 'string' ? m : m.userId) === data.ownerId)) {
+                    projectMembers.unshift({ userId: data.ownerId, role: 'Owner' as ProjectRole, joinedAt: data.createdAt as any, invitedBy: 'System' });
+                }
 
                 // Fetch details for all members
                 const enriched = await Promise.all(projectMembers.map(async (m) => {
-                    const memberData = typeof m === 'string'
+                    const baseMember = typeof m === 'string'
                         ? { userId: m, role: 'Viewer' as ProjectRole, joinedAt: new Date(), invitedBy: 'System' }
                         : m;
+                    const memberData = data.ownerId && baseMember.userId === data.ownerId
+                        ? { ...baseMember, role: 'Owner' as ProjectRole }
+                        : baseMember;
 
                     try {
                         const profile = await getUserProfile(memberData.userId, resolvedTenant);
@@ -228,7 +236,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                     <img src={member.photoURL} alt={member.displayName} className="project-team__avatar-image" />
                                                 ) : (
                                                     <span className="project-team__avatar-fallback">
-                                                        {member.displayName?.charAt(0) || '?'}
+                                                        {initialOf(member.displayName)}
                                                     </span>
                                                 )}
                                             </div>

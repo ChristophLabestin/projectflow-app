@@ -18,11 +18,9 @@ import { generateProjectReport, getGeminiInsight } from '../services/geminiServi
 import { subscribeProjectSprints } from '../services/sprintService';
 import {
     Activity,
-    Idea,
     Initiative,
     Project,
     Task,
-    Issue,
     ProjectRole,
     GeminiReport,
     Milestone,
@@ -55,6 +53,7 @@ import { Checkbox } from '../components/common/Checkbox/Checkbox';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { InviteToWorkspaceModal } from '../components/workspace/InviteToWorkspaceModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
@@ -325,19 +324,9 @@ const resolveResumeStatus = (status?: ProjectStatus): ResumableProjectStatus => 
     return DEFAULT_RESUME_STATUS;
 };
 
-const getTypeBadgeClass = (type?: string) => {
-    const key = (type || '').toLowerCase();
-    if (key === 'feature') return 'type-badge--feature';
-    if (key === 'product') return 'type-badge--product';
-    if (key === 'marketing') return 'type-badge--marketing';
-    if (key === 'social') return 'type-badge--social';
-    if (key === 'moonshot') return 'type-badge--moonshot';
-    if (key === 'optimization') return 'type-badge--optimization';
-    if (key === 'paidads') return 'type-badge--paid-ads';
-    return 'type-badge--default';
-};
-
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
+import { initialOf } from '../utils/initials';
+import { localizeActivityAction } from '../utils/activityText';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'executionTasks',
@@ -441,8 +430,6 @@ const ProjectOverviewLegacy = () => {
     const { dateFormat, dateLocale, t, projectOverviewTranslationsReady, loadProjectOverviewTranslations } = useLanguage();
     const [insight, setInsight] = useState<string | null>(null);
     const [activity, setActivity] = useState<Activity[]>([]);
-    const [ideas, setIdeas] = useState<Idea[]>([]);
-    const [issues, setIssues] = useState<Issue[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [workspaceRoles, setWorkspaceRoles] = useState<CustomRole[]>([]);
@@ -489,6 +476,8 @@ const ProjectOverviewLegacy = () => {
 
     // Permission system
     const { can, isOwner } = useProjectPermissions(project);
+    const { isOwner: isWorkspaceOwner, isAdmin: isWorkspaceAdmin } = useWorkspacePermissions();
+    const canDeleteProject = isOwner || isWorkspaceOwner || isWorkspaceAdmin;
 
     const [showGalleryModal, setShowGalleryModal] = useState(false);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
@@ -962,8 +951,8 @@ const ProjectOverviewLegacy = () => {
                 project,
                 tasks,
                 milestones,
-                issues, // Assuming issues are available in scope
-                ideas,
+                [],
+                [],
                 activity,
                 teamMemberProfiles
             );
@@ -1385,8 +1374,12 @@ const ProjectOverviewLegacy = () => {
         if (!project) return;
         setDeletingProject(true);
         try {
-            await deleteProjectById(project.id, project.tenantId);
-            navigate('/projects');
+            const deletedId = project.id;
+            await deleteProjectById(deletedId, project.tenantId);
+            if (pinnedProjectId === deletedId) {
+                void unpinProject();
+            }
+            navigate('/projects', { replace: true });
         } catch (err) {
             console.error(err);
             setError(t('projectOverview.error.delete'));
@@ -1502,12 +1495,6 @@ const ProjectOverviewLegacy = () => {
         biweekly: t('projectOverview.contract.cadence.biweekly'),
         monthly: t('projectOverview.contract.cadence.monthly'),
         'ad-hoc': t('projectOverview.contract.cadence.adHoc')
-    }), [t]);
-    const issueStatusLabels = useMemo(() => ({
-        Open: t('projectIssues.status.open'),
-        'In Progress': t('projectIssues.status.inProgress'),
-        Resolved: t('projectIssues.status.resolved'),
-        Closed: t('projectIssues.status.closed')
     }), [t]);
     const taskStatusLabels = useMemo(() => ({
         Done: t('tasks.status.done'),
@@ -1689,21 +1676,9 @@ const ProjectOverviewLegacy = () => {
             return dateA - dateB;
         });
 
-    const recentIssues = issues
-        .filter(i => !['Resolved', 'Closed'].includes(i.status))
-        .sort((a, b) => {
-            const pA = priorityMap[a.priority || 'Medium'] || 0;
-            const pB = priorityMap[b.priority || 'Medium'] || 0;
-            if (pA !== pB) return pB - pA;
-            const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
-            const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
-            return dateA - dateB;
-        })
-        .slice(0, 5);
-
     type ProjectAttentionItem = {
         id: string;
-        kind: 'task' | 'issue' | 'initiative';
+        kind: 'task' | 'initiative';
         title: string;
         meta: string;
         badge: string;
@@ -1958,35 +1933,6 @@ const ProjectOverviewLegacy = () => {
                 dueTime: dueDate?.getTime() || Number.MAX_SAFE_INTEGER
             });
         }),
-        ...recentIssues.map((issue) => {
-            const dueValue = issue.dueDate || issue.scheduledDate;
-            const dueDate = dateKeyToDate(dueValue);
-            const overdue = Boolean(dueDate && dueDate < attentionToday);
-            const dueSoon = Boolean(dueDate && isWithinInterval(dueDate, { start: attentionToday, end: attentionDueSoonEnd }));
-            const urgent = issue.priority === 'Urgent';
-            const high = issue.priority === 'High';
-            const score = overdue ? 105 : urgent ? 95 : dueSoon ? 75 : high ? 55 : 0;
-            const dueLabel = formatAttentionDueLabel(dueValue, overdue);
-
-            return buildAttentionItem({
-                id: issue.id,
-                kind: 'issue',
-                title: issue.title,
-                meta: dueLabel || issueStatusLabels[issue.status] || issue.status,
-                badge: overdue
-                    ? t('projectOverview.attention.overdue')
-                    : urgent
-                        ? t('projectOverview.attention.urgent')
-                        : dueSoon
-                            ? t('projectOverview.attention.dueSoon')
-                            : t('projectOverview.attention.highPriority'),
-                href: `/project/${id}/issues/${issue.id}`,
-                icon: overdue ? 'event_busy' : 'bug_report',
-                tone: overdue || urgent ? 'danger' : 'warning',
-                score,
-                dueTime: dueDate?.getTime() || Number.MAX_SAFE_INTEGER
-            });
-        }),
         ...activeInitiatives.map((initiative) => {
             const dueDate = dateKeyToDate(initiative.dueDate);
             const overdue = Boolean(dueDate && dueDate < attentionToday && initiative.status !== 'Done');
@@ -2044,26 +1990,14 @@ const ProjectOverviewLegacy = () => {
     const secondaryAttentionItems = attentionItems.slice(1);
 
     const hasIssuesModule = !pmCoreOnly && project.modules?.includes('issues');
-    const hasIdeasModule = !pmCoreOnly && project.modules?.includes('ideas');
-    const openIssues = issues.filter(i => !['Resolved', 'Closed'].includes(i.status)).length;
     const pendingMilestones = milestones.filter(m => m.status !== 'Achieved');
-    const ideaHighlights = ideas.slice().sort((a, b) => b.votes - a.votes).slice(0, 4);
-    const topIdea = ideaHighlights[0];
     const showGithubCard = hasIssuesModule;
-    const showIdeaCard = Boolean(hasIdeasModule);
-    const showIssueCard = Boolean(hasIssuesModule);
-    const executionSideCards = Number(showIdeaCard) + Number(showIssueCard);
     const getExecutionCardVariant = (_cardId: ProjectOverviewCardId): ExecutionCardVariant => 'wide';
     const executionTasksVariant = getExecutionCardVariant('executionTasks');
-    const executionFlowsVariant = getExecutionCardVariant('executionFlows');
-    const executionIssuesVariant = getExecutionCardVariant('executionIssues');
     const executionTaskLimit = executionTasksVariant === 'wide' ? 6 : executionTasksVariant === 'balanced' ? 4 : 3;
-    const executionIssueLimit = executionIssuesVariant === 'wide' ? 5 : executionIssuesVariant === 'balanced' ? 4 : 3;
     const isExecutionTasksWide = executionTasksVariant === 'wide';
     const isExecutionTasksCompact = executionTasksVariant === 'compact';
     const isExecutionTasksBalanced = executionTasksVariant === 'balanced';
-    const isExecutionFlowsCompact = executionFlowsVariant === 'compact';
-    const isExecutionIssuesCompact = executionIssuesVariant === 'compact';
     const galleryAssets = projectAssets
         .map((url, index) => {
             const match = url.match(/(?:^|%2F)(\d+)_media_/);
@@ -2096,11 +2030,9 @@ const ProjectOverviewLegacy = () => {
         if (cardId === 'controls') {
             return isOwner;
         }
-        if (cardId === 'executionFlows') {
-            return Boolean(hasIdeasModule);
-        }
-        if (cardId === 'executionIssues') {
-            return Boolean(hasIssuesModule);
+        // Flows and Issues modules were removed; their legacy layout slots never render.
+        if (cardId === 'executionFlows' || cardId === 'executionIssues') {
+            return false;
         }
         return true;
     };
@@ -2428,176 +2360,6 @@ const ProjectOverviewLegacy = () => {
                 )}
             </>
         ),
-        executionFlows: (
-            <ProjectOverviewWorkspaceSection
-                title={t('projectOverview.execution.flowSpotlight')}
-                icon="emoji_objects"
-                actions={(
-                    <>
-                        {can('canManageIdeas') && (
-                            <button
-                                type="button"
-                                onClick={() => setShowFlowModal(true)}
-                                className="overview-workspace__icon-btn"
-                                aria-label={t('flows.actions.add')}
-                            >
-                                <span className="material-symbols-outlined">add</span>
-                            </button>
-                        )}
-                        <Link to={`/project/${id}/flows`} className="overview-workspace__link-btn">
-                            {t('projectOverview.execution.flowSpotlight')}
-                            <span className="material-symbols-outlined">arrow_forward</span>
-                        </Link>
-                    </>
-                )}
-            >
-                {topIdea ? (() => {
-                    const typeBadgeClass = getTypeBadgeClass(topIdea.type);
-                    return (
-                        <Link
-                            to={`/project/${id}/flows/${topIdea.id}`}
-                            className={`overview-workspace__flow-row flow-spotlight-card flow-spotlight-card--${executionFlowsVariant}`.trim()}
-                        >
-                            <div className="overview-workspace__cell--primary">
-                                <div className="overview-workspace__row-copy">
-                                    <strong>{topIdea.title}</strong>
-                                    {!isExecutionFlowsCompact && topIdea.description && (
-                                        <span>{topIdea.description}</span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="overview-workspace__cell--meta">
-                                <span className={`type-badge ${typeBadgeClass}`}>{topIdea.type}</span>
-                                {topIdea.stage && !isExecutionFlowsCompact && (
-                                    <span className="overview-workspace__pill">{topIdea.stage}</span>
-                                )}
-                            </div>
-                            {!isExecutionFlowsCompact && (
-                                <div className="overview-workspace__cell--meta">
-                                    <span className="overview-workspace__pill">
-                                        <span className="material-symbols-outlined">thumb_up</span>
-                                        {topIdea.votes || 0}
-                                    </span>
-                                    <span className="overview-workspace__pill">
-                                        <span className="material-symbols-outlined">chat_bubble</span>
-                                        {topIdea.comments || 0}
-                                    </span>
-                                </div>
-                            )}
-                        </Link>
-                    );
-                })() : (
-                    <div className="overview-workspace__empty">
-                        <span className="material-symbols-outlined">emoji_objects</span>
-                        <p>{t('projectOverview.execution.noFlows')}</p>
-                    </div>
-                )}
-            </ProjectOverviewWorkspaceSection>
-        ),
-        executionIssues: (
-            <ProjectOverviewWorkspaceSection
-                title={t('projectOverview.execution.issueFocus')}
-                icon="bug_report"
-                count={recentIssues.length}
-                actions={(
-                    <>
-                        {can('canManageIssues') && (
-                            <button
-                                type="button"
-                                onClick={() => setShowIssueModal(true)}
-                                className="overview-workspace__icon-btn"
-                                aria-label={t('projectIssues.actions.reportIssue')}
-                            >
-                                <span className="material-symbols-outlined">add</span>
-                            </button>
-                        )}
-                        <Link to={`/project/${id}/issues`} className="overview-workspace__link-btn">
-                            {t('projectOverview.execution.issueFocus')}
-                            <span className="material-symbols-outlined">arrow_forward</span>
-                        </Link>
-                    </>
-                )}
-            >
-                {recentIssues.length === 0 ? (
-                    <div className="overview-workspace__empty">
-                        <span className="material-symbols-outlined">bug_report</span>
-                        <p>{t('projectOverview.execution.noOpenIssues')}</p>
-                    </div>
-                ) : (
-                    <div className="overview-workspace__table">
-                        <div className="overview-workspace__table-head">
-                            <span>{t('projectOverview.workspace.columns.title')}</span>
-                            <span>{t('projectOverview.workspace.columns.status')}</span>
-                            <span>{t('projectOverview.workspace.columns.priority')}</span>
-                            <span>{t('projectOverview.workspace.columns.due')}</span>
-                        </div>
-                        {recentIssues.slice(0, executionIssueLimit).map((issue) => {
-                            const dueDateStr = issue.dueDate || issue.scheduledDate;
-                            const dueDate = dueDateStr ? new Date(dueDateStr) : null;
-                            const isResolved = ['Resolved', 'Closed'].includes(issue.status);
-                            const isOverdue = Boolean(dueDate && isDateOverdue(dueDate) && !isResolved);
-                            const priorityKey = issue.priority?.toLowerCase() || '';
-                            const priorityClass = priorityKey === 'urgent'
-                                ? 'is-urgent'
-                                : priorityKey === 'high'
-                                    ? 'is-high'
-                                    : '';
-
-                            return (
-                                <div
-                                    key={issue.id}
-                                    onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                    className="overview-workspace__table-row"
-                                >
-                                    <div className="overview-workspace__cell--primary">
-                                        <div className="overview-workspace__row-copy">
-                                            <strong>{issue.title}</strong>
-                                        </div>
-                                    </div>
-                                    <span className="overview-workspace__pill">
-                                        {issueStatusLabels[issue.status] || issue.status}
-                                    </span>
-                                    <span className={`overview-workspace__pill ${priorityClass}`.trim()}>
-                                        {issue.priority ? (priorityLabels[issue.priority] || issue.priority) : '—'}
-                                    </span>
-                                    <div className="overview-workspace__cell--meta overview-workspace__row-actions">
-                                        {dueDate ? (
-                                            <span className={isOverdue ? 'is-overdue' : ''}>
-                                                {format(dueDate, dateFormat, { locale: dateLocale })}
-                                            </span>
-                                        ) : (
-                                            <span>—</span>
-                                        )}
-                                        <button
-                                            type="button"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (isPinned(issue.id)) {
-                                                    unpinItem(issue.id);
-                                                } else {
-                                                    pinItem({
-                                                        id: issue.id,
-                                                        type: 'issue',
-                                                        title: issue.title,
-                                                        projectId: id!,
-                                                        tenantId: issue.tenantId || project?.tenantId,
-                                                        priority: issue.priority
-                                                    });
-                                                }
-                                            }}
-                                            className={`overview-workspace__icon-btn ${isPinned(issue.id) ? 'is-pinned' : ''}`.trim()}
-                                            title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
-                                        >
-                                            <span className="material-symbols-outlined">push_pin</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-            </ProjectOverviewWorkspaceSection>
-        ),
         updates: (
             <section className="updates-section">
                 <div className="section-header-simple">
@@ -2629,7 +2391,7 @@ const ProjectOverviewLegacy = () => {
                                         </div>
                                         <div className="activity-content">
                                             <p className="activity-text">
-                                                <span className="activity-user">{item.user}</span> {item.action}
+                                                <span className="activity-user">{item.user}</span> {localizeActivityAction(item.action, t)}
                                             </p>
                                             <p className="activity-time">{timeAgo(item.createdAt)}</p>
                                         </div>
@@ -2804,7 +2566,7 @@ const ProjectOverviewLegacy = () => {
                                 </div>
                             ))}
                             {projectAssets.length < 3 && (
-                                <button onClick={() => setShowMediaLibrary(true)} className="add-btn">
+                                <button aria-label={t('common.add')} onClick={() => setShowMediaLibrary(true)} className="add-btn">
                                     <span className="material-symbols-outlined">add</span>
                                 </button>
                             )}
@@ -2823,7 +2585,7 @@ const ProjectOverviewLegacy = () => {
                         <h3 className="planning-card__title">{t('projectOverview.planning.title')}</h3>
                     </div>
                     {isOwner && (
-                        <button
+                        <button aria-label={t('projectOverview.planning.editDates')}
                             onClick={() => {
                                 setEditModalTab('general');
                                 setShowEditModal(true);
@@ -2932,7 +2694,7 @@ const ProjectOverviewLegacy = () => {
                                                 </div>
 
                                                 {isFirst && (
-                                                    <button
+                                                    <button aria-label={t('projectOverview.milestones.markAchieved')}
                                                         onClick={() => handleToggleMilestone(milestone)}
                                                         className="milestone-action"
                                                         title={t('projectOverview.milestones.markAchieved')}
@@ -2996,7 +2758,7 @@ const ProjectOverviewLegacy = () => {
                     </h3>
                     <div className="team-card__actions">
                         {can('canInvite') && (
-                            <button
+                            <button aria-label={t('projectOverview.team.invite')}
                                 onClick={handleInvite}
                                 className="icon-btn"
                                 title={t('projectOverview.team.invite')}
@@ -3046,7 +2808,7 @@ const ProjectOverviewLegacy = () => {
                                             />
                                         ) : (
                                             <div className={`avatar-placeholder ${isOnline ? 'is-online' : ''}`}>
-                                                {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                                                {initialOf(member.displayName)}
                                             </div>
                                         )}
                                         {isOnline && (
@@ -3086,7 +2848,7 @@ const ProjectOverviewLegacy = () => {
                                             {m.photoURL ? (
                                                 <img src={m.photoURL} alt="" className="view-all-avatar__image" />
                                             ) : (
-                                                <div className="view-all-avatar__fallback">{m.displayName?.charAt(0)}</div>
+                                                <div className="view-all-avatar__fallback">{initialOf(m.displayName)}</div>
                                             )}
                                         </div>
                                     ))}
@@ -3757,7 +3519,7 @@ const ProjectOverviewLegacy = () => {
                         <span className="material-symbols-outlined">domain</span>
                         {t('projectOverview.company.contextTitle')}
                     </h2>
-                    <button
+                    <button aria-label={t('projectOverview.startup.briefing.editAction')}
                         type="button"
                         className="project-overview__company-context-action-icon"
                         onClick={() => openFoundingBrief()}
@@ -4487,6 +4249,19 @@ const ProjectOverviewLegacy = () => {
                                                     </Button>
                                                 </>
                                             )}
+                                            {canDeleteProject && (
+                                                <Button
+                                                    type="button"
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    className="project-overview-compact-hero__action-button project-delete-btn"
+                                                    onClick={() => setShowDeleteModal(true)}
+                                                    aria-label={t('projectOverview.delete.title')}
+                                                    title={t('projectOverview.delete.title')}
+                                                >
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -4527,7 +4302,7 @@ const ProjectOverviewLegacy = () => {
                                         {project.squareIcon ? (
                                             <img src={project.squareIcon} alt="" />
                                         ) : (
-                                            <span className="icon-placeholder-text">{project.title.charAt(0)}</span>
+                                            <span className="icon-placeholder-text">{initialOf(project.title)}</span>
                                         )}
                                     </div>
                                 </div>
@@ -4640,6 +4415,19 @@ const ProjectOverviewLegacy = () => {
                                         <span className="material-symbols-outlined">settings</span>
                                     </Button>
                                 )}
+                                {canDeleteProject && (
+                                            <Button
+                                                type="button"
+                                                size="icon"
+                                                variant="ghost"
+                                                className="project-delete-btn"
+                                                onClick={() => setShowDeleteModal(true)}
+                                                aria-label={t('projectOverview.delete.title')}
+                                                title={t('projectOverview.delete.title')}
+                                            >
+                                                <span className="material-symbols-outlined">delete</span>
+                                            </Button>
+                                        )}
                             </div>
                         </div>
                     </div>
@@ -4701,7 +4489,7 @@ const ProjectOverviewLegacy = () => {
                                             <>
                                                 <img src={projectAssets[selectedImageIndex]} alt={t('projectOverview.gallery.imageAlt')} />
                                                 {selectedImageIndex > 0 && (
-                                                    <button
+                                                    <button aria-label={t('common.previous')}
                                                         className="nav-btn prev"
                                                         onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex - 1); }}
                                                     >
@@ -4709,7 +4497,7 @@ const ProjectOverviewLegacy = () => {
                                                     </button>
                                                 )}
                                                 {selectedImageIndex < projectAssets.length - 1 && (
-                                                    <button
+                                                    <button aria-label={t('common.next')}
                                                         className="nav-btn next"
                                                         onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex + 1); }}
                                                     >

@@ -226,14 +226,14 @@ export const RecipientList = () => {
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button
+                                            <button aria-label={t('marketing.recipientList.actions.edit')}
                                                 onClick={() => setEditingRecipient(recipient)}
                                                 className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors"
                                                 title={t('marketing.recipientList.actions.edit')}
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
                                             </button>
-                                            <button
+                                            <button aria-label={t('marketing.recipientList.actions.delete')}
                                                 onClick={() => handleDelete(recipient.id)}
                                                 className="p-1.5 text-muted hover:text-red-500 hover:bg-surface-hover rounded transition-colors"
                                                 title={t('marketing.recipientList.actions.delete')}

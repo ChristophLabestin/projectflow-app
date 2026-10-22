@@ -13,6 +13,7 @@ import { getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
 import { notifyMention } from '../services/notificationService';
 import { useToast } from '../context/UIContext';
+import { initialOf } from '../utils/initials';
 
 // Simple time formatter if date-fns is not available or to reduce deps
 const timeAgo = (date: any) => {
@@ -351,7 +352,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                             >
                                 {!comment.userPhotoURL && (
                                     <div className="flex items-center justify-center w-full h-full text-[12px] font-bold text-[var(--color-text-subtle)]">
-                                        {(comment.userDisplayName || 'U')[0].toUpperCase()}
+                                        {initialOf(comment.userDisplayName, 'U')}
                                     </div>
                                 )}
                             </div>
@@ -364,7 +365,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         {timeAgo(comment.createdAt)}
                                     </span>
                                     {(isProjectOwner || user?.uid === comment.userId) && (
-                                        <button
+                                        <button aria-label="Delete comment"
                                             onClick={() => handleDelete(comment.id)}
                                             className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-opacity"
                                             title="Delete comment"
@@ -455,7 +456,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                     : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
                             `}
                         >
-                            Send
+                            {t('common.send')}
                         </button>
                     </div>
                 </div>

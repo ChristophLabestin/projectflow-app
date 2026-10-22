@@ -91,7 +91,7 @@ export const CampaignList = () => {
                                 {getSocialCampaignStatusLabel(c.status, t)}
                             </span>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
+                                <button aria-label={t('social.campaignList.editTitle')}
                                     className="text-muted hover:bg-surface-hover p-1 rounded-full"
                                     onClick={(e) => handleEdit(e, c)}
                                     title={t('social.campaignList.editTitle')}
@@ -99,7 +99,7 @@ export const CampaignList = () => {
                                     <span className="material-symbols-outlined text-base">edit</span>
                                 </button>
                                 {(c.status === 'Planning' || c.status === 'Backlog') && (
-                                    <button
+                                    <button aria-label={t('social.campaignList.deleteTitle')}
                                         className="text-muted hover:bg-red-50 hover:text-red-500 p-1 rounded-full"
                                         onClick={(e) => handleDelete(e, c)}
                                         title={t('social.campaignList.deleteTitle')}

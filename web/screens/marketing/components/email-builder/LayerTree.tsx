@@ -185,7 +185,7 @@ export const LayerTree: React.FC<LayerTreeProps> = ({ blocks, selectedId, onSele
             {/* Toolbar */}
             <div className="px-4 py-2 flex items-center gap-1 border-b border-zinc-100 dark:border-zinc-800 mb-2">
                 <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex-1">Layers</div>
-                <button
+                <button aria-label="Delete Selected"
                     onClick={() => canDelete && onDelete(selectedId!)}
                     disabled={!canDelete}
                     className={`p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors ${!canDelete ? 'opacity-30 cursor-not-allowed' : 'text-red-500 cursor-pointer pointer-events-auto'}`}

@@ -1,3 +1,4 @@
+import { useLanguage } from '../context/LanguageContext';
 import React, { useState, useEffect } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
@@ -44,6 +45,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     const [activeTab, setActiveTab] = useState<TabId>('general');
     const [saving, setSaving] = useState(false);
     const { showSuccess, showError } = useToast();
+    const { t } = useLanguage();
 
     // Form State
     const [displayName, setDisplayName] = useState(initialData.displayName);
@@ -331,7 +333,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                             {skills.map(skill => (
                                 <div key={skill} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium border border-primary/20">
                                     {skill}
-                                    <button onClick={() => removeSkill(skill)} className="hover:text-rose-500 transition-colors flex items-center">
+                                    <button type="button" aria-label={t('common.remove')} onClick={() => removeSkill(skill)} className="hover:text-rose-500 transition-colors flex items-center">
                                         <span className="material-symbols-outlined text-[16px]">close</span>
                                     </button>
                                 </div>

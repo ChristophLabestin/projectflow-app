@@ -1,3 +1,4 @@
+import { useTenantDeepLink } from '../hooks/useTenantDeepLink';
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 'react-router-dom';
 import '../src/styles/components/_project-task-detail.scss';
@@ -26,6 +27,7 @@ import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { getInitiativeById } from '../services/dataService';
 import { AdvancedEditorRuntime } from '../components/editor/AdvancedEditorRuntime';
 import { parseDateValue } from '../utils/taskDates';
+import { localizeActivityAction } from '../utils/activityText';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -88,6 +90,7 @@ export const ProjectTaskDetail = () => {
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
+    const deepLink = useTenantDeepLink();
     const { dateFormat, dateLocale, t } = useLanguage();
     const [task, setTask] = useState<Task | null>(null);
     const [subTasks, setSubTasks] = useState<SubTask[]>([]);
@@ -566,7 +569,18 @@ export const ProjectTaskDetail = () => {
         }
     }, [task, setTaskTitle]);
 
-    if (loading) {
+    if (deepLink.noAccess) {
+        return (
+            <div className="task-detail__empty">
+                <h3 className="task-detail__empty-title">{t('projectOverview.error.unauthorized')}</h3>
+                <Button variant="secondary" onClick={() => navigate('/projects')}>
+                    {t('projectOverview.unauthorized.back')}
+                </Button>
+            </div>
+        );
+    }
+
+    if (loading || deepLink.switching) {
         return (
             <div className="task-detail__loading">
                 <span className="task-detail__spinner" aria-hidden="true" />
@@ -807,7 +821,7 @@ export const ProjectTaskDetail = () => {
                                             </>
                                         )}
                                     </div>
-                                    <button type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
+                                    <button aria-label={t('taskDetail.subtasks.delete')} type="button" onClick={() => handleDeleteSubTask(sub.id)} className="task-detail__subtask-delete" title={t('taskDetail.subtasks.delete')}>
                                         <span className="material-symbols-outlined">close</span>
                                     </button>
                                 </div>
@@ -1012,7 +1026,7 @@ export const ProjectTaskDetail = () => {
                                     <span key={catName} className="task-detail__label-pill" style={{ color }}>
                                         <span className="task-detail__label-dot" style={{ backgroundColor: color }} />
                                         <span>{catName}</span>
-                                        <button
+                                        <button aria-label={t('common.close')}
                                             type="button"
                                             onClick={() => {
                                                 const next = filteredCats.filter(c => c !== catName);
@@ -1068,7 +1082,7 @@ export const ProjectTaskDetail = () => {
                                     <strong>{linkedMilestone.title}</strong>
                                     {linkedMilestone.dueDate && <small>{t('taskDetail.details.milestone.duePrefix').replace('{date}', format(parseDateValue(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}</small>}
                                 </div>
-                                <button type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
+                                <button aria-label={t('taskDetail.details.milestone.unlink')} type="button" onClick={() => handleUnlinkMilestone(linkedMilestone.id)} title={t('taskDetail.details.milestone.unlink')} style={{ background: 'transparent', border: 0, color: 'var(--color-text-subtle)', cursor: 'pointer' }}>
                                     <span className="material-symbols-outlined">link_off</span>
                                 </button>
                             </div>
@@ -1209,7 +1223,7 @@ const ActivityList: React.FC<{ activities: Activity[]; compact: boolean }> = ({ 
                         </div>
                         <div className="task-detail__activity-content">
                             <div>
-                                <strong>{item.user}</strong> <span>{item.action}</span>
+                                <strong>{item.user}</strong> <span>{localizeActivityAction(item.action, t)}</span>
                             </div>
                             <time>{timeAgo(item.createdAt)}</time>
                         </div>

@@ -629,7 +629,7 @@ export const ProjectTasks = () => {
                             </span>
                         </button>
                     )}
-                    <button
+                    <button aria-label={t('common.save')}
                         type="button"
                         onClick={(e) => { e.stopPropagation(); handleToggle(task); }}
                         disabled={!can('canManageTasks')}
@@ -1013,7 +1013,7 @@ export const ProjectTasks = () => {
                             </button>
                         )}
                         {can('canManageTasks') && (
-                            <button
+                            <button aria-label={t('common.delete')}
                                 type="button"
                                 onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
                                 className="action-btn action-btn--delete"
@@ -1339,7 +1339,7 @@ export const ProjectTasks = () => {
                                     <div className="task-pill-editor__eyebrow">{t(`projectTasks.editor.${taskPillEditor.type}.eyebrow`)}</div>
                                     <strong className="task-pill-editor__title">{editingTask.title}</strong>
                                 </div>
-                                <button type="button" className="task-pill-editor__close" onClick={() => setTaskPillEditor(null)}>
+                                <button aria-label={t('common.close')} type="button" className="task-pill-editor__close" onClick={() => setTaskPillEditor(null)}>
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
@@ -1479,7 +1479,7 @@ export const ProjectTasks = () => {
                                                 disabled={savingInlineTaskId === editingTask.id}
                                                 onChange={(event) => handleQuickDateChange(editingTask, 'startDate', event.target.value)}
                                             />
-                                            <button
+                                            <button aria-label={t('projectTasks.actions.clearStartDate')}
                                                 type="button"
                                                 className="quick-date-field__clear"
                                                 disabled={savingInlineTaskId === editingTask.id || !editingTaskStartDate}
@@ -1502,7 +1502,7 @@ export const ProjectTasks = () => {
                                                 disabled={savingInlineTaskId === editingTask.id}
                                                 onChange={(event) => handleQuickDateChange(editingTask, 'dueDate', event.target.value)}
                                             />
-                                            <button
+                                            <button aria-label={t('projectTasks.actions.clearDueDate')}
                                                 type="button"
                                                 className="quick-date-field__clear"
                                                 disabled={savingInlineTaskId === editingTask.id || !editingTaskDueDate}

@@ -791,7 +791,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             />
 
             <div className="media-library__asset-actions">
-                <button
+                <button aria-label={t('mediaLibrary.gallery.actions.copy')}
                     onClick={(e) => {
                         e.stopPropagation();
                         navigator.clipboard.writeText(asset.url);
@@ -802,7 +802,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 >
                     <span className="material-symbols-outlined">link</span>
                 </button>
-                <button
+                <button aria-label={t('mediaLibrary.gallery.actions.download')}
                     onClick={(e) => {
                         e.stopPropagation();
                         downloadFile(asset.url, asset.name);
@@ -812,7 +812,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 >
                     <span className="material-symbols-outlined">download</span>
                 </button>
-                <button
+                <button aria-label={t('mediaLibrary.gallery.actions.edit')}
                     onClick={(e) => {
                         e.stopPropagation();
                         setEditingImage(asset);
@@ -822,7 +822,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 >
                     <span className="material-symbols-outlined">edit</span>
                 </button>
-                <button
+                <button aria-label={t('mediaLibrary.gallery.actions.delete')}
                     onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteImage(asset);
@@ -866,7 +866,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             </p>
                         </div>
                     </div>
-                    <button
+                    <button aria-label={t('mediaLibrary.actions.close')}
                         onClick={onClose}
                         className="media-library__close"
                         title={t('mediaLibrary.actions.close')}
@@ -1261,7 +1261,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                                     <span className="material-symbols-outlined">save_alt</span>
                                                                     {t('mediaLibrary.ai.results.save')}
                                                                 </button>
-                                                                <button
+                                                                <button aria-label={t('mediaLibrary.ai.results.open')}
                                                                     onClick={() => window.open(url, '_blank')}
                                                                     className="media-library__ai-open"
                                                                     title={t('mediaLibrary.ai.results.open')}

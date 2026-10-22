@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { Button } from './common/Button/Button';
@@ -60,11 +60,13 @@ export const QuickProjectCreate: React.FC<QuickProjectCreateProps> = ({ onClose,
     const [templateId, setTemplateId] = useState<ProjectTemplateId>('blank');
     const [withStarterTasks, setWithStarterTasks] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const inFlightRef = useRef(false);
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         const title = name.trim();
-        if (!title || submitting) return;
+        if (!title || submitting || inFlightRef.current) return;
+        inFlightRef.current = true;
         setSubmitting(true);
         try {
             const template = getProjectTemplateDefinition(templateId);
@@ -96,6 +98,7 @@ export const QuickProjectCreate: React.FC<QuickProjectCreateProps> = ({ onClose,
             showToast(t('createProjectWizard.toast.created').replace('{name}', title), 'success');
         } catch (error) {
             console.error(error);
+            inFlightRef.current = false;
             setSubmitting(false);
             showToast(t('createProjectWizard.errors.createProject'), 'error');
         }

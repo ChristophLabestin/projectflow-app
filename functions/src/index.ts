@@ -209,3 +209,4 @@ export * from './passkeys';
 export { mcp } from './mcp-server';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';
+export { deleteProject } from './project-delete';

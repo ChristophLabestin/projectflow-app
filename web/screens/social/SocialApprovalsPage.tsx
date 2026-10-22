@@ -81,7 +81,7 @@ export const SocialApprovalsPage = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <button
+                        <button aria-label={t('common.back')}
                             onClick={() => navigate(`/project/${projectId}/social`)}
                             className="text-muted hover:text-main transition-colors"
                         >
@@ -151,7 +151,7 @@ export const SocialApprovalsPage = () => {
 
                             {/* Hover Actions */}
                             <div className="absolute top-4 right-12 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                                <button
+                                <button aria-label={t('social.approvals.reviewBtn')}
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         setPreviewPost(post);

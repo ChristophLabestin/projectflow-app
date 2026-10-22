@@ -10,6 +10,7 @@ import { getActiveTenantId } from '../../services/domain/authService';
 import { auth } from '../../services/firebase';
 import { useLanguage } from '../../context/LanguageContext';
 import { useConfirm } from '../../context/UIContext';
+import { initialOf } from '../../utils/initials';
 
 interface ProjectGroupManagerProps {
     projectId: string;
@@ -69,10 +70,10 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
                             </div>
                             {canManage && (
                                 <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleEdit(group)} className="p-1 hover:bg-surface-hover rounded text-muted hover:text-primary">
+                                    <button aria-label={t('common.edit')} onClick={() => handleEdit(group)} className="p-1 hover:bg-surface-hover rounded text-muted hover:text-primary">
                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                     </button>
-                                    <button onClick={() => handleDelete(group.id)} className="p-1 hover:bg-rose-100 rounded text-muted hover:text-rose-600">
+                                    <button aria-label={t('common.delete')} onClick={() => handleDelete(group.id)} className="p-1 hover:bg-rose-100 rounded text-muted hover:text-rose-600">
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </div>
@@ -148,7 +149,7 @@ const GroupMemberAvatar: React.FC<{ uid: string, tenantId?: string }> = ({ uid, 
             {profile.photoURL ? (
                 <img src={profile.photoURL} alt="" className="size-full object-cover" />
             ) : (
-                <span className="text-[8px] font-bold text-indigo-600">{profile.displayName.charAt(0)}</span>
+                <span className="text-[8px] font-bold text-indigo-600">{initialOf(profile.displayName)}</span>
             )}
         </div>
     );
@@ -271,7 +272,7 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
                                     {selectedMembers.includes(member.uid) && <span className="material-symbols-outlined text-[10px] text-white">check</span>}
                                 </div>
                                 <div className="size-6 rounded-full bg-slate-200 overflow-hidden shrink-0">
-                                    {member.photoURL ? <img src={member.photoURL} className="size-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px]">{member.displayName[0]}</div>}
+                                    {member.photoURL ? <img alt="" src={member.photoURL} className="size-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px]">{member.displayName[0]}</div>}
                                 </div>
                                 <div className="min-w-0 flex-1">
                                     <p className={`text-sm font-medium truncate ${selectedMembers.includes(member.uid) ? 'text-primary' : 'text-main'}`}>{member.displayName}</p>
