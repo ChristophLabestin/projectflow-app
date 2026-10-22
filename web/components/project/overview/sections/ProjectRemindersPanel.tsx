@@ -4,6 +4,7 @@ import type { Locale } from 'date-fns';
 import type { Initiative, Project, ProjectReminder, Task } from '../../../../types';
 import { DatePicker } from '../../../common/DateTime/DatePicker';
 import { parseDateValue } from '../../../../utils/taskDates';
+import { auth } from '../../../../services/firebase';
 
 type ReminderSource = 'project' | 'task';
 
@@ -159,7 +160,9 @@ export const ProjectRemindersPanel: React.FC<ProjectRemindersPanelProps> = ({
                 linkedId: linkedTask?.id || linkedInitiative?.id || project.id,
                 linkedTitle: linkedTask?.title || linkedInitiative?.title || project.title,
                 isCompleted: false,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                // Recipients default to the creator on the server (deliverReminders).
+                ...(auth.currentUser?.uid ? { createdBy: auth.currentUser.uid } : {})
             };
 
             if (linkedTask) {

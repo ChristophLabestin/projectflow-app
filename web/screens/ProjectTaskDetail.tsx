@@ -451,7 +451,9 @@ export const ProjectTaskDetail = () => {
             linkedId: task.id,
             linkedTitle: task.title,
             isCompleted: false,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            // Recipients default to the creator on the server (deliverReminders).
+            ...(auth.currentUser?.uid ? { createdBy: auth.currentUser.uid } : {})
         };
         const nextReminders = [...(task.reminders || []), reminder];
         setNewReminderTitle('');

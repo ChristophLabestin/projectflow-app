@@ -4,7 +4,6 @@ import {
     deleteDoc,
     deleteField,
     doc,
-    getDoc,
     getDocs,
     limit,
     onSnapshot,
@@ -17,7 +16,6 @@ import {
 
 import { auth, db } from '../firebase';
 import { isPmCoreOnly } from '../../config/pmCore';
-import { notifySubtaskAssignment, notifyTaskAssignment } from '../notificationService';
 import {
     ensureCategory,
     ensureTenantAndUser,
@@ -26,8 +24,7 @@ import {
     getProjectContextFromRef,
     logActivity,
     projectSubCollection,
-    resolveTenantId,
-    syncProjectProgress
+    resolveTenantId
 } from '../internal/workspaceDataCore';
 import { toMillis } from '../../utils/time';
 import { isProjectIncludedInImportantSignals } from '../healthService';
@@ -37,6 +34,16 @@ import { getSharedProjects, getUserProjects } from './projectsService';
 const TASKS = 'tasks';
 const SUBTASKS = 'subtasks';
 const ISSUES = 'issues';
+
+/**
+ * Every client write to a task / subtask carries who made it (contract C1). The `onTaskWritten` /
+ * `onSubtaskWritten` Cloud Functions use it as the actor for activity entries and notifications, and
+ * own the side effects (activity, project progress, notifications, isCompleted <-> status).
+ */
+const writeMeta = () => {
+    const user = auth.currentUser;
+    return user ? { updatedBy: user.uid, updatedAt: serverTimestamp() } : { updatedAt: serverTimestamp() };
+};
 
 const loadProjectTasks = async (projectId: string, tenantId?: string): Promise<Task[]> => {
     if (!tenantId) {
@@ -135,7 +142,8 @@ export const addTask = async (
         sourceReferences: extra?.sourceReferences || [],
         externalKey: extra?.externalKey || '',
         createdBy: user.uid,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        ...writeMeta()
     };
 
     if (!isPmCoreOnly() && extra?.linkedIssueId) {
@@ -150,26 +158,9 @@ export const addTask = async (
         taskData.initiativeId = extra.initiativeId;
     }
 
+    // Activity entry, project progress and assignee notifications are written by onTaskWritten.
     const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), taskData);
     await ensureCategory(projectId, extra?.category, resolvedTenant);
-    await logActivity(
-        projectId,
-        {
-            action: `Added task "${title}"${extra?.initiativeId ? ' to initiative' : ''}`,
-            target: extra?.initiativeId ? 'Initiatives' : 'Tasks',
-            type: extra?.initiativeId ? 'initiative' : 'task',
-            relatedId: extra?.initiativeId || docRef.id
-        },
-        resolvedTenant
-    );
-    await syncProjectProgress(projectId, resolvedTenant);
-
-    const assigneeIds = extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []);
-    for (const assigneeId of assigneeIds) {
-        if (assigneeId && assigneeId !== user.uid) {
-            await notifyTaskAssignment(assigneeId, title, projectId, docRef.id, resolvedTenant);
-        }
-    }
 
     return docRef.id;
 };
@@ -186,7 +177,6 @@ export const createSubTask = async (
 
     const resolvedTenant = resolveTenantId(tenantId);
     const taskRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), taskId);
-    const taskSnap = await getDoc(taskRef);
     const subTasksRef = collection(taskRef, SUBTASKS);
 
     const subTaskData = {
@@ -196,21 +186,12 @@ export const createSubTask = async (
         title,
         isCompleted: false,
         assigneeId: assigneeId || null,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        ...writeMeta()
     };
 
+    // Activity entry and the subtask_assigned notification are written by onSubtaskWritten.
     const docRef = await addDoc(subTasksRef, subTaskData);
-
-    await logActivity(
-        projectId,
-        { action: `Added subtask "${title}"`, target: 'Tasks', type: 'task', relatedId: taskId },
-        resolvedTenant
-    );
-
-    if (assigneeId && assigneeId !== user.uid) {
-        const parentTask = taskSnap.exists() ? (taskSnap.data() as Task) : null;
-        await notifySubtaskAssignment(assigneeId, title, parentTask?.title || 'Task', projectId, taskId, resolvedTenant);
-    }
 
     return docRef.id;
 };
@@ -282,13 +263,13 @@ export const updateTask = async (
 ) => {
     if (path) {
         const ref = doc(db, path);
-        await updateDoc(ref, updates);
+        await updateDoc(ref, { ...updates, ...writeMeta() });
         return;
     }
 
     const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
     if (!taskSnap) throw new Error('Task not found');
-    await updateDoc(taskSnap.ref, updates);
+    await updateDoc(taskSnap.ref, { ...updates, ...writeMeta() });
 };
 
 export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, projectId?: string, tenantId?: string) => {
@@ -297,7 +278,7 @@ export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, p
 
     const newStatus = !currentStatus;
     const user = auth.currentUser;
-    const updateData: Record<string, unknown> = { isCompleted: newStatus };
+    const updateData: Record<string, unknown> = { isCompleted: newStatus, ...writeMeta() };
 
     if (newStatus) {
         updateData.completedBy = user?.uid;
@@ -307,17 +288,11 @@ export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, p
         updateData.completedAt = deleteField();
     }
 
+    // Status <-> isCompleted consistency, the "Completed/Reopened" activity, project progress and the
+    // task_completed notification are handled by onTaskWritten.
     await updateDoc(taskSnap.ref, updateData);
     const data = taskSnap.data() as Task;
     const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-
-    await logActivity(
-        data.projectId,
-        { action: `${newStatus ? 'Completed' : 'Reopened'} task "${data.title}"`, target: 'Tasks', type: 'task', relatedId: taskId },
-        resolvedTenant
-    );
-
-    await syncProjectProgress(data.projectId, resolvedTenant);
 
     if (!isPmCoreOnly() && data.linkedIssueId) {
         try {
@@ -338,7 +313,6 @@ export const updateTaskFields = async (taskId: string, updates: Partial<Task>, p
     const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
     if (!taskSnap) throw new Error('Task not found');
 
-    const oldData = taskSnap.data() as Task;
     const sanitized: Record<string, unknown> = {};
 
     Object.entries(updates).forEach(([key, value]) => {
@@ -362,41 +336,15 @@ export const updateTaskFields = async (taskId: string, updates: Partial<Task>, p
 
     if (Object.keys(sanitized).length === 0) return;
 
-    await updateDoc(taskSnap.ref, sanitized);
+    // Activity entries, project progress, assignment notifications and status <-> isCompleted consistency
+    // are handled by onTaskWritten.
+    await updateDoc(taskSnap.ref, { ...sanitized, ...writeMeta() });
 
     const data = taskSnap.data() as Task;
     const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
-    let action = `Updated task "${data.title}"`;
-
-    if (sanitized.isCompleted === true) {
-        action = `Completed task "${data.title}"`;
-    } else if (sanitized.isCompleted === false) {
-        action = `Reopened task "${data.title}"`;
-    }
-
-    await logActivity(
-        data.projectId,
-        { action, target: 'Tasks', type: 'task', relatedId: taskId },
-        resolvedTenant
-    );
 
     if (sanitized.category) {
         await ensureCategory(data.projectId, sanitized.category as string | string[], resolvedTenant);
-    }
-
-    if (sanitized.isCompleted !== undefined || sanitized.status !== undefined) {
-        await syncProjectProgress(data.projectId, resolvedTenant);
-    }
-
-    if (Array.isArray(sanitized.assigneeIds)) {
-        const oldAssignees = oldData.assigneeIds || [];
-        const newAssignees = sanitized.assigneeIds as string[];
-        const addedAssignees = newAssignees.filter((id) => !oldAssignees.includes(id));
-        for (const assigneeId of addedAssignees) {
-            await notifyTaskAssignment(assigneeId, data.title, data.projectId, taskId, resolvedTenant);
-        }
-    } else if (typeof sanitized.assigneeId === 'string' && sanitized.assigneeId && sanitized.assigneeId !== oldData.assigneeId) {
-        await notifyTaskAssignment(sanitized.assigneeId, data.title, data.projectId, taskId, resolvedTenant);
     }
 };
 
@@ -413,8 +361,8 @@ export const deleteTask = async (taskId: string, projectId?: string, tenantId?: 
         { action: `Deleted task "${data.title}"`, target: 'Tasks', type: 'task', relatedId: taskId },
         resolvedTenant
     );
-
-    await syncProjectProgress(data.projectId, resolvedTenant);
+    // Project progress is re-synced by onTaskWritten (delete event). The deleted-activity stays here:
+    // only the deleting client knows who it was.
 };
 
 export const addSubTask = async (taskId: string, title: string, projectId?: string, tenantId?: string) => {
@@ -434,14 +382,10 @@ export const addSubTask = async (taskId: string, title: string, projectId?: stri
         ownerId: user.uid,
         title,
         isCompleted: false,
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        ...writeMeta()
     });
-
-    await logActivity(
-        task.projectId,
-        { action: `Added subtask "${title}"`, target: task.title, type: 'task', relatedId: taskId },
-        resolvedTenant
-    );
+    // The "Added subtask" activity is written by onSubtaskWritten.
 };
 
 export const getSubTasks = async (taskId: string, projectId?: string, tenantId?: string): Promise<SubTask[]> => {
@@ -467,26 +411,13 @@ export const toggleSubTaskStatus = async (
     const user = auth.currentUser;
     const isNowCompleted = !currentStatus;
 
+    // The Completed/Reopened subtask activity is written by onSubtaskWritten.
     await updateDoc(subSnap.ref, {
         isCompleted: isNowCompleted,
         completedBy: isNowCompleted ? user?.uid : deleteField(),
-        completedAt: isNowCompleted ? serverTimestamp() : deleteField()
+        completedAt: isNowCompleted ? serverTimestamp() : deleteField(),
+        ...writeMeta()
     });
-
-    const data = subSnap.data() as SubTask | undefined;
-    if (!data) return;
-
-    const taskSnap = await findTaskDoc(data.taskId, projectId, tenantId);
-    const parentTask = taskSnap?.data() as Task | undefined;
-    const { tenantId: resolvedTenant } = getProjectContextFromRef(subSnap.ref);
-
-    if (parentTask) {
-        await logActivity(
-            parentTask.projectId,
-            { action: `${isNowCompleted ? 'Completed' : 'Reopened'} subtask "${data.title}"`, target: parentTask.title, type: 'task', relatedId: data.taskId },
-            resolvedTenant
-        );
-    }
 };
 
 export const deleteSubTask = async (subTaskId: string, taskId: string, projectId?: string, tenantId?: string) => {
@@ -514,21 +445,6 @@ export const updateSubtaskFields = async (
     const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
     if (!subSnap) throw new Error('Subtask not found');
 
-    const oldData = subSnap.data() as SubTask;
-    await updateDoc(subSnap.ref, updates);
-
-    if (typeof updates.assigneeId === 'string' && updates.assigneeId && updates.assigneeId !== oldData.assigneeId) {
-        const taskSnap = await findTaskDoc(oldData.taskId, projectId, tenantId);
-        const task = taskSnap?.data() as Task | undefined;
-        if (task) {
-            await notifySubtaskAssignment(
-                updates.assigneeId,
-                oldData.title,
-                task.title,
-                task.projectId,
-                oldData.taskId,
-                tenantId
-            );
-        }
-    }
+    // subtask_assigned notifications are created by onSubtaskWritten.
+    await updateDoc(subSnap.ref, { ...updates, ...writeMeta() });
 };

@@ -36,11 +36,9 @@ import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
 import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission, TemplateVariable, EmailTemplate, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
+// Task / subtask / comment notifications are created by Cloud Functions (onTaskWritten,
+// onSubtaskWritten, onCommentCreated). Project and workspace invites stay client-side.
 import {
-    notifyTaskAssignment,
-    notifyIssueAssignment,
-    notifyComment,
-    notifySubtaskAssignment,
     notifyProjectInvite,
     createNotification
 } from './notificationService';
@@ -1878,6 +1876,7 @@ export const addComment = async (
         userDisplayName: user.displayName || "User",
         userPhotoURL: user.photoURL || "",
         content,
+        updatedBy: user.uid,
         createdAt: serverTimestamp()
     });
 
@@ -1916,52 +1915,8 @@ export const addComment = async (
         }
     }
 
-    // Notify the owner of the target item
-    let targetTitle = '';
-    let ownerId = '';
-
-    if (targetType === 'task') {
-        const taskSnap = await findTaskDoc(targetId, projectId, resolvedTenant);
-        if (taskSnap) {
-            const task = taskSnap.data() as Task;
-            targetTitle = task.title;
-            ownerId = task.ownerId;
-        }
-    } else if (targetType === 'issue') {
-        const issueSnap = await findIssueDoc(targetId, projectId, resolvedTenant);
-        if (issueSnap) {
-            const issue = issueSnap.data() as Issue;
-            targetTitle = issue.title;
-            ownerId = issue.ownerId;
-        }
-    } else if (targetType === 'idea') {
-        const ideaSnap = await findIdeaDoc(targetId, projectId, resolvedTenant);
-        if (ideaSnap) {
-            const idea = ideaSnap.data() as Idea;
-            targetTitle = idea.title;
-            ownerId = idea.ownerId || '';
-        }
-    } else if (targetType === 'initiative') {
-        const initiativeSnap = await findInitiativeDoc(targetId, projectId, resolvedTenant);
-        if (initiativeSnap) {
-            const initiative = initiativeSnap.data() as Initiative;
-            targetTitle = initiative.title;
-            ownerId = initiative.ownerId || '';
-        }
-    }
-
-    // Send notification to owner (if not the commenter)
-    if (ownerId && ownerId !== user.uid) {
-        await notifyComment(
-            ownerId,
-            targetTitle,
-            targetType,
-            projectId,
-            targetId,
-            docRef.id,
-            resolvedTenant
-        );
-    }
+    // comment_added / comment_mention notifications and the comment activity entry are created by the
+    // onCommentCreated Cloud Function (mentions are parsed server-side from `@Name` in the text).
     return docRef.id;
 };
 
@@ -2825,10 +2780,11 @@ export const addIdeaComment = async (projectId: string, ideaId: string, content:
         userDisplayName: user.displayName || 'User',
         userPhotoURL: user.photoURL || '',
         content,
+        updatedBy: user.uid,
         createdAt: serverTimestamp()
     };
 
-    const commentRef = await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
+    await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
 
     // 2. Update Idea comment count
     const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
@@ -2836,22 +2792,7 @@ export const addIdeaComment = async (projectId: string, ideaId: string, content:
         comments: increment(1)
     });
 
-    // 3. Notify owner
-    const ideaDoc = await getDoc(ideaRef);
-    if (ideaDoc.exists()) {
-        const idea = ideaDoc.data();
-        if (idea.ownerId && idea.ownerId !== user.uid) {
-            await notifyComment(
-                idea.ownerId,
-                idea.title,
-                'idea',
-                projectId,
-                ideaId,
-                commentRef.id,
-                resolvedTenant
-            );
-        }
-    }
+    // The owner notification (comment_added) is created by the onCommentCreated Cloud Function.
 };
 
 export const getIdeaComments = async (projectId: string, ideaId: string, tenantId?: string): Promise<ProjectComment[]> => {

@@ -399,27 +399,6 @@ export const getUnreadCount = async (userId: string, tenantId?: string): Promise
 };
 
 /**
- * Helper to send task assignment notification
- */
-export const notifyTaskAssignment = async (
-    assigneeId: string,
-    taskTitle: string,
-    projectId: string,
-    taskId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId: assigneeId,
-        type: 'task_assigned',
-        title: 'New Task Assignment',
-        message: `You've been assigned to "${taskTitle}"`,
-        projectId,
-        taskId,
-        tenantId
-    });
-};
-
-/**
  * Helper to send issue assignment notification
  */
 export const notifyIssueAssignment = async (
@@ -436,32 +415,6 @@ export const notifyIssueAssignment = async (
         message: `You've been assigned to issue "${issueTitle}"`,
         projectId,
         issueId,
-        tenantId
-    });
-};
-
-/**
- * Helper to send comment notification
- */
-export const notifyComment = async (
-    userId: string,
-    targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
-    projectId: string,
-    targetId: string,
-    commentId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId,
-        type: 'comment_added',
-        title: 'New Comment',
-        message: `New comment on ${targetType} "${targetTitle}"`,
-        projectId,
-        taskId: targetType === 'task' ? targetId : undefined,
-        initiativeId: targetType === 'initiative' ? targetId : undefined,
-        issueId: targetType === 'issue' ? targetId : undefined,
-        commentId,
         tenantId
     });
 };
@@ -485,50 +438,5 @@ export const notifyProjectInvite = async (
     });
 };
 
-/**
- * Helper to send subtask assignment notification
- */
-export const notifySubtaskAssignment = async (
-    assigneeId: string,
-    subtaskTitle: string,
-    taskTitle: string,
-    projectId: string,
-    taskId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId: assigneeId,
-        type: 'subtask_assigned',
-        title: 'New Subtask Assignment',
-        message: `You've been assigned to subtask "${subtaskTitle}" in task "${taskTitle}"`,
-        projectId,
-        taskId,
-        tenantId
-    });
-};
-
-/**
- * Helper to send mention notification
- */
-export const notifyMention = async (
-    userId: string,
-    targetTitle: string,
-    targetType: 'task' | 'issue' | 'idea' | 'initiative',
-    projectId: string,
-    targetId: string,
-    commentId: string,
-    tenantId?: string
-): Promise<void> => {
-    await createNotification({
-        userId,
-        type: 'comment_mention',
-        title: 'New Mention',
-        message: `You were mentioned in a comment on ${targetType} "${targetTitle}"`,
-        projectId,
-        taskId: targetType === 'task' ? targetId : undefined,
-        initiativeId: targetType === 'initiative' ? targetId : undefined,
-        issueId: targetType === 'issue' ? targetId : undefined,
-        commentId,
-        tenantId
-    });
-};
+// Task assignment, subtask assignment, comment and mention notifications are created server-side
+// (onTaskWritten, onSubtaskWritten, onCommentCreated). Project / workspace invites stay client-side.
