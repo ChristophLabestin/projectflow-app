@@ -67,6 +67,7 @@
 		D1B3AB482A4C739ACC21496D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 056FC2B89815A2FCCAB80BB1 /* Assets.xcassets */; };
 		D4D42D39C6A202995DDA5937 /* WorkStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24A409679F9A7291F2796316 /* WorkStrings.swift */; };
 		E1207494DCE3EC373AFD993E /* PFDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 651EE6F626E3317EB82CE461 /* PFDomain */; };
+		E7706991BD5C0C26CE07F01B /* CapturePlaceholders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25B5AA31CEBDB0B3A87AF97B /* CapturePlaceholders.swift */; };
 		EA060E5CCCE5F01FD101DBC1 /* MainShell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5248F3C5D84E3E16813BB416 /* MainShell.swift */; };
 		EF362EE57527794B275CABDE /* FocusActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C3EE9C726CC1BDD07ECE55F /* FocusActivityAttributes.swift */; };
 		F1EA68A439473D10005AF132 /* Formatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95754C7A024A5AF12F232242 /* Formatting.swift */; };
@@ -123,6 +124,7 @@
 		1063C1D7B476285013EAE252 /* WorkPlaceholders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkPlaceholders.swift; sourceTree = "<group>"; };
 		1FB343B95C66C528DD5FF0EF /* ProjectFlowWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ProjectFlowWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		24A409679F9A7291F2796316 /* WorkStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkStrings.swift; sourceTree = "<group>"; };
+		25B5AA31CEBDB0B3A87AF97B /* CapturePlaceholders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CapturePlaceholders.swift; sourceTree = "<group>"; };
 		2676FD47E57BFFD0F7B1DA3E /* TodayStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayStrings.swift; sourceTree = "<group>"; };
 		27D5563C7557A94E3F9547D3 /* SharedConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedConstants.swift; sourceTree = "<group>"; };
 		288A008F6C9B89C7BC73E1BD /* SystemStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemStrings.swift; sourceTree = "<group>"; };
@@ -392,6 +394,7 @@
 		76CC6A280BAABD9889A9F88A /* Capture */ = {
 			isa = PBXGroup;
 			children = (
+				25B5AA31CEBDB0B3A87AF97B /* CapturePlaceholders.swift */,
 				5EB915305A1DF8756D7A06D9 /* CaptureStrings.swift */,
 			);
 			path = Capture;
@@ -693,6 +696,7 @@
 				509446ED9B215E5E1847F541 /* AuthCoordinators.swift in Sources */,
 				BCFC3D229F35C557E1145F97 /* AuthFlowView.swift in Sources */,
 				3E9CCC7FB024541B40594E35 /* AuthStrings.swift in Sources */,
+				E7706991BD5C0C26CE07F01B /* CapturePlaceholders.swift in Sources */,
 				BAE3C3DFE614C4C74ACC9E3A /* CaptureStrings.swift in Sources */,
 				D14537870A6B40470E9FC4AE /* FeatureStringTables.swift in Sources */,
 				EF362EE57527794B275CABDE /* FocusActivityAttributes.swift in Sources */,
