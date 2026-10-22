@@ -26,10 +26,12 @@ export const WorkspaceMenuSection = () => {
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [name, setName] = useState('');
     const [busyId, setBusyId] = useState<string | null>(null);
+    const createInFlightRef = useRef(false);
 
     const handleCreate = async (event?: React.FormEvent) => {
         event?.preventDefault();
-        if (!name.trim()) return;
+        if (!name.trim() || busyId === 'create' || createInFlightRef.current) return;
+        createInFlightRef.current = true;
         setBusyId('create');
         try {
             const id = await createWorkspace(name);
@@ -37,6 +39,7 @@ export const WorkspaceMenuSection = () => {
         } catch (error) {
             console.error(error);
             showError(t('workspace.create.error'));
+            createInFlightRef.current = false;
             setBusyId(null);
         }
     };

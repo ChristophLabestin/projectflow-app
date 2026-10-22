@@ -158,13 +158,18 @@ export const ProjectSprints: React.FC = () => {
     const memberName = (uid: string) => workMembers.find((member) => member.uid === uid)?.displayName || '';
 
     // --- Mutations ---------------------------------------------------------------
+    const runInFlightRef = useRef(false);
     const run = async (action: () => Promise<unknown>, success?: string) => {
+        if (runInFlightRef.current) return;
+        runInFlightRef.current = true;
         try {
             await action();
             if (success) showSuccess(success);
         } catch (error: any) {
             console.error(error);
             showError(error?.message || t('sprintsV2.errors.generic'));
+        } finally {
+            runInFlightRef.current = false;
         }
     };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createInitiative, createInitiativeTask, createMilestone, getAllWorkspaceProjects } from '../services/dataService';
 import { getWorkspaceMembers } from '../services/domain/workspaceMembersService';
@@ -154,6 +154,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     const [status, setStatus] = useState<ProjectStatus>('Planning');
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const submitInFlightRef = useRef(false);
+    const submitInFlightRef = useRef(false);
 
     const handleSuccessCriteriaChange = useArrowReplacement((e) => setSuccessCriteria(e.target.value));
     const filterAccessibleModules = (nextModules: ProjectModule[]) => {
@@ -330,7 +332,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     };
 
     const handleSubmit = async () => {
-        if (!name.trim()) return;
+        if (submitInFlightRef.current || !name.trim()) return;
         if (startDate && dueDate && startDate > dueDate) {
             showToast(t('createProjectWizard.errors.dateOrder'), 'error');
             return;
@@ -339,6 +341,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             showToast(t('createProjectWizard.visibility.requiresGroup'), 'error');
             return;
         }
+        submitInFlightRef.current = true;
+        submitInFlightRef.current = true;
         setIsSubmitting(true);
         try {
             const trimmedName = name.trim();
@@ -445,6 +449,8 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             );
         } catch (e) {
             console.error(e);
+            submitInFlightRef.current = false;
+            submitInFlightRef.current = false;
             setIsSubmitting(false);
             showToast(t('createProjectWizard.errors.createProject'), 'error');
         }
