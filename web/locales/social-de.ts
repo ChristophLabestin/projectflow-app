@@ -647,6 +647,11 @@ const deSocial = {
     'social.postStatus.Review': 'Prüfung',
     'social.post.noCaption': 'Keine Bildunterschrift',
     'social.post.unscheduled': 'Nicht geplant',
+    'social.postList.newPost': 'Neuer Beitrag',
+    'flowStages.socialCampaignReview.hero.status.draft': 'Entwurf',
+    'flowStages.socialCampaignReview.intelligence.title': 'Kampagnen-Intelligenz',
+    'flowStages.socialCampaignReview.intelligence.successLabel': 'Erfolgskriterien',
+    'flowStages.socialCampaignReview.timeline.title': 'Zeitplan',
 };
 
 export default deSocial;

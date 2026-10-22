@@ -712,6 +712,7 @@ const enProjectOverview = {
     'projectOverview.reminders.complete': 'Complete reminder',
     'projectOverview.reminders.reopen': 'Reopen reminder',
     'projectOverview.reminders.delete': 'Delete reminder',
+    'projectOverview.execution.subtasksLabel': 'Subtasks',
 };
 
 export default enProjectOverview;

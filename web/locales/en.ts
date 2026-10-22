@@ -3611,6 +3611,14 @@ const en = {
     'workspaceSettings.tabs.services': 'Email & storage',
     'workspaceSettings.tabs.api': 'API & MCP',
     'workspaceSettings.tabs.danger': 'Danger zone',
+    'common.remove': 'Remove',
+    'common.andXOthers': '+ {count} others',
+    'sprints.status.active': 'Active',
+    'aiStudio.chat.stop': 'Stop',
+    'aiStudio.common.back': 'Back',
+    'aiStudio.common.exitMode': 'Exit mode',
+    'aiStudio.blueprint.converting': 'Converting...',
+    'aiStudio.blueprint.converted': 'Converted',
 };
 
 export default en;

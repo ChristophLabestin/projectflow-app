@@ -95,6 +95,7 @@ const deTeam = {
     'team.v2.detail.agentBriefing': 'Der Briefing-Faden „📥 Briefing: {name}“ liegt im Projekt – dort Infos hinterlegen, der Agent liest und antwortet.',
     'team.v2.detail.remove': 'Aus Workspace entfernen',
     'team.v2.detail.roleUpdated': 'Zugriff aktualisiert',
+    'team.members.toast.roleUpdated': 'Rolle aktualisiert.',
 };
 
 export default deTeam;

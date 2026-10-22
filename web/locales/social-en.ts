@@ -647,6 +647,11 @@ const enSocial = {
     'social.postStatus.Review': 'Review',
     'social.post.noCaption': 'No caption',
     'social.post.unscheduled': 'Unscheduled',
+    'social.postList.newPost': 'New post',
+    'flowStages.socialCampaignReview.hero.status.draft': 'Draft',
+    'flowStages.socialCampaignReview.intelligence.title': 'Campaign intelligence',
+    'flowStages.socialCampaignReview.intelligence.successLabel': 'Success criteria',
+    'flowStages.socialCampaignReview.timeline.title': 'Timeline',
 };
 
 export default enSocial;

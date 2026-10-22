@@ -690,6 +690,13 @@ const enFinance = {
     'finance.calc.toast.error': 'Failed to save scenario.',
     'finance.calc.delete.title': 'Delete scenario?',
     'finance.calc.delete.message': 'This scenario will be permanently removed.',
+    'finance.calc.editor.newSubtitle': 'Create a new financial scenario',
+    'finance.calc.section.general': 'General Settings',
+    'finance.calc.section.economics': 'Unit Economics',
+    'finance.calc.section.liveDetailed': 'Detailed Analysis',
+    'invoice.preview.zoomIn': 'Zoom in',
+    'invoice.preview.zoomOut': 'Zoom out',
+    'invoice.preview.zoomReset': 'Reset zoom',
 };
 
 export default enFinance;

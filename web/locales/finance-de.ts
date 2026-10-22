@@ -690,6 +690,13 @@ const deFinance = {
     'finance.calc.toast.error': 'Szenario konnte nicht gespeichert werden.',
     'finance.calc.delete.title': 'Szenario löschen?',
     'finance.calc.delete.message': 'Dieses Szenario wird dauerhaft entfernt.',
+    'finance.calc.editor.newSubtitle': 'Neues Finanzszenario erstellen',
+    'finance.calc.section.general': 'Allgemeine Einstellungen',
+    'finance.calc.section.economics': 'Unit Economics',
+    'finance.calc.section.liveDetailed': 'Detaillierte Analyse',
+    'invoice.preview.zoomIn': 'Vergrößern',
+    'invoice.preview.zoomOut': 'Verkleinern',
+    'invoice.preview.zoomReset': 'Zurücksetzen',
 };
 
 export default deFinance;
