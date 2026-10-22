@@ -219,6 +219,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `normalizeStatus` (`Todo` → `Open`).
 - `useWorkMembers`: members of the active workspace for assignee menus.
 - `TaskRow` accepts an optional `trailing` action slot (e.g. detach from initiative).
+- `TaskRow` also takes `initiativeTitle` (shown as meta) and `variant="card"` for grid tiles (title clamped to 2 lines, controls pinned to the bottom).
 - Selection (only `screens/ProjectTasks.tsx` uses it so far):
   - `useWorkSelection`: selected ids, explicit selection mode, Shift-range (in rendered row order via `listRef`, so collapsed groups are skipped), `setMany`, `clear`; keyboard `Esc` clears (only when focus is in `.work-page` or nowhere), `x` toggles the focused row.
   - `TaskRow` `selectable` renders a themed `role="checkbox"` (`.work-select-box`) in front of the done circle. It is hidden at rest and shows on row hover/focus, when selected or while the list is selecting; on touch (`hover: none`) only while selecting. `selectOnClick` (selection mode) makes a row click select instead of open; Cmd/Ctrl/Shift-click on a row always selects.
@@ -228,7 +229,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
 - `workMenuOptions.tsx`: shared option builders (`statusMenuOptions`, `priorityMenuOptions`, `dueMenuOptions`, `assigneeMenuOptions`), `DueDatePicker` footer, `WorkAvatar`, `UNASSIGNED_VALUE`; reuse them for any new work-list menu.
 - Used by:
   - `screens/Tasks.tsx` (My Tasks);
-  - `screens/ProjectTasks.tsx` (list view; the grid view still uses the legacy card);
+  - `screens/ProjectTasks.tsx` (list and grid view: grid = `TaskGroupList layout="grid"` + `TaskRow variant="card"`, same groups, inline menus and selection; the legacy `TaskCard`/pill editor is gone);
   - the Project Overview list view (`components/project/overview/views/WorkViewList.tsx`, task-only work items);
   - the initiative detail work list.
 - `InlineMenu` also powers the dashboard plan's reschedule action and the sidebar dock "+" create menu (New task `T` / New initiative `I` inside a project / New project `P`).

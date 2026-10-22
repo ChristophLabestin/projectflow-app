@@ -21,6 +21,9 @@ interface TaskRowProps {
     task: Task;
     members: WorkMember[];
     projectTitle?: string;
+    initiativeTitle?: string;
+    /** `card` lays the same content out as a grid tile. */
+    variant?: 'row' | 'card';
     subtasks?: { done: number; total: number };
     canEdit: boolean;
     saving?: boolean;
@@ -46,6 +49,8 @@ export const TaskRow = memo(({
     task,
     members,
     projectTitle,
+    initiativeTitle,
+    variant = 'row',
     subtasks,
     canEdit,
     saving,
@@ -105,7 +110,7 @@ export const TaskRow = memo(({
 
     return (
         <div
-            className={`work-row ${task.isCompleted ? 'is-done' : ''} ${selected ? 'is-selected' : ''} ${saving ? 'is-saving' : ''}`}
+            className={`work-row work-row--${variant} ${task.isCompleted ? 'is-done' : ''} ${selected ? 'is-selected' : ''} ${saving ? 'is-saving' : ''}`}
             role="listitem"
             data-task-id={task.id}
             onClick={openFromRow}
@@ -142,6 +147,11 @@ export const TaskRow = memo(({
                 </button>
                 <div className="work-row__meta">
                     {projectTitle && <span className="work-row__project">{projectTitle}</span>}
+                    {initiativeTitle && (
+                        <span className="work-row__initiative">
+                            <span className="material-symbols-outlined">rocket_launch</span>{initiativeTitle}
+                        </span>
+                    )}
                     {status === 'Blocked' && task.blockerNote && (
                         <span className="work-row__blocker" title={task.blockerNote}>
                             <span className="material-symbols-outlined">block</span>{task.blockerNote}

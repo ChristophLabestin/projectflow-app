@@ -14,6 +14,8 @@ interface TaskGroupListProps {
     toggleLabel: (label: string, collapsed: boolean) => string;
     /** Group-level "select all in this group" checkbox for selectable lists. */
     selection?: WorkGroupSelection;
+    /** `grid` renders each group's tasks as tiles (rows with `variant="card"`). */
+    layout?: 'list' | 'grid';
 }
 
 export interface WorkGroupSelection {
@@ -41,7 +43,8 @@ export const TaskGroupList = ({
     empty,
     defaultCollapsed = ['done'],
     toggleLabel,
-    selection
+    selection,
+    layout = 'list'
 }: TaskGroupListProps) => {
     const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey, defaultCollapsed));
 
@@ -62,7 +65,7 @@ export const TaskGroupList = ({
     if (!groups.length) return <>{empty}</>;
 
     return (
-        <div className={`work-groups ${selection ? 'is-selectable' : ''} ${selection?.active ? 'is-selecting' : ''}`}>
+        <div className={`work-groups work-groups--${layout} ${selection ? 'is-selectable' : ''} ${selection?.active ? 'is-selecting' : ''}`}>
             {groups.map((group) => {
                 const isCollapsed = collapsed.has(group.key);
                 const bodyId = `${storageKey}-${group.key}`.replace(/[^a-zA-Z0-9_-]/g, '-');

@@ -1,26 +1,18 @@
 import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
-import { createPortal } from 'react-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { subscribeProjectInitiatives, subscribeProjectTasks } from '../services/dataService';
-import { getProjectCategories } from '../services/domain/projectMetaService';
 import { addTask, deleteTask, getSubTasks, toggleTaskStatus, updateTaskFields } from '../services/domain/tasksService';
 import { getProjectById } from '../services/domain/projectsService';
-import { subscribeProjectGroups } from '../services/projectGroupService';
-import { Initiative, Task, Project, TaskCategory, ProjectGroup } from '../types';
+import { Initiative, Task, Project } from '../types';
 import { Button } from '../components/common/Button/Button';
-import { Badge } from '../components/common/Badge/Badge';
-import { TextInput } from '../components/common/Input/TextInput';
-import { Select, type SelectOption } from '../components/common/Select/Select';
+import { Select } from '../components/common/Select/Select';
 import { InitiativeCreateModal } from '../components/InitiativeCreateModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
-import { useArrowReplacement } from '../hooks/useArrowReplacement';
-import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
-import { parseDateValue, isDateOverdue } from '../utils/taskDates';
+import { parseDateValue } from '../utils/taskDates';
 import { auth } from '../services/firebase';
 import { TaskGroupList } from '../components/work/TaskGroupList';
 import { TaskRow } from '../components/work/TaskRow';
@@ -33,10 +25,6 @@ import { UNASSIGNED_VALUE } from '../components/work/workMenuOptions';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
-type TaskPillEditorType = 'priority' | 'status' | 'dates' | 'initiative' | 'category';
-
-const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
-const TASK_PRIORITY_OPTIONS = ['Urgent', 'High', 'Medium', 'Low'] as const;
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
@@ -52,11 +40,7 @@ export const ProjectTasks = () => {
     const [showInitiativeModal, setShowInitiativeModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [view, setView] = useState<'list' | 'grid'>('list');
-    const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
-    const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
-    const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
-    const [taskPillEditor, setTaskPillEditor] = useState<{ taskId: string; type: TaskPillEditorType; anchorEl: HTMLElement } | null>(null);
-    const [taskPillEditorPosition, setTaskPillEditorPosition] = useState({ top: 0, left: 0, width: 304 });
+    const [sortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [savingInlineTaskId, setSavingInlineTaskId] = useState<string | null>(null);
     const [bulkUpdating, setBulkUpdating] = useState(false);
     const [groupBy, setGroupBy] = useState<WorkGroupBy>(() => {
@@ -68,7 +52,6 @@ export const ProjectTasks = () => {
     const quickInputRef = useRef<HTMLInputElement>(null);
     const location = useLocation();
     const confirm = useConfirm();
-    const taskPillEditorRef = useRef<HTMLDivElement | null>(null);
 
     // Permissions
     const { can } = useProjectPermissions(project);
@@ -77,10 +60,7 @@ export const ProjectTasks = () => {
     const selection = useWorkSelection({ enabled: can('canManageTasks'), availableIds: taskIds });
     const { selectedIds, isSelecting, selectionMode, setSelectionMode, setMany, clear: clearSelection } = selection;
     const toggleSelect = (taskId: string, options?: { range?: boolean }) => selection.toggle(taskId, options);
-    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem, startFocusItem } = usePinnedTasks();
-    const { dateFormat, dateLocale, t } = useLanguage();
-
-    const handleSearchChange = useArrowReplacement((e) => setSearch(e.target.value));
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (!id) return;
@@ -96,9 +76,6 @@ export const ProjectTasks = () => {
                 return;
             }
 
-            // Fetch categories for label display
-            getProjectCategories(id, p.tenantId).then(setAllCategories).catch(console.error);
-
             // Subscribe to tasks with the correct tenantId
             unsub = subscribeProjectTasks(id, (taskData) => {
                 setTasks(taskData);
@@ -106,15 +83,11 @@ export const ProjectTasks = () => {
             }, p.tenantId);
             const unsubInitiatives = subscribeProjectInitiatives(id, setInitiatives, p.tenantId);
 
-            // Subscribe to project groups
-            const unsubGroups = subscribeProjectGroups(id, setProjectGroups, p.tenantId);
-
             // Chain unsubscribe
             const oldUnsub = unsub;
             unsub = () => {
                 if (oldUnsub) oldUnsub();
                 unsubInitiatives();
-                unsubGroups();
             };
         }).catch(err => {
             console.error(err);
@@ -153,41 +126,12 @@ export const ProjectTasks = () => {
         }
     }, [location.search]);
 
-    useEffect(() => {
-        setTaskPillEditor((current) => {
-            if (!current) return current;
-            return tasks.some((task) => task.id === current.taskId) ? current : null;
-        });
-    }, [tasks]);
-
     const handleToggle = async (task: Task) => {
         if (!can('canManageTasks')) return;
         const currentStatus = task.isCompleted;
         // Optimistic
         setTasks(prev => prev.map(t => t.id === task.id ? { ...t, isCompleted: !currentStatus } : t));
         await toggleTaskStatus(task.id, currentStatus, id, task.tenantId || project?.tenantId);
-    };
-
-    const handleDelete = async (task: Task) => {
-        if (!can('canManageTasks')) return;
-        if (!await confirm({
-            title: t('projectTasks.confirm.delete.title'),
-            message: t('projectTasks.confirm.delete.body'),
-            confirmText: t('common.delete'),
-            variant: 'danger'
-        })) return;
-        try {
-            await deleteTask(task.id, id, task.tenantId || project?.tenantId);
-        } catch (e) {
-            console.error(e);
-            setError(t('projectTasks.error.delete'));
-        }
-    };
-
-    const toDateInputValue = (value?: string) => {
-        if (!value) return '';
-        const matched = value.match(/^\d{4}-\d{2}-\d{2}/);
-        return matched ? matched[0] : '';
     };
 
     const updateTaskInline = async (task: Task, updates: Partial<Task>) => {
@@ -206,20 +150,6 @@ export const ProjectTasks = () => {
         } finally {
             setSavingInlineTaskId((current) => (current === task.id ? null : current));
         }
-    };
-
-    const handleQuickDateChange = async (task: Task, field: 'startDate' | 'dueDate', nextValue: string) => {
-        if (!can('canManageTasks') || !id) return;
-
-        const previousInputValue = toDateInputValue(task[field]);
-        const normalizedNextValue = nextValue || '';
-        if (previousInputValue === normalizedNextValue) return;
-
-        const updates: Partial<Task> = field === 'startDate'
-            ? { startDate: normalizedNextValue }
-            : { dueDate: normalizedNextValue };
-
-        await updateTaskInline(task, updates);
     };
 
     const handleQuickAdd = async (event?: React.FormEvent) => {
@@ -255,52 +185,8 @@ export const ProjectTasks = () => {
         localStorage.setItem('projectflow.work.project.groupBy', next);
     };
 
-    const openTaskPillEditor = (taskId: string, type: TaskPillEditorType, anchorEl: HTMLElement) => {
-        setTaskPillEditor((current) => (
-            current && current.taskId === taskId && current.type === type
-                ? null
-                : { taskId, type, anchorEl }
-        ));
-    };
-
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
-    const priorityLabels = useMemo(() => ({
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low')
-    }), [t]);
-    const statusLabels = useMemo(() => ({
-        Done: t('tasks.status.done'),
-        'In Progress': t('tasks.status.inProgress'),
-        Review: t('tasks.status.review'),
-        Open: t('tasks.status.open'),
-        Todo: t('tasks.status.todo'),
-        Backlog: t('tasks.status.backlog'),
-        'On Hold': t('tasks.status.onHold'),
-        Blocked: t('tasks.status.blocked')
-    }), [t]);
-    const filterLabels = useMemo(() => ({
-        active: t('projectTasks.filters.active'),
-        completed: t('projectTasks.filters.completed'),
-        all: t('projectTasks.filters.all')
-    }), [t]);
-    const filterSelectOptions = useMemo<SelectOption[]>(() => ([
-        { value: 'active', label: filterLabels.active },
-        { value: 'completed', label: filterLabels.completed },
-        { value: 'all', label: filterLabels.all }
-    ]), [filterLabels]);
 
-    const viewLabels = useMemo(() => ({
-        list: t('projectTasks.view.list'),
-        grid: t('projectTasks.view.grid')
-    }), [t]);
-    const sortOptions = useMemo<SelectOption[]>(() => ([
-        { value: 'priority', label: t('projectTasks.sort.priority') },
-        { value: 'dueDate', label: t('projectTasks.sort.dueDate') },
-        { value: 'title', label: t('projectTasks.sort.title') },
-        { value: 'createdAt', label: t('projectTasks.sort.created') },
-    ]), [t]);
     const bulkInitiativeOptions = useMemo<InlineMenuOption[]>(
         () => [
             { value: '__none__', label: t('projectTasks.pill.initiativeNone') },
@@ -309,68 +195,10 @@ export const ProjectTasks = () => {
         [initiatives, t]
     );
 
-    useEffect(() => {
-        if (!taskPillEditor) return;
-
-        const handleOutsideClick = (event: MouseEvent) => {
-            const target = event.target as HTMLElement;
-            if (taskPillEditorRef.current?.contains(target)) return;
-            if (target.closest(`[data-task-pill-trigger="${taskPillEditor.taskId}-${taskPillEditor.type}"]`)) return;
-            setTaskPillEditor(null);
-        };
-
-        document.addEventListener('mousedown', handleOutsideClick);
-        return () => {
-            document.removeEventListener('mousedown', handleOutsideClick);
-        };
-    }, [taskPillEditor]);
-
-    const editingTask = useMemo(
-        () => (taskPillEditor ? tasks.find((task) => task.id === taskPillEditor.taskId) || null : null),
-        [taskPillEditor, tasks]
-    );
-
     const initiativeLookup = useMemo(
         () => Object.fromEntries(initiatives.map((initiative) => [initiative.id, initiative])),
         [initiatives]
     );
-
-    useEffect(() => {
-        if (!taskPillEditor) return;
-
-        const updatePosition = () => {
-            const { anchorEl, type } = taskPillEditor;
-            if (!document.body.contains(anchorEl)) {
-                setTaskPillEditor(null);
-                return;
-            }
-
-            const width = type === 'dates' || type === 'category' || type === 'initiative' ? 320 : 280;
-            const rect = anchorEl.getBoundingClientRect();
-            const editorHeight = taskPillEditorRef.current?.getBoundingClientRect().height || 280;
-            let left = rect.left;
-            let top = rect.bottom + 10;
-
-            if (left + width > window.innerWidth - 12) {
-                left = Math.max(12, window.innerWidth - width - 12);
-            }
-
-            if (top + editorHeight > window.innerHeight - 12) {
-                top = Math.max(12, rect.top - editorHeight - 10);
-            }
-
-            setTaskPillEditorPosition({ top, left, width });
-        };
-
-        updatePosition();
-        window.addEventListener('resize', updatePosition);
-        window.addEventListener('scroll', updatePosition, true);
-
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-            window.removeEventListener('scroll', updatePosition, true);
-        };
-    }, [taskPillEditor]);
 
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(t => {
@@ -422,9 +250,6 @@ export const ProjectTasks = () => {
             }
         });
     }, [tasks, filter, search, sortBy, initiativeLookup]);
-
-    const openCount = tasks.filter(t => !t.isCompleted).length;
-    const completedCount = tasks.filter(t => t.isCompleted).length;
 
     const visibleTaskIds = filteredTasks.map((task) => task.id);
     const selectedTasks = tasks.filter((task) => selectedIds.has(task.id));
@@ -503,16 +328,6 @@ export const ProjectTasks = () => {
         }
     };
 
-    const stats = useMemo(() => {
-        const total = tasks.length;
-        const open = tasks.filter(t => !t.isCompleted).length;
-        const completed = tasks.filter(t => t.isCompleted).length;
-        const urgent = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted).length;
-        const high = tasks.filter(t => t.priority === 'High' && !t.isCompleted).length;
-        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
-        return { total, open, completed, urgent, high, progress };
-    }, [tasks]);
-
     const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
         {
             id: 'header',
@@ -550,513 +365,6 @@ export const ProjectTasks = () => {
         finish
     } = useOnboardingTour('project_tasks', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
-    const TaskCard = ({ task, isGrid = false }: { task: Task; isGrid?: boolean }) => {
-        const isActiveEditor = (type: TaskPillEditorType) => taskPillEditor?.taskId === task.id && taskPillEditor.type === type;
-        const isSavingInline = savingInlineTaskId === task.id;
-        const canQuickEditDates = can('canManageTasks');
-        const isStrategic = Boolean((task as Task & { convertedIdeaId?: string }).convertedIdeaId || task.legacyInitiativeRoot);
-        const isInitiativeTask = Boolean(task.initiativeId && !task.legacyInitiativeRoot);
-        const hasStart = Boolean(task.startDate);
-        const hasDue = Boolean(task.dueDate);
-        const showTimeline = !isStrategic && hasStart && hasDue && !task.isCompleted;
-        const showDueDate = !isStrategic && !hasStart && hasDue && !task.isCompleted;
-        const showStrategicTimeline = isStrategic && hasStart && hasDue && !task.isCompleted;
-        const showStrategicDue = isStrategic && !hasStart && hasDue && !task.isCompleted;
-        const showDueDateSetter = !hasDue && !task.isCompleted;
-        const dueDate = task.dueDate ? parseDateValue(task.dueDate) : null;
-        const isOverdue = !!dueDate && isDateOverdue(dueDate) && !task.isCompleted;
-        const priorityLabel = task.priority ? (priorityLabels[task.priority] || task.priority) : '';
-        const statusLabel = task.status ? (statusLabels[task.status] || task.status) : '';
-        const initiative = task.initiativeId ? initiativeLookup[task.initiativeId] : null;
-        const initiativeLabel = initiative?.title || t('projectTasks.pill.initiativeNone');
-        const dependencyCount = task.dependencies?.length || 0;
-        const dependencyLabel = dependencyCount === 1
-            ? t('projectTasks.badge.dependency')
-            : t('projectTasks.badge.dependencies');
-
-        const dependentTasks = task.dependencies?.map(depId => tasks.find(t => t.id === depId)).filter(Boolean) as Task[] || [];
-        const blockedBy = dependentTasks.filter(t => !t.isCompleted);
-        const isBlocked = blockedBy.length > 0;
-
-        const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : isStrategic || isInitiativeTask ? 'strategic' : 'default';
-        const togglePillEditor = (type: TaskPillEditorType) => (e: React.MouseEvent<HTMLElement>) => {
-            e.stopPropagation();
-            if (!canQuickEditDates) return;
-            openTaskPillEditor(task.id, type, e.currentTarget);
-        };
-
-        return (
-            <div
-                onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                className={`task-card ${cardVariant} ${isGrid ? 'is-grid' : ''} ${selectedIds.has(task.id) ? 'is-selected' : ''} priority-stripe priority-stripe--${(task.priority || 'medium').toLowerCase()}`}
-            >
-                {/* Left: Status & Main Info */}
-                <div className="task-main-info">
-                    {can('canManageTasks') && (
-                        <button
-                            type="button"
-                            className={`task-select-btn ${selectedIds.has(task.id) ? 'is-selected' : ''}`}
-                            onClick={(event) => {
-                                event.stopPropagation();
-                                toggleSelect(task.id);
-                            }}
-                            title={selectedIds.has(task.id) ? t('projectTasks.bulk.unselectTask') : t('projectTasks.bulk.selectTask')}
-                            aria-label={selectedIds.has(task.id) ? t('projectTasks.bulk.unselectTask') : t('projectTasks.bulk.selectTask')}
-                            aria-pressed={selectedIds.has(task.id)}
-                        >
-                            <span className="material-symbols-outlined">
-                                {selectedIds.has(task.id) ? 'check_box' : 'check_box_outline_blank'}
-                            </span>
-                        </button>
-                    )}
-                    <button aria-label={t('common.save')}
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); handleToggle(task); }}
-                        disabled={!can('canManageTasks')}
-                        className={`check-btn ${task.isCompleted ? 'checked' : ''} ${!can('canManageTasks') ? 'disabled' : ''}`}
-                    >
-                        <span className="material-symbols-outlined">check</span>
-                    </button>
-
-                    <div className="info-content">
-                        <div className="title-row">
-                            <h4 className={`task-title ${task.isCompleted ? 'completed' : ''}`}>
-                                {task.title}
-                            </h4>
-                            <div className="meta-row">
-                                {isStrategic && (
-                                    <Badge variant="neutral" className="badge strategic">
-                                        <span className="material-symbols-outlined">auto_awesome</span>
-                                        {t('projectTasks.badge.strategic')}
-                                    </Badge>
-                                )}
-                                {!task.legacyInitiativeRoot && isInitiativeTask && (
-                                    <button
-                                        type="button"
-                                        className={`badge badge--interactive badge--initiative-link strategic ${can('canManageTasks') && isActiveEditor('initiative') ? 'badge--active' : ''}`}
-                                        onClick={can('canManageTasks')
-                                            ? togglePillEditor('initiative')
-                                            : (event) => {
-                                                event.stopPropagation();
-                                                navigate(`/project/${id}/initiatives/${task.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
-                                            }}
-                                        data-task-pill-trigger={can('canManageTasks') ? `${task.id}-initiative` : undefined}
-                                    >
-                                        <span className="material-symbols-outlined">rocket_launch</span>
-                                        <span>{initiativeLabel}</span>
-                                    </button>
-                                )}
-                                {task.legacyInitiativeRoot && task.initiativeId && (
-                                    <button
-                                        type="button"
-                                        className="badge badge--interactive badge--initiative-link strategic"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
-                                            navigate(`/project/${id}/initiatives/${task.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`);
-                                        }}
-                                    >
-                                        <span className="material-symbols-outlined">rocket_launch</span>
-                                        <span>{t('projectTasks.pill.openInitiative')}</span>
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    className={`badge badge--interactive priority-${(task.priority || 'medium').toLowerCase()} ${isActiveEditor('priority') ? 'badge--active' : ''}`}
-                                    onClick={togglePillEditor('priority')}
-                                    data-task-pill-trigger={`${task.id}-priority`}
-                                    disabled={!can('canManageTasks')}
-                                >
-                                    <span className="material-symbols-outlined">
-                                        {task.priority === 'Urgent' ? 'error' :
-                                            task.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                task.priority === 'Medium' ? 'drag_handle' :
-                                                    'keyboard_arrow_down'}
-                                    </span>
-                                    {priorityLabel || t('tasks.priority.medium')}
-                                </button>
-
-                                {/* Blocked Indicator */}
-                                {isBlocked && (
-                                    <Badge variant="neutral" className="badge blocked">
-                                        <span className="material-symbols-outlined">link_off</span>
-                                        {t('projectTasks.badge.blocked')}
-                                        <span className="blocked-tooltip">
-                                            <span className="blocked-tooltip__title">{t('projectTasks.badge.blockedBy')}</span>
-                                            <span className="blocked-tooltip__list">
-                                                {blockedBy.map(blockedTask => (
-                                                    <span key={blockedTask.id} className="blocked-tooltip__item">
-                                                        <span className="material-symbols-outlined blocked-tooltip__icon">lock</span>
-                                                        <span className="blocked-tooltip__text">{blockedTask.title}</span>
-                                                    </span>
-                                                ))}
-                                            </span>
-                                        </span>
-                                    </Badge>
-                                )}
-
-                                {/* Dependency Count */}
-                                {!isBlocked && (task.dependencies?.length || 0) > 0 && (
-                                    <Badge variant="neutral" className="badge dependency">
-                                        <span className="material-symbols-outlined">link</span>
-                                        {dependencyCount} {dependencyLabel}
-                                    </Badge>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="meta-row">
-                            <button
-                                type="button"
-                                className={`badge badge--interactive status ${(task.status || 'open').toLowerCase().replace(' ', '-')} ${isActiveEditor('status') ? 'badge--active' : ''}`}
-                                onClick={togglePillEditor('status')}
-                                data-task-pill-trigger={`${task.id}-status`}
-                                disabled={!can('canManageTasks')}
-                            >
-                                <span className="material-symbols-outlined">
-                                    {task.status === 'Done' ? 'check_circle' :
-                                        task.status === 'In Progress' ? 'sync' :
-                                            task.status === 'Review' ? 'visibility' :
-                                                task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
-                                                    task.status === 'Backlog' ? 'inventory_2' :
-                                                        task.status === 'On Hold' ? 'pause_circle' :
-                                                            task.status === 'Blocked' ? 'dangerous' :
-                                                                'circle'}
-                                </span>
-                                {statusLabel || t('tasks.status.unknown')}
-                            </button>
-                            {subtaskStats[task.id]?.total > 0 && (
-                                <Badge variant="neutral" className="badge subtasks">
-                                    <span className="material-symbols-outlined">checklist</span>
-                                    {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
-                                </Badge>
-                            )}
-                            {(() => {
-                                const cats = Array.isArray(task.category) ? task.category : [task.category].filter(Boolean);
-                                return cats.map(catName => {
-                                    const catData = allCategories.find(c => c.name === catName);
-                                    const color = catData?.color || '#64748b';
-                                    return can('canManageTasks') ? (
-                                        <button
-                                            key={catName as string}
-                                            type="button"
-                                            className={`badge badge--interactive category ${isActiveEditor('category') ? 'badge--active' : ''}`}
-                                            style={{
-                                                backgroundColor: `${color}10`,
-                                                color: color
-                                            }}
-                                            onClick={togglePillEditor('category')}
-                                            data-task-pill-trigger={`${task.id}-category`}
-                                        >
-                                            {catName as string}
-                                        </button>
-                                    ) : (
-                                        <Badge
-                                            key={catName as string}
-                                            variant="neutral"
-                                            className="badge category"
-                                            style={{
-                                                backgroundColor: `${color}10`,
-                                                color: color
-                                            }}
-                                        >
-                                            {catName as string}
-                                        </Badge>
-                                    );
-                                });
-                            })()}
-                            {can('canManageTasks') && (!task.category || (Array.isArray(task.category) && task.category.length === 0)) && (
-                                <button
-                                    type="button"
-                                    className={`badge badge--interactive category ${isActiveEditor('category') ? 'badge--active' : ''}`}
-                                    onClick={togglePillEditor('category')}
-                                    data-task-pill-trigger={`${task.id}-category`}
-                                >
-                                    <span className="material-symbols-outlined">label</span>
-                                    {t('projectTasks.pill.addCategory')}
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Assignees Row */}
-                        {(task.assignedGroupIds?.length > 0 || task.assigneeIds?.length > 0) && (
-                            <div className="assignees-list">
-                                {task.assignedGroupIds?.map(gid => {
-                                    const group = projectGroups.find(g => g.id === gid);
-                                    if (!group) return null;
-                                    return (
-                                        <div
-                                            key={gid}
-                                            className="avatar"
-                                            style={{ backgroundColor: group.color }}
-                                            title={t('projectTasks.groupLabel').replace('{name}', group.name)}
-                                        >
-                                            {group.name.substring(0, 2).toUpperCase()}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Right: Timeline & Actions */}
-                <div className={`task-actions-section ${isGrid ? 'is-grid' : ''}`}>
-                    {/* Minimal Timeline */}
-                    {showStrategicTimeline && (
-                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--wide'}`.trim()}>
-                            <div className="timeline-header">
-                                <span className="timeline-label">
-                                    <span className="material-symbols-outlined timeline-icon">timeline</span>
-                                    {t('projectTasks.timeline.strategic')}
-                                </span>
-                                {(() => {
-                                    const start = parseDateValue(task.startDate!).getTime();
-                                    const end = parseDateValue(task.dueDate!).getTime();
-                                    const now = new Date().getTime();
-                                    const total = end - start;
-                                    const elapsed = now - start;
-                                    const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return <span className="timeline-percent">{Math.round(pct)}%</span>;
-                                })()}
-                            </div>
-                            <div className="timeline-bar">
-                                {(() => {
-                                    const start = parseDateValue(task.startDate!).getTime();
-                                    const end = parseDateValue(task.dueDate!).getTime();
-                                    const now = new Date().getTime();
-                                    const total = end - start;
-                                    const elapsed = now - start;
-                                    const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return (
-                                        <div
-                                            className="progress"
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    );
-                                })()}
-                            </div>
-                            <div className="dates-row">
-                                <span>{t('projectTasks.timeline.start')} {format(parseDateValue(task.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                {canQuickEditDates ? (
-                                    <button
-                                        type="button"
-                                        onClick={togglePillEditor('dates')}
-                                        data-task-pill-trigger={`${task.id}-dates`}
-                                        className={`due-date-trigger ${isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
-                                        title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
-                                    >
-                                        {t('projectTasks.timeline.due')} {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                    </button>
-                                ) : (
-                                    <span className={isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''}>
-                                        {t('projectTasks.timeline.due')} {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {showTimeline && (
-                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
-                            <div className="timeline-simple-bar">
-                                {(() => {
-                                    const start = parseDateValue(task.startDate!).getTime();
-                                    const end = parseDateValue(task.dueDate!).getTime();
-                                    const now = new Date().getTime();
-                                    const total = end - start;
-                                    const elapsed = now - start;
-                                    const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return (
-                                        <div
-                                            className="progress"
-                                            style={{ width: `${pct}%` }}
-                                        />
-                                    );
-                                })()}
-                            </div>
-                            <div className="dates-row">
-                                <span>{format(parseDateValue(task.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                {canQuickEditDates ? (
-                                    <button
-                                        type="button"
-                                        onClick={togglePillEditor('dates')}
-                                        data-task-pill-trigger={`${task.id}-dates`}
-                                        className={`due-date-trigger due-date-trigger--compact ${isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
-                                        title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
-                                    >
-                                        {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                    </button>
-                                ) : (
-                                    <span className={isDateOverdue(parseDateValue(task.dueDate!)) ? 'overdue' : ''}>
-                                        {format(parseDateValue(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {showStrategicDue && dueDate && (
-                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
-                            {canQuickEditDates ? (
-                                <button
-                                    type="button"
-                                    onClick={togglePillEditor('dates')}
-                                    data-task-pill-trigger={`${task.id}-dates`}
-                                    className={`due-date-box due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : 'normal'} ${isActiveEditor('dates') ? 'active' : ''}`}
-                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
-                                >
-                                    <span className="material-symbols-outlined due-date-icon">event</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
-                                        <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                    </div>
-                                </button>
-                            ) : (
-                                <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
-                                    <span className="material-symbols-outlined due-date-icon">event</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
-                                        <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {showDueDate && dueDate && (
-                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
-                            {canQuickEditDates ? (
-                                <button
-                                    type="button"
-                                    onClick={togglePillEditor('dates')}
-                                    data-task-pill-trigger={`${task.id}-dates`}
-                                    className={`due-date-box simple due-date-trigger due-date-trigger--box ${isOverdue ? 'overdue' : ''} ${isActiveEditor('dates') ? 'active' : ''}`}
-                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
-                                >
-                                    <span className="material-symbols-outlined due-date-icon">event</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
-                                        <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                    </div>
-                                </button>
-                            ) : (
-                                <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
-                                    <span className="material-symbols-outlined due-date-icon">event</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
-                                        <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {showDueDateSetter && (
-                        <div className={`timeline-widget ${isGrid ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
-                            {canQuickEditDates ? (
-                                <button
-                                    type="button"
-                                    onClick={togglePillEditor('dates')}
-                                    data-task-pill-trigger={`${task.id}-dates`}
-                                    className={`due-date-box simple due-date-trigger due-date-trigger--box due-date-trigger--empty ${isActiveEditor('dates') ? 'active' : ''}`}
-                                    title={isActiveEditor('dates') ? t('projectTasks.actions.quickDatesClose') : t('projectTasks.actions.quickDatesTitle')}
-                                >
-                                    <span className="material-symbols-outlined due-date-icon">event_upcoming</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
-                                        <span className="date-val small">{t('projectTasks.timeline.setDue')}</span>
-                                    </div>
-                                </button>
-                            ) : (
-                                <div className="due-date-box simple">
-                                    <span className="material-symbols-outlined due-date-icon">event_upcoming</span>
-                                    <div className="due-date-info">
-                                        <span className="date-label">{t('projectTasks.timeline.due')}</span>
-                                        <span className="date-val small">{t('projectTasks.timeline.setDue')}</span>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="action-btn-group">
-                        {!task.legacyInitiativeRoot && !isInitiativeTask && can('canManageTasks') && (
-                            <button
-                                type="button"
-                                onClick={togglePillEditor('initiative')}
-                                data-task-pill-trigger={`${task.id}-initiative`}
-                                className={`action-btn action-btn--initiative ${isActiveEditor('initiative') ? 'is-active' : ''}`}
-                                title={t('projectTasks.pill.linkInitiative')}
-                                aria-label={t('projectTasks.pill.linkInitiative')}
-                            >
-                                <span className="material-symbols-outlined action-btn__icon">rocket_launch</span>
-                            </button>
-                        )}
-                        {can('canManageTasks') && (
-                            <button aria-label={t('common.delete')}
-                                type="button"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(task); }}
-                                className="action-btn action-btn--delete"
-                            >
-                                <span className="material-symbols-outlined action-btn__icon">delete</span>
-                            </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (isPinned(task.id)) {
-                                    unpinItem(task.id);
-                                } else {
-                                    pinItem({
-                                        id: task.id,
-                                        type: 'task',
-                                        title: task.title,
-                                        projectId: id!,
-                                        tenantId: task.tenantId || project?.tenantId,
-                                        priority: task.priority,
-                                        isCompleted: task.isCompleted
-                                    });
-                                }
-                            }}
-                            onContextMenu={(e) => {
-                                e.preventDefault();
-                                if (focusItemId === task.id) {
-                                    setFocusItem(null);
-                                } else {
-                                    startFocusItem({
-                                        id: task.id,
-                                        type: 'task',
-                                        title: task.title,
-                                        projectId: id!,
-                                        tenantId: task.tenantId || project?.tenantId,
-                                        priority: task.priority,
-                                        isCompleted: task.isCompleted
-                                    });
-                                }
-                            }}
-                            className={`action-btn action-btn--pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
-                            title={isPinned(task.id) ? t('projectTasks.actions.unpinTitle') : t('projectTasks.actions.pinTitle')}
-                        >
-                            <span className={`material-symbols-outlined action-btn__icon ${focusItemId === task.id ? 'action-btn__icon--focused' : ''}`}>
-                                push_pin
-                            </span>
-                        </button>
-                        <div className="action-btn">
-                            <span className="material-symbols-outlined action-btn__icon">east</span>
-                        </div>
-                    </div>
-                </div>
-            </div >
-        );
-    };
-
-    const editingTaskStartDate = toDateInputValue(editingTask?.startDate);
-    const editingTaskDueDate = toDateInputValue(editingTask?.dueDate);
-    const editingTaskCategories = editingTask
-        ? (Array.isArray(editingTask.category) ? editingTask.category : [editingTask.category].filter(Boolean))
-        : [];
-
     const groups = useMemo(
         () => groupTasks(filteredTasks, { groupBy, t, members, currentUserId: auth.currentUser?.uid }),
         [filteredTasks, groupBy, t, members]
@@ -1075,29 +383,6 @@ export const ProjectTasks = () => {
             </div>
         </div>
     );
-
-    const metricCards = [
-        {
-            label: t('projectTasks.stats.open'),
-            value: String(stats.open),
-            meta: t('projectTasks.workbench.deliveryMeta').replace('{count}', String(stats.high + stats.urgent))
-        },
-        {
-            label: t('projectTasks.stats.completed'),
-            value: String(stats.completed),
-            meta: `${stats.progress}% ${t('projectTasks.workbench.completionMeta').replace('{done}', String(stats.completed)).replace('{total}', String(stats.total))}`
-        },
-        {
-            label: t('projectTasks.stats.highPriority'),
-            value: String(stats.high),
-            meta: filterLabels[filter]
-        },
-        {
-            label: t('projectTasks.stats.urgent'),
-            value: String(stats.urgent),
-            meta: t('projectTasks.workbench.focusMeta').replace('{view}', viewLabels[view])
-        }
-    ];
 
     return (
         <>
@@ -1164,25 +449,15 @@ export const ProjectTasks = () => {
                             aria-label={t('work.filter.search')}
                         />
                     </label>
-                    {view === 'list' ? (
-                        <Select
-                            value={groupBy}
-                            onChange={(value) => changeGroupBy(value as WorkGroupBy)}
-                            options={(['due', 'status', 'assignee'] as const).map((option) => ({
-                                value: option,
-                                label: `${t('work.filter.groupBy')}: ${t(`work.groupBy.${option}`)}`
-                            }))}
-                            className="work-toolbar__select"
-                        />
-                    ) : (
-                        <Select
-                            value={sortBy}
-                            onChange={(value) => setSortBy(value as typeof sortBy)}
-                            options={sortOptions}
-                            placeholder={t('projectTasks.sort.label')}
-                            className="work-toolbar__select"
-                        />
-                    )}
+                    <Select
+                        value={groupBy}
+                        onChange={(value) => changeGroupBy(value as WorkGroupBy)}
+                        options={(['due', 'status', 'assignee'] as const).map((option) => ({
+                            value: option,
+                            label: `${t('work.filter.groupBy')}: ${t(`work.groupBy.${option}`)}`
+                        }))}
+                        className="work-toolbar__select"
+                    />
                     <button
                         type="button"
                         className={`work-chip ${filter !== 'active' ? 'is-active' : ''}`}
@@ -1221,32 +496,34 @@ export const ProjectTasks = () => {
                 </div>
 
                 <div data-onboarding-id="project-tasks-view" className="work-page__body" ref={selection.listRef}>
-                    {view === 'list' ? (
-                        <TaskGroupList
-                            groups={groups}
-                            storageKey={`projectflow.work.project.${groupBy}.collapsed`}
-                            toggleLabel={(label, collapsed) => t(collapsed ? 'work.group.expand' : 'work.group.collapse').replace('{group}', label)}
-                            selection={can('canManageTasks') ? {
-                                active: isSelecting,
-                                isSelected: (task) => selectedIds.has(task.id),
-                                onToggleGroup: (groupTasks, selected) => setMany(groupTasks.map((task) => task.id), selected),
-                                label: (group) => t('work.bulk.selectGroup').replace('{group}', group)
-                            } : undefined}
-                            renderRow={(task) => (
-                                <TaskRow
-                                    task={task}
-                                    members={members}
-                                    subtasks={subtaskStats[task.id]}
-                                    canEdit={can('canManageTasks')}
-                                    saving={savingInlineTaskId === task.id}
-                                    selectable={can('canManageTasks')}
-                                    selected={selectedIds.has(task.id)}
-                                    selectOnClick={selectionMode}
-                                    onSelectChange={(entry, options) => toggleSelect(entry.id, options)}
-                                    onToggleComplete={handleToggle}
-                                    onUpdate={updateTaskInline}
-                                    onOpen={(entry) => navigate(`/project/${id}/tasks/${entry.id}`)}
-                                />
+                    <TaskGroupList
+                        groups={groups}
+                        layout={view}
+                        storageKey={`projectflow.work.project.${groupBy}.collapsed`}
+                        toggleLabel={(label, collapsed) => t(collapsed ? 'work.group.expand' : 'work.group.collapse').replace('{group}', label)}
+                        selection={can('canManageTasks') ? {
+                            active: isSelecting,
+                            isSelected: (task) => selectedIds.has(task.id),
+                            onToggleGroup: (groupTasks, selected) => setMany(groupTasks.map((task) => task.id), selected),
+                            label: (group) => t('work.bulk.selectGroup').replace('{group}', group)
+                        } : undefined}
+                        renderRow={(task) => (
+                            <TaskRow
+                                task={task}
+                                variant={view === 'grid' ? 'card' : 'row'}
+                                members={members}
+                                initiativeTitle={task.initiativeId ? initiativeLookup[task.initiativeId]?.title : undefined}
+                                subtasks={subtaskStats[task.id]}
+                                canEdit={can('canManageTasks')}
+                                saving={savingInlineTaskId === task.id}
+                                selectable={can('canManageTasks')}
+                                selected={selectedIds.has(task.id)}
+                                selectOnClick={selectionMode}
+                                onSelectChange={(entry, options) => toggleSelect(entry.id, options)}
+                                onToggleComplete={handleToggle}
+                                onUpdate={updateTaskInline}
+                                onOpen={(entry) => navigate(`/project/${id}/tasks/${entry.id}`)}
+                            />
                             )}
                             empty={(
                                 <div className="work-empty">
@@ -1256,19 +533,6 @@ export const ProjectTasks = () => {
                                 </div>
                             )}
                         />
-                    ) : filteredTasks.length === 0 ? (
-                        <div className="work-empty">
-                            <span className="material-symbols-outlined" aria-hidden="true">task_alt</span>
-                            <p className="work-empty__title">{t('projectTasks.empty.title')}</p>
-                            <p className="work-empty__text">{t('projectTasks.empty.description')}</p>
-                        </div>
-                    ) : (
-                        <div className="workstream-page__grid">
-                            {filteredTasks.map(task => (
-                                <TaskCard key={task.id} task={task} isGrid />
-                            ))}
-                        </div>
-                    )}
                 </div>
 
                 {isSelecting && (
@@ -1316,204 +580,6 @@ export const ProjectTasks = () => {
                     />
                 )}
 
-                {can('canManageTasks') && taskPillEditor && editingTask && createPortal(
-                    <div
-                        className="task-pill-editor-popover"
-                        ref={taskPillEditorRef}
-                        style={{
-                            top: `${taskPillEditorPosition.top}px`,
-                            left: `${taskPillEditorPosition.left}px`,
-                            width: `${taskPillEditorPosition.width}px`
-                        }}
-                        onClick={(event) => event.stopPropagation()}
-                        onMouseDown={(event) => event.stopPropagation()}
-                    >
-                        <div className={`task-pill-editor ${savingInlineTaskId === editingTask.id ? 'is-saving' : ''}`}>
-                            <div className="task-pill-editor__header">
-                                <div>
-                                    <div className="task-pill-editor__eyebrow">{t(`projectTasks.editor.${taskPillEditor.type}.eyebrow`)}</div>
-                                    <strong className="task-pill-editor__title">{editingTask.title}</strong>
-                                </div>
-                                <button aria-label={t('common.close')} type="button" className="task-pill-editor__close" onClick={() => setTaskPillEditor(null)}>
-                                    <span className="material-symbols-outlined">close</span>
-                                </button>
-                            </div>
-
-                            {taskPillEditor.type === 'priority' && (
-                                <div className="task-pill-editor__options">
-                                    {TASK_PRIORITY_OPTIONS.map((priority) => (
-                                        <button
-                                            key={priority}
-                                            type="button"
-                                            className={`task-pill-editor__option ${editingTask.priority === priority ? 'is-selected' : ''}`}
-                                            onClick={() => {
-                                                const updates: Partial<Task> = { priority };
-                                                void updateTaskInline(editingTask, updates);
-                                                setTaskPillEditor(null);
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined">
-                                                {priority === 'Urgent' ? 'error' :
-                                                    priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                        priority === 'Medium' ? 'drag_handle' :
-                                                            'keyboard_arrow_down'}
-                                            </span>
-                                            {priorityLabels[priority]}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {taskPillEditor.type === 'status' && (
-                                <div className="task-pill-editor__options">
-                                    {TASK_STATUS_OPTIONS.map((status) => (
-                                        <button
-                                            key={status}
-                                            type="button"
-                                            className={`task-pill-editor__option ${editingTask.status === status ? 'is-selected' : ''}`}
-                                            onClick={() => {
-                                                const updates: Partial<Task> = { status, isCompleted: status === 'Done' };
-                                                void updateTaskInline(editingTask, updates);
-                                                setTaskPillEditor(null);
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined">
-                                                {status === 'Done' ? 'check_circle' :
-                                                    status === 'In Progress' ? 'sync' :
-                                                        status === 'Review' ? 'visibility' :
-                                                            status === 'Open' ? 'play_circle' :
-                                                                status === 'Backlog' ? 'inventory_2' :
-                                                                    status === 'On Hold' ? 'pause_circle' :
-                                                                        status === 'Blocked' ? 'dangerous' :
-                                                                            'circle'}
-                                            </span>
-                                            {statusLabels[status] || status}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-
-                            {taskPillEditor.type === 'initiative' && (
-                                <div className="task-pill-editor__options">
-                                    <button
-                                            type="button"
-                                            className={`task-pill-editor__option ${!editingTask.initiativeId ? 'is-selected' : ''}`}
-                                            onClick={() => {
-                                                void updateTaskInline(editingTask, { initiativeId: '' });
-                                                setTaskPillEditor(null);
-                                            }}
-                                        >
-                                        <span className="material-symbols-outlined">remove_circle</span>
-                                        {t('projectTasks.pill.initiativeNone')}
-                                    </button>
-                                    {initiatives.map((initiative) => (
-                                        <button
-                                            key={initiative.id}
-                                            type="button"
-                                            className={`task-pill-editor__option ${editingTask.initiativeId === initiative.id ? 'is-selected' : ''}`}
-                                            onClick={() => {
-                                                void updateTaskInline(editingTask, { initiativeId: initiative.id });
-                                                setTaskPillEditor(null);
-                                            }}
-                                        >
-                                            <span className="material-symbols-outlined">rocket_launch</span>
-                                            <span>{initiative.title}</span>
-                                        </button>
-                                    ))}
-                                    {initiatives.length === 0 && (
-                                        <div className="task-pill-editor__empty">{t('projectTasks.editor.initiative.empty')}</div>
-                                    )}
-                                    {editingTask.initiativeId && (
-                                        <button
-                                            type="button"
-                                            className="task-pill-editor__link"
-                                            onClick={() => navigate(`/project/${id}/initiatives/${editingTask.initiativeId}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                        >
-                                            <span className="material-symbols-outlined">arrow_outward</span>
-                                            {t('projectTasks.pill.openInitiative')}
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-
-                            {taskPillEditor.type === 'category' && (
-                                <div className="task-pill-editor__options">
-                                    {allCategories.map((category) => (
-                                        <button
-                                            key={category.id}
-                                            type="button"
-                                            className={`task-pill-editor__option ${editingTaskCategories.includes(category.name) ? 'is-selected' : ''}`}
-                                            onClick={() => {
-                                                const nextCategories = editingTaskCategories.includes(category.name)
-                                                    ? editingTaskCategories.filter((name) => name !== category.name)
-                                                    : [...editingTaskCategories, category.name];
-                                                void updateTaskInline(editingTask, { category: nextCategories });
-                                            }}
-                                        >
-                                            <span className="task-pill-editor__swatch" style={{ backgroundColor: category.color || '#64748b' }} />
-                                            <span>{category.name}</span>
-                                        </button>
-                                    ))}
-                                    {allCategories.length === 0 && (
-                                        <div className="task-pill-editor__empty">{t('projectTasks.editor.category.empty')}</div>
-                                    )}
-                                </div>
-                            )}
-
-                            {taskPillEditor.type === 'dates' && (
-                                <div className="task-pill-editor__dates">
-                                    <div className="quick-date-field">
-                                        <label htmlFor={`task-start-date-${editingTask.id}`}>{t('projectTasks.timeline.start')}</label>
-                                        <div className="quick-date-field__control">
-                                            <input
-                                                id={`task-start-date-${editingTask.id}`}
-                                                type="date"
-                                                value={editingTaskStartDate}
-                                                max={editingTaskDueDate || undefined}
-                                                aria-label={t('projectTasks.actions.quickStartAria')}
-                                                disabled={savingInlineTaskId === editingTask.id}
-                                                onChange={(event) => handleQuickDateChange(editingTask, 'startDate', event.target.value)}
-                                            />
-                                            <button aria-label={t('projectTasks.actions.clearStartDate')}
-                                                type="button"
-                                                className="quick-date-field__clear"
-                                                disabled={savingInlineTaskId === editingTask.id || !editingTaskStartDate}
-                                                onClick={() => handleQuickDateChange(editingTask, 'startDate', '')}
-                                                title={t('projectTasks.actions.clearStartDate')}
-                                            >
-                                                <span className="material-symbols-outlined">close</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="quick-date-field">
-                                        <label htmlFor={`task-due-date-${editingTask.id}`}>{t('projectTasks.timeline.due')}</label>
-                                        <div className="quick-date-field__control">
-                                            <input
-                                                id={`task-due-date-${editingTask.id}`}
-                                                type="date"
-                                                value={editingTaskDueDate}
-                                                min={editingTaskStartDate || undefined}
-                                                aria-label={t('projectTasks.actions.quickDueAria')}
-                                                disabled={savingInlineTaskId === editingTask.id}
-                                                onChange={(event) => handleQuickDateChange(editingTask, 'dueDate', event.target.value)}
-                                            />
-                                            <button aria-label={t('projectTasks.actions.clearDueDate')}
-                                                type="button"
-                                                className="quick-date-field__clear"
-                                                disabled={savingInlineTaskId === editingTask.id || !editingTaskDueDate}
-                                                onClick={() => handleQuickDateChange(editingTask, 'dueDate', '')}
-                                                title={t('projectTasks.actions.clearDueDate')}
-                                            >
-                                                <span className="material-symbols-outlined">close</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>,
-                    document.body
-                )}
             </div>
             <OnboardingOverlay
                 isOpen={onboardingActive}
