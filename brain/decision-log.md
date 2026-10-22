@@ -4,6 +4,11 @@ Last updated: 2026-06-04
 
 ## Decision Entries
 
+- 2026-10-22: iOS app uses its own UI components instead of native SwiftUI controls.
+  - Rationale: owner wants innovative, intuitive, immersive custom UI elements.
+  - Decision: custom dock, focus bar, navigator, sheets, swipe rows, peek, segments, chips, date strip, switches, toasts on top of SwiftUI primitives and `glassEffect`; native only for text input, scroll containers and system integrations. Implementation contracts in [plans/ios-implementation-contracts.md](./plans/ios-implementation-contracts.md).
+  - Consequences: accessibility (VoiceOver, Dynamic Type, Reduce Motion) must be built into every component; the component catalog checks it.
+
 - 2026-10-22: Owner decisions for the new iOS app (concept §12).
   - Rationale: the seven open questions of [plans/ios-app-concept.md](./plans/ios-app-concept.md) v2 blocked Phase 0.
   - Decision:

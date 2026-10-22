@@ -139,6 +139,18 @@ iOS in v1 nicht lädt.
 
 ## 4. Design Language für iOS
 
+> **Owner-Entscheidung 2026-10-22: eigene UI-Elemente statt nativer SwiftUI-Controls.** Die App baut ihre
+> Bedienelemente selbst auf SwiftUI-Primitiven (Stacks, Shapes, Canvas, Gesten, `glassEffect`) auf:
+> eigenes **Dock** statt System-Tab-Bar, eigene **Fokus-Leiste** statt `tabViewBottomAccessory`, eigener
+> **Navigator** (Push/Zoom, Kanten-Wisch zurück) statt `NavigationStack`-Bars, eigene **Sheets** mit
+> Rastpunkten, eigene **Wisch-Zeilen** statt `List`-Swipe-Actions, eigener **Peek** (Long-Press-Vorschau)
+> statt `contextMenu`, eigene **Segmente** (Glider wie die Web-Sidebar), **Chips**, **Datums-Streifen**,
+> **Schalter**, **Toasts**, **Ringe**. Native bleiben nur Texteingabe (`TextField`/`TextEditor`, ohne
+> Systemstil), Scroll-Container und Systemintegration (Widgets, Live Activity, Intents, Share).
+> Barrierefreiheit wird dadurch Eigenleistung: jede Komponente liefert VoiceOver-Label/Traits/Actions,
+> Dynamic Type und Reduce Motion selbst (Komponenten-Katalog prüft das).
+> Verträge für Backend/Web/iOS: [ios-implementation-contracts.md](./ios-implementation-contracts.md).
+
 Die Brücke: **Das Web hat schon schwebendes Glas-Chrome über ruhigem Inhalt. iOS 26 Liquid Glass ist
 genau das, nativ.** Also System-Glas für Chrome und ProjectFlow-Tokens für Inhalt.
 
