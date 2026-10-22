@@ -226,6 +226,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
   - `TaskGroupList` `selection` prop adds a per-group select-all checkbox (mixed state) and the `is-selecting` list class.
   - `WorkBulkBar`: floating bar sticky to the bottom of the work page (no layout shift) with status, priority, due date, assignee (replaces assignees), optional initiative, delete and close; same `InlineMenu`s as a row. Icons only on mobile.
   - Toolbar "Select" chip toggles selection mode (the entry point on touch devices).
+- `WorkMenuChip`: toolbar chip that opens an `InlineMenu` (icon, optional muted prefix, value, caret). Use it instead of a form `Select` in work toolbars: group-by on Project Tasks; project and priority filters on My Tasks (`active` = filter chip, muted while unset, highlighted while narrowing).
 - `workMenuOptions.tsx`: shared option builders (`statusMenuOptions`, `priorityMenuOptions`, `dueMenuOptions`, `assigneeMenuOptions`), `DueDatePicker` footer, `WorkAvatar`, `UNASSIGNED_VALUE`; reuse them for any new work-list menu.
 - Used by:
   - `screens/Tasks.tsx` (My Tasks);

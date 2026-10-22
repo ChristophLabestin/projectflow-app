@@ -19,7 +19,8 @@ import { groupTasks, summarizeDue, type WorkGroupBy } from '../components/work/w
 import { useWorkMembers } from '../components/work/useWorkMembers';
 import { useWorkSelection } from '../components/work/useWorkSelection';
 import { WorkBulkBar } from '../components/work/WorkBulkBar';
-import { InlineMenu, type InlineMenuOption } from '../components/work/InlineMenu';
+import type { InlineMenuOption } from '../components/work/InlineMenu';
+import { WorkMenuChip } from '../components/work/WorkMenuChip';
 import { UNASSIGNED_VALUE } from '../components/work/workMenuOptions';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
@@ -450,17 +451,11 @@ export const ProjectTasks = () => {
                             aria-label={t('work.filter.search')}
                         />
                     </label>
-                    <InlineMenu
+                    <WorkMenuChip
                         label={`${t('work.filter.groupBy')}: ${t(`work.groupBy.${groupBy}`)}`}
-                        triggerClassName="work-chip work-chip--menu"
-                        trigger={(
-                            <>
-                                <span className="material-symbols-outlined" aria-hidden="true">{GROUP_BY_ICONS[groupBy]}</span>
-                                <span className="work-chip__prefix">{t('work.filter.groupBy')}</span>
-                                {t(`work.groupBy.${groupBy}`)}
-                                <span className="material-symbols-outlined work-chip__caret" aria-hidden="true">expand_more</span>
-                            </>
-                        )}
+                        icon={GROUP_BY_ICONS[groupBy]}
+                        prefix={t('work.filter.groupBy')}
+                        valueLabel={t(`work.groupBy.${groupBy}`)}
                         options={(['due', 'status', 'assignee'] as const).map((option) => ({
                             value: option,
                             label: t(`work.groupBy.${option}`),

@@ -235,6 +235,17 @@
         color: var(--color-text-muted);
     }
 
+    &--filter.inline-menu__trigger:not(.is-active) {
+        color: var(--color-text-muted);
+    }
+
+    &__value {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
     &__caret {
         margin-left: -2px;
         color: var(--color-text-subtle);
