@@ -17,10 +17,7 @@ import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
-import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
-import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
-import { checkScheduledPosts, autoStartSprints, dailyHealthSnapshots } from './scheduler';
-import { getFacebookAuthUrl, facebookCallback } from './facebook';
+import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
 import { onProjectTaskGitHubSync } from './github-task-sync';
 import {
     createWorkspaceApiToken,
@@ -127,15 +124,8 @@ export {
     saveProjectIntakeConfig,
     getProjectIntakeForm,
     submitProjectIntake,
-    getTikTokAuthUrl,
-    tiktokCallback,
-    getYouTubeAuthUrl,
-    youtubeCallback,
-    checkScheduledPosts,
     autoStartSprints,
     dailyHealthSnapshots,
-    getFacebookAuthUrl,
-    facebookCallback,
     onProjectTaskGitHubSync,
     getWorkspaceSmtpConfig,
     saveWorkspaceSmtpConfig,
