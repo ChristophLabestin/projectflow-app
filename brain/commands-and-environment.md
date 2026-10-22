@@ -49,7 +49,11 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 
 ## iOS
 
-- No native iOS project in the repo since 2026-10-22 (old `swift/` app removed). The new app's build command gets added here once its Xcode project exists; concept: [plans/ios-app-concept.md](./plans/ios-app-concept.md).
+- Regenerate the Xcode project after adding/removing files: `cd ios && xcodegen generate`
+- Simulator build: `xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build`
+- The `ProjectFlow` scheme runs the `Emulator` configuration against `scripts/dev-e2e.sh` (default ports auth 9631, firestore 8631, functions 5631; override per launch with `SIMCTL_CHILD_PF_EMULATOR_*_PORT`). Launch args: `-pfAutoLogin` (demo user), `-pfOpenURL /project/<id>` (open a screen).
+- Lint: `cd ios && swiftlint lint --quiet` (colour literals and native controls are errors).
+- Conventions: [ios/README.md](../ios/README.md).
 
 ## Firestore Commands
 

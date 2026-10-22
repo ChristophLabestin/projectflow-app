@@ -22,7 +22,7 @@ The product should become a command center for moving real projects forward: cap
 - Web app under `web/`.
 - Firebase Cloud Functions under `functions/`.
 - Firestore rules, indexes, and data model documentation.
-- Native iOS app: none in the repo since 2026-10-22 (old `swift/` app removed); new app concept in `brain/plans/ios-app-concept.md`.
+- Native iOS app under `ios/` (rebuilt from scratch on 2026-10-22; concept `brain/plans/ios-app-concept.md`, contracts `brain/plans/ios-implementation-contracts.md`).
 - Repo-local ProjectFlow Codex plugin under `plugins/projectflow-codex/`.
 - Documentation and working memory under `brain/`.
 

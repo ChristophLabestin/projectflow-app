@@ -17,8 +17,8 @@ Then open the smallest relevant durable file for the task (see the Brain README'
 ProjectFlow is a multi-tenant project management app for execution, structured ideation
 through Flows, optional operational modules, permissions, AI assistance, and Codex
 session tracking. Surfaces: a React/TypeScript/Vite web app (`web/`), Firebase Cloud
-Functions (`functions/`). The old Swift app was removed (2026-10-22); a new iOS app is being
-conceived in `brain/plans/ios-app-concept.md`.
+Functions (`functions/`), and a native iOS app (`ios/`, rebuilt from scratch on 2026-10-22;
+concept `brain/plans/ios-app-concept.md`, conventions `ios/README.md`).
 
 ## Project Structure
 
@@ -27,6 +27,7 @@ conceived in `brain/plans/ios-app-concept.md`.
   - `web/styles/` SCSS tokens & globals · `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/`
   - `web/locales/` i18n (`en.ts`, `de.ts`) · `web/assets/` static files
 - `functions/` — Firebase Cloud Functions (`src` → `lib`)
+- `ios/` — SwiftUI app (XcodeGen `project.yml`, package `Packages/ProjectFlowKit`, widgets/share/notification extensions)
 - `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `firebase.json` — Firebase config
 
 ## Key Rules
@@ -58,6 +59,7 @@ conceived in `brain/plans/ios-app-concept.md`.
 | E2E tests | `cd web && npm run test:e2e` |
 | Theme lint | `cd web && npm run lint:theme` |
 | Functions build | `cd functions && npm run build` |
+| iOS sim build | `cd ios && xcodegen generate && cd .. && xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build` |
 
 After a task, run the build for the surface you touched. Deploy only what you changed
 (`firebase deploy --only functions:<name>` / `firebase deploy --only firestore:rules`).

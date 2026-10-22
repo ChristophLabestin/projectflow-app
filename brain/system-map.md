@@ -18,7 +18,7 @@ Last updated: 2026-06-04
 
 - Web UI owns user interaction patterns, route structure, reusable components, and SCSS implementation.
 - Firestore and Cloud Functions are the authoritative enforcement layer for data access, permissions, notifications, AI usage, and ProjectFlow API workflows.
-- Native iOS: the previous `swift/` app was removed on 2026-10-22; a new app is being conceived in [plans/ios-app-concept.md](./plans/ios-app-concept.md) and must align with the documented web/product model.
+- `ios/`: native iOS app (SwiftUI, XcodeGen project, local package `ProjectFlowKit` with PFModel/PFDomain/PFDesign/PFData/PFSnapshot; widgets, Live Activity, share and notification-service extensions). Rebuilt from scratch on 2026-10-22 ([plans/ios-app-concept.md](./plans/ios-app-concept.md)); it must align with the documented web/product model and the contracts in [plans/ios-implementation-contracts.md](./plans/ios-implementation-contracts.md).
 - Brain files guide contributors; source code remains the source of truth when docs and implementation conflict.
 
 ## External Dependencies

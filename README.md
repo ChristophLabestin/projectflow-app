@@ -20,5 +20,6 @@ Prerequisites: Node.js.
 - Web tests: `cd web && npm run test:run`
 - Theme lint: `cd web && npm run lint:theme`
 - Functions build: `cd functions && npm run build`
+- iOS simulator build: see `ios/README.md`
 
 See [brain/commands-and-environment.md](./brain/commands-and-environment.md) for the full command and environment list.
