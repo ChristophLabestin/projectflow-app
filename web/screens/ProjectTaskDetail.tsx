@@ -7,7 +7,7 @@ import { getProjectById, getProjectMembers } from '../services/domain/projectsSe
 import { addSubTask, deleteSubTask, deleteTask, getProjectTasks, getSubTasks, getTaskById, subscribeTaskActivity, toggleSubTaskStatus, toggleTaskStatus, updateSubtaskFields, updateTaskFields } from '../services/domain/tasksService';
 import { subscribeTenantUsers } from '../services/domain/workspaceMembersService';
 import { deleteField } from 'firebase/firestore';
-import { SubTask, Task, Member, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
+import { SubTask, Task, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
 import { CommentSection } from '../components/CommentSection';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
@@ -85,6 +85,10 @@ const getTaskStatusIcon = (status: string) => {
     return map[status] || 'circle';
 };
 
+// Link fields that older task documents may still carry.
+type LegacyTaskLinks = { convertedIdeaId?: string; linkedIssueId?: string };
+type TenantUser = Parameters<Parameters<typeof subscribeTenantUsers>[0]>[0][number] & { uid?: string };
+
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
     const [searchParams] = useSearchParams();
@@ -106,7 +110,7 @@ export const ProjectTaskDetail = () => {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [subTaskToDelete, setSubTaskToDelete] = useState<string | null>(null);
     const [deletingSubTask, setDeletingSubTask] = useState(false);
-    const [allUsers, setAllUsers] = useState<Member[]>([]);
+    const [allUsers, setAllUsers] = useState<TenantUser[]>([]);
     const [activeSubAssignMenu, setActiveSubAssignMenu] = useState<string | null>(null);
     const [project, setProject] = useState<Project | null>(null);
     const [commentCount, setCommentCount] = useState(0);
@@ -295,7 +299,7 @@ export const ProjectTaskDetail = () => {
         if (!task?.tenantId) return;
 
         const unsubUsers = subscribeTenantUsers((users) => {
-            setAllUsers(users as Member[]);
+            setAllUsers(users);
         }, task.tenantId);
 
         return () => {
@@ -378,7 +382,7 @@ export const ProjectTaskDetail = () => {
     const handleUpdateSubTaskAssignee = async (subId: string, userId: string | null) => {
         setSubTasks(prev => prev.map(s => s.id === subId ? { ...s, assigneeId: userId || undefined } : s));
         try {
-            await updateSubtaskFields(subId, { assigneeId: userId || deleteField() }, taskId, id, activeTenantId);
+            await updateSubtaskFields(subId, { assigneeId: userId || (deleteField() as unknown as string) }, taskId, id, activeTenantId);
         } catch (err) {
             console.error('Failed to update subtask assignee', err);
         }
@@ -561,6 +565,8 @@ export const ProjectTaskDetail = () => {
         return milestones.find(m => m.linkedTaskIds?.includes(task.id));
     }, [milestones, task]);
 
+    const legacyTask = task as (Task & LegacyTaskLinks) | null;
+
     const { setTaskTitle } = useOutletContext<{ setTaskTitle: (title: string) => void }>();
 
     useEffect(() => {
@@ -640,10 +646,8 @@ export const ProjectTaskDetail = () => {
             {showTaskModal && (
                 <Suspense fallback={null}>
                     <TaskCreateModal
-                        isOpen={showTaskModal}
                         onClose={() => setShowTaskModal(false)}
                         projectId={id!}
-                        onSuccess={() => setShowTaskModal(false)}
                     />
                 </Suspense>
             )}
@@ -786,9 +790,9 @@ export const ProjectTaskDetail = () => {
                                             className="task-detail__subtask-avatar"
                                             data-assigned={sub.assigneeId ? 'true' : 'false'}
                                             style={{
-                                                backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => (u as any).id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
+                                                backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => u.id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
                                             }}
-                                            title={sub.assigneeId ? t('taskDetail.subtasks.assignedTo').replace('{name}', allUsers.find(u => (u as any).id === sub.assigneeId)?.displayName || '') : t('taskDetail.subtasks.assign')}
+                                            title={sub.assigneeId ? t('taskDetail.subtasks.assignedTo').replace('{name}', allUsers.find(u => u.id === sub.assigneeId)?.displayName || '') : t('taskDetail.subtasks.assign')}
                                         >
                                             {!sub.assigneeId && <span className="material-symbols-outlined">person_add</span>}
                                         </button>
@@ -806,7 +810,7 @@ export const ProjectTaskDetail = () => {
                                                             {t('taskDetail.subtasks.unassign')}
                                                         </button>
                                                         {taskAssignees.map(uid => {
-                                                            const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
+                                                            const user = allUsers.find(u => u.id === uid || u.uid === uid);
                                                             return (
                                                                 <button key={uid} type="button" onClick={() => handleUpdateSubTaskAssignee(sub.id, uid)} className={`task-detail__menu-item ${sub.assigneeId === uid ? 'task-detail__menu-item--selected' : ''}`}>
                                                                     <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="task-detail__menu-avatar" />
@@ -1136,7 +1140,7 @@ export const ProjectTaskDetail = () => {
                                     <span className="material-symbols-outlined" style={{ color: 'var(--color-text-subtle)' }}>arrow_forward</span>
                                 </Link>
                             )}
-                            {task.convertedIdeaId && (
+                            {legacyTask?.convertedIdeaId && (
                                 <div className="task-detail__linked-row task-detail__linked-row--static">
                                     <span className="material-symbols-outlined">lightbulb</span>
                                     <div>
@@ -1145,7 +1149,7 @@ export const ProjectTaskDetail = () => {
                                     </div>
                                 </div>
                             )}
-                            {task.linkedIssueId && (
+                            {legacyTask?.linkedIssueId && (
                                 <div className="task-detail__linked-row task-detail__linked-row--static">
                                     <span className="material-symbols-outlined">bug_report</span>
                                     <div>
@@ -1154,7 +1158,7 @@ export const ProjectTaskDetail = () => {
                                     </div>
                                 </div>
                             )}
-                            {!initiative && !task.convertedIdeaId && !task.linkedIssueId && (
+                            {!initiative && !legacyTask?.convertedIdeaId && !legacyTask?.linkedIssueId && (
                                 <p style={{ color: 'var(--color-text-muted)', fontSize: '13px', margin: 0 }}>{t('taskDetail.workbench.contextEmpty')}</p>
                             )}
                         </div>
@@ -1177,7 +1181,7 @@ export const ProjectTaskDetail = () => {
                             </button>
                         </div>
                         <DetailMeta label={t('taskDetail.details.created')} value={task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'} />
-                        {task.createdBy && <DetailMeta label={t('taskDetail.details.by').replace('{name}', '')} value={allUsers.find(u => (u as any).id === task.createdBy)?.displayName || t('taskDetail.details.unknownUser')} />}
+                        {task.createdBy && <DetailMeta label={t('taskDetail.details.by').replace('{name}', '')} value={allUsers.find(u => u.id === task.createdBy)?.displayName || t('taskDetail.details.unknownUser')} />}
                         {task.isCompleted && <DetailMeta label={t('taskDetail.details.completed')} value={task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : t('taskDetail.details.justNow')} />}
                     </div>
 

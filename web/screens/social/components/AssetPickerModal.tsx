@@ -25,7 +25,7 @@ export const AssetPickerModal: React.FC<AssetPickerModalProps> = ({ isOpen, onCl
     }, [projectId, isOpen]);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('social.assetPicker.title')} maxWidth="max-w-4xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('social.assetPicker.title')} size="4xl">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-1">
                 {assets.length === 0 && (
                     <div className="col-span-full text-center py-10 text-muted">

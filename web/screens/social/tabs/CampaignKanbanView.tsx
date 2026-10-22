@@ -257,7 +257,6 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
             {fanOutPost && onSplitPost && (
                 <MultiPlatformFanOutModal
                     post={fanOutPost}
-                    isOpen={!!fanOutPost}
                     onClose={() => setFanOutPost(null)}
                     onSubmit={onSplitPost}
                 />

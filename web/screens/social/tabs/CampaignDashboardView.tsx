@@ -19,7 +19,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
     const publishedPosts = posts.filter(p => p.status === 'Published').length;
     const scheduledPosts = posts.filter(p => p.status === 'Scheduled').length;
     const draftPosts = posts.filter(p => p.status === 'Draft').length;
-    const inReviewPosts = posts.filter(p => p.status === 'PendingReview').length;
+    const inReviewPosts = posts.filter(p => p.status === 'In Review').length;
 
     // Platform breakdown
     const platformCounts: Record<string, number> = {};

@@ -264,7 +264,7 @@ export const CreateCampaignPage = () => {
     };
 
     // --- Dynamic List Components ---
-    const addPhase = () => setPhases([...phases, { name: '', durationValue: 1, durationUnit: 'Weeks', focus: '' }]);
+    const addPhase = () => setPhases([...phases, { id: crypto.randomUUID(), name: '', durationValue: 1, durationUnit: 'Weeks', focus: '' }]);
     const updatePhase = (index: number, field: string, value: any) => {
         const newPhases = [...phases];
         newPhases[index] = { ...newPhases[index], [field]: value };
