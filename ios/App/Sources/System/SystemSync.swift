@@ -65,7 +65,6 @@ enum SnapshotPublisher {
     static func clear() {
         SnapshotStore.clear()
         _ = SnapshotStore.drainIntentActions()
-        SnapshotStore.setPendingCaptures([])
         WidgetCenter.shared.reloadAllTimelines()
     }
 

@@ -40,6 +40,7 @@ struct DesignCatalogScreen: View {
                             CatalogChrome().id("chrome")
                             CatalogSystem().id("system")
                             CatalogShare().id("share")
+                            CatalogIntents().id("intents")
                         }
                         .padding(.horizontal, PFSpace.page)
                         .padding(.bottom, 120)
@@ -49,9 +50,15 @@ struct DesignCatalogScreen: View {
                         // QA: `-pfCatalogSection widgets|indicators|…` and `-pfCatalogAppearance dark` for screenshots.
                         let arguments = ProcessInfo.processInfo.arguments
                         if let index = arguments.firstIndex(of: "-pfCatalogAppearance"), arguments.count > index + 1 { appearance = arguments[index + 1] }
+                        if let index = arguments.firstIndex(of: "-pfRunIntent"), arguments.count > index + 1 {
+                            // QA: `-pfRunIntent whatsNext|startFocus|pause|resume|completeFocus|capture|completeTask` once the workspace is loaded.
+                            let name = arguments[index + 1]
+                            try? await Task.sleep(for: .seconds(4))
+                            model.toasts.show(PFToast((try? await CatalogIntents.run(name)) ?? "failed", duration: 20))
+                        }
                         if let index = arguments.firstIndex(of: "-pfCatalogSection"), arguments.count > index + 1 {
-                            try? await Task.sleep(for: .milliseconds(400))
-                            proxy.scrollTo(arguments[index + 1] == "widgets" ? "system" : arguments[index + 1], anchor: .top)
+                            try? await Task.sleep(for: .milliseconds(1200))
+                            withAnimation { proxy.scrollTo(arguments[index + 1] == "widgets" ? "system" : arguments[index + 1], anchor: .top) }
                         }
                     }
                 }
@@ -644,6 +651,67 @@ private struct CatalogShare: View {
         }
         model.presenter.present(detents: [.large]) {
             ShareComposerView(model: share).frame(maxWidth: .infinity, minHeight: 520)
+        }
+    }
+}
+
+// MARK: - App Intents
+
+/// Runs the real App Intents in the app process (what Siri, Shortcuts and widget buttons do) and shows the outcome.
+private struct CatalogIntents: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        CatalogSection("App Intents") {
+            CatalogRow("Runs the real intents against the current workspace") {
+                PFChipRow {
+                    ForEach(["whatsNext", "startFocus", "pause", "resume", "completeFocus", "capture", "completeTask"], id: \.self) { name in
+                        PFChip(name) {
+                            Task {
+                                let text = (try? await CatalogIntents.run(name)) ?? "failed"
+                                model.toasts.show(PFToast(text.isEmpty ? "ok" : text, duration: 8))
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, -PFSpace.page)
+            }
+        }
+    }
+
+    @MainActor
+    static func run(_ name: String) async throws -> String {
+        switch name {
+        case "whatsNext":
+            return try await WhatsNextIntent().perform().value ?? ""
+        case "startFocus":
+            guard let task = await IntentData.tasks().first else { return "no task" }
+            var intent = StartFocusIntent()
+            intent.task = task
+            _ = try await intent.perform()
+            return "focus: \(task.title)"
+        case "pause":
+            _ = try await PauseFocusIntent().perform()
+            return "paused"
+        case "resume":
+            _ = try await ResumeFocusIntent().perform()
+            return "resumed"
+        case "completeFocus":
+            _ = try await CompleteFocusIntent().perform()
+            return "focus done"
+        case "capture":
+            var intent = CaptureTaskIntent()
+            intent.taskTitle = "Intent-Test \(Date.now.formatted(date: .omitted, time: .standard))"
+            _ = try await intent.perform()
+            return "captured: \(intent.taskTitle)"
+        case "completeTask":
+            guard let task = await IntentData.tasks().first else { return "no task" }
+            var intent = CompleteTaskIntent()
+            intent.task = task
+            _ = try await intent.perform()
+            return "completed: \(task.title)"
+        default:
+            return "unknown"
         }
     }
 }
