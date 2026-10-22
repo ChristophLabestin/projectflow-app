@@ -214,7 +214,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
 - `TaskGroupList`: collapsible, count-labelled groups with per-list persisted collapse state (`storageKey`).
 - `InlineMenu`: accessible popover menu (arrow keys, Enter, Escape, outside click) with optional multi-select (`selectedValues`), footer slot, per-option `shortcut` keys (shown as key hints) and `dividerBefore` separators. Use it for inline edits instead of new ad-hoc popovers.
 - `workList.ts`:
-  - `groupTasks` (group by due, status or assignee; completed work last);
+  - `groupTasks` (group by due, status or assignee; completed work last; the due grouping is `utils/dueBuckets.ts`);
   - `summarizeDue` (header summary line);
   - `normalizeStatus` (`Todo` → `Open`).
 - `useWorkMembers`: members of the active workspace for assignee menus.
@@ -264,6 +264,27 @@ No feature should implement an isolated file picker/upload flow outside of this 
 - `WorkspaceMenuSection`: sidebar switcher section with the workspace list, pending invitations (accept) and "New workspace".
 - `InviteToWorkspaceModal`: invite by email or link, with role (Member/Guest, plus Admin for the Owner) and optional/required projects. Use it for every invite entry point (Team, Project Overview, Project Team manager).
 - `context/WorkspaceContext.tsx` (`useWorkspace`): active workspace, list, pending invitations, `switchWorkspace`, `createWorkspace`. Gates the app until the workspace is resolved.
+
+## Shared logic (`web/utils/`, golden fixtures)
+
+Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) both implement. Behaviour is pinned by `shared/fixtures/<module>/*.json` (`{name, input, expected}`); `shared/fixtures/README.md` documents every input/output field. Vitest runs all fixtures (`utils/__tests__/goldenFixtures.test.ts`); regenerate with `node shared/fixtures/generate.mjs` after an intentional change and review the diff.
+
+- `zonedDate.ts`: explicit `now` + IANA `timeZone` instead of the system clock. Date-only strings are calendar days; ISO date-times, Timestamps (`{seconds}`) and epoch ms are instants; `toDay`, `startOfDay`, `daysBetween`, `clockLabel`. `taskDates.ts` (browser-zone helpers used all over the UI) delegates to it.
+- `dayPlan.ts` (`buildDayPlan`): Dashboard slide 1 / iOS "Heute" — plan stops (focus → overdue → due today → scheduled → follow-ups → quiet-day suggestions, max 4), "frees up N", headline statement key/value, day shape and cause line, day band segments, week strip and badge, overnight feed, `waitingOnMe`, `moreCount`, `topUnlocker`. Includes personal tasks (lock glyph instead of the project name; only overdue / due today / scheduled today count, undated ones are suggestions only). Returns i18n keys + params, never text.
+- `dueBuckets.ts`: My Tasks grouping (overdue, today, next 7 days, later, no date, completed), `compareWork`, `summarizeDue`, `normalizeStatus`.
+- `attention.ts` (`buildAttention`, `portfolioGroup`, `classifyPortfolio`): portfolio "where to look" ranking (score, chips, rail, workload, statement, insight, accent, momentum, wins, horizon) and the project-list grouping.
+- `fixtureRunners.ts`: the single place that maps a fixture `input` to the function call (used by Vitest and the generator).
+- `pinnedState.ts`: pure transitions for pins and focus (`users/{uid}`), applied in a Firestore transaction by `PinnedTasksContext`.
+- `notificationPrefs.ts`: defaults and (de)serialisation of `users/{uid}.notificationPrefs`.
+- `services/domain/workspaceTasksService.ts` (`getWorkspaceTasks`): loads all tasks of the given projects once and splits them into `mine` / `others` (the Dashboard needs the others for dependency counts and "Waiting on you").
+
+## Reminders and settings controls
+
+- `components/reminders/ReminderControls.tsx`: `ReminderNotifyToggle` ("Also remind assignees", `notifyAssignees`) and `ReminderSentBadge` (`sentAt`). Used by the task workbench (`ProjectTaskDetail`) and the project reminders popover (`ProjectRemindersPanel`); new reminders also set `createdBy` and `recipientIds: [uid]` (contract C2).
+- `components/settings/SettingsSwitch.tsx`: accessible `role="switch"` for settings rows.
+- `components/settings/NotificationSettingsPanel.tsx`: personal settings tab "Notifications" (`users/{uid}.notificationPrefs`: push/email per category, morning briefing, day close, time zone auto-detected and saved on first open; every change saves immediately).
+- `components/ui/AppleLogo.tsx`: Apple glyph (`currentColor`) for Sign in with Apple (`screens/Login.tsx`) and "Connected accounts" in the security settings.
+- Dashboard plan rows (`screens/Dashboard.tsx`) show personal tasks with a lock glyph (`dashboard.route.personal`), a "+ N more open tasks" link (`moreCount`) and a "Waiting on you" rail section.
 
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
