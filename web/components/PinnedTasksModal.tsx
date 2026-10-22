@@ -893,6 +893,17 @@ export const PinnedTasksModal = () => {
         }
     }, [isModalOpen, focusItemId, pinnedItems, selectedItemId]);
 
+    // Esc closes the full modal (same behavior as the shared Modal); inner handlers can opt out via preventDefault.
+    useEffect(() => {
+        if (!isModalOpen || isCompactMode) return;
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key !== 'Escape' || event.defaultPrevented) return;
+            toggleModal();
+        };
+        document.addEventListener('keydown', handleKeyDown);
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [isModalOpen, isCompactMode, toggleModal]);
+
     useEffect(() => {
         if (typeof window === 'undefined') {
             setHasLoadedCompactState(true);
@@ -1371,6 +1382,9 @@ export const PinnedTasksModal = () => {
     return (
         <div className="modal-overlay modal-overlay--open task-modal center-aligned" onClick={toggleModal}>
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('pinnedTasks.dialogLabel')}
                 className="pinned-tasks-layout"
                 onClick={(e) => e.stopPropagation()}
             >

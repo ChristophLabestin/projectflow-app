@@ -3622,6 +3622,7 @@ const en = {
     'notFound.title': 'Page not found',
     'notFound.description': 'The page you are looking for does not exist or was moved.',
     'notFound.backToDashboard': 'Back to dashboard',
+    'pinnedTasks.dialogLabel': 'Quick access',
 };
 
 export default en;

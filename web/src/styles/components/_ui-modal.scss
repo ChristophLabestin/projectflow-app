@@ -27,6 +27,8 @@
     }
 
     &__panel {
+        &:focus { outline: none; }
+
         position: relative;
         display: flex;
         flex-direction: column;

@@ -3625,6 +3625,7 @@ const de = {
     'notFound.title': 'Seite nicht gefunden',
     'notFound.description': 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
     'notFound.backToDashboard': 'Zurück zum Dashboard',
+    'pinnedTasks.dialogLabel': 'Schnellzugriff',
 };
 
 export default de;

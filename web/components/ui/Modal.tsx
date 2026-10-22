@@ -1,6 +1,18 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { Button } from './Button';
+import { useLanguage } from '../../context/LanguageContext';
+
+const FOCUSABLE_SELECTOR = [
+    'a[href]',
+    'button:not([disabled])',
+    'input:not([disabled]):not([type="hidden"])',
+    'select:not([disabled])',
+    'textarea:not([disabled])',
+    '[tabindex]:not([tabindex="-1"])'
+].join(',');
+
+// Open modals, top-most last: only the top one handles Escape / Tab.
+const openModalStack: symbol[] = [];
 
 interface ModalProps {
     isOpen: boolean;
@@ -16,22 +28,71 @@ interface ModalProps {
 
 export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className = '', hideHeader = false, noPadding = false }: ModalProps) => {
     const overlayRef = useRef<HTMLDivElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
+    const titleId = useId();
+    const { t } = useLanguage();
 
+    // Escape + focus trap + focus restore. Only the top-most open modal reacts.
     useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const previouslyFocused = document.activeElement as HTMLElement | null;
+        const token = Symbol('modal');
+        openModalStack.push(token);
+        const previousOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const getFocusable = () => Array.from(
+            panelRef.current?.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR) || []
+        ).filter((el) => el.offsetParent !== null || el === document.activeElement);
+
+        // Move focus into the dialog unless something inside already took it (e.g. autoFocus).
+        const focusTimer = window.setTimeout(() => {
+            if (panelRef.current && !panelRef.current.contains(document.activeElement)) {
+                (getFocusable()[0] || panelRef.current).focus();
+            }
+        }, 0);
+
         const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
+            if (openModalStack[openModalStack.length - 1] !== token) return;
+            if (e.key === 'Escape') {
+                if (e.defaultPrevented) return;
+                onCloseRef.current();
+                return;
+            }
+            if (e.key !== 'Tab' || !panelRef.current) return;
+            const focusable = getFocusable();
+            if (focusable.length === 0) {
+                e.preventDefault();
+                panelRef.current.focus();
+                return;
+            }
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            const active = document.activeElement as HTMLElement | null;
+            if (e.shiftKey && (active === first || !panelRef.current.contains(active))) {
+                e.preventDefault();
+                last.focus();
+            } else if (!e.shiftKey && (active === last || !panelRef.current.contains(active))) {
+                e.preventDefault();
+                first.focus();
+            }
         };
 
-        if (isOpen) {
-            document.addEventListener('keydown', handleKeyDown);
-            document.body.style.overflow = 'hidden';
-        }
-
+        document.addEventListener('keydown', handleKeyDown);
         return () => {
+            window.clearTimeout(focusTimer);
             document.removeEventListener('keydown', handleKeyDown);
-            document.body.style.overflow = '';
+            const index = openModalStack.indexOf(token);
+            if (index >= 0) openModalStack.splice(index, 1);
+            document.body.style.overflow = openModalStack.length > 0 ? 'hidden' : previousOverflow;
+            if (previouslyFocused && document.contains(previouslyFocused)) {
+                previouslyFocused.focus();
+            }
         };
-    }, [isOpen, onClose]);
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -55,17 +116,24 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                 onClick={onClose}
                 aria-hidden="true"
             />
-            <div className={`ui-modal__panel ${sizeClasses[size]}`} role="dialog" aria-modal="true">
+            <div
+                ref={panelRef}
+                tabIndex={-1}
+                className={`ui-modal__panel ${sizeClasses[size]}`}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={!hideHeader && title ? titleId : undefined}
+            >
                 {!hideHeader && (
                     <div className="ui-modal__header">
-                        <h2 className="ui-modal__title">
+                        <h2 id={titleId} className="ui-modal__title">
                             {title}
                         </h2>
                         <button
                             type="button"
                             onClick={onClose}
                             className="ui-modal__close"
-                            aria-label="Close"
+                            aria-label={t('common.close')}
                         >
                             <span className="material-symbols-outlined text-[20px]">close</span>
                         </button>
