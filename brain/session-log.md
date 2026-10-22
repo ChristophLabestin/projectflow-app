@@ -10,6 +10,12 @@
 
 ## Recent Sessions
 
+- Date: 2026-10-22
+  - Goal: delete the old iOS app completely and conceive a new iOS app from scratch, based on the current web app.
+  - Actions: removed `swift/` and the iOS/mobile reference docs; cleaned references in CLAUDE.md, AGENTS.md, README.md and Brain files; made the provisioning check skip iOS source checks; analysed the web app (feature/IA inventory, design tokens, live walkthrough in the emulator via `scripts/dev-e2e.sh`); wrote `plans/ios-app-concept.md`; ran an independent critical review agent and revised the concept.
+  - Validation: `bash scripts/check-retention-provisioning.sh` runs (2 expected warnings); `rg` finds no stale `swift/` build references in entry docs.
+  - Next: owner decisions on concept §12, then Phase 0.
+
 - Date: 2026-09-26 (continued)
   - Goal: continue the focus redesign on the remaining views.
   - Changes:

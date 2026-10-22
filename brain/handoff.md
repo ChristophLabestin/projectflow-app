@@ -4,6 +4,8 @@ Last updated: 2026-06-04
 
 ## Where Things Stand
 
+**2026-10-22 update — iOS reset.** The previous native app under `swift/` was removed completely (1,454 tracked files incl. committed build output) together with its Brain docs. No iOS project exists in the repo now; `scripts/check-retention-provisioning.sh` skips iOS source-entitlement checks until a new project exists. `web/public/.well-known/apple-app-site-association` and the APNs payload in `functions/src/notifications.ts` were kept on purpose (reusable by the new app). The new app is conceived from scratch in [plans/ios-app-concept.md](./plans/ios-app-concept.md); nothing is implemented yet.
+
 **2026-09-26 update.** ProjectFlow now targets the Firebase project `projectflow-labestin`. Tenancy is multi-workspace:
 - random tenant ids;
 - `members` docs as the only access source;

@@ -47,9 +47,9 @@ Use this to QA signed-in screens without touching production.
 
 Deploy only touched functions when possible, for example: `cd functions && firebase deploy --only functions:callGemini`.
 
-## Swift Command
+## iOS
 
-- Build simulator target: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`
+- No native iOS project in the repo since 2026-10-22 (old `swift/` app removed). The new app's build command gets added here once its Xcode project exists; concept: [plans/ios-app-concept.md](./plans/ios-app-concept.md).
 
 ## Firestore Commands
 
@@ -68,7 +68,6 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 After completing a task, run the build for the surface touched:
 
 - Web work: `cd web && npm run build`
-- Swift work: the Swift simulator build command above
 - Functions work: `cd functions && npm run build`
 
 Documentation-only Brain migrations do not require an app build unless code, rules, functions, or generated assets changed.

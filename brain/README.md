@@ -26,7 +26,7 @@ It replaces the previous loose root Markdown set and the old `docs/` folder. The
 
 ## Folder Map
 
-- [reference/app/](./reference/app/) holds the former root project docs: product concept, permissions, sitemap, styling, component registry, Firestore structure, iOS/mobile plans, privacy brief, gotchas, and AI instructions.
+- [reference/app/](./reference/app/) holds the former root project docs: product concept, permissions, sitemap, styling, component registry, Firestore structure, privacy brief, gotchas, and AI instructions.
 - [reference/legacy-agent/](./reference/legacy-agent/) holds older styling migration and theming notes that predated the Brain system.
 - [plans/](./plans/) holds implementation plans, product strategy reports, and roadmap-style documents.
 - [operations/](./operations/) holds provisioning, Codex API, deployment, and runtime operations notes.
@@ -38,7 +38,7 @@ It replaces the previous loose root Markdown set and the old `docs/` folder. The
 - [project-brief.md](./project-brief.md): durable mission, success criteria, scope, and non-goals.
 - [current-focus.md](./current-focus.md): live objective, active threads, blockers, and next actions.
 - [agent-operating-manual.md](./agent-operating-manual.md): mandatory work rules for agents.
-- [system-map.md](./system-map.md): repository, app, functions, Swift companion, plugin, and integration map.
+- [system-map.md](./system-map.md): repository, app, functions, plugin, and integration map.
 - [architecture.md](./architecture.md): high-level architecture, critical paths, and change hotspots.
 - [constraints.md](./constraints.md): hard constraints, assumptions, and non-goals.
 - [commands-and-environment.md](./commands-and-environment.md): setup, build, test, deploy, and environment notes.

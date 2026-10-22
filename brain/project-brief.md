@@ -13,7 +13,7 @@ The product should become a command center for moving real projects forward: cap
 - Users can manage tenants, projects, members, roles, tasks, issues, Flows, and project modules without leaking access across workspaces or projects.
 - Project configuration, permissions, and subscription entitlements are enforced in UI and backend rules.
 - The web app remains consistent with the SCSS design system, reusable component registry, sitemap, and i18n dictionaries.
-- The Swift companion app mirrors the relevant web product model and mobile coverage without inventing a separate product.
+- A new native iOS app (concept: [plans/ios-app-concept.md](./plans/ios-app-concept.md)) follows the web product model and design language without inventing a separate product.
 - Codex and ProjectFlow integration can track coding sessions, follow-ups, and project context reliably.
 - Future contributors can resume work from this Brain without hunting through scattered root docs.
 
@@ -22,13 +22,13 @@ The product should become a command center for moving real projects forward: cap
 - Web app under `web/`.
 - Firebase Cloud Functions under `functions/`.
 - Firestore rules, indexes, and data model documentation.
-- Swift/iOS companion app under `swift/`.
+- Native iOS app: none in the repo since 2026-10-22 (old `swift/` app removed); new app concept in `brain/plans/ios-app-concept.md`.
 - Repo-local ProjectFlow Codex plugin under `plugins/projectflow-codex/`.
 - Documentation and working memory under `brain/`.
 
 ## Non-Goals
 
-- Do not move source-code-local README files such as `swift/README.md` unless intentionally redesigning module-level onboarding.
+- Do not move source-code-local README files unless intentionally redesigning module-level onboarding.
 - Do not treat old plan documents as implemented reality without checking code.
 - Do not add new UI frameworks, routing frameworks, or styling systems without an explicit decision.
 - Do not hardcode user-facing strings in React components.

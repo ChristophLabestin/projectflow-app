@@ -13,8 +13,8 @@ Usage: scripts/check-retention-provisioning.sh [--strict] [--signed-app PATH]
 
 Checks ProjectFlow retention provisioning prerequisites:
 - web push VAPID configuration wiring
-- iOS App Group entitlement wiring
-- iOS APNs entitlement wiring
+- iOS App Group entitlement wiring (signed app only; no iOS project in repo)
+- iOS APNs entitlement wiring (signed app only)
 
 Options:
   --strict          Treat warnings as failures.
@@ -141,28 +141,9 @@ fi
 
 echo
 
-project_file="$ROOT_DIR/swift/projectflow.xcodeproj/project.pbxproj"
-app_entitlements="$ROOT_DIR/swift/projectflow/projectflow.entitlements"
-ambient_entitlements="$ROOT_DIR/swift/projectflowAmbientExtension/projectflowAmbientExtension.entitlements"
-share_entitlements="$ROOT_DIR/swift/projectflowShareExtension/projectflowShareExtension.entitlements"
-
-check_file_contains "$project_file" "CODE_SIGN_ENTITLEMENTS = projectflow/projectflow.entitlements;" "Main app target uses entitlement file"
-check_file_contains "$project_file" "CODE_SIGN_ENTITLEMENTS = projectflowAmbientExtension/projectflowAmbientExtension.entitlements;" "Ambient extension target uses entitlement file"
-check_file_contains "$project_file" "CODE_SIGN_ENTITLEMENTS = projectflowShareExtension/projectflowShareExtension.entitlements;" "Share extension target uses entitlement file"
-check_file_contains "$project_file" "DEVELOPMENT_TEAM = 48BM67TY9G;" "Apple development team is configured"
-
-check_file_contains "$app_entitlements" "$APP_GROUP_ID" "Main app App Group entitlement includes $APP_GROUP_ID"
-check_file_contains "$ambient_entitlements" "$APP_GROUP_ID" "Ambient extension App Group entitlement includes $APP_GROUP_ID"
-check_file_contains "$share_entitlements" "$APP_GROUP_ID" "Share extension App Group entitlement includes $APP_GROUP_ID"
-check_file_contains "$app_entitlements" "aps-environment" "Main app declares APNs entitlement"
-
-if grep -q "<string>production</string>" "$app_entitlements"; then
-    pass "Source APNs entitlement is production"
-elif grep -q "<string>development</string>" "$app_entitlements"; then
-    warn "Source APNs entitlement is development; verify a signed release archive because production APNs is determined by the distribution provisioning profile."
-else
-    warn "Source APNs entitlement value was not recognized; verify the signed release archive before shipping push."
-fi
+# The previous native iOS app (swift/) was removed on 2026-10-22. Source entitlement
+# checks for the new iOS app get added here once its Xcode project exists.
+echo "[skip] No native iOS project in the repo; iOS source entitlement checks skipped."
 
 echo
 

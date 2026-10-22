@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>ProjectFlow iOS — Konzept-Mockups (v2)</title>
+<!-- Static visual sketch for brain/plans/ios-app-concept.md. Not product code. Colors = web/styles/_tokens.scss. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--pj:'Plus Jakarta Sans',sans-serif;--sf:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif}
+.light{--canvas:#f2f2f3;--card:#fff;--raised:#ededee;--line:rgba(23,23,23,.06);--main:#171717;--muted:#666;--subtle:#8f8f8f;--primary:#171717;--onp:#fff;--dot:rgba(0,0,0,.06);--shadow:0 0 0 1px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.06),0 2px 8px -2px rgba(0,0,0,.08);--glass:rgba(255,255,255,.62);--glassline:rgba(255,255,255,.7)}
+.dark{--canvas:#0b0d11;--card:#151920;--raised:#1e242e;--line:rgba(229,231,235,.06);--main:#e5e7eb;--muted:#9ca3af;--subtle:#6b7280;--primary:#e5e5e5;--onp:#171717;--dot:rgba(255,255,255,.04);--shadow:none;--glass:rgba(30,36,46,.55);--glassline:rgba(255,255,255,.08)}
+body{margin:0;background:#d9d9dc;font-family:var(--sf);padding:40px 32px 60px}
+h1{font-family:var(--pj);font-weight:800;letter-spacing:-.02em;font-size:28px;margin:0 0 6px;color:#171717}
+.lead{color:#555;margin:0 0 32px;font-size:14px;max-width:880px}
+.row{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-family:var(--pj);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#555;margin:14px 0 0;text-align:center;width:390px}
+.phone{width:390px;height:844px;border-radius:54px;background:var(--canvas);position:relative;overflow:hidden;box-shadow:0 0 0 10px #111,0 30px 60px -10px rgba(0,0,0,.45);color:var(--main)}
+.dots{background-image:radial-gradient(circle,var(--dot) 1px,transparent 1px);background-size:20px 20px}
+.status{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 34px;font-weight:600;font-size:16px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000}
+.scroll{position:absolute;top:54px;left:0;right:0;bottom:0;overflow:hidden;padding:0 20px}
+.top{display:flex;align-items:center;justify-content:space-between;height:52px}
+.gbtn{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 2px 10px rgba(0,0,0,.08);display:grid;place-items:center;font-size:22px;color:var(--main)}
+.ws{font-family:var(--pj);font-weight:700;font-size:16px;padding:0 14px;height:40px;border-radius:999px;background:var(--glass);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glassline);display:flex;align-items:center;gap:6px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#8b5cf6;color:#fff;font-family:var(--pj);font-weight:700;display:grid;place-items:center;font-size:15px}
+.eyebrow{font-family:var(--pj);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.display{font-family:var(--pj);font-weight:800;font-size:30px;line-height:1.18;letter-spacing:-.02em;margin:6px 0 8px}
+.display em{font-style:normal;color:var(--primary)}
+.body{font-size:15px;line-height:1.45;color:var(--muted)}
+.band{display:flex;gap:4px;margin:16px 0 6px}
+.band i{height:13px;border-radius:3px;flex:1}
+.r{background:#ef4444}.a{background:#f59e0b}.f{background:var(--raised)}
+.bandmeta{font-size:13px;font-weight:500}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow)}
+.sec{margin:22px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.task{display:flex;gap:12px;padding:13px 14px;align-items:flex-start;box-shadow:inset 0 1px 0 var(--line)}
+.task:first-child{box-shadow:none}
+.ring{width:20px;height:20px;border-radius:50%;border:2px solid;flex:none;margin-top:1px}
+.ring.red{border-color:#ef4444}.ring.amb{border-color:#f59e0b}.ring.dash{border:2px dashed var(--subtle)}.ring.done{background:#10b981;border-color:#10b981}
+.tt{font-family:var(--pj);font-weight:600;font-size:16px;line-height:1.3}
+.tm{font-size:13px;font-weight:500;margin-top:2px;color:var(--muted)}
+.tm .red{color:#b91c1c}.tm .amb{color:#b45309}
+.dark .tm .red{color:#f87171}.dark .tm .amb{color:#f59e0b}
+.fbtn{margin-left:auto;width:30px;height:30px;border-radius:10px;background:var(--raised);display:grid;place-items:center;font-size:15px;flex:none;color:var(--muted)}
+.more{padding:12px 14px;font-size:14px;font-weight:600;box-shadow:inset 0 1px 0 var(--line);display:flex;justify-content:space-between}
+.week{display:flex;justify-content:space-between;padding:12px 14px}
+.week div{text-align:center;font-size:12px;color:var(--muted);width:36px}
+.week b{display:block;font-family:var(--pj);font-size:16px;color:var(--main);margin-top:4px}
+.week .on{background:var(--raised);border-radius:10px;padding:4px 0}
+.tabbar{position:absolute;left:16px;right:16px;bottom:24px;height:62px;border-radius:999px;background:var(--glass);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 10px 30px -8px rgba(0,0,0,.25);display:flex;align-items:center;padding:0 8px}
+.tab{flex:1;text-align:center;font-size:10px;font-weight:600;color:var(--muted)}
+.tab span{display:block;font-size:20px;margin-bottom:1px}
+.tab.on{color:var(--main)}
+.tab.on span{background:var(--raised);border-radius:999px;margin:0 6px 1px}
+.search{width:62px;height:62px;border-radius:50%;position:absolute;right:16px;bottom:24px;background:var(--glass);backdrop-filter:blur(28px);box-shadow:inset 0 0 0 1px var(--glassline),0 10px 30px -8px rgba(0,0,0,.25);display:grid;place-items:center;font-size:22px}
+.tabbar.short{right:90px}
+.acc{position:absolute;left:16px;right:16px;bottom:96px;height:52px;border-radius:999px;background:var(--glass);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 8px 24px -8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;padding:0 8px 0 18px}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 5px color-mix(in srgb,var(--primary) 15%,transparent)}
+.acc .t{font-family:var(--pj);font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.acc .ok{width:38px;height:38px;border-radius:50%;background:var(--primary);color:var(--onp);display:grid;place-items:center;font-weight:700}
+.pill{font-family:var(--pj);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+.p-open{background:rgba(59,130,246,.12);color:#1d4ed8}.p-blocked{background:rgba(239,68,68,.12);color:#b91c1c}.p-prog{background:rgba(14,165,233,.12);color:#0369a1}
+.p-neutral{background:var(--raised);color:var(--main)}
+.sig{display:inline-flex;align-items:flex-end;gap:2px;height:12px}.sig i{width:3px;border-radius:1px;background:#ef4444}.sig i:nth-child(1){height:5px}.sig i:nth-child(2){height:8px}.sig i:nth-child(3){height:12px}
+.wb{padding:16px;margin-top:16px;border-radius:16px;background:var(--card);box-shadow:var(--shadow),inset 3px 0 0 #ef4444}
+.btnp{background:var(--primary);color:var(--onp);font-family:var(--pj);font-weight:700;font-size:15px;border-radius:999px;height:52px;display:grid;place-items:center}
+.btn2{background:var(--raised);color:var(--main);font-family:var(--pj);font-weight:700;font-size:15px;border-radius:999px;height:52px;display:grid;place-items:center}
+.sub{display:flex;gap:10px;align-items:center;padding:9px 0;font-size:16px}
+.chk{width:18px;height:18px;border-radius:50%;border:2px solid var(--subtle)}.chk.on{background:#10b981;border-color:#10b981}
+.av{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;font-weight:700;color:#fff;box-shadow:0 0 0 2px var(--card);margin-left:-6px;font-family:var(--pj)}
+.irow{padding:14px;box-shadow:inset 0 1px 0 var(--line)}
+.irow:first-child{box-shadow:none}
+.mini{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--raised);font-size:13px;display:flex;gap:8px;align-items:center}
+.act{margin-top:10px;display:flex;gap:8px}
+.act div{font-family:var(--pj);font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;background:var(--raised)}
+.act .pr{background:var(--primary);color:var(--onp)}
+.dotu{width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block;margin-right:6px}
+.chips{display:flex;gap:8px;overflow:hidden;padding:10px 12px;background:var(--glass);backdrop-filter:blur(24px);box-shadow:inset 0 1px 0 var(--glassline)}
+.chip{font-family:var(--pj);font-weight:600;font-size:13px;padding:8px 12px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);white-space:nowrap}
+.chip.set{background:var(--primary);color:var(--onp)}
+.kb{background:#d1d3d9;height:260px;display:grid;grid-template-columns:repeat(10,1fr);gap:6px;padding:10px 4px;align-content:start}
+.kb i{height:42px;border-radius:6px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.3);font-style:normal;display:grid;place-items:center;font-size:20px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+.hl{background:color-mix(in srgb,#f59e0b 28%,transparent);border-radius:4px;padding:0 2px}
+</style>
+</head>
+<body>
+<h1>ProjectFlow iOS — Konzept-Mockups</h1>
+<p class="lead">Statische Skizzen zu <code>brain/plans/ios-app-concept.md</code> (v2). Farben und Radien aus <code>web/styles/_tokens.scss</code>, Jakarta für Titel/Eyebrows, SF für Lesetext, System-Glas nur für Chrome. Icons sind Platzhalter für SF Symbols.</p>
+
+<div class="row">
+
+<!-- 1 HEUTE light -->
+<div>
+<div class="phone light dots">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="scroll">
+    <div class="top"><div class="avatar">C</div><div class="ws">Demo Studio <span style="color:var(--muted)">⌄</span></div><div class="gbtn">＋</div></div>
+    <div style="margin-top:14px" class="eyebrow">Donnerstag, 22. Oktober</div>
+    <div class="display">Heute ist in 4 Zügen erledigt — <em>der erste brennt.</em></div>
+    <div class="body">Die älteste überfällige Aufgabe wartet seit 3 Tagen.</div>
+    <div class="band"><i class="r"></i><i class="r"></i><i class="a"></i><i class="a"></i><i class="f" style="flex:3"></i></div>
+    <div class="bandmeta"><span style="color:#b91c1c">2 überfällig</span> · <span style="color:#b45309">2 heute</span></div>
+    <div class="sec"><span class="eyebrow">Dein Plan für heute</span></div>
+    <div class="card">
+      <div class="task"><div class="ring red"></div><div><div class="tt">Set up 301 redirects for old URLs</div><div class="tm"><span class="red">Seit 3 Tagen überfällig</span> · löst 2 · Website</div></div><div class="fbtn">◎</div></div>
+      <div class="task"><div class="ring red"></div><div><div class="tt">Conflict resolution for offline edits</div><div class="tm"><span class="red">Gestern überfällig</span> · Mobile App</div></div><div class="fbtn">◎</div></div>
+      <div class="task"><div class="ring amb"></div><div><div class="tt">Finalize homepage hero copy</div><div class="tm"><span class="amb">Heute fällig</span> · Website</div></div><div class="fbtn">◎</div></div>
+      <div class="more"><span>+ 11 weitere in Arbeit</span><span style="color:var(--muted)">→</span></div>
+    </div>
+    <div class="sec"><span class="eyebrow">Wartet auf dich</span></div>
+    <div class="card" style="padding:14px"><div class="tt" style="font-size:15px">Lena wartet auf „Define CMS schema"</div><div class="tm">„Hero copy" hängt an deiner Aufgabe</div></div>
+  </div>
+  <div class="tabbar short"><div class="tab on"><span>◐</span>Heute</div><div class="tab"><span>☰</span>Arbeit</div><div class="tab"><span>◫</span>Projekte</div><div class="tab"><span>◉</span>Eingang</div></div>
+  <div class="search">⌕</div>
+</div>
+<div class="cap">Heute · kein Fokus aktiv</div>
+</div>
+
+<!-- 2 HEUTE dark with focus accessory -->
+<div>
+<div class="phone dark dots">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="scroll">
+    <div class="top"><div class="avatar">C</div><div class="ws">Demo Studio <span style="color:var(--muted)">⌄</span></div><div class="gbtn">＋</div></div>
+    <div style="margin-top:14px" class="eyebrow">Donnerstag, 22. Oktober</div>
+    <div class="display">Heute ist in 3 Zügen erledigt — <em>einer davon ist überfällig.</em></div>
+    <div class="band"><i class="r"></i><i class="a"></i><i class="a"></i><i class="f" style="flex:3"></i></div>
+    <div class="bandmeta"><span style="color:#f87171">1 überfällig</span> · <span style="color:#f59e0b">2 heute</span></div>
+    <div class="sec"><span class="eyebrow">Dein Plan für heute</span></div>
+    <div class="card">
+      <div class="task"><div class="ring red"></div><div><div class="tt">Conflict resolution for offline edits</div><div class="tm"><span class="red">Gestern überfällig</span> · Mobile App</div></div><div class="fbtn">◎</div></div>
+      <div class="task"><div class="ring amb"></div><div><div class="tt">Finalize homepage hero copy</div><div class="tm"><span class="amb">Heute fällig</span> · Website</div></div><div class="fbtn">◎</div></div>
+      <div class="task"><div class="ring dash"></div><div><div class="tt" style="color:var(--muted)">Wire up analytics events</div><div class="tm">Vorschlag aus dem Backlog</div></div></div>
+    </div>
+    <div class="sec"><span class="eyebrow">Diese Woche</span></div>
+    <div class="card week"><div>M<b>19</b></div><div>D<b>20</b></div><div>M<b>21</b></div><div class="on">D<b>22</b></div><div>F<b>23</b></div><div>S<b>24</b></div><div>S<b>25</b></div></div>
+  </div>
+  <div class="acc"><div class="pulse"></div><div class="t">Set up 301 redirects for old URLs</div><div class="s">seit 14:20</div><div class="ok">✓</div></div>
+  <div class="tabbar short"><div class="tab on"><span>◐</span>Heute</div><div class="tab"><span>☰</span>Arbeit</div><div class="tab"><span>◫</span>Projekte</div><div class="tab"><span>◉</span>Eingang</div></div>
+  <div class="search">⌕</div>
+</div>
+<div class="cap">Heute · Dark · Fokus-Leiste aktiv</div>
+</div>
+
+<!-- 3 FOKUSRAUM -->
+<div>
+<div class="phone light dots">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="scroll" style="padding:0 24px">
+    <div class="top"><div class="gbtn">⌄</div><div class="eyebrow">Website Relaunch</div></div>
+    <div style="margin-top:34px;display:flex;align-items:center;gap:10px"><div class="pulse"></div><span class="eyebrow" style="color:var(--main)">Fokus · seit 14:20</span></div>
+    <div class="display" style="font-size:40px;line-height:1.1;margin-top:16px">Set up 301 redirects for old URLs</div>
+    <div style="margin-top:28px" class="eyebrow">Nächster Schritt</div>
+    <div style="font-size:19px;line-height:1.4;margin-top:6px">Mapping-Tabelle aus der alten Sitemap exportieren</div>
+    <div style="margin-top:28px;display:flex;justify-content:space-between" class="eyebrow"><span>Teilaufgaben</span><span>2 / 5</span></div>
+    <div style="margin-top:6px">
+      <div class="sub"><div class="chk on"></div><span style="color:var(--muted);text-decoration:line-through">Alte URLs sammeln</span></div>
+      <div class="sub"><div class="chk on"></div><span style="color:var(--muted);text-decoration:line-through">Ziel-URLs festlegen</span></div>
+      <div class="sub"><div class="chk"></div>Mapping-Tabelle</div>
+      <div class="sub"><div class="chk"></div>Redirects im CDN anlegen</div>
+    </div>
+  </div>
+  <div style="position:absolute;left:24px;right:24px;bottom:40px;display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:10px">
+    <div class="btn2">Blockiert</div><div class="btn2">Pause</div><div class="btnp">✓ Erledigt</div>
+  </div>
+</div>
+<div class="cap">Fokusraum · folgt dem Theme</div>
+</div>
+
+<!-- 4 AUFGABENDETAIL -->
+<div>
+<div class="phone light">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="scroll">
+    <div class="top"><div class="gbtn">‹</div><div style="display:flex;gap:8px"><div class="gbtn" style="font-size:17px">⌖</div><div class="gbtn" style="font-size:17px">•••</div></div></div>
+    <div style="margin-top:10px" class="eyebrow">Website Relaunch · CMS</div>
+    <div style="font-family:var(--pj);font-weight:700;font-size:26px;letter-spacing:-.02em;line-height:1.2;margin:6px 0 12px">Import legacy blog posts</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><span class="pill p-blocked">Blockiert</span><span class="pill p-neutral"><span class="sig"><i></i><i></i><i></i></span>Hoch</span><span class="pill p-neutral">Fällig So</span></div>
+    <div class="wb"><div class="eyebrow" style="color:#b91c1c">Blocker</div><div style="font-size:16px;line-height:1.4;margin:6px 0 12px">Wartet auf das finale CMS-Schema von Lena.</div><div class="act" style="margin:0"><div class="pr">Blocker lösen</div><div>Lena anstupsen</div></div></div>
+    <div class="card" style="margin-top:14px;padding:14px"><div style="display:flex;justify-content:space-between"><span style="font-family:var(--pj);font-weight:700;font-size:17px">Teilaufgaben</span><span class="tm" style="margin:0">1 / 3</span></div>
+      <div class="sub"><div class="chk on"></div><span style="color:var(--muted)">Export aus WordPress</span></div>
+      <div class="sub"><div class="chk"></div>Bilder migrieren</div>
+      <div class="sub" style="color:var(--subtle)">+ Teilaufgabe</div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <div class="irow" style="display:flex;justify-content:space-between"><span class="tm" style="margin:0">Zuständig</span><span><span class="av" style="background:#0ea5e9">LR</span><span class="av" style="background:#171717">CD</span></span></div>
+      <div class="irow" style="display:flex;justify-content:space-between"><span class="tm" style="margin:0">Blockiert durch</span><span style="font-size:15px">Define CMS schema</span></div>
+      <div class="irow" style="display:flex;justify-content:space-between"><span class="tm" style="margin:0">Erinnerung</span><span style="font-size:15px">Fr, 9:00</span></div>
+    </div>
+  </div>
+  <div style="position:absolute;left:20px;right:20px;bottom:34px" ><div class="btnp" style="box-shadow:0 10px 30px -8px rgba(0,0,0,.35)">✓ Als erledigt markieren</div></div>
+</div>
+<div class="cap">Aufgabendetail · Workbench</div>
+</div>
+
+<!-- 5 EINGANG -->
+<div>
+<div class="phone light">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="scroll">
+    <div class="top"><span style="font-family:var(--pj);font-weight:800;font-size:28px;letter-spacing:-.02em">Eingang</span><div class="gbtn" style="font-size:16px">✓✓</div></div>
+    <div style="margin-top:8px" class="eyebrow">Seit gestern Abend</div>
+    <div style="font-family:var(--pj);font-weight:700;font-size:20px;line-height:1.3;margin:6px 0 16px">3 neue Zuweisungen, Lena hat dich zweimal erwähnt.</div>
+    <div class="card">
+      <div class="irow"><div class="tt" style="font-size:15px"><span class="dotu"></span>Lena hat dich erwähnt</div><div class="tm">„@Christoph kannst du das Schema bis morgen fixieren?"</div>
+        <div class="mini"><span class="pill p-prog" style="padding:3px 8px">In Arbeit</span>Define CMS schema</div>
+        <div class="act"><div class="pr">Antworten</div><div>Öffnen</div></div></div>
+      <div class="irow"><div class="tt" style="font-size:15px"><span class="dotu"></span>Neue Zuweisung von Alex</div>
+        <div class="mini"><span class="pill p-open" style="padding:3px 8px">Offen</span>Lighthouse performance pass · Di</div>
+        <div class="act"><div class="pr">In Plan für heute</div><div>Später</div></div></div>
+      <div class="irow"><div class="tt" style="font-size:15px;color:var(--muted)">Mobile App v2 · Kunde X</div><div class="tm">„Onboarding screens" wurde erledigt</div></div>
+    </div>
+  </div>
+  <div class="tabbar short"><div class="tab"><span>◐</span>Heute</div><div class="tab"><span>☰</span>Arbeit</div><div class="tab"><span>◫</span>Projekte</div><div class="tab on"><span>◉</span>Eingang</div></div>
+  <div class="search">⌕</div>
+</div>
+<div class="cap">Eingang · Triage mit Aktionen</div>
+</div>
+
+<!-- 6 ERFASSEN -->
+<div>
+<div class="phone light dots">
+  <div class="island"></div><div class="status"><span>9:41</span><span>▮▮▮</span></div>
+  <div class="dim"></div>
+  <div class="sheet">
+    <div style="padding:18px 20px 10px">
+      <div style="display:flex;justify-content:space-between;align-items:center"><span class="eyebrow">Neue Aufgabe</span><div class="btnp" style="height:36px;padding:0 16px;font-size:14px">Sichern</div></div>
+      <div style="font-family:var(--pj);font-weight:600;font-size:22px;margin:14px 0 10px;line-height:1.3">Redirects testen <span class="hl">morgen</span> <span class="hl">#website</span><span style="border-left:2px solid #171717;margin-left:2px"></span></div>
+      <div class="tm" style="margin-bottom:6px">Ziel: ▣ Website Relaunch ⌄</div>
+    </div>
+    <div class="chips"><div class="chip set">📅 Fr, 23. Okt</div><div class="chip set">▣ Website</div><div class="chip">▮▮▮ Priorität</div><div class="chip">◉ Wer</div></div>
+    <div class="kb"><i>q</i><i>w</i><i>e</i><i>r</i><i>t</i><i>z</i><i>u</i><i>i</i><i>o</i><i>p</i><i>a</i><i>s</i><i>d</i><i>f</i><i>g</i><i>h</i><i>j</i><i>k</i><i>l</i><i>ö</i><i>⇧</i><i>y</i><i>x</i><i>c</i><i>v</i><i>b</i><i>n</i><i>m</i><i>ä</i><i>⌫</i></div>
+  </div>
+</div>
+<div class="cap">Erfassen · Chips + erkannte Tokens</div>
+</div>
+
+</div>
+</body>
+</html>

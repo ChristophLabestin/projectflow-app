@@ -212,26 +212,4 @@ These are outside the Social module shell in the old routing.
 
 ---
 
-## 7) iOS App (SwiftUI) Companion Coverage
-
-- [x] Login (email/password, MFA, passkey sign-in)
-- [x] Home dashboard command center (focus hero, work/inbox shortcuts, health excluding canceled projects)
-- [x] Projects list with company/startup grouping, lifecycle buckets (active, planning, paused, completed, canceled), linked workstreams
-- [x] Project overview command layout with module nav (initiatives, tasks, sprints, issues, flows, milestones, activity, codex, settings)
-- [x] Company project command surface (stage, readiness meters, linked workstreams)
-- [x] Initiatives CRUD + detail (child tasks, comments, focus/pin, public feedback link)
-- [x] Tasks CRUD with initiative badge, Codex metadata, comments, focus action
-- [x] Flows CRUD (project-scoped)
-- [x] Issues CRUD (project-scoped)
-- [x] Personal tasks list + detail (share extension imports)
-- [x] Work tab (tasks, initiatives, personal tasks)
-- [x] Focus loop for task/issue/initiative/personal-task with widgets/Live Activity sync
-- [x] Inbox notifications + initiative deep links
-- [x] Milestones, sprints, activity, Codex read-only project views
-- [x] Calendar (scheduled/due tasks), Team (workspace list)
-- [x] Settings via Home gear (profile, workspace switch, theme applied at root, style guide)
-- [x] AppSession + permission service + extended Firestore models/repositories
-
-MVP exclusions: Finance V2, Social, Marketing modules (open in web links). macOS variant planned separately.
-
 - [x] `/workspace` — redirects to `/` (2026-09-27). Workspace settings are a modal: `SettingsModal scope="workspace"` (tabs Workspace, Members, Roles, Email & storage, API & MCP, Danger zone; sections in `components/settings/WorkspaceSettingsPanel.tsx`). Entry: sidebar workspace menu → "Workspace settings". Personal settings (profile menu) only show Account, Preferences, Security, Pre-Alpha.

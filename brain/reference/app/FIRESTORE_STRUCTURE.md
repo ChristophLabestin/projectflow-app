@@ -62,7 +62,6 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `status`: `"active" | "snoozed" | "blocked"`
   - `startedAt`, `snoozedUntil`, `blockedAt`, `updatedAt`: ISO date strings
   - `lastAction`: `"started" | "resumed" | "snoozed" | "blocked" | "completed" | "cleared"`
-- Native iOS mirrors `focusState` into App Group defaults for widgets, Live Activity, and local reminders. That local mirror is not a Firestore document.
 
 #### ↳ 📂 **`private`** *(owner-only secrets)*
 **Path:** `/users/{userId}/private/{docId}`

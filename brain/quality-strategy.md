@@ -17,7 +17,6 @@ Last updated: 2026-06-04
 - Web E2E: `cd web && npm run test:e2e`
 - Theme lint: `cd web && npm run lint:theme`
 - Functions build: `cd functions && npm run build`
-- Swift build: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`
 - Documentation verification: `rg` for stale links and `git status --short` for expected moves.
 
 ## Release Confidence

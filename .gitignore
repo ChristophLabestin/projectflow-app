@@ -143,7 +143,6 @@ dist
 
 # Xcode local build output and package checkouts
 .xcodebuild/
-swift/.xcodebuild/
 .xcodebuild-device/
 
 # Local-only screens

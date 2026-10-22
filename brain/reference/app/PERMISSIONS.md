@@ -535,7 +535,7 @@ User profile changes are typically self-service. If you want admin control:
 - `tenant.users.viewProfiles` — View extended user profile info (beyond member list)
 - `tenant.users.manageProfiles` — Edit user profile attributes (admin action)
 - `user.settings.editSelf` — Edit own settings (usually always allowed)
-- `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from the native iOS Share Sheet
+- `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from native capture surfaces
 
 ---
 

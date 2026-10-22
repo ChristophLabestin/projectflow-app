@@ -25,7 +25,6 @@
 - `cd web && npm run deploy` builds and deploys hosting (requires Firebase CLI).
 - Cloud Functions: `cd functions && npm run build|serve|deploy|lint`.
 - After completing a task, run the build for the surface you touched:
-  - Swift app work: `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build`.
   - Web app work: `cd web && npm run build`.
 - After changing Cloud Functions, deploy only the functions you touched (for example: `cd functions && firebase deploy --only functions:callGemini`).
 - After changing Firestore rules or indexes, deploy them to Firebase (for example: `firebase deploy --only firestore:rules` or `firebase deploy --only firestore:indexes`).

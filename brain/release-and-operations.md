@@ -7,7 +7,7 @@ Last updated: 2026-06-04
 - Web app: Vite build and Firebase Hosting.
 - Cloud Functions: Firebase Functions build and function-scoped deploys.
 - Firestore: rules and indexes deploy independently.
-- iOS app: Xcode simulator build for validation; production release requires Apple provisioning, App Group, APNs, and signing checks.
+- iOS app: none in the repo since 2026-10-22 (old `swift/` app removed; new concept in [plans/ios-app-concept.md](./plans/ios-app-concept.md)). `web/public/.well-known/apple-app-site-association` still lists bundle `48BM67TY9G.de.christophlabestin.projectflow` for passkey webcredentials — keep it if the new app reuses that bundle id.
 - ProjectFlow Codex plugin: local CLI scripts plus ProjectFlow API credentials.
 
 ## Operational References

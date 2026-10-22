@@ -17,7 +17,8 @@ Then open the smallest relevant durable file for the task (see the Brain README'
 ProjectFlow is a multi-tenant project management app for execution, structured ideation
 through Flows, optional operational modules, permissions, AI assistance, and Codex
 session tracking. Surfaces: a React/TypeScript/Vite web app (`web/`), Firebase Cloud
-Functions (`functions/`), and a Swift companion app (`swift/`).
+Functions (`functions/`). The old Swift app was removed (2026-10-22); a new iOS app is being
+conceived in `brain/plans/ios-app-concept.md`.
 
 ## Project Structure
 
@@ -26,7 +27,6 @@ Functions (`functions/`), and a Swift companion app (`swift/`).
   - `web/styles/` SCSS tokens & globals · `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/`
   - `web/locales/` i18n (`en.ts`, `de.ts`) · `web/assets/` static files
 - `functions/` — Firebase Cloud Functions (`src` → `lib`)
-- `swift/` — Swift companion app (`projectflow.xcodeproj`)
 - `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `firebase.json` — Firebase config
 
 ## Key Rules
@@ -58,7 +58,6 @@ Functions (`functions/`), and a Swift companion app (`swift/`).
 | E2E tests | `cd web && npm run test:e2e` |
 | Theme lint | `cd web && npm run lint:theme` |
 | Functions build | `cd functions && npm run build` |
-| Swift sim build | `xcodebuild -project swift/projectflow.xcodeproj -scheme projectflow -sdk iphonesimulator -derivedDataPath .xcodebuild build` |
 
 After a task, run the build for the surface you touched. Deploy only what you changed
 (`firebase deploy --only functions:<name>` / `firebase deploy --only firestore:rules`).

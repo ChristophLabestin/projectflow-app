@@ -1,4 +1,0 @@
-module FirebaseAI {
-header "FirebaseAI-Swift.h"
-export *
-}

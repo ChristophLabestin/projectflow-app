@@ -8,6 +8,8 @@ Task detail now has a Full Workbench redesign plus richer task-to-task relations
 
 ## Active Threads
 
+- 2026-10-22 — **Native iOS app reset.** The old `swift/` app (incl. widgets, share extension, build output) and its docs (IOS_APP_IMPLEMENTATION_PLAN, MOBILE_SITEMAP, MOBILE_INNOVATION, mobile_feature_report, SITEMAP §7, COMPONENTS native section, app-specific GOTCHAS) were deleted. A from-scratch concept lives in [plans/ios-app-concept.md](./plans/ios-app-concept.md) (v2, revised after a critical review agent) with visual sketches in [plans/ios-app-concept-mockups.html](./plans/ios-app-concept-mockups.html). Next: owner decides the open questions in §12 of the concept, then Phase 0 (backend prerequisites, logic extraction + shared golden fixtures, new `ios/` Xcode project, PFDesign).
+
 - 2026-09-26 — Firebase project `projectflow-labestin` + multi-workspace tenancy + PM focus UI (see `plans/pm-focus-ui-redesign.md`, decision-log 2026-09-26). Implemented, verified in the local emulators and deployed to production on 2026-09-26 (commit `282abaa3`: all 111 functions, rules, indexes, storage, hosting).
 
 - Brain scaffold: completed with the `brain-folder-bootstrapper` app project type.

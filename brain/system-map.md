@@ -11,7 +11,6 @@ Last updated: 2026-06-04
 - `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/`: shared state, data access, helpers, and typings.
 - `web/locales/`: English and German i18n dictionaries.
 - `functions/`: Firebase Cloud Functions source in `functions/src`, compiled output in `functions/lib`.
-- `swift/`: SwiftUI iOS companion app plus ambient and share extensions.
 - `plugins/projectflow-codex/`: repo-local Codex plugin and CLI workflow for linking coding work back to ProjectFlow.
 - `brain/`: living project knowledge base and migrated documentation.
 
@@ -19,7 +18,7 @@ Last updated: 2026-06-04
 
 - Web UI owns user interaction patterns, route structure, reusable components, and SCSS implementation.
 - Firestore and Cloud Functions are the authoritative enforcement layer for data access, permissions, notifications, AI usage, and ProjectFlow API workflows.
-- Swift mirrors selected product surfaces and must align with the documented web/product model.
+- Native iOS: the previous `swift/` app was removed on 2026-10-22; a new app is being conceived in [plans/ios-app-concept.md](./plans/ios-app-concept.md) and must align with the documented web/product model.
 - Brain files guide contributors; source code remains the source of truth when docs and implementation conflict.
 
 ## External Dependencies

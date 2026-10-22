@@ -4,6 +4,12 @@ Last updated: 2026-06-04
 
 ## Decision Entries
 
+- 2026-10-22: Rebuild the native iOS app from scratch.
+  - Rationale: the owner wants an intuitive, innovative, immersive iOS app that matches the web design language; the old companion app followed a parity approach.
+  - Decision: delete `swift/` and its docs; the new app lives under `ios/` (planned), iPhone-first, iOS 26+, SwiftUI; the phone is the "pacemaker" for today/focus/capture/inbox, the web stays the workbench for planning and admin. Concept: [plans/ios-app-concept.md](./plans/ios-app-concept.md).
+  - Alternatives considered: refactor the old app; parity port of all web routes.
+  - Consequences: no iOS build in CI or Brain commands until Phase 0 creates the new project; backend prerequisites (notification fan-out, APNs payload, passkeys, universal links) are tracked in the concept.
+
 - 2026-06-04: Adopt `/brain` as the repository living knowledge base.
   - Rationale: root Markdown and `docs/` had become scattered, making agent re-entry slower and less reliable.
   - Decision: scaffold an app-type Brain, move former root docs into `brain/reference/app/`, move old `docs/` content into themed Brain folders, and keep only conventional root Markdown entry points.
