@@ -7,6 +7,44 @@ const TEXT_MODEL = 'gpt-5-mini';
 const IMAGE_MODEL = 'gpt-image-1-mini';
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 
+// Per-user daily quota. Counter docs live in a server-only collection
+// (no client rules match it, so access is denied by default).
+const AI_QUOTA_COLLECTION = 'ai_usage_quotas';
+const AI_DAILY_LIMITS = {
+    text: Number(process.env.AI_DAILY_TEXT_LIMIT) || 200,
+    image: Number(process.env.AI_DAILY_IMAGE_LIMIT) || 30
+} as const;
+
+type AiQuotaKind = keyof typeof AI_DAILY_LIMITS;
+
+const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
+    const day = new Date().toISOString().slice(0, 10);
+    const ref = db.collection(AI_QUOTA_COLLECTION).doc(`${uid}_${day}`);
+    const limit = AI_DAILY_LIMITS[kind];
+
+    const allowed = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const used = Number(snap.data()?.[kind] || 0);
+        if (used >= limit) {
+            return false;
+        }
+        tx.set(ref, {
+            uid,
+            day,
+            [kind]: used + 1,
+            updatedAt: FieldValue.serverTimestamp()
+        }, { merge: true });
+        return true;
+    });
+
+    if (!allowed) {
+        throw new functions.https.HttpsError(
+            'resource-exhausted',
+            `Daily AI ${kind} limit of ${limit} requests reached. Try again tomorrow.`
+        );
+    }
+};
+
 type Confidence = 'Low' | 'Medium' | 'High';
 
 // Helper to track token usage securely on server
@@ -238,6 +276,7 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    await consumeAiQuota(context.auth.uid, 'text');
 
     const { question, contextStr, instruction, apiKey: clientApiKey } = data;
 
@@ -318,7 +357,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
 
     } catch (error: any) {
         console.error('AskCora Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'AI request failed');
+        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'AI request failed');
     }
 });
 
@@ -329,6 +368,7 @@ export const generateImage = functions.region('europe-west3').runWith({ secrets:
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    await consumeAiQuota(context.auth.uid, 'image');
 
     const { prompt, apiKey: clientApiKey } = data;
     if (!prompt) {
@@ -356,7 +396,7 @@ export const generateImage = functions.region('europe-west3').runWith({ secrets:
 
     } catch (error: any) {
         console.error('GenerateImage Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Image generation failed');
+        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'Image generation failed');
     }
 });
 
@@ -367,6 +407,7 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    await consumeAiQuota(context.auth.uid, 'image');
 
     const { prompt, image, mimeType = 'image/png', apiKey: clientApiKey } = data; // image expects base64 string (no header)
 
@@ -399,7 +440,7 @@ export const editImage = functions.region('europe-west3').runWith({ secrets: ['O
 
     } catch (error: any) {
         console.error('EditImage Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Image edit failed');
+        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'Image edit failed');
     }
 });
 
@@ -409,6 +450,7 @@ export const callGemini = functions.region('europe-west3').runWith({ secrets: ['
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
+    await consumeAiQuota(context.auth.uid, 'text');
 
     const {
         systemInstruction,
@@ -485,6 +527,6 @@ export const callGemini = functions.region('europe-west3').runWith({ secrets: ['
 
     } catch (error: any) {
         console.error('CallGemini Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'ChatGPT request failed');
+        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'ChatGPT request failed');
     }
 });

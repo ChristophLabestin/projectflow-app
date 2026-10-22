@@ -1,49 +1,110 @@
 import * as functions from 'firebase-functions/v1';
 import * as nodemailer from 'nodemailer';
+import * as dns from 'dns/promises';
+import * as net from 'net';
 import { db } from './init';
 const REGION = 'europe-west3'; // Frankfurt
 
+const ALLOWED_SMTP_PORTS = [25, 465, 587, 2525];
+
+const isPrivateIPv4 = (ip: string): boolean => {
+  const parts = ip.split('.').map(Number);
+  if (parts.length !== 4 || parts.some((p) => !Number.isInteger(p))) return true;
+  const [a, b] = parts;
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 192 && b === 0) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    a >= 224
+  );
+};
+
+const isPrivateIp = (ip: string): boolean => {
+  const version = net.isIP(ip);
+  if (version === 4) return isPrivateIPv4(ip);
+  if (version === 6) {
+    const lower = ip.toLowerCase();
+    if (lower === '::' || lower === '::1') return true;
+    const mapped = lower.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+    if (mapped) return isPrivateIPv4(mapped[1]);
+    return /^(fc|fd|fe[89ab])/.test(lower) || lower.startsWith('ff');
+  }
+  return true;
+};
+
+/**
+ * Resolves the host and returns a public IP to connect to. Pinning the
+ * resolved IP (and using `servername` for TLS) avoids DNS rebinding.
+ */
+const resolvePublicHost = async (host: string): Promise<string> => {
+  const addresses = net.isIP(host) ? [{ address: host }] : await dns.lookup(host, { all: true });
+  if (!addresses.length || addresses.some((entry) => isPrivateIp(entry.address))) {
+    throw new functions.https.HttpsError('invalid-argument', 'SMTP host is not allowed.');
+  }
+  return addresses[0].address;
+};
+
 export const testSMTPConnection = functions.region(REGION).https.onCall(async (data, context) => {
-  if (!context.auth?.uid) {
+  const uid = context.auth?.uid;
+  if (!uid) {
     throw new functions.https.HttpsError('unauthenticated', 'Authentication required');
   }
 
-  console.log('SMTP Test Connection initiated with data:', JSON.stringify(data));
-  const { host, port, user, pass, secure } = data;
+  const { tenantId, host, port, user, pass, secure } = data || {};
 
-  if (!host || !user || !pass) {
-    console.warn('Missing SMTP credentials in request');
+  if (typeof tenantId !== 'string' || !tenantId) {
+    throw new functions.https.HttpsError('invalid-argument', 'tenantId is required');
+  }
+  const membership = await db.doc(`tenants/${tenantId}/members/${uid}`).get();
+  const role = membership.exists ? membership.data()?.role : null;
+  if (role !== 'Owner' && role !== 'Admin') {
+    throw new functions.https.HttpsError('permission-denied', 'Workspace owner or admin access required');
+  }
+
+  if (typeof host !== 'string' || !host || host.length > 255 || !user || !pass) {
     throw new functions.https.HttpsError('invalid-argument', 'Missing SMTP credentials');
   }
 
-  try {
-    const smtpPort = parseInt(port) || 587;
-    console.log(`Connecting to ${host}:${smtpPort} (secure: ${!!secure})`);
+  const smtpPort = parseInt(port, 10) || 587;
+  if (!ALLOWED_SMTP_PORTS.includes(smtpPort)) {
+    throw new functions.https.HttpsError('invalid-argument', 'SMTP port must be one of 25, 465, 587, 2525');
+  }
 
+  const resolvedIp = await resolvePublicHost(host);
+
+  try {
     const transporter = nodemailer.createTransport({
-      host,
+      host: resolvedIp,
       port: smtpPort,
-      secure: secure || false,
+      secure: !!secure,
       auth: {
         user,
         pass
       },
       tls: {
-        rejectUnauthorized: false
-      }
+        servername: net.isIP(host) ? undefined : host,
+        rejectUnauthorized: true
+      },
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000
     });
 
     await transporter.verify();
-    console.log('SMTP Verification successful');
 
     return { success: true, message: 'SMTP Connection Successful' };
   } catch (error: any) {
-    console.error('SMTP Test Error details:', error);
+    console.error('SMTP test failed:', error?.code, error?.command);
     return {
       success: false,
-      error: error.message || 'Failed to connect',
-      code: error.code,
-      command: error.command
+      error: 'Failed to connect to the SMTP server. Check host, port, credentials and TLS settings.',
+      code: error?.code
     };
   }
 });
@@ -114,7 +175,7 @@ const createTransporter = async (options?: EmailSendOptions) => {
         pass: config.pass
       },
       tls: {
-        rejectUnauthorized: false
+        rejectUnauthorized: true
       }
     }),
     fromEmail: options?.fromEmail || tenantSmtpConfig?.fromEmail || SYSTEM_FROM_EMAIL

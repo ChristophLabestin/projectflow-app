@@ -8,23 +8,55 @@ service firebase.storage {
     }
 
     // Membership is sourced from Firestore (tenants/{tenantId}/members/{uid})
-    // so storage access matches firestore.rules. Tenant ids are random and no
-    // longer equal the owner's uid.
-    function canAccessTenant(tenantId) {
+    // so storage access matches firestore.rules. Guests are not full members and
+    // get no storage access.
+    function memberPath(tenantId) {
+      return /databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid);
+    }
+
+    function isFullMember(tenantId) {
       return authed() &&
-        firestore.exists(
-          /databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)
+        firestore.exists(memberPath(tenantId)) &&
+        firestore.get(memberPath(tenantId)).data.role != 'Guest';
+    }
+
+    // Allowlist: no text/html, image/svg+xml or javascript (stored XSS).
+    function isAllowedContentType() {
+      return request.resource.contentType != null &&
+        request.resource.contentType.matches(
+          '(image/(png|jpeg|gif|webp|avif|bmp|heic|heif)|' +
+          'video/.*|audio/.*|' +
+          'application/pdf|' +
+          'application/msword|' +
+          'application/vnd\\.openxmlformats-officedocument\\..*|' +
+          'application/vnd\\.ms-(excel|powerpoint)|' +
+          'application/vnd\\.oasis\\.opendocument\\..*|' +
+          'text/plain|text/csv|' +
+          'application/zip|application/x-zip-compressed)'
         );
     }
 
-    // Tenant-scoped storage (projects, media, etc.). Only members of that tenant may read/write — no cross-tenant access.
-    match /tenants/{tenantId}/{allPaths=**} {
-      allow read, write: if canAccessTenant(tenantId);
+    function isImageType() {
+      return request.resource.contentType != null &&
+        request.resource.contentType.matches('image/(png|jpeg|gif|webp|avif|bmp|heic|heif)');
     }
 
-    // Users may only read/write their own avatar namespace.
+    // Tenant-scoped storage (projects, media, etc.). Non-guest members only.
+    match /tenants/{tenantId}/{allPaths=**} {
+      allow read: if isFullMember(tenantId);
+      allow create, update: if isFullMember(tenantId) &&
+        request.resource.size < 25 * 1024 * 1024 &&
+        isAllowedContentType();
+      allow delete: if isFullMember(tenantId);
+    }
+
+    // Users may only read/write their own avatar namespace (images, max 5 MB).
     match /users/{userId}/{allPaths=**} {
-      allow read, write: if authed() && request.auth.uid == userId;
+      allow read: if authed() && request.auth.uid == userId;
+      allow create, update: if authed() && request.auth.uid == userId &&
+        request.resource.size < 5 * 1024 * 1024 &&
+        isImageType();
+      allow delete: if authed() && request.auth.uid == userId;
     }
   }
 }

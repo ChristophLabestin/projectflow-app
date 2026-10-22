@@ -23,6 +23,16 @@ import { db, auth } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
 
 const REGION = 'europe-west3'; // Frankfurt
+const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+
+const isChallengeExpired = (createdAt: unknown): boolean => {
+    const millis = (createdAt as any)?.toMillis?.();
+    // A challenge without a readable timestamp is treated as expired.
+    return typeof millis !== 'number' || Date.now() - millis > CHALLENGE_TTL_MS;
+};
+
+const toClientError = (error: any, fallback: string): functions.https.HttpsError =>
+    error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', fallback);
 
 // Relying Party configuration.
 // A passkey is bound to the hostname it was created on (the RP ID), so every
@@ -55,7 +65,8 @@ const resolveRp = (clientOrigin?: string): { rpID: string; origin: string } => {
     if (clientOrigin) {
         try {
             const url = new URL(clientOrigin);
-            if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || PROD_ORIGINS.includes(url.origin)) {
+            const isLocalDev = isEmulator && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+            if (isLocalDev || PROD_ORIGINS.includes(url.origin)) {
                 return { rpID: url.hostname, origin: url.origin };
             }
         } catch {
@@ -117,7 +128,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
         return options;
     } catch (error: any) {
         console.error('generatePasskeyRegistrationOptions: Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Internal Server Error');
+        throw toClientError(error, 'Internal Server Error');
     }
 });
 
@@ -139,6 +150,11 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
         throw new functions.https.HttpsError('failed-precondition', 'No registration flow initiated.');
     }
     const challengeData = challengeDoc.data();
+    // Single use: delete right away so it cannot be replayed.
+    await challengeDoc.ref.delete();
+    if (isChallengeExpired(challengeData?.createdAt)) {
+        throw new functions.https.HttpsError('failed-precondition', 'Registration challenge expired.');
+    }
     const expectedChallenge = challengeData?.challenge;
     // Prefer the relying party stored with the challenge; fall back to resolving
     // from the client origin for challenges created before this was persisted.
@@ -157,7 +173,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
         });
     } catch (error: any) {
         console.error('Passkey registration verification failed', error);
-        throw new functions.https.HttpsError('invalid-argument', `Verification failed: ${error.message}`);
+        throw new functions.https.HttpsError('invalid-argument', 'Verification failed.');
     }
 
     const { verified, registrationInfo } = verification;
@@ -269,7 +285,7 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
         return options;
     } catch (error: any) {
         console.error('generatePasskeyAuthenticationOptions: Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Internal Server Error');
+        throw toClientError(error, 'Internal Server Error');
     }
 });
 
@@ -301,6 +317,11 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             throw new functions.https.HttpsError('invalid-argument', 'Invalid or expired challenge.');
         }
         const challengeData = challengeDoc.data();
+        // Single use: delete right away so it cannot be replayed.
+        await challengeDoc.ref.delete();
+        if (isChallengeExpired(challengeData?.createdAt)) {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid or expired challenge.');
+        }
 
         // 2. Identify the user
         // The credentialID returned tells us which passkey was used.
@@ -416,7 +437,7 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             });
         } catch (error: any) {
             console.error('Passkey verification failed', error);
-            throw new functions.https.HttpsError('unauthenticated', `Verification failed: ${error.message}`);
+            throw new functions.https.HttpsError('unauthenticated', 'Verification failed.');
         }
 
         const { verified, authenticationInfo } = verification;
@@ -471,6 +492,6 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
 
     } catch (error: any) {
         console.error('verifyPasskeyAuthentication: Error:', error);
-        throw new functions.https.HttpsError('internal', error.message || 'Internal Server Error');
+        throw toClientError(error, 'Internal Server Error');
     }
 });

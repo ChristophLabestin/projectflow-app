@@ -13,6 +13,9 @@ import {
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { db } from './init';
+
+const escapeHtml = (value: string): string =>
+    value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type StorageProvider = 'firebase' | 's3' | 'googleDrive';
@@ -117,10 +120,6 @@ const requireAuth = (context: functions.https.CallableContext) => {
 const getMembership = async (tenantId: string, uid: string) => {
     if (!tenantId) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
-    }
-
-    if (uid === tenantId) {
-        return { exists: true, role: 'Owner', roleIds: ['Owner'] };
     }
 
     const membershipSnap = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
@@ -1480,7 +1479,7 @@ export const googleDriveStorageCallback = functions.region(REGION).https.onReque
     const error = normalizeString(req.query.error);
 
     if (error) {
-        res.status(400).send(`Google Drive OAuth error: ${error}`);
+        res.status(400).type('text/plain').send(`Google Drive OAuth error: ${escapeHtml(error)}`);
         return;
     }
 
@@ -1614,7 +1613,7 @@ export const googleDriveStorageCallback = functions.region(REGION).https.onReque
                     <p>You can close this window now.</p>
                     <script>
                         if (window.opener) {
-                            window.opener.postMessage({ type: 'GOOGLE_DRIVE_STORAGE_CONNECTED' }, '*');
+                            window.opener.postMessage({ type: 'GOOGLE_DRIVE_STORAGE_CONNECTED' }, window.location.origin);
                             window.close();
                         }
                     </script>
@@ -1623,6 +1622,6 @@ export const googleDriveStorageCallback = functions.region(REGION).https.onReque
         `);
     } catch (callbackError: any) {
         console.error('googleDriveStorageCallback failed', callbackError);
-        res.status(500).send(`Google Drive connection failed: ${callbackError?.message || 'unknown error'}`);
+        res.status(500).type('text/plain').send('Google Drive connection failed. Please close this window and try again.');
     }
 });
