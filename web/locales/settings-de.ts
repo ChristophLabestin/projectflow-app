@@ -344,6 +344,25 @@ const deSettings = {
     'settings.email.smtp.user': 'Benutzer',
     'settings.members.subtitle': 'Zugriff und Rollen verwalten.',
     'settings.prebeta.saved': 'Pre-Alpha-Einstellungen erfolgreich gespeichert.',
+    // --- Account data (GDPR export / erasure) ---
+    'accountData.export.title': 'Meine Daten exportieren',
+    'accountData.export.description': 'Lade eine JSON-Datei mit deinem Profil, deinen Workspace-Mitgliedschaften, Aufgaben, Kommentaren und Aktivitäten herunter. Geheimnisse und Passkey-Zugangsdaten sind nicht enthalten.',
+    'accountData.export.button': 'Meine Daten exportieren',
+    'accountData.export.success': 'Dein Datenexport wurde heruntergeladen.',
+    'accountData.export.error': 'Der Export ist fehlgeschlagen. Bitte versuche es später erneut.',
+    'accountData.delete.title': 'Konto löschen',
+    'accountData.delete.description': 'Lösche dein Konto und deine personenbezogenen Daten dauerhaft. Das kann nicht rückgängig gemacht werden.',
+    'accountData.delete.button': 'Konto löschen',
+    'accountData.delete.dialogTitle': 'Konto löschen?',
+    'accountData.delete.warning': 'Dein Profil, deine Passkeys, persönlichen Aufgaben und Workspace-Mitgliedschaften werden gelöscht. Workspaces, die nur dir gehören, werden samt Inhalt gelöscht. Deine Kommentare und Aktivitäten in gemeinsamen Workspaces bleiben erhalten und werden als "Gelöschter Nutzer" angezeigt.',
+    'accountData.delete.blockedIntro': 'Du bist noch Eigentümer von Workspaces mit weiteren Mitgliedern. Übertrage zuerst die Eigentümerschaft:',
+    'accountData.delete.typeEmail': 'Gib {email} zur Bestätigung ein',
+    'accountData.delete.reauthRequired': 'Aus Sicherheitsgründen melde dich bitte erneut an, um zu bestätigen.',
+    'accountData.delete.passwordLabel': 'Passwort',
+    'accountData.delete.wrongPassword': 'Das Passwort ist falsch.',
+    'accountData.delete.confirmButton': 'Mein Konto endgültig löschen',
+    'accountData.delete.reauthButton': 'Bestätigen und löschen',
+    'accountData.delete.error': 'Dein Konto konnte nicht gelöscht werden. Bitte versuche es später erneut.',
 };
 
 export default deSettings;

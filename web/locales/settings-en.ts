@@ -345,6 +345,25 @@ const enSettings = {
     'settings.account.linkedAccounts.noteEmphasis': 'not',
     'settings.account.linkedAccounts.noteSuffix': 'remove your existing password. You will still be able to sign in using your email and password as long as they are linked.',
     'settings.prebeta.saved': 'Pre-Alpha settings saved successfully.',
+    // --- Account data (GDPR export / erasure) ---
+    'accountData.export.title': 'Export my data',
+    'accountData.export.description': 'Download a JSON file with your profile, workspace memberships, tasks, comments and activity. Secrets and passkey credentials are not included.',
+    'accountData.export.button': 'Export my data',
+    'accountData.export.success': 'Your data export has been downloaded.',
+    'accountData.export.error': 'The export failed. Please try again later.',
+    'accountData.delete.title': 'Delete account',
+    'accountData.delete.description': 'Permanently delete your account and personal data. This cannot be undone.',
+    'accountData.delete.button': 'Delete account',
+    'accountData.delete.dialogTitle': 'Delete your account?',
+    'accountData.delete.warning': 'Your profile, passkeys, personal tasks and workspace memberships will be erased. Workspaces you own alone are deleted with everything in them. Your comments and activity in shared workspaces stay but are shown as "Deleted user".',
+    'accountData.delete.blockedIntro': 'You still own workspaces with other members. Transfer ownership of these first:',
+    'accountData.delete.typeEmail': 'Type {email} to confirm',
+    'accountData.delete.reauthRequired': 'For your security, please sign in again to confirm.',
+    'accountData.delete.passwordLabel': 'Password',
+    'accountData.delete.wrongPassword': 'The password is incorrect.',
+    'accountData.delete.confirmButton': 'Delete my account permanently',
+    'accountData.delete.reauthButton': 'Confirm and delete',
+    'accountData.delete.error': 'Your account could not be deleted. Please try again later.',
 };
 
 export default enSettings;
