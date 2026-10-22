@@ -350,7 +350,7 @@ export const Calendar = () => {
             const unassignedToInclude = unassignedTasks.filter(t => !t.scheduledDate && !t.isCompleted);
             const schedulingPoolTasks = [...tasks, ...unassignedToInclude];
 
-            const proposed = distributeTasks(schedulingPoolTasks, issues, undefined, teamTasks);
+            const proposed = distributeTasks(schedulingPoolTasks, [], undefined, teamTasks);
 
             // Only show if there are changes
             const changes = proposed.filter(p => {

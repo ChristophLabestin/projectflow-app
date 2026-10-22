@@ -33,10 +33,9 @@ jobs:
       - name: Unit tests
         run: npm run test:run
         working-directory: web
-      - name: Type check (non-blocking)
+      - name: Type check
         run: npm run typecheck
         working-directory: web
-        continue-on-error: true
       - name: Build
         run: npm run build
         working-directory: web

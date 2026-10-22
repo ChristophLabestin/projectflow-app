@@ -117,8 +117,6 @@ const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
         { id: 'contract', enabled: true, span: 12, placement: 'primary' },
         { id: 'snapshot', enabled: true, span: 12, placement: 'primary' },
         { id: 'executionTasks', enabled: true, span: 12, placement: 'primary' },
-        { id: 'executionFlows', enabled: true, span: 6, placement: 'primary' },
-        { id: 'executionIssues', enabled: true, span: 6, placement: 'primary' },
         { id: 'updates', enabled: true, span: 12, placement: 'primary' },
         { id: 'resources', enabled: true, span: 12, placement: 'primary' },
         { id: 'planning', enabled: true, span: 3, placement: 'secondary' },

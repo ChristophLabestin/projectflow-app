@@ -141,8 +141,6 @@ export type ProjectOverviewCardId =
     | 'contract'
     | 'snapshot'
     | 'executionTasks'
-    | 'executionFlows'
-    | 'executionIssues'
     | 'updates'
     | 'resources'
     | 'planning'

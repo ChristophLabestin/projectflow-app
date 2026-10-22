@@ -84,6 +84,12 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'tenant.finance.export.datev': { scope: 'tenant', description: 'Generate DATEV exports', dangerLevel: 'high' },
     'tenant.finance.audit.view': { scope: 'tenant', description: 'View finance audit trails' },
     'tenant.finance.reconciliation.manage': { scope: 'tenant', description: 'Manage bank reconciliation workflows', dangerLevel: 'high' },
+    'tenant.finance.reports.manage': { scope: 'tenant', description: 'Manage finance reports', dangerLevel: 'medium' },
+    'tenant.finance.functions.view': { scope: 'tenant', description: 'View finance automation functions and runs' },
+    'tenant.finance.functions.execute': { scope: 'tenant', description: 'Run finance automation functions', dangerLevel: 'medium' },
+    'tenant.finance.functions.retry': { scope: 'tenant', description: 'Retry failed finance automation runs', dangerLevel: 'medium' },
+    'tenant.finance.functions.template.manage': { scope: 'tenant', description: 'Manage finance automation templates', dangerLevel: 'high' },
+    'tenant.finance.functions.approve.high_risk': { scope: 'tenant', description: 'Approve high-risk finance automation runs', dangerLevel: 'high' },
 
     // Tenant - SSO
     'tenant.sso.view': { scope: 'tenant', description: 'View SSO configuration status' },

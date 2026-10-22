@@ -43,7 +43,6 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                     objective: objective as any,
                     status: 'Enabled',
                     budgetType: 'Daily',
-                    createdAt: new Date().toISOString(), // overwritten by the service with a server timestamp
                     budgetDaily: Number(budgetDaily),
                     spend: 0,
                     metrics: {

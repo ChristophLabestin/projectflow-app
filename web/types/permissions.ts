@@ -56,6 +56,12 @@ export type TenantPermissionNode =
     | 'tenant.finance.export.datev'
     | 'tenant.finance.audit.view'
     | 'tenant.finance.reconciliation.manage'
+    | 'tenant.finance.reports.manage'
+    | 'tenant.finance.functions.view'
+    | 'tenant.finance.functions.execute'
+    | 'tenant.finance.functions.retry'
+    | 'tenant.finance.functions.template.manage'
+    | 'tenant.finance.functions.approve.high_risk'
     // SSO (Organization tier)
     | 'tenant.sso.view'
     | 'tenant.sso.configure'
