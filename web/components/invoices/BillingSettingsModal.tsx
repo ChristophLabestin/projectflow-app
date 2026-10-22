@@ -8,6 +8,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { getBillingSettings, saveBillingSettings } from '../../services/domain/invoiceService';
 import { defaultBillingSettings } from './invoiceDefaults';
 import type { BillingSettings } from '../../types';
+import { getActiveTenantId } from '../../services/domain/authService';
 
 interface BillingSettingsModalProps {
     isOpen: boolean;
@@ -213,7 +214,7 @@ export const BillingSettingsModal: React.FC<BillingSettingsModalProps> = ({ isOp
                     setLogoModalOpen(false);
                 }}
                 projectId={projectId}
-                storagePath="invoices/logos"
+                storagePath={`tenants/${getActiveTenantId()}/invoices/logos`}
             />
         </>
     );

@@ -190,6 +190,7 @@ export const MarketingSettings: React.FC = () => {
         try {
             const testFn = httpsCallable(functions, 'testSMTPConnection');
             const result = await testFn({
+                tenantId: getActiveTenantId(),
                 host: smtpConfig.host,
                 port: smtpConfig.port,
                 user: smtpConfig.user,

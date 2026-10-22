@@ -19,6 +19,7 @@ import { computeInvoiceTotals, formatCurrency, lineItemTotal } from '../../utils
 import { downloadInvoicePdf } from '../../utils/invoicePdf';
 import { createInvoice, reserveNextInvoiceNumber, updateInvoice } from '../../services/domain/invoiceService';
 import { updateProjectFields } from '../../services/domain/projectAdminService';
+import { getActiveTenantId } from '../../services/domain/authService';
 
 interface InvoiceBuilderProps {
     projectId: string;
@@ -587,7 +588,7 @@ export const InvoiceBuilder: React.FC<InvoiceBuilderProps> = ({ projectId, initi
                     onClose={() => setLogoModalOpen(false)}
                     onSelect={(asset) => { update({ logoUrl: asset.url }); setLogoModalOpen(false); }}
                     projectId={projectId}
-                    storagePath="invoices/logos"
+                    storagePath={`tenants/${getActiveTenantId()}/invoices/logos`}
                 />
 
                 <EffortImportModal

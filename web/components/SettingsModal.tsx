@@ -504,6 +504,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         try {
             const testFn = httpsCallable(functions, 'testSMTPConnection');
             const result = await testFn({
+                tenantId: tenantId || getActiveTenantId(),
                 host: smtpHost,
                 port: smtpPort,
                 user: smtpUser,
