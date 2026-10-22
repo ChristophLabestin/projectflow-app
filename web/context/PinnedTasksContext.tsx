@@ -1,8 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { FocusItemType, Task, UserFocusLastAction, UserFocusState, UserFocusStatus } from '../types';
-import { auth } from '../services/firebase';
+import { FocusItemType, Task, UserFocusLastAction, UserFocusState } from '../types';
+import { auth, db } from '../services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { getUserProfile, updateUserData } from '../services/domain/usersService';
+import { doc, onSnapshot, runTransaction, type DocumentData } from 'firebase/firestore';
+import {
+    EMPTY_PIN_STATE,
+    clearFocus,
+    completeFocusItem as completeFocusState,
+    pinItem as pinState,
+    readPinState,
+    reorderPinnedItems as reorderState,
+    serializePinState,
+    setFocusItem as setFocusState_,
+    startFocusItem as startFocusState,
+    unpinItem as unpinState,
+    updateCurrentFocus,
+    type PinState
+} from '../utils/pinnedState';
 
 export interface PinnedItem {
     id: string;
@@ -24,6 +38,8 @@ interface PinnedTasksContextType {
     toggleModal: () => void;
     pinItem: (item: PinnedItem) => void;
     unpinItem: (itemId: string) => void;
+    /** Moves the listed ids to the front in the given order. */
+    reorderPinnedItems: (orderedIds: string[]) => void;
     isPinned: (itemId: string) => boolean;
     setFocusItem: (itemId: string | null) => void;
     startFocusItem: (item: PinnedItem) => void;
@@ -36,232 +52,149 @@ interface PinnedTasksContextType {
 
 const PinnedTasksContext = createContext<PinnedTasksContextType | undefined>(undefined);
 
-const compactRecord = <T extends Record<string, unknown>>(value: T): Partial<T> => (
-    Object.fromEntries(Object.entries(value).filter(([, entryValue]) => entryValue !== undefined)) as Partial<T>
-);
+const userDocRef = (uid: string) => doc(db, 'users', uid);
 
-const serializePinnedItem = (item: PinnedItem) => compactRecord({
-    id: item.id,
-    type: item.type,
-    title: item.title,
-    projectId: item.projectId,
-    tenantId: item.tenantId,
-    priority: item.priority,
-    isCompleted: item.isCompleted
-}) as PinnedItem;
-
-const isSupportedPinnedItem = (item: PinnedItem) => item.type !== 'issue';
-
-const serializeFocusState = (state: UserFocusState) => compactRecord({
-    itemId: state.itemId,
-    itemType: state.itemType,
-    title: state.title,
-    projectId: state.projectId,
-    tenantId: state.tenantId,
-    status: state.status,
-    startedAt: state.startedAt,
-    snoozedUntil: state.snoozedUntil,
-    blockedAt: state.blockedAt,
-    updatedAt: state.updatedAt,
-    lastAction: state.lastAction
-}) as UserFocusState;
-
+/**
+ * Pins and focus live on users/{uid} and are shared across devices: the doc is
+ * subscribed in realtime, and every change is a read-modify-write transaction
+ * (so a pin added on the phone is never overwritten by a stale web tab).
+ * Local state is updated optimistically; snapshots are ignored while one of our
+ * own writes is in flight and the committed result wins afterwards.
+ */
 export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [pinnedItems, setPinnedItems] = useState<PinnedItem[]>([]);
-    const [focusItemId, setFocusItemState] = useState<string | null>(null);
-    const [focusState, setFocusState] = useState<UserFocusState | null>(null);
+    const [pins, setPins] = useState<PinState>(EMPTY_PIN_STATE);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const hasFetchedRef = useRef(false);
+    const stateRef = useRef<PinState>(EMPTY_PIN_STATE);
+    const lastSnapshotRef = useRef<DocumentData | undefined>(undefined);
+    const pendingWritesRef = useRef(0);
 
-    const buildFocusState = useCallback((
-        item: PinnedItem,
-        status: UserFocusStatus,
-        overrides: Partial<UserFocusState> = {}
-    ): UserFocusState => {
-        const now = new Date().toISOString();
-        const shouldPreserveStartedAt = focusState?.itemId === item.id;
-        return {
-            itemId: item.id,
-            itemType: item.type,
-            title: item.title,
-            projectId: item.projectId || undefined,
-            tenantId: item.tenantId,
-            status,
-            startedAt: overrides.startedAt || (shouldPreserveStartedAt ? focusState?.startedAt : undefined) || now,
-            updatedAt: now,
-            lastAction: status === 'active' ? 'started' : status,
-            ...overrides
-        };
-    }, [focusState?.startedAt]);
+    const applyState = useCallback((next: PinState) => {
+        stateRef.current = next;
+        setPins(next);
+    }, []);
 
-    const getFallbackFocusState = useCallback((items: PinnedItem[], itemId?: string | null) => {
-        if (!itemId) return null;
-        const item = items.find((candidate) => candidate.id === itemId);
-        return item ? buildFocusState(item, 'active') : null;
-    }, [buildFocusState]);
-
-    // Load pinned items from Firebase on auth state change
+    // Realtime subscription to users/{uid} (focus + pins, across devices).
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user && !hasFetchedRef.current) {
-                hasFetchedRef.current = true;
-                setIsLoading(true);
-                try {
-                    const profile = await getUserProfile(user.uid);
-                    const nextPinnedItems = ((profile?.pinnedItems || []) as PinnedItem[]).filter(isSupportedPinnedItem);
-                    const rawFocusItemId = profile?.focusItemId || profile?.focusState?.itemId || null;
-                    const nextFocusItemId = nextPinnedItems.some(item => item.id === rawFocusItemId) ? rawFocusItemId : null;
-                    const nextFocusState = nextFocusItemId && profile?.focusState?.itemType !== 'issue'
-                        ? profile.focusState
-                        : getFallbackFocusState(nextPinnedItems, nextFocusItemId);
-                    setPinnedItems(nextPinnedItems);
-                    setFocusItemState(nextFocusItemId);
-                    setFocusState(nextFocusState);
-                } catch (e) {
-                    console.error("Failed to load pinned items from Firebase", e);
-                } finally {
+        let unsubscribeDoc: (() => void) | null = null;
+
+        const stopDoc = () => {
+            if (unsubscribeDoc) unsubscribeDoc();
+            unsubscribeDoc = null;
+        };
+
+        const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+            stopDoc();
+            lastSnapshotRef.current = undefined;
+            if (!user) {
+                applyState(EMPTY_PIN_STATE);
+                setIsLoading(false);
+                return;
+            }
+            setIsLoading(true);
+            unsubscribeDoc = onSnapshot(
+                userDocRef(user.uid),
+                (snapshot) => {
+                    lastSnapshotRef.current = snapshot.data();
+                    if (pendingWritesRef.current > 0) return;
+                    applyState(readPinState(snapshot.data(), new Date().toISOString()));
+                    setIsLoading(false);
+                },
+                (error) => {
+                    console.error('Failed to subscribe to pinned items', error);
                     setIsLoading(false);
                 }
-            } else if (!user) {
-                // User logged out - reset state
-                setPinnedItems([]);
-                setFocusItemState(null);
-                setFocusState(null);
-                hasFetchedRef.current = false;
-                setIsLoading(false);
-            }
+            );
         });
 
-        return () => unsubscribe();
-    }, []);
+        return () => {
+            unsubscribeAuth();
+            stopDoc();
+        };
+    }, [applyState]);
 
-    // Debounced save to Firebase
-    const saveToFirebase = useCallback((items: PinnedItem[], focusId: string | null, nextFocusState: UserFocusState | null) => {
-        // Clear any pending save
-        if (saveTimeoutRef.current) {
-            clearTimeout(saveTimeoutRef.current);
-        }
+    // Optimistic update + transactional read-modify-write of users/{uid}.
+    const mutate = useCallback((transition: (state: PinState) => PinState) => {
+        const user = auth.currentUser;
+        if (!user) return;
 
-        // Debounce saves to avoid too many writes
-        saveTimeoutRef.current = setTimeout(async () => {
-            const user = auth.currentUser;
-            if (!user) return;
+        const optimistic = transition(stateRef.current);
+        if (optimistic === stateRef.current) return;
+        applyState(optimistic);
 
-            try {
-                await updateUserData(user.uid, {
-                    pinnedItems: items.filter(isSupportedPinnedItem).map(serializePinnedItem),
-                    focusItemId: nextFocusState?.itemType === 'issue' ? null : focusId,
-                    focusState: nextFocusState && nextFocusState.itemType !== 'issue' ? serializeFocusState(nextFocusState) : null
-                });
-            } catch (e) {
-                console.error("Failed to save pinned items to Firebase", e);
-            }
-        }, 500); // 500ms debounce
-    }, []);
+        pendingWritesRef.current += 1;
+        const ref = userDocRef(user.uid);
+        runTransaction(db, async (transaction) => {
+            const snapshot = await transaction.get(ref);
+            const next = transition(readPinState(snapshot.data(), new Date().toISOString()));
+            if (snapshot.exists()) transaction.update(ref, serializePinState(next));
+            else transaction.set(ref, serializePinState(next), { merge: true });
+            return next;
+        })
+            .then((committed) => {
+                pendingWritesRef.current -= 1;
+                if (pendingWritesRef.current === 0) applyState(committed);
+            })
+            .catch((error) => {
+                console.error('Failed to save pinned items to Firebase', error);
+                pendingWritesRef.current -= 1;
+                if (pendingWritesRef.current === 0) {
+                    applyState(readPinState(lastSnapshotRef.current, new Date().toISOString()));
+                }
+            });
+    }, [applyState]);
 
     const pinItem = useCallback((item: PinnedItem) => {
-        setPinnedItems(prev => {
-            if (!isSupportedPinnedItem(item) || prev.some(i => i.id === item.id)) return prev;
-            const newItems = [...prev, item];
-            saveToFirebase(newItems, focusItemId, focusState);
-            return newItems;
-        });
-    }, [focusItemId, focusState, saveToFirebase]);
+        mutate((state) => pinState(state, item));
+    }, [mutate]);
 
     const unpinItem = useCallback((itemId: string) => {
-        setPinnedItems(prev => {
-            const newItems = prev.filter(i => i.id !== itemId);
-            const newFocusId = focusItemId === itemId ? null : focusItemId;
-            const nextFocusState = focusItemId === itemId ? null : focusState;
-            if (focusItemId === itemId) {
-                setFocusItemState(null);
-                setFocusState(null);
-            }
-            saveToFirebase(newItems, newFocusId, nextFocusState);
-            return newItems;
-        });
-    }, [focusItemId, focusState, saveToFirebase]);
+        mutate((state) => unpinState(state, itemId));
+    }, [mutate]);
+
+    const reorderPinnedItems = useCallback((orderedIds: string[]) => {
+        mutate((state) => reorderState(state, orderedIds));
+    }, [mutate]);
 
     const setFocusItem = useCallback((itemId: string | null) => {
-        setPinnedItems(prev => {
-            const nextFocusState = getFallbackFocusState(prev, itemId);
-            setFocusItemState(itemId);
-            setFocusState(nextFocusState);
-            saveToFirebase(prev, itemId, nextFocusState);
-            return prev;
-        });
-    }, [getFallbackFocusState, saveToFirebase]);
+        const now = new Date().toISOString();
+        mutate((state) => setFocusState_(state, itemId, now));
+    }, [mutate]);
 
     const startFocusItem = useCallback((item: PinnedItem) => {
-        setPinnedItems(prev => {
-            if (!isSupportedPinnedItem(item)) return prev;
-            const newItems = prev.some(i => i.id === item.id)
-                ? prev.map((candidate) => candidate.id === item.id ? { ...candidate, ...item } : candidate)
-                : [...prev, item];
-            const nextFocusState = buildFocusState(item, 'active', {
-                lastAction: focusState?.itemId === item.id ? 'resumed' : 'started',
-                snoozedUntil: undefined,
-                blockedAt: undefined
-            });
-            setFocusItemState(item.id);
-            setFocusState(nextFocusState);
-            saveToFirebase(newItems, item.id, nextFocusState);
-            return newItems;
-        });
-    }, [buildFocusState, focusState?.itemId, saveToFirebase]);
-
-    const updateCurrentFocus = useCallback((status: UserFocusStatus, overrides: Partial<UserFocusState> = {}) => {
-        setPinnedItems(prev => {
-            const currentItemId = focusItemId || focusState?.itemId || null;
-            const item = currentItemId ? prev.find((candidate) => candidate.id === currentItemId) : null;
-            if (!item) return prev;
-            const nextFocusState = buildFocusState(item, status, overrides);
-            setFocusItemState(item.id);
-            setFocusState(nextFocusState);
-            saveToFirebase(prev, item.id, nextFocusState);
-            return prev;
-        });
-    }, [buildFocusState, focusItemId, focusState?.itemId, saveToFirebase]);
+        const now = new Date().toISOString();
+        mutate((state) => startFocusState(state, item, now));
+    }, [mutate]);
 
     const snoozeFocusItem = useCallback((minutes = 60) => {
-        const snoozedUntil = new Date(Date.now() + minutes * 60 * 1000).toISOString();
-        updateCurrentFocus('snoozed', {
+        const nowMs = Date.now();
+        const now = new Date(nowMs).toISOString();
+        const snoozedUntil = new Date(nowMs + minutes * 60 * 1000).toISOString();
+        mutate((state) => updateCurrentFocus(state, 'snoozed', now, {
             snoozedUntil,
             blockedAt: undefined,
             lastAction: 'snoozed'
-        });
-    }, [updateCurrentFocus]);
+        }));
+    }, [mutate]);
 
     const blockFocusItem = useCallback(() => {
-        updateCurrentFocus('blocked', {
-            blockedAt: new Date().toISOString(),
+        const now = new Date().toISOString();
+        mutate((state) => updateCurrentFocus(state, 'blocked', now, {
+            blockedAt: now,
             snoozedUntil: undefined,
             lastAction: 'blocked'
-        });
-    }, [updateCurrentFocus]);
+        }));
+    }, [mutate]);
 
     const clearFocusItem = useCallback((lastAction: UserFocusLastAction = 'cleared') => {
-        void lastAction;
-        setFocusItemState(null);
-        setFocusState(null);
-        saveToFirebase(pinnedItems, null, null);
-    }, [pinnedItems, saveToFirebase]);
+        mutate((state) => clearFocus(state, lastAction));
+    }, [mutate]);
 
     const completeFocusItem = useCallback((itemId?: string) => {
-        setPinnedItems(prev => {
-            const completedId = itemId || focusItemId || focusState?.itemId || null;
-            const nextItems = completedId ? prev.filter((item) => item.id !== completedId) : prev;
-            const clearsActiveFocus = Boolean(completedId && (focusItemId === completedId || focusState?.itemId === completedId));
-            const nextFocusId = clearsActiveFocus ? null : focusItemId;
-            const nextFocusState = clearsActiveFocus ? null : focusState;
-            setFocusItemState(nextFocusId);
-            setFocusState(nextFocusState);
-            saveToFirebase(nextItems, nextFocusId, nextFocusState);
-            return nextItems;
-        });
-    }, [focusItemId, focusState, saveToFirebase]);
+        mutate((state) => completeFocusState(state, itemId));
+    }, [mutate]);
+
+    const { pinnedItems, focusItemId, focusState } = pins;
 
     const isPinned = useCallback((itemId: string) => {
         return pinnedItems.some(i => i.id === itemId);
@@ -299,15 +232,6 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [toggleModal]);
 
-    // Cleanup timeout on unmount
-    useEffect(() => {
-        return () => {
-            if (saveTimeoutRef.current) {
-                clearTimeout(saveTimeoutRef.current);
-            }
-        };
-    }, []);
-
     return (
         <PinnedTasksContext.Provider value={{
             pinnedItems,
@@ -318,6 +242,7 @@ export const PinnedTasksProvider: React.FC<{ children: React.ReactNode }> = ({ c
             toggleModal,
             pinItem,
             unpinItem,
+            reorderPinnedItems,
             isPinned,
             setFocusItem,
             startFocusItem,
