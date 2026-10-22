@@ -1,0 +1,35 @@
+# Mirrors web `npm run lint:theme`: colours come from PFColor only.
+included:
+  - App
+  - Widgets
+  - Share
+  - NotificationService
+  - Packages/ProjectFlowKit/Sources
+excluded:
+  - Packages/ProjectFlowKit/Sources/PFDesign/Tokens
+disabled_rules:
+  - line_length
+  - identifier_name
+  - type_body_length
+  - file_length
+  - function_body_length
+  - nesting
+  - cyclomatic_complexity
+  - large_tuple
+  - force_cast
+  - trailing_comma
+  - multiple_closures_with_trailing_closure
+  - switch_case_alignment
+  - opening_brace
+  - statement_position
+custom_rules:
+  no_color_literals:
+    name: "No colour literals"
+    regex: '(Color\((red|hue|white|\.sRGB)|UIColor\((red|white|hue)|Color\(#|\.(blue|red|green|orange|yellow|purple|pink|gray|teal|indigo|mint|cyan|brown)\b(?!\s*\())'
+    message: "Use PFColor tokens instead of colour literals."
+    severity: error
+  no_native_controls:
+    name: "No native controls"
+    regex: '\b(List|Form|NavigationStack|NavigationView|TabView|Toggle|Picker|DatePicker|Menu)\s*[\(\{]|\.(sheet|alert|confirmationDialog|contextMenu|toolbar|navigationTitle)\('
+    message: "Use the PFDesign components instead of native SwiftUI controls (see ios/README.md)."
+    severity: error

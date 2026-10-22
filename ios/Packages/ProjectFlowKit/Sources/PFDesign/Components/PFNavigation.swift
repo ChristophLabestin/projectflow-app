@@ -230,6 +230,7 @@ public struct PFDock: View {
                 Image(systemName: item.systemImage)
                     .font(.system(size: 18, weight: selected ? .semibold : .regular))
                     .symbolVariant(selected ? .fill : .none)
+                    .frame(width: 28, height: 24)
                     .overlay(alignment: .topTrailing) {
                         if item.badge > 0 {
                             Text(item.badge > 99 ? "99+" : "\(item.badge)")

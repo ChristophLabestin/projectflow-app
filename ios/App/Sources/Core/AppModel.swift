@@ -62,6 +62,12 @@ final class AppModel {
             router.pendingURL = nil
             router.handle(url: pending, activeTenant: tenantId)
         }
+        // Debug/QA: `-pfOpenURL /project/p-website` opens a screen right after sign-in (used for screenshots).
+        let arguments = ProcessInfo.processInfo.arguments
+        if let index = arguments.firstIndex(of: "-pfOpenURL"), arguments.count > index + 1,
+           let url = URL(string: "https://app.getprojectflow.com\(arguments[index + 1])") {
+            router.handle(url: url, activeTenant: tenantId)
+        }
     }
 
     func switchWorkspace(to id: String, announce: Bool = true) {

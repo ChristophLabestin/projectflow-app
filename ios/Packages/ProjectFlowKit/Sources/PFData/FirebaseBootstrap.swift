@@ -33,7 +33,8 @@ public enum PFFirebase {
         case let .emulator(host, authPort, firestorePort, functionsPort, _):
             let options = FirebaseOptions(googleAppID: "1:123456789012:ios:0123456789abcdef", gcmSenderID: "123456789012")
             options.projectID = "demo-projectflow"
-            options.apiKey = "demo-key-emulator-only"
+            // Firebase Installations (pulled in by Messaging) validates the key shape: 39 chars, leading "A".
+            options.apiKey = "AIzaSyEmulatorOnly" + String(repeating: "0", count: 21)
             options.bundleID = Bundle.main.bundleIdentifier ?? "de.christophlabestin.projectflow"
             FirebaseApp.configure(options: options)
             Auth.auth().useEmulator(withHost: host, port: authPort)

@@ -86,6 +86,10 @@ enum CommonStrings {
         "due.inDays.one": "In {count} Tag", "due.inDays.other": "In {count} Tagen",
         "task.completed": "Erledigt", "task.reopened": "Wieder geöffnet", "task.scheduledToday": "Für heute eingeplant",
         "task.moved": "Verschoben auf {date}",
+        "common.status": "Status", "task.completedNamed": "„{title}“ erledigt",
+        "task.plannedTodayOverdue": "Für heute eingeplant — ist aber noch überfällig", "task.moveDueToo": "Fällig heute",
+        "task.nextStep": "Nächster Schritt", "later.eyebrow": "Später", "later.moveDue": "Fälligkeit auch verschieben",
+        "later.unplan": "Aus Plan nehmen",
     ]
 
     static let en: [String: String] = [
@@ -109,6 +113,10 @@ enum CommonStrings {
         "due.inDays.one": "In {count} day", "due.inDays.other": "In {count} days",
         "task.completed": "Done", "task.reopened": "Reopened", "task.scheduledToday": "Planned for today",
         "task.moved": "Moved to {date}",
+        "common.status": "Status", "task.completedNamed": "“{title}” done",
+        "task.plannedTodayOverdue": "Planned for today — still overdue though", "task.moveDueToo": "Due today",
+        "task.nextStep": "Next step", "later.eyebrow": "Later", "later.moveDue": "Also move the due date",
+        "later.unplan": "Remove from plan",
     ]
 }
 

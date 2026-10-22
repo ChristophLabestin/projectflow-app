@@ -65,6 +65,8 @@ targets:
         product: PFSnapshot
       - package: Firebase
         product: FirebaseMessaging
+      - package: Firebase
+        product: FirebaseAuth
       - target: ProjectFlowWidgets
       - target: ProjectFlowShare
       - target: ProjectFlowNotificationService
