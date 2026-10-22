@@ -218,6 +218,38 @@
         color: var(--color-text-main);
         box-shadow: var(--shadow-sm);
     }
+
+    // Menu chip (e.g. "Group by: Due date ▾"): the value reads strongest.
+    &--menu.inline-menu__trigger {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--color-text-main);
+
+        &:hover {
+            background: var(--color-surface-active);
+        }
+    }
+
+    &__prefix {
+        font-weight: 500;
+        color: var(--color-text-muted);
+    }
+
+    &--filter.inline-menu__trigger:not(.is-active) {
+        color: var(--color-text-muted);
+    }
+
+    &__value {
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__caret {
+        margin-left: -2px;
+        color: var(--color-text-subtle);
+    }
 }
 
 // ---- Groups -------------------------------------------------------------------
@@ -485,6 +517,15 @@
 // ---- Grid (cards) -------------------------------------------------------------
 // Same row content laid out as tiles: select + done circle + title on top,
 // meta below, the inline controls pinned to the bottom.
+
+// Tiles have no hover checkboxes: they only appear once "Select" is on (or a
+// Cmd/Shift-click started a selection).
+.work-groups--grid:not(.is-selecting) {
+    .work-row__select,
+    .work-group__select {
+        display: none;
+    }
+}
 
 .work-groups--grid .work-group__rows {
     display: grid;

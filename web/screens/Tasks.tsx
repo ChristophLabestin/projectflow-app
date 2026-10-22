@@ -8,6 +8,9 @@ import { auth } from '../services/firebase';
 import type { Project, Task } from '../types';
 import { Button } from '../components/common/Button/Button';
 import { Select, type SelectOption } from '../components/common/Select/Select';
+import type { InlineMenuOption } from '../components/work/InlineMenu';
+import { WorkMenuChip } from '../components/work/WorkMenuChip';
+import { priorityMenuOptions } from '../components/work/workMenuOptions';
 import { ProjectBoard } from '../components/ProjectBoard';
 import { TaskGroupList } from '../components/work/TaskGroupList';
 import { TaskRow } from '../components/work/TaskRow';
@@ -179,17 +182,17 @@ export const Tasks = () => {
         return () => { alive = false; };
     }, [visibleTasks]);
 
-    const projectOptions = useMemo<SelectOption[]>(() => ([
+    const projectOptions = useMemo<InlineMenuOption[]>(() => ([
         { value: 'all', label: t('work.filter.allProjects') },
-        ...projects.map((project) => ({ value: project.id, label: project.title }))
+        ...projects.map((project, index) => ({ value: project.id, label: project.title, dividerBefore: index === 0 }))
     ]), [projects, t]);
     const quickProjectOptions = useMemo<SelectOption[]>(
         () => activeProjects.map((project) => ({ value: project.id, label: project.title })),
         [activeProjects]
     );
-    const priorityOptions = useMemo<SelectOption[]>(() => ([
+    const priorityOptions = useMemo<InlineMenuOption[]>(() => ([
         { value: 'all', label: t('work.filter.anyPriority') },
-        ...['Urgent', 'High', 'Medium', 'Low'].map((value) => ({ value, label: t(`work.priority.${value}`) }))
+        ...priorityMenuOptions(t).map((option, index) => ({ ...option, dividerBefore: index === 0 }))
     ]), [t]);
 
     const summaryParts = [
@@ -262,8 +265,26 @@ export const Tasks = () => {
                         aria-label={t('work.filter.search')}
                     />
                 </label>
-                <Select value={projectFilter} onChange={(value) => setProjectFilter(String(value))} options={projectOptions} className="work-toolbar__select" />
-                <Select value={priorityFilter} onChange={(value) => setPriorityFilter(String(value))} options={priorityOptions} className="work-toolbar__select" />
+                <WorkMenuChip
+                    label={projectOptions.find((option) => option.value === projectFilter)?.label || t('work.filter.allProjects')}
+                    icon="folder"
+                    valueLabel={projectOptions.find((option) => option.value === projectFilter)?.label || t('work.filter.allProjects')}
+                    active={projectFilter !== 'all'}
+                    options={projectOptions}
+                    value={projectFilter}
+                    onSelect={setProjectFilter}
+                    width={240}
+                />
+                <WorkMenuChip
+                    label={priorityOptions.find((option) => option.value === priorityFilter)?.label || t('work.filter.anyPriority')}
+                    icon="flag"
+                    valueLabel={priorityOptions.find((option) => option.value === priorityFilter)?.label || t('work.filter.anyPriority')}
+                    active={priorityFilter !== 'all'}
+                    options={priorityOptions}
+                    value={priorityFilter}
+                    onSelect={setPriorityFilter}
+                    width={200}
+                />
                 <button
                     type="button"
                     className={`work-chip ${showCompleted ? 'is-active' : ''}`}
