@@ -268,7 +268,7 @@ export const AppLayout = () => {
     }, [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
-        <div className="flex h-screen w-full bg-surface overflow-hidden relative">
+        <div className="flex app-viewport-height w-full bg-surface overflow-hidden relative">
             {/* Sidebar Desktop — collapsed, it floats over the content (which
                 keeps its place via --app-content-inset-left) so wide boards can
                 scroll out behind it. */}

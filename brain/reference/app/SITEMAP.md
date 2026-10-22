@@ -22,6 +22,7 @@ These routes must remain accessible without being logged in.
 - [x] `/invite/:tenantId/:inviteId` — Accept a workspace invitation (email or link; `screens/AcceptInvite.tsx`). Replaced `/invite/:tenantId`, `/invite-project/:projectId`, `/join/:inviteLinkId` and `/join-workspace/:inviteLinkId` on 2026-09-26.
 - [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
 - [x] `/ui` — Component Style Guide (Dev only). Includes tokens, typography, buttons, cards, inputs, date/time, media library, badges, checkboxes/toggles, max-width container categories, Level of Depth guidance, and next standardization candidates.
+- [x] `/desktop/quick-access` — Desktop app only (Electron shell, `desktop/`): content of the Quick Access pop-out window (`QuickAccessWindow` → `PinnedTasksModal variant="window"`). Rendered inside `RootLayout` without `AppLayout` and without global overlays; in a normal browser it redirects to `/`.
 
 ---
 

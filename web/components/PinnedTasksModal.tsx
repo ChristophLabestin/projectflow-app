@@ -18,6 +18,7 @@ import { Button } from './ui/Button';
 import { useConfirm } from '../context/UIContext';
 import { CommentSection } from './CommentSection';
 import { useLanguage } from '../context/LanguageContext';
+import { getDesktopBridge, hasDesktopCapability, type DesktopQuickAccessState } from '../services/desktop';
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
 const INITIATIVE_STATUS_OPTIONS = ['Planning', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
@@ -656,7 +657,13 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     );
 };
 
-export const PinnedTasksModal = () => {
+interface PinnedTasksModalProps {
+    /** `window`: rendered by the desktop pop-out window (/desktop/quick-access) and filling it. */
+    variant?: 'overlay' | 'window';
+}
+
+export const PinnedTasksModal = ({ variant = 'overlay' }: PinnedTasksModalProps) => {
+    const isWindow = variant === 'window';
     const {
         isModalOpen,
         toggleModal,
@@ -713,6 +720,37 @@ export const PinnedTasksModal = () => {
         || (pinnedFilter === 'task' && item.type === 'personal-task')
     );
 
+    // Desktop app: pop-out window state (always-on-top) and the pop-out entry point in the modal headers.
+    const desktop = getDesktopBridge();
+    const canPopOut = Boolean(desktop && hasDesktopCapability('popout') && !isWindow);
+    const [desktopQuickAccess, setDesktopQuickAccess] = useState<DesktopQuickAccessState | null>(null);
+    useEffect(() => {
+        if (!desktop || !isWindow) return;
+        let mounted = true;
+        void desktop.quickAccess('state').then((state) => { if (mounted) setDesktopQuickAccess(state); });
+        const unsubscribe = desktop.onQuickAccessChange(setDesktopQuickAccess);
+        return () => {
+            mounted = false;
+            unsubscribe();
+        };
+    }, [desktop, isWindow]);
+
+    const handlePopOut = () => {
+        if (!desktop) return;
+        void desktop.quickAccess('open');
+        if (isModalOpen) toggleModal();
+    };
+
+    /** The pop-out never navigates itself: item links open in the main window. */
+    const openItemPath = (path: string) => {
+        if (isWindow && desktop) {
+            desktop.openInMain(path);
+            return;
+        }
+        toggleModal();
+        navigate(path);
+    };
+
     // Draggable position and size state for compact mode
     const [position, setPosition] = useState(() => getDefaultCompactPosition(COMPACT_DEFAULT_SIZE));
     const [size, setSize] = useState(() => COMPACT_DEFAULT_SIZE);
@@ -723,7 +761,7 @@ export const PinnedTasksModal = () => {
 
     // Default selection: Focus item if exists, else first pinned item
     useEffect(() => {
-        if (!isModalOpen) return;
+        if (!isModalOpen && !isWindow) return;
         const hasSelectedItem = selectedItemId && pinnedItems.some(i => i.id === selectedItemId);
 
         if (hasSelectedItem) {
@@ -737,21 +775,22 @@ export const PinnedTasksModal = () => {
         } else {
             setSelectedItemId(null);
         }
-    }, [isModalOpen, focusItemId, pinnedItems, selectedItemId]);
+    }, [isModalOpen, isWindow, focusItemId, pinnedItems, selectedItemId]);
 
     // Esc closes the full modal (same behavior as the shared Modal); inner handlers can opt out via preventDefault.
     useEffect(() => {
-        if (!isModalOpen || isCompactMode) return;
+        if (!isModalOpen || isCompactMode || isWindow) return;
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key !== 'Escape' || event.defaultPrevented) return;
             toggleModal();
         };
         document.addEventListener('keydown', handleKeyDown);
         return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [isModalOpen, isCompactMode, toggleModal]);
+    }, [isModalOpen, isCompactMode, isWindow, toggleModal]);
 
+    // The pop-out window shares localStorage with the main window, so it never touches the compact-mode keys.
     useEffect(() => {
-        if (typeof window === 'undefined') {
+        if (typeof window === 'undefined' || isWindow) {
             setHasLoadedCompactState(true);
             return;
         }
@@ -779,15 +818,15 @@ export const PinnedTasksModal = () => {
         } finally {
             setHasLoadedCompactState(true);
         }
-    }, []);
+    }, [isWindow]);
 
     useEffect(() => {
-        if (!hasLoadedCompactState || typeof window === 'undefined') return;
+        if (!hasLoadedCompactState || typeof window === 'undefined' || isWindow) return;
 
         localStorage.setItem(COMPACT_STORAGE_KEYS.mode, String(isCompactMode));
         localStorage.setItem(COMPACT_STORAGE_KEYS.position, JSON.stringify(position));
         localStorage.setItem(COMPACT_STORAGE_KEYS.size, JSON.stringify(size));
-    }, [hasLoadedCompactState, isCompactMode, position, size]);
+    }, [hasLoadedCompactState, isWindow, isCompactMode, position, size]);
 
     useEffect(() => {
         const handleResize = () => {
@@ -985,7 +1024,7 @@ export const PinnedTasksModal = () => {
         };
     }, [isDragging, isResizing, dragOffset, resizeDirection, size, position]);
 
-    if (!isModalOpen) return null;
+    if (!isModalOpen && !isWindow) return null;
 
     const activeItemId = selectedItemId && pinnedItems.some(i => i.id === selectedItemId)
         ? selectedItemId
@@ -1041,28 +1080,46 @@ export const PinnedTasksModal = () => {
     };
 
     // Compact floating mode - draggable and resizable
-    if (isCompactMode) {
+    if (isCompactMode || isWindow) {
         return (
             <div
-                className="pinned-tasks-compact"
-                style={{
+                className={`pinned-tasks-compact ${isWindow ? 'pinned-tasks-compact--window' : ''}`.trim()}
+                style={isWindow ? undefined : {
                     left: position.x,
                     top: position.y,
                     width: size.width,
                     height: size.height
                 }}
             >
-                {/* Compact Header - Draggable */}
+                {/* Compact Header - Draggable (the OS window is dragged by it in the desktop pop-out) */}
                 <div
                     className={`pinned-tasks-compact__header ${isDragging ? 'is-dragging' : ''}`}
-                    onMouseDown={handleDragStart}
+                    onMouseDown={isWindow ? undefined : handleDragStart}
                 >
                     <div className="pinned-tasks-compact__title-group">
-                        <span className="material-symbols-outlined pinned-tasks-compact__drag-icon">drag_indicator</span>
-                        <span className="material-symbols-outlined pinned-tasks-compact__focus-icon">center_focus_strong</span>
-                        <span className="pinned-tasks-compact__title">
-                            {pinnedItems.find(i => i.id === activeItemId)?.title || t('pinnedTasks.header.focusFallback')}
-                        </span>
+                        {!isWindow && <span className="material-symbols-outlined pinned-tasks-compact__drag-icon">drag_indicator</span>}
+                        <span className="material-symbols-outlined pinned-tasks-compact__focus-icon">{isWindow ? 'push_pin' : 'center_focus_strong'}</span>
+                        {isWindow && pinnedItems.length > 1 ? (
+                            <>
+                                <select
+                                    className="quick-access-window__switcher"
+                                    value={activeItemId ?? ''}
+                                    onChange={(event) => setSelectedItemId(event.target.value)}
+                                    aria-label={t('pinnedTasks.window.switchItem')}
+                                >
+                                    {pinnedItems.map(item => (
+                                        <option key={item.id} value={item.id}>
+                                            {item.id === focusItemId ? '◉ ' : ''}{item.title}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="material-symbols-outlined quick-access-window__switcher-icon" aria-hidden="true">unfold_more</span>
+                            </>
+                        ) : (
+                            <span className="pinned-tasks-compact__title">
+                                {pinnedItems.find(i => i.id === activeItemId)?.title || (isWindow ? t('pinnedTasks.header.quickAccess') : t('pinnedTasks.header.focusFallback'))}
+                            </span>
+                        )}
                     </div>
                     <div className="pinned-tasks-compact__actions">
                         {/* Compact Actions */}
@@ -1072,10 +1129,7 @@ export const PinnedTasksModal = () => {
                                     onClick={() => {
                                         const item = pinnedItems.find(i => i.id === activeItemId);
                                         const path = item ? getPinnedItemPath(item) : null;
-                                        if (path) {
-                                            toggleModal();
-                                            navigate(path);
-                                        }
+                                        if (path) openItemPath(path);
                                     }}
                                     className="pinned-tasks-compact__action"
                                     title={t('pinnedTasks.actions.openDetail')}
@@ -1092,7 +1146,7 @@ export const PinnedTasksModal = () => {
                                 <button aria-label={t('pinnedTasks.actions.unpin')}
                                     onClick={() => {
                                         unpinItem(activeItemId);
-                                        if (pinnedItems.length <= 1) toggleModal();
+                                        if (pinnedItems.length <= 1 && !isWindow) toggleModal();
                                     }}
                                     className="pinned-tasks-compact__action is-danger"
                                     title={t('pinnedTasks.actions.unpin')}
@@ -1102,20 +1156,59 @@ export const PinnedTasksModal = () => {
                                 <div className="pinned-tasks-compact__divider" />
                             </>
                         )}
-                        <button aria-label={t('pinnedTasks.actions.expand')}
-                            onClick={() => setIsCompactMode(false)}
-                            className="pinned-tasks-compact__action"
-                            title={t('pinnedTasks.actions.expand')}
-                        >
-                            <span className="material-symbols-outlined">open_in_full</span>
-                        </button>
-                        <button aria-label={t('pinnedTasks.actions.close')}
-                            onClick={toggleModal}
-                            className="pinned-tasks-compact__action is-danger"
-                            title={t('pinnedTasks.actions.close')}
-                        >
-                            <span className="material-symbols-outlined">close</span>
-                        </button>
+                        {isWindow && desktop ? (
+                            <>
+                                <button
+                                    aria-label={t('pinnedTasks.window.alwaysOnTop')}
+                                    aria-pressed={Boolean(desktopQuickAccess?.alwaysOnTop)}
+                                    onClick={() => void desktop.quickAccess('set-always-on-top', !desktopQuickAccess?.alwaysOnTop)}
+                                    className={`pinned-tasks-compact__action ${desktopQuickAccess?.alwaysOnTop ? 'is-active' : ''}`}
+                                    title={desktopQuickAccess?.alwaysOnTop ? t('pinnedTasks.window.alwaysOnTopOn') : t('pinnedTasks.window.alwaysOnTop')}
+                                >
+                                    <span className="material-symbols-outlined">flip_to_front</span>
+                                </button>
+                                <button aria-label={t('pinnedTasks.window.dock')}
+                                    onClick={() => void desktop.quickAccess('dock')}
+                                    className="pinned-tasks-compact__action"
+                                    title={t('pinnedTasks.window.dock')}
+                                >
+                                    <span className="material-symbols-outlined">open_in_full</span>
+                                </button>
+                                <button aria-label={t('pinnedTasks.actions.close')}
+                                    onClick={() => void desktop.quickAccess('close')}
+                                    className="pinned-tasks-compact__action is-danger"
+                                    title={t('pinnedTasks.actions.close')}
+                                >
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </>
+                        ) : (
+                            <>
+                                {canPopOut && (
+                                    <button aria-label={t('pinnedTasks.window.popOut')}
+                                        onClick={handlePopOut}
+                                        className="pinned-tasks-compact__action"
+                                        title={t('pinnedTasks.window.popOut')}
+                                    >
+                                        <span className="material-symbols-outlined">open_in_new_down</span>
+                                    </button>
+                                )}
+                                <button aria-label={t('pinnedTasks.actions.expand')}
+                                    onClick={() => setIsCompactMode(false)}
+                                    className="pinned-tasks-compact__action"
+                                    title={t('pinnedTasks.actions.expand')}
+                                >
+                                    <span className="material-symbols-outlined">open_in_full</span>
+                                </button>
+                                <button aria-label={t('pinnedTasks.actions.close')}
+                                    onClick={toggleModal}
+                                    className="pinned-tasks-compact__action is-danger"
+                                    title={t('pinnedTasks.actions.close')}
+                                >
+                                    <span className="material-symbols-outlined">close</span>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -1170,52 +1263,56 @@ export const PinnedTasksModal = () => {
                         />
                     ) : (
                         <div className="empty-state">
-                            <span className="material-symbols-outlined icon">checklist</span>
-                            <p>{t('pinnedTasks.empty.selectItem')}</p>
+                            <span className="material-symbols-outlined icon">{isWindow && pinnedItems.length === 0 ? 'push_pin' : 'checklist'}</span>
+                            <p>{isWindow && pinnedItems.length === 0 ? t('pinnedTasks.window.empty') : t('pinnedTasks.empty.selectItem')}</p>
                         </div>
                     )}
                 </div>
 
-                {/* Edge Resize Handles */}
-                {/* Right edge */}
-                <div
-                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--e"
-                    onMouseDown={(e) => handleResizeStart(e, 'e')}
-                />
-                {/* Left edge */}
-                <div
-                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--w"
-                    onMouseDown={(e) => handleResizeStart(e, 'w')}
-                />
-                {/* Bottom edge */}
-                <div
-                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--s"
-                    onMouseDown={(e) => handleResizeStart(e, 's')}
-                />
+                {/* Edge Resize Handles (the OS resizes the desktop pop-out window) */}
+                {!isWindow && (
+                    <>
+                        {/* Right edge */}
+                        <div
+                            className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--e"
+                            onMouseDown={(e) => handleResizeStart(e, 'e')}
+                        />
+                        {/* Left edge */}
+                        <div
+                            className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--w"
+                            onMouseDown={(e) => handleResizeStart(e, 'w')}
+                        />
+                        {/* Bottom edge */}
+                        <div
+                            className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--s"
+                            onMouseDown={(e) => handleResizeStart(e, 's')}
+                        />
 
-                {/* Corner Resize Handles */}
-                {/* Bottom Right */}
-                <div
-                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--se"
-                    onMouseDown={(e) => handleResizeStart(e, 'se')}
-                >
-                    <span className="material-symbols-outlined pinned-tasks-compact__corner-icon">drag_handle</span>
-                </div>
-                {/* Bottom Left */}
-                <div
-                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--sw"
-                    onMouseDown={(e) => handleResizeStart(e, 'sw')}
-                />
-                {/* Top Right */}
-                <div
-                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--ne"
-                    onMouseDown={(e) => handleResizeStart(e, 'ne')}
-                />
-                {/* Top Left */}
-                <div
-                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--nw"
-                    onMouseDown={(e) => handleResizeStart(e, 'nw')}
-                />
+                        {/* Corner Resize Handles */}
+                        {/* Bottom Right */}
+                        <div
+                            className="pinned-tasks-compact__corner pinned-tasks-compact__corner--se"
+                            onMouseDown={(e) => handleResizeStart(e, 'se')}
+                        >
+                            <span className="material-symbols-outlined pinned-tasks-compact__corner-icon">drag_handle</span>
+                        </div>
+                        {/* Bottom Left */}
+                        <div
+                            className="pinned-tasks-compact__corner pinned-tasks-compact__corner--sw"
+                            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+                        />
+                        {/* Top Right */}
+                        <div
+                            className="pinned-tasks-compact__corner pinned-tasks-compact__corner--ne"
+                            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+                        />
+                        {/* Top Left */}
+                        <div
+                            className="pinned-tasks-compact__corner pinned-tasks-compact__corner--nw"
+                            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+                        />
+                    </>
+                )}
             </div>
         );
     }
@@ -1238,10 +1335,7 @@ export const PinnedTasksModal = () => {
                                 onClick={() => {
                                     const item = pinnedItems.find(i => i.id === activeItemId);
                                     const path = item ? getPinnedItemPath(item) : null;
-                                    if (path) {
-                                        toggleModal();
-                                        navigate(path);
-                                    }
+                                    if (path) openItemPath(path);
                                 }}
                                 className="action-btn"
                                 title={t('pinnedTasks.actions.openDetail')}
@@ -1266,6 +1360,15 @@ export const PinnedTasksModal = () => {
                             </button>
                             <div className="divider" />
                         </>
+                    )}
+                    {canPopOut && (
+                        <button aria-label={t('pinnedTasks.window.popOut')}
+                            onClick={handlePopOut}
+                            className="action-btn"
+                            title={t('pinnedTasks.window.popOut')}
+                        >
+                            <span className="material-symbols-outlined">open_in_new_down</span>
+                        </button>
                     )}
                     <button aria-label={t('pinnedTasks.actions.compactMode')}
                         onClick={() => setIsCompactMode(true)}

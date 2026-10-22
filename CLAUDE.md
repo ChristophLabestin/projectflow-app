@@ -27,6 +27,7 @@ concept `brain/plans/ios-app-concept.md`, conventions `ios/README.md`).
   - `web/styles/` SCSS tokens & globals · `web/context/`, `web/hooks/`, `web/services/`, `web/utils/`, `web/types/`
   - `web/locales/` i18n (`en.ts`, `de.ts`) · `web/assets/` static files
 - `functions/` — Firebase Cloud Functions (`src` → `lib`)
+- `desktop/` — Electron shell around the hosted web app (concept `brain/plans/desktop-electron-concept.md`)
 - `ios/` — SwiftUI app (XcodeGen `project.yml`, package `Packages/ProjectFlowKit`, widgets/share/notification extensions)
 - `firestore.rules`, `firestore.indexes.json`, `storage.rules`, `firebase.json` — Firebase config
 
@@ -59,6 +60,8 @@ concept `brain/plans/ios-app-concept.md`, conventions `ios/README.md`).
 | E2E tests | `cd web && npm run test:e2e` |
 | Theme lint | `cd web && npm run lint:theme` |
 | Functions build | `cd functions && npm run build` |
+| Desktop app, signed in (emulators) | `bash scripts/dev-desktop.sh` |
+| Desktop build/typecheck | `npm --prefix desktop run build` |
 | iOS sim build | `cd ios && xcodegen generate && cd .. && xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow -destination 'platform=iOS Simulator,name=ProjectFlow iPhone 18 Pro' -derivedDataPath .xcodebuild build` |
 
 After a task, run the build for the surface you touched. Deploy only what you changed

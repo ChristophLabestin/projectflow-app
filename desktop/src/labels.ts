@@ -1,0 +1,141 @@
+import { app } from 'electron';
+
+/**
+ * Native UI strings (menus, tray, context menu, offline page). The shell owns these few strings;
+ * the web app only reports the user's language (`setLanguage`), which may differ from the OS locale.
+ */
+const EN = {
+    about: 'About ProjectFlow',
+    settings: 'Settings…',
+    services: 'Services',
+    hide: 'Hide ProjectFlow',
+    hideOthers: 'Hide Others',
+    showAll: 'Show All',
+    quit: 'Quit ProjectFlow',
+    exit: 'Exit',
+    file: 'File',
+    newTask: 'New Task',
+    newProject: 'New Project',
+    closeWindow: 'Close Window',
+    edit: 'Edit',
+    undo: 'Undo',
+    redo: 'Redo',
+    cut: 'Cut',
+    copy: 'Copy',
+    paste: 'Paste',
+    pasteAndMatchStyle: 'Paste and Match Style',
+    selectAll: 'Select All',
+    view: 'View',
+    reload: 'Reload',
+    back: 'Back',
+    forward: 'Forward',
+    actualSize: 'Actual Size',
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    toggleFullScreen: 'Toggle Full Screen',
+    developerTools: 'Developer Tools',
+    go: 'Go',
+    dashboard: 'Dashboard',
+    projects: 'Projects',
+    tasks: 'Tasks',
+    calendar: 'Calendar',
+    notifications: 'Notifications',
+    search: 'Search…',
+    window: 'Window',
+    minimize: 'Minimize',
+    zoom: 'Zoom',
+    quickAccess: 'Quick Access',
+    quickAccessPopOut: 'Pop Out Quick Access',
+    quickAccessOnTop: 'Keep Quick Access on Top',
+    bringAllToFront: 'Bring All to Front',
+    help: 'Help',
+    helpCenter: 'Help Center',
+    website: 'ProjectFlow Website',
+    openApp: 'Open ProjectFlow',
+    focusNone: 'No focus task',
+    pinned: 'Pinned',
+    addToDictionary: 'Add to Dictionary',
+    openLinkInBrowser: 'Open Link in Browser',
+    copyLink: 'Copy Link',
+    inspect: 'Inspect Element',
+    offlineTitle: 'ProjectFlow is offline',
+    offlineBody: 'The app could not be loaded. Check your connection — ProjectFlow reconnects automatically.',
+    offlineRetry: 'Try again'
+};
+
+export type NativeLabels = typeof EN;
+
+const DE: NativeLabels = {
+    about: 'Über ProjectFlow',
+    settings: 'Einstellungen …',
+    services: 'Dienste',
+    hide: 'ProjectFlow ausblenden',
+    hideOthers: 'Andere ausblenden',
+    showAll: 'Alle einblenden',
+    quit: 'ProjectFlow beenden',
+    exit: 'Beenden',
+    file: 'Ablage',
+    newTask: 'Neue Aufgabe',
+    newProject: 'Neues Projekt',
+    closeWindow: 'Fenster schließen',
+    edit: 'Bearbeiten',
+    undo: 'Widerrufen',
+    redo: 'Wiederholen',
+    cut: 'Ausschneiden',
+    copy: 'Kopieren',
+    paste: 'Einsetzen',
+    pasteAndMatchStyle: 'Einsetzen und Stil anpassen',
+    selectAll: 'Alles auswählen',
+    view: 'Darstellung',
+    reload: 'Neu laden',
+    back: 'Zurück',
+    forward: 'Vorwärts',
+    actualSize: 'Originalgröße',
+    zoomIn: 'Vergrößern',
+    zoomOut: 'Verkleinern',
+    toggleFullScreen: 'Vollbild ein/aus',
+    developerTools: 'Entwicklerwerkzeuge',
+    go: 'Gehe zu',
+    dashboard: 'Dashboard',
+    projects: 'Projekte',
+    tasks: 'Aufgaben',
+    calendar: 'Kalender',
+    notifications: 'Benachrichtigungen',
+    search: 'Suchen …',
+    window: 'Fenster',
+    minimize: 'Im Dock ablegen',
+    zoom: 'Zoomen',
+    quickAccess: 'Schnellzugriff',
+    quickAccessPopOut: 'Schnellzugriff als Fenster',
+    quickAccessOnTop: 'Schnellzugriff immer im Vordergrund',
+    bringAllToFront: 'Alle nach vorne bringen',
+    help: 'Hilfe',
+    helpCenter: 'Hilfe-Center',
+    website: 'ProjectFlow-Website',
+    openApp: 'ProjectFlow öffnen',
+    focusNone: 'Keine Fokus-Aufgabe',
+    pinned: 'Angepinnt',
+    addToDictionary: 'Zum Wörterbuch hinzufügen',
+    openLinkInBrowser: 'Link im Browser öffnen',
+    copyLink: 'Link kopieren',
+    inspect: 'Element untersuchen',
+    offlineTitle: 'ProjectFlow ist offline',
+    offlineBody: 'Die App konnte nicht geladen werden. Prüfe deine Verbindung – ProjectFlow verbindet sich automatisch neu.',
+    offlineRetry: 'Erneut versuchen'
+};
+
+let current: NativeLabels | null = null;
+
+export const labels = (): NativeLabels => {
+    if (!current) current = app.getLocale().toLowerCase().startsWith('de') ? DE : EN;
+    return current;
+};
+
+/** Returns true when the language actually changed (menus/tray need a rebuild). */
+export const setLanguage = (language: unknown) => {
+    if (language !== 'de' && language !== 'en') return false;
+    const next = language === 'de' ? DE : EN;
+    if (next === current) return false;
+    current = next;
+    return true;
+};

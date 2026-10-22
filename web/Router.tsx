@@ -22,6 +22,10 @@ import { NotFound } from './screens/NotFound';
 import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
 import { auth } from './services/firebase';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
+import { DesktopBridge } from './components/desktop/DesktopBridge';
+import { DesktopTitleBar } from './components/desktop/DesktopTitleBar';
+import { QuickAccessWindow } from './screens/QuickAccessWindow';
+import { DESKTOP_QUICK_ACCESS_PATH, isDesktop, isDesktopQuickAccessWindow } from './services/desktop';
 import { ErrorPage } from './screens/ErrorPage';
 import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
 import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingButton';
@@ -137,15 +141,28 @@ const RootLayout = () => {
     const location = useLocation();
     const isPublicRoute = /^(\/login|\/register|\/invite|\/auth\/action|\/legal|\/feedback)/.test(location.pathname);
 
+    // Desktop Quick Access pop-out: only the panel, none of the global overlays (no second modal, help, banners).
+    if (location.pathname === DESKTOP_QUICK_ACCESS_PATH && isDesktopQuickAccessWindow()) {
+        return (
+            <>
+                <GlobalToast />
+                <GlobalConfirmationModal />
+                <Outlet />
+            </>
+        );
+    }
+
     return (
         <>
+            {isDesktop() && <DesktopTitleBar mode={isPublicRoute ? 'overlay' : 'inline'} />}
+            {isDesktop() && !isDesktopQuickAccessWindow() && <DesktopBridge />}
             <GlobalToast />
             <OfflineBanner />
             <GlobalConfirmationModal />
             <PinnedTasksModal />
             <HelpCenterDrawer />
             {isPublicRoute && (
-                <div className="fixed top-4 right-4 z-[90]">
+                <div className="public-route-language-switcher fixed top-4 right-4 z-[90]">
                     <LanguageSwitcher />
                 </div>
             )}
@@ -194,6 +211,7 @@ export const AppRouter = () => {
                     <Route path="/legal/:type" element={<LegalPage />} />
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
+                    <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<QuickAccessWindow />} />
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />
 

@@ -13,6 +13,7 @@ import { useUIState, useToast } from '../../context/UIContext';
 import { usePermissions } from '../../context/PermissionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { helpCenterPages } from '../help/helpCenterContent';
+import { DESKTOP_OPEN_SEARCH_EVENT } from '../../services/desktop';
 import type { Initiative, Project, Task } from '../../types';
 import {
     highlightRanges,
@@ -217,8 +218,13 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
                 openSearch();
             }
         };
+        const onOpenRequest = () => { if (!open) openSearch(); };
         document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
+        window.addEventListener(DESKTOP_OPEN_SEARCH_EVENT, onOpenRequest);
+        return () => {
+            document.removeEventListener('keydown', onKey);
+            window.removeEventListener(DESKTOP_OPEN_SEARCH_EVENT, onOpenRequest);
+        };
     }, [open, openSearch, closeSearch]);
 
     // Load the workspace index when opening.

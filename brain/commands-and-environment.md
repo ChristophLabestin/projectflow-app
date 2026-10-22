@@ -55,6 +55,14 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - Lint: `cd ios && swiftlint lint --quiet` (colour literals and native controls are errors).
 - Conventions: [ios/README.md](../ios/README.md).
 
+## Desktop (Electron)
+
+- Concept: [plans/desktop-electron-concept.md](./plans/desktop-electron-concept.md). Package `desktop/` (TypeScript, bundled by esbuild; `npm --prefix desktop install` once).
+- **Signed in, fully local:** `bash scripts/dev-desktop.sh` (`npm --prefix desktop run dev:e2e`) starts `dev-e2e.sh` (emulators + seed + auto-login Vite) in its own process group, picks a free app port, and launches Electron against it with a fresh profile and CDP on `127.0.0.1:9333` (`DEBUG_PORT`). `E2E_LOGIN=outsider`, `E2E_FUNCTIONS=0`, `DESKTOP_REUSE=1 PORT=<port>` (attach to a running web-e2e), `DESKTOP_KEEP_PROFILE=1`; emulator port overrides as in dev-e2e (`AUTH_PORT=9671 FIRESTORE_PORT=8671 STORAGE_PORT=9672 FUNCTIONS_PORT=5671` when another worktree's emulators hold the defaults).
+- Against a running dev server: `npm --prefix desktop run dev` (`PF_DESKTOP_URL`, default `http://localhost:3000`). Against production: `npm --prefix desktop start`.
+- Typecheck + bundle: `npm --prefix desktop run build`. Unsigned app bundle: `npm --prefix desktop run pack` (`release/`); installers `dist:mac` / `dist:win` need signing credentials.
+- Tray icons are generated from `desktop/assets/glyph.svg`: `cd desktop && npx electron scripts/render-icons.cjs`.
+
 ## Firestore Commands
 
 - Deploy rules: `firebase deploy --only firestore:rules`

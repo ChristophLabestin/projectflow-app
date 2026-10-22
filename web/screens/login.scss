@@ -324,3 +324,12 @@ html.dark .login-page__social-icon--invert {
         max-width: 440px;
     }
 }
+
+// Desktop app: OAuth/passkeys are not offered in the Electron shell (see brain/plans/desktop-electron-concept.md).
+.login-page__desktop-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--color-text-muted);
+    text-align: center;
+}

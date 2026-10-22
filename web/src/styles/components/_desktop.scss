@@ -1,0 +1,266 @@
+// Desktop app (Electron shell, `desktop/`). Everything here is scoped to `html.is-desktop`,
+// a class the shell's preload sets before first paint — the browser build is unaffected.
+
+:root {
+    --desktop-titlebar-height: 40px;
+    // macOS traffic lights (3 × 12px + gaps + 14px margin) live in the left inset.
+    --desktop-titlebar-leading-inset: 0px;
+    // Windows caption buttons (titleBarOverlay): Window Controls Overlay env vars, 138px fallback.
+    --desktop-titlebar-trailing-inset: 0px;
+    // Height page shells use instead of 100vh (minus the inline title bar on desktop).
+    --app-viewport-height: 100vh;
+}
+
+html.is-desktop.desktop-mac {
+    --desktop-titlebar-leading-inset: 78px;
+}
+
+html.is-desktop.desktop-mac.desktop-fullscreen {
+    --desktop-titlebar-leading-inset: 0px;
+}
+
+html.is-desktop.desktop-win {
+    --desktop-titlebar-trailing-inset: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, calc(100vw - 138px)));
+}
+
+// Inline mode: the authenticated shell starts below the bar.
+html.is-desktop[data-desktop-titlebar='inline'] {
+    --app-viewport-height: calc(100vh - var(--desktop-titlebar-height));
+
+    #root {
+        padding-top: var(--desktop-titlebar-height);
+        box-sizing: border-box;
+    }
+}
+
+.app-viewport-height {
+    height: var(--app-viewport-height);
+}
+
+.desktop-titlebar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    // Above modal backdrops so the window always stays draggable and its controls reachable.
+    z-index: 10000;
+    height: var(--desktop-titlebar-height);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: calc(var(--desktop-titlebar-leading-inset) + 8px);
+    padding-right: calc(var(--desktop-titlebar-trailing-inset) + 8px);
+    -webkit-app-region: drag;
+    user-select: none;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    transition: opacity 0.15s ease;
+
+    button,
+    a,
+    input {
+        -webkit-app-region: no-drag;
+    }
+}
+
+.desktop-titlebar--inline {
+    background: var(--color-surface-bg);
+    border-bottom: 1px solid var(--color-surface-border);
+}
+
+// Overlay (login/public pages): only a transparent strip to drag the window by.
+.desktop-titlebar--overlay {
+    background: transparent;
+    pointer-events: auto;
+}
+
+.desktop-titlebar.is-inactive {
+    .desktop-titlebar__title,
+    .desktop-titlebar__button {
+        opacity: 0.55;
+    }
+}
+
+.desktop-titlebar__leading,
+.desktop-titlebar__trailing {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.desktop-titlebar__trailing {
+    justify-content: flex-end;
+}
+
+.desktop-titlebar__title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    max-width: 50%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.desktop-titlebar__app-name {
+    color: var(--color-text-main);
+    font-weight: 600;
+}
+
+.desktop-titlebar__separator {
+    color: var(--color-text-subtle);
+}
+
+.desktop-titlebar__workspace {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.desktop-titlebar__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: default;
+
+    .material-symbols-outlined {
+        font-size: 18px;
+    }
+
+    &:hover:not(:disabled) {
+        background: var(--color-surface-hover);
+        color: var(--color-text-main);
+    }
+
+    &:disabled {
+        opacity: 0.35;
+    }
+
+    &.is-active {
+        background: var(--color-surface-hover);
+        color: var(--color-text-main);
+    }
+}
+
+// Fixed elements in the top right corner must not sit under the Windows caption buttons.
+html.is-desktop.desktop-win[data-desktop-titlebar='overlay'] .public-route-language-switcher {
+    top: calc(var(--desktop-titlebar-height) + 8px);
+}
+
+// ---------------------------------------------------------------------------
+// Quick Access pop-out window (/desktop/quick-access)
+// ---------------------------------------------------------------------------
+
+html.is-desktop.desktop-window-quick-access {
+    #root {
+        padding-top: 0;
+        height: 100vh;
+    }
+
+    body {
+        background: var(--color-surface-card);
+    }
+}
+
+.quick-access-window {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface-card);
+    overflow: hidden;
+}
+
+// The compact Quick Access layout fills the OS window instead of floating in the page.
+.pinned-tasks-compact.pinned-tasks-compact--window {
+    position: relative;
+    inset: auto;
+    left: auto;
+    top: auto;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+
+    .pinned-tasks-compact__header {
+        -webkit-app-region: drag;
+        cursor: default;
+        min-height: var(--desktop-titlebar-height);
+        // Narrow windows: the item switcher keeps its width, actions wrap to a second row.
+        flex-wrap: wrap;
+        row-gap: 0.25rem;
+
+        .pinned-tasks-compact__title-group {
+            flex: 1 1 10rem;
+            min-width: 0;
+        }
+
+        .pinned-tasks-compact__actions {
+            margin-left: auto;
+        }
+
+        button,
+        select,
+        input {
+            -webkit-app-region: no-drag;
+        }
+    }
+}
+
+.quick-access-window__switcher {
+    -webkit-app-region: no-drag;
+    max-width: 100%;
+    min-width: 0;
+    flex: 1 1 auto;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    cursor: pointer;
+
+    &:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+}
+
+.quick-access-window__switcher-icon {
+    flex-shrink: 0;
+    margin-left: -0.25rem;
+    font-size: 18px;
+    color: var(--color-text-subtle);
+    pointer-events: none;
+}
+
+.quick-access-window__message {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 24px;
+    text-align: center;
+    color: var(--color-text-muted);
+    -webkit-app-region: drag;
+
+    .material-symbols-outlined {
+        font-size: 32px;
+        color: var(--color-text-subtle);
+    }
+
+    button {
+        -webkit-app-region: no-drag;
+    }
+}

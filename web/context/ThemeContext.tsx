@@ -53,6 +53,17 @@ export function ThemeProvider({
         return () => unsubscribe();
     }, [storageKey]);
 
+    // Theme changes in another tab / desktop window (shared localStorage) apply here too.
+    useEffect(() => {
+        const handleStorage = (event: StorageEvent) => {
+            if (event.key !== storageKey) return;
+            const next = event.newValue;
+            if (next === 'light' || next === 'dark' || next === 'system') setTheme(next);
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, [storageKey]);
+
     useEffect(() => {
         const root = window.document.documentElement;
 

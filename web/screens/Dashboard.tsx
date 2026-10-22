@@ -21,6 +21,7 @@ import { useUIState } from '../context/UIContext';
 import type { PinnedItem } from '../context/PinnedTasksContext';
 import { checkPasskeyExists } from '../services/passkeyService';
 import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
+import { isDesktop } from '../services/desktop';
 import { InlineMenu } from '../components/work/InlineMenu';
 import { useWorkMembers } from '../components/work/useWorkMembers';
 import { buildAttention, type AttentionChip } from '../utils/attention';
@@ -237,7 +238,8 @@ export const Dashboard = () => {
 
     useEffect(() => {
         const checkPasskeyStatus = async () => {
-            if (!auth.currentUser) return;
+            // The desktop app (Electron) has no platform authenticator for passkeys.
+            if (!auth.currentUser || isDesktop()) return;
 
             const snoozeUntil = localStorage.getItem('projectflow_passkey_reminder_snooze');
             if (snoozeUntil && parseInt(snoozeUntil, 10) > Date.now()) return;
