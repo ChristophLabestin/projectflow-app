@@ -32,31 +32,40 @@ public struct PFCanvas: View {
 }
 
 public extension View {
-    /// Liquid Glass for chrome (dock, focus bar, floating buttons, sheets). Never for content cards.
+    /// ProjectFlow's own frosted chrome (not the system Liquid Glass): the web top-bar pill recipe —
+    /// card colour at ~72 % over a backdrop blur, a hairline ring and the `shadow-sm` lift.
+    /// Use for floating chrome (navigation bar, focus bar, floating buttons). Never for content cards.
     func pfGlass<S: Shape>(in shape: S, interactive: Bool = true, tint: Color? = nil) -> some View {
-        modifier(PFGlassModifier(shape: shape, interactive: interactive, tint: tint))
+        modifier(PFFrostModifier(shape: shape, tint: tint))
+    }
+
+    /// Same as `pfGlass`, named for what it is.
+    func pfFrost<S: Shape>(in shape: S, tint: Color? = nil) -> some View {
+        modifier(PFFrostModifier(shape: shape, tint: tint))
     }
 }
 
-struct PFGlassModifier<S: Shape>: ViewModifier {
+struct PFFrostModifier<S: Shape>: ViewModifier {
     let shape: S
-    let interactive: Bool
     let tint: Color?
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorScheme) private var scheme
 
     func body(content: Content) -> some View {
-        if reduceTransparency {
-            content.background(PFColor.card, in: shape).pfElevation(.lifted, radius: 28)
-        } else {
-            content.glassEffect(glass, in: shape)
-        }
-    }
-
-    private var glass: Glass {
-        var glass = Glass.regular
-        if let tint { glass = glass.tint(tint) }
-        if interactive { glass = glass.interactive() }
-        return glass
+        content
+            .background {
+                ZStack {
+                    if !reduceTransparency { shape.fill(.ultraThinMaterial) }
+                    shape.fill(PFColor.card.opacity(reduceTransparency ? 1 : (scheme == .dark ? 0.78 : 0.72)))
+                    if let tint { shape.fill(tint.opacity(0.12)) }
+                }
+            }
+            .overlay {
+                shape.stroke(scheme == .dark ? Color.white.opacity(0.07) : Color.black.opacity(0.06), lineWidth: 1)
+            }
+            .compositingGroup()
+            .shadow(color: .black.opacity(scheme == .dark ? 0.45 : 0.08), radius: scheme == .dark ? 18 : 12, y: 6)
+            .shadow(color: .black.opacity(scheme == .dark ? 0.2 : 0.05), radius: 2, y: 1)
     }
 }
 
