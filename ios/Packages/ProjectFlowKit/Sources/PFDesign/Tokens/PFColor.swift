@@ -34,11 +34,11 @@ public enum PFColor {
     public static let dangerText = dynamic(0xB91C1C, 0xF87171)
 
     /// Dot grid on Today and in the focus room (rgba 0,0,0,.06 / 255,255,255,.04).
-    public static let dot = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
+    public static let dot = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(white: 1, alpha: 0.04) : UIColor(white: 0, alpha: 0.06) })
 
     /// Hairline used inside cards between rows (text-main at 5–6 %).
-    public static let rowDivider = Color(uiColor: UIColor { $0.userInterfaceStyle == .dark
+    public static let rowDivider = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(white: 1, alpha: 0.06) : UIColor(white: 0, alpha: 0.06) })
 
     public static let scrim = Color(uiColor: UIColor(white: 0, alpha: 0.35))
@@ -117,7 +117,7 @@ public enum PFColor {
     static func fixed(_ hex: UInt32) -> Color { Color(uiColor: UIColor(hex: hex)) }
 
     static func dynamic(_ light: UInt32, _ dark: UInt32) -> Color {
-        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+        Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
     }
 }
 
@@ -126,7 +126,7 @@ public enum Severity: Sendable, Hashable {
 }
 
 extension UIColor {
-    convenience init(hex: UInt32, alpha: CGFloat = 1) {
+    nonisolated convenience init(hex: UInt32, alpha: CGFloat = 1) {
         self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
                   blue: CGFloat(hex & 0xFF) / 255, alpha: alpha)
     }
