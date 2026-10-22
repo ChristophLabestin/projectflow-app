@@ -2637,6 +2637,9 @@ const de = {
     'taskDetail.reminders.complete': 'Reminder erledigen',
     'taskDetail.reminders.reopen': 'Reminder wieder öffnen',
     'taskDetail.reminders.delete': 'Reminder löschen',
+    'taskDetail.reminders.notifyAssignees': 'Auch Zuständige erinnern',
+    'taskDetail.reminders.notifyAssigneesHint': 'Auch die Zuständigen der Aufgabe bekommen diese Erinnerung – zusätzlich zu dir.',
+    'taskDetail.reminders.sent': 'Gesendet',
 
     'aiStudio.hero.badge': 'ProjectFlow CORA Studio',
     'aiStudio.hero.titlePrefix': 'Von der Idee zur',

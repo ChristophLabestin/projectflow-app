@@ -312,6 +312,14 @@ export interface ProjectReminder {
     isCompleted?: boolean;
     createdAt?: string;
     completedAt?: string;
+    /** uid of the creator; set by the client on create (contract C2). */
+    createdBy?: string;
+    /** uid list that gets the reminder; defaults to [createdBy]. */
+    recipientIds?: string[];
+    /** "Also remind assignees": recipients ∪ task assignees at send time. */
+    notifyAssignees?: boolean;
+    /** ISO timestamp set by the server when the reminder was delivered. */
+    sentAt?: string;
 }
 
 export interface Project {

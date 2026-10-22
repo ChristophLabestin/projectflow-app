@@ -2442,6 +2442,9 @@ const en = {
     'taskDetail.reminders.complete': 'Complete reminder',
     'taskDetail.reminders.reopen': 'Reopen reminder',
     'taskDetail.reminders.delete': 'Delete reminder',
+    'taskDetail.reminders.notifyAssignees': 'Also remind assignees',
+    'taskDetail.reminders.notifyAssigneesHint': 'The task assignees get this reminder too, in addition to you.',
+    'taskDetail.reminders.sent': 'Sent',
 
     'aiStudio.hero.badge': 'ProjectFlow CORA Studio',
     'aiStudio.greeting.hello': 'Hello,',

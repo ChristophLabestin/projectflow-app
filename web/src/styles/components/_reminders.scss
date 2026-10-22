@@ -1,0 +1,54 @@
+// Shared reminder controls: the "also remind assignees" switch and the
+// "sent" badge (task workbench reminders + project reminders popover).
+
+.reminder-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: var(--color-text-muted);
+    font-size: 12.5px;
+    font-weight: 650;
+    line-height: 1.3;
+
+    &:hover {
+        color: var(--color-text-main);
+    }
+
+    &.is-disabled {
+        cursor: default;
+        opacity: 0.55;
+    }
+}
+
+.reminder-toggle__input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    flex-shrink: 0;
+    accent-color: var(--color-primary);
+    cursor: inherit;
+}
+
+.reminder-toggle__label {
+    min-width: 0;
+}
+
+.reminder-sent {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-status-done-text);
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+
+    .material-symbols-outlined {
+        font-size: 14px;
+    }
+}
+
+// Inside the project reminders popover form (grid layout): span the full row.
+.po-reminders__form .reminder-toggle {
+    grid-column: 1 / -1;
+}
