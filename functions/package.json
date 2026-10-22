@@ -3,6 +3,7 @@
     "scripts": {
         "lint": "eslint --ext .js,.ts .",
         "build": "tsc",
+        "test:unit": "tsc && node --test scripts/unit/*.test.js",
         "test:account-data": "firebase emulators:exec --only firestore --project demo-projectflow --config scripts/firebase.account-data-test.json \"node scripts/account-data-test.js\"",
         "test:rules": "firebase emulators:exec --only firestore --project demo-projectflow --config ../firebase.json \"node scripts/firestore-rules-test.js\"",
         "build:watch": "tsc --watch",
