@@ -1,5 +1,6 @@
 import SwiftUI
 import PFDesign
+import PFDomain
 import PFModel
 
 /// "Seen" flags of the first-run experience, per account.
@@ -21,6 +22,7 @@ struct OnboardingHost: ViewModifier {
             .task(id: model.workspaceGeneration) {
                 presentIntroIfNeeded()
                 runQAHooks()
+                Task.detached(priority: .utility) { CaptureParser.warmUp() }
             }
             .onChange(of: model.router.pendingInvite, initial: true) { _, link in
                 guard let link else { return }
@@ -200,15 +202,20 @@ struct OnboardingIntroSheet: View {
     }
 
     private var focusIllustration: some View {
-        VStack(spacing: PFSpace.m) {
-            Text(L10n.t("onboarding.sample.task1"))
-                .pfText(.title)
-                .foregroundStyle(PFColor.textMain)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, PFSpace.xl)
+        VStack(spacing: PFSpace.s) {
+            Spacer(minLength: 0)
             PFFocusBar(title: L10n.t("onboarding.sample.task1"), subtitle: L10n.t("onboarding.sample.since"),
                        completeLabel: L10n.t("common.complete"), onOpen: {}, onComplete: {})
                 .allowsHitTesting(false)
+            HStack(spacing: PFSpace.xl) {
+                ForEach(["sun.horizon", "checklist", "square.stack.3d.up", "tray"], id: \.self) { symbol in
+                    Image(systemName: symbol).font(.system(size: 18, weight: .regular)).foregroundStyle(PFColor.textSubtle)
+                }
+            }
+            .frame(maxWidth: .infinity, minHeight: 62)
+            .background(PFColor.card.opacity(0.7), in: .capsule)
+            .padding(.horizontal, PFSpace.m)
+            .padding(.bottom, PFSpace.l)
         }
     }
 

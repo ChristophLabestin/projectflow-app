@@ -75,7 +75,14 @@ public enum CaptureParser {
         }
     }
 
+    /// Builds the (slow to create) data detector off the main thread before the composer opens.
+    public static func warmUp() {
+        _ = Rules.detector
+        _ = Rules.dates.count
+    }
+
     public static func parse(_ text: String, options: Options = Options()) -> CaptureParseResult {
+        guard !text.isEmpty else { return CaptureParseResult(title: "", tokens: []) }
         let ns = text as NSString
         let full = NSRange(location: 0, length: ns.length)
         var tokens: [CaptureToken] = []
