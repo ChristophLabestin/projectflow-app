@@ -26,8 +26,8 @@ const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Block
 const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
 const INITIATIVE_STATUS_OPTIONS = ['Planning', 'Open', 'In Progress', 'Review', 'On Hold', 'Blocked', 'Done'] as const;
 
-const updateIssue = async () => undefined;
-const deleteIssue = async () => undefined;
+const updateIssue = async (..._args: unknown[]): Promise<void> => undefined;
+const deleteIssue = async (..._args: unknown[]): Promise<void> => undefined;
 
 type StatusKind = 'task' | 'issue' | 'initiative';
 
@@ -273,7 +273,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     // The logic above sets item asynchronously.
                     // The original code set it from `current.description`.
                     // Let's keep that fallback.
-                    setDescValue(current.description || "");
+                    setDescValue("");
                 }
 
                 // If we fetched fresh data, update description from that
@@ -366,7 +366,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 await updateIssue(i.id, { status: newStatus }, project.id, project.tenantId);
             }
 
-            if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
+            if (newStatus === 'Resolved' && onComplete) {
                 onComplete(item.id);
             }
         }

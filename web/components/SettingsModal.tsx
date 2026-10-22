@@ -1334,7 +1334,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                         </label>
                                         <Checkbox
                                             checked={useCustomSmtp}
-                                            onChange={(checked) => setUseCustomSmtp(checked)}
+                                            onChange={(e) => setUseCustomSmtp(e.target.checked)}
                                         />
                                     </div>
 
@@ -1376,7 +1376,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                     value={smtpFromEmail}
                                                     onChange={(e) => setSmtpFromEmail(e.target.value)}
                                                     placeholder="noreply@example.com"
-                                                    hint={t('settings.general.smtp.fromEmailHint')}
+                                                    helpText={t('settings.general.smtp.fromEmailHint')}
                                                 />
 
                                                 <div className="flex items-center gap-4 pt-2">
@@ -1482,7 +1482,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 </label>
                                                 <Checkbox
                                                     checked={storageS3ForcePathStyle}
-                                                    onChange={(checked) => setStorageS3ForcePathStyle(checked)}
+                                                    onChange={(e) => setStorageS3ForcePathStyle(e.target.checked)}
                                                 />
                                             </div>
                                         </div>
@@ -1645,7 +1645,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 variant="ghost"
                                                 size="sm"
                                                 className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
-                                                onClick={handleDisconnectGithub}
+                                                onClick={() => handleDisconnectGithub()}
                                                 loading={disconnectingGithub}
                                             >
                                                 {t('settings.account.github.disconnect')}

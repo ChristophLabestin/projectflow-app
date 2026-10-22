@@ -233,7 +233,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                 <Button
                                     onClick={handleReauth}
                                     loading={loading}
-                                    variant="outline"
+                                    variant="secondary"
                                     className="flex items-center gap-2"
                                 >
                                     <img
@@ -275,7 +275,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                         <div className="py-4 space-y-3">
                             <Button
                                 className="w-full"
-                                variant="outline"
+                                variant="secondary"
                                 onClick={handleSendVerificationEmail}
                                 loading={sendingVerification}
                             >

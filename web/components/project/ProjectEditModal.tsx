@@ -85,7 +85,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
     const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
     const [loadingRoles, setLoadingRoles] = useState(false);
-    const { can } = useProjectPermissions(project, customRoles);
+    const { can } = useProjectPermissions(project);
 
     // Permission check for visibility settings
     const { isOwner, role: workspaceRole } = useWorkspacePermissions();

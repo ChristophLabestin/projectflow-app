@@ -24,7 +24,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
                     return [
                         new InputRule({
                             find: /-->$/,
-                            replace: '→',
+                            handler: ({ state, range }) => {
+                                state.tr.insertText('→', range.from, range.to);
+                            },
                         }),
                     ];
                 },

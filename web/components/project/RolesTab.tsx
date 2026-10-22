@@ -21,7 +21,7 @@ import {
 import './roles-tab.scss';
 
 interface RolesTabProps {
-    project: Project;
+    project: Project & { defaultRoleId?: string | null };
     isOwner: boolean;
     onProjectUpdate?: () => void;
     customRoles?: CustomRole[];

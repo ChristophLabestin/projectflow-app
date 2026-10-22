@@ -6,6 +6,7 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
     label?: string;
     error?: string;
     icon?: string;
+    helpText?: string;
 };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(

@@ -356,7 +356,7 @@ export const WorkspaceRolesTab: React.FC<WorkspaceRolesTabProps> = ({ tenant, is
                                     key={role.id}
                                     role={role}
                                     isDefault={role.isDefault || false}
-                                    isLocked={role.isProtected || (role.priority <= userPriority && role.id !== currentUser?.uid)}
+                                    isLocked={role.position <= userPriority && role.id !== currentUser?.uid}
                                     t={t}
                                 />
                             ))}

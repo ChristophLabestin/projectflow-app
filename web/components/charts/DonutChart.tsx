@@ -23,7 +23,7 @@ export const DonutChart = ({ data, size = 160, thickness = 20, showEmptyLabel = 
     }
 
     return (
-        <svg wwidth={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="transform -rotate-90">
             {data.map((item, index) => {
                 const angle = (item.value / total) * 360;
                 const endAngle = startAngle + angle;

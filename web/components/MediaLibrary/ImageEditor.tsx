@@ -317,7 +317,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                     {/* Footer */}
                     <div className="p-4 border-t border-surface flex gap-2">
                         <button
-                            onClick={handleSave}
+                            onClick={() => handleSave('new')}
                             disabled={isProcessing || !completedCrop}
                             className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50"
                         >

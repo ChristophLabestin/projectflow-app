@@ -109,7 +109,7 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                         onKeyDown={(e) => e.key === 'Enter' && setLink()}
                     />
                     <button onClick={setLink} className="p-1 hover:bg-surface-hover rounded text-success">
-                        <check size={14} />
+                        <Check size={14} />
                     </button>
                     <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-surface-hover rounded text-muted">
                         <span className="material-symbols-outlined text-[14px]">close</span>
