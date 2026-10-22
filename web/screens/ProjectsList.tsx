@@ -865,7 +865,6 @@ const PROJECT_MODULE_OPTIONS: ProjectModule[] = [
     'initiatives',
     'activity',
     'milestones',
-    'social',
     'marketing',
     'accounting',
     'sprints'

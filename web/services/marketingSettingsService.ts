@@ -1,5 +1,4 @@
-import { MarketingSettings, SMTPConfig, SMTPSource, Tenant } from '../types';
-import { db } from './firebase';
+import { MarketingSettings } from '../types';
 import { resolveTenantId, projectSubCollection } from './dataService';
 import {
     doc,
@@ -63,35 +62,3 @@ export const updateMarketingSettings = async (
 };
 
 // --- Effective SMTP Resolution ---
-
-/**
- * Returns the appropriate SMTP config based on priority:
- * 1. Project SMTP (if smtpSource === 'project')
- * 2. Workspace SMTP (if smtpSource === 'workspace')
- * 3. null for ProjectFlow default (handled by server)
- */
-export const getEffectiveSMTPConfig = async (
-    projectId: string,
-    workspaceSMTP?: SMTPConfig,
-    tenantId?: string
-): Promise<{ source: SMTPSource; config: SMTPConfig | null }> => {
-    const settings = await getMarketingSettings(projectId, tenantId);
-
-    // If no settings or using projectflow default
-    if (!settings || settings.smtpSource === 'projectflow') {
-        return { source: 'projectflow', config: null };
-    }
-
-    // If using project-specific SMTP
-    if (settings.smtpSource === 'project' && settings.smtpConfig) {
-        return { source: 'project', config: settings.smtpConfig };
-    }
-
-    // If using workspace SMTP
-    if (settings.smtpSource === 'workspace' && workspaceSMTP) {
-        return { source: 'workspace', config: workspaceSMTP };
-    }
-
-    // Fallback to projectflow default
-    return { source: 'projectflow', config: null };
-};

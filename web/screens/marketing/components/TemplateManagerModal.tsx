@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Layout, Plus, Trash2, FileText, CheckCircle } from 'lucide-react';
+import { X, Search, Layout, Plus, Trash2, FileText } from 'lucide-react';
 import { BlogTemplate, getBlogTemplates, saveBlogTemplate, deleteBlogTemplate } from '../../../services/blogService';
 import { useToast, useConfirm } from '../../../context/UIContext';
 import { Button } from '../../../components/ui/Button';

@@ -482,16 +482,10 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
                         features={['Timeline view', 'Progress tracking', 'Risk indicators']}
                     />
                     <ModuleCard
-                        icon="campaign"
-                        name="Social Studio"
-                        description="Plan and manage social media campaigns. Strategy, content creation, and scheduling."
-                        features={['Campaign planning', 'Post drafting', 'Calendar', 'Approvals']}
-                    />
-                    <ModuleCard
                         icon="mail"
                         name="Marketing"
-                        description="Email campaigns, recipient management, and paid ad tracking."
-                        features={['Email builder', 'Segments', 'Performance tracking']}
+                        description="Write and publish posts to your website blog."
+                        features={['Blog editor', 'Categories', 'Templates']}
                     />
                     <ModuleCard
                         icon="photo_library"

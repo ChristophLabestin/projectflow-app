@@ -86,7 +86,7 @@ type ModuleOption = {
     labelKey: string;
     descKey: string;
     icon: string;
-    gatedBy?: 'social' | 'marketing' | 'accounting';
+    gatedBy?: 'marketing' | 'accounting';
 };
 
 const MODULE_OPTIONS: ModuleOption[] = [
@@ -95,7 +95,6 @@ const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
     { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
-    { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign', gatedBy: 'social' },
     { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click', gatedBy: 'marketing' },
     { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long', gatedBy: 'accounting' },
 ];
@@ -119,7 +118,6 @@ type CreateProjectWizardProps = {
 export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClose, initialName = '', initialTemplateId = 'blank' }) => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
-    const { hasAccess: isSocialAllowed } = useModuleAccess('social');
     const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
     const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
     const { showToast } = useToast();
@@ -164,7 +162,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         return scopedModules.filter(module => (
             MODULE_OPTIONS.some(option => option.id === module)
             && (!isPmCoreOnly() || !isDeprecatedModule(module))
-            && (module !== 'social' || isSocialAllowed)
             && (module !== 'marketing' || isMarketingAllowed)
             && (module !== 'accounting' || isAccountingAllowed)
         ));
@@ -185,11 +182,11 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
 
     useEffect(() => {
         setModules(filterAccessibleModules(getProjectTemplateDefinition(templateId).defaultModules));
-    }, [templateId, isSocialAllowed, isMarketingAllowed, isAccountingAllowed]);
+    }, [templateId, isMarketingAllowed, isAccountingAllowed]);
 
     useEffect(() => {
         setModules(current => filterAccessibleModules(current));
-    }, [isSocialAllowed, isMarketingAllowed, isAccountingAllowed]);
+    }, [isMarketingAllowed, isAccountingAllowed]);
 
     const handleTemplateSelect = (nextTemplateId: ProjectTemplateId) => {
         const template = getProjectTemplateDefinition(nextTemplateId);
@@ -460,8 +457,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         const option = MODULE_OPTIONS.find(item => item.id === targetId);
         if (!option) return;
         if (
-            (targetId === 'social' && !isSocialAllowed)
-            || (targetId === 'marketing' && !isMarketingAllowed)
+            (targetId === 'marketing' && !isMarketingAllowed)
             || (targetId === 'accounting' && !isAccountingAllowed)
         ) {
             return;
@@ -608,7 +604,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         icon: <span className="material-symbols-outlined">{template.icon}</span>
     }));
     const moduleAccess: Record<NonNullable<ModuleOption['gatedBy']>, boolean> = {
-        social: isSocialAllowed,
         marketing: isMarketingAllowed,
         accounting: isAccountingAllowed
     };
@@ -656,7 +651,6 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
     ];
     const invalidModuleIds = modules.filter(module => (
         !wizardModuleOptions.some(option => option.id === module)
-        || (module === 'social' && !isSocialAllowed)
         || (module === 'marketing' && !isMarketingAllowed)
         || (module === 'accounting' && !isAccountingAllowed)
     ));

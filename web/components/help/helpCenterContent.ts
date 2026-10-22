@@ -4,7 +4,6 @@ import { GettingStartedPage, gettingStartedSections } from './pages/GettingStart
 import { ProjectsPage, projectsSections } from './pages/ProjectsPage';
 import { AIFeaturesPage, aiFeaturesSections } from './pages/AIFeaturesPage';
 import { MediaLibraryPage, mediaLibrarySections } from './pages/MediaLibraryPage';
-import { SocialStudioPage, socialStudioSections } from './pages/SocialStudioPage';
 import { MarketingPage, marketingSections } from './pages/MarketingPage';
 import { AccountSettingsPage, accountSettingsSections } from './pages/AccountSettingsPage';
 import { SprintsPage, sprintsSections } from './pages/SprintsPage';
@@ -56,20 +55,11 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
         component: MediaLibraryPage
     },
     {
-        id: 'social-studio',
-        title: 'Social Studio',
-        description: 'Plan campaigns, create posts, and manage approvals.',
-        category: 'Social Studio',
-        keywords: ['social', 'campaigns', 'posts', 'calendar'],
-        sections: socialStudioSections,
-        component: SocialStudioPage
-    },
-    {
         id: 'marketing',
         title: 'Marketing',
-        description: 'Build email, ad, and audience workflows.',
+        description: 'Connect and publish to your website blog.',
         category: 'Marketing',
-        keywords: ['email', 'ads', 'recipients', 'campaigns'],
+        keywords: ['blog', 'posts', 'publish'],
         sections: marketingSections,
         component: MarketingPage
     },
@@ -87,12 +77,6 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
 export const getHelpTargetForPath = (pathname: string): HelpCenterTarget => {
     const path = pathname.toLowerCase();
 
-    if (path.includes('/social/review/')) {
-        return { pageId: 'social-studio', sectionId: 'review-approval' };
-    }
-    if (path.includes('/social')) {
-        return { pageId: 'social-studio' };
-    }
     if (path.includes('/marketing')) {
         return { pageId: 'marketing' };
     }

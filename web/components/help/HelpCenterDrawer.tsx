@@ -60,7 +60,6 @@ export const HelpCenterDrawer = () => {
         Workflows: t('help.category.workflows'),
         'CORA Studio': t('help.category.aiStudio'),
         Assets: t('help.category.assets'),
-        'Social Studio': t('help.category.socialStudio'),
         Marketing: t('help.category.marketing'),
         Account: t('help.category.account')
     }), [t]);

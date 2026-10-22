@@ -191,13 +191,6 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/social-en.ts') ||
-                id.includes('/web/locales/social-de.ts')
-              ) {
-                return 'social-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/flow-stages-en.ts') ||
                 id.includes('/web/locales/flow-stages-de.ts')
               ) {
@@ -218,19 +211,8 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/screens/social/') ||
-                id.includes('/web/services/domain/socialService.ts') ||
-                id.includes('/web/services/domain/socialSettingsService.ts')
-              ) {
-                return 'social';
-              }
-
-              if (
                 id.includes('/web/screens/marketing/') ||
-                id.includes('/web/services/domain/marketingTemplatesService.ts') ||
-                id.includes('/web/services/marketing') ||
                 id.includes('/web/services/marketingSettingsService') ||
-                id.includes('/web/services/recipientService') ||
                 id.includes('/web/services/blogService')
               ) {
                 return 'marketing';

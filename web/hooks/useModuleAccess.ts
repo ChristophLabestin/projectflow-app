@@ -4,7 +4,7 @@ import { getTenant } from '../services/domain/workspaceService';
 import { Tenant } from '../types';
 import { auth } from '../services/firebase';
 
-const RESTRICTED_MODULES = new Set(['social', 'marketing', 'accounting']);
+const RESTRICTED_MODULES = new Set(['marketing', 'accounting']);
 
 export const useModuleAccess = (moduleId: string) => {
     const normalizedModuleId = moduleId.toLowerCase();

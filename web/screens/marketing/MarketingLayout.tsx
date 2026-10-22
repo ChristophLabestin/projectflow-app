@@ -1,15 +1,10 @@
 import React from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 
 const MarketingLayout = () => {
-    const location = useLocation();
     const { t } = useLanguage();
     const tabs = [
-        { to: '', label: t('marketing.layout.tabs.overview'), end: true, icon: 'dashboard' },
-        { to: 'ads', label: t('marketing.layout.tabs.ads'), icon: 'ads_click' },
-        { to: 'email', label: t('marketing.layout.tabs.email'), icon: 'mail' },
-        { to: 'recipients', label: t('marketing.layout.tabs.recipients'), icon: 'group' },
         { to: 'blog', label: t('marketing.layout.tabs.blog'), icon: 'article' },
         { to: 'settings', label: t('marketing.layout.tabs.settings'), icon: 'settings' },
     ];
@@ -32,7 +27,6 @@ const MarketingLayout = () => {
                         <NavLink
                             key={tab.to}
                             to={tab.to}
-                            end={tab.end}
                             className={({ isActive }) => `
                                 relative h-8 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all whitespace-nowrap
                                 ${isActive
@@ -50,7 +44,7 @@ const MarketingLayout = () => {
 
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto">
-                <div className={`${location.pathname.includes('/email/builder') || location.pathname.includes('/email/create') ? 'w-full h-full' : 'max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6'} h-full`}>
+                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 h-full">
                     <Outlet />
                 </div>
             </div>

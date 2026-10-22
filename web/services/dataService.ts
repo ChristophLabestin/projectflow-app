@@ -12,8 +12,6 @@ import {
     Timestamp,
     serverTimestamp,
     setDoc,
-    collectionGroup,
-    documentId,
     orderBy,
     limit,
     writeBatch,
@@ -29,23 +27,18 @@ import {
     incrementAIUsage as incrementPrivateAIUsage,
     incrementImageUsage as incrementPrivateImageUsage
 } from "./domain/userPrivateData";
-import { httpsCallable } from "firebase/functions";
 import { linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth, functions, GithubAuthProvider } from "./firebase";
+import { db, auth, GithubAuthProvider } from "./firebase";
 import { getTenantFileDownloadUrl, refreshFirebaseStorageUrl } from './fileStorageService';
-import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy, APITokenPermission, TemplateVariable, EmailTemplate, PrivacySettings } from '../types';
+import type { Task, Idea, Initiative, Activity, Project, ProjectOverviewTemplate, ProjectOverviewLayout, SubTask, TaskCategory, Issue, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, GeminiReport, Milestone, AIUsage, Member, PersonalTask, ProjectNavPrefs, APITokenPermission, PrivacySettings } from '../types';
 import { toMillis } from "../utils/time";
 import {
-    notifyTaskAssignment,
-    notifyIssueAssignment,
     notifyComment,
-    notifySubtaskAssignment,
     notifyProjectInvite,
     createNotification
 } from './notificationService';
 import type { WorkspaceApiToken } from './domain/adminSettingsService';
-import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
+import { addGithubIssueComment } from './githubService';
 import { isProjectIncludedInImportantSignals } from './healthService';
 import {
     createWorkspaceApiToken,
@@ -104,11 +97,6 @@ const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
 const GEMINI_REPORTS = "geminiReports";
 const PROJECT_TEMPLATES = "project_templates";
-export const SOCIAL_CAMPAIGNS = "social_campaigns";
-export const SOCIAL_POSTS = "social_posts";
-export const SOCIAL_ASSETS = "social_assets";
-export const CAPTION_PRESETS = "caption_presets";
-export const SOCIAL_STRATEGY = "social_strategy";
 
 const DEFAULT_PROJECT_OVERVIEW_LAYOUT: ProjectOverviewLayout = {
     layoutVersion: 3,
@@ -255,19 +243,7 @@ export const incrementIdeaAIUsage = async (ideaId: string, tokens: number, proje
     });
 };
 
-export const incrementCampaignAIUsage = async (campaignId: string, tokens: number, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const campaignRef = doc(db, SOCIAL_CAMPAIGNS, campaignId);
-    await updateDoc(campaignRef, {
-        aiTokensUsed: increment(tokens)
-    });
-};
 
-
-export const deleteSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
-    const { deleteSocialCampaign: deleteSocialCampaignDomain } = await import('./domain/socialService');
-    return deleteSocialCampaignDomain(projectId, campaignId, tenantId);
-};
 
 // --- User Project Navigation Preferences ---
 
@@ -604,45 +580,6 @@ export const saveGeminiReport = async (projectId: string, content: string, tenan
 export const getLatestGeminiReport = async (projectId: string, tenantId?: string): Promise<GeminiReport | null> => {
     const { getLatestGeminiReport: getLatestGeminiReportDomain } = await import('./domain/projectInsightsService');
     return getLatestGeminiReportDomain(projectId, tenantId);
-};
-
-// --- Email Templates (Main Drafts/Templates) ---
-
-export const EMAIL_TEMPLATES = "email_templates";
-
-export const getProjectTemplates = async (projectId: string, tenantId?: string) => {
-    const { getProjectTemplates: getProjectTemplatesDomain } = await import('./domain/marketingTemplatesService');
-    return getProjectTemplatesDomain(projectId, tenantId);
-};
-
-export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string, status: 'draft' | 'published' = 'draft', templateId?: string) => {
-    const { saveEmailTemplateDraft: saveEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
-    return saveEmailTemplateDraftDomain(projectId, blocks, variables, tenantId, name, status, templateId);
-};
-
-export const getTemplateVersions = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const { getTemplateVersions: getTemplateVersionsDomain } = await import('./domain/marketingTemplatesService');
-    return getTemplateVersionsDomain(projectId, templateId, tenantId);
-};
-
-export const getLatestEmailTemplateDraft = async (projectId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const { getLatestEmailTemplateDraft: getLatestEmailTemplateDraftDomain } = await import('./domain/marketingTemplatesService');
-    return getLatestEmailTemplateDraftDomain(projectId, tenantId);
-};
-
-export const getEmailTemplateDrafts = async (projectId: string, tenantId?: string): Promise<EmailTemplate[]> => {
-    const { getEmailTemplateDrafts: getEmailTemplateDraftsDomain } = await import('./domain/marketingTemplatesService');
-    return getEmailTemplateDraftsDomain(projectId, tenantId);
-};
-
-export const deleteEmailTemplate = async (projectId: string, templateId: string, tenantId?: string) => {
-    const { deleteEmailTemplate: deleteEmailTemplateDomain } = await import('./domain/marketingTemplatesService');
-    return deleteEmailTemplateDomain(projectId, templateId, tenantId);
-};
-
-export const getEmailTemplateById = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate | null> => {
-    const { getEmailTemplateById: getEmailTemplateByIdDomain } = await import('./domain/marketingTemplatesService');
-    return getEmailTemplateByIdDomain(projectId, templateId, tenantId);
 };
 
 // Helper to extract tenant ID from a Document Reference path
@@ -2293,297 +2230,6 @@ export const updateProjectMemberRole = async (
     });
 };
 
-// --- Social Media Module Services ---
-
-// Campaigns
-export const createCampaign = async (
-    projectId: string,
-    campaignData: Omit<SocialCampaign, "id" | "createdAt" | "updatedAt" | "tenantId" | "ownerId">,
-    tenantId?: string
-) => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-    const resolvedTenant = resolveTenantId(tenantId);
-
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), {
-        ...campaignData,
-        projectId,
-        tenantId: resolvedTenant,
-        ownerId: user.uid,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-    });
-
-    await logActivity(
-        projectId,
-        { action: `Created campaign "${campaignData.name}"`, target: "Campaign", type: "status" },
-        resolvedTenant
-    );
-
-    return docRef.id;
-};
-
-export const getCampaignById = async (
-    projectId: string,
-    campaignId: string,
-    tenantId?: string
-): Promise<SocialCampaign | null> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), campaignId);
-    const snap = await getDoc(ref);
-
-    if (snap.exists()) {
-        return { id: snap.id, ...snap.data() } as SocialCampaign;
-    }
-    return null;
-};
-
-export const getSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
-    const { getSocialCampaign: getSocialCampaignDomain } = await import('./domain/socialService');
-    return getSocialCampaignDomain(projectId, campaignId, tenantId);
-};
-
-
-export const createSocialCampaign = async (
-    projectId: string,
-    campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'>,
-    tenantId?: string
-) => {
-    const { createSocialCampaign: createSocialCampaignDomain } = await import('./domain/socialService');
-    return createSocialCampaignDomain(projectId, campaignData, tenantId);
-};
-
-export const subscribeCampaigns = (
-    projectId: string,
-    onUpdate: (campaigns: SocialCampaign[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeCampaigns: subscribeCampaignsDomain }) => {
-        const nextUnsubscribe = subscribeCampaignsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateCampaign = async (
-    projectId: string,
-    campaignId: string,
-    updates: Partial<SocialCampaign>,
-    tenantId?: string
-) => {
-    const { updateCampaign: updateCampaignDomain } = await import('./domain/socialService');
-    return updateCampaignDomain(projectId, campaignId, updates, tenantId);
-};
-
-export const deleteCampaign = async (
-    projectId: string,
-    campaignId: string,
-    tenantId?: string
-) => {
-    const { deleteCampaign: deleteCampaignDomain } = await import('./domain/socialService');
-    return deleteCampaignDomain(projectId, campaignId, tenantId);
-};
-
-// Social Posts
-export const createSocialPost = async (
-    projectId: string,
-    postData: Omit<SocialPost, "id" | "createdAt" | "updatedAt" | "createdBy">,
-    tenantId?: string
-) => {
-    const { createSocialPost: createSocialPostDomain } = await import('./domain/socialService');
-    return createSocialPostDomain(projectId, postData, tenantId);
-};
-
-export const subscribeSocialPosts = (
-    projectId: string,
-    onUpdate: (posts: SocialPost[]) => void,
-    tenantId?: string,
-    campaignId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeSocialPosts: subscribeSocialPostsDomain }) => {
-        const nextUnsubscribe = subscribeSocialPostsDomain(projectId, onUpdate, tenantId, campaignId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateSocialPost = async (
-    projectId: string,
-    postId: string,
-    updates: Partial<SocialPost>,
-    tenantId?: string
-) => {
-    const { updateSocialPost: updateSocialPostDomain } = await import('./domain/socialService');
-    return updateSocialPostDomain(projectId, postId, updates, tenantId);
-};
-
-export const deleteSocialPost = async (
-    projectId: string,
-    postId: string,
-    tenantId?: string
-) => {
-    const { deleteSocialPost: deleteSocialPostDomain } = await import('./domain/socialService');
-    return deleteSocialPostDomain(projectId, postId, tenantId);
-};
-
-export const getSocialPostById = async (
-    projectId: string,
-    postId: string,
-    tenantId?: string
-): Promise<SocialPost | null> => {
-    const { getSocialPostById: getSocialPostByIdDomain } = await import('./domain/socialService');
-    return getSocialPostByIdDomain(projectId, postId, tenantId);
-};
-
-// Assets
-export const createSocialAsset = async (
-    projectId: string,
-    assetData: Omit<SocialAsset, "id" | "createdAt" | "createdBy">,
-    tenantId?: string
-) => {
-    const { createSocialAsset: createSocialAssetDomain } = await import('./domain/socialService');
-    return createSocialAssetDomain(projectId, assetData, tenantId);
-};
-
-export const subscribeSocialAssets = (
-    projectId: string,
-    onUpdate: (assets: SocialAsset[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialService').then(({ subscribeSocialAssets: subscribeSocialAssetsDomain }) => {
-        const nextUnsubscribe = subscribeSocialAssetsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const deleteSocialAsset = async (projectId: string, assetId: string, tenantId?: string) => {
-    const { deleteSocialAsset: deleteSocialAssetDomain } = await import('./domain/socialService');
-    return deleteSocialAssetDomain(projectId, assetId, tenantId);
-};
-
-// Social Integrations
-export const SOCIAL_INTEGRATIONS = 'social_integrations';
-
-// --- Caption Presets ---
-
-export const createCaptionPreset = async (
-    projectId: string,
-    presetData: Omit<CaptionPreset, "id" | "createdAt" | "createdBy">,
-    tenantId?: string
-): Promise<string> => {
-    const { createCaptionPreset: createCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return createCaptionPresetDomain(projectId, presetData, tenantId);
-};
-
-export const subscribeCaptionPresets = (
-    projectId: string,
-    onUpdate: (presets: CaptionPreset[]) => void,
-    tenantId?: string
-): Unsubscribe => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeCaptionPresets: subscribeCaptionPresetsDomain }) => {
-        const nextUnsubscribe = subscribeCaptionPresetsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateCaptionPreset = async (
-    projectId: string,
-    presetId: string,
-    updates: Partial<CaptionPreset>,
-    tenantId?: string
-): Promise<void> => {
-    const { updateCaptionPreset: updateCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return updateCaptionPresetDomain(projectId, presetId, updates, tenantId);
-};
-
-export const deleteCaptionPreset = async (
-    projectId: string,
-    presetId: string,
-    tenantId?: string
-): Promise<void> => {
-    const { deleteCaptionPreset: deleteCaptionPresetDomain } = await import('./domain/socialSettingsService');
-    return deleteCaptionPresetDomain(projectId, presetId, tenantId);
-};
-
-export const subscribeIntegrations = (
-    projectId: string,
-    onUpdate: (integrations: SocialIntegration[]) => void,
-    tenantId?: string
-) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeIntegrations: subscribeIntegrationsDomain }) => {
-        const nextUnsubscribe = subscribeIntegrationsDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const connectIntegration = async (projectId: string, platform: SocialPlatform, existingAccessToken?: string, tenantId?: string) => {
-    const { connectIntegration: connectIntegrationDomain } = await import('./domain/socialSettingsService');
-    return connectIntegrationDomain(projectId, platform, existingAccessToken, tenantId);
-};
-
-export const disconnectIntegration = async (projectId: string, integrationId: string, tenantId?: string) => {
-    const { disconnectIntegration: disconnectIntegrationDomain } = await import('./domain/socialSettingsService');
-    return disconnectIntegrationDomain(projectId, integrationId, tenantId);
-};
-
 // --- Personal Task Compatibility Facade ---
 
 export const addPersonalTask = async (
@@ -2869,48 +2515,6 @@ export const getIdeaComments = async (projectId: string, ideaId: string, tenantI
     } as ProjectComment));
 };
 
-// --- Social Strategy ---
-
-export const subscribeSocialStrategy = (
-    projectId: string,
-    onUpdate: (strategy: SocialStrategy | null) => void,
-    tenantId?: string
-) => {
-    let unsubscribe: Unsubscribe = () => undefined;
-    let disposed = false;
-
-    import('./domain/socialSettingsService').then(({ subscribeSocialStrategy: subscribeSocialStrategyDomain }) => {
-        const nextUnsubscribe = subscribeSocialStrategyDomain(projectId, onUpdate, tenantId);
-        if (disposed) {
-            nextUnsubscribe();
-            return;
-        }
-        unsubscribe = nextUnsubscribe;
-    });
-
-    return () => {
-        disposed = true;
-        unsubscribe();
-    };
-};
-
-export const updateSocialStrategy = async (projectId: string, updates: Partial<SocialStrategy>, tenantId?: string) => {
-    const { updateSocialStrategy: updateSocialStrategyDomain } = await import('./domain/socialSettingsService');
-    return updateSocialStrategyDomain(projectId, updates, tenantId);
-};
-
-export const syncSocialStrategyPlatforms = async (projectId: string, platformToRemove: SocialPlatform, tenantId?: string) => {
-    const { syncSocialStrategyPlatforms: syncSocialStrategyPlatformsDomain } = await import('./domain/socialSettingsService');
-    return syncSocialStrategyPlatformsDomain(projectId, platformToRemove, tenantId);
-};
-
-// --- Onboarding Persistence ---
-
-/**
- * Updates a specific onboarding tour status for a user.
- * Uses strict object structure to ensure Firestore merges nested maps correctly 
- * rather than creating dot-notation field keys.
- */
 export const updateUserOnboardingStatus = async (
     userId: string,
     tourKey: string,

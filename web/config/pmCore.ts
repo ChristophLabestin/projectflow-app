@@ -2,7 +2,7 @@ import type { ProjectModule } from '../types';
 
 /**
  * Default modules for new projects in PM-core mode. Kept to the core so a new
- * project's sidebar stays short; sprints, social, marketing and accounting are
+ * project's sidebar stays short; sprints, marketing (blog) and accounting are
  * switched on per project (project settings → Modules) or by a template.
  */
 export const PM_CORE_DEFAULT_MODULES: ProjectModule[] = [
@@ -13,7 +13,7 @@ export const PM_CORE_DEFAULT_MODULES: ProjectModule[] = [
 ];
 
 /** Legacy module ids hidden from project nav and create wizard when PM core is active. */
-export const PM_CORE_DEPRECATED_MODULES = ['ideas', 'flows', 'issues'] as const;
+export const PM_CORE_DEPRECATED_MODULES = ['ideas', 'flows', 'issues', 'social'] as const;
 
 /** Project nav item ids shown by default in PM-core mode (order). */
 export const PM_CORE_PROJECT_NAV_ORDER = [
@@ -22,7 +22,6 @@ export const PM_CORE_PROJECT_NAV_ORDER = [
     'initiatives',
     'sprints',
     'milestones',
-    'social',
     'marketing',
     'accounting',
     'activity',

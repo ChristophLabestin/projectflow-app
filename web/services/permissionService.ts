@@ -197,43 +197,6 @@ export const PERMISSION_CATALOG: Record<PermissionNode, PermissionMetadata> = {
     'project.issues.linkGithub': { scope: 'project', description: 'Link issue to GitHub' },
     'project.issues.unlinkGithub': { scope: 'project', description: 'Unlink issue from GitHub' },
 
-    // Project - Social Accounts
-    'project.social.accounts.view': { scope: 'project', description: 'View connected social accounts' },
-    'project.social.accounts.connect': { scope: 'project', description: 'Connect a social account', dangerLevel: 'medium' },
-    'project.social.accounts.disconnect': { scope: 'project', description: 'Disconnect a social account', dangerLevel: 'medium' },
-
-    // Project - Social Campaigns
-    'project.social.campaigns.view': { scope: 'project', description: 'View campaigns' },
-    'project.social.campaigns.create': { scope: 'project', description: 'Create campaigns' },
-    'project.social.campaigns.edit': { scope: 'project', description: 'Edit campaigns' },
-    'project.social.campaigns.delete': { scope: 'project', description: 'Delete campaigns', dangerLevel: 'medium' },
-
-    // Project - Social Posts
-    'project.social.posts.view': { scope: 'project', description: 'View posts' },
-    'project.social.posts.create': { scope: 'project', description: 'Create posts' },
-    'project.social.posts.edit': { scope: 'project', description: 'Edit posts' },
-    'project.social.posts.delete': { scope: 'project', description: 'Delete posts', dangerLevel: 'medium' },
-    'project.social.posts.schedule': { scope: 'project', description: 'Schedule posts' },
-    'project.social.posts.publish': { scope: 'project', description: 'Publish posts', dangerLevel: 'high' },
-    'project.social.posts.approve': { scope: 'project', description: 'Approve posts' },
-    'project.social.posts.archive': { scope: 'project', description: 'Archive posts' },
-
-    // Project - Social Assets
-    'project.social.assets.manage': { scope: 'project', description: 'Manage social assets' },
-
-    // Project - Marketing Ads
-    'project.marketing.ads.view': { scope: 'project', description: 'View paid ad campaigns' },
-    'project.marketing.ads.create': { scope: 'project', description: 'Create ad campaigns' },
-    'project.marketing.ads.edit': { scope: 'project', description: 'Edit ad campaigns' },
-    'project.marketing.ads.delete': { scope: 'project', description: 'Delete ad campaigns', dangerLevel: 'medium' },
-
-    // Project - Marketing Email
-    'project.marketing.email.view': { scope: 'project', description: 'View email campaigns' },
-    'project.marketing.email.create': { scope: 'project', description: 'Create email campaigns' },
-    'project.marketing.email.edit': { scope: 'project', description: 'Edit email campaigns' },
-    'project.marketing.email.send': { scope: 'project', description: 'Send email campaigns', dangerLevel: 'high' },
-    'project.marketing.email.manageRecipients': { scope: 'project', description: 'Manage recipient lists' },
-
     // Project - Marketing Blog
     'project.marketing.blog.view': { scope: 'project', description: 'View blog posts' },
     'project.marketing.blog.create': { scope: 'project', description: 'Create blog posts' },

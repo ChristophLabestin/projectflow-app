@@ -68,7 +68,6 @@ enum ProjectModule: String, CaseIterable {
     case initiatives
     case activity
     case milestones
-    case social
     case marketing
     case accounting
     case sprints
@@ -79,7 +78,6 @@ enum ProjectModule: String, CaseIterable {
         case .initiatives: return "Initiatives"
         case .activity: return "Activity"
         case .milestones: return "Milestones"
-        case .social: return "Social"
         case .marketing: return "Marketing"
         case .accounting: return "Accounting"
         case .sprints: return "Sprints"
@@ -92,7 +90,6 @@ enum ProjectModule: String, CaseIterable {
         case .initiatives: return "flag"
         case .activity: return "clock.arrow.circlepath"
         case .milestones: return "flag.checkered"
-        case .social: return "bubble.left.and.bubble.right"
         case .marketing: return "megaphone"
         case .accounting: return "chart.bar.doc.horizontal"
         case .sprints: return "figure.run"

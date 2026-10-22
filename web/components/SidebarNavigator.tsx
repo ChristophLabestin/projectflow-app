@@ -516,7 +516,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
             { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
             { id: 'sprints', path: '/sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
             { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
-            { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
             { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
             { id: 'accounting', path: '/accounting', icon: 'receipt_long', label: t('nav.accounting'), moduleKey: 'accounting' },
             // Effort + invoices live only on client projects ("Kundenprojekte").

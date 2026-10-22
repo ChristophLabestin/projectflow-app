@@ -148,7 +148,7 @@ export const PROJECT_TEMPLATE_DEFINITIONS: ProjectTemplateDefinition[] = [
         icon: 'campaign',
         projectCategory: 'marketing',
         legacyProjectType: 'standard',
-        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'marketing', 'social']),
+        defaultModules: normalizeModulesForPmCore(['tasks', 'initiatives', 'milestones', 'activity', 'marketing']),
         defaultOperatingMode: 'ship',
         defaultCadence: 'weekly'
     },

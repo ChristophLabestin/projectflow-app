@@ -159,37 +159,6 @@ export type ProjectPermissionNode =
     | 'project.issues.comment'
     | 'project.issues.linkGithub'
     | 'project.issues.unlinkGithub'
-    // Social - Accounts
-    | 'project.social.accounts.view'
-    | 'project.social.accounts.connect'
-    | 'project.social.accounts.disconnect'
-    // Social - Campaigns
-    | 'project.social.campaigns.view'
-    | 'project.social.campaigns.create'
-    | 'project.social.campaigns.edit'
-    | 'project.social.campaigns.delete'
-    // Social - Posts
-    | 'project.social.posts.view'
-    | 'project.social.posts.create'
-    | 'project.social.posts.edit'
-    | 'project.social.posts.delete'
-    | 'project.social.posts.schedule'
-    | 'project.social.posts.publish'
-    | 'project.social.posts.approve'
-    | 'project.social.posts.archive'
-    // Social - Assets
-    | 'project.social.assets.manage'
-    // Marketing - Paid Ads
-    | 'project.marketing.ads.view'
-    | 'project.marketing.ads.create'
-    | 'project.marketing.ads.edit'
-    | 'project.marketing.ads.delete'
-    // Marketing - Email
-    | 'project.marketing.email.view'
-    | 'project.marketing.email.create'
-    | 'project.marketing.email.edit'
-    | 'project.marketing.email.send'
-    | 'project.marketing.email.manageRecipients'
     // Marketing - Blog
     | 'project.marketing.blog.view'
     | 'project.marketing.blog.create'
@@ -467,31 +436,6 @@ export const ALL_PROJECT_PERMISSIONS: ProjectPermissionNode[] = [
     'project.tasks.comment',
     'project.tasks.attachFiles',
     'project.tasks.manageCustomFields',
-    'project.social.accounts.view',
-    'project.social.accounts.connect',
-    'project.social.accounts.disconnect',
-    'project.social.campaigns.view',
-    'project.social.campaigns.create',
-    'project.social.campaigns.edit',
-    'project.social.campaigns.delete',
-    'project.social.posts.view',
-    'project.social.posts.create',
-    'project.social.posts.edit',
-    'project.social.posts.delete',
-    'project.social.posts.schedule',
-    'project.social.posts.publish',
-    'project.social.posts.approve',
-    'project.social.posts.archive',
-    'project.social.assets.manage',
-    'project.marketing.ads.view',
-    'project.marketing.ads.create',
-    'project.marketing.ads.edit',
-    'project.marketing.ads.delete',
-    'project.marketing.email.view',
-    'project.marketing.email.create',
-    'project.marketing.email.edit',
-    'project.marketing.email.send',
-    'project.marketing.email.manageRecipients',
     'project.marketing.blog.view',
     'project.marketing.blog.create',
     'project.marketing.blog.edit',

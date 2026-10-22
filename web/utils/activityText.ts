@@ -25,7 +25,6 @@ const RULES: Array<{ pattern: RegExp; key: string; vars?: string[] }> = [
     { pattern: /^Canceled project "(.*)"$/s, key: 'activity.text.canceledProject', vars: ['title'] },
     { pattern: /^Created milestone "(.*)"$/s, key: 'activity.text.createdMilestone', vars: ['title'] },
     { pattern: /^Created campaign "(.*)"$/s, key: 'activity.text.createdCampaign', vars: ['title'] },
-    { pattern: /^Created social post for (.*)$/s, key: 'activity.text.createdSocialPost', vars: ['title'] },
     { pattern: /^created task$/i, key: 'activity.text.createdTaskShort' },
     { pattern: /^updated project settings$/i, key: 'activity.text.updatedProjectSettings' },
     { pattern: /^Updated project reminders$/i, key: 'activity.text.updatedReminders' },
