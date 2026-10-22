@@ -29,7 +29,7 @@ export const BlogEditor = () => {
 
     // Category State
     const [categories, setCategories] = useState<BlogCategory[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<BlogCategory | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<BlogPost['category'] & Partial<Pick<BlogCategory, 'id' | 'description'>> | null>(null);
     const [showCategoryManager, setShowCategoryManager] = useState(false);
 
     const [tags, setTags] = useState<string[]>([]);

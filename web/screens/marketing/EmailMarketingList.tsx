@@ -35,9 +35,10 @@ export const EmailMarketingList = () => {
     // Helper to get stats for a template
     const getTemplateStats = (templateId: string) => {
         const usageCount = campaigns.filter(c => c.templateId === templateId).length;
+        const createdSeconds = (campaign: EmailCampaign) => (campaign as EmailCampaign & { createdAt?: { seconds?: number } }).createdAt?.seconds || 0;
         const lastCampaign = campaigns
             .filter(c => c.templateId === templateId)
-            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0];
+            .sort((a, b) => createdSeconds(b) - createdSeconds(a))[0];
 
         return { usageCount, lastCampaign };
     };
@@ -287,8 +288,8 @@ export const EmailMarketingList = () => {
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <h4 className="font-bold text-lg group-hover:text-primary transition-colors">{campaign.name}</h4>
-                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${campaign.status === 'Sent' ? 'bg-green-100 text-green-700' :
-                                                    campaign.status === 'Draft' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-700'
+                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${campaign.status.toLowerCase() === 'sent' ? 'bg-green-100 text-green-700' :
+                                                    campaign.status.toLowerCase() === 'draft' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {campaign.status}
                                                 </span>
@@ -300,7 +301,7 @@ export const EmailMarketingList = () => {
                                         </div>
                                     </div>
 
-                                    {campaign.status === 'Sent' && (
+                                    {campaign.status.toLowerCase() === 'sent' && (
                                         <div className="grid grid-cols-3 gap-4 pt-4 border-t border-surface mt-4">
                                             <div>
                                                 <p className="text-[10px] text-muted uppercase">Sent</p>

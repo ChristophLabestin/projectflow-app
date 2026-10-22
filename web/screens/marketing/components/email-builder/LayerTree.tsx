@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { EmailBlock } from '../../../types';
+import { EmailBlock } from '../../../../types';
 import { useSortable, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';

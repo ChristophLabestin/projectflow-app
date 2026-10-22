@@ -20,6 +20,7 @@ import { Card } from '../components/common/Card/Card';
 import { CompanyProjectRole, Project, ProjectModule, StartupJurisdictionTemplateId, StartupTrackId, WorkspaceGroup, ProjectCadence, ProjectDateConfidence, ProjectOperatingMode, ProjectStatus, ProjectTemplateId, ProjectType } from '../types';
 import {
     PROJECT_TEMPLATE_DEFINITIONS,
+    type StartupSeedTaskDefinition,
     STARTUP_JURISDICTION_SEED_TASKS,
     STARTUP_SEED_INITIATIVES,
     STARTUP_SEED_MILESTONES,
@@ -37,6 +38,8 @@ import MemberSelection from '../components/common/MemberSelection/MemberSelectio
 
 import { useModuleAccess } from '../hooks/useModuleAccess';
 import { initialOf } from '../utils/initials';
+
+const isDeprecatedModule = (moduleId: string) => (PM_CORE_DEPRECATED_MODULES as readonly string[]).includes(moduleId);
 
 const STEPS = [
     { id: 0, labelKey: 'createProjectWizard.steps.type' },
@@ -160,7 +163,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         const scopedModules = isPmCoreOnly() ? normalizeModulesForPmCore(nextModules) : nextModules;
         return scopedModules.filter(module => (
             MODULE_OPTIONS.some(option => option.id === module)
-            && (!isPmCoreOnly() || !PM_CORE_DEPRECATED_MODULES.includes(module))
+            && (!isPmCoreOnly() || !isDeprecatedModule(module))
             && (module !== 'social' || isSocialAllowed)
             && (module !== 'marketing' || isMarketingAllowed)
             && (module !== 'accounting' || isAccountingAllowed)
@@ -294,7 +297,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             });
         }
 
-        const seedTasks = [
+        const seedTasks: Array<StartupSeedTaskDefinition & { jurisdictionTemplateId?: StartupJurisdictionTemplateId }> = [
             ...STARTUP_SEED_TASKS,
             ...STARTUP_JURISDICTION_SEED_TASKS.filter(task => (
                 task.jurisdictionTemplateId === jurisdictionTemplateId
@@ -305,7 +308,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             const initiativeId = initiativeIdsByTrack.get(task.trackId);
             const track = STARTUP_TRACK_DEFINITIONS.find(item => item.id === task.trackId);
             const sourceReferences = getStartupSourceReferences(
-                'jurisdictionTemplateId' in task ? task.jurisdictionTemplateId : jurisdictionTemplateId,
+                task.jurisdictionTemplateId ?? jurisdictionTemplateId,
                 task.sourceReferenceIds || []
             );
             const taskOptions = {
@@ -610,7 +613,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
         accounting: isAccountingAllowed
     };
     const wizardModuleOptions = MODULE_OPTIONS.filter(
-        (option) => !isPmCoreOnly() || !PM_CORE_DEPRECATED_MODULES.includes(option.id)
+        (option) => !isPmCoreOnly() || !isDeprecatedModule(option.id)
     );
     const moduleSelectionItems = wizardModuleOptions.map(option => {
         const isLocked = option.gatedBy ? !moduleAccess[option.gatedBy] : false;

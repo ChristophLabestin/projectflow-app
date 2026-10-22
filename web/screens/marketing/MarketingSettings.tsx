@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Card } from '../../components/ui/Card';
 import { useToast } from '../../context/UIContext';
-import { RecipientColumn, GroupColumn, MarketingSettings as MarketingSettingsType, SMTPConfig, SMTPSource, RecipientGroup } from '../../types';
+import { RecipientColumn, GroupColumn, MarketingSettings as MarketingSettingsType, SMTPConfig, SMTPSource, RecipientGroup, ApiResourceConfig } from '../../types';
 import { subscribeRecipientColumns, addRecipientColumn, deleteRecipientColumn } from '../../services/recipientService';
 import { subscribeGroupColumns, addGroupColumn, deleteGroupColumn, subscribeGroups } from '../../services/groupService';
 import { subscribeMarketingSettings, updateMarketingSettings } from '../../services/marketingSettingsService';

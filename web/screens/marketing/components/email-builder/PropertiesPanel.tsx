@@ -1,5 +1,5 @@
 import React, { useState, useId } from 'react';
-import { EmailBlock, TemplateVariable } from '../../../types';
+import { EmailBlock, TemplateVariable } from '../../../../types';
 import { RichTextEditor } from './RichTextEditor';
 import { RichTextModal } from './RichTextModal';
 import { VariablePicker } from './VariablePicker';
@@ -300,7 +300,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                 <div className="space-y-2">
                                     {(block.content.socialLinks || []).map((link: any, idx: number) => (
                                         <div key={idx} className="flex gap-1.5 items-center px-2 py-1.5 bg-surface-sunken rounded border border-surface group">
-                                            <select value={link.platform} onChange={e => { const n = [...(block.content.socialLinks || [])]; n[idx] = { ...n[idx], platform: e.target.value }; updateContent('socialLinks', n); }} className="w-12 text-[10px] font-bold bg-transparent outline-none appearance-none cursor-pointer uppercase">
+                                            <select value={link.platform} onChange={e => { const n = [...(block.content.socialLinks || [])]; n[idx] = { ...n[idx], platform: e.target.value as 'twitter' | 'facebook' | 'linkedin' | 'instagram' }; updateContent('socialLinks', n); }} className="w-12 text-[10px] font-bold bg-transparent outline-none appearance-none cursor-pointer uppercase">
                                                 <option value="twitter">X</option><option value="facebook">FB</option><option value="linkedin">IN</option><option value="instagram">IG</option>
                                             </select>
                                             <input value={link.url} onChange={e => { const n = [...(block.content.socialLinks || [])]; n[idx] = { ...n[idx], url: e.target.value }; updateContent('socialLinks', n); }} className="flex-1 text-[10px] bg-transparent outline-none truncate" placeholder="Profile URL" />

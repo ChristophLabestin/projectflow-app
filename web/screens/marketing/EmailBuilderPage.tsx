@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { EmailBlock, TemplateVariable } from '../../types';
+import { EmailBlock, EmailTemplate, TemplateVariable } from '../../types';
 import { getLatestEmailTemplateDraft, saveEmailTemplateDraft, getEmailTemplateDrafts, getEmailTemplateById, getTemplateVersions } from '../../services/domain/marketingTemplatesService';
 import { getProjectById } from '../../services/domain/projectsService';
 import { getActiveTenantId } from '../../services/domain/authService';
@@ -281,7 +281,6 @@ export const EmailBuilderPage = () => {
                     onSave={handleSave}
                     onSaveDraft={handleSaveDraft}
                     onFetchDrafts={fetchDrafts}
-                    onLoadDraft={handleLoadDraft}
                     onCancel={() => navigate(-1)}
                     saving={saving}
                     readOnly={isReadOnly}

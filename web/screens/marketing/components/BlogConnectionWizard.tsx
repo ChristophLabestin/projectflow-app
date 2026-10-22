@@ -382,8 +382,8 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                             placeholder="https://api.example.com/v1"
                             value={baseUrl}
                             onChange={(e) => setBaseUrl(e.target.value)}
-                            helperText="Root URL for your API"
                         />
+                        <p className="text-xs text-muted">Root URL for your API</p>
 
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Global Headers (JSON)</label>

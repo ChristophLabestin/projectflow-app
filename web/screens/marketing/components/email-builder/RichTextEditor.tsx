@@ -4,7 +4,7 @@ import Underline from '@tiptap/extension-underline';
 import { useState } from 'react';
 import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
-import { TemplateVariable } from '../../../types';
+import { TemplateVariable } from '../../../../types';
 import { VariablePicker } from './VariablePicker';
 
 interface RichTextEditorProps {

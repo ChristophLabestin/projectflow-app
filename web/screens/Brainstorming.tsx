@@ -464,8 +464,7 @@ Only include fields that need to be updated. Be intelligent about what to change
 `;
 
                 const response = await chatWithCora(
-                    [{ role: 'user', content: refinementPrompt }],
-                    { model: 'gemini-3-flash-preview' }
+                    [{ role: 'user', content: refinementPrompt }]
                 );
 
                 if (controller.signal.aborted) return;
@@ -552,7 +551,6 @@ Only include fields that need to be updated. Be intelligent about what to change
                     {
                         mode: activeMode,
                         useSearch,
-                        model: selectedModel,
                         tenantContext: resolvedContext || undefined
                     }
                 );

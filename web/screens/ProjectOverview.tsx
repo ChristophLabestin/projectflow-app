@@ -92,7 +92,7 @@ const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
     bg: `rgba(var(${rgbVar}), ${alpha})`
 });
 
-const activityIcon = (type?: Activity['type'], actionText?: string) => {
+const activityIcon = (type?: Activity['type'] | 'issue', actionText?: string) => {
     const action = (actionText || '').toLowerCase();
     const successTone = buildTone('--color-success', '--color-success-rgb');
     const warningTone = buildTone('--color-warning', '--color-warning-rgb');
@@ -333,8 +333,6 @@ const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'controls',
     'planning',
     'contract',
-    'executionFlows',
-    'executionIssues',
     'milestones',
     'aiInsights',
     'updates',
@@ -351,8 +349,6 @@ const OVERVIEW_CARD_DEFINITIONS: Record<ProjectOverviewCardId, { defaultSpan: Ov
     contract: { defaultSpan: 3, defaultPlacement: 'secondary' },
     snapshot: { defaultSpan: 12, defaultPlacement: 'primary' },
     executionTasks: { defaultSpan: 12, defaultPlacement: 'primary' },
-    executionFlows: { defaultSpan: 6, defaultPlacement: 'primary' },
-    executionIssues: { defaultSpan: 6, defaultPlacement: 'primary' },
     updates: { defaultSpan: 12, defaultPlacement: 'primary' },
     resources: { defaultSpan: 12, defaultPlacement: 'primary' },
     planning: { defaultSpan: 3, defaultPlacement: 'secondary' },
@@ -381,7 +377,7 @@ const FIXED_OVERVIEW_CARDS: FixedOverviewCardConfig[] = OVERVIEW_CARD_ORDER.map(
 
 type OverviewCardShellProps = {
     card: FixedOverviewCardConfig;
-    children: JSX.Element;
+    children: React.JSX.Element;
     className?: string;
 };
 
@@ -754,7 +750,7 @@ const ProjectOverviewLegacy = () => {
         let mounted = true;
 
         const loadCommits = async () => {
-            if (!project?.modules?.includes('issues')) {
+            if (!(project?.modules as readonly string[] | undefined)?.includes('issues')) {
                 setGithubCommits([]);
                 setCommitsError(null);
                 setCommitsLoading(false);
@@ -995,12 +991,7 @@ const ProjectOverviewLegacy = () => {
                 type: 'status',
                 user: (auth.currentUser?.displayName || t('projectOverview.activity.unknownUser')),
                 action: 'updated project settings',
-                targetId: id,
-                targetName: project.title,
                 target: 'Project Settings',
-                metadata: {
-                    changes: Object.keys(updatedFields)
-                }
             });
 
             // Update local state
@@ -1023,12 +1014,7 @@ const ProjectOverviewLegacy = () => {
                 type: 'status',
                 user: (auth.currentUser?.displayName || t('projectOverview.activity.unknownUser')),
                 action: 'updated project settings',
-                targetId: id,
-                targetName: project.title,
                 target: 'Project Settings',
-                metadata: {
-                    changes: [field]
-                }
             });
 
             setProject(prev => prev ? ({ ...prev, [field]: value } as Project) : prev);
@@ -1322,12 +1308,7 @@ const ProjectOverviewLegacy = () => {
                 type: 'status',
                 user: (auth.currentUser?.displayName || t('projectOverview.activity.unknownUser')),
                 action: 'updated project settings',
-                targetId: id,
-                targetName: project.title,
                 target: 'Project Settings',
-                metadata: {
-                    changes: [imageField, fileIdField]
-                }
             });
 
             setProject(prev => prev ? ({ ...prev, ...updates } as Project) : prev);
@@ -1989,7 +1970,7 @@ const ProjectOverviewLegacy = () => {
     const primaryAttentionItem = attentionItems[0] || null;
     const secondaryAttentionItems = attentionItems.slice(1);
 
-    const hasIssuesModule = !pmCoreOnly && project.modules?.includes('issues');
+    const hasIssuesModule = !pmCoreOnly && (project.modules as readonly string[] | undefined)?.includes('issues');
     const pendingMilestones = milestones.filter(m => m.status !== 'Achieved');
     const showGithubCard = hasIssuesModule;
     const getExecutionCardVariant = (_cardId: ProjectOverviewCardId): ExecutionCardVariant => 'wide';
@@ -2029,10 +2010,6 @@ const ProjectOverviewLegacy = () => {
     const isCardRenderable = (cardId: ProjectOverviewCardId) => {
         if (cardId === 'controls') {
             return isOwner;
-        }
-        // Flows and Issues modules were removed; their legacy layout slots never render.
-        if (cardId === 'executionFlows' || cardId === 'executionIssues') {
-            return false;
         }
         return true;
     };
@@ -2076,7 +2053,7 @@ const ProjectOverviewLegacy = () => {
             : [])
     ];
 
-    const overviewCardContent: Record<ProjectOverviewCardId, JSX.Element | null> = {
+    const overviewCardContent: Record<ProjectOverviewCardId, React.JSX.Element | null> = {
         contract: (
             <Card className="project-contract-card project-contract-card--rail">
                 <div className="project-contract-card__header">
@@ -3152,7 +3129,7 @@ const ProjectOverviewLegacy = () => {
                         </div>
                         <div className="project-overview-sprints-panel__row">
                             <div className="project-overview-sprints-panel__row-copy">
-                                <strong>{activeSprint.title}</strong>
+                                <strong>{activeSprint.name}</strong>
                                 <span>
                                     {activeSprint.startDate ? format(parseDateValue(activeSprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                     {' - '}
@@ -3192,7 +3169,7 @@ const ProjectOverviewLegacy = () => {
                         {upcomingSprints.map((sprint) => (
                             <div key={sprint.id} className="project-overview-sprints-panel__row">
                                 <div className="project-overview-sprints-panel__row-copy">
-                                    <strong>{sprint.title}</strong>
+                                    <strong>{sprint.name}</strong>
                                     <span>
                                         {sprint.startDate ? format(parseDateValue(sprint.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                         {' - '}

@@ -139,7 +139,7 @@ export const CreateEmailPage = () => {
                 name: campaignName,
                 subject,
                 senderName,
-                status: 'Draft',
+                status: 'draft',
                 contentBlocks: processedBlocks, // Store resolved blocks? Or original + variables? Store original + vars is better for editing, but let's store resolved for simplicity of sending.
                 // Actually, storing resolved blocks makes it "fixed" at creation time. 
                 // Better pattern: Store templateId and variableValues.

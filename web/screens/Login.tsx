@@ -457,7 +457,7 @@ export const Login = () => {
                                 type="button"
                                 variant="secondary"
                                 className="login-page__primary"
-                                onClick={handlePasskeySignIn}
+                                onClick={() => handlePasskeySignIn()}
                                 disabled={isLoading}
                                 icon={<span className="material-symbols-outlined">fingerprint</span>}
                             >

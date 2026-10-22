@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { RichTextEditor } from './RichTextEditor';
-import { TemplateVariable } from '../../../types';
+import { TemplateVariable } from '../../../../types';
 
 interface RichTextModalProps {
     isOpen: boolean;
