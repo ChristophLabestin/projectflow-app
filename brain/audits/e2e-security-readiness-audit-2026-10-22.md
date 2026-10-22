@@ -79,3 +79,22 @@ Lange Wörter überlaufen Task-/Projekt-Header; Task-Titel ohne Längenlimit; Pi
 `npm --prefix web run dev:e2e` (bzw. Launch-Config `web-e2e`) startet Emulatoren auf eigenen Ports
 (9631/8631/9632), seedet den Demo-Workspace, legt `outsider@projectflow.test` (ohne Workspace) an und
 startet die App eingeloggt als `demo@projectflow.test`; `E2E_LOGIN=outsider` für Rechte-Tests.
+
+## Remediation status (same day, branch `claude/projectflow-e2e-testing-e14fee`)
+
+Verified after all fixes were merged: `tsc --noEmit` 0 errors (was 335, CI typecheck now blocking), web build without warnings, 53/53 unit tests, theme lint, functions build, Firestore rules 33/33 (the same suite fails 5 checks against the old rules), Storage rules 23/23, GDPR export/erasure emulator test, live smoke test against emulators incl. Functions (project delete, 404, finance, profile).
+
+**Fixed**
+- Security High: project wildcard rule (delete/hijack), REST/MCP delete role check, public debug functions removed, DOMPurify `sanitizeHtml` on all HTML sinks + escaped blog meta, server-side single-use OAuth state for Facebook/TikTok/YouTube, no reflected provider errors.
+- Security Medium: entitlements server-only; Storage requires non-guest membership, 25 MB + content-type allowlist, avatars 5 MB images; AI daily quota per user; `testSMTPConnection` Owner/Admin-only with private-IP/port guard and no password logging; GitHub repo validation; passkey challenge TTL + single use, localhost origins only in the emulator; `verifyIdToken(…, true)`; `uid === tenantId` owner shortcut removed; contact form escaping, honeypot, per-IP rate limit; generic error messages; hosting security headers (HSTS, nosniff, X-Frame-Options, Referrer/Permissions-Policy, cache headers); writes below deleted projects blocked.
+- App: finance request loop, project delete UI + cascading `deleteProject` callable, double-submit guards, missing i18n keys, 404 page and legacy route redirects, Flows/Issues leftovers, `?tenant=` deep links, profile mock data, emoji initials, mobile drawer, overflow + title cap, modal focus trap/Esc, a11y labels/alt, German mixed-language strings and date format, settings counters, dock refresh after delete, invoice logo upload path, SMTP test payload.
+- Readiness: deploy only after green CI (+ rules tests job, Sentry DSN, no client Gemini key), global error handlers, esm.sh importmap removed, circular chunks fixed, `setGlobalOptions`, bounded 5-minute scheduler, dead ideas/issues reads, leftovers + `functions/lib` untracked, unused deps removed, `npm audit fix`; GDPR `exportMyData` / `deleteMyAccount` with UI.
+- ~20 additional real bugs surfaced by the type cleanup (e.g. GitHub disconnect skipped its confirmation, settings checkboxes stored the event object, sprint titles read the wrong field, social approvals wrote invalid statuses).
+
+**Still open**
+- CSP ships as `Content-Security-Policy-Report-Only`; enforce after watching violations in production.
+- Social access tokens in `social_integrations` stay readable by workspace members because the client posts to the Graph API directly; needs server-side publishing.
+- Realtime DB presence reads are not membership-checked (RTDB cannot read Firestore); needs a function-maintained member mirror or custom claims.
+- `npm audit --omit=dev`: web 6 (4 high, `@grpc/grpc-js` via firebase), functions 9 (1 high, `nodemailer` ≤10.0.5 needs a major bump).
+- No staging Firebase project yet; Tailwind utilities still compiled alongside SCSS; remaining hardcoded English strings outside the reported screens; Gemini key in git history (`1095e0bb`) should be rotated if still valid.
+- Not yet deployed: rules, storage rules, RTDB rules, functions and hosting all need a deploy after review.

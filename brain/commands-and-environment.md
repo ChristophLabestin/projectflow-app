@@ -33,6 +33,10 @@ Use this to QA signed-in screens without touching production.
    - a pending email invitation from "Romero Labs".
 4. `cd web && npm run dev:emulator` (mode `emulator` → `.env.emulator` sets `VITE_USE_FIREBASE_EMULATORS=true`; also available as `web-emulator` in `.claude/launch.json`).
 
+**One command, already signed in:** `npm --prefix web run dev:e2e` (launch config `web-e2e`) runs `scripts/dev-e2e.sh`: builds functions, starts Auth/Firestore/Storage/Functions emulators on their own port block (9631/8631/9632/5631, override via `AUTH_PORT` etc.) so it does not collide with other local Firebase projects, seeds the demo workspace, adds `outsider@projectflow.test` / `pf-outsider-e2e` (no workspace, for permission tests) and starts Vite auto-signed-in as the demo owner (`E2E_LOGIN=outsider` to sign in as the outsider, `E2E_FUNCTIONS=0` to skip functions). Auto-login only exists in dev builds with emulators.
+
+**Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
+
 
 ## Functions Commands
 
