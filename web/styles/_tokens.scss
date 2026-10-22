@@ -71,6 +71,17 @@
   --status-done-rgb: 16, 185, 129;
   --status-planning-rgb: 139, 92, 246;
 
+  /* Status text (AA on card/surface backgrounds). Pills keep the 12 % tint of
+     the base --status-*-rgb colour as fill; only the text uses these. */
+  --color-status-backlog-text: #475569;
+  --color-status-open-text: #1d4ed8;
+  --color-status-in-progress-text: #0369a1;
+  --color-status-review-text: #b45309;
+  --color-status-on-hold-text: #4b5563;
+  --color-status-blocked-text: #b91c1c;
+  --color-status-done-text: #047857;
+  --color-status-planning-text: #6d28d9;
+
   /* Priority */
   --priority-urgent: #7c3aed;
   --priority-urgent-rgb: 124, 58, 237;
@@ -177,6 +188,16 @@ html.dark {
 
   --shadow-sm: 0 2px 8px -2px rgba(0, 0, 0, 0.4), 0 1px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 8px 24px -4px rgba(0, 0, 0, 0.5), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
+
+  /* Status text on dark surfaces */
+  --color-status-backlog-text: #94a3b8;
+  --color-status-open-text: #60a5fa;
+  --color-status-in-progress-text: #0ea5e9;
+  --color-status-review-text: #f59e0b;
+  --color-status-on-hold-text: #9ca3af;
+  --color-status-blocked-text: #f87171;
+  --color-status-done-text: #10b981;
+  --color-status-planning-text: #a78bfa;
 
   /* Priority — slightly brighter on dark backgrounds */
   --priority-urgent: #a78bfa;

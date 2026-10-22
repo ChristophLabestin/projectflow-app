@@ -45,10 +45,29 @@ All UI components and pages must reference these tokens instead of hardcoding va
 |------|-------|-------------|
 | `--color-text-main` | `#171717` | Primary text color for headlines and body text |
 | `--color-text-muted` | `#737373` | Secondary text for supporting information and metadata |
-| `--color-text-subtle` | `#a3a3a3` | Subtle text for placeholders, hints, and low-emphasis UI |
+| `--color-text-subtle` | `#a3a3a3` | Placeholders, disabled hints and decorative low-emphasis UI only. Never use it for information the user needs to read (counts, dates, captions, empty-state copy) — use `--color-text-muted` (iOS contract C10). |
 | `--color-text-ondark` | `#ffffff` | Text color on dark backgrounds (e.g., primary buttons) |
 
 ### 1.4 Status Colors
+
+**Task status text (AA, contract C10).** The task-status accents `--status-<status>-rgb` are fill colours
+only (pills keep the 12 % tint, dots, bars). Any *text or glyph* that carries a task status must use the
+text tokens, which reach AA on card and surface backgrounds and switch automatically in dark mode:
+
+| Status | `--color-status-<status>-text` light | dark |
+|---|---|---|
+| backlog | `#475569` | `#94a3b8` |
+| open | `#1d4ed8` | `#60a5fa` |
+| in-progress | `#0369a1` | `#0ea5e9` |
+| review | `#b45309` | `#f59e0b` |
+| on-hold | `#4b5563` | `#9ca3af` |
+| blocked | `#b91c1c` | `#f87171` |
+| done | `#047857` | `#10b981` |
+| planning | `#6d28d9` | `#a78bfa` |
+
+Pattern: a component sets `--x-status-rgb` for the fill and `--x-status-text` for the text (see
+`.work-pill--status`, `[data-status]` → `--st-text` in `_project-overview-v2.scss`, `--board-status-text` in the
+board lanes). The iOS app uses the same values as asset-catalog colours.
 
 Use status colors for feedback states only (alerts, badges, validation states). Do not use them as general accents.
 

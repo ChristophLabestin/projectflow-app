@@ -613,23 +613,24 @@
         min-width: 96px;
         justify-content: center;
         --work-status-rgb: var(--status-open-rgb);
+        --work-status-text: var(--color-status-open-text);
         background: rgba(var(--work-status-rgb), 0.12);
-        color: rgb(var(--work-status-rgb));
+        color: var(--work-status-text);
 
         &:hover:not(:disabled),
         &[aria-expanded='true'] {
             background: rgba(var(--work-status-rgb), 0.2);
-            color: rgb(var(--work-status-rgb));
+            color: var(--work-status-text);
         }
     }
 
-    &--backlog { --work-status-rgb: var(--status-backlog-rgb); }
-    &--open { --work-status-rgb: var(--status-open-rgb); }
-    &--in-progress { --work-status-rgb: var(--status-in-progress-rgb); }
-    &--review { --work-status-rgb: var(--status-review-rgb); }
-    &--on-hold { --work-status-rgb: var(--status-on-hold-rgb); }
-    &--blocked { --work-status-rgb: var(--status-blocked-rgb); }
-    &--done { --work-status-rgb: var(--status-done-rgb); }
+    &--backlog { --work-status-rgb: var(--status-backlog-rgb); --work-status-text: var(--color-status-backlog-text); }
+    &--open { --work-status-rgb: var(--status-open-rgb); --work-status-text: var(--color-status-open-text); }
+    &--in-progress { --work-status-rgb: var(--status-in-progress-rgb); --work-status-text: var(--color-status-in-progress-text); }
+    &--review { --work-status-rgb: var(--status-review-rgb); --work-status-text: var(--color-status-review-text); }
+    &--on-hold { --work-status-rgb: var(--status-on-hold-rgb); --work-status-text: var(--color-status-on-hold-text); }
+    &--blocked { --work-status-rgb: var(--status-blocked-rgb); --work-status-text: var(--color-status-blocked-text); }
+    &--done { --work-status-rgb: var(--status-done-rgb); --work-status-text: var(--color-status-done-text); }
 
     &--icon {
         width: 28px;
@@ -644,7 +645,7 @@
 
     &--danger { color: var(--color-error); }
     &--warning { color: var(--color-warning); }
-    &--muted { color: var(--color-text-subtle); }
+    &--muted { color: var(--color-text-muted); }
 
     &--assignee {
         padding: 0 2px;
@@ -770,7 +771,7 @@
 
     &--empty {
         background: var(--color-surface-hover);
-        color: var(--color-text-subtle);
+        color: var(--color-text-muted);
 
         .material-symbols-outlined {
             font-size: 14px;
@@ -903,7 +904,7 @@
     &__empty {
         padding: 10px;
         font-size: 12px;
-        color: var(--color-text-subtle);
+        color: var(--color-text-muted);
     }
 
     &__action {
@@ -1384,7 +1385,7 @@
 
     &__date-label {
         font-size: 11px;
-        color: var(--color-text-subtle);
+        color: var(--color-text-muted);
     }
 
     &__team {

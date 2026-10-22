@@ -151,37 +151,37 @@
 
 .task-detail__status--backlog {
     background: rgba(var(--status-backlog-rgb), 0.12);
-    color: rgb(var(--status-backlog-rgb));
+    color: var(--color-status-backlog-text);
     border-color: rgba(var(--status-backlog-rgb), 0.2);
 }
 
 .task-detail__status--open {
     background: rgba(var(--status-open-rgb), 0.12);
-    color: rgb(var(--status-open-rgb));
+    color: var(--color-status-open-text);
     border-color: rgba(var(--status-open-rgb), 0.2);
 }
 
 .task-detail__status--in-progress {
     background: rgba(var(--status-in-progress-rgb), 0.12);
-    color: rgb(var(--status-in-progress-rgb));
+    color: var(--color-status-in-progress-text);
     border-color: rgba(var(--status-in-progress-rgb), 0.2);
 }
 
 .task-detail__status--review {
     background: rgba(var(--status-review-rgb), 0.12);
-    color: rgb(var(--status-review-rgb));
+    color: var(--color-status-review-text);
     border-color: rgba(var(--status-review-rgb), 0.2);
 }
 
 .task-detail__status--done {
     background: rgba(var(--status-done-rgb), 0.12);
-    color: rgb(var(--status-done-rgb));
+    color: var(--color-status-done-text);
     border-color: rgba(var(--status-done-rgb), 0.2);
 }
 
 .task-detail__status--blocked {
     background: rgba(var(--status-blocked-rgb), 0.12);
-    color: rgb(var(--status-blocked-rgb));
+    color: var(--color-status-blocked-text);
     border-color: rgba(var(--status-blocked-rgb), 0.2);
 }
 
@@ -631,32 +631,32 @@
 
     /* Statuses */
     &.task-detail__status--backlog {
-        color: rgb(var(--status-backlog-rgb));
+        color: var(--color-status-backlog-text);
         &:hover { background: rgba(var(--status-backlog-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-backlog-rgb), 0.12); }
     }
     &.task-detail__status--open {
-        color: rgb(var(--status-open-rgb));
+        color: var(--color-status-open-text);
         &:hover { background: rgba(var(--status-open-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-open-rgb), 0.12); }
     }
     &.task-detail__status--in-progress {
-        color: rgb(var(--status-in-progress-rgb));
+        color: var(--color-status-in-progress-text);
         &:hover { background: rgba(var(--status-in-progress-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-in-progress-rgb), 0.12); }
     }
     &.task-detail__status--review {
-        color: rgb(var(--status-review-rgb));
+        color: var(--color-status-review-text);
         &:hover { background: rgba(var(--status-review-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-review-rgb), 0.12); }
     }
     &.task-detail__status--done {
-        color: rgb(var(--status-done-rgb));
+        color: var(--color-status-done-text);
         &:hover { background: rgba(var(--status-done-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-done-rgb), 0.12); }
     }
     &.task-detail__status--blocked {
-        color: rgb(var(--status-blocked-rgb));
+        color: var(--color-status-blocked-text);
         &:hover { background: rgba(var(--status-blocked-rgb), 0.08); }
         &.task-detail__select-item--selected { background: rgba(var(--status-blocked-rgb), 0.12); }
     }

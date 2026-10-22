@@ -1350,7 +1350,7 @@ html:not(.dark) .po-board {
         padding: 0 0.38rem;
         border-radius: var(--radius-full);
         background: rgba(var(--st-rgb, var(--status-open-rgb)), 0.16);
-        color: color-mix(in srgb, var(--st, var(--color-text-ondark)) 72%, var(--color-text-ondark) 28%);
+        color: var(--st-text, var(--color-text-main));
         font-size: 0.72rem;
         font-weight: 800;
     }
@@ -1513,14 +1513,14 @@ html:not(.dark) .po-board {
    Gives task statuses distinct, coherent colors used across all views.
    Elements opt in via [data-status="..."] which exposes --st / --st-rgb. */
 .po {
-    [data-status="Backlog"] { --st-rgb: var(--status-backlog-rgb); }
-    [data-status="Open"], [data-status="Todo"] { --st-rgb: var(--status-open-rgb); }
-    [data-status="In Progress"] { --st-rgb: var(--status-in-progress-rgb); }
-    [data-status="Review"] { --st-rgb: var(--status-review-rgb); }
-    [data-status="On Hold"] { --st-rgb: var(--status-on-hold-rgb); }
-    [data-status="Blocked"] { --st-rgb: var(--status-blocked-rgb); }
-    [data-status="Done"] { --st-rgb: var(--status-done-rgb); }
-    [data-status="Planning"] { --st-rgb: var(--status-planning-rgb); }
+    [data-status="Backlog"] { --st-rgb: var(--status-backlog-rgb); --st-text: var(--color-status-backlog-text); }
+    [data-status="Open"], [data-status="Todo"] { --st-rgb: var(--status-open-rgb); --st-text: var(--color-status-open-text); }
+    [data-status="In Progress"] { --st-rgb: var(--status-in-progress-rgb); --st-text: var(--color-status-in-progress-text); }
+    [data-status="Review"] { --st-rgb: var(--status-review-rgb); --st-text: var(--color-status-review-text); }
+    [data-status="On Hold"] { --st-rgb: var(--status-on-hold-rgb); --st-text: var(--color-status-on-hold-text); }
+    [data-status="Blocked"] { --st-rgb: var(--status-blocked-rgb); --st-text: var(--color-status-blocked-text); }
+    [data-status="Done"] { --st-rgb: var(--status-done-rgb); --st-text: var(--color-status-done-text); }
+    [data-status="Planning"] { --st-rgb: var(--status-planning-rgb); --st-text: var(--color-status-planning-text); }
 
     [data-status] { --st: rgb(var(--st-rgb)); }
 }
@@ -1528,14 +1528,14 @@ html:not(.dark) .po-board {
 /* Board columns (when grouped by status) */
 .po-board__lane[data-status] {
     .po-board__lane-title::before { background: var(--st, var(--color-text-ondark)); }
-    .po-board__lane-count { background: rgba(var(--st-rgb), 0.16); color: color-mix(in srgb, var(--st) 72%, var(--color-text-ondark) 28%); }
+    .po-board__lane-count { background: rgba(var(--st-rgb), 0.16); color: var(--st-text, var(--color-text-main)); }
 }
 .po-board__task[data-status] { border-left: 0; }
 
 /* List: colored status pill, group dot, row accent */
 .po-list__pill[data-status] {
     background: rgba(var(--st-rgb), 0.14);
-    color: var(--st);
+    color: var(--st-text);
 }
 .po-list__group-dot {
     width: 8px;
@@ -1546,7 +1546,7 @@ html:not(.dark) .po-board {
 }
 .po-list__row[data-status] { box-shadow: inset 3px 0 0 -1px rgba(var(--st-rgb), 0.55); }
 .po-list__select[data-status] {
-    color: var(--st, var(--color-text-main));
+    color: var(--st-text, var(--color-text-main));
     border-color: rgba(var(--st-rgb), 0.45);
     font-weight: 600;
 }
@@ -1554,7 +1554,7 @@ html:not(.dark) .po-board {
 /* Calendar + timeline chips/bars tinted by status */
 .po-calendar__chip[data-status] {
     background: rgba(var(--st-rgb), 0.16);
-    color: var(--st);
+    color: var(--st-text);
 }
 .po-timeline__bar[data-status] {
     background: var(--st, var(--color-primary));
@@ -1605,7 +1605,7 @@ html:not(.dark) .po-board {
             strong { font-size: 13px; color: var(--color-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
             span { font-size: 11px; color: var(--color-text-muted); } }
         &-meta { font-size: 12px; color: var(--color-text-muted); flex-shrink: 0; }
-        &-pct { font-size: 12px; font-weight: 700; color: var(--st, var(--color-text-main)); flex-shrink: 0; }
+        &-pct { font-size: 12px; font-weight: 700; color: var(--st-text, var(--color-text-main)); flex-shrink: 0; }
     }
 }
 
@@ -1623,7 +1623,7 @@ html:not(.dark) .po-board {
     &__flag {
         display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
         padding: 2px 8px; border-radius: var(--radius-full);
-        background: rgba(var(--status-done-rgb), 0.16); color: rgb(var(--status-done-rgb));
+        background: rgba(var(--status-done-rgb), 0.16); color: var(--color-status-done-text);
         margin-bottom: 6px;
     }
     &__title { margin: 0; font-size: 17px; font-weight: 800; color: var(--color-text-main); }
@@ -1642,7 +1642,7 @@ html:not(.dark) .po-board {
     &__metric-head { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--color-text-muted);
         strong { color: var(--color-text-main); font-weight: 700; }
         .is-behind { color: var(--color-error); }
-        .is-ontrack { color: rgb(var(--status-done-rgb)); }
+        .is-ontrack { color: var(--color-status-done-text); }
     }
 
     &__breakdown { display: flex; height: 10px; border-radius: var(--radius-full); overflow: hidden; background: var(--color-surface-hover); }
@@ -1662,7 +1662,7 @@ html:not(.dark) .po-board {
     &__foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid var(--color-surface-border); margin-top: 2px; padding-top: 12px; }
     &__dates { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-muted);
         .material-symbols-outlined { font-size: 15px; } }
-    &__blocked { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--st, var(--color-error));
+    &__blocked { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; color: var(--st-text, var(--color-status-blocked-text));
         .material-symbols-outlined { font-size: 15px; } }
     &__open { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--color-primary); text-decoration: none; &:hover { text-decoration: underline; } }
 
@@ -1696,7 +1696,7 @@ html:not(.dark) .po-board {
     }
     &__stat { display: flex; flex-direction: column; gap: 2px; }
     &__stat-value { font-size: 20px; font-weight: 800; color: var(--color-text-main); line-height: 1;
-        &[data-status] { color: var(--st); } }
+        &[data-status] { color: var(--st-text); } }
     &__stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); }
     &__next {
         margin-left: auto; display: flex; align-items: center; gap: 10px;
@@ -1761,7 +1761,7 @@ html:not(.dark) .po-board {
         p { margin: 4px 0 0; font-size: 13px; color: var(--color-text-muted); } }
     &__badge {
         flex-shrink: 0; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: var(--radius-full);
-        background: rgba(var(--st-rgb), 0.14); color: var(--st, var(--color-text-muted));
+        background: rgba(var(--st-rgb), 0.14); color: var(--st-text, var(--color-text-muted));
     }
 
     &__progress { display: flex; flex-direction: column; gap: 6px; }
@@ -1882,7 +1882,7 @@ html:not(.dark) .po-board {
     &__main { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
     &__name { font-size: 13px; font-weight: 600; color: var(--color-text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     &__status { flex-shrink: 0; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: var(--radius-full);
-        background: rgba(var(--st-rgb), 0.14); color: var(--st, var(--color-text-muted)); }
+        background: rgba(var(--st-rgb), 0.14); color: var(--st-text, var(--color-text-muted)); }
     &__health { flex-shrink: 0; display: inline-flex; align-items: center; gap: 3px; font-size: 11px; font-weight: 600;
         .material-symbols-outlined { font-size: 14px; }
         &.is-risk { color: var(--color-warning); }
