@@ -2383,7 +2383,7 @@ const en = {
     'styleGuide.primitives.stepper.ship.label': 'Ship',
     'styleGuide.primitives.stepper.ship.description': 'Adopt across screens.',
     'marketing.layout.title': 'Online Marketing',
-    'marketing.layout.tabs.blog': 'Example Blog',
+    'marketing.layout.tabs.blog': 'Blog',
     'marketing.layout.tabs.settings': 'Settings',
     'accounting.placeholder.title': 'Accounting Module',
     'accounting.placeholder.description': 'This module is currently under development. It will allow you to manage project finances, invoices, and expenses.',

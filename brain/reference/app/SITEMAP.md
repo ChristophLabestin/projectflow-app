@@ -86,21 +86,7 @@ Base:
 - [x] `/project/:id/initiatives` — Initiative list with direct create CTA, status filters, and search
 - [x] `/project/:id/initiatives/:initiativeId` — Initiative detail page with cardless document-style hero, summary, child tasks, milestones, comments, and activity
 
-### 3.3 Flows & Ideas
-
-Note: In the old routing, `ideas` reused the same components as `flows`.
-
-- [x] `/project/:id/flows` — Flow pipelines list (SCSS refactor, common components + i18n)
-- [~] `/project/:id/flows/:flowId` — Flow detail view (SCSS refactor in progress: product launch stage + analysis dashboard updated)
-- [x] `/project/:id/ideas` — Ideas list (alias/variant of flows) (SCSS refactor, common components + i18n)
-- [x] `/project/:id/ideas/:flowId` — Idea detail view (shared detail component)
-
-### 3.4 Issues
-
-- [x] `/project/:id/issues` – Issues list (SCSS refactor, common components + issue modals aligned)
-- [x] `/project/:id/issues/:issueId` - Issue detail (SCSS refactor, cardless document-style hero, common components + i18n)
-
-### 3.5 Milestones & Sprints
+### 3.3 Milestones & Sprints
 
 - [x] `/project/:id/milestones` - Milestones overview (SCSS refactor, common components + i18n)
 - [x] `/project/:id/sprints` — Sprints (module-gated: `sprints`, SCSS refactor, common components + i18n, confirm modals)
@@ -111,47 +97,17 @@ Note: In the old routing, `ideas` reused the same components as `flows`.
 
 Some project areas require module access. Keep module routing grouped and consistent.
 
-### 4.1 Social Module (module: `social`)
+### 4.1 Marketing Module (module: `marketing`, blog only)
 
-#### 4.1.1 Social Module Shell (within project)
+Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-22; `social` is in `PM_CORE_DEPRECATED_MODULES`.
 
-- [x] `/project/:id/social` (index) — Social dashboard
-- [x] `/project/:id/social/campaigns` — Campaign list
-- [x] `/project/:id/social/campaigns/create` — Create campaign
-- [x] `/project/:id/social/campaigns/edit/:campaignId` — Edit campaign
-- [x] `/project/:id/social/campaigns/:campaignId` — Campaign detail view
-- [x] `/project/:id/social/review/:ideaId` — Social campaign review page
-- [x] `/project/:id/social/posts` — Post list
-- [x] `/project/:id/social/calendar` — Social calendar
-- [x] `/project/:id/social/settings` — Social module settings
-- [x] `/project/:id/social/assets` — Social assets library
-
-#### 4.1.2 Social Standalone Routes (still under project)
-
-These are outside the Social module shell in the old routing.
-
-- [x] `/project/:id/social/create` — Create social post
-- [x] `/project/:id/social/edit/:postId` — Edit social post
-- [x] `/project/:id/social/approvals` — Approvals queue
-- [x] `/project/:id/social/archive` — Social post archive
-
-### 4.2 Marketing Module (module: `marketing`)
-
-- [x] `/project/:id/marketing` (index) — Marketing dashboard
-- [x] `/project/:id/marketing/ads` — Paid ads list
-- [x] `/project/:id/marketing/ads/create` — Create ad campaign
-- [x] `/project/:id/marketing/ads/:campaignId` — Ad campaign detail
-- [x] `/project/:id/marketing/ads/:campaignId/edit` — Edit ad campaign
-- [x] `/project/:id/marketing/email` — Email marketing list
-- [x] `/project/:id/marketing/email/create` — Create email
-- [x] `/project/:id/marketing/email/builder` — Email builder
-- [x] `/project/:id/marketing/recipients` — Recipients list
+- [x] `/project/:id/marketing` (index) — redirects to `blog`
 - [x] `/project/:id/marketing/blog` — Blog list
 - [x] `/project/:id/marketing/blog/create` — Create blog post
 - [x] `/project/:id/marketing/blog/:blogId` — Edit blog post
-- [x] `/project/:id/marketing/settings` — Marketing settings
+- [x] `/project/:id/marketing/settings` — Blog API connection wizard
 
-### 4.3 Accounting Module (module: `accounting`)
+### 4.2 Accounting Module (module: `accounting`)
 
 - [x] `/project/:id/accounting` — Accounting placeholder / module entry
 
@@ -168,8 +124,6 @@ These are outside the Social module shell in the old routing.
 
 - Tailwind -> SCSS migration: audit complete; shared component refactor in progress; keep the Tailwind CDN until remaining utility classes are replaced.
 - `/register` currently points to the same component as `/login` in the old implementation.
-- `ideas` and `flows` shared components and detail views. Keep this intentional (alias) or split it if product requirements change.
-- Social has both nested (module-shell) routes and standalone routes under the same prefix. If you redesign routing, consider consolidating them under the social shell for consistency.
 
 ---
 
@@ -188,7 +142,6 @@ These are outside the Social module shell in the old routing.
 - [ ] web/components/modals/PasskeySetupModal.tsx - Passkey setup modal
 - [ ] web/components/modals/TwoFactorChallengeModal.tsx - 2FA challenge modal
 - [ ] web/components/modals/TwoFactorSetupModal.tsx - 2FA setup modal
-- [ ] web/components/flows/InitiativeConversionModal.tsx - Initiative conversion modal
 - [x] web/components/InitiativeCreateModal.tsx - Initiative create modal
 - [x] web/screens/ProjectInitiatives.tsx - Initiative list page
 - [x] web/screens/ProjectInitiativeDetail.tsx - Initiative detail page (includes explicit focus action)
@@ -206,8 +159,6 @@ These are outside the Social module shell in the old routing.
 - [x] web/components/Milestones/MilestoneDetailModal.tsx - Milestone detail modal (SCSS)
 - [x] web/components/project/ProjectEditModal.tsx - Project edit modal (SCSS)
 - [x] web/components/ProjectLabelsModal.tsx - Project labels modal (SCSS)
-- [x] web/components/flows/CreateFlowModal.tsx - Flow create modal (SCSS)
-- [x] web/components/flows/stages/ReviewTimelineModal.tsx - Review timeline modal (SCSS)
 - [x] web/components/CreateProjectModal.tsx - Project create wizard modal wrapper (SCSS, preserves existing wizard scale)
 
 ---

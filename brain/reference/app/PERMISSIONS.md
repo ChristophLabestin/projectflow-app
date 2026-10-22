@@ -41,7 +41,7 @@ Permissions are evaluated by context:
 1) Tenant (workspace)
 2) Project
 3) Module within project
-4) Resource (task/flow/issue/etc.)
+4) Resource (task/initiative/etc.)
 
 ### 1.3 Entitlements vs Permissions
 Subscription constraints (Starter/Professional/Organization) are enforced separately.
@@ -153,7 +153,7 @@ Protected operations:
 Stable string identifiers such as:
 - `tenant.members.invite`
 - `project.tasks.create`
-- `project.social.posts.publish`
+- `project.marketing.blog.edit`
 
 ### 4.2 Allow/Deny Sets
 Configurable roles and overrides store:
@@ -362,97 +362,21 @@ Important:
 
 ---
 
-## 8.13 Project — Flows (Signature Feature)
-
-### Core Flow Actions
-- `project.flows.view` — View flows list and flow details
-- `project.flows.create` — Create flows
-- `project.flows.edit` — Edit flow content (subject to ownership policy if enforced)
-- `project.flows.delete` — Delete flows
-- `project.flows.comment` — Comment on flows
-- `project.flows.attachFiles` — Attach files/media to flows (via MediaLibraryModal)
-
-### Pipeline Progression
-- `project.flows.advanceStep` — Move flow to the next pipeline step
-- `project.flows.revertStep` — Move flow to a previous step
-- `project.flows.setStep` — Set flow to any step (jump; high power)
-
-### Review & Approval
-- `project.flows.requestReview` — Mark/request review for a flow
-- `project.flows.approve` — Approve a flow review
-- `project.flows.reject` — Reject a flow review
-
-### Handoff / Conversion
-- `project.flows.handoffToTasks` — Convert/handoff flow results into initiatives/tasks
-- `project.flows.handoffToSocial` — Handoff flow to Social module (campaign/post pipeline)
-- `project.flows.handoffToMarketing` — Handoff flow to Marketing module (email/blog/ads)
+## 8.13 Project — Initiatives
 
 ### Initiatives
 
 - `project.initiatives.view` — View initiative list and initiative detail pages
-- `project.initiatives.create` — Create initiatives directly or from flow conversion
+- `project.initiatives.create` — Create initiatives
 - `project.initiatives.edit` — Edit initiative fields and summary context
 - `project.initiatives.delete` — Delete initiatives
 - `project.initiatives.manageTasks` — Attach, detach, or create child tasks within an initiative
-- `project.flows.convertToInitiatives` — Convert approved flow ideas into initiative records
 
 ---
 
-## 8.14 Project — Issues (Module: Issues)
-- `project.issues.view` — View issues
-- `project.issues.create` — Create issues
-- `project.issues.edit` — Edit issues
-- `project.issues.delete` — Delete issues
-- `project.issues.assign` — Assign/unassign issues
-- `project.issues.changeStatus` — Change issue status/state
-- `project.issues.comment` — Comment on issues
-- `project.issues.linkGithub` — Link issue to GitHub
-- `project.issues.unlinkGithub` — Unlink issue from GitHub
+## 8.14 Project — Marketing (Module: Marketing, blog only)
 
----
-
-## 8.15 Project — Social (Module: Social)
-
-### Accounts / Integrations
-- `project.social.accounts.view` — View connected social accounts
-- `project.social.accounts.connect` — Connect a social account
-- `project.social.accounts.disconnect` — Disconnect a social account
-
-### Campaigns
-- `project.social.campaigns.view` — View campaigns
-- `project.social.campaigns.create` — Create campaigns
-- `project.social.campaigns.edit` — Edit campaigns
-- `project.social.campaigns.delete` — Delete campaigns
-
-### Posts
-- `project.social.posts.view` — View posts
-- `project.social.posts.create` — Create posts
-- `project.social.posts.edit` — Edit posts
-- `project.social.posts.delete` — Delete posts
-- `project.social.posts.schedule` — Schedule posts
-- `project.social.posts.publish` — Publish posts (high-risk)
-- `project.social.posts.approve` — Approve posts (approval workflow)
-- `project.social.posts.archive` — Archive posts
-
-### Social Assets
-- `project.social.assets.manage` — Manage social assets (selection, grouping, metadata); uses MediaLibraryModal
-
----
-
-## 8.16 Project — Marketing (Module: Marketing)
-
-### Paid Ads
-- `project.marketing.ads.view` — View paid ad campaigns
-- `project.marketing.ads.create` — Create ad campaigns
-- `project.marketing.ads.edit` — Edit ad campaigns
-- `project.marketing.ads.delete` — Delete ad campaigns
-
-### Email Marketing
-- `project.marketing.email.view` — View email campaigns
-- `project.marketing.email.create` — Create email campaigns
-- `project.marketing.email.edit` — Edit email campaigns
-- `project.marketing.email.send` — Send email campaigns (high-risk)
-- `project.marketing.email.manageRecipients` — Manage recipient lists
+Removed 2026-10-22: `project.social.*` (module removed), `project.marketing.ads.*`, `project.marketing.email.*`, `project.flows.*`, `project.issues.*`.
 
 ### Blog / Content
 - `project.marketing.blog.view` — View blog posts
@@ -487,7 +411,7 @@ Important:
 ## 8.19 Project — Media / Assets (Project-context usage)
 
 These permissions govern using the tenant media library **from within a project context**.
-This is what you typically check when opening the **MediaLibraryModal** from tasks/flows/social/marketing inside a project.
+This is what you typically check when opening the **MediaLibraryModal** from tasks/marketing inside a project.
 Keeping these separate from `tenant.media.*` allows externals to work in a project without granting tenant membership.
 
 - `project.media.view` — Browse/select assets within the project context (via MediaLibraryModal)

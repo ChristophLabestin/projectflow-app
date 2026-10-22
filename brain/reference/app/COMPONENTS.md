@@ -122,7 +122,7 @@ Example usage:
 
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
-| `DataTable` | Tabular display | Members, tasks, campaigns | Sorting/paging optional |
+| `DataTable` | Tabular display | Members, tasks, projects | Sorting/paging optional |
 | `ListRow` | Consistent list item | Tasks, projects | |
 | `KeyValue` | Small metadata block | Details pages | |
 | `TaskRelationshipsPanel` | Task-to-task relationship editor | Project task detail inspector | Uses `dependencies` for blocked-by links, derives is-blocking links from inverse dependencies, edits `parentTaskId` for task hierarchy, and auto-marks blocked tasks as `Blocked`. |
@@ -185,9 +185,7 @@ No feature should implement an isolated file picker/upload flow outside of this 
 
 #### Where it must be used
 - Task attachments
-- Flow attachments
-- Social post media selection
-- Marketing emails/blog assets
+- Blog assets
 - Project/tenant branding/logo selection
 - Any future feature requiring images/files
 

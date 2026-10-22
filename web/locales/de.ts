@@ -2199,7 +2199,7 @@ const de = {
 
     'roles.permissions.role.manage': 'Rollen verwalten',
     'marketing.layout.title': 'Online Marketing',
-    'marketing.layout.tabs.blog': 'Beispiel-Blog',
+    'marketing.layout.tabs.blog': 'Blog',
     'marketing.layout.tabs.settings': 'Einstellungen',
     'accounting.placeholder.title': 'Buchhaltungsmodul',
     'accounting.placeholder.description': 'Dieses Modul ist aktuell in Entwicklung. Es wird dir die Verwaltung von Projektfinanzen, Rechnungen und Ausgaben ermöglichen.',
