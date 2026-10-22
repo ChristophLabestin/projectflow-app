@@ -1,5 +1,6 @@
 import { parseDateValue } from '../utils/taskDates';
 ﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { TASK_TITLE_MAX_LENGTH } from '../utils/taskLimits';
 import { createPortal } from 'react-dom';
 import { format } from 'date-fns';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
@@ -290,7 +291,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, allowPro
                             onChange={handleTitleChange}
                             placeholder={t('tasks.quickAdd.placeholder')}
                             autoFocus
-                            maxLength={100}
+                            maxLength={TASK_TITLE_MAX_LENGTH}
                             aria-label={t('tasks.quickAdd.placeholder')}
                             className="task-create__title-input"
                         />

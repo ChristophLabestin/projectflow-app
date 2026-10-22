@@ -1,3 +1,4 @@
+import { TASK_TITLE_MAX_LENGTH } from '../utils/taskLimits';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Task } from '../types';
@@ -78,6 +79,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                             onChange={(e) => setTitle(e.target.value)}
                             placeholder={t('editTaskModal.fields.titlePlaceholder')}
                             required
+                            maxLength={TASK_TITLE_MAX_LENGTH}
                             className="text-lg font-medium"
                         />
 

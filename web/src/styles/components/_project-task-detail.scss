@@ -110,6 +110,8 @@
     font-weight: 850;
     line-height: 1.15;
     text-wrap: balance;
+    overflow-wrap: anywhere;
+    min-width: 0;
 
     @media (min-width: 768px) {
         font-size: 40px;
@@ -509,6 +511,8 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .task-detail__sidebar-label {
@@ -913,6 +917,8 @@
 }
 
 .task-detail__linked-row {
+    min-width: 0;
+    overflow-wrap: anywhere;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -968,6 +974,9 @@
 }
 
 .task-detail__detail-row {
+    min-width: 0;
+    gap: 12px;
+    overflow-wrap: anywhere;
     display: flex;
     justify-content: space-between;
     align-items: center;

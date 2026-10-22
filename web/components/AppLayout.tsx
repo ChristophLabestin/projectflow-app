@@ -91,6 +91,11 @@ export const AppLayout = () => {
         });
     }, [project, user?.uid]);
 
+    // Close the mobile drawer on every navigation (including same-path / query-only changes).
+    useEffect(() => {
+        setNavOpen(false);
+    }, [location.key, location.pathname, location.search]);
+
     // Close nav on route change
     useEffect(() => {
         setNavOpen(false);

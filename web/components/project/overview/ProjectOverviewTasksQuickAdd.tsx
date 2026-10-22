@@ -1,3 +1,4 @@
+import { TASK_TITLE_MAX_LENGTH } from '../../../utils/taskLimits';
 import React, { useState } from 'react';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -39,6 +40,7 @@ export const ProjectOverviewTasksQuickAdd: React.FC<ProjectOverviewTasksQuickAdd
                 onChange={(event) => setTitle(event.target.value)}
                 placeholder={t('projectOverview.workspace.quickAdd.placeholder')}
                 disabled={submitting || disabled}
+                maxLength={TASK_TITLE_MAX_LENGTH}
                 aria-label={t('projectOverview.workspace.quickAdd.placeholder')}
             />
             {hasTitle && (
