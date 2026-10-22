@@ -68,3 +68,9 @@ After completing a task, run the build for the surface touched:
 - Functions work: `cd functions && npm run build`
 
 Documentation-only Brain migrations do not require an app build unless code, rules, functions, or generated assets changed.
+
+## CI/CD Secrets
+
+`.github/workflows/ci.yml` (PR + main + manual) runs web lint/test/build, functions lint/build and Firestore rules tests (needs Java). `firebase-hosting-deploy.yml` runs only via `workflow_run` after CI succeeded on a `main` push, or manually (`workflow_dispatch`).
+
+Required GitHub secrets: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`, `VITE_FIREBASE_MEASUREMENT_ID`, `VITE_FIREBASE_DATABASE_URL`, `VITE_FIREBASE_VAPID_KEY`, `VITE_SENTRY_DSN` (optional; no DSN = error reporting is a no-op), `FIREBASE_SERVICE_ACCOUNT_PROJECTFLOW_LABESTIN`. Typecheck is still non-blocking until the TS error backlog is cleared.
