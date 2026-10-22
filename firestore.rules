@@ -79,16 +79,6 @@ service cloud.firestore {
       );
     }
 
-    // Legacy top-level social collections predate tenant scoping.
-    function canAccessLegacyDoc(data) {
-      return authed() && (
-        canAccessScopedDoc(data) ||
-        (('ownerId' in data) && data.ownerId == request.auth.uid) ||
-        (('createdBy' in data) && data.createdBy == request.auth.uid) ||
-        (('userId' in data) && data.userId == request.auth.uid)
-      );
-    }
-
     // The creator of a brand-new workspace adds themselves as Owner in the
     // same batch as the tenant doc (getAfter sees the pending tenant write).
     function isOwnerBootstrap(tenantId, userId) {
@@ -105,6 +95,28 @@ service cloud.firestore {
       return isTenantAdmin(tenantId) &&
         fromRole != 'Owner' && toRole != 'Owner' &&
         (isOwner(tenantId) || (fromRole != 'Admin' && toRole != 'Admin'));
+    }
+
+    // Data of the removed Social and Marketing (email, ads, recipients)
+    // modules. Kept in Firestore but closed to clients; social_integrations
+    // holds platform access tokens. Admin SDK (functions) is unaffected.
+    function isRetiredProjectCollection(name) {
+      return name in [
+        'socialCampaigns',
+        'socialPosts',
+        'socialAssets',
+        'social_integrations',
+        'social_strategy',
+        'caption_presets',
+        'paidAds',
+        'emailTemplates',
+        'email_templates',
+        'email_components',
+        'marketing_recipients',
+        'marketing_recipient_columns',
+        'marketing_groups',
+        'marketing_group_columns'
+      ];
     }
 
     function canSelfUpdateMembership(userId) {
@@ -262,10 +274,12 @@ service cloud.firestore {
         // At least one segment below the project: `/{document=**}` alone also
         // matches the project doc itself and would bypass the delete rule above.
         match /{subcollection}/{document=**} {
-          allow read: if canAccessProjectById(tenantId, projectId);
+          allow read: if canAccessProjectById(tenantId, projectId) &&
+            !isRetiredProjectCollection(subcollection);
           // No writes below a missing project: a still-open page must not
           // recreate orphaned subcollections after the project was deleted.
-          allow write: if canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId);
+          allow write: if canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId) &&
+            !isRetiredProjectCollection(subcollection);
         }
       }
 
@@ -332,37 +346,6 @@ service cloud.firestore {
 
     match /{path=**}/initiatives/{initiativeId} {
       allow read: if canAccessScopedDoc(resource.data);
-    }
-
-    // Legacy top-level social collections. New writes should be project-scoped.
-    match /social_campaigns/{docId} {
-      allow read: if canAccessLegacyDoc(resource.data);
-      allow create: if canAccessLegacyDoc(request.resource.data);
-      allow update, delete: if canAccessLegacyDoc(resource.data);
-    }
-
-    match /social_posts/{docId} {
-      allow read: if canAccessLegacyDoc(resource.data);
-      allow create: if canAccessLegacyDoc(request.resource.data);
-      allow update, delete: if canAccessLegacyDoc(resource.data);
-    }
-
-    match /social_assets/{docId} {
-      allow read: if canAccessLegacyDoc(resource.data);
-      allow create: if canAccessLegacyDoc(request.resource.data);
-      allow update, delete: if canAccessLegacyDoc(resource.data);
-    }
-
-    match /caption_presets/{docId} {
-      allow read: if canAccessLegacyDoc(resource.data);
-      allow create: if canAccessLegacyDoc(request.resource.data);
-      allow update, delete: if canAccessLegacyDoc(resource.data);
-    }
-
-    match /social_strategy/{docId} {
-      allow read: if canAccessLegacyDoc(resource.data);
-      allow create: if canAccessLegacyDoc(request.resource.data);
-      allow update, delete: if canAccessLegacyDoc(resource.data);
     }
   }
 }

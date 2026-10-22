@@ -35,6 +35,7 @@ const seedData = async (testEnv) => {
             memberIds: ['ownerA', 'guestA'],
         });
         await set(`${PROJECT}/tasks/taskA`, { title: 'Task A', tenantId: 'tenantA', projectId: 'projectA' });
+        await set(`${PROJECT}/social_integrations/instagram`, { platform: 'Instagram', accessToken: 'secret' });
         await set(MEMBER_PROJECT, {
             title: 'Member project',
             tenantId: 'tenantA',
@@ -116,6 +117,12 @@ const run = async () => {
         await check('member deletes a task', 'allow', () => member.doc(`${PROJECT}/tasks/taskA`).delete());
         await check('member adds a project member', 'allow', () =>
             member.doc(PROJECT).update({ memberIds: ['ownerA', 'guestA', 'memberA'] }));
+
+        // Retired Social/Marketing data stays in Firestore but is closed to clients
+        await check('owner cannot read retired social tokens', 'deny', () =>
+            owner.doc(`${PROJECT}/social_integrations/instagram`).get());
+        await check('member cannot write retired marketing recipients', 'deny', () =>
+            member.doc(`${PROJECT}/marketing_recipients/r1`).set({ email: 'a@example.com' }));
 
         // Project ownership and deletion (regression: the project-level
         // wildcard used to match the project doc itself)
