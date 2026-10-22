@@ -10,6 +10,7 @@ import { ProfileSettingsModal } from '../components/ProfileSettingsModal';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
 import { initialOf } from '../utils/initials';
+import { localizeActivityAction } from '../utils/activityText';
 
 export const Profile = () => {
     const user = auth.currentUser;
@@ -290,7 +291,7 @@ export const Profile = () => {
                                                         </div>
                                                         <div className="pb-4">
                                                             <p className="text-sm text-main">
-                                                                <span className="font-semibold">{activity.action}</span>
+                                                                <span className="font-semibold">{localizeActivityAction(activity.action, t)}</span>
                                                                 <span className="text-muted"> {activity.target}</span>
                                                             </p>
                                                             <p className="text-xs text-muted mt-1">
@@ -389,7 +390,7 @@ export const Profile = () => {
                                                 </div>
                                                 <div>
                                                     <div className="text-sm font-medium text-main">
-                                                        {activity.user} <span className="font-normal text-muted">{activity.action}</span>
+                                                        {activity.user} <span className="font-normal text-muted">{localizeActivityAction(activity.action, t)}</span>
                                                     </div>
                                                     <div className="text-sm text-main mb-1">{activity.target}</div>
                                                     <div className="text-xs text-muted">

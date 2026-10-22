@@ -5,6 +5,7 @@ import type { ProjectHealth } from '../../../../services/healthService';
 import { Badge } from '../../../common/Badge/Badge';
 import type { OverviewDerived } from '../hooks/useProjectOverviewDerived';
 import type { OverviewMember } from '../hooks/useProjectMembers';
+import { translateProjectStatus } from '../../../../utils/projectStatus';
 import { initialOf } from '../../../../utils/initials';
 
 type BadgeVariant = 'neutral' | 'success' | 'warning' | 'error';
@@ -101,7 +102,7 @@ export const ProjectHero: React.FC<ProjectHeroProps> = ({
     }, [menuOpen]);
 
     const statusVariant = STATUS_VARIANT[project.status] || 'neutral';
-    const statusLabel = t(`status.${project.status}`, project.status);
+    const statusLabel = translateProjectStatus(t, project.status);
     const hasCover = Boolean(project.coverImage);
     const purpose = project.description?.trim();
     const initial = initialOf(project.title);

@@ -1281,7 +1281,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                             </section>
 
                             <section className="p-6 rounded-2xl bg-surface-card shadow-sm space-y-5">
-                                <h3 className="text-lg font-bold text-main">Regional formatting</h3>
+                                <h3 className="text-lg font-bold text-main">{t('settings.preferences.regional.title')}</h3>
                                 <div>
                                     <Select
                                         label={t('settings.preferences.dateFormat.label')}

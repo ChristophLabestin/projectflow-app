@@ -456,7 +456,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                     : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
                             `}
                         >
-                            Send
+                            {t('common.send')}
                         </button>
                     </div>
                 </div>

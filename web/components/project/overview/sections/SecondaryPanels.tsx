@@ -5,6 +5,7 @@ import { Badge } from '../../../common/Badge/Badge';
 import { timeAgo } from '../../../../utils/time';
 import type { Activity, Milestone, Sprint } from '../../../../types';
 import { parseDateValue } from '../../../../utils/taskDates';
+import { localizeActivityAction } from '../../../../utils/activityText';
 
 type Common = {
     dateFormat: string;
@@ -106,7 +107,7 @@ export const ActivityPanel: React.FC<Common & { activity: Activity[] }> = ({ act
                             : 'bolt'}
                     </span>
                     <div className="po-activity__copy">
-                        <span className="po-activity__text"><strong>{entry.user}</strong> {entry.action} {entry.target}</span>
+                        <span className="po-activity__text"><strong>{entry.user}</strong> {localizeActivityAction(entry.action, t)} {entry.target}</span>
                         {entry.createdAt && <span className="po-activity__time">{timeAgo(entry.createdAt)}</span>}
                     </div>
                 </div>

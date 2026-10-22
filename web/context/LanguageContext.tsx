@@ -428,9 +428,11 @@ export function LanguageProvider({
         const stored = localStorage.getItem(storageKey);
         return isValidLanguage(stored) ? stored : defaultLanguage;
     });
-    const [dateFormat, setDateFormatState] = useState<DateFormat>(
-        () => (localStorage.getItem('pf-date-format') as DateFormat) || 'MM/dd/yyyy'
+    // Without an explicit preference the date format follows the UI language (de -> dd.MM.yyyy).
+    const [dateFormatPreference, setDateFormatState] = useState<DateFormat | null>(
+        () => (localStorage.getItem('pf-date-format') as DateFormat) || null
     );
+    const dateFormat: DateFormat = dateFormatPreference ?? (language === 'de' ? 'dd.MM.yyyy' : 'MM/dd/yyyy');
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {

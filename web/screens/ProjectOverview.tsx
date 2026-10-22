@@ -326,6 +326,7 @@ const resolveResumeStatus = (status?: ProjectStatus): ResumableProjectStatus => 
 
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
 import { initialOf } from '../utils/initials';
+import { localizeActivityAction } from '../utils/activityText';
 
 const OVERVIEW_CARD_ORDER: ProjectOverviewCardId[] = [
     'executionTasks',
@@ -2390,7 +2391,7 @@ const ProjectOverviewLegacy = () => {
                                         </div>
                                         <div className="activity-content">
                                             <p className="activity-text">
-                                                <span className="activity-user">{item.user}</span> {item.action}
+                                                <span className="activity-user">{item.user}</span> {localizeActivityAction(item.action, t)}
                                             </p>
                                             <p className="activity-time">{timeAgo(item.createdAt)}</p>
                                         </div>

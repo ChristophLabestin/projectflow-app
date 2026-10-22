@@ -27,6 +27,7 @@ import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { getInitiativeById } from '../services/dataService';
 import { AdvancedEditorRuntime } from '../components/editor/AdvancedEditorRuntime';
 import { parseDateValue } from '../utils/taskDates';
+import { localizeActivityAction } from '../utils/activityText';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -1222,7 +1223,7 @@ const ActivityList: React.FC<{ activities: Activity[]; compact: boolean }> = ({ 
                         </div>
                         <div className="task-detail__activity-content">
                             <div>
-                                <strong>{item.user}</strong> <span>{item.action}</span>
+                                <strong>{item.user}</strong> <span>{localizeActivityAction(item.action, t)}</span>
                             </div>
                             <time>{timeAgo(item.createdAt)}</time>
                         </div>

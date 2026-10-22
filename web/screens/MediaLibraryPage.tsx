@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 import { storage, auth } from '../services/firebase';
 import { ref, listAll, getDownloadURL, deleteObject, uploadBytes } from 'firebase/storage';
 import { getAllWorkspaceProjects } from '../services/dataService';
@@ -35,6 +36,7 @@ export const MediaLibraryPage: React.FC = () => {
     const fileInputRef = React.useRef<HTMLInputElement>(null);
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     const currentUser = auth.currentUser;
 
@@ -152,10 +154,10 @@ export const MediaLibraryPage: React.FC = () => {
 
             const newAssets = await Promise.all(uploadPromises);
             setAssets(prev => [...prev, ...newAssets]);
-            showSuccess(`Successfully uploaded ${files.length} ${files.length === 1 ? 'file' : 'files'}.`);
+            showSuccess(t('mediaPage.toast.uploaded').replace('{count}', String(files.length)));
         } catch (error) {
             console.error("Upload failed:", error);
-            showError("Failed to upload media. Please try again.");
+            showError(t('mediaPage.toast.uploadFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -193,8 +195,8 @@ export const MediaLibraryPage: React.FC = () => {
 
     const handleDelete = async (asset: MediaAsset) => {
         const confirmed = await confirm(
-            "Delete Asset?",
-            `Are you sure you want to delete "${asset.name}"? This action cannot be undone.`
+            t('mediaPage.delete.title'),
+            t('mediaPage.delete.message').replace('{name}', asset.name)
         );
         if (!confirmed) return;
 
@@ -211,10 +213,10 @@ export const MediaLibraryPage: React.FC = () => {
                 await deleteObject(storageRef);
             }
             setAssets(prev => prev.filter(a => a.id !== asset.id));
-            showSuccess(`"${asset.name}" has been deleted.`);
+            showSuccess(t('mediaPage.toast.deleted').replace('{name}', asset.name));
         } catch (error) {
             console.error("Delete failed:", error);
-            showError("Failed to delete asset.");
+            showError(t('mediaPage.toast.deleteFailed'));
         }
     };
 
@@ -252,11 +254,11 @@ export const MediaLibraryPage: React.FC = () => {
             };
 
             setAssets(prev => [...prev, newAsset]);
-            showSuccess("Edited image saved as new.");
+            showSuccess(t('mediaPage.toast.editedSaved'));
             setEditingImage(null);
         } catch (error) {
             console.error("Save as new failed:", error);
-            showError("Failed to save edited image.");
+            showError(t('mediaPage.toast.editedFailed'));
         } finally {
             setLoading(false);
         }
@@ -299,7 +301,7 @@ export const MediaLibraryPage: React.FC = () => {
                         : a
                 ));
 
-                showSuccess("Image replaced successfully.");
+                showSuccess(t('mediaPage.toast.replaced'));
                 setEditingImage(null);
                 return;
             }
@@ -315,11 +317,11 @@ export const MediaLibraryPage: React.FC = () => {
                 a.id === editingImage.id ? { ...a, url: finalUrl, thumbnailUrl: finalUrl } : a
             ));
 
-            showSuccess("Image replaced successfully.");
+            showSuccess(t('mediaPage.toast.replaced'));
             setEditingImage(null);
         } catch (error) {
             console.error("Replace failed:", error);
-            showError("Failed to replace image.");
+            showError(t('mediaPage.toast.replaceFailed'));
         } finally {
             setLoading(false);
         }
@@ -329,7 +331,7 @@ export const MediaLibraryPage: React.FC = () => {
         return (
             <div className="flex flex-col items-center justify-center p-20 gap-4">
                 <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-                <p className="text-muted font-medium">Loading your media library...</p>
+                <p className="text-muted font-medium">{t('mediaPage.loading')}</p>
             </div>
         );
     }
@@ -341,11 +343,11 @@ export const MediaLibraryPage: React.FC = () => {
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-primary font-black tracking-widest text-xs uppercase">
                         <span className="h-px w-8 bg-primary/30" />
-                        Workspace
+                        {t('mediaPage.eyebrow')}
                     </div>
-                    <h1 className="text-4xl font-black text-main tracking-tight">Media Library</h1>
+                    <h1 className="text-4xl font-black text-main tracking-tight">{t('mediaPage.title')}</h1>
                     <p className="text-muted max-w-lg font-medium">
-                        All your project assets in one place, synchronized and ready for use.
+                        {t('mediaPage.subtitle')}
                     </p>
                 </div>
 
@@ -353,7 +355,7 @@ export const MediaLibraryPage: React.FC = () => {
                     {isUploading && (
                         <div className="flex items-center gap-2 px-4 py-2 bg-surface-hover rounded-xl border border-surface animate-pulse">
                             <span className="material-symbols-outlined text-[18px] animate-spin text-primary">progress_activity</span>
-                            <span className="text-xs font-bold text-muted">Uploading...</span>
+                            <span className="text-xs font-bold text-muted">{t('mediaPage.uploading')}</span>
                         </div>
                     )}
                     <Button
@@ -363,7 +365,7 @@ export const MediaLibraryPage: React.FC = () => {
                         className="bg-primary hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20"
                     >
                         <span className="material-symbols-outlined text-[20px] mr-2">upload</span>
-                        Upload Media
+                        {t('mediaPage.upload')}
                     </Button>
                 </div>
             </div>
@@ -382,9 +384,9 @@ export const MediaLibraryPage: React.FC = () => {
                     <div className="size-20 rounded-2xl bg-surface-hover flex items-center justify-center mb-6">
                         <span className="material-symbols-outlined text-4xl text-muted">perm_media</span>
                     </div>
-                    <h3 className="text-xl font-bold text-main mb-2">Your library is empty</h3>
+                    <h3 className="text-xl font-bold text-main mb-2">{t('mediaPage.empty.title')}</h3>
                     <p className="text-muted max-w-sm font-medium">
-                        Images you upload in your projects or generate with AI will appear here.
+                        {t('mediaPage.empty.description')}
                     </p>
                 </div>
             ) : (
@@ -413,18 +415,18 @@ export const MediaLibraryPage: React.FC = () => {
                                 <div>
                                     <Link to={`/project/${pid}`} className="hover:underline decoration-[var(--color-primary)]">
                                         <h2 className="text-xl font-bold text-main hover:text-primary transition-colors">
-                                            {group.project?.title || 'Uncategorized Workspace Assets'}
+                                            {group.project?.title || t('mediaPage.uncategorized')}
                                         </h2>
                                     </Link>
                                     <p className="text-xs text-muted font-bold uppercase tracking-wider">
-                                        {group.assets.length} {group.assets.length === 1 ? 'Asset' : 'Assets'}
+                                        {group.assets.length} {group.assets.length === 1 ? t('mediaPage.asset.one') : t('mediaPage.asset.other')}
                                     </p>
                                 </div>
                                 <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
                                 <button
                                     onClick={() => triggerUpload(pid)}
                                     disabled={isUploading}
-                                    title={`Upload to ${group.project?.title || 'Workspace'}`}
+                                    title={t('mediaPage.uploadTo').replace('{name}', group.project?.title || t('mediaPage.eyebrow'))}
                                     className="p-2 rounded-lg text-muted hover:text-primary hover:bg-primary/5 transition-all disabled:opacity-30"
                                 >
                                     <span className="material-symbols-outlined text-[22px]">cloud_upload</span>

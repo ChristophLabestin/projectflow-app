@@ -20,6 +20,7 @@ import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
 import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
+import { translateProjectStatus } from '../utils/projectStatus';
 import { initialOf } from '../utils/initials';
 
 const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
@@ -446,7 +447,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                     {project.status && (
                         <span className="snav-ws-row__meta">
                             <span className={`snav-dot snav-dot--${statusTone(project.status)}`} aria-hidden="true" />
-                            {project.status}
+                            {translateProjectStatus(t, project.status)}
                         </span>
                     )}
                 </div>

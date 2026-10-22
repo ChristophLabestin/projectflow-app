@@ -9,6 +9,7 @@ import { activityIcon, filterActivities, groupActivitiesByDate } from '../utils/
 import { useLanguage } from '../context/LanguageContext';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
+import { localizeActivityAction } from '../utils/activityText';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
@@ -169,7 +170,7 @@ export const ProjectActivity = () => {
                                                                 )}
                                                                 <span className="project-activity__user-name">{item.user}</span>
                                                             </div>
-                                                            <span className="project-activity__action">{item.action}</span>
+                                                            <span className="project-activity__action">{localizeActivityAction(item.action, t)}</span>
                                                             <span className="project-activity__target">{cleanText(item.target)}</span>
                                                         </div>
                                                         <span className="project-activity__time">
