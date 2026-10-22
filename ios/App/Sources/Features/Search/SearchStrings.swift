@@ -1,5 +1,57 @@
-// Copy for the Search feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them.
+// Copy for the Search feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them
+// (`search.*` keys are the web's where the text is the same).
 enum SearchStrings {
-    static let de: [String: String] = [:]
-    static let en: [String: String] = [:]
+    static let de: [String: String] = [
+        "search.placeholder": "Projekte, Aufgaben, Befehle…",
+        "search.clear": "Suche leeren",
+        "search.loading": "Weitere Aufgaben werden geladen…",
+        "search.moreResults": "{count} weitere – grenze die Suche ein",
+        "search.noResults": "Keine Ergebnisse für „{query}“",
+        "search.noResultsHint": "Versuche weniger Wörter, einen anderen Filter oder ein Präfix wie > für Aktionen.",
+        "search.scope.all": "Alle", "search.scope.tasks": "Aufgaben", "search.scope.commands": "Befehle",
+        "search.section.recent": "Zuletzt geöffnet", "search.section.recentQueries": "Letzte Suchen",
+        "search.section.actions": "Aktionen", "search.clearRecent": "Leeren",
+        "search.page.profile": "Konto & Einstellungen", "search.page.team": "Team",
+        "search.action.newTask": "Aufgabe erstellen", "search.action.openProject": "Projekt öffnen",
+        "search.action.darkMode": "Zum dunklen Design wechseln", "search.action.lightMode": "Zum hellen Design wechseln",
+        "search.action.copyLink": "Link zu dieser Seite kopieren",
+        "search.tips.title": "Such-Tipps", "search.tips.commands": "Aktionen", "search.tips.projects": "Projekte",
+        "search.tips.tasks": "Aufgaben", "search.tips.help": "Hilfe", "search.tips.overdue": "Überfällig",
+        "search.tips.mine": "Mir zugewiesen", "search.tips.priority": "Hohe Priorität",
+        "search.help.commands": "Befehle und Seiten", "search.help.projects": "Nur Projekte", "search.help.tasks": "Nur Aufgaben",
+        "search.help.open": "Offene Aufgaben", "search.help.done": "Erledigte Aufgaben", "search.help.overdue": "Überfällige Aufgaben",
+        "search.help.today": "Heute fällige Aufgaben", "search.help.mine": "Mir zugewiesene Aufgaben",
+        "search.help.prio": "Nach Priorität (urgent, high, medium, low)",
+        "search.projectStatus.Active": "Aktiv", "search.projectStatus.In Testing": "Im Test", "search.projectStatus.Backlog": "Backlog",
+        "search.projectStatus.Brainstorming": "Ideen", "search.projectStatus.Canceled": "Abgebrochen",
+        "search.projectStatus.Completed": "Abgeschlossen", "search.projectStatus.Review": "Review",
+        "search.projectStatus.On Hold": "Pausiert", "search.projectStatus.Planning": "Planung",
+    ]
+
+    static let en: [String: String] = [
+        "search.placeholder": "Projects, tasks, commands…",
+        "search.clear": "Clear search",
+        "search.loading": "Loading more tasks…",
+        "search.moreResults": "{count} more – narrow the search",
+        "search.noResults": "No results for “{query}”",
+        "search.noResultsHint": "Try fewer words, another filter, or a prefix like > for actions.",
+        "search.scope.all": "All", "search.scope.tasks": "Tasks", "search.scope.commands": "Commands",
+        "search.section.recent": "Recently opened", "search.section.recentQueries": "Recent searches",
+        "search.section.actions": "Actions", "search.clearRecent": "Clear",
+        "search.page.profile": "Account & settings", "search.page.team": "Team",
+        "search.action.newTask": "Create task", "search.action.openProject": "Open project",
+        "search.action.darkMode": "Switch to dark mode", "search.action.lightMode": "Switch to light mode",
+        "search.action.copyLink": "Copy link to this page",
+        "search.tips.title": "Search tips", "search.tips.commands": "Actions", "search.tips.projects": "Projects",
+        "search.tips.tasks": "Tasks", "search.tips.help": "Help", "search.tips.overdue": "Overdue",
+        "search.tips.mine": "Assigned to me", "search.tips.priority": "High priority",
+        "search.help.commands": "Commands and pages", "search.help.projects": "Projects only", "search.help.tasks": "Tasks only",
+        "search.help.open": "Open tasks", "search.help.done": "Completed tasks", "search.help.overdue": "Overdue tasks",
+        "search.help.today": "Tasks due today", "search.help.mine": "Tasks assigned to me",
+        "search.help.prio": "By priority (urgent, high, medium, low)",
+        "search.projectStatus.Active": "Active", "search.projectStatus.In Testing": "In testing", "search.projectStatus.Backlog": "Backlog",
+        "search.projectStatus.Brainstorming": "Ideas", "search.projectStatus.Canceled": "Canceled",
+        "search.projectStatus.Completed": "Completed", "search.projectStatus.Review": "Review",
+        "search.projectStatus.On Hold": "On hold", "search.projectStatus.Planning": "Planning",
+    ]
 }

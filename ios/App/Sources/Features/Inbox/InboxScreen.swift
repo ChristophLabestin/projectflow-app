@@ -45,6 +45,7 @@ struct InboxScreen: View {
         .animation(PFMotion.respecting(PFMotion.snappy), value: filter)
         .animation(PFMotion.respecting(PFMotion.snappy), value: items.map(\.id))
         .task(id: items.map(\.id)) { await loadContext() }
+        .task(id: "\(model.presenter.sheets.count)-\(items.count)") { await promptForPushIfNeeded() }
         .onboardingHost()
     }
 
@@ -154,14 +155,16 @@ struct InboxScreen: View {
         async let comments: Void = content.loadComments(for: Array(relevant))
         await ProjectTaskIndex.shared.ensureLoaded(projectIds: projectIds, workspace: workspace)
         await comments
-        promptForPushIfNeeded()
     }
 
     /// Notification permission is asked when the first assignment shows up here (concept §7).
-    private func promptForPushIfNeeded() {
+    /// Waits until no sheet (intro, composer) is open so the system dialog never covers it.
+    private func promptForPushIfNeeded() async {
         guard !pushPrompted, items.contains(where: { $0.kind == .taskAssigned }) else { return }
+        try? await Task.sleep(for: .milliseconds(1500))
+        guard !Task.isCancelled, model.presenter.sheets.isEmpty else { return }
         pushPrompted = true
-        Task { await PushRegistrar.shared.requestPermissionIfNeeded() }
+        await PushRegistrar.shared.requestPermissionIfNeeded()
     }
 
     // MARK: Actions
