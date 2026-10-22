@@ -6,10 +6,10 @@ Last updated: 2026-06-04
 
 - Task/project reminders are stored but never delivered (found 2026-10-22).
   - Impact: `reminders[]` / `reminderAt` set in the task workbench or project overview never trigger a push or email; `functions/src/scheduler.ts` has no reminder job.
-  - Status: open; planned as a Phase 0 backend prerequisite in [plans/ios-app-concept.md](./plans/ios-app-concept.md) §9.4 (recipient still undecided, §12).
+  - Status: open; planned as a Phase 0 backend prerequisite in [plans/ios-app-concept.md](./plans/ios-app-concept.md) §9.4 (recipients decided 2026-10-22: creator by default, assignees optional — concept §12.3).
 - Status pill text fails WCAG AA in light mode (found 2026-10-22).
   - Impact: status colours at full strength on their 12 % tint reach only 2.0–3.6:1 (e.g. Review `#F59E0B` 2.0:1); `--color-text-subtle` `#8F8F8F` is 2.9:1 on the canvas.
-  - Proposal: darker text tones per status (table in [plans/ios-app-concept.md](./plans/ios-app-concept.md) §4.1), shared by web and iOS.
+  - Decision 2026-10-22: adopt darker text tones per status (table in [plans/ios-app-concept.md](./plans/ios-app-concept.md) §4.1), shared by web and iOS.
 - Web focus/pins do not sync live across devices (found 2026-10-22).
   - Impact: `PinnedTasksContext.tsx` reads the user profile once and writes `pinnedItems` as a whole debounced array, so a focus changed on another device is not reflected and concurrent edits can overwrite pins.
   - Status: open; listed in the iOS concept §9.4.

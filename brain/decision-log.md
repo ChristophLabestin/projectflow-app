@@ -4,6 +4,19 @@ Last updated: 2026-06-04
 
 ## Decision Entries
 
+- 2026-10-22: Owner decisions for the new iOS app (concept §12).
+  - Rationale: the seven open questions of [plans/ios-app-concept.md](./plans/ios-app-concept.md) v2 blocked Phase 0.
+  - Decision:
+    1. Minimum iOS 26.2 (Liquid Glass, hideable focus bar); older iPhones use the mobile web app.
+    2. Add Sign in with Apple on iOS **and** web; keep Google/GitHub. Handle Apple relay e-mails vs. e-mail invites (`invitations.ts` requires an exact verified match) via invite links, "link Apple" in account settings and a clear `invite-email-mismatch` message.
+    3. Reminder recipients: creator by default (`createdBy`, `recipientIds`), optional "also remind assignees"; legacy reminders without creator go to task assignees / project owner, past ones are not sent.
+    4. Passkey sign-in keeps replacing TOTP (a user-verified passkey is MFA); set passkey options `userVerification` to `'required'`.
+    5. Web dashboard counts personal tasks (shared `dayPlan` module; lock glyph; only overdue/due today/scheduled today).
+    6. Web adopts AA-safe status text tokens `--color-status-*-text` (values in concept §4.1); `text-subtle` never carries information.
+    7. Presence: iOS v1 only displays others' presence; manual status later, no automatic online heartbeat from the phone.
+  - Alternatives considered: iOS 26.0 with a custom focus bar; dropping Google/GitHub on iOS instead of adding Apple; TOTP after passkey; iOS-only personal tasks in Heute.
+  - Consequences: Phase 0 now includes the web follow-ups (Apple login, status tokens, personal tasks in the dashboard) besides the backend prerequisites.
+
 - 2026-10-22: Rebuild the native iOS app from scratch.
   - Rationale: the owner wants an intuitive, innovative, immersive iOS app that matches the web design language; the old companion app followed a parity approach.
   - Decision: delete `swift/` and its docs; the new app lives under `ios/` (planned), iPhone-first, iOS 26+, SwiftUI; the phone is the "pacemaker" for today/focus/capture/inbox, the web stays the workbench for planning and admin. Concept: [plans/ios-app-concept.md](./plans/ios-app-concept.md).

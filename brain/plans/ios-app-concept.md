@@ -1,6 +1,6 @@
 # ProjectFlow iOS — Konzept (Neuaufbau)
 
-Stand: 2026-10-22 · Status: **Konzept v2** (nach kritischem Review, siehe §13) · Nichts davon ist implementiert.
+Stand: 2026-10-22 · Status: **Konzept v2** (nach kritischem Review, siehe §13; Owner-Entscheidungen in §12) · Nichts davon ist implementiert.
 Ersetzt: alles aus dem gelöschten `swift/`-Projekt.
 Visuelle Skizzen der Kern-Screens: [ios-app-concept-mockups.html](./ios-app-concept-mockups.html) (im Browser öffnen).
 
@@ -103,7 +103,7 @@ Web-Focus-Pill), den Titel, „seit 14:20" und einen ✓-Button. Tippen zoomt in
 
 ### 3.4 Sekundäre Orte
 
-- **Account-Sheet** (Avatar oben links in Heute): Profil, Präsenz-Status, Workspace-Wechsel,
+- **Account-Sheet** (Avatar oben links in Heute): Profil, Workspace-Wechsel,
   Erscheinungsbild, Benachrichtigungen, Sicherheit (Passkeys, 2FA), Daten-Export, Konto löschen,
   Rechtliches, „Workspace-Einstellungen im Web öffnen".
 - **Workspace-Wechsel** zusätzlich als Menü am Workspace-Namen in Heute („Demo Studio ⌄").
@@ -127,7 +127,7 @@ Web-Focus-Pill), den Titel, „seit 14:20" und einen ✓-Button. Tippen zoomt in
 | Initiativen, Meilensteine | ◐ lesen + Status | anlegen/bearbeiten | |
 | Sprints | | ◐ aktueller Sprint als Board | Planung |
 | Projekt anlegen | ◐ Titel + Vorlage | | Briefing, Einstellungen |
-| Team | ◐ Mitglieder + Präsenz ansehen | | Einladen, Rollen, Gruppen |
+| Team | ◐ Mitglieder + Präsenz ansehen | Präsenz manuell setzen | Einladen, Rollen, Gruppen |
 | Workspace: Eigentum übertragen / löschen | ● (nötig für Konto löschen, §7) | | |
 | Workspace-/Projekteinstellungen, API/MCP, SMTP | | | ● |
 | Finance V2, Media, Social, Marketing, Effort/Invoices | | Finanz-Puls lesend | ● |
@@ -171,7 +171,9 @@ genau das, nativ.** Also System-Glas für Chrome und ProjectFlow-Tokens für Inh
   | Blockiert | `#EF4444` | `#B91C1C` (5,5) | `#F87171` |
   | Erledigt | `#10B981` | `#047857` (4,9) | `#10B981` |
 
-  Gleiche Anpassung als Vorschlag fürs Web (`known-issues`), damit beide Plattformen gleich aussehen.
+  **Entschieden (§12.6):** Das Web übernimmt dieselben Töne als neue Text-Tokens
+  `--color-status-*-text` (nur Light; Füllfarben bleiben). Im Dark Mode bekommen Offen, Blockiert und
+  Planung die helleren Töne. `text-subtle` wird auf beiden Plattformen nie für Information genutzt.
 - Priorität: Dringend `#7C3AED`/`#A78BFA`, Hoch `#EF4444`/`#F87171`, Mittel `#3B82F6`/`#60A5FA`,
   Niedrig `#94A3B8`.
 - SwiftLint-Regel verbietet Farbliterale außerhalb von `PFDesign` — Gegenstück zu `npm run lint:theme`.
@@ -295,9 +297,10 @@ Dark, Tinted und Clear.
 
 - **Plan für heute**: dieselbe Logik wie Web (Fokus + nächster Schritt → überfällig mit „löst N" →
   heute fällig nach Priorität → heute eingeplant → Nachfassen bei Blockiertem; an ruhigen Tagen
-  Vorschläge, gestrichelt). Erweiterung für beide Plattformen: **persönliche Aufgaben zählen mit**
-  (heute ignoriert das Dashboard sie). Umgesetzt im gemeinsamen Modul `dayPlan` (§9.3), damit Web und
-  iOS gleich rechnen.
+  Vorschläge, gestrichelt). Erweiterung für beide Plattformen (entschieden, §12.5): **persönliche
+  Aufgaben zählen mit** (heute ignoriert das Dashboard sie) — mit Schloss statt Projektname, im Plan
+  nur wenn überfällig, heute fällig oder heute eingeplant; ohne Datum höchstens als Vorschlag.
+  Umgesetzt im gemeinsamen Modul `dayPlan` (§9.3), damit Web und iOS gleich rechnen.
 - **Ehrliche Zahl**: Der Satz deckelt bei 4 Stopps. Gibt es mehr Überfälliges, steht darunter
   „+ 11 weitere in Arbeit" — nie „in 4 Zügen erledigt" ohne Hinweis auf den Rest.
 - **Wartet auf dich** (neu, beide Plattformen sinnvoll): Aufgaben anderer, die an *meiner* offenen
@@ -483,8 +486,14 @@ Der Eingang ist der zweitwichtigste Ort nach Heute — hier wird man gebraucht.
 - **Login**: E-Mail/Passwort, **Passkey** (Autofill), Google, GitHub, **Sign in with Apple** (Pflicht
   nach Richtlinie 4.8, sobald Google/GitHub angeboten werden; auch im Web ergänzen), TOTP-2FA.
   Passkeys sind an `app.getprojectflow.com` gebunden; der iOS-Origin muss in die Allowlist
-  (`functions/src/passkeys.ts`). Passkey-Login umgeht heute TOTP (wie im Web) — bewusst so lassen
-  oder ändern: offene Frage.
+  (`functions/src/passkeys.ts`). Passkey-Login ersetzt TOTP bewusst (§12.4): ein Passkey mit
+  Nutzerbestätigung (Face ID/Gerätecode) ist selbst zweifaktorig. Die Optionen werden von
+  `userVerification: 'preferred'` auf `'required'` umgestellt (die Prüfung verlangt sie bereits).
+- **Sign in with Apple und E-Mail-Einladungen**: E-Mail-Einladungen verlangen eine exakt passende,
+  bestätigte Adresse (`functions/src/invitations.ts`). Mit „E-Mail verbergen" hat ein Apple-Konto eine
+  Relay-Adresse, die nicht passt. Deshalb: Einladungs-Links funktionieren unabhängig davon; in den
+  Kontoeinstellungen gibt es „Apple mit bestehendem Konto verknüpfen"; der Fehler
+  `invite-email-mismatch` erklärt genau diesen Fall und bietet beides an.
 - **Registrierung** in der App möglich (legt einen Workspace an, wie Web).
 - **Konto löschen** in der App (`deleteMyAccount`, inkl. Apple-Token-Widerruf). Weil die Funktion
   Eigentümer von Workspaces mit weiteren Mitgliedern blockiert, zeigt die App diese Workspaces und
@@ -567,11 +576,12 @@ Aufgabendetail wie die 340-px-Leiste im Web; Tastaturkürzel wie Web (⌘K, t, i
 
 - **iOS 26.2+**, iPhone zuerst; Build mit dem aktuellen Xcode-SDK (iOS 27). Begründung: Liquid Glass
   und `tabViewBottomAccessory(isEnabled:)` tragen das Design. Kosten: Stand Juni 2026 laufen ~79 %
-  aller aktiven iPhones auf iOS 26 — für Teams, in denen *alle* die App brauchen, ist das eine bewusste
-  Entscheidung (offene Frage §12).
+  aller aktiven iPhones auf iOS 26; bis zum Release (realistisch 2027) deutlich mehr. Entschieden
+  (§12.1); wer ein älteres iPhone hat, nutzt die mobile Web-App.
 - SwiftUI, Swift 6 (strict concurrency), Observation.
 - Firebase iOS SDK im App-Target: Auth, Firestore (Offline-Persistenz), Functions (`europe-west3`),
-  Messaging (Token → `users/{uid}.fcmTokens`, wie Web), Realtime Database nur für Präsenz.
+  Messaging (Token → `users/{uid}.fcmTokens`, wie Web), Realtime Database nur zum *Lesen* der Präsenz
+  anderer (iOS meldet in v1 keinen eigenen Online-Status, §12.7).
 - Crash/Feedback: Labestin Sentinel (SentinelKit) — `Needs verification:` per `manager-setup`.
 - Bundle-ID `de.christophlabestin.projectflow` (Team `48BM67TY9G`) — steht schon in der AASA
   (`webcredentials`); App Group `group.de.christophlabestin.projectflow`.
@@ -616,14 +626,14 @@ Abhängigkeiten: Features → PFData → PFDomain → PFModel; PFDesign ist blat
 | Thema | Heute | Nötig |
 |---|---|---|
 | **Nebeneffekte von Writes** | Web-Client schreibt Activity, synchronisiert Projektfortschritt, erzeugt Benachrichtigungs-Dokumente (`tasksService.ts`, `notificationService.ts`) | Firestore-Trigger (`onTaskWritten`, `onCommentCreated`) für Activity, `progress`, Benachrichtigungs-Fan-out und Konsistenz `isCompleted` ⇄ `status`. Web entfernt die Client-Duplikate. Gilt dann auch für MCP/Codex-Writes. |
-| **Erinnerungen / Nudges** | `reminders[]` gespeichert, nie versendet | Geplante Funktion: Reminder, „heute fällig", Morgen-Briefing, Tagesabschluss per FCM. Empfänger klären (§12). |
+| **Erinnerungen / Nudges** | `reminders[]` gespeichert, nie versendet | Geplante Funktion: Reminder, „heute fällig", Morgen-Briefing, Tagesabschluss per FCM. Empfänger nach §12.3: neue Felder `createdBy` + `recipientIds` (Standard: Ersteller) + Schalter „Auch Zuständige erinnern". |
 | **Benachrichtigungs-Präferenzen** | keine (TODO im Code) | `users/{uid}.notificationPrefs` pro Kategorie und Kanal |
 | **APNs-Payload** | `category` | `thread-id`, `mutable-content` |
 | **Fokus-Sync** | Web lädt Profil einmalig; Pins als ganzes Array, entprellt | Web-Listener auf `users/{uid}`; Pins per `arrayUnion/arrayRemove`; Live-Activity-Push bei `focusState`-Änderung |
 | **Queries „meine Aufgaben"** | Web: eine Abfrage pro Projekt; Legacy-Felder `assigneeId`, `ownerId` | Collection-Group-Abfrage **mit `tenantId ==`** (sonst lehnen die Rules ab, `canAccessScopedDoc`) + `assigneeIds array-contains` → Composite-Index ergänzen; Backfill `assigneeIds` aus Legacy-Feldern; Gäste: Listener pro Projekt. Bei großen Workspaces später materialisiertes `userTasks/{uid}`. |
-| **Passkeys** | RP-ID über Web-Origin-Allowlist | iOS-Origin zulassen |
+| **Passkeys** | RP-ID über Web-Origin-Allowlist; Optionen `userVerification: 'preferred'` | iOS-Origin zulassen; `'required'` |
 | **Universal Links** | nur `webcredentials` | `applinks` für `/project/*`, `/invite/*`, `/join/*` |
-| **Sign in with Apple** | fehlt | Firebase-Provider, Web-Login, Token-Widerruf bei Löschung |
+| **Sign in with Apple** | fehlt | Firebase-Provider auf iOS **und Web**, Kontoverknüpfung, Token-Widerruf bei Löschung, verständlicher Einladungsfehler bei Relay-Adressen |
 
 ### 9.5 Daten, Offline, Kosten
 
@@ -651,7 +661,7 @@ Abhängigkeiten: Features → PFData → PFDomain → PFModel; PFDesign ist blat
 
 | Phase | Inhalt | Ergebnis |
 |---|---|---|
-| **0 · Fundament** | Backend §9.4 komplett · Logik-Extraktion + Golden-Fixtures · `ios/`-Projekt · PFDesign + Komponenten-Katalog · Spikes: Widget-Intents im App-Prozess, Share-REST-Client, Datumserkennung DE/EN, Typo 700 vs. 800 | Web läuft auf den neuen Triggern; Fixtures grün in Web + iOS |
+| **0 · Fundament** | Backend §9.4 komplett · Web-Folgen aus §12 (Apple-Login, AA-Status-Tokens, persönliche Aufgaben im Dashboard) · Logik-Extraktion + Golden-Fixtures · `ios/`-Projekt · PFDesign + Komponenten-Katalog · Spikes: Widget-Intents im App-Prozess, Share-REST-Client, Datumserkennung DE/EN, Typo 700 vs. 800 | Web läuft auf den neuen Triggern; Fixtures grün in Web + iOS |
 | **1 · Taktgeber** (TestFlight) | Login (alle Methoden inkl. Apple) · Workspace-Bootstrap · Heute (Plan, Wartet auf dich, Über Nacht) · Eingang + Push-Aktionen + Server-Nudges · Aufgabendetail · Erfassen · Fokusraum + Fokus-Leiste + Live Activity · Arbeit (Liste) · Suche · Account inkl. Konto löschen | Der tägliche Loop komplett am iPhone |
 | **2 · Breite** (App Store 1.0) | Projekte + Detail + Board · Initiativen/Meilensteine lesend · Woche + Drag & Drop · Widgets · Controls · Siri/Spotlight · Share Extension · Tagesabschluss · Kalender-Abgleich (opt-in) | 1.0 |
 | **3 · Tiefe** | iPad · Sprint-Board · Smart verteilen · Projekt-Wizard · Finanz-Puls · on-device Zerlegung längerer Diktate (Foundation Models, ~4k-Token-Kontext) | 1.x |
@@ -664,16 +674,19 @@ Abhängigkeiten: Features → PFData → PFDomain → PFModel; PFDesign ist blat
 - Morgen-Briefing: Öffnungsrate ≥ 25 %, Abmelderate < 10 %.
 - Crash-freie Sitzungen ≥ 99,5 %; 0 Abweichungen in den Golden-Fixtures.
 
-## 12. Offene Entscheidungen (Owner)
+## 12. Entscheidungen (Owner, 2026-10-22)
 
-1. **Mindestversion iOS 26.2** (Design tragend, ~1/5 der iPhones ausgeschlossen) — ok?
-2. **Sign in with Apple** auch im Web einführen? (Alternative: auf iOS nur E-Mail + Passkey + Apple,
-   ohne Google/GitHub.)
-3. **Empfänger von Aufgaben-Erinnerungen**: Ersteller, Zuständige oder beide?
-4. **Passkey-Login ohne TOTP** — so lassen (wie Web) oder MFA nachschalten?
-5. **Persönliche Aufgaben im Web-Dashboard** mitzählen (gemeinsames `dayPlan`) — ok?
-6. **AA-Statusfarben** auch im Web übernehmen?
-7. **Präsenz** mobil nur anzeigen oder auch setzen?
+Alle sieben offenen Punkte aus v2 sind entschieden (Decision-Log 2026-10-22).
+
+| # | Thema | Entscheidung | Folgen |
+|---|---|---|---|
+| 1 | Mindestversion | **iOS 26.2** | Liquid Glass und ausblendbare Fokus-Leiste ohne Sonderwege; ältere iPhones nutzen die mobile Web-App. Nur falls ein wichtiger Kunde ältere Geräte braucht: Rückfall auf 26.0 mit selbst gebauter Fokus-Leiste. |
+| 2 | Sign in with Apple | **Ja, auf iOS und im Web**; Google/GitHub bleiben | Firebase-Apple-Provider, Kontoverknüpfung über gleiche E-Mail, Token-Widerruf bei Löschung. Relay-Adressen passen nicht zu E-Mail-Einladungen → Einladungs-Links, „Apple verknüpfen" in den Kontoeinstellungen, erklärender Fehlertext (§7). |
+| 3 | Empfänger von Erinnerungen | **Ersteller standardmäßig, Zuständige optional** | `ProjectReminder` bekommt `createdBy` und `recipientIds` (Standard: Ersteller) plus Schalter „Auch Zuständige erinnern". Alte Erinnerungen ohne Ersteller: Zuständige der Aufgabe bzw. Projekt-Owner; vergangene werden nicht nachträglich verschickt. |
+| 4 | Passkey ohne TOTP | **So lassen** | Passkey mit Nutzerbestätigung gilt als MFA. Server-Optionen `userVerification` auf `'required'` (Prüfung verlangt sie schon). |
+| 5 | Persönliche Aufgaben im Web-Dashboard | **Ja** | Gemeinsames `dayPlan`-Modul; Schloss statt Projektname; nur überfällig/heute fällig/heute eingeplant, sonst höchstens Vorschlag. |
+| 6 | AA-Statusfarben im Web | **Ja** | Neue Text-Tokens `--color-status-*-text` (Light), hellere Dark-Töne für Offen/Blockiert/Planung, `text-subtle` nie für Information. Werte in §4.1. |
+| 7 | Präsenz | **v1 nur anzeigen; später manuell setzen** | Kein automatischer Online-Status vom iPhone (würde beim Wechsel in den Hintergrund flackern). Später „Beschäftigt"/„Abwesend" manuell, optional gekoppelt an den iOS-Fokus. |
 
 ---
 
