@@ -17,7 +17,7 @@ import { useWorkspace } from '../context/WorkspaceContext';
 import { isCoraStudioEnabled } from '../config/features';
 import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
-import { readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
+import { PROJECTS_CHANGED_EVENT, readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
 import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { translateProjectStatus } from '../utils/projectStatus';
@@ -284,6 +284,12 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
 
     // ---- Data: projects for the dock ----------------------------------------
     const [projects, setProjects] = React.useState<Project[]>([]);
+    const [projectsVersion, setProjectsVersion] = React.useState(0);
+    React.useEffect(() => {
+        const onProjectsChanged = () => setProjectsVersion((version) => version + 1);
+        window.addEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged);
+        return () => window.removeEventListener(PROJECTS_CHANGED_EVENT, onProjectsChanged);
+    }, []);
     React.useEffect(() => {
         if (!isAuthReady || !isAuthenticated) {
             setProjects([]);
@@ -303,7 +309,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         return () => { mounted = false; window.clearTimeout(timer); };
         // Re-runs when the project menu opens so freshly-changed project settings
         // (e.g. switching a project to a client project) are reflected without reload.
-    }, [isAuthReady, isAuthenticated, menuOpen]);
+    }, [isAuthReady, isAuthenticated, menuOpen, projectsVersion]);
 
     const projectsById = React.useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 

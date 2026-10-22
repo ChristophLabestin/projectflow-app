@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Starts ProjectFlow fully local and already signed in, for E2E/QA sessions:
-#   1. Firebase emulators (Auth, Firestore, Storage) with the repo's rules,
+#   1. Firebase emulators (Auth, Firestore, Storage, Functions) with the repo's rules,
 #   2. the demo workspace from scripts/seed-emulator.mjs plus an outsider account
 #      (no workspace) for permission tests,
 #   3. the Vite dev server in emulator mode, auto-signed-in as the demo owner.
@@ -9,6 +9,7 @@
 #   bash scripts/dev-e2e.sh                         # app on :3000
 #   PORT=3005 bash scripts/dev-e2e.sh               # other app port
 #   E2E_LOGIN=outsider bash scripts/dev-e2e.sh      # sign in as the outsider instead
+#   E2E_FUNCTIONS=0 bash scripts/dev-e2e.sh         # skip the Functions emulator
 #
 # Emulator accounts (emulator only):
 #   demo@projectflow.test     / projectflow-demo     (seeded workspace owner)
@@ -46,7 +47,13 @@ require("fs").writeFileSync(dest, JSON.stringify(config, null, 2));
 ' "$ROOT/firebase.json" "$CONFIG" "$AUTH_PORT" "$FIRESTORE_PORT" "$STORAGE_PORT" "$FUNCTIONS_PORT"
 
 cd "$ROOT"
-firebase emulators:start --only auth,firestore,storage --project "$PROJECT_ID" --config "$CONFIG" > "$LOG" 2>&1 &
+EMULATORS="auth,firestore,storage"
+if [[ "${E2E_FUNCTIONS:-1}" == "1" ]]; then
+    echo "Building Cloud Functions for the emulator (E2E_FUNCTIONS=0 to skip)..."
+    npm --prefix "$ROOT/functions" run build --silent
+    EMULATORS="$EMULATORS,functions"
+fi
+firebase emulators:start --only "$EMULATORS" --project "$PROJECT_ID" --config "$CONFIG" > "$LOG" 2>&1 &
 EMULATOR_PID=$!
 trap 'kill -INT "$EMULATOR_PID" 2>/dev/null; wait "$EMULATOR_PID" 2>/dev/null || true' EXIT INT TERM
 

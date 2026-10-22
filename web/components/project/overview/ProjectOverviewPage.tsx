@@ -44,6 +44,7 @@ import { InitiativeCreateModal } from '../../InitiativeCreateModal';
 import '../../../src/styles/components/_project-overview-v2.scss';
 import { useWorkMembers } from '../../work/useWorkMembers';
 import { RoadmapView } from '../../planning/RoadmapView';
+import { notifyProjectsChanged } from '../../../utils/recentProjects';
 
 const TaskCreateModal = lazy(() => import('../../TaskCreateModal').then((m) => ({ default: m.TaskCreateModal })));
 
@@ -387,6 +388,7 @@ export const ProjectOverviewPage: React.FC<{ projectId: string | undefined }> = 
         try {
             const deletedId = project.id;
             await deleteProjectById(deletedId, project.tenantId);
+            notifyProjectsChanged();
             if (pinnedProjectId === deletedId) void unpinProject();
             showSuccess(t('projectOverview.delete.done', 'Project deleted.'));
             navigate('/projects', { replace: true });

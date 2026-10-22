@@ -262,7 +262,10 @@ service cloud.firestore {
         // At least one segment below the project: `/{document=**}` alone also
         // matches the project doc itself and would bypass the delete rule above.
         match /{subcollection}/{document=**} {
-          allow read, write: if canAccessProjectById(tenantId, projectId);
+          allow read: if canAccessProjectById(tenantId, projectId);
+          // No writes below a missing project: a still-open page must not
+          // recreate orphaned subcollections after the project was deleted.
+          allow write: if canAccessProjectById(tenantId, projectId) && projectExists(tenantId, projectId);
         }
       }
 

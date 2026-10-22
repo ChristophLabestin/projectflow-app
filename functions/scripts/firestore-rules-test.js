@@ -133,6 +133,8 @@ const run = async () => {
         await check('admin transfers ownership', 'allow', () => admin.doc(PROJECT).update({ ownerId: 'memberA' }));
         await check('project owner deletes own project', 'allow', () => member.doc(MEMBER_PROJECT).delete());
         await check('admin deletes any project', 'allow', () => admin.doc(PROJECT).delete());
+        await check('no writes below a deleted project', 'deny', () =>
+            member.doc(`${PROJECT}/healthSnapshots/today`).set({ score: 1 }));
     } finally {
         await testEnv.cleanup();
     }

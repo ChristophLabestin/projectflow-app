@@ -558,6 +558,7 @@ const enFinance = {
     'finance.ai.config.ownerOnly': 'Only workspace owners can edit this connection.',
     'finance.ai.config.toastSaved': 'Financial endpoint connection saved.',
     'finance.ai.config.toastError': 'Failed to update financial endpoint connection.',
+    'finance.config.loadError': 'Finance settings could not be loaded. Please try again.',
     'finance.ai.config.validation.endpointRequired': 'Please provide an endpoint URL.',
     'finance.ai.config.validation.tokenRequired': 'Please provide a token for initial setup.',
     'finance.ai.config.validation.monthsRange': 'Months must be an integer between 1 and 24.',

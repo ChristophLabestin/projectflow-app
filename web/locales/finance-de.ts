@@ -558,6 +558,7 @@ const deFinance = {
     'finance.ai.config.ownerOnly': 'Nur Workspace-Owner können diese Verbindung bearbeiten.',
     'finance.ai.config.toastSaved': 'Financial Endpoint Verbindung gespeichert.',
     'finance.ai.config.toastError': 'Financial Endpoint Verbindung konnte nicht gespeichert werden.',
+    'finance.config.loadError': 'Finanzeinstellungen konnten nicht geladen werden. Bitte versuche es erneut.',
     'finance.ai.config.validation.endpointRequired': 'Bitte eine Endpoint-URL angeben.',
     'finance.ai.config.validation.tokenRequired': 'Bitte einen Token für das Erstsetup angeben.',
     'finance.ai.config.validation.monthsRange': 'Monate müssen eine ganze Zahl zwischen 1 und 24 sein.',

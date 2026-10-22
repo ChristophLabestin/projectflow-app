@@ -760,7 +760,7 @@ export const FinanceTracking = () => {
                 if (code.includes('permission-denied')) {
                     setFinancialConfigPermissionDenied(true);
                 } else {
-                    setFinancialConfigError(error?.message || t('finance.ai.config.toastError'));
+                    setFinancialConfigError(t('finance.config.loadError'));
                 }
             })
             .finally(() => {
