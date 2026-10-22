@@ -70,7 +70,7 @@ export const validateAPIToken = async (
         //    user's membership in the requested tenant (see requireWorkspaceMember).
         let decodedToken: admin.auth.DecodedIdToken | null = null;
         try {
-            decodedToken = await admin.auth().verifyIdToken(token);
+            decodedToken = await admin.auth().verifyIdToken(token, true);
         } catch (e) {
             decodedToken = null;
         }
@@ -120,7 +120,7 @@ export const validateAPIToken = async (
         return { valid: false, error: 'Invalid token' };
     } catch (error: any) {
         console.error('Token validation error:', error);
-        return { valid: false, error: error.message };
+        return { valid: false, error: 'Token validation failed' };
     }
 };
 

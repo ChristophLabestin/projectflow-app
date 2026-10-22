@@ -8,6 +8,11 @@ type TaskData = Record<string, any>;
 
 const getString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
 
+const REPO_PATTERN = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+
+const isValidRepo = (repo: string): boolean =>
+    REPO_PATTERN.test(repo) && !repo.includes('..') && repo.split('/').every((part) => part !== '.' && part !== '..');
+
 const getGitHubHeaders = (token: string) => ({
     'Accept': 'application/vnd.github+json',
     'Authorization': `Bearer ${token}`,
@@ -45,6 +50,7 @@ const createGitHubIssue = async (
     taskId: string,
     projectId: string
 ) => {
+    if (!isValidRepo(repo)) throw new Error('Invalid GitHub repository.');
     const response = await fetch(`https://api.github.com/repos/${repo}/issues`, {
         method: 'POST',
         headers: getGitHubHeaders(token),
@@ -68,6 +74,8 @@ const updateGitHubIssue = async (
     issueNumber: number,
     task: TaskData
 ) => {
+    if (!isValidRepo(repo)) throw new Error('Invalid GitHub repository.');
+    if (!Number.isInteger(issueNumber) || issueNumber <= 0) throw new Error('Invalid GitHub issue number.');
     const response = await fetch(`https://api.github.com/repos/${repo}/issues/${issueNumber}`, {
         method: 'PATCH',
         headers: getGitHubHeaders(token),
@@ -122,7 +130,7 @@ export const onProjectTaskGitHubSync = functions.region(REGION).firestore
             token = getString(tokenSnapshot.data()?.token);
         }
 
-        if (project.githubIssueSync !== true || !repo || !token) {
+        if (project.githubIssueSync !== true || !repo || !token || !isValidRepo(repo)) {
             return;
         }
 

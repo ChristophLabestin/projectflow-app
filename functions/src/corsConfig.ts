@@ -10,6 +10,12 @@ const STATIC_ALLOWED_ORIGINS = [
     'https://getprojectflow.com',
     'https://projectflow-labestin.web.app',
     'https://projectflow-labestin.firebaseapp.com',
+];
+
+const isEmulatorEnv = process.env.FUNCTIONS_EMULATOR === 'true';
+
+// Local dev origins are only allowed when running in the emulator.
+const LOCAL_DEV_ORIGINS = [
     'http://localhost:3000',
     'http://localhost:3001',
     'http://localhost:3002',
@@ -22,7 +28,7 @@ const envOrigins = (process.env.CORS_EXTRA_ORIGINS || '')
     .filter(Boolean);
 
 export const ALLOWED_ORIGINS = Array.from(
-    new Set([...STATIC_ALLOWED_ORIGINS, ...envOrigins]),
+    new Set([...STATIC_ALLOWED_ORIGINS, ...(isEmulatorEnv ? LOCAL_DEV_ORIGINS : []), ...envOrigins]),
 );
 
 const isEmulator = () => process.env.FUNCTIONS_EMULATOR === 'true';

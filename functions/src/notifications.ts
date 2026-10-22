@@ -83,10 +83,6 @@ const requireTenantAccess = async (tenantId: string, context: CallableContext): 
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    if (uid === tenantId) {
-        return uid;
-    }
-
     const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
     if (!membership.exists) {
         throw new functions.https.HttpsError('permission-denied', 'You do not have access to this workspace.');

@@ -41,10 +41,6 @@ const requireWorkspaceOwner = async (tenantId: string, context: functions.https.
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    if (uid === tenantId) {
-        return uid;
-    }
-
     const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
     if (membership.exists && membership.data()?.role === 'Owner') {
         return uid;
@@ -58,10 +54,6 @@ const requireWorkspaceAccess = async (tenantId: string, context: functions.https
 
     if (!tenantId) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
-    }
-
-    if (uid === tenantId) {
-        return uid;
     }
 
     const membership = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
