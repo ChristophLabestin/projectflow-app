@@ -30,6 +30,12 @@ const INITIATIVES = 'initiatives';
 const TASKS = 'tasks';
 const MILESTONES = 'milestones';
 
+/** Contract C1: every client write to an initiative / task says who made it. */
+const writeMeta = () => {
+    const user = auth.currentUser;
+    return user ? { updatedBy: user.uid, updatedAt: serverTimestamp() } : { updatedAt: serverTimestamp() };
+};
+
 type InitiativePayload = Partial<Pick<
     Initiative,
     | 'description'
@@ -118,7 +124,7 @@ export const createInitiative = async (
         outcome: payload.outcome || '',
         completedAt: payload.completedAt || null,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        ...writeMeta()
     };
 
     if (payload.health) {
@@ -145,7 +151,7 @@ export const updateInitiative = async (
 
     await updateDoc(initiativeSnap.ref, {
         ...updates,
-        updatedAt: serverTimestamp()
+        ...writeMeta()
     });
 
     const data = initiativeSnap.data() as Initiative;
@@ -173,7 +179,7 @@ export const deleteInitiative = async (
         const updates: Record<string, unknown> = {
             initiativeId: null,
             legacyInitiativeRoot: false,
-            updatedAt: serverTimestamp()
+            ...writeMeta()
         };
 
         if (task.legacyInitiativeRoot === true || task.convertedIdeaId || task.originIdeaId) {
@@ -302,7 +308,7 @@ export const updateTaskInitiative = async (
     const updates: Record<string, unknown> = {
         initiativeId: initiativeId || null,
         legacyInitiativeRoot: initiativeId ? task.legacyInitiativeRoot === true : false,
-        updatedAt: serverTimestamp()
+        ...writeMeta()
     };
 
     if (!initiativeId && (task.legacyInitiativeRoot === true || task.convertedIdeaId || task.originIdeaId)) {
@@ -439,7 +445,7 @@ export const ensureProjectInitiativesMigrated = async (
             await updateDoc(taskDoc.ref, {
                 initiativeId,
                 legacyInitiativeRoot: true,
-                updatedAt: serverTimestamp()
+                ...writeMeta()
             });
         }
 

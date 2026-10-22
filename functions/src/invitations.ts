@@ -24,6 +24,43 @@ const getMemberRole = async (tenantId: string, uid: string): Promise<string | nu
     return snap.exists ? String(snap.data()?.role || 'Member') : null;
 };
 
+const APPLE_RELAY_DOMAIN = 'privaterelay.appleid.com';
+
+/** `anna.berger@example.com` -> `a***@e***.com` (enough for the user to recognise the address, not to harvest it). */
+export const maskEmail = (email: string): string => {
+    const [local = '', domain = ''] = email.toLowerCase().split('@');
+    const dot = domain.lastIndexOf('.');
+    const host = dot > 0 ? domain.slice(0, dot) : domain;
+    const tld = dot > 0 ? domain.slice(dot) : '';
+    return `${local.slice(0, 1)}***@${host.slice(0, 1)}***${tld}`;
+};
+
+/**
+ * Details attached to the `invite-email-mismatch` error (the code/message stay unchanged) so clients can
+ * explain *why* the account does not match: most often the user signed in with Apple "Hide My Email",
+ * which gives the account a private-relay address that can never equal the invited address.
+ */
+export const describeEmailMismatch = (
+    userRecord: { providerData?: Array<{ providerId: string }> },
+    accountEmail: string,
+    inviteEmail: string
+) => {
+    const providers = (userRecord.providerData || []).map((provider) => provider.providerId);
+    const isPrivateRelay = accountEmail.endsWith(`@${APPLE_RELAY_DOMAIN}`);
+    return {
+        reason: isPrivateRelay ? 'apple-hide-my-email' : 'different-account',
+        accountEmail,
+        accountEmailIsPrivateRelay: isPrivateRelay,
+        accountProviders: providers,
+        signedInWithApple: providers.includes('apple.com'),
+        invitedEmailHint: maskEmail(inviteEmail),
+        // What the client may offer: ask the admin for a link invite, or link / switch accounts.
+        suggestions: isPrivateRelay
+            ? ['ask-for-link-invite', 'link-account-with-invited-email']
+            : ['sign-in-with-invited-email', 'ask-for-link-invite']
+    };
+};
+
 const resolveAppOrigin = (requested?: unknown) => {
     if (typeof requested === 'string' && ALLOWED_ORIGINS.includes(requested)) return requested;
     return process.env.APP_URL || 'https://app.getprojectflow.com';
@@ -96,7 +133,7 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
             throw new functions.https.HttpsError('failed-precondition', 'invite-used-up');
         }
         if (invite.kind === 'email' && invite.email && invite.email !== email) {
-            throw new functions.https.HttpsError('permission-denied', 'invite-email-mismatch');
+            throw new functions.https.HttpsError('permission-denied', 'invite-email-mismatch', describeEmailMismatch(userRecord, email, String(invite.email)));
         }
         // Anyone can register an account with any address; only a confirmed
         // address proves the caller is the person the invitation was sent to.

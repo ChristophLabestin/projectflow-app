@@ -124,6 +124,9 @@ export const Notifications = () => {
             path = `/project/${notification.projectId}/initiatives/${notification.initiativeId}`;
         } else if (notification.projectId) {
             path = `/project/${notification.projectId}`;
+        } else if (notification.deepLink?.startsWith('/')) {
+            // Server nudges (briefing, due today, day close) carry their own route.
+            path = notification.deepLink;
         }
 
         if (path) {

@@ -165,6 +165,22 @@ service cloud.firestore {
       match /passkey_challenges/{challengeId} {
         allow read, write: if false;
       }
+
+      // iOS devices ({ fcmToken, liveActivityStartToken, ... }) and running Live Activities
+      // ({ pushToken, itemId, ... }). Written by the app, read by the Cloud Function that
+      // pushes focus changes; owner only.
+      match /devices/{deviceId} {
+        allow read, write: if authed() && request.auth.uid == userId;
+      }
+
+      match /liveActivities/{activityId} {
+        allow read, write: if authed() && request.auth.uid == userId;
+      }
+
+      // Per-day idempotency log of the scheduled nudges (sendNudges): server only.
+      match /nudgeLog/{day} {
+        allow read, write: if false;
+      }
     }
 
     match /tenants/{tenantId} {

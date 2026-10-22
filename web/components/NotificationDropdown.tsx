@@ -76,6 +76,9 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
             path = `/project/${notification.projectId}/tasks/${notification.taskId}`;
         } else if (notification.projectId) {
             path = `/project/${notification.projectId}`;
+        } else if (notification.deepLink?.startsWith('/')) {
+            // Server nudges (briefing, due today, day close) carry their own route.
+            path = notification.deepLink;
         }
 
         if (path) {

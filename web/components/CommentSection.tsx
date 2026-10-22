@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, Member, ProjectGroup } from '../types';
-import { addComment, subscribeComments, deleteComment, subscribeTenantUsers, getMembersWithRole } from '../services/dataService';
+import { addComment, subscribeComments, deleteComment, subscribeTenantUsers } from '../services/dataService';
 import { getProjectMembers } from '../services/domain/projectsService';
 import { getUserProfile } from '../services/domain/usersService';
 import { auth } from '../services/firebase';
@@ -11,8 +11,6 @@ import { getProjectGroups } from '../services/projectGroupService';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
-import { notifyMention } from '../services/notificationService';
-import { useToast } from '../context/UIContext';
 import { initialOf } from '../utils/initials';
 
 // Simple time formatter if date-fns is not available or to reduce deps
@@ -69,7 +67,6 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     const [commentToDelete, setCommentToDelete] = useState<string | null>(null);
     const user = auth.currentUser;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const { showToast } = useToast();
     const scrollRef = useRef<HTMLDivElement>(null);
 
     // Mention State
@@ -176,58 +173,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         if (!newComment.trim()) return;
         const content = newComment.trim();
         try {
-            const commentId = await addComment(projectId, targetId, targetType, content, tenantId);
+            // Mention (`@Name`) and comment notifications are created server-side by onCommentCreated.
+            await addComment(projectId, targetId, targetType, content, tenantId);
             setNewComment('');
-
-            // Handle Mentions and Notifications
-            const mentionedUserIds = new Set<string>();
-            const rolesToResolve: string[] = [];
-
-            // Match against known targets names explicitly, prioritizing longer names to avoid partial matches
-            const sortedTargets = [...mentionTargets].sort((a, b) => b.name.length - a.name.length);
-
-            sortedTargets.forEach(target => {
-                const escapedName = target.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                // Regex to match @Name followed by space, punctuation, or end of string.
-                const regex = new RegExp(`@${escapedName}(\\s|[.,!?;:]|$)`, 'i');
-
-                if (regex.test(content)) {
-                    if (target.type === 'user') {
-                        mentionedUserIds.add(target.id);
-                    } else if (target.type === 'group' && target.memberIds) {
-                        target.memberIds.forEach(uid => mentionedUserIds.add(uid));
-                    } else if (target.type === 'role') {
-                        // Role members will be resolved below
-                        rolesToResolve.push(target.id);
-                    }
-                }
-            });
-
-            // Resolve role members
-            for (const roleId of rolesToResolve) {
-                const roleMembers = await getMembersWithRole(projectId, roleId, tenantId);
-                roleMembers.forEach(uid => mentionedUserIds.add(uid));
-            }
-
-            // Send Notifications
-            const currentUserId = auth.currentUser?.uid;
-            for (const userId of mentionedUserIds) {
-                if (userId === currentUserId) {
-                    continue;
-                }
-
-                await notifyMention(
-                    userId,
-                    targetTitle || (targetType.charAt(0).toUpperCase() + targetType.slice(1)),
-                    targetType,
-                    projectId,
-                    targetId,
-                    commentId,
-                    tenantId
-                );
-                showToast(`Sent mention notification to user`, 'success');
-            }
-
         } catch (e) {
             console.error('Failed to add comment', e);
         }

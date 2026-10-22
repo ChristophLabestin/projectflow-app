@@ -42,29 +42,42 @@ const toClientError = (error: any, fallback: string): functions.https.HttpsError
 const RP_NAME = 'ProjectFlow';
 const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
 const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT || '';
-const PROD_ORIGINS = (process.env.PASSKEY_ORIGINS
-    || [
-        FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.web.app`,
-        FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.firebaseapp.com`,
-        'https://app.getprojectflow.com'
-    ].filter(Boolean).join(','))
-    .split(',')
-    .map((origin) => origin.trim().replace(/\/$/, ''))
-    .filter(Boolean);
+
+// Native iOS app. Passkeys created through ASAuthorization use the associated domain as RP ID
+// (webcredentials:app.getprojectflow.com) and iOS reports `https://<rpID>` as the clientDataJSON origin,
+// so the native client must send `origin: 'https://app.getprojectflow.com'` (or `client: 'ios'`).
+// It stays on the allow-list even when PASSKEY_ORIGINS overrides the web origins.
+export const NATIVE_APP_ORIGIN = 'https://app.getprojectflow.com';
+
+const normalizeOrigin = (origin: string) => origin.trim().replace(/\/$/, '');
+
+const PROD_ORIGINS = Array.from(new Set([
+    ...(process.env.PASSKEY_ORIGINS
+        || [
+            FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.web.app`,
+            FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.firebaseapp.com`,
+            NATIVE_APP_ORIGIN
+        ].filter(Boolean).join(','))
+        .split(',')
+        .map(normalizeOrigin)
+        .filter(Boolean),
+    NATIVE_APP_ORIGIN
+]));
 
 /**
  * Resolve the WebAuthn Relying Party ID + expected origin for a request.
  *
- * The client passes its `window.location.origin`. Allow-listed production
- * origins and local development hosts (localhost / 127.0.0.1) use that origin
- * and its hostname as the RP ID, so passkeys work on every host the app is
- * served from. Anything else falls back to the first production origin, so a
- * remote caller cannot inject an arbitrary relying party.
+ * The client passes its `window.location.origin` (web) or `https://app.getprojectflow.com` (iOS).
+ * Allow-listed production origins and local development hosts (localhost / 127.0.0.1) use that origin
+ * and its hostname as the RP ID, so passkeys work on every host the app is served from. Anything else
+ * falls back to the first production origin, so a remote caller cannot inject an arbitrary relying
+ * party. `client: 'ios'` without an origin selects the native origin explicitly.
  */
-const resolveRp = (clientOrigin?: string): { rpID: string; origin: string } => {
-    if (clientOrigin) {
+const resolveRp = (clientOrigin?: string, client?: unknown): { rpID: string; origin: string } => {
+    const requested = clientOrigin || (client === 'ios' ? NATIVE_APP_ORIGIN : undefined);
+    if (requested) {
         try {
-            const url = new URL(clientOrigin);
+            const url = new URL(requested);
             const isLocalDev = isEmulator && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
             if (isLocalDev || PROD_ORIGINS.includes(url.origin)) {
                 return { rpID: url.hostname, origin: url.origin };
@@ -88,7 +101,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
         }
         const userId = context.auth.uid;
         const userEmail = context.auth.token.email || 'user@example.com';
-        const { rpID, origin } = resolveRp(data?.origin);
+        const { rpID, origin } = resolveRp(data?.origin, data?.client);
 
         // 2. getUserPasskeys(user) - Retrieve user's existing passkeys to exclude them
         const passkeysSnapshot = await db.collection('users').doc(userId).collection('passkeys').get();
@@ -104,7 +117,7 @@ export const generatePasskeyRegistrationOptions = functions.region(REGION).https
             attestationType: 'none',
             authenticatorSelection: {
                 residentKey: 'preferred',
-                userVerification: 'preferred',
+                userVerification: 'required',
                 authenticatorAttachment: 'platform', // Enforce platform authenticators (FaceID, TouchID, Windows Hello)? Optional.
             },
             excludeCredentials: userPasskeys.map(passkey => ({
@@ -160,7 +173,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
     // from the client origin for challenges created before this was persisted.
     const { rpID, origin } = challengeData?.origin
         ? { rpID: challengeData.rpID as string, origin: challengeData.origin as string }
-        : resolveRp(data?.origin);
+        : resolveRp(data?.origin, data?.client);
 
     // 3. Verify
     let verification;
@@ -170,6 +183,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
             expectedChallenge,
             expectedOrigin: origin,
             expectedRPID: rpID,
+            requireUserVerification: true,
         });
     } catch (error: any) {
         console.error('Passkey registration verification failed', error);
@@ -265,11 +279,11 @@ export const generatePasskeyAuthenticationOptions = functions.region(REGION).htt
         }
 
         // 2. Generate options
-        const { rpID, origin } = resolveRp(data?.origin);
+        const { rpID, origin } = resolveRp(data?.origin, data?.client);
         const options = await generateAuthenticationOptions({
             rpID,
             allowCredentials: allowCredentials.length > 0 ? allowCredentials : undefined,
-            userVerification: 'preferred',
+            userVerification: 'required',
         });
 
         // 3. Store the challenge.
@@ -421,13 +435,14 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             // resolving from the client origin for older challenges.
             const { rpID, origin } = challengeData?.origin
                 ? { rpID: challengeData.rpID as string, origin: challengeData.origin as string }
-                : resolveRp(data?.origin);
+                : resolveRp(data?.origin, data?.client);
 
             verification = await verifyAuthenticationResponse({
                 response: authResponse,
                 expectedChallenge: challengeData!.challenge,
                 expectedOrigin: origin,
                 expectedRPID: rpID,
+                requireUserVerification: true,
                 credential: {
                     id: credentialID,
                     publicKey: new Uint8Array(dbPasskey.credentialPublicKey),

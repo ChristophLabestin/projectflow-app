@@ -1,5 +1,20 @@
 {
   "webcredentials": {
     "apps": ["48BM67TY9G.de.christophlabestin.projectflow"]
+  },
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["48BM67TY9G.de.christophlabestin.projectflow"],
+        "components": [
+          { "/": "/project/*" },
+          { "/": "/tasks*" },
+          { "/": "/notifications*" },
+          { "/": "/invite/*" },
+          { "/": "/join/*" },
+          { "/": "/" }
+        ]
+      }
+    ]
   }
 }

@@ -210,3 +210,8 @@ export { mcp } from './mcp-server';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
+// iOS backend work package (contracts C1-C5): side-effect triggers, reminders, nudges, Live Activity sync.
+export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
+export { deliverReminders } from './reminders';
+export { sendNudges } from './nudges';
+export { onUserFocusChanged } from './live-activity';

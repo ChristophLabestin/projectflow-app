@@ -62,6 +62,21 @@ These collections are largely public or allow unauthenticated access (e.g., for 
   - `status`: `"active" | "snoozed" | "blocked"`
   - `startedAt`, `snoozedUntil`, `blockedAt`, `updatedAt`: ISO date strings
   - `lastAction`: `"started" | "resumed" | "snoozed" | "blocked" | "completed" | "cleared"`
+- `notificationPrefs`: Object (optional, contract C3; the server applies the defaults in brackets)
+  - `timezone`: IANA zone [`Europe/Berlin`] — used by the scheduled nudges
+  - `push` / `email`: `{ assignments, mentions, comments, due, reminders }` booleans [push: all `true`; email: assignments + mentions `true`, rest `false`]
+  - `morningBriefing`: `{ enabled, time }` [`false`, `08:00`]; `dayClose`: `{ enabled, time }` [`false`, `17:30`]
+  - Read by `onNotificationCreated` (per channel + category; the in-app doc is always kept; invites/join requests/diagnostics are transactional and ignore the toggles) and `sendNudges`. The user language for server copy is `users/{uid}.language`.
+- Writes to `focusState` trigger `onUserFocusChanged` (Live Activity push, contract C5).
+
+#### ↳ 📂 **`devices`** *(iOS, owner only)*
+**Path:** `/users/{userId}/devices/{deviceId}` — `{ platform: "ios", fcmToken, liveActivityStartToken?, appVersion, locale, timezone, updatedAt }`, written by the iOS app. `onUserFocusChanged` uses `fcmToken` as the FCM target and `liveActivityStartToken` for push-to-start.
+
+#### ↳ 📂 **`liveActivities`** *(iOS, owner only)*
+**Path:** `/users/{userId}/liveActivities/{activityId}` — `{ deviceId, pushToken, itemId, itemType, updatedAt }`, written by the app when an activity starts and deleted when it ends (the server deletes the doc itself when it sends `end`).
+
+#### ↳ 📂 **`nudgeLog`** *(server only)*
+**Path:** `/users/{userId}/nudgeLog/{yyyy-mm-dd}` (the user's *local* day) — `{ date, timezone, sent: string[], skipped: string[], briefingStops?: number, updatedAt }`. Idempotency marker of `sendNudges`; clients can neither read nor write it (rules `if false`).
 
 #### ↳ 📂 **`private`** *(owner-only secrets)*
 **Path:** `/users/{userId}/private/{docId}`
@@ -146,8 +161,12 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `actorId`: string (Optional)
 - `actorName`: string (Optional)
 - `actorPhotoURL`: string (Optional)
+- `initiativeId`, `commentId`, `reminderId`: string (Optional)
+- `deepLink`: string (Optional, in-app route such as `/tasks` or `/?mode=close`; set for reminders and nudges, otherwise derived from the ids)
 - `diagnostic`: Object (Optional, present for `diagnostic_test` notifications)
-- Mobile push data includes `title`, `message`, route ids, and APNs category `PROJECTFLOW_NOTIFICATION` so the iOS app can expose action buttons.
+- `type` values: `task_assigned`, `subtask_assigned`, `comment_added`, `comment_mention`, `task_completed` (all created by the task/comment triggers), `reminder`, `task_due_today`, `morning_briefing`, `day_close` (scheduled functions), plus the client-created `project_invite`, `workspace_invite`, `project_join_request*`, `issue_assigned`, `diagnostic_test`.
+- Server-created docs use deterministic ids (`{eventId}-{type}-{uid}`, `reminder-{doc}-{reminder}-{uid}`, `nudge-{type}-{day}-{uid}`) so retried triggers do not duplicate them.
+- Push (contract C4): FCM `data` = `notificationId, tenantId, type, projectId, taskId, initiativeId, deepLink, threadId` (+ `title`, `message` for web); APNs `aps`: `sound`, `mutable-content: 1`, `thread-id` (`projectId || tenantId`), `category` (`PF_ASSIGNMENT`, `PF_MENTION`, `PF_COMMENT`, `PF_DUE`, `PF_REMINDER`, `PF_BRIEFING`, `PF_DAYCLOSE`, else `PF_GENERIC`) and `badge` = unread docs of the user in that tenant.
 
 #### ↳ 📂 **`notificationDeliveryLogs`**
 **Path:** `/tenants/{tenantId}/notificationDeliveryLogs/{logId}`
@@ -320,15 +339,19 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `screenshots`: string[] (Legacy URLs)
 - `screenshotFileIds`: string[] (Optional, managed file references)
 - `intakeForm`: Object (optional) — public **project intake** config. `{ enabled, token, title, description, submitLabel, successMessage, allowAttachments, maxAttachments, autoCreateTask, categories: [{ id, label, icon, description, enabled, fields: IntakeField[] }] }`. Written only by the `saveProjectIntakeConfig` Cloud Function; when `enabled`, mirrored to `public_project_intake/{token}`.
-- `reminders`: Array of project-level follow-up reminders. Each reminder is `{ id, title, remindAt, linkedType, linkedId, linkedTitle, isCompleted, createdAt, completedAt }`; `linkedType` can be `project`, `task`, or `initiative`. Project Overview merges these with task-level reminders for the operational follow-up strip.
+- `nextReminderAt`: ISO string, server-maintained by `onProjectWritten` (earliest `!isCompleted && !sentAt` reminder, absent when none). `deliverReminders` scans it via a collection-group index. Never write it from a client.
+- `reminders`: Array of project-level follow-up reminders. Each reminder is `{ id, title, remindAt, linkedType, linkedId, linkedTitle, isCompleted, createdAt, completedAt, createdBy, recipientIds, notifyAssignees, sentAt }` (`createdBy`/`recipientIds`/`notifyAssignees` are written by the client; `sentAt` by `deliverReminders`; `recipientIds` defaults to `[createdBy]`, legacy reminders without `createdBy` go to the project owner / task assignees); `linkedType` can be `project`, `task`, or `initiative`. Project Overview merges these with task-level reminders for the operational follow-up strip.
 
 > **Project Subcollections**
 > These collections exist *within* a project document.
 
 *   **`tasks`**
-    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, dependencies, parentTaskId, nextStep, blockerNote, reminderAt, reminders, lastWorkbenchNote, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, githubRepo, githubIssueNumber, githubIssueUrl, githubIssueNodeId, githubIssueState, githubProjectV2Fields, githubSyncedAt, githubSyncError, githubSyncDisabled, ... }`
+    *   📄 `Task`: `{ title, status, assigneeIds, dueDate, priority, dependencies, parentTaskId, nextStep, blockerNote, reminderAt, reminders, nextReminderAt, tenantId, projectId, createdBy, updatedBy, updatedAt, completedAt, completedBy, lastWorkbenchNote, externalKey, codexSessionId, source, templateId, templateTrack, templateSeedId, sourceReferences, githubRepo, githubIssueNumber, githubIssueUrl, githubIssueNodeId, githubIssueState, githubProjectV2Fields, githubSyncedAt, githubSyncError, githubSyncDisabled, ... }`
         *   Task relationship fields are optional and live on the task document: `dependencies` stores task ids that block this task, inverse "is blocking" links are derived from other tasks' `dependencies`, and `parentTaskId` stores the parent task for task-to-task hierarchy. Adding blocked-by/is-blocking links should mark the blocked task `status: "Blocked"`.
-        *   Full Workbench fields are optional task metadata: `nextStep` is the next concrete action, `blockerNote` explains blocked work, `reminders` stores multiple task-level follow-up reminders, `reminderAt` mirrors the earliest open reminder date for legacy/sort compatibility, and `lastWorkbenchNote` stores the latest quick-log note. They do not create notification backend behavior by themselves.
+        *   Full Workbench fields are optional task metadata: `nextStep` is the next concrete action, `blockerNote` explains blocked work, `reminders` stores multiple task-level follow-up reminders, `reminderAt` mirrors the earliest open reminder date for legacy/sort compatibility, and `lastWorkbenchNote` stores the latest quick-log note. Reminders are delivered by the scheduled `deliverReminders` function (see below); `reminderAt` (single legacy date) is *not* delivered.
+        *   **Server-owned side effects (contract C1, `functions/src/task-triggers.ts`).** Every client write to a task/subtask/initiative/comment sets `updatedBy` (uid) and `updatedAt`. `onTaskWritten` then (a) keeps `status: "Done"` ⇔ `isCompleted: true` (+ `completedAt`/`completedBy`; legacy `Todo` untouched; only the field that changed decides the direction, `status` wins when both changed), (b) heals missing `tenantId`/`projectId` from the path, (c) maintains `nextReminderAt`, (d) writes activity entries (created, completed/reopened, status, priority, assignment, due date) with the actor snapshot, (e) syncs project `progress` (count aggregations; done = `isCompleted || status Done`), (f) creates `task_assigned` / `task_completed` notification docs. `onSubtaskWritten` (activity + `subtask_assigned`) and `onCommentCreated` (comment activity, `comment_added` to task assignees + creator, `comment_mention` parsed from `@Name` in the text plus optional `mentionedUserIds`) do the same. Deleted-task/-subtask activities stay client-side (only the client knows who deleted).
+        *   **`systemWriteAt`** (Timestamp/ISO): stamped by server patches, `deliverReminders`, the seed and `scripts/backfill-task-fields.mjs`. A write that *changes* it never produces activity entries, notifications or a progress sync (loop guard + silent bulk writes). Do not set it from a client.
+        *   **Assignees:** the effective assignee set is `assigneeIds ∪ {assigneeId}`; notifications fire only for members *added* to that set, so backfilling `assigneeIds` from `assigneeId` is silent. Unassigned tasks count as their owner's (web "my tasks" rule); `scripts/backfill-task-fields.mjs` materialises this as `assigneeIds: [ownerId]`.
         *   Startup/company template seeds use `source: "template"` or `source: "official_template"`, `templateId: "startup_company_formation"`, `templateTrack`, `templateSeedId`, and optional `sourceReferences` to keep generated work editable, filterable, and source-auditable.
         *   GitHub Issues are imported as tasks with `source: "github_issue"` and `externalKey: "github:{owner/repo}:issue:{number}"`. GitHub Projects v2 field snapshots live in `githubProjectV2Fields`. ProjectFlow-to-GitHub sync uses `githubIssueNumber`, `githubIssueUrl`, `githubIssueState`, and `githubSyncedAt`; `githubSyncDisabled` opts out per task.
     *   📄 `Initiative`: `{ title, status, priority, externalKey, source, templateId, templateTrack, templateSeedId, sourceReferences, successMetric, ... }`
@@ -344,7 +367,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 *   **`activities`**
     *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Audit log; Codex activity uses `type: "codex"`)
 *   **`comments`** _(Implied)_
-    *   📄 `Comment`: `{ content, targetId, userId, ... }`
+    *   📄 `Comment`: `{ content, targetId, targetType, userId, userDisplayName, userPhotoURL, mentionedUserIds?, updatedBy, createdAt }`. Created by clients (web `addComment`/`addIdeaComment`, iOS); `onCommentCreated` writes the activity + notifications.
 *   **`codex_sessions`**
     *   📄 `CodexSession`: `{ title, status, phase, externalKey, taskId, initiativeId, repoPath, branch, filesTouched, lastValidationStatus, ... }`
     *   ↳ 📂 `checkpoints/{checkpointId}`: `{ phase, summary, validationStatus, filesTouched, commands, createdAt }`
@@ -405,4 +428,6 @@ Workspace isolation: screens only show data of the active workspace. Collection-
 *   **`invitations`**: `where email == myVerifiedEmail and status == 'pending'`.
 *   **`projects`**: only by `tenantId`-scoped docs a member can read; project lists use `tenants/{active}/projects` (guests: `where memberIds array-contains uid`).
 *   **`tasks`** / **`initiatives`**: always with `where tenantId == activeTenant`.
+    *   "My tasks" (full members, iOS): `collectionGroup('tasks').where('tenantId','==',t).where('assigneeIds','array-contains',uid)` — composite index `tasks(tenantId ASC, assigneeIds CONTAINS)` (and `+ isCompleted ASC` for open-only). Allowed by `canAccessScopedDoc` for full members; guests and queries without `tenantId` are rejected (covered by `functions/scripts/firestore-rules-test.js`). Guests: one listener per project they belong to.
+    *   Reminder scan (server): `nextReminderAt <= now` on collection groups `tasks` and `projects` (single-field collection-group index overrides in `firestore.indexes.json`).
 *   `activities`, `subtasks`, `ideas`, `issues`: no collection-group rule — read them via their project path.
