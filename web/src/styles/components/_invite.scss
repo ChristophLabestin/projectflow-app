@@ -93,7 +93,7 @@
     justify-content: center;
 
     &.loading {
-        background-color: rgba(59, 130, 246, 0.1);
+        background-color: rgba(var(--brand-blue-rgb), 0.1);
         /* blue-100 equivalent with opacity */
 
         .material-symbols-outlined {
@@ -103,7 +103,7 @@
     }
 
     &.success {
-        background-color: rgba(16, 185, 129, 0.1);
+        background-color: rgba(var(--brand-green-rgb), 0.1);
         /* emerald-100 equivalent */
 
         .material-symbols-outlined {
@@ -185,7 +185,7 @@
 
     .bar {
         height: 100%;
-        background-color: #10b981;
+        background-color: var(--brand-green);
         /* emerald-500 */
         animation: customPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         width: 100%;

@@ -225,10 +225,10 @@
     gap: 8px;
 
     &.warning {
-        background-color: rgba(245, 158, 11, 0.1);
+        background-color: rgba(var(--brand-amber-rgb), 0.1);
         /* amber-500/10 */
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        color: #f59e0b;
+        border: 1px solid rgba(var(--brand-amber-rgb), 0.2);
+        color: var(--brand-amber-text);
         /* amber-500 */
     }
 
