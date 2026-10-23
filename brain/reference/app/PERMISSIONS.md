@@ -580,3 +580,16 @@ session start/end, sensitive read and refusal of an admin is written to `admin_a
 Rules: `platform_admins`, `admin_sessions`, `admin_audit`, `crashIssues/**`, `legal_documents/*/drafts` are closed to
 all clients. Grant/revoke: `node functions/scripts/grant-platform-admin.mjs <email> [--revoke]` (claim + allowlist).
 
+### Workspace suspension (platform admin)
+`tenants/{id}.suspendedAt` (+ `suspendedReason`, `suspendedBy`, log `tenants/{id}/suspension_log`) is set only by `adminApi`
+`workspaces.setSuspended` (reason ≥ 10 chars, typed confirmation, audit). Rules: `isTenantMember()` = membership **and**
+`tenantActive()`; only the tenant doc and member docs stay readable (`isTenantMemberAnyState`) so the apps can show the
+notice; tenant owners/admins can neither set nor clear the fields. Server paths check `functions/src/tenant-status.ts`
+(`isTenantSuspended`, 60 s cache): AI/MCP tokens (`resolveAiToken`), workspace API tokens (`checkApiTokenUsable`), Firebase-token
+API calls (`projectflow-api.ts`), callable guards (notifications, insights, workspace-admin, file-storage/files-manager via
+`getMembership`, project intake, initiative feedback), scheduled jobs (reminders, nudges, insights, health snapshots, sprint auto-start).
+Not covered yet: Storage rules (direct file reads; Storage allows few Firestore lookups per request), Flows and in-app AI (asked the owning sessions).
+
+### Platform config
+`platform_config/announcement` is public read (banner); every other `platform_config/*` and `admin_config/*` is closed. Writes only via `adminApi`.
+

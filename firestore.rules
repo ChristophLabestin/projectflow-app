@@ -19,8 +19,18 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/tenants/$(tenantId));
     }
 
-    function isTenantMember(tenantId) {
+    // Platform admins can suspend a workspace (admin console, `tenants/{id}.suspendedAt`): members keep
+    // reading the tenant doc and their membership (the app shows the suspension notice), everything else closes.
+    function tenantActive(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)).data.get('suspendedAt', null) == null;
+    }
+
+    function isTenantMemberAnyState(tenantId) {
       return authed() && exists(memberPath(tenantId));
+    }
+
+    function isTenantMember(tenantId) {
+      return isTenantMemberAnyState(tenantId) && tenantActive(tenantId);
     }
 
     function memberRole(tenantId) {
@@ -179,6 +189,11 @@ service cloud.firestore {
     match /admin_config/{docId} {
       allow read, write: if false;
     }
+    // Platform-wide config written by the admin console. `announcement` (banner for all users) is public.
+    match /platform_config/{docId} {
+      allow read: if docId == 'announcement';
+      allow write: if false;
+    }
 
     // Crash reports (web + iOS, opt-in): written only by the crashIngest function, read and triaged only
     // through adminApi in the admin console (admin/) — no client access, platform admins included.
@@ -256,14 +271,16 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
-      allow read: if isTenantMember(tenantId);
-      allow create: if authed() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isTenantMemberAnyState(tenantId);
+      allow create: if authed() && request.resource.data.ownerId == request.auth.uid &&
+        !request.resource.data.keys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy', 'isReviewAccount']);
       allow update: if isTenantAdmin(tenantId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['suspendedAt', 'suspendedReason', 'suspendedBy']) &&
         (isOwner(tenantId) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']));
       allow delete: if isOwner(tenantId);
 
       match /members/{userId} {
-        allow read: if isTenantMember(tenantId);
+        allow read: if isTenantMemberAnyState(tenantId);
         allow create: if isOwnerBootstrap(tenantId, userId) ||
           (request.resource.data.uid == userId && canManageMemberRole(tenantId, 'Member', request.resource.data.role));
         allow update: if canSelfUpdateMembership(userId) ||
@@ -510,7 +527,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle', 'suspension_log']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -528,6 +545,7 @@ service cloud.firestore {
               'ai_config',
               'ai_usage',
               'ai_credits',
+              'suspension_log',
               'files',
               'file_upload_drafts',
               'notifications',

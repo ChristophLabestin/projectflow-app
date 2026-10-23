@@ -74,7 +74,7 @@ Akzent = Brand-Mark und Status-Dots.
 
 ## Stand 2026-10-23
 
-Pakete 1–4 sind live (Site `projectflow-admin`). Offen: Feature-Flags (`inAppAi`), Ankündigungsbanner und Workspace-Sperre warten auf eine Produktentscheidung (Rückfrage beim Orchestrator), die Domain `admin.getprojectflow.com` richtet der User ein.
+Pakete 1–4 live inkl. Workspace-Sperre (`tenants/{id}.suspendedAt`, PERMISSIONS.md), Ankündigungsbanner (`platform_config/announcement`, Web/Desktop `components/platform/PlatformAnnouncement.tsx`) und Steuerung der In-App-KI über deren eigene Felder (`ai_config/policy.inAppAi|inAppEnabled|monthlyCredits`, `ai_credits`; kein eigenes Flag-Dokument). Review-Konto (`reviewAccount`/`isReviewAccount`) zählt nirgends. iOS-Vertrag für Sperre und Banner: Notiz `admin-console-ios-contract.md` im Orchestrator-Notizordner. Ziel-Domain `admin.getprojectflow.com` (Checkliste `brain/operations/domains-setup.md` D).
 
 ## Betrieb
 

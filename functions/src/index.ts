@@ -144,10 +144,6 @@ export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
 export { adminApi } from './admin-console';
 export {
-    saveLegalDraft,
-    deleteLegalDraft,
-    publishLegalDraft,
-    getLegalAdminOverview,
     acceptLegalDocuments,
     declineLegalDocuments,
     legalDocument,

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Imports legal Markdown files into the versioned legal documents system.
 //
-//   node scripts/import-legal-docs.mjs <dir>                    # files → admin drafts (review + publish in /admin/legal)
+//   node scripts/import-legal-docs.mjs <dir>                    # files → admin drafts (review + publish in the admin console → Rechtsdokumente)
 //   node scripts/import-legal-docs.mjs <dir> --publish-initial  # seed version 1 where no version exists (no mails)
 //
 // Files: <dir>/<type>.<lang>.md with type = privacy|terms|imprint, lang = de|en (both languages
@@ -100,6 +100,6 @@ for (const type of TYPES) {
         updatedAt: Timestamp.now(),
         updatedBy: 'import-legal-docs',
     });
-    console.log(`draft ${type} saved (base version ${currentVersion ?? 'none'}) — review and publish in /admin/legal`);
+    console.log(`draft ${type} saved (base version ${currentVersion ?? 'none'}) — review and publish in the admin console (Rechtsdokumente)`);
 }
 process.exit(0);

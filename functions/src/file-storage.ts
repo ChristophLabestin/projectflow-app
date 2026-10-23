@@ -1,4 +1,5 @@
 import * as admin from 'firebase-admin';
+import { isTenantSuspended } from './tenant-status';
 import * as crypto from 'crypto';
 import * as functions from 'firebase-functions/v1';
 import { OAuth2Client } from 'google-auth-library';
@@ -166,8 +167,12 @@ export const getMembership = async (tenantId: string, uid: string) => {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
 
-    const membershipSnap = await db.collection('tenants').doc(tenantId).collection('members').doc(uid).get();
-    if (!membershipSnap.exists) {
+    const [membershipSnap, suspended] = await Promise.all([
+        db.collection('tenants').doc(tenantId).collection('members').doc(uid).get(),
+        isTenantSuspended(tenantId),
+    ]);
+    // A suspended workspace (admin console) behaves like no membership for file access.
+    if (!membershipSnap.exists || suspended) {
         return { exists: false, role: '', roleIds: [] as string[] };
     }
 

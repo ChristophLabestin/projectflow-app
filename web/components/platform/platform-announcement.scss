@@ -1,0 +1,33 @@
+// Platform banner (admin console → System). Tokens only (brain/reference/app/STYLING.md).
+.platform-announcement {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--color-text-main);
+    border-bottom: 1px solid var(--color-surface-border);
+    background: rgba(var(--brand-blue-rgb), 0.1);
+
+    &--maintenance { background: rgba(var(--brand-amber-rgb), 0.14); }
+    &--warning { background: rgba(var(--color-error-rgb), 0.1); }
+
+    &__icon { font-size: 18px; color: var(--brand-blue-text); }
+    &--maintenance &__icon { color: var(--brand-amber-text); }
+    &--warning &__icon { color: var(--color-error); }
+
+    &__text { flex: 1; min-width: 0; }
+    &__link { font-weight: 600; color: inherit; text-decoration: underline; white-space: nowrap; }
+    &__close {
+        display: inline-flex;
+        padding: 2px;
+        border: 0;
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--color-text-muted);
+        cursor: pointer;
+        &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+        .material-symbols-outlined { font-size: 18px; }
+    }
+}

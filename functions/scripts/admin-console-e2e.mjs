@@ -160,6 +160,36 @@ await check('pricing input is validated and audited', async () => {
     assert.equal((await call(adminToken, 'system.setPricing', { usdPerMTokens: -1, usdPerImage: 0 }, sessionId)).error, 'INVALID_ARGUMENT');
     assert.equal((await call(adminToken, 'system.setPricing', { usdPerMTokens: 1.2, usdPerImage: 0.02 }, sessionId)).result?.ok, true);
 });
+await check('suspension needs a reason, is logged and released', async () => {
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    const id = ws.result.workspaces[0].id;
+    assert.equal((await call(adminToken, 'workspaces.setSuspended', { id, suspended: true, reason: 'kurz' }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'workspaces.setSuspended', { id, suspended: true, reason: 'E2E: Missbrauchsmeldung' }, sessionId)).result?.ok, true);
+    const detail = await call(adminToken, 'workspaces.get', { id }, sessionId);
+    assert.ok(detail.result.suspendedAt && detail.result.suspensionLog.length >= 1, JSON.stringify(detail).slice(0, 200));
+    assert.equal((await admin.firestore().doc(`tenants/${id}`).get()).get('suspendedReason'), 'E2E: Missbrauchsmeldung');
+    assert.equal((await call(adminToken, 'workspaces.setSuspended', { id, suspended: false, reason: 'E2E: geklärt, Freigabe' }, sessionId)).result?.ok, true);
+    assert.equal((await admin.firestore().doc(`tenants/${id}`).get()).get('suspendedAt'), undefined);
+});
+await check('announcement validates and publishes a new version', async () => {
+    assert.equal((await call(adminToken, 'system.setAnnouncement', { active: true, type: 'info', text: { de: 'x', en: '' } }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'system.setAnnouncement', { active: true, type: 'info', text: { de: 'x', en: 'y' }, link: { url: 'javascript:alert(1)' } }, sessionId)).error, 'INVALID_ARGUMENT');
+    const out = await call(adminToken, 'system.setAnnouncement', { active: true, type: 'maintenance', text: { de: 'Wartung heute', en: 'Maintenance today' }, endsAt: Date.now() + 3_600_000 }, sessionId);
+    assert.ok(out.result?.id, JSON.stringify(out));
+    const got = await call(adminToken, 'system.announcement', {}, sessionId);
+    assert.equal(got.result.id, out.result.id);
+});
+await check('in-app AI rollout and credit limit are controlled per workspace', async () => {
+    const credits = await call(adminToken, 'ai.credits', {}, sessionId);
+    assert.ok(Array.isArray(credits.result?.workspaces), JSON.stringify(credits).slice(0, 200));
+    const id = credits.result.workspaces[0].tenantId;
+    assert.equal((await call(adminToken, 'ai.setRollout', { tenantIds: [id], inAppAi: true }, sessionId)).result?.ok, true);
+    assert.equal((await call(adminToken, 'workspaces.setAiPolicy', { id, policy: { monthlyCredits: 5000 } }, sessionId)).result?.ok, true);
+    assert.equal((await call(adminToken, 'workspaces.setAiPolicy', { id, policy: { monthlyCredits: -1 } }, sessionId)).error, 'INVALID_ARGUMENT');
+    const after = await call(adminToken, 'ai.credits', {}, sessionId);
+    const row = after.result.workspaces.find((w) => w.tenantId === id);
+    assert.ok(row.inAppAi && row.limit === 5000, JSON.stringify(row));
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

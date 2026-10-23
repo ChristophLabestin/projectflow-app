@@ -86,7 +86,7 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - Build: `npm --prefix admin run build` (`tsc --noEmit && vite build` → `admin/dist`).
 - Deploy: `(cd admin && npm run deploy)` = build + `firebase deploy --only hosting --project projectflow-labestin` with `admin/firebase.json` (site `projectflow-admin`). Backend: `firebase deploy --only functions:adminApi --project projectflow-labestin`.
 - Admin access: `node functions/scripts/grant-platform-admin.mjs <email>` (claim + allowlist `platform_admins/{uid}`), TOTP is set up on first console sign-in.
-- Custom domain `admin.getprojectflow.com`: Firebase console → Hosting → site `projectflow-admin` → Add custom domain → set the DNS records; then Auth → Settings → Authorized domains, and add `https://admin.getprojectflow.com/__/auth/handler` to the Google OAuth client's redirect URIs; set `VITE_ADMIN_CONSOLE_URL=https://admin.getprojectflow.com` for `web/` builds (old `/admin` links).
+- Custom domain `admin.getprojectflow.com`: checklist in `brain/operations/domains-setup.md` (section D). Authorized domain, CSP, passkey origin and the app redirect are already set.
 
 ## Firestore Commands
 

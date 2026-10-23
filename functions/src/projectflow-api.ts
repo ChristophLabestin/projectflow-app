@@ -1,6 +1,7 @@
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 
+import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import { getAuthToken, getWorkspaceMemberRole, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
 import { canReachProject, checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
@@ -369,6 +370,10 @@ const authRequest = async (
             forbidden(res, 'Not a member of this workspace.');
             return null;
         }
+    }
+    if (kind === 'firebase' && await isTenantSuspended(tenantId)) {
+        forbidden(res, SUSPENDED_MESSAGE);
+        return null;
     }
 
     const scopedProjectId = getString(validation.tokenData.projectScope);

@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import type { HandlerMap } from '../types';
 import { int, toMs } from '../types';
 import { dayKeys } from './crashes';
-import { listDirectory } from './directory';
+import { listDirectory, reviewTenantIds } from './directory';
 import { loadPricing } from './ops';
 
 const DAY = 86_400_000;
@@ -32,8 +32,8 @@ export const overviewHandlers: HandlerMap = {
             const since = Timestamp.fromMillis(now - days * DAY);
             const month = new Date(now).toISOString().slice(0, 7);
 
-            const pricing = await loadPricing(db);
-            const [users, tenantsCount, newTenants, projectsCount, tasksCount, activity, crashEvents, aiDaily, aiMonthly, grants, devices, acceptances, termsIndex] = await Promise.all([
+            const [pricing, reviewTenants] = await Promise.all([loadPricing(db), reviewTenantIds(db)]);
+            const [allUsers, tenantsCount, newTenants, projectsCount, tasksCount, activity, crashEvents, aiDaily, aiMonthly, grants, devices, acceptances, termsIndex] = await Promise.all([
                 listDirectory(),
                 db.collection('tenants').count().get(),
                 db.collection('tenants').where('createdAt', '>=', since).select('createdAt').get(),
@@ -49,6 +49,16 @@ export const overviewHandlers: HandlerMap = {
                 db.collection('legal_documents').doc('terms').get(),
             ]);
 
+            // The App Review demo account (and its workspace) never counts.
+            const reviewUids = new Set(allUsers.filter((u) => u.reviewAccount).map((u) => u.uid));
+            const users = allUsers.filter((u) => !u.reviewAccount);
+            const tenantOf = (ref: FirebaseFirestore.DocumentReference) => ref.path.split('/')[1];
+            const reviewList = Array.from(reviewTenants);
+            const [reviewProjects, reviewTasks] = reviewList.length ? await Promise.all([
+                Promise.all(reviewList.map((t) => db.collection('tenants').doc(t).collection('projects').count().get().then((c) => c.data().count))),
+                db.collectionGroup('tasks').where('tenantId', 'in', reviewList.slice(0, 30)).count().get().then((c) => c.data().count).catch(() => 0),
+            ]) : [[0], 0];
+
             // Users: signups + "last active" (Auth refresh time) windows.
             const signups = keys.map(() => 0);
             users.forEach((u) => add(signups, u.createdAt));
@@ -59,6 +69,7 @@ export const overviewHandlers: HandlerMap = {
             const indexOf = new Map(keys.map((k, i) => [k, i]));
             const events = keys.map(() => 0);
             activity.forEach((doc) => {
+                if (reviewTenants.has(tenantOf(doc.ref))) return;
                 const at = toMs(doc.get('createdAt'));
                 if (!at) return;
                 const i = indexOf.get(new Date(at).toISOString().slice(0, 10));
@@ -69,7 +80,7 @@ export const overviewHandlers: HandlerMap = {
             });
 
             const workspacesNew = keys.map(() => 0);
-            newTenants.forEach((doc) => add(workspacesNew, toMs(doc.get('createdAt'))));
+            newTenants.forEach((doc) => { if (!reviewTenants.has(doc.id)) add(workspacesNew, toMs(doc.get('createdAt'))); });
 
             const crashes = { web: keys.map(() => 0), ios: keys.map(() => 0) };
             crashEvents.forEach((doc) => add(doc.get('platform') === 'ios' ? crashes.ios : crashes.web, toMs(doc.get('receivedAt'))));
@@ -78,18 +89,21 @@ export const overviewHandlers: HandlerMap = {
             const aiImages = keys.map(() => 0);
             const aiUsers = new Set<string>();
             aiDaily.forEach((doc) => {
+                if (reviewUids.has(doc.get('uid'))) return;
                 const i = indexOf.get(doc.get('day'));
                 if (i === undefined) return;
                 aiText[i] += Number(doc.get('text') || 0);
                 aiImages[i] += Number(doc.get('image') || 0);
                 aiUsers.add(doc.get('uid'));
             });
-            const monthTokens = aiMonthly.docs.reduce((sum, doc) => sum + Number(doc.get('tokens') || 0), 0);
-            const monthImages = aiMonthly.docs.reduce((sum, doc) => sum + Number(doc.get('images') || 0), 0);
+            const monthDocs = aiMonthly.docs.filter((doc) => !reviewUids.has(doc.get('uid')));
+            const monthTokens = monthDocs.reduce((sum, doc) => sum + Number(doc.get('tokens') || 0), 0);
+            const monthImages = monthDocs.reduce((sum, doc) => sum + Number(doc.get('images') || 0), 0);
 
             const grantKinds: Record<string, number> = {};
             const grantClients: Record<string, number> = {};
-            grants.forEach((doc) => {
+            const liveGrants = grants.docs.filter((doc) => !reviewTenants.has(doc.get('tenantId')) && !reviewUids.has(doc.get('uid')));
+            liveGrants.forEach((doc) => {
                 grantKinds[doc.get('kind') || 'oauth'] = (grantKinds[doc.get('kind') || 'oauth'] || 0) + 1;
                 const client = doc.get('clientName') || (doc.get('kind') === 'personal-token' ? 'Persönlicher Token' : '?');
                 grantClients[client] = (grantClients[client] || 0) + 1;
@@ -98,6 +112,7 @@ export const overviewHandlers: HandlerMap = {
             // Client versions: iOS from devices, web/desktop from the last consent record.
             const versions: Record<string, Record<string, number>> = { ios: {}, desktop: {}, web: {} };
             devices.forEach((doc) => {
+                if (reviewUids.has(tenantOf(doc.ref))) return;
                 const updated = toMs(doc.get('updatedAt'));
                 if (updated && now - updated > 60 * DAY) return;
                 const v = doc.get('appVersion') || '?';
@@ -106,6 +121,7 @@ export const overviewHandlers: HandlerMap = {
             const termsVersion = Number(termsIndex.get('currentVersion') || 0);
             let termsAccepted = 0;
             acceptances.forEach((doc) => {
+                if (reviewUids.has(doc.id)) return;
                 const docs = doc.get('docs') || {};
                 if (termsVersion && Number(docs.terms?.version || 0) >= termsVersion) termsAccepted += 1;
                 const latest = Object.values(docs as Record<string, any>).sort((a, b) => (toMs(b?.acceptedAt) ?? 0) - (toMs(a?.acceptedAt) ?? 0))[0];
@@ -128,14 +144,14 @@ export const overviewHandlers: HandlerMap = {
                     signups,
                     activeDaily: actorsPerDay.map((s) => s.size),
                 },
-                workspaces: { total: tenantsCount.data().count, created: workspacesNew },
-                content: { projects: projectsCount.data().count, tasks: tasksCount.data().count, activityEvents: events },
+                workspaces: { total: tenantsCount.data().count - reviewTenants.size, created: workspacesNew },
+                content: { projects: projectsCount.data().count - (reviewProjects as number[]).reduce((a, b) => a + b, 0), tasks: tasksCount.data().count - (reviewTasks as number), activityEvents: events },
                 crashes: { ...crashes, total: crashTotal, perActiveUser: dauAvg ? crashTotal / days / dauAvg : null },
                 ai: {
                     text: aiText, images: aiImages, users: aiUsers.size,
                     monthTokens, monthImages, monthCostUsd: (monthTokens / 1_000_000) * pricing.usdPerMTokens + monthImages * pricing.usdPerImage, usdPerMTokens: pricing.usdPerMTokens,
                 },
-                mcp: { active: grants.size, kinds: grantKinds, clients: grantClients },
+                mcp: { active: liveGrants.length, kinds: grantKinds, clients: grantClients },
                 legal: { termsVersion, termsAccepted, acceptanceRate: users.length && termsVersion ? termsAccepted / users.length : null },
                 versions,
             };

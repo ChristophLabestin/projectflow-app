@@ -16,6 +16,7 @@ import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
+import { PlatformAnnouncement } from './platform/PlatformAnnouncement';
 
 const Sidebar = lazy(() => import('./SidebarNavigator').then((module) => ({ default: module.SidebarNavigator })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -280,6 +281,7 @@ export const AppLayout = () => {
                         onOpenNav={() => setNavOpen(true)}
                     />
                 </Suspense>
+                <PlatformAnnouncement />
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>

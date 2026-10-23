@@ -48,6 +48,8 @@ const FIREBASE_PROJECT = process.env.GCLOUD_PROJECT || process.env.GCP_PROJECT |
 // so the native client must send `origin: 'https://app.getprojectflow.com'` (or `client: 'ios'`).
 // It stays on the allow-list even when PASSKEY_ORIGINS overrides the web origins.
 export const NATIVE_APP_ORIGIN = 'https://app.getprojectflow.com';
+// Admin console (admin/): its own RP ID — app passkeys are bound to app.getprojectflow.com and do not carry over.
+export const ADMIN_CONSOLE_ORIGIN = 'https://admin.getprojectflow.com';
 
 const normalizeOrigin = (origin: string) => origin.trim().replace(/\/$/, '');
 
@@ -56,7 +58,8 @@ const PROD_ORIGINS = Array.from(new Set([
         || [
             FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.web.app`,
             FIREBASE_PROJECT && `https://${FIREBASE_PROJECT}.firebaseapp.com`,
-            NATIVE_APP_ORIGIN
+            NATIVE_APP_ORIGIN,
+            ADMIN_CONSOLE_ORIGIN
         ].filter(Boolean).join(','))
         .split(',')
         .map(normalizeOrigin)

@@ -1,4 +1,5 @@
 import * as functions from 'firebase-functions/v1';
+import { assertTenantActive } from './tenant-status';
 import * as admin from 'firebase-admin';
 import { sendEmail } from './email';
 import { FieldValue } from 'firebase-admin/firestore';
@@ -48,6 +49,7 @@ const logDelivery = async (
 };
 
 const requireTenantAccess = async (tenantId: string, context: CallableContext): Promise<string> => {
+    await assertTenantActive(tenantId);
     const uid = context.auth?.uid;
     if (!uid) {
         throw new functions.https.HttpsError('unauthenticated', 'Sign in before testing notifications.');

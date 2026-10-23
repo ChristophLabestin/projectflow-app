@@ -7,6 +7,7 @@
 // COST NOTE: the scan reads every users doc each tick (projected to a few fields). Fine for thousands of
 // users; at larger scale bucket users by time zone (e.g. a `nudgeZone` field) and query per bucket.
 import { onSchedule } from 'firebase-functions/v2/scheduler';
+import { isTenantSuspended } from './tenant-status';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { db } from './init';
 import { resolveNotificationPrefs } from './notification-prefs';
@@ -82,10 +83,13 @@ const loadUserTasks = async (uid: string, tenantIds: string[]): Promise<DayTask[
 
 const loadTenantIds = async (uid: string): Promise<string[]> => {
     const memberships = await db.collectionGroup('members').where('uid', '==', uid).get();
-    return memberships.docs
+    const ids = memberships.docs
         .map((doc) => doc.ref.parent.parent)
         .filter((ref): ref is FirebaseFirestore.DocumentReference => !!ref && ref.parent.id === 'tenants')
         .map((ref) => ref.id);
+    // Suspended workspaces (admin console) are left out of briefings and nudges.
+    const suspended = await Promise.all(ids.map((id) => isTenantSuspended(id)));
+    return ids.filter((_, i) => !suspended[i]);
 };
 
 const statsPayload = (stats: DayStats) => ({

@@ -4,7 +4,7 @@ import { compact, dateTime, num, relative } from '../lib/format';
 import { useAdminQuery } from '../lib/useAsync';
 import { DataTable, type Column } from '../ui/DataTable';
 import { useUi } from '../ui/Overlay';
-import { Badge, Card, ErrorNote, PageHead, Skeleton } from '../ui/primitives';
+import { Badge, Card, ErrorNote, PageHead, Segmented, Skeleton } from '../ui/primitives';
 
 type Job = { name: string; schedule: string; timeZone: string; state: string; lastAttemptTime: number | null; statusCode: number; statusMessage: string | null; nextRun: number | null };
 type Fn = { name: string; region: string; state: string; environment: string; runtime: string | null; updateTime: number | null; trigger: string };
@@ -17,6 +17,54 @@ type Status = {
 };
 
 const SITE_LABEL: Record<string, string> = { 'projectflow-labestin': 'Web-App (app.getprojectflow.com)', 'projectflow-admin': 'Admin-Konsole', getprojectflow: 'Landing (getprojectflow.com)' };
+
+type Announcement = { id?: string; active: boolean; type: 'info' | 'maintenance' | 'warning'; text: { de: string; en: string }; link: { url: string; label: { de: string; en: string } } | null; startsAt: number | null; endsAt: number | null; dismissible: boolean; updatedAt?: number | null };
+const toInput = (ms: number | null) => (ms ? new Date(ms - new Date(ms).getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '');
+const blankAnnouncement = (): Announcement => ({ active: false, type: 'info', text: { de: '', en: '' }, link: null, startsAt: null, endsAt: null, dismissible: true });
+
+const AnnouncementCard: React.FC = () => {
+    const { confirm, toast } = useUi();
+    const { data, reload } = useAdminQuery<Announcement | null>('system.announcement');
+    const [form, setForm] = useState<Announcement>(blankAnnouncement());
+    const [start, setStart] = useState('');
+    const [end, setEnd] = useState('');
+    useEffect(() => {
+        if (data === undefined) return;
+        const a = data || blankAnnouncement();
+        setForm(a);
+        setStart(toInput(a.startsAt));
+        setEnd(toInput(a.endsAt));
+    }, [data]);
+    const save = async (active: boolean) => {
+        const payload = { ...form, active, startsAt: start ? new Date(start).getTime() : null, endsAt: end ? new Date(end).getTime() : null };
+        if (active && !(await confirm({ title: 'Banner für alle Nutzer veröffentlichen?', message: 'Erscheint sofort (bzw. ab Start) in Web und Desktop für alle angemeldeten Nutzer. Jede Speicherung ist eine neue Version: wer sie weggeklickt hat, sieht sie wieder.', confirmLabel: 'Veröffentlichen' }))) return;
+        try { await adminApi('system.setAnnouncement', payload); toast(active ? 'Banner veröffentlicht' : 'Banner ausgeschaltet'); reload(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    const live = data?.active && (!data.startsAt || data.startsAt <= Date.now()) && (!data.endsAt || data.endsAt > Date.now());
+    return (
+        <Card title="Ankündigungsbanner" subtitle={data?.active ? (live ? `Live · Version ${data.id}` : `Geplant/abgelaufen · Version ${data.id}`) : 'Aus'} actions={data?.active ? <Badge tone={live ? 'green' : 'amber'}>{live ? 'live' : 'außerhalb Zeitraum'}</Badge> : <Badge>aus</Badge>}>
+            <div className="ac-stack">
+                <Segmented value={form.type} onChange={(type) => setForm({ ...form, type })} options={[{ value: 'info', label: 'Info' }, { value: 'maintenance', label: 'Wartung' }, { value: 'warning', label: 'Warnung' }]} />
+                <label className="ac-field"><span>Text Deutsch</span><textarea className="ac-textarea" rows={2} maxLength={400} value={form.text.de} onChange={(e) => setForm({ ...form, text: { ...form.text, de: e.target.value } })} /></label>
+                <label className="ac-field"><span>Text English</span><textarea className="ac-textarea" rows={2} maxLength={400} value={form.text.en} onChange={(e) => setForm({ ...form, text: { ...form.text, en: e.target.value } })} /></label>
+                <div className="ac-grid ac-grid--2">
+                    <label className="ac-field"><span>Start (leer = sofort)</span><input className="ac-input" type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} /></label>
+                    <label className="ac-field"><span>Ende (leer = offen)</span><input className="ac-input" type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} /></label>
+                </div>
+                <label className="ac-field"><span>Link (optional, https://)</span><input className="ac-input" value={form.link?.url || ''} onChange={(e) => setForm({ ...form, link: e.target.value ? { url: e.target.value, label: form.link?.label || { de: 'Mehr erfahren', en: 'Learn more' } } : null })} /></label>
+                {form.link && <div className="ac-grid ac-grid--2">
+                    <input className="ac-input" placeholder="Link-Text DE" value={form.link.label.de} onChange={(e) => setForm({ ...form, link: { ...form.link!, label: { ...form.link!.label, de: e.target.value } } })} />
+                    <input className="ac-input" placeholder="Link text EN" value={form.link.label.en} onChange={(e) => setForm({ ...form, link: { ...form.link!, label: { ...form.link!.label, en: e.target.value } } })} />
+                </div>}
+                <label className="ac-check"><input type="checkbox" checked={form.dismissible} onChange={(e) => setForm({ ...form, dismissible: e.target.checked })} />Wegklickbar (pro Version und Gerät)</label>
+                <div className="ac-row">
+                    <button className="ac-btn ac-btn--primary" disabled={!form.text.de.trim() || !form.text.en.trim()} onClick={() => save(true)}>{data?.active ? 'Neue Version veröffentlichen' : 'Veröffentlichen'}</button>
+                    {data?.active && <button className="ac-btn ac-btn--danger" onClick={() => save(false)}>Ausschalten</button>}
+                </div>
+            </div>
+        </Card>
+    );
+};
 
 const PricingCard: React.FC<{ pricing: Status['pricing']; onSaved: () => void }> = ({ pricing, onSaved }) => {
     const { toast } = useUi();
@@ -76,6 +124,7 @@ export const SystemScreen: React.FC = () => {
                         </Card>
                     ))}
                 </div>
+                <AnnouncementCard />
                 <div className="ac-grid ac-grid--2">
                     <PricingCard pricing={data.pricing} onSaved={reload} />
                     <Card title="KI-Limits (Env, global)" subtitle="Gesetzt über Functions-Umgebung (ai-service.ts)">

@@ -9,6 +9,7 @@
  * Only hashes are stored and the hash is the document id (one direct read, no scans). Admin SDK only.
  */
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 
 import { type PrincipalKind, shouldTouchLastUsed } from './ai-access';
 import { db } from './init';
@@ -55,6 +56,7 @@ export const resolveAiToken = async (token: string): Promise<ResolvedAiToken | {
 
     const member = await db.doc(`tenants/${grant.tenantId}/members/${grant.uid}`).get();
     if (!member.exists) return { error: 'You are no longer a member of this workspace.' };
+    if (await isTenantSuspended(String(grant.tenantId))) return { error: SUSPENDED_MESSAGE, status: 403 };
 
     const consent = await checkMachineLegalConsent(String(grant.uid));
     if (!consent.ok) return { error: consent.error, status: 403 };

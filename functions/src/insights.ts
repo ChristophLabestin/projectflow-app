@@ -1,6 +1,7 @@
 // Workspace insights (/insights): daily precomputation, on-demand refresh and the AI weekly report.
 // Concept: brain/plans/activity-insights-concept.md. Docs are server-written (firestore.rules).
 import * as functions from 'firebase-functions/v1';
+import { assertTenantActive } from './tenant-status';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
@@ -54,6 +55,7 @@ export const computeWorkspaceInsights = onSchedule(
     async () => {
         const tenants = await db.collection('tenants').get();
         for (const tenant of tenants.docs) {
+            if (tenant.get('suspendedAt') != null) continue; // suspended in the admin console
             try {
                 await computeTenantInsights(tenant.id);
             } catch (error) {
@@ -64,6 +66,7 @@ export const computeWorkspaceInsights = onSchedule(
 );
 
 const requireFullMember = async (tenantId: unknown, context: functions.https.CallableContext) => {
+    await assertTenantActive(tenantId);
     const uid = context.auth?.uid;
     if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
     if (typeof tenantId !== 'string' || !tenantId.trim()) {

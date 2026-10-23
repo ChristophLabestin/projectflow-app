@@ -288,6 +288,15 @@
         "admin"
       ],
       "port": 3141
+    },
+    {
+      "name": "web-admin-e2e",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "VITE_EMULATOR_AUTH_PORT=9841 VITE_EMULATOR_FIRESTORE_PORT=8841 VITE_EMULATOR_STORAGE_PORT=9842 VITE_EMULATOR_FUNCTIONS_PORT=5841 VITE_E2E_AUTO_LOGIN_EMAIL=demo@projectflow.test VITE_E2E_AUTO_LOGIN_PASSWORD=projectflow-demo npm --prefix web run dev:emulator -- --port 3143 --strictPort"
+      ],
+      "port": 3143
     }
   ]
 }
