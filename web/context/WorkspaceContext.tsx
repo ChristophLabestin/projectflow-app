@@ -6,6 +6,7 @@ import { auth } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
 import { BrandScene } from '../components/brand/BrandScene';
+import { clearWorkspaceSnapshot, readWorkspaceSnapshot, writeWorkspaceSnapshot } from '../services/desktopWorkspaceSnapshot';
 import {
     createWorkspace as createWorkspaceDoc,
     listMyPendingInvitations,
@@ -67,7 +68,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
     const resolve = useCallback(async () => {
         const attempt = ++attemptRef.current;
-        setStatus('loading');
+        // Desktop: start from the last known workspace and resolve in the background (offline: keep it).
+        const uid = auth.currentUser?.uid;
+        const snapshot = uid ? readWorkspaceSnapshot(uid) : null;
+        if (snapshot) {
+            setWorkspaces(snapshot.workspaces);
+            setActiveWorkspaceId(snapshot.activeId);
+            setStatus('ready');
+        } else {
+            setStatus('loading');
+        }
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
             // A stalled Firestore connection would otherwise leave the spinner up forever.
@@ -76,12 +86,22 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             });
             const { activeId, workspaces: list } = await Promise.race([resolveWorkspaceForCurrentUser(defaultName()), timeout]);
             if (attempt !== attemptRef.current) return;
+            if (uid) writeWorkspaceSnapshot({ uid, activeId, workspaces: list });
+            // Started from a snapshot of another workspace: reload into the right one (like switching).
+            if (snapshot && snapshot.activeId !== activeId) {
+                window.location.reload();
+                return;
+            }
             setWorkspaces(list);
             setActiveWorkspaceId(activeId);
             setStatus('ready');
             void listMyPendingInvitations().then(setPendingInvitations);
         } catch (error) {
             if (attempt !== attemptRef.current) return;
+            if (snapshot) {
+                console.warn('Workspace resolution failed; staying on the cached workspace (offline?)', error);
+                return;
+            }
             console.error('Workspace resolution failed', error);
             setStatus('error');
         } finally {
@@ -92,6 +112,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (!isAuthReady) return;
         if (!user) {
+            if (resolvedFor.current) clearWorkspaceSnapshot();
             resolvedFor.current = null;
             setStatus('signed-out');
             setActiveWorkspaceId(null);

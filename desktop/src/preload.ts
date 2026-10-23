@@ -93,6 +93,7 @@ if (location.origin === appOrigin) {
         getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updateState),
         onUpdateStateChange: (callback: (state: UpdateState) => void) => subscribe(IPC.updateStateChanged, callback),
         applyUpdate: () => ipcRenderer.send(IPC.updateAction),
-        splashDone: () => ipcRenderer.send(IPC.splashDone)
+        splashDone: () => ipcRenderer.send(IPC.splashDone),
+        clearOfflineCache: () => ipcRenderer.send(IPC.clearOfflineCache)
     });
 }

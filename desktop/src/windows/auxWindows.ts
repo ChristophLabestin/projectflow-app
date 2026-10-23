@@ -69,7 +69,8 @@ export const createCaptureWindow = () => {
     return win;
 };
 
-export const showCapture = (text?: string) => {
+/** `files` (e.g. a screenshot) are attached to the task once it is saved. */
+export const showCapture = (text?: string, files?: { name: string; type: string; bytes: Uint8Array }[]) => {
     const win = createCaptureWindow();
     // Upper third of the display under the cursor, like Spotlight.
     const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
@@ -83,7 +84,7 @@ export const showCapture = (text?: string) => {
         if (captureReady) win.webContents.send(IPC.windowPayload, payload);
         else pendingCapturePayloads = [...pendingCapturePayloads, payload].slice(-5);
     };
-    send({ text: text ?? '', clipboard: '', openedAt: Date.now() });
+    send({ text: text ?? '', clipboard: '', openedAt: Date.now(), files: files ?? [] });
     // Offered as a one-click chip in the capture field (short plain text only).
     void Promise.resolve(clipboard.readText()).then((value) => {
         const clip = String(value ?? '').trim();

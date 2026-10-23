@@ -16,6 +16,10 @@ export interface DesktopSettings {
     quickAccessShortcut?: string | null;
     /** Global Quick Capture shortcut; null disables it. */
     quickCaptureShortcut?: string | null;
+    /** Global command palette shortcut; null disables it. */
+    paletteShortcut?: string | null;
+    /** Global screenshot → task shortcut; null disables it. */
+    screenshotShortcut?: string | null;
     launchAtLogin: boolean;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;

@@ -5,14 +5,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useWorkspace } from '../context/WorkspaceContext';
 import { desktopWindowKind, getDesktopBridge } from '../services/desktop';
-import { createCapturedTask } from '../services/desktopActions';
+import { attachFilesToItem, canAttachToItem, createCapturedTask, filesFromPayload } from '../services/desktopActions';
 import { getSharedProjects, getUserProjects } from '../services/domain/projectsService';
 import { isProjectActiveForGlobalSignals } from '../services/healthService';
 import type { Project } from '../types';
 import { addDaysFromToday, toIsoDate } from '../utils/taskDates';
 import { activeProjectToken, completeProjectToken, parseCapture, rankProjects } from '../utils/quickCapture';
 
-type CaptureState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; message: string } | { kind: 'error' };
+type CaptureState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; message: string } | { kind: 'error'; message?: string };
 
 const PRIORITY_KEYS: Record<string, string> = {
     Low: 'tasks.priority.low',
@@ -39,6 +39,8 @@ export const QuickCaptureWindow = () => {
     const [chosenProject, setChosenProject] = useState<Project | null>(null);
     const [pin, setPin] = useState(false);
     const [state, setState] = useState<CaptureState>({ kind: 'idle' });
+    // Screenshot → task (shell shortcut): uploaded to the task after it is saved.
+    const [attachments, setAttachments] = useState<File[]>([]);
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const loadProjects = useCallback(async () => {
@@ -61,6 +63,7 @@ export const QuickCaptureWindow = () => {
                 return;
             }
             setValue(typeof payload.text === 'string' ? payload.text : '');
+            setAttachments(filesFromPayload(payload.files));
             setClipboardText(typeof payload.clipboard === 'string' ? payload.clipboard : '');
             if (closeTimer.current) clearTimeout(closeTimer.current);
             if (workspaceStatus === 'error') void refreshWorkspace();
@@ -101,14 +104,23 @@ export const QuickCaptureWindow = () => {
 
     const submit = async (openAfter: boolean) => {
         if (!parsed.title || state.kind === 'saving') return;
+        if (attachments.length && !targetProject) {
+            setState({ kind: 'error', message: t('desktop.capture.attachNeedsProject') });
+            return;
+        }
         setState({ kind: 'saving' });
         try {
             const created = await createCapturedTask(parsed, targetProject);
             const path = created.path;
             if (pin) pinItem(created.pinned);
+            let attachFailed = false;
+            if (attachments.length && canAttachToItem(created.pinned)) {
+                attachFailed = !(await attachFilesToItem(attachments, created.pinned).then((count) => count > 0, () => false));
+            }
+            setAttachments([]);
             setState({
                 kind: 'saved',
-                message: targetProject
+                message: attachFailed ? t('desktop.capture.attachFailed') : targetProject
                     ? t('desktop.capture.savedProject').replace('{project}', targetProject.title)
                     : t('desktop.capture.savedPersonal')
             });
@@ -200,6 +212,18 @@ export const QuickCaptureWindow = () => {
                                 {parsed.dueInDays === 0 ? t('work.due.today') : parsed.dueInDays === 1 ? t('work.due.tomorrow') : toIsoDate(addDaysFromToday(parsed.dueInDays))}
                             </span>
                         )}
+                        {attachments.length > 0 && (
+                            <button
+                                type="button"
+                                className="quick-capture__chip quick-capture__chip--toggle is-set"
+                                title={t('desktop.capture.removeAttachment')}
+                                onClick={() => setAttachments([])}
+                            >
+                                <span className="material-symbols-outlined">image</span>
+                                {t('desktop.capture.screenshot')}
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        )}
                         <button
                             type="button"
                             className={`quick-capture__chip quick-capture__chip--toggle ${pin ? 'is-set' : ''}`.trim()}
@@ -228,7 +252,7 @@ export const QuickCaptureWindow = () => {
 
                 <div className="quick-capture__footer" role="status" aria-live="polite">
                     {state.kind === 'saved' && <span className="quick-capture__status is-success">{state.message}</span>}
-                    {state.kind === 'error' && <span className="quick-capture__status is-error">{t('desktop.toast.actionFailed')}</span>}
+                    {state.kind === 'error' && <span className="quick-capture__status is-error">{state.message || t('desktop.toast.actionFailed')}</span>}
                     {(state.kind === 'idle' || state.kind === 'saving') && (
                         <span className="quick-capture__hint">
                             {t('desktop.capture.hint').replace('{open}', isMac ? '⌘↩' : 'Ctrl+↩')}

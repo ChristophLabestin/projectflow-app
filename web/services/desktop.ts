@@ -5,7 +5,7 @@
  */
 
 export type DesktopPlatform = 'darwin' | 'win32' | 'linux';
-export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray';
+export type DesktopWindowKind = 'main' | 'quick-access' | 'capture' | 'day' | 'secondary' | 'tray' | 'palette';
 export type DesktopCapability =
     | 'titlebar' | 'app-menu' | 'popout' | 'badge' | 'tray' | 'notifications' | 'language'
     | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows'
@@ -13,7 +13,10 @@ export type DesktopCapability =
     | 'external-auth'
     | 'spotlight'
     | 'open-in-browser'
-    | 'updates';
+    | 'updates'
+    | 'offline-cache'
+    | 'command-palette'
+    | 'screenshot';
 
 export type DesktopCommand =
     | 'new-task'
@@ -45,6 +48,9 @@ export interface DesktopPreferences {
     launchAtLogin: boolean;
     quickCaptureShortcut: string | null;
     quickAccessShortcut: string | null;
+    /** Since 'command-palette' / 'screenshot'. */
+    paletteShortcut?: string | null;
+    screenshotShortcut?: string | null;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;
     dayCloseTime: string;
@@ -143,6 +149,8 @@ export interface DesktopBridge {
     applyUpdate?(): void;
     /** Ends the launch scene when no app content will report ready (workspace error page). */
     splashDone?(): void;
+    /** Since 'offline-cache': wipes the on-disk Firestore cache (sign-out) and reloads the windows. */
+    clearOfflineCache?(): void;
     indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 

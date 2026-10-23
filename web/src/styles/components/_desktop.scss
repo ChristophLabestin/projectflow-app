@@ -465,6 +465,160 @@ html.is-desktop.desktop-window-capture {
 }
 
 // ---------------------------------------------------------------------------
+// Command palette (/desktop/palette) — transparent window, Raycast-like search card
+// ---------------------------------------------------------------------------
+
+html.is-desktop.desktop-window-palette {
+    background: transparent;
+
+    body,
+    #root {
+        background: transparent;
+        padding-top: 0;
+        height: 100vh;
+    }
+}
+
+.command-palette {
+    height: 100vh;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.command-palette__card {
+    width: 100%;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-surface-border);
+    border-radius: 16px;
+    background: var(--color-surface-card);
+    box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+    -webkit-app-region: drag;
+
+    button,
+    input {
+        -webkit-app-region: no-drag;
+    }
+}
+
+.command-palette__field {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--color-surface-border);
+}
+
+.command-palette__icon {
+    font-size: 22px;
+    color: var(--color-text-subtle);
+}
+
+.command-palette__input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 1.2rem;
+    font-weight: 500;
+
+    &::placeholder {
+        color: var(--color-text-subtle);
+    }
+}
+
+.command-palette__list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 8px;
+    overflow-y: auto;
+}
+
+.command-palette__row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--color-text-main);
+    font: inherit;
+    font-size: 0.92rem;
+    text-align: left;
+    cursor: default;
+
+    .material-symbols-outlined {
+        font-size: 18px;
+        color: var(--color-text-subtle);
+    }
+
+    &.is-active {
+        background: var(--color-surface-hover);
+
+        .material-symbols-outlined {
+            color: var(--color-text-main);
+        }
+    }
+}
+
+.command-palette__title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.command-palette__context {
+    max-width: 40%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--color-text-subtle);
+    font-size: 0.8rem;
+}
+
+.command-palette__empty {
+    padding: 14px 10px;
+    color: var(--color-text-subtle);
+    font-size: 0.85rem;
+}
+
+.command-palette__footer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    padding: 9px 18px;
+    border-top: 1px solid var(--color-surface-border);
+    background: var(--color-surface-bg);
+    color: var(--color-text-subtle);
+    font-size: 0.75rem;
+
+    kbd {
+        padding: 1px 5px;
+        border: 1px solid var(--color-surface-border);
+        border-radius: 4px;
+        background: var(--color-surface-card);
+        font: inherit;
+        font-weight: 600;
+    }
+}
+
+.command-palette__message {
+    color: var(--color-text-main);
+    font-weight: 600;
+}
+
+// ---------------------------------------------------------------------------
 // Day start / day close window (/desktop/day)
 // ---------------------------------------------------------------------------
 
