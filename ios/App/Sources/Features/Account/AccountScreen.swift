@@ -9,6 +9,7 @@ struct AccountScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.openURL) private var openURL
     @Environment(\.pfIsWide) private var isWide
+    @State private var crashReports = FirstRunState.crashReportsEnabled
     @Environment(\.pfSideRegionWidth) private var sideRegion
 
     private var profile: UserProfile? { model.profile }
@@ -165,6 +166,10 @@ struct AccountScreen: View {
             SettingsCard(footer: L10n.t("account.export.footer")) {
                 SettingsRow(systemImage: "square.and.arrow.up", title: L10n.t("account.export")) { Task { await DataExport.run(model: model) } }
                 SettingsRow(systemImage: "safari", title: L10n.t("account.openWorkspaceWeb")) { openWeb("/profile") }
+                // Same opt-in as the first-install flow (device setting).
+                SettingsSwitchRow(title: L10n.t("firstRun.crash.toggle"), subtitle: L10n.t("firstRun.crash.point.anonymous"),
+                                  isOn: $crashReports)
+                    .onChange(of: crashReports) { _, value in FirstRunState.crashReportsEnabled = value }
             }
         }
     }

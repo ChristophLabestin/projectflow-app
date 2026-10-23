@@ -20,8 +20,8 @@ enum L10n {
     /// Applies the user's profile language (`users/{uid}.language`) when set.
     static func apply(profileLanguage: String?) {
         guard let profileLanguage, let language = Language(rawValue: String(profileLanguage.prefix(2))) else {
-            // No explicit choice (or "system"): follow the device language again.
-            self.language = (Locale.preferredLanguages.first ?? "de").hasPrefix("de") ? .de : .en
+            // No explicit choice (or "system"): the first-install choice, else the device language.
+            self.language = LanguageStore.deviceDefault
             return
         }
         self.language = language
@@ -62,7 +62,13 @@ enum L10n {
 @Observable
 nonisolated final class LanguageStore: @unchecked Sendable {
     static let shared = LanguageStore()
-    var language: L10n.Language = (Locale.preferredLanguages.first ?? "de").hasPrefix("de") ? .de : .en
+    var language: L10n.Language = LanguageStore.deviceDefault
+
+    /// Language picked in the first-install flow, else the device language.
+    static var deviceDefault: L10n.Language {
+        if let stored = FirstRunState.language, let language = L10n.Language(rawValue: stored) { return language }
+        return (Locale.preferredLanguages.first ?? "de").hasPrefix("de") ? .de : .en
+    }
 }
 
 /// Central list of string tables. Each feature adds one line here and keeps its table in its own file.
