@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
+<title>ProjectFlow</title>
+<!--
+  Launch scene of the desktop app, shown as an overlay in the main window until the web app is ready
+  (desktop/src/windows/splash.ts). Same motion as the iOS launch (PFBrandScene.swift): a dotted canvas with
+  ripples in the four status hues, the glyph floating on a disc with orbiting status dots, the name rising in
+  letter by letter and a gliding loading track. Query: theme=light|dark, preparing, slow (localized strings).
+-->
+<style>
+    :root {
+        --canvas: #f2f2f3; --card: #ffffff; --text: #171717; --muted: #6b7280; --ring: #d1d5db;
+        --dot: rgba(0, 0, 0, 0.06); --track: rgba(0, 0, 0, 0.08); --shadow: rgba(15, 23, 42, 0.14);
+    }
+    :root.dark {
+        --canvas: #0b0d11; --card: #151920; --text: #e5e7eb; --muted: #9ca3af; --ring: #3c4453;
+        --dot: rgba(255, 255, 255, 0.04); --track: rgba(255, 255, 255, 0.1); --shadow: rgba(0, 0, 0, 0.5);
+    }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: var(--canvas); }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Inter, sans-serif;
+        color: var(--text); -webkit-user-select: none; user-select: none; cursor: default;
+        -webkit-app-region: drag; transition: opacity 420ms ease, transform 420ms ease;
+    }
+    body.done { opacity: 0; transform: scale(1.015); }
+    canvas { position: fixed; inset: 0; }
+    .scene { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px; padding-bottom: 60px; }
+    .mark { position: relative; width: 124px; height: 124px; opacity: 0; transform: scale(0.6); transition: opacity 600ms ease, transform 800ms cubic-bezier(0.34, 1.4, 0.5, 1); }
+    .ready .mark { opacity: 1; transform: scale(1); }
+    .aurora, .ring, .disc, .glyph, .orbit { position: absolute; left: 50%; top: 50%; }
+    .aurora { width: 101px; height: 101px; margin: -50.5px; border-radius: 50%; filter: blur(25px); opacity: 0.32;
+        background: conic-gradient(#3b82f6, #8b5cf6, #f59e0b, #10b981, #3b82f6); animation: spin 15.7s linear infinite; }
+    .ring { width: 117px; height: 117px; margin: -58.5px; border-radius: 50%; border: 1px solid var(--ring); animation: breathe 3.7s ease-in-out infinite; }
+    .disc { width: 78px; height: 78px; margin: -39px; border-radius: 50%; background: var(--card);
+        box-shadow: 0 14px 40px var(--shadow), 0 2px 6px var(--shadow); animation: float 5.2s ease-in-out infinite; }
+    .glyph { width: 46px; height: 46px; margin: -23px; background: var(--text);
+        -webkit-mask: url(glyph-mark.svg) center / contain no-repeat; animation: float 5.2s ease-in-out infinite; }
+    .orbit { width: 0; height: 0; }
+    .orbit span { position: absolute; width: 7.4px; height: 7.4px; margin: -3.7px; border-radius: 50%; }
+    .name { display: flex; font-size: 34px; font-weight: 700; letter-spacing: -0.02em; }
+    .name span { display: inline-block; opacity: 0; transform: translateY(16px); filter: blur(6px);
+        transition: opacity 500ms ease, transform 600ms cubic-bezier(0.3, 1.3, 0.5, 1), filter 500ms ease; }
+    .ready .name span { opacity: 1; transform: none; filter: none; }
+    .status { position: fixed; left: 0; right: 0; bottom: 64px; display: flex; flex-direction: column; align-items: center; gap: 10px;
+        opacity: 0; transition: opacity 500ms ease 700ms; }
+    .ready .status { opacity: 1; }
+    .track { position: relative; width: 132px; height: 3px; border-radius: 3px; background: var(--track); overflow: hidden; }
+    .track::after { content: ''; position: absolute; left: 0; top: 0; width: 30%; height: 100%; border-radius: 3px; background: var(--text);
+        animation: glide 2.85s ease-in-out infinite alternate; }
+    .label { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); transition: opacity 250ms ease; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes breathe { 50% { transform: scale(1.035); opacity: 0.5; } }
+    @keyframes float { 50% { translate: 0 -2px; } }
+    @keyframes glide { to { left: 70%; } }
+    @media (prefers-reduced-motion: reduce) {
+        .aurora, .ring, .disc, .glyph, .track::after { animation: none; }
+        .mark, .name span, .status { transition: none; }
+    }
+</style>
+</head>
+<body>
+<canvas id="field"></canvas>
+<div class="scene">
+    <div class="mark" id="mark">
+        <div class="aurora"></div>
+        <div class="ring"></div>
+        <div class="orbit" id="orbit-back"></div>
+        <div class="disc"></div>
+        <div class="glyph"></div>
+        <div class="orbit" id="orbit-front"></div>
+    </div>
+    <div class="name" id="name" aria-label="ProjectFlow"></div>
+</div>
+<div class="status"><div class="track"></div><div class="label" id="label"></div></div>
+<script>
+    const params = new URLSearchParams(location.search);
+    const root = document.documentElement;
+    if (params.get('theme') === 'dark') root.classList.add('dark');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const PALETTE = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981'];
+    const label = document.getElementById('label');
+    label.textContent = params.get('preparing') || '';
+    // Longer than usual: say so instead of animating forever without a word.
+    setTimeout(() => {
+        const slow = params.get('slow');
+        if (!slow) return;
+        label.style.opacity = '0';
+        setTimeout(() => { label.textContent = slow; label.style.opacity = '1'; }, 250);
+    }, 9000);
+
+    // Name: letters rise in one by one (PFStaggeredText).
+    const name = document.getElementById('name');
+    [...'ProjectFlow'].forEach((char, index) => {
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.style.transitionDelay = `${250 + index * 35}ms`;
+        name.appendChild(span);
+    });
+
+    // Orbit: four status dots on an ellipse tilted by -18°, the far ones behind the disc (PFBrandMark).
+    const back = document.getElementById('orbit-back');
+    const front = document.getElementById('orbit-front');
+    const dots = PALETTE.map((color) => {
+        const dot = document.createElement('span');
+        dot.style.background = color;
+        return dot;
+    });
+    const tilt = -18 * Math.PI / 180;
+    const size = 46;
+
+    // Dot field with two ripples from the mark's centre, coloured by direction (PFFlowField).
+    const canvas = document.getElementById('field');
+    const context = canvas.getContext('2d');
+    const css = getComputedStyle(root);
+    const dotColor = css.getPropertyValue('--dot').trim();
+    const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const paletteRgb = PALETTE.map(hexToRgb);
+    let width = 0;
+    let height = 0;
+    const resize = () => {
+        const ratio = devicePixelRatio || 1;
+        width = innerWidth;
+        height = innerHeight;
+        canvas.width = width * ratio;
+        canvas.height = height * ratio;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+        context.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    resize();
+    addEventListener('resize', resize);
+
+    const markCenter = () => {
+        const rect = document.getElementById('mark').getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+    };
+
+    const draw = (now) => {
+        const time = reduceMotion ? 0.6 : now / 1000;
+        context.clearRect(0, 0, width, height);
+        const spacing = 20;
+        const band = 54;
+        const origin = markCenter();
+        const reach = Math.hypot(Math.max(origin.x, width - origin.x), Math.max(origin.y, height - origin.y)) * 1.05;
+        const phases = reduceMotion ? [] : [0, 0.5].map((offset) => ((time / 3.6) + offset) % 1);
+        for (let y = spacing / 2; y < height; y += spacing) {
+            for (let x = spacing / 2; x < width; x += spacing) {
+                const dx = x - origin.x;
+                const dy = y - origin.y;
+                const distance = Math.hypot(dx, dy);
+                let boost = 0;
+                for (const phase of phases) {
+                    const delta = Math.abs(distance - phase * reach);
+                    if (delta < band) boost = Math.max(boost, (1 - delta / band) * (1 - phase));
+                }
+                const radius = 0.75 + 1.7 * boost;
+                if (boost > 0.04) {
+                    const angle = Math.atan2(dy, dx) + Math.PI;
+                    const [r, g, b] = paletteRgb[Math.floor(angle / (2 * Math.PI) * 4) % 4];
+                    context.fillStyle = `rgba(${r}, ${g}, ${b}, ${0.18 + 0.62 * boost})`;
+                } else {
+                    context.fillStyle = dotColor;
+                }
+                context.beginPath();
+                context.arc(x, y, radius, 0, Math.PI * 2);
+                context.fill();
+            }
+        }
+        dots.forEach((dot, index) => {
+            const angle = time * 0.85 + index * Math.PI / 2;
+            const depth = Math.sin(angle);
+            const ox = Math.cos(angle) * size * 1.3;
+            const oy = Math.sin(angle) * size * 0.42;
+            const parent = depth >= 0 ? front : back;
+            if (dot.parentElement !== parent) parent.appendChild(dot);
+            const scale = 0.75 + 0.35 * (depth + 1) / 2;
+            dot.style.opacity = String(0.55 + 0.45 * (depth + 1) / 2);
+            dot.style.transform = `translate(${ox * Math.cos(tilt) - oy * Math.sin(tilt)}px, ${ox * Math.sin(tilt) + oy * Math.cos(tilt)}px) scale(${scale})`;
+        });
+        if (!reduceMotion) requestAnimationFrame(draw);
+    };
+    requestAnimationFrame(draw);
+    requestAnimationFrame(() => document.body.classList.add('ready'));
+
+    // Called by the shell when the app is ready: fade out, then the overlay is removed.
+    window.pfSplashDone = () => document.body.classList.add('done');
+</script>
+</body>
+</html>

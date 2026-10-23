@@ -140,7 +140,8 @@ export const IPC = {
     openInBrowser: 'pf:open-in-browser',
     updateState: 'pf:update-state',
     updateStateChanged: 'pf:update-state-changed',
-    updateAction: 'pf:update-action'
+    updateAction: 'pf:update-action',
+    splashDone: 'pf:splash-done'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */

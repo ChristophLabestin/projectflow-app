@@ -471,3 +471,8 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   handoff passes `scheme=projectflow-dev`, the web page accepts only the two schemes), no global shortcuts
   (`PF_DESKTOP_DEV_SHORTCUTS=1` to opt in) and no Spotlight (`PF_DESKTOP_DEV_SPOTLIGHT=1`). Userdata/settings were already
   separate (`ProjectFlow Dev`).
+- **Launch scene** (2026-10-23, shell ≥ 0.1.3): `desktop/assets/splash.html` (+ `glyph-mark.svg`) is a `WebContentsView`
+  overlay in the main window (`windows/splash.ts`): the window opens at once with the iOS launch motion (dot field with
+  status-hue ripples, glyph disc with orbiting status dots, staggered name, loading track + "preparing" / "slow" label from
+  `labels.ts`), theme from the last app background. It fades out on `markRendererReady`, a failed load (offline page),
+  `splashDone` (workspace error page, `WorkspaceContext`) or after 25 s; minimum 1.4 s. Not shown for launch-at-login.

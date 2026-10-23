@@ -141,6 +141,8 @@ export interface DesktopBridge {
     getUpdateState?(): Promise<DesktopUpdateState>;
     onUpdateStateChange?(callback: (state: DesktopUpdateState) => void): () => void;
     applyUpdate?(): void;
+    /** Ends the launch scene when no app content will report ready (workspace error page). */
+    splashDone?(): void;
     indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 

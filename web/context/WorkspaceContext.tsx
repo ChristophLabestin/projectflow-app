@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { signOut } from 'firebase/auth';
 
+import { getDesktopBridge } from '../services/desktop';
 import { auth } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
@@ -135,6 +136,11 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         switchWorkspace: switchWorkspaceAndReload,
         createWorkspace
     }), [status, activeWorkspaceId, workspaces, pendingInvitations, refresh, createWorkspace]);
+
+    // Desktop: the launch scene waits for the app; the error page never mounts it, so end the scene here.
+    useEffect(() => {
+        if (status === 'error') getDesktopBridge()?.splashDone?.();
+    }, [status]);
 
     if (user && status !== 'ready') {
         return (

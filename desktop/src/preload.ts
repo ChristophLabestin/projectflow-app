@@ -92,6 +92,7 @@ if (location.origin === appOrigin) {
         openInBrowser: (path: string) => ipcRenderer.send(IPC.openInBrowser, path),
         getUpdateState: (): Promise<UpdateState> => ipcRenderer.invoke(IPC.updateState),
         onUpdateStateChange: (callback: (state: UpdateState) => void) => subscribe(IPC.updateStateChanged, callback),
-        applyUpdate: () => ipcRenderer.send(IPC.updateAction)
+        applyUpdate: () => ipcRenderer.send(IPC.updateAction),
+        splashDone: () => ipcRenderer.send(IPC.splashDone)
     });
 }
