@@ -16,6 +16,7 @@ import { readLastTenantId, writeLastTenantId, writeOnboarding } from './userPriv
 import { httpsCallable } from 'firebase/functions';
 
 import { auth, db, functions } from '../firebase';
+import { assertPlanAllows } from '../billingService';
 import {
     clearCachedTenantId,
     ensureTenantAndUser,
@@ -225,6 +226,7 @@ export const createInvitation = async (input: {
     maxUses?: number | null;
 }): Promise<WorkspaceInvitation> => {
     const user = requireUser();
+    await assertPlanAllows(input.tenantId, 'invite');
     const ref = doc(invitationsCol(input.tenantId));
     const expiresAt = new Date(Date.now() + INVITE_TTL_DAYS * 86400000).toISOString();
     const invitation = {

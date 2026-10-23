@@ -37,6 +37,14 @@ const seedData = async (testEnv) => {
         await set(`${T}/ai_audit/entryA`, { tool: 'create_task', actorId: 'ownerA' });
         await set(`${T}/ai_config/policy`, { enabled: true });
         await set(`${T}/entitlements/plan`, { plan: 'free', seats: 3 });
+        // Billing: a Free workspace at its project limit with one locked project.
+        await set('tenants/tenantF', { tenantId: 'tenantF', name: 'Free', ownerId: 'ownerA' });
+        await set('tenants/tenantF/members/ownerA', { uid: 'ownerA', role: 'Owner' });
+        await set('tenants/tenantF/entitlements/plan', {
+            plan: 'free', projectLimit: 3, projectCount: 3, invitesAllowed: false, lockedProjectIds: ['locked'],
+        });
+        await set('tenants/tenantF/projects/open', { title: 'Open', tenantId: 'tenantF', ownerId: 'ownerA', memberIds: ['ownerA'] });
+        await set('tenants/tenantF/projects/locked', { title: 'Locked', tenantId: 'tenantF', ownerId: 'ownerA', memberIds: ['ownerA'] });
         await set(PROJECT, {
             title: 'Project A',
             tenantId: 'tenantA',
@@ -429,6 +437,24 @@ const run = async () => {
         await check('platform admin cannot read crash issue (adminApi only)', 'deny', () => platformAdmin.doc('crashIssues/fp1').get());
         await check('platform admin cannot triage crash issue directly', 'deny', () => platformAdmin.doc('crashIssues/fp1').set({ status: 'resolved' }));
         await check('member cannot read crash events', 'deny', () => member.collection('crashIssues/fp1/crashEvents').get());
+
+        // Billing entitlements (brain/plans/billing-implementation.md)
+        const TF = 'tenants/tenantF';
+        await check('free: owner cannot create a 4th project', 'deny', () =>
+            owner.doc(`${TF}/projects/p4`).set({ title: 'P4', tenantId: 'tenantF', ownerId: 'ownerA', memberIds: ['ownerA'] }));
+        await check('free: owner can edit an open project', 'allow', () => owner.doc(`${TF}/projects/open`).update({ title: 'Open 2' }));
+        await check('free: locked project stays readable', 'allow', () => owner.doc(`${TF}/projects/locked`).get());
+        await check('free: locked project is read-only', 'deny', () => owner.doc(`${TF}/projects/locked`).update({ title: 'x' }));
+        await check('free: no tasks in a locked project', 'deny', () =>
+            owner.doc(`${TF}/projects/locked/tasks/t1`).set({ title: 't', tenantId: 'tenantF', projectId: 'locked' }));
+        await check('free: owner can still delete a locked project', 'allow', () => owner.doc(`${TF}/projects/locked`).delete());
+        await check('free: no invitations', 'deny', () =>
+            owner.doc(`${TF}/invitations/i1`).set({ status: 'pending', invitedBy: 'ownerA', role: 'Member', kind: 'link' }));
+        await check('owner cannot write entitlements', 'deny', () => owner.doc(`${TF}/entitlements/plan`).set({ plan: 'team' }, { merge: true }));
+        await check('member reads entitlements', 'allow', () => member.doc(`${T}/entitlements/plan`).get());
+        for (const path of ['billing_customers/tenantF', 'ai_user_keys/ownerA', 'billing_events/evt_1']) {
+            await check(`owner cannot read ${path}`, 'deny', () => owner.doc(path).get());
+        }
 
         // Workspace suspension (admin console).
         const suspendedOwner = testEnv.authenticatedContext('ownerS').firestore();

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
+import { ProjectPlanGate } from './components/billing/ProjectPlanGate';
 import { BrandScene } from './components/brand/BrandScene';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { OfflineBanner } from './components/OfflineBanner';
@@ -283,7 +284,7 @@ export const AppRouter = () => {
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />
                         <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
 
-                        <Route path="/project/:id">
+                        <Route path="/project/:id" element={<ProjectPlanGate />}>
                             <Route index element={withRouteSuspense(<ProjectOverview />)} />
                             <Route path="tasks" element={withRouteSuspense(<ProjectTasks />)} />
                             <Route path="tasks/:taskId" element={withRouteSuspense(<ProjectTaskDetail />)} />

@@ -16,7 +16,8 @@ Offene Punkte (konsolidiert):
 - **Desktop:** System-Browser-OAuth-Handoff; Windows-Test + Code-Signing; Mitteilungen ignorieren Push-Kanal-Einstellungen; `--verify-tag`-Fix erst beim nächsten Tag getestet; DMG unsigniert.
 - **Security/Backend:** CSP von Report-Only scharf schalten; RTDB-Presence ohne Membership-Check; npm audit (`nodemailer` Major, `@grpc/grpc-js`); Functions-Cold-Start (index.ts lädt alles); `nudgeLog`-Lesekosten beobachten; kein Staging-Projekt; Tailwind parallel zu SCSS.
 - **Tooling:** Token-Guard-Screenshot-Verkleinerung in neuer Session prüfen; Nachmessung ~2026-11-06 (`analyze.py --since 14`); AGENTS.md-Satz „No root test runner“ veraltet.
-- **Tracking:** ProjectFlow-Tasks für Duo, Passkey u. a. fehlen noch.
+- **Billing (2026-10-23, Test-Modus):** Free/Team mit Entitlements (`tenants/{t}/entitlements/plan`), Regeln + Functions-Durchsetzung, 14-Tage-Test für neue Workspaces, Grace für die 5 Bestandsworkspaces (backfilled), Billing-Tab in den Workspace-Einstellungen. Live: Regeln, `onTenantCreatedBilling`, `onProjectCountBilling`, `billingSweep`, `personalAiKey`, Einladungs- und KI-Callables, `aiAssist`. **Offen:** Owner setzt `STRIPE_SECRET_KEY` (sk_test) → `node functions/scripts/stripe-setup.mjs` → `STRIPE_WEBHOOK_SECRET` → `createBillingCheckout`, `createBillingPortal`, `stripeWebhook`, `onMemberWrittenBilling` deployen → Test-Checkout E2E. Automations/Insights-Functions übernehmen das KI-Gate erst beim nächsten Deploy. Owner-Entscheidungen: Stichtag `admin_config/billing.cutoverAt`, USt./OSS, Live-Keys, AGB/Datenschutz, Gründungspreis, Organization/SSO. Plan: [plans/billing-implementation.md](./plans/billing-implementation.md).
+- **Tracking:** ProjectFlow-Tasks für Duo, Passkey u. a. fehlen noch. Billing-Initiative ebenfalls nicht angelegt (`PROJECTFLOW_API_TOKEN` fehlt).
 
 ## Where Things Stand
 

@@ -40,6 +40,7 @@ import MemberSelection from '../components/common/MemberSelection/MemberSelectio
 
 import { useModuleAccess } from '../hooks/useModuleAccess';
 import { initialOf } from '../utils/initials';
+import { planErrorMessage } from '../services/billingService';
 
 const isDeprecatedModule = (moduleId: string) => (PM_CORE_DEPRECATED_MODULES as readonly string[]).includes(moduleId);
 
@@ -462,7 +463,7 @@ export const CreateProjectWizard: React.FC<CreateProjectWizardProps> = ({ onClos
             console.error(e);
             submitInFlightRef.current = false;
             setIsSubmitting(false);
-            showToast(t('createProjectWizard.errors.createProject'), 'error');
+            showToast(planErrorMessage(e, t) || t('createProjectWizard.errors.createProject'), 'error');
         }
     };
 

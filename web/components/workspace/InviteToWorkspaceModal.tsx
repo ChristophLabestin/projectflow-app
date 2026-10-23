@@ -13,6 +13,7 @@ import {
     type InvitationKind
 } from '../../services/domain/workspacesService';
 import type { Project } from '../../types';
+import { planErrorMessage } from '../../services/billingService';
 
 interface InviteToWorkspaceModalProps {
     isOpen: boolean;
@@ -99,7 +100,7 @@ export const InviteToWorkspaceModal = ({
             }
         } catch (error) {
             console.error(error);
-            showError(t('workspace.invite.toast.error'));
+            showError(planErrorMessage(error, t) || t('workspace.invite.toast.error'));
         } finally {
             setIsSaving(false);
         }

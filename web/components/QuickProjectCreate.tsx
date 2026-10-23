@@ -10,6 +10,7 @@ import { addTask } from '../services/domain/tasksService';
 import { getProjectTemplateDefinition } from '../config/projectTemplates';
 import { toIsoDate, addDaysFromToday } from '../utils/taskDates';
 import type { ProjectTemplateId } from '../types';
+import { planErrorMessage } from '../services/billingService';
 
 /** The four templates a first project most often needs; everything else lives in "More options". */
 const QUICK_TEMPLATES: { id: ProjectTemplateId; icon: string; labelKey: string }[] = [
@@ -100,7 +101,7 @@ export const QuickProjectCreate: React.FC<QuickProjectCreateProps> = ({ onClose,
             console.error(error);
             inFlightRef.current = false;
             setSubmitting(false);
-            showToast(t('createProjectWizard.errors.createProject'), 'error');
+            showToast(planErrorMessage(error, t) || t('createProjectWizard.errors.createProject'), 'error');
         }
     };
 

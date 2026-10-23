@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
 import { ALLOWED_ORIGINS } from './corsConfig';
+import { assertCanAddMember, loadPlanLimits } from './billing';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -80,6 +81,10 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
         throw new functions.https.HttpsError('permission-denied', 'Only workspace admins can send invitations.');
     }
 
+    if (!(await loadPlanLimits(tenantId)).invitesAllowed) {
+        throw new functions.https.HttpsError('failed-precondition', 'plan-invites-disabled');
+    }
+
     const inviteSnap = await db.doc(`tenants/${tenantId}/invitations/${inviteId}`).get();
     const invite = inviteSnap.data();
     if (!inviteSnap.exists || !invite || invite.status !== 'pending' || !invite.email) {
@@ -116,6 +121,14 @@ export const acceptWorkspaceInvite = functions.region(REGION).https.onCall(async
     const inviteRef = db.doc(`tenants/${tenantId}/invitations/${inviteId}`);
     const memberRef = db.doc(`tenants/${tenantId}/members/${uid}`);
     const tenantRef = db.doc(`tenants/${tenantId}`);
+
+    // Plan check (Free: no invitations; Team: up to 50 full members). Guests are free.
+    const [preInvite, preMember] = await Promise.all([inviteRef.get(), memberRef.get()]);
+    const preInviteRole = INVITABLE_ROLES.includes(preInvite.data()?.role) ? String(preInvite.data()?.role) : 'Member';
+    const preRole = preMember.exists ? String(preMember.data()?.role || 'Member') : null;
+    if (preInvite.exists && (preRole === null || (preRole === 'Guest' && preInviteRole !== 'Guest'))) {
+        await assertCanAddMember(tenantId, preInviteRole);
+    }
 
     const result = await db.runTransaction(async (tx) => {
         const [inviteSnap, memberSnap, tenantSnap] = await Promise.all([tx.get(inviteRef), tx.get(memberRef), tx.get(tenantRef)]);

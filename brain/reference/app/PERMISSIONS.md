@@ -47,6 +47,16 @@ Permissions are evaluated by context:
 Subscription constraints (Starter/Professional/Organization) are enforced separately.
 Permissions cannot override entitlements.
 
+**Implemented 2026-10-23** (`brain/plans/billing-implementation.md`): entitlements live in
+`tenants/{t}/entitlements/plan` (member-readable, server-only writes). Enforcement:
+- Rules: project create only below `projectLimit` (`projectCount`, trigger-maintained); no writes to projects in
+  `lockedProjectIds` (delete still allowed); invitation create and non-bootstrap member create only with `invitesAllowed`.
+  A missing doc = legacy grace = Team (no limits).
+- Functions: `sendInvitation` / `acceptWorkspaceInvite` check `invitesAllowed` and `memberLimit` (guests are not seats);
+  `consumeAiQuota` requires AI via a Team/trial/grace membership or the user's own OpenAI key; `aiAssist` requires a workspace with AI.
+- Billing actions (`createBillingCheckout`, `createBillingPortal`) are **Owner-only** for now; Admins/Members see the
+  billing tab read-only, guests do not see it. `tenant.billing.*`/`tenant.plan.*` nodes are not evaluated yet.
+
 ---
 
 ## 2) Role Types
@@ -588,7 +598,7 @@ notice; tenant owners/admins can neither set nor clear the fields. Server paths 
 (`isTenantSuspended`, 60 s cache): AI/MCP tokens (`resolveAiToken`), workspace API tokens (`checkApiTokenUsable`), Firebase-token
 API calls (`projectflow-api.ts`), callable guards (notifications, insights, workspace-admin, file-storage/files-manager via
 `getMembership`, project intake, initiative feedback), scheduled jobs (reminders, nudges, insights, health snapshots, sprint auto-start).
-Not covered yet: Storage rules (direct file reads; Storage allows few Firestore lookups per request), Flows and in-app AI (asked the owning sessions).
+Flows (`onAutomationEvent`, `runAutomationSchedules`, `executeRun` → `skipped_suspended`, callables) and in-app AI (`aiAssist`) check it too. Not covered: Storage rules (direct file reads; Storage allows few Firestore lookups per request).
 
 ### Platform config
 `platform_config/announcement` is public read (banner); every other `platform_config/*` and `admin_config/*` is closed. Writes only via `adminApi`.
