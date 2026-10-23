@@ -1,6 +1,6 @@
 # ProjectFlow MCP — public install guide (source for getprojectflow.com/docs/mcp)
 
-Date: 2026-10-23 · In-app twin: `web/components/settings/aiClients.ts` + locale keys `aiSettings.clients.*` (keep both in sync).
+Date: 2026-10-23 · In-app twin: `web/components/settings/aiClients.ts` + locale keys `aiSettings.clients.*`; public page `landing/src/content/docs-mcp.ts` (keep all three in sync; switch `MCP_URL` in `landing/src/templates/pages.ts` when mcp.getprojectflow.com is live).
 
 **Server URL:** `https://app.getprojectflow.com/mcp` (later also `https://mcp.getprojectflow.com/mcp`). Streamable HTTP, OAuth 2.1 — you sign in with ProjectFlow, pick one workspace and the permissions. No key to copy.
 

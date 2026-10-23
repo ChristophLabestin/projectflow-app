@@ -70,7 +70,9 @@ const header = (page: PageDef, t: SiteCopy): string => {
         ['platforms', t.nav.platforms],
         ['security', t.nav.security],
     ];
-    const navList = navItems.map(([id, label]) => `<li><a href="${anchor(id)}">${esc(label)}</a></li>`).join('');
+    const docsUrl = urlFor('docsMcp', page.lang);
+    const navList = navItems.map(([id, label]) => `<li><a href="${anchor(id)}">${esc(label)}</a></li>`).join('')
+        + `<li><a href="${docsUrl}"${page.kind === 'docsMcp' ? ' aria-current="page"' : ''}>${esc(t.nav.docs)}</a></li>`;
     const langLink = `<a class="lang-switch" href="${alternateOf(page, other)}" hreflang="${other}" lang="${other}" aria-label="${other === 'en' ? 'English' : 'Deutsch'}" data-lang="${other}">${other.toUpperCase()}</a>`;
     return `
 <header class="site-header" data-header>
@@ -114,7 +116,7 @@ const footer = (page: PageDef, t: SiteCopy): string => {
             <a class="brand" href="${home}" aria-label="${esc(t.a11y.home)}">${logo('brand__logo')}<span class="brand__name">ProjectFlow</span></a>
             <p>${esc(t.footer.tagline)}</p>
         </div>
-        ${col(t.footer.product, [[`${base}/#journey`, f.journey], [`${base}/#board`, f.board], [`${base}/#workbench`, f.workbench], [`${base}/#security`, f.security]])}
+        ${col(t.footer.product, [[`${base}/#journey`, f.journey], [`${base}/#board`, f.board], [`${base}/#workbench`, f.workbench], [`${base}/#security`, f.security], [urlFor('docsMcp', page.lang), f.docs]])}
         ${col(t.footer.platforms, [[links.app, f.web], [links.download, f.desktop], [`${base}/#platforms`, f.ios]])}
         ${col(t.footer.legal, [[legalUrl('imprint', page.lang), f.imprint], [legalUrl('privacy', page.lang), f.privacy], [legalUrl('terms', page.lang), f.terms]])}
     </div>

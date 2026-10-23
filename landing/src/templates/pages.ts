@@ -1,5 +1,5 @@
 export type Lang = 'de' | 'en';
-export type PageKind = 'home' | 'imprint' | 'privacy' | 'terms' | 'notFound';
+export type PageKind = 'home' | 'imprint' | 'privacy' | 'terms' | 'docsMcp' | 'notFound';
 
 export interface PageDef {
     kind: PageKind;
@@ -12,6 +12,8 @@ export interface PageDef {
 
 export const SITE_URL = 'https://getprojectflow.com';
 export const APP_URL = 'https://app.getprojectflow.com';
+/** Public MCP endpoint. Switch to https://mcp.getprojectflow.com/mcp once that domain is live. */
+export const MCP_URL = 'https://app.getprojectflow.com/mcp';
 
 /**
  * Legal texts live only in the app (versioned in Firestore, published under /admin/legal).
@@ -32,6 +34,8 @@ const allPages: PageDef[] = [
     { kind: 'privacy', lang: 'en', url: '/en/privacy', file: 'en/privacy/index.html' },
     { kind: 'terms', lang: 'de', url: '/agb', file: 'agb/index.html' },
     { kind: 'terms', lang: 'en', url: '/en/terms', file: 'en/terms/index.html' },
+    { kind: 'docsMcp', lang: 'de', url: '/docs/mcp', file: 'docs/mcp/index.html' },
+    { kind: 'docsMcp', lang: 'en', url: '/en/docs/mcp', file: 'en/docs/mcp/index.html' },
     { kind: 'notFound', lang: 'de', url: '/404', file: '404.html' },
 ];
 

@@ -1,6 +1,7 @@
 import type { SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
 import { esc, headline, links } from './layout';
+import { urlFor, type Lang } from './pages';
 
 const head = (eyebrow: string, title: string, text: string, id: string) => `
     <header class="section-head" data-reveal>
@@ -91,13 +92,14 @@ const notify = (t: SiteCopy) => {
 </section>`;
 };
 
-const ai = (t: SiteCopy) => {
+const ai = (t: SiteCopy, lang: Lang) => {
     const a = t.ai;
     return `
 <section class="ai section" id="ai" aria-labelledby="ai-title">
     <div class="container split">
         <div class="split__copy">
             ${head(a.eyebrow, a.title, a.text, 'ai-title')}
+            <a class="link-arrow" href="${urlFor('docsMcp', lang)}" data-reveal>${icon('sparkles')}${esc(a.docsLink)}${icon('arrowRight')}</a>
             <p class="fineprint" data-reveal>${esc(a.note)}</p>
         </div>
         <div class="ai__ui stage" aria-hidden="true" data-ai>
@@ -206,5 +208,5 @@ const cta = (t: SiteCopy) => `
 </section>`;
 
 /** Sections after the board (workbench, notifications, AI, security, platforms, CTA). */
-export const sectionsRest = (t: SiteCopy): string =>
-    [workbench(t), notify(t), ai(t), security(t), platforms(t), cta(t)].join('\n');
+export const sectionsRest = (t: SiteCopy, lang: Lang): string =>
+    [workbench(t), notify(t), ai(t, lang), security(t), platforms(t), cta(t)].join('\n');
