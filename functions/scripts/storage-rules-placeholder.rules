@@ -1,0 +1,3 @@
+rules_version = '2';
+// Placeholder: the rules tests load ../../storage.rules via initializeTestEnvironment.
+service firebase.storage { match /b/{bucket}/o { match /{p=**} { allow read, write: if false; } } }

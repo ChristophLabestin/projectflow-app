@@ -41,13 +41,37 @@ service firebase.storage {
         request.resource.contentType.matches('image/(png|jpeg|gif|webp|avif|bmp|heic|heif)');
     }
 
-    // Tenant-scoped storage (projects, media, etc.). Non-guest members only.
-    match /tenants/{tenantId}/{allPaths=**} {
-      allow read: if isFullMember(tenantId);
-      allow create, update: if isFullMember(tenantId) &&
+    // One member + one project lookup (Storage rules allow few Firestore calls per request).
+    function memberRole(tenantId) {
+      return firestore.get(memberPath(tenantId)).data.role;
+    }
+
+    function canAccessProject(tenantId, projectId) {
+      let project = firestore.get(/databases/(default)/documents/tenants/$(tenantId)/projects/$(projectId));
+      return project != null && (
+        memberRole(tenantId) != 'Guest' ||
+        project.data.ownerId == request.auth.uid ||
+        request.auth.uid in project.data.get('memberIds', [])
+      );
+    }
+
+    // File manager objects: tenants/{t}/files/{module}/{scope}/... where scope is a projectId or
+    // 'global' (workspace files). Access mirrors the Firestore `files` rule; objects are written
+    // only through signed upload URLs from Cloud Functions.
+    match /tenants/{tenantId}/files/{module}/{scope}/{allPaths=**} {
+      allow read: if authed() && firestore.exists(memberPath(tenantId)) && (
+        scope == 'global' ? memberRole(tenantId) != 'Guest' : canAccessProject(tenantId, scope)
+      );
+      allow write: if false;
+    }
+
+    // Other tenant-scoped storage (project assets, media, etc.). Non-guest members only.
+    match /tenants/{tenantId}/{segment}/{allPaths=**} {
+      allow read: if segment != 'files' && isFullMember(tenantId);
+      allow create, update: if segment != 'files' && isFullMember(tenantId) &&
         request.resource.size < 25 * 1024 * 1024 &&
         isAllowedContentType();
-      allow delete: if isFullMember(tenantId);
+      allow delete: if segment != 'files' && isFullMember(tenantId);
     }
 
     // Users may only read/write their own avatar namespace (images, max 5 MB).

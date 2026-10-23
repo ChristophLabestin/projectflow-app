@@ -195,6 +195,7 @@ Startup/company legal, finance, compliance, funding, and advisor links use the s
 - Guests get only `GUEST_ROLE` permissions (no implicit Member baseline) and do not see workspace-wide areas such as Finance or Media.
 - Guests join through an invitation with `role: 'Guest'` and at least one `projectIds` entry; admins can later promote them in Team → member detail → Workspace access.
 - Removing a member also removes them from every project `memberIds` in that workspace.
+- Activity stream (`tenants/{t}/activity`): guests read only events of their projects (queries must filter `projectId`); workspace-level events and Insights (`insights_daily`, `insights_reports`, `/insights`) are full-member only.
 
 ---
 
@@ -324,7 +325,20 @@ Important:
   - `ai.image.generate` / `ai.image.rework`
   - quota + overage policy
 
+### 8.8.1 Files & documents (file manager, 2026-10-23)
+- A file inherits its object's access: project files follow project access (non-guests see all projects, guests only projects with them in `memberIds`); workspace files (`projectId: null`) are visible to non-guests only. Enforced in Firestore (`files`) and Storage (`tenants/{t}/files/{module}/{scope}/**`).
+- Upload: anyone who can see the object (guests in their projects). Rename/move/new version/trash/restore: uploader, project owner, workspace Owner/Admin. Permanent delete: uploader or Owner/Admin (only from the trash).
+- Limits (server-side): 50 MB per file, workspace quota `entitlements/plan.storageQuotaBytes` (default 5 GB, counts all versions and trash), blocklist for executables/scripts/HTML/SVG.
+- Legacy media (`module: 'media'`) keeps `tenant.media.*` for upload; reading follows the workspace scope.
+
 ---
+
+## 8.8.1 Wiki & Docs (2026-10-23)
+- Workspace wiki (`spaceType: workspace`): Owner/Admin/Member read + write; Guests no access.
+- Project wiki: everyone who can access the project (full members + guests in `memberIds`) reads and writes, like project tasks.
+- Trash (soft delete) for every editor; permanent delete only for the page author or Owner/Admin.
+- Custom templates: full members. Presence docs: each user writes only their own.
+- Enforced in `firestore.rules` (`match /docs/{docId}` + `body`/`versions`/`editors`), tests in `functions/scripts/firestore-rules-test.js`.
 
 ## 8.9 Project — General
 - `project.view` — View the project and access its dashboard/overview

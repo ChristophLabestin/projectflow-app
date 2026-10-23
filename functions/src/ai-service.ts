@@ -6,7 +6,9 @@ import {
     buildAskCoraPrompt, buildCapabilityRequest, CapabilityInputError, normalizeImageInput, normalizeImagePrompt
 } from './ai-capabilities';
 
-const TEXT_MODEL = 'gpt-5-mini';
+// GPT-6 Luna: OpenAI's efficient model for focused, high-volume tasks. Low reasoning keeps inline AI fast.
+const TEXT_MODEL = 'gpt-6-luna';
+const TEXT_REASONING = { effort: 'low' } as const;
 const IMAGE_MODEL = 'gpt-image-1-mini';
 
 // Server-side AI quota (the only one that is enforced): per user and day (requests) plus per user and
@@ -212,6 +214,18 @@ const mimeTypeToExtension = (mimeType: string) => {
 
 // --- Ask Cora ---
 
+/**
+ * Plain text generation for server features (e.g. the insights weekly report). Consumes the
+ * caller's daily text quota and tracks token usage like the callables below.
+ */
+export const generateServerText = async (uid: string, instructions: string, input: string): Promise<string> => {
+    await consumeAiQuota(uid, 'text');
+    const client = getClient();
+    const response: any = await client.responses.create({ model: TEXT_MODEL, reasoning: TEXT_REASONING, instructions, input });
+    await trackUsage(uid, extractTokensUsed(response));
+    return extractTextFromResponse(response).trim();
+};
+
 export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
@@ -250,8 +264,8 @@ export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPE
 
         const response: any = await client.responses.create({
             model: TEXT_MODEL,
+            reasoning: TEXT_REASONING,
             input: finalPrompt,
-            temperature: 0.4,
             text: {
                 format: {
                     type: 'json_schema',
@@ -393,8 +407,9 @@ export const runAiCapability = functions.region('europe-west3').runWith({ secret
     try {
         const request: any = {
             model: TEXT_MODEL,
-            input: spec.input,
-            temperature: spec.temperature
+            reasoning: TEXT_REASONING,
+            input: spec.input
+            // No `temperature`: reasoning models reject it (400). `spec.temperature` applies once a model supports it.
         };
         if (spec.instructions) {
             request.instructions = spec.instructions;

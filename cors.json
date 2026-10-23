@@ -1,7 +1,11 @@
 [
     {
         "origin": [
+            "https://app.getprojectflow.com",
+            "https://projectflow-labestin.web.app",
+            "https://projectflow-labestin.firebaseapp.com",
             "http://localhost:3000",
+            "http://localhost:3111",
             "http://localhost:5173"
         ],
         "method": [
@@ -13,6 +17,9 @@
         ],
         "responseHeader": [
             "Content-Type",
+            "Content-Disposition",
+            "Content-Length",
+            "Content-Range",
             "Access-Control-Allow-Origin"
         ],
         "maxAgeSeconds": 3600

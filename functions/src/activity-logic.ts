@@ -26,9 +26,16 @@ export const ACTIVITY_EVENT_TYPES = [
     'project.member_removed',
     // Reserved for the Files / Wiki / Flows sessions:
     'file.uploaded',
+    'file.version_added',
+    'file.moved',
+    'file.trashed',
+    'file.restored',
     'file.deleted',
     'doc.created',
     'doc.updated',
+    'doc.archived',
+    'doc.restored',
+    'doc.deleted',
     'automation.ran',
     'automation.failed'
 ] as const;
