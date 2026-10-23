@@ -35,7 +35,7 @@ const quotaRefs = (uid: string) => {
     };
 };
 
-const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
+export const consumeAiQuota = async (uid: string, kind: AiQuotaKind) => {
     const { day, month, daily, monthly } = quotaRefs(uid);
     const limit = AI_DAILY_LIMITS[kind];
 
@@ -77,7 +77,7 @@ const invalidInput = (error: unknown): never => {
 type Confidence = 'Low' | 'Medium' | 'High';
 
 // Helper to track token usage securely on server
-const trackUsage = async (uid: string, tokens: number) => {
+export const trackUsage = async (uid: string, tokens: number) => {
     if (tokens <= 0) return;
     try {
         await recordMonthlyTokens(uid, tokens);

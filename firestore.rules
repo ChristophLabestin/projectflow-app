@@ -319,6 +319,16 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // In-app AI credits per month (written by the aiAssist function); Owner/Admin may read.
+      match /ai_credits/{month} {
+        allow read: if isTenantAdmin(tenantId);
+        allow write: if false;
+        match /members/{memberUid} {
+          allow read: if isTenantAdmin(tenantId);
+          allow write: if false;
+        }
+      }
+
       // Workspace activity stream (brain/plans/activity-events-contract.md). Written only by
       // Cloud Functions. Guests see events of their projects only; their queries must filter
       // projectId (== or in) so the rule can be proven per query. projectId null = full members only.
@@ -497,7 +507,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'ai_usage', 'ai_credits', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs', 'activity', 'insights_daily', 'insights_reports', 'automations', 'automation_runs', 'automation_usage', 'automation_throttle']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -514,6 +524,7 @@ service cloud.firestore {
               'ai_audit',
               'ai_config',
               'ai_usage',
+              'ai_credits',
               'files',
               'file_upload_drafts',
               'notifications',

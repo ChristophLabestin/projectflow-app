@@ -23,7 +23,7 @@ import { isAiToken, resolveAiToken } from './ai-tokens';
 import { issuerFor, MCP_DOCS_URL, mcpResourceFor, protectedResourceMetadataUrl } from './oauth-config';
 import { audienceMatches, DEFAULT_OAUTH_SCOPES, OAUTH_SCOPES } from './oauth-core';
 import { checkApiTokenUsable, findApiToken } from './authUtils';
-import { handleProjectflowApiRoute } from './projectflow-api';
+import { type ApiResult, callApi, compact, summarizeInitiative, summarizeProject, summarizeTask } from './ai-tools/api';
 
 const REGION = 'europe-west3';
 const SERVER_VERSION = '1.0.0';
@@ -47,39 +47,6 @@ Dates are ISO strings (YYYY-MM-DD). Task statuses: ${TASK_STATUSES.join(', ')}. 
 // In-process API calls
 // ---------------------------------------------------------------------------
 
-type ApiResult = { status: number; payload: any };
-
-/** Run a REST API route in-process with the caller's token and capture the JSON response. */
-const callApi = async (
-    token: string,
-    method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
-    path: string,
-    options: { body?: Record<string, unknown>; query?: Record<string, string> } = {}
-): Promise<ApiResult> => {
-    let status = 200;
-    let payload: any = null;
-    const req = {
-        method,
-        path: `/projectflow${path}`,
-        headers: { authorization: `Bearer ${token}` },
-        body: options.body || {},
-        query: options.query || {}
-    };
-    const res: any = {
-        headersSent: false,
-        statusCode: 200,
-        status(code: number) { status = code; this.statusCode = code; return this; },
-        json(value: unknown) { payload = value; this.headersSent = true; return this; },
-        send(value: unknown) { payload = value; this.headersSent = true; return this; },
-        end() { this.headersSent = true; return this; },
-        set() { return this; },
-        setHeader() { return this; }
-    };
-    const handled = await handleProjectflowApiRoute(req, res, `/projectflow${path}`);
-    if (!handled) return { status: 404, payload: { success: false, error: `No API route for ${method} ${path}` } };
-    return { status, payload };
-};
-
 const textResult = (value: unknown, isError = false) => ({
     content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }],
     ...(isError ? { isError: true } : {})
@@ -88,43 +55,6 @@ const textResult = (value: unknown, isError = false) => ({
 const apiError = (result: ApiResult) =>
     textResult(`ProjectFlow API error ${result.status}: ${result.payload?.error || 'Request failed.'}`, true);
 
-/** Drop undefined values so PATCH bodies only contain what the agent actually set. */
-const compact = <T extends Record<string, unknown>>(value: T): Partial<T> =>
-    Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as Partial<T>;
-
-const summarizeTask = (task: any) => compact({
-    id: task.id,
-    title: task.title,
-    status: task.status,
-    priority: task.priority,
-    dueDate: task.dueDate || undefined,
-    startDate: task.startDate || undefined,
-    isCompleted: task.isCompleted || undefined,
-    assigneeIds: Array.isArray(task.assigneeIds) && task.assigneeIds.length ? task.assigneeIds : undefined,
-    initiativeId: task.initiativeId || undefined,
-    externalKey: task.externalKey || undefined,
-    updatedAt: task.updatedAt || undefined
-});
-
-const summarizeProject = (project: any) => compact({
-    id: project.id,
-    title: project.title,
-    status: project.status,
-    priority: project.priority,
-    dueDate: project.dueDate || undefined,
-    description: typeof project.description === 'string' && project.description ? project.description.slice(0, 240) : undefined
-});
-
-const summarizeInitiative = (initiative: any) => compact({
-    id: initiative.id,
-    title: initiative.title,
-    status: initiative.status,
-    priority: initiative.priority,
-    health: initiative.health || undefined,
-    startDate: initiative.startDate || undefined,
-    dueDate: initiative.dueDate || undefined,
-    externalKey: initiative.externalKey || undefined
-});
 
 // ---------------------------------------------------------------------------
 // Server definition

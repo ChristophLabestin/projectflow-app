@@ -32,7 +32,7 @@ const nextReminder = (reminders) => {
     return next ? { nextReminderAt: next } : {};
 };
 
-const PROJECT_ID = 'demo-projectflow';
+const PROJECT_ID = process.env.SEED_PROJECT_ID || 'demo-projectflow';
 admin.initializeApp({ projectId: PROJECT_ID });
 const db = admin.firestore();
 const auth = admin.auth();
