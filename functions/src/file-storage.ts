@@ -13,15 +13,30 @@ import {
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { db } from './init';
+import {
+    FileAccessContext,
+    FileParent,
+    MAX_FILE_BYTES,
+    canManageFile,
+    canPurgeFile,
+    canReadScope,
+    isBlockedFileType,
+    normalizeParent,
+    quotaAllows,
+    resolveQuotaBytes,
+    sanitizeFileName,
+    sanitizeFolder,
+    sanitizeTags,
+} from './files-logic';
 
 const escapeHtml = (value: string): string =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-import { FieldValue, Timestamp } from 'firebase-admin/firestore';
+import { AggregateField, FieldValue, Timestamp } from 'firebase-admin/firestore';
 
-type StorageProvider = 'firebase' | 's3' | 'googleDrive';
+export type StorageProvider = 'firebase' | 's3' | 'googleDrive';
 type UploadModule = 'media' | 'profile' | 'project' | 'finance' | string;
 
-type FileStorageSecret = {
+export type FileStorageSecret = {
     activeProvider?: StorageProvider;
     s3?: {
         endpoint?: string;
@@ -51,7 +66,7 @@ type FileStorageSecret = {
     updatedBy?: string;
 };
 
-type TenantFileRecord = {
+export type TenantFileRecord = {
     tenantId: string;
     module: UploadModule;
     entityType: string;
@@ -63,30 +78,56 @@ type TenantFileRecord = {
     fileName: string;
     mimeType: string;
     sizeBytes: number;
-    status: 'ready' | 'deleted';
-    providerRef: {
-        firebasePath?: string;
-        s3?: {
-            key: string;
-            bucket: string;
-            region: string;
-            endpoint: string;
-            forcePathStyle: boolean;
-        };
-        googleDrive?: {
-            fileId: string;
-            folderId?: string;
-        };
-    };
+    status: 'ready' | 'deleted' | 'trashed';
+    providerRef: TenantFileProviderRef;
     createdBy: string;
     createdAt?: unknown;
     updatedAt?: unknown;
+    // File manager fields (brain/plans/files-concept.md); absent on legacy assets.
+    listed?: boolean;
+    parent?: FileParent;
+    name?: string;
+    nameLower?: string;
+    folder?: string;
+    tags?: string[];
+    version?: number;
+    versions?: TenantFileVersion[];
+    versionBytes?: number;
+    uploaderName?: string;
+    trashedAt?: unknown;
+    trashedBy?: string | null;
 };
 
-const REGION = 'europe-west3';
+export type TenantFileVersion = {
+    version: number;
+    fileName: string;
+    sizeBytes: number;
+    mimeType: string;
+    provider: StorageProvider;
+    providerRef: TenantFileProviderRef;
+    createdBy: string;
+    createdAt?: unknown;
+};
+
+export type TenantFileProviderRef = {
+    firebasePath?: string;
+    s3?: {
+        key: string;
+        bucket: string;
+        region: string;
+        endpoint: string;
+        forcePathStyle: boolean;
+    };
+    googleDrive?: {
+        fileId: string;
+        folderId?: string;
+    };
+};
+
+export const REGION = 'europe-west3';
 const FILE_STORAGE_SECRET_ID = 'fileStorage';
 const FILE_STORAGE_AUTH_STATE_COLLECTION = 'file_storage_auth_states';
-const STORAGE_SIGNED_URL_TTL_MS = 15 * 60 * 1000;
+export const STORAGE_SIGNED_URL_TTL_MS = 15 * 60 * 1000;
 const UPLOAD_DRAFT_TTL_MS = 60 * 60 * 1000;
 const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 const DEFAULT_S3_REGION = 'us-east-1';
@@ -101,7 +142,7 @@ const GOOGLE_DRIVE_SCOPES = [
     'https://www.googleapis.com/auth/userinfo.email',
 ];
 
-const normalizeString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
+export const normalizeString = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const toSafePathSegment = (value: string) => value.replace(/[^a-zA-Z0-9._-]/g, '_');
 const toBoolean = (value: unknown) => Boolean(value);
 const toNumber = (value: unknown) => {
@@ -109,7 +150,7 @@ const toNumber = (value: unknown) => {
     return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const requireAuth = (context: functions.https.CallableContext) => {
+export const requireAuth = (context: functions.https.CallableContext) => {
     const uid = context.auth?.uid;
     if (!uid) {
         throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
@@ -117,7 +158,7 @@ const requireAuth = (context: functions.https.CallableContext) => {
     return uid;
 };
 
-const getMembership = async (tenantId: string, uid: string) => {
+export const getMembership = async (tenantId: string, uid: string) => {
     if (!tenantId) {
         throw new functions.https.HttpsError('invalid-argument', 'tenantId is required.');
     }
@@ -275,10 +316,58 @@ const requireDeletePermission = async (
 
 const secretDocRef = (tenantId: string) => db.collection('tenants').doc(tenantId).collection('secrets').doc(FILE_STORAGE_SECRET_ID);
 const authStateDocRef = (tenantId: string, stateId: string) => db.collection('tenants').doc(tenantId).collection('secrets').doc(FILE_STORAGE_SECRET_ID).collection(FILE_STORAGE_AUTH_STATE_COLLECTION).doc(stateId);
-const uploadDraftDocRef = (tenantId: string, draftId: string) => db.collection('tenants').doc(tenantId).collection('file_upload_drafts').doc(draftId);
-const filesCollectionRef = (tenantId: string) => db.collection('tenants').doc(tenantId).collection('files');
+export const uploadDraftDocRef = (tenantId: string, draftId: string) => db.collection('tenants').doc(tenantId).collection('file_upload_drafts').doc(draftId);
+export const filesCollectionRef = (tenantId: string) => db.collection('tenants').doc(tenantId).collection('files');
 
-const getSecretConfig = async (tenantId: string): Promise<FileStorageSecret> => {
+/** Membership + project doc for file access checks (same semantics as firestore.rules). */
+export const loadFileAccess = async (tenantId: string, uid: string, projectId: string | null): Promise<FileAccessContext> => {
+    const membership = await getMembership(tenantId, uid);
+    let project: FileAccessContext['project'] = null;
+    if (membership.exists && projectId) {
+        const projectSnap = await db.collection('tenants').doc(tenantId).collection('projects').doc(projectId).get();
+        project = projectSnap.exists ? (projectSnap.data() as FileAccessContext['project']) : null;
+    }
+    return { isMember: membership.exists, role: membership.role, project, uid };
+};
+
+export const requireFileScopeRead = async (tenantId: string, uid: string, projectId: string | null) => {
+    const access = await loadFileAccess(tenantId, uid, projectId);
+    if (!canReadScope(access, projectId)) {
+        throw new functions.https.HttpsError('permission-denied', 'No access to this file.');
+    }
+    return access;
+};
+
+/** File-manager documents (and anything listed) follow object permissions instead of tenant.media.*. */
+export const isManagedDocument = (record: Partial<TenantFileRecord>) => record.module === 'files' || record.listed === true;
+
+/**
+ * Short-lived URL for file-manager documents. Firebase objects get a V4 signed URL instead of a
+ * permanent download token, so a leaked link stops working after 15 minutes.
+ */
+export const generateExpiringUrlFromRecord = async (
+    tenantId: string,
+    secret: FileStorageSecret,
+    record: TenantFileRecord,
+    options: { download?: boolean } = {},
+) => {
+    if (record.provider === 'firebase' && isManagedDocument(record)) {
+        const objectPath = normalizeString(record.providerRef.firebasePath);
+        const displayName = (record.name || record.fileName || 'file').replace(/["\\\r\n]/g, '_');
+        const [url] = await fileBucket().file(objectPath).getSignedUrl({
+            version: 'v4',
+            action: 'read',
+            expires: Date.now() + STORAGE_SIGNED_URL_TTL_MS,
+            ...(options.download
+                ? { responseDisposition: `attachment; filename="${displayName}"; filename*=UTF-8''${encodeURIComponent(record.name || record.fileName || 'file')}` }
+                : {}),
+        });
+        return url;
+    }
+    return generateDownloadUrlFromRecord(tenantId, secret, record);
+};
+
+export const getSecretConfig = async (tenantId: string): Promise<FileStorageSecret> => {
     const secretSnap = await secretDocRef(tenantId).get();
     return (secretSnap.data() || {}) as FileStorageSecret;
 };
@@ -415,7 +504,7 @@ const resolveDefaultFirebaseBucketName = () => {
     return `${projectId}.firebasestorage.app`;
 };
 
-const fileBucket = () => {
+export const fileBucket = () => {
     const bucketName = resolveDefaultFirebaseBucketName();
 
     try {
@@ -906,7 +995,7 @@ const verifyUploadAndBuildProviderRef = async (args: {
     };
 };
 
-const generateDownloadUrlFromRecord = async (tenantId: string, secret: FileStorageSecret, record: TenantFileRecord) => {
+export const generateDownloadUrlFromRecord = async (tenantId: string, secret: FileStorageSecret, record: TenantFileRecord) => {
     if (record.provider === 'firebase') {
         const objectPath = normalizeString(record.providerRef.firebasePath);
         const bucket = fileBucket();
@@ -949,7 +1038,7 @@ const generateDownloadUrlFromRecord = async (tenantId: string, secret: FileStora
     return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(driveRef.fileId)}?alt=media&access_token=${encodeURIComponent(token)}`;
 };
 
-const deleteProviderObject = async (args: {
+export const deleteProviderObject = async (args: {
     tenantId: string;
     secret: FileStorageSecret;
     record: TenantFileRecord;
@@ -1183,6 +1272,193 @@ export const disconnectGoogleDriveStorage = functions.region(REGION).https.onCal
     };
 });
 
+// ---- File manager uploads (module 'files', brain/plans/files-concept.md) -----------------------
+
+/** Deletes the current object and every stored older version (best effort per version). */
+export const deleteFileObjects = async (tenantId: string, secret: FileStorageSecret, record: TenantFileRecord) => {
+    await deleteProviderObject({ tenantId, secret, record });
+    for (const version of record.versions || []) {
+        await deleteProviderObject({
+            tenantId,
+            secret,
+            record: { ...record, provider: version.provider, providerRef: version.providerRef },
+        }).catch((error) => functions.logger.warn('Could not delete file version object', { tenantId, error: String(error) }));
+    }
+};
+
+export const getWorkspaceFileUsage = async (tenantId: string) => {
+    const [aggregate, planSnap] = await Promise.all([
+        filesCollectionRef(tenantId).aggregate({
+            current: AggregateField.sum('sizeBytes'),
+            older: AggregateField.sum('versionBytes'),
+            count: AggregateField.count(),
+        }).get(),
+        db.collection('tenants').doc(tenantId).collection('entitlements').doc('plan').get(),
+    ]);
+    const data = aggregate.data();
+    return {
+        usedBytes: toNumber(data.current) + toNumber(data.older),
+        fileCount: toNumber(data.count),
+        quotaBytes: resolveQuotaBytes(planSnap.data()),
+        maxFileBytes: MAX_FILE_BYTES,
+    };
+};
+
+const prepareManagedUpload = async (args: {
+    tenantId: string;
+    context: functions.https.CallableContext;
+    payload: Record<string, unknown>;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+}) => {
+    const actorId = requireAuth(args.context);
+    if (isBlockedFileType(args.fileName, args.mimeType)) {
+        throw new functions.https.HttpsError('invalid-argument', 'This file type is not allowed.', { reason: 'blocked-type' });
+    }
+    if (args.sizeBytes > MAX_FILE_BYTES) {
+        throw new functions.https.HttpsError('invalid-argument', 'File is too large.', { reason: 'too-large', maxBytes: MAX_FILE_BYTES });
+    }
+
+    const replaceFileId = normalizeString(args.payload.replaceFileId) || null;
+    let parent: FileParent | null;
+    if (replaceFileId) {
+        const existingSnap = await filesCollectionRef(args.tenantId).doc(replaceFileId).get();
+        const existing = existingSnap.data() as TenantFileRecord | undefined;
+        if (!existing || !isManagedDocument(existing) || existing.status !== 'ready' || !existing.parent) {
+            throw new functions.https.HttpsError('not-found', 'File not found.');
+        }
+        const access = await loadFileAccess(args.tenantId, actorId, existing.projectId || null);
+        if (!canManageFile(access, existing)) {
+            throw new functions.https.HttpsError('permission-denied', 'You cannot add versions to this file.');
+        }
+        parent = existing.parent;
+    } else {
+        parent = normalizeParent(args.payload.parent);
+        if (!parent) {
+            throw new functions.https.HttpsError('invalid-argument', 'A valid parent is required.');
+        }
+        await requireFileScopeRead(args.tenantId, actorId, parent.projectId);
+    }
+
+    const usage = await getWorkspaceFileUsage(args.tenantId);
+    if (!quotaAllows(usage.usedBytes, usage.quotaBytes, args.sizeBytes)) {
+        throw new functions.https.HttpsError('resource-exhausted', 'Workspace storage is full.', {
+            reason: 'quota', usedBytes: usage.usedBytes, quotaBytes: usage.quotaBytes,
+        });
+    }
+
+    return {
+        actorId,
+        parent,
+        replaceFileId,
+        folder: sanitizeFolder(args.payload.folder),
+        tags: sanitizeTags(args.payload.tags),
+    };
+};
+
+const finalizeManagedUpload = async (args: {
+    tenantId: string;
+    context: functions.https.CallableContext;
+    actorId: string;
+    draftData: Record<string, any>;
+    verification: { providerRef: TenantFileRecord['providerRef']; sizeBytes: number; mimeType: string };
+    secret: FileStorageSecret;
+}) => {
+    const { tenantId, draftData, verification, actorId } = args;
+    const fileName = normalizeString(draftData.fileName);
+    const provider = normalizeString(draftData.resolvedProvider) as StorageProvider;
+    const draftRecord = {
+        provider,
+        providerRef: verification.providerRef,
+        fileName,
+        mimeType: verification.mimeType,
+    } as TenantFileRecord;
+
+    // The real object metadata decides, not what the client announced.
+    if (isBlockedFileType(fileName, verification.mimeType) || verification.sizeBytes > MAX_FILE_BYTES) {
+        await deleteProviderObject({ tenantId, secret: args.secret, record: draftRecord }).catch(() => undefined);
+        throw new functions.https.HttpsError('invalid-argument', 'This file is not allowed.', { reason: 'blocked-type' });
+    }
+
+    const token = (args.context.auth?.token || {}) as Record<string, unknown>;
+    const uploaderName = normalizeString(token.name) || normalizeString(token.email) || '';
+    const replaceFileId = normalizeString(draftData.replaceFileId);
+    const collection = filesCollectionRef(tenantId);
+
+    if (replaceFileId) {
+        const fileRef = collection.doc(replaceFileId);
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(fileRef);
+            const current = snap.data() as TenantFileRecord | undefined;
+            if (!current || current.status !== 'ready') {
+                throw new functions.https.HttpsError('not-found', 'File not found.');
+            }
+            const previous: TenantFileVersion = {
+                version: current.version || 1,
+                fileName: current.fileName,
+                sizeBytes: current.sizeBytes,
+                mimeType: current.mimeType,
+                provider: current.provider,
+                providerRef: current.providerRef,
+                createdBy: current.createdBy,
+                createdAt: current.updatedAt || current.createdAt || null,
+            };
+            tx.update(fileRef, {
+                versions: [...(current.versions || []), previous],
+                versionBytes: (current.versionBytes || 0) + (current.sizeBytes || 0),
+                version: (current.version || 1) + 1,
+                fileName,
+                mimeType: verification.mimeType,
+                sizeBytes: verification.sizeBytes,
+                provider,
+                requestedProvider: normalizeString(draftData.requestedProvider) as StorageProvider,
+                providerRef: verification.providerRef,
+                versionUploadedBy: actorId,
+                versionUploaderName: uploaderName,
+                updatedAt: FieldValue.serverTimestamp(),
+            });
+        });
+        const persisted = (await fileRef.get()).data() as TenantFileRecord;
+        return { id: fileRef.id, ...persisted };
+    }
+
+    const parent = draftData.parent as FileParent;
+    const fileRef = collection.doc();
+    const name = sanitizeFileName(fileName) || 'file';
+    const record: TenantFileRecord = {
+        tenantId,
+        module: 'files',
+        entityType: parent.type,
+        entityId: parent.id,
+        projectId: parent.projectId,
+        provider,
+        requestedProvider: normalizeString(draftData.requestedProvider) as StorageProvider,
+        fallbackToFirebase: provider !== normalizeString(draftData.requestedProvider),
+        fileName,
+        mimeType: verification.mimeType,
+        sizeBytes: verification.sizeBytes,
+        status: 'ready',
+        providerRef: verification.providerRef,
+        createdBy: actorId,
+        listed: true,
+        parent,
+        name,
+        nameLower: name.toLowerCase(),
+        folder: normalizeString(draftData.folder),
+        tags: Array.isArray(draftData.tags) ? draftData.tags : [],
+        version: 1,
+        versions: [],
+        versionBytes: 0,
+        uploaderName,
+        trashedAt: null,
+        trashedBy: null,
+    };
+    await fileRef.set({ ...record, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
+    const persisted = (await fileRef.get()).data() as TenantFileRecord;
+    return { id: fileRef.id, ...persisted };
+};
+
 export const createTenantFileUploadSession = functions.region(REGION).https.onCall(async (data, context) => {
     const payload = (data || {}) as Record<string, unknown>;
     const tenantId = normalizeString(payload.tenantId);
@@ -1194,7 +1470,7 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
     const mimeType = normalizeString(payload.mimeType) || 'application/octet-stream';
     const sizeBytes = toNumber(payload.sizeBytes);
 
-    if (!moduleName || !entityType || !fileName) {
+    if (!moduleName || (!entityType && moduleName !== 'files') || !fileName) {
         throw new functions.https.HttpsError('invalid-argument', 'module, entityType, and fileName are required.');
     }
 
@@ -1202,16 +1478,20 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
         throw new functions.https.HttpsError('invalid-argument', `sizeBytes must be between 1 and ${MAX_UPLOAD_BYTES}.`);
     }
 
-    const actorId = await requireUploadPermission(tenantId, context, moduleName);
+    const managed = moduleName === 'files'
+        ? await prepareManagedUpload({ tenantId, context, payload, fileName, mimeType, sizeBytes })
+        : null;
+    const actorId = managed ? managed.actorId : await requireUploadPermission(tenantId, context, moduleName);
+    const scopedProjectId = managed ? managed.parent.projectId : projectId;
     const secret = await getSecretConfig(tenantId);
     const provider = resolveProvider(secret);
 
     const objectKey = buildObjectKey({
         tenantId,
         moduleName,
-        entityType,
-        entityId,
-        projectId,
+        entityType: managed ? managed.parent.type : entityType,
+        entityId: managed ? managed.parent.id : entityId,
+        projectId: scopedProjectId,
         fileName,
     });
 
@@ -1231,9 +1511,15 @@ export const createTenantFileUploadSession = functions.region(REGION).https.onCa
     await draftRef.set({
         tenantId,
         module: moduleName,
-        entityType,
-        entityId,
-        projectId,
+        entityType: managed ? managed.parent.type : entityType,
+        entityId: managed ? managed.parent.id : entityId,
+        projectId: scopedProjectId,
+        ...(managed ? {
+            parent: managed.parent,
+            replaceFileId: managed.replaceFileId,
+            folder: managed.folder,
+            tags: managed.tags,
+        } : {}),
         fileName,
         mimeType,
         sizeBytes,
@@ -1274,7 +1560,11 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
 
     const draftData = draftSnap.data() || {};
     const moduleName = normalizeString(draftData.module) as UploadModule;
-    await requireUploadPermission(tenantId, context, moduleName);
+    if (moduleName === 'files') {
+        await requireFileScopeRead(tenantId, actorId, normalizeString(draftData.projectId) || null);
+    } else {
+        await requireUploadPermission(tenantId, context, moduleName);
+    }
 
     if (normalizeString(draftData.createdBy) && normalizeString(draftData.createdBy) !== actorId) {
         throw new functions.https.HttpsError('permission-denied', 'Only the uploader can finalize this draft.');
@@ -1292,6 +1582,12 @@ export const finalizeTenantFileUpload = functions.region(REGION).https.onCall(as
         draftData,
         providerResult: (payload.providerResult as Record<string, any>) || undefined,
     });
+
+    if (moduleName === 'files') {
+        const file = await finalizeManagedUpload({ tenantId, context, actorId, draftData, verification, secret });
+        await draftRef.delete();
+        return { file };
+    }
 
     const fileRef = filesCollectionRef(tenantId).doc();
 
@@ -1400,10 +1696,14 @@ export const getTenantFileDownloadUrl = functions.region(REGION).https.onCall(as
     }
 
     const record = fileSnap.data() as TenantFileRecord;
-    await requireReadPermission(tenantId, context, record.module);
+    if (isManagedDocument(record)) {
+        await requireFileScopeRead(tenantId, requireAuth(context), record.projectId || null);
+    } else {
+        await requireReadPermission(tenantId, context, record.module);
+    }
 
     const secret = await getSecretConfig(tenantId);
-    const downloadUrl = await generateDownloadUrlFromRecord(tenantId, secret, record);
+    const downloadUrl = await generateExpiringUrlFromRecord(tenantId, secret, record, { download: Boolean(data?.download) });
 
     return {
         fileId,
@@ -1457,14 +1757,18 @@ export const deleteTenantFile = functions.region(REGION).https.onCall(async (dat
     }
 
     const row = fileSnap.data() as TenantFileRecord;
-    await requireDeletePermission(tenantId, context, row.module);
+    if (isManagedDocument(row)) {
+        const actorId = requireAuth(context);
+        const access = await loadFileAccess(tenantId, actorId, row.projectId || null);
+        if (!canPurgeFile(access, row)) {
+            throw new functions.https.HttpsError('permission-denied', 'You cannot delete this file.');
+        }
+    } else {
+        await requireDeletePermission(tenantId, context, row.module);
+    }
 
     const secret = await getSecretConfig(tenantId);
-    await deleteProviderObject({
-        tenantId,
-        secret,
-        record: row,
-    });
+    await deleteFileObjects(tenantId, secret, row);
 
     await fileRef.delete();
 

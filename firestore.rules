@@ -314,8 +314,13 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // A file inherits its object's access (brain/plans/files-concept.md): project files follow
+      // the project (guests only in their projects), workspace files (projectId null) need a
+      // non-guest. Guests must filter queries by projectId. Writes go through Callables only.
       match /files/{fileId} {
-        allow read: if canAccessTenant(tenantId);
+        allow read: if canAccessTenant(tenantId) ||
+          (resource.data.get('projectId', null) is string &&
+            canAccessProjectById(tenantId, resource.data.projectId));
         allow write: if false;
       }
 

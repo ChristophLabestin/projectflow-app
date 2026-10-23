@@ -15,6 +15,13 @@ const T = 'tenants/tenantA';
 const PROJECT = `${T}/projects/projectA`;
 const MEMBER_PROJECT = `${T}/projects/memberProject`;
 
+// File manager doc shape (brain/plans/files-concept.md).
+const fileDoc = (projectId, extra = {}) => ({
+    tenantId: 'tenantA', module: 'files', listed: true, status: 'ready', projectId,
+    parent: { type: projectId ? 'task' : 'workspace', id: projectId ? 'taskA' : 'workspace', projectId, rootId: projectId ? 'taskA' : 'workspace' },
+    name: 'a.pdf', createdBy: 'ownerA', ...extra
+});
+
 const seedData = async (testEnv) => {
     await testEnv.withSecurityRulesDisabled(async (context) => {
         const db = context.firestore();
@@ -64,6 +71,12 @@ const seedData = async (testEnv) => {
         await set('users/memberA/devices/deviceA', { platform: 'ios', fcmToken: 'token' });
         await set('users/memberA/liveActivities/activityA', { deviceId: 'deviceA', pushToken: 'push', itemId: 'taskA' });
         await set('users/memberA/nudgeLog/2026-10-22', { sent: ['morning_briefing'] });
+
+        // File manager docs: project file (projectA has guestA), member-only project, workspace file.
+        await set(`${T}/files/fileProject`, fileDoc('projectA'));
+        await set(`${T}/files/fileMemberProject`, fileDoc('memberProject'));
+        await set(`${T}/files/fileWorkspace`, fileDoc(null));
+        await set(`${T}/files/legacyMedia`, { tenantId: 'tenantA', module: 'media', projectId: null, status: 'ready' });
 
         const notification = (userId, extra = {}) => ({
             userId, tenantId: 'tenantA', type: 'task_assigned', title: 'New Task Assignment',
@@ -257,6 +270,27 @@ const run = async () => {
             member.doc(`${T}/notificationDeliveryLogs/logOwner`).get());
         await check('member cannot write delivery logs', 'deny', () =>
             member.doc(`${T}/notificationDeliveryLogs/logMember`).update({ status: 'failed' }));
+
+        // Files inherit their object's access; writes only via Callables.
+        const F = `${T}/files`;
+        await check('member reads project file', 'allow', () => member.doc(`${F}/fileProject`).get());
+        await check('member reads workspace file', 'allow', () => member.doc(`${F}/fileWorkspace`).get());
+        await check('member lists listed files', 'allow', () => member.collection(F).where('listed', '==', true).get());
+        await check('guest reads file in own project', 'allow', () => guest.doc(`${F}/fileProject`).get());
+        await check('guest queries own project files', 'allow', () =>
+            guest.collection(F).where('projectId', '==', 'projectA').where('listed', '==', true).get());
+        await check('guest queries task files by root', 'allow', () =>
+            guest.collection(F).where('projectId', '==', 'projectA').where('parent.rootId', '==', 'taskA').get());
+        await check('guest cannot read file of foreign project', 'deny', () => guest.doc(`${F}/fileMemberProject`).get());
+        await check('guest cannot read workspace file', 'deny', () => guest.doc(`${F}/fileWorkspace`).get());
+        await check('guest cannot read legacy media', 'deny', () => guest.doc(`${F}/legacyMedia`).get());
+        await check('guest cannot list all files', 'deny', () => guest.collection(F).where('listed', '==', true).get());
+        await check('guest cannot query foreign project files', 'deny', () =>
+            guest.collection(F).where('projectId', '==', 'memberProject').get());
+        await check('outsider cannot read project file', 'deny', () => outsider.doc(`${F}/fileProject`).get());
+        await check('member cannot create file doc', 'deny', () => member.collection(F).add(fileDoc('projectA')));
+        await check('owner cannot rename file directly', 'deny', () => owner.doc(`${F}/fileProject`).update({ name: 'b.pdf' }));
+        await check('uploader cannot delete file doc directly', 'deny', () => owner.doc(`${F}/fileProject`).delete());
 
         // Legal documents + consent (writes only via Cloud Functions).
         const anon = testEnv.unauthenticatedContext().firestore();

@@ -14,7 +14,8 @@
         "shell": "npm run build && firebase functions:shell",
         "start": "npm run shell",
         "deploy": "firebase deploy --only functions",
-        "logs": "firebase functions:log"
+        "logs": "firebase functions:log",
+        "test:files-rules": "firebase emulators:exec --only firestore,storage --project demo-projectflow --config scripts/firebase.files-test.json \"node scripts/firestore-rules-test.js && node scripts/storage-rules-test.js\""
     },
     "engines": {
         "node": "22"
