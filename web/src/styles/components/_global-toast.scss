@@ -11,8 +11,10 @@
     color: var(--color-text-ondark);
     font-weight: 500;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-    transition: transform 0.3s ease-out, opacity 0.3s ease-out;
-    transform: translateX(-50%) translateY(16px) scale(0.95);
+    // Exit: sinks with ease-in. Enter: keyframes (the toast mounts already visible).
+    transition: transform var(--motion-duration-exit) var(--motion-ease-in),
+        opacity var(--motion-duration-exit) var(--motion-ease-in);
+    transform: translateX(-50%) translateY(calc(var(--motion-rise) * 2)) scale(0.97);
     opacity: 0;
     pointer-events: none;
 
@@ -20,6 +22,11 @@
         transform: translateX(-50%) translateY(0) scale(1);
         opacity: 1;
         pointer-events: auto;
+        animation: global-toast-in var(--motion-duration-slow) var(--motion-ease-out) both;
+    }
+
+    &--visible &__icon {
+        animation: pf-pop-in var(--motion-duration-base) var(--motion-ease-spring) 80ms both;
     }
 
     &--error {
@@ -67,7 +74,7 @@
         color: inherit;
         cursor: pointer;
         background: rgba(255, 255, 255, 0.2);
-        transition: background-color 0.15s ease;
+        transition: background-color var(--motion-duration-fast) var(--motion-ease-out);
 
         &:hover {
             background: rgba(255, 255, 255, 0.3);
@@ -109,5 +116,12 @@
         white-space: pre-wrap;
         word-break: break-all;
         opacity: 0.8;
+    }
+}
+
+@keyframes global-toast-in {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(calc(var(--motion-rise) * 2)) scale(0.97);
     }
 }

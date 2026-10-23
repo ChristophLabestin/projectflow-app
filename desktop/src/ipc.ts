@@ -1,4 +1,4 @@
-import { BrowserWindow, app, ipcMain, nativeImage, shell } from 'electron';
+import { BrowserWindow, app, ipcMain, nativeImage, session, shell } from 'electron';
 import { APP_ORIGIN, sanitizeAppPath } from './config';
 import { IPC, type AppAction, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
 import { showAppNotification } from './features/notifications';
@@ -6,10 +6,12 @@ import { getPreferences, setPreferences } from './features/preferences';
 import { refreshTouchBar } from './features/focus';
 import { hideCapture, isCaptureWindow, markCaptureReady, openDayWindow, showCapture } from './windows/auxWindows';
 import { hideTrayPanel } from './windows/trayPanel';
+import { hidePalette } from './windows/paletteWindow';
 import { upcomingEvents } from './features/calendar';
 import { startExternalSignIn } from './features/externalAuth';
 import { indexSpotlight } from './features/spotlight';
 import { applyUpdate, getUpdateState } from './features/updater';
+import { finishSplash } from './windows/splash';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -135,6 +137,15 @@ export const registerIpc = () => {
         if (safe) void shell.openExternal(new URL(safe, APP_ORIGIN).toString());
     });
     handle(IPC.updateState, () => getUpdateState());
+    // Something other than the app is on screen (e.g. the workspace error page): end the launch scene.
+    // Sign-out: the next account must not see the previous one's cached Firestore data.
+    on(IPC.clearOfflineCache, (event) => {
+        if (senderWindow(event) !== getMainWindow()) return;
+        void session.defaultSession.clearStorageData({ storages: ['indexdb'] })
+            .catch((error) => console.warn('[desktop] clearing the offline cache failed', error))
+            .finally(() => BrowserWindow.getAllWindows().forEach((win) => { if (!win.isDestroyed()) win.webContents.reload(); }));
+    });
+    on(IPC.splashDone, (event) => { if (senderWindow(event) === getMainWindow()) finishSplash(); });
     on(IPC.updateAction, () => applyUpdate());
     on(IPC.indexSpotlight, (event, items: unknown) => {
         if (senderWindow(event) === getMainWindow()) indexSpotlight(items);
@@ -185,6 +196,7 @@ export const registerIpc = () => {
         const pathname = new URL(win.webContents.getURL()).pathname;
         if (pathname === '/desktop/capture') hideCapture();
         else if (pathname === '/desktop/tray') hideTrayPanel();
+        else if (pathname === '/desktop/palette') hidePalette();
         else win.close();
     });
 

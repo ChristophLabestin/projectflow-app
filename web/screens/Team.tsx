@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { auth } from '../services/firebase';
@@ -15,6 +15,9 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useConfirm, useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { initialOf } from '../utils/initials';
+import './team.scss';
+
+const SettingsModal = lazy(() => import('../components/SettingsModal').then((module) => ({ default: module.SettingsModal })));
 
 // Member erbt bereits von User (displayName/email/photoURL/role). Wir ergänzen nur id + Agent-Felder.
 type TeamMember = Member & {
@@ -47,6 +50,7 @@ export const Team = () => {
     useEffect(() => { void loadTeamTranslations(); }, [loadTeamTranslations]);
 
     const [view, setView] = useState<ViewMode>('department');
+    const [rolesOpen, setRolesOpen] = useState(false);
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [users, setUsers] = useState<TeamMember[]>([]);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -102,13 +106,16 @@ export const Team = () => {
         return { label, color };
     };
 
-    const departmentOf = (m: TeamMember): { name: string; color: string } => {
+    // Departments are the workspace's custom roles. Members without one are grouped under
+    // "No department" (never by base role); without any custom role the grouping is hidden.
+    const departmentOf = (m: TeamMember): { name: string; color: string; custom: boolean } => {
         const rid = (m.roleIds || [])[0];
         const cr = customRoles.find(r => r.id === rid);
-        if (cr) return { name: cr.name, color: cr.color };
-        const rd = getRoleDetails(m.role);
-        return { name: rd.label, color: rd.color };
+        if (cr) return { name: cr.name, color: cr.color, custom: true };
+        return { name: t('team.v2.noDepartment'), color: 'var(--color-text-subtle)', custom: false };
     };
+    const hasDepartments = users.some((m) => departmentOf(m).custom);
+    const activeView: ViewMode = view === 'department' && !hasDepartments ? 'all' : view;
 
     const memberInProject = (p: Project, uid: string) =>
         p.ownerId === uid
@@ -155,7 +162,8 @@ export const Team = () => {
 
     const stats = useMemo(() => {
         const agents = users.filter(isAgent).length;
-        return { agents, humans: users.length - agents, departments: new Set(users.map(u => departmentOf(u).name)).size, projects: byProject.sections.length };
+        const departments = new Set(users.map(u => departmentOf(u)).filter(d => d.custom).map(d => d.name)).size;
+        return { agents, humans: users.length - agents, departments, projects: byProject.sections.length };
     }, [users, byProject, customRoles]);
 
     const selected = useMemo(() => users.find(u => u.id === selectedId) || null, [users, selectedId]);
@@ -258,14 +266,14 @@ export const Team = () => {
                 <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)]">{title}</h3>
                 <span className="min-w-[20px] h-[20px] px-1.5 rounded-full text-[11px] font-bold text-[var(--color-text-muted)] flex items-center justify-center" style={{ background: SURFACE_HOVER }}>{members.length}</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,220px),1fr))] gap-3">
                 {members.map(AgentCard)}
             </div>
         </section>
     );
 
     const segItems: [ViewMode, string][] = [
-        ['department', t('team.v2.view.department')],
+        ...(hasDepartments ? [['department', t('team.v2.view.department')] as [ViewMode, string]] : []),
         ['project', t('team.v2.view.project')],
         ['all', t('team.v2.view.all')],
         ...(isWorkspaceAdmin ? [['invites', t('team.v2.view.invites')] as [ViewMode, string]] : [])
@@ -276,12 +284,12 @@ export const Team = () => {
             {/* Hauptbereich */}
             <div className="flex-1 flex flex-col min-w-0">
                 {/* Kopf */}
-                <div className="px-8 pt-7 pb-5">
+                <div className="px-4 sm:px-8 pt-7 pb-5">
                     <div className="flex items-center justify-between flex-wrap gap-4">
                         <div>
                             <h1 className="text-[26px] font-bold text-[var(--color-text-main)] tracking-tight leading-none">{t('nav.team')}</h1>
                             <p className="text-[12.5px] text-[var(--color-text-muted)] mt-2">
-                                {t('team.v2.stats')
+                                {t(`team.v2.${stats.agents > 0 ? 'stats' : 'statsNoAgents'}${stats.departments > 0 ? '' : 'NoDepartments'}`)
                                     .replace('{agents}', String(stats.agents))
                                     .replace('{humans}', String(stats.humans))
                                     .replace('{departments}', String(stats.departments))
@@ -296,18 +304,18 @@ export const Team = () => {
                     </div>
 
                     <div className="flex items-center gap-3 mt-5 flex-wrap">
-                        <div className="flex p-1 rounded-full" style={{ background: SURFACE_HOVER }}>
+                        <div className="flex p-1 rounded-full max-w-full overflow-x-auto" style={{ background: SURFACE_HOVER }}>
                             {segItems.map(([v, label]) => (
                                 <button key={v} onClick={() => setView(v)}
-                                    className="px-4 py-1.5 rounded-full text-[12.5px] font-bold transition-all"
-                                    style={view === v
+                                    className="px-4 py-1.5 rounded-full text-[12.5px] font-bold whitespace-nowrap shrink-0 transition-all"
+                                    style={activeView === v
                                         ? { background: SURFACE_CARD, color: 'var(--color-text-main)', boxShadow: 'var(--shadow-sm)' }
                                         : { color: 'var(--color-text-muted)' }}>
                                     {label}
                                 </button>
                             ))}
                         </div>
-                        {view !== 'invites' && (
+                        {activeView !== 'invites' && (
                             <div className="relative flex-1 min-w-[200px] max-w-sm">
                                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)] text-[18px]">search</span>
                                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder={t('common.search')}
@@ -319,17 +327,27 @@ export const Team = () => {
                 </div>
 
                 {/* Inhalt */}
-                <div className="flex-1 overflow-y-auto px-8 pb-10">
-                    {view === 'department' && byDepartment.map(d => <Section key={d.name} title={d.name} color={d.color} members={d.members} />)}
-                    {view === 'all' && <Section title={t('team.v2.allMembers')} members={[...filtered].sort(sortMembers)} />}
-                    {view === 'project' && (
+                <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-10">
+                    {activeView === 'department' && byDepartment.map(d => <Section key={d.name} title={d.name} color={d.color} members={d.members} />)}
+                    {activeView === 'all' && !hasDepartments && isWorkspaceAdmin && users.length > 0 && (
+                        <div className="team-departments-hint">
+                            <span className="material-symbols-outlined" aria-hidden="true">account_tree</span>
+                            <p>
+                                <strong>{t('team.v2.departmentsHint.title')}</strong>
+                                <span>{t('team.v2.departmentsHint.body')}</span>
+                            </p>
+                            <Button variant="secondary" size="sm" onClick={() => setRolesOpen(true)}>{t('team.v2.departmentsHint.action')}</Button>
+                        </div>
+                    )}
+                    {activeView === 'all' && <Section title={t('team.v2.allMembers')} members={[...filtered].sort(sortMembers)} />}
+                    {activeView === 'project' && (
                         <>
                             {byProject.sections.map(s => <Section key={s.project.id} title={s.project.title} members={s.members} />)}
                             {byProject.companyWide.length > 0 && <Section title={t('team.v2.companyWide')} members={byProject.companyWide} />}
                             {byProject.people.length > 0 && <Section title={t('team.v2.people')} members={byProject.people} />}
                         </>
                     )}
-                    {view === 'invites' && (
+                    {activeView === 'invites' && (
                         <div className="max-w-2xl">
                             <h3 className="text-[13px] font-black uppercase tracking-wider text-[var(--color-text-main)] mb-4">{t('team.v2.invites.title').replace('{count}', String(inviteLinks.length))}</h3>
                             {inviteLinks.length === 0 ? (
@@ -358,7 +376,7 @@ export const Team = () => {
 
             {/* Detail-Panel: höhere Ebene = hellere Surface + Schatten, kein Border */}
             {selected && (
-                <aside className="hidden lg:flex w-[380px] shrink-0 flex-col overflow-y-auto z-10" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-lg)' }}>
+                <aside className="fixed inset-y-0 right-0 z-40 flex w-full sm:w-[380px] lg:static lg:z-10 shrink-0 flex-col overflow-y-auto" style={{ background: SURFACE_CARD, boxShadow: 'var(--shadow-lg)' }}>
                     <div className="p-7">
                         <button onClick={() => setSelectedId(null)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] text-[12px] mb-5 inline-flex items-center gap-1">
                             <span className="material-symbols-outlined text-[16px]">close</span>{t('team.v2.close')}
@@ -487,6 +505,11 @@ export const Team = () => {
                 projects={allProjects}
                 onCreated={() => void loadInvitations()}
             />
+            {rolesOpen && (
+                <Suspense fallback={null}>
+                    <SettingsModal isOpen initialTab="roles" onClose={() => setRolesOpen(false)} />
+                </Suspense>
+            )}
         </div>
     );
 };

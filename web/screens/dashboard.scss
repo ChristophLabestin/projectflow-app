@@ -97,11 +97,11 @@
       }
 
       &--amber {
-        color: #f59e0b;
+        color: var(--brand-amber-text);
       }
 
       &--emerald {
-        color: #10b981;
+        color: var(--brand-green-text);
       }
     }
 

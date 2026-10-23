@@ -4,6 +4,8 @@ import { startUpdater, stopUpdater } from './features/updater';
 import { filesFromArgv, queueFilesForFocus } from './features/files';
 import { handleAuthCallback } from './features/externalAuth';
 import { spotlightActivityPath } from './features/spotlight';
+import { captureScreenshotToTask } from './features/screenshot';
+import { togglePalette } from './windows/paletteWindow';
 import { refreshTouchBar } from './features/focus';
 import { initPreferences, launchedHidden } from './features/preferences';
 import { stopCalendar } from './features/calendar';
@@ -20,7 +22,7 @@ import { createTray, destroyTray, refreshTray } from './tray';
 import { createMainWindow, createSecondaryWindow, restoreSecondaryWindows, sendCommand, setQuitting, showMainWindow } from './windows/mainWindow';
 import { openQuickAccess, setQuickAccessStateListener } from './windows/quickAccess';
 
-app.setName('ProjectFlow');
+app.setName(IS_DEV ? 'ProjectFlow Dev' : 'ProjectFlow');
 if (IS_DEV) {
     // Separate profile for dev; the dev script passes a fresh temp dir per run.
     app.setPath('userData', process.env.PF_DESKTOP_USER_DATA || path.join(app.getPath('appData'), 'ProjectFlow Dev'));
@@ -44,6 +46,14 @@ const handleDeepLinkPath = (target: string | null) => {
     if (handleAuthCallback(target)) return;
     if (target === '/desktop/command/quick-capture') {
         showCapture();
+        return;
+    }
+    if (target === '/desktop/command/palette') {
+        togglePalette();
+        return;
+    }
+    if (target === '/desktop/command/screenshot') {
+        void captureScreenshotToTask();
         return;
     }
     showMainWindow();

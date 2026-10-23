@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/common/Button/Button';
+import { BrandMark, BrandScene, FlowField, LoadingTrack, StatusDots } from '../components/brand';
 import { Card, CardHeader, CardBody, CardFooter } from '../components/common/Card/Card';
 import { TextInput } from '../components/common/Input/TextInput';
 import { TextArea } from '../components/common/Input/TextArea';
@@ -10,6 +11,7 @@ import { Modal } from '../components/common/Modal/Modal';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { SettingsModal } from '../components/common/Modal/SettingsModal';
 import './style-guide.scss';
+import { MotionShowcase } from './style-guide/MotionShowcase';
 import { Link } from 'react-router-dom';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { TimePicker } from '../components/common/DateTime/TimePicker';
@@ -318,6 +320,34 @@ export const StyleGuidePage = () => {
                     <Divider />
 
                     <section className="guide-section">
+                        <h2>{t('styleGuide.sections.brand')}</h2>
+                        <p className="guide-brand__intro">{t('styleGuide.brand.intro')}</p>
+                        <div className="color-grid">
+                            <ColorSwatch name={t('styleGuide.brand.blue')} token="--brand-blue" />
+                            <ColorSwatch name={t('styleGuide.brand.violet')} token="--brand-violet" />
+                            <ColorSwatch name={t('styleGuide.brand.amber')} token="--brand-amber" />
+                            <ColorSwatch name={t('styleGuide.brand.green')} token="--brand-green" />
+                        </div>
+                        <div className="guide-brand__row">
+                            <figure><BrandMark size="sm" /><figcaption>BrandMark sm</figcaption></figure>
+                            <figure><BrandMark size="md" /><figcaption>BrandMark md</figcaption></figure>
+                            <figure><BrandMark size="lg" /><figcaption>BrandMark lg</figcaption></figure>
+                            <figure><StatusDots size="md" /><figcaption>StatusDots</figcaption></figure>
+                            <figure><StatusDots size="md" motion="wave" /><figcaption>StatusDots wave</figcaption></figure>
+                            <figure><LoadingTrack /><figcaption>LoadingTrack</figcaption></figure>
+                        </div>
+                        <div className="guide-brand__field">
+                            <FlowField originX={0.15} originY={0.5} />
+                            <span>FlowField</span>
+                        </div>
+                        <div className="guide-brand__scene">
+                            <BrandScene variant="inline" label={t('app.loading.connecting')} />
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
                         <h2>{t('styleGuide.sections.typography')}</h2>
                         <div className="type-sample">
                             <h1>{t('styleGuide.typography.heading1')}</h1>
@@ -565,6 +595,14 @@ export const StyleGuidePage = () => {
                             projectId="styleguide"
                             storagePath="uploads"
                         />
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.motion')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.motion.intro')}</p>
+                        <MotionShowcase />
                     </section>
 
                     <Divider />

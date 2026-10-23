@@ -20,7 +20,6 @@ interface ImportMetaEnv {
 
     // Feature flags
     readonly VITE_PM_CORE_ONLY: string;
-    readonly VITE_SIDEBAR_V2: string;
 
     // Integrations
     readonly VITE_UNSPLASH_ACCESS_KEY: string;

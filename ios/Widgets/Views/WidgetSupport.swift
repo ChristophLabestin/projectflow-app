@@ -96,3 +96,19 @@ enum WidgetLanguage {
 enum WidgetSnapshot {
     static func current() -> TodaySnapshot { SnapshotStore.load() ?? .signedOut }
 }
+
+/// Live timer text (`Text(date, style: .timer)`) is archived by WidgetKit with its styled-text attachments. A dynamic
+/// trait-provider colour (`PFColor.*`) in there can break SwiftUI's archive (dictionary key violates Hashable,
+/// widget crash 2026-10-23): resolve it to a static colour for the current environment first.
+struct TimerForeground: ViewModifier {
+    let color: Color
+    @Environment(\.self) private var environment
+
+    func body(content: Content) -> some View {
+        content.foregroundStyle(Color(color.resolve(in: environment)))
+    }
+}
+
+extension View {
+    func timerForeground(_ color: Color) -> some View { modifier(TimerForeground(color: color)) }
+}

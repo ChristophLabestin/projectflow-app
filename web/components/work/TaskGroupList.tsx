@@ -1,4 +1,5 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
+import { useFlipList } from '../motion';
 
 import type { Task } from '../../types';
 import type { WorkGroup } from './workList';
@@ -47,6 +48,9 @@ export const TaskGroupList = ({
     layout = 'list'
 }: TaskGroupListProps) => {
     const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey, defaultCollapsed));
+    // Rows glide when they reorder or change group, rise in when added, slide out when removed.
+    const groupsRef = useRef<HTMLDivElement>(null);
+    useFlipList(groupsRef, { keyAttribute: 'data-task-id' });
 
     const toggle = useCallback((key: string) => {
         setCollapsed((current) => {
@@ -65,7 +69,7 @@ export const TaskGroupList = ({
     if (!groups.length) return <>{empty}</>;
 
     return (
-        <div className={`work-groups work-groups--${layout} ${selection ? 'is-selectable' : ''} ${selection?.active ? 'is-selecting' : ''}`}>
+        <div ref={groupsRef} className={`work-groups work-groups--${layout} ${selection ? 'is-selectable' : ''} ${selection?.active ? 'is-selecting' : ''}`}>
             {groups.map((group) => {
                 const isCollapsed = collapsed.has(group.key);
                 const bodyId = `${storageKey}-${group.key}`.replace(/[^a-zA-Z0-9_-]/g, '-');

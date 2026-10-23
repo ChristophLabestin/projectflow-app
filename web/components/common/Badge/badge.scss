@@ -20,15 +20,15 @@
     }
 
     &--success {
-        background-color: rgba(16, 185, 129, 0.1); // Opacity hook for now, or define token? keeping simple
+        background-color: rgba(var(--brand-green-rgb), 0.1); // Opacity hook for now, or define token? keeping simple
         color: var(--color-success);
-        border-color: rgba(16, 185, 129, 0.2);
+        border-color: rgba(var(--brand-green-rgb), 0.2);
     }
 
     &--warning {
-        background-color: rgba(245, 158, 11, 0.1);
+        background-color: rgba(var(--brand-amber-rgb), 0.1);
         color: var(--color-warning);
-        border-color: rgba(245, 158, 11, 0.2);
+        border-color: rgba(var(--brand-amber-rgb), 0.2);
     }
 
     &--error {

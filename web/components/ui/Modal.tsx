@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { usePresence } from '../motion/usePresence';
 import { useLanguage } from '../../context/LanguageContext';
 
 const FOCUSABLE_SELECTOR = [
@@ -94,7 +95,9 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
         };
     }, [isOpen]);
 
-    if (!isOpen) return null;
+    // Stays mounted for the exit animation (backdrop fades, panel sinks).
+    const presence = usePresence(isOpen);
+    if (!presence.mounted) return null;
 
     const sizeClasses = {
         sm: 'max-w-md',
@@ -109,7 +112,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
     };
 
     return createPortal(
-        <div className={`ui-modal ${className}`.trim()}>
+        <div className={`ui-modal ${presence.exiting ? 'is-exiting' : ''} ${className}`.trim()}>
             <div
                 ref={overlayRef}
                 className="ui-modal__backdrop"

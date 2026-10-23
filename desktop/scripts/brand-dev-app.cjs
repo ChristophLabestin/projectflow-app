@@ -7,7 +7,8 @@ const path = require('node:path');
 
 if (process.platform !== 'darwin' || process.env.CI) process.exit(0);
 
-const NAME = 'ProjectFlow';
+// "ProjectFlow Dev" + DEV icon, so it can run next to the installed ProjectFlow.app without being confused with it.
+const NAME = 'ProjectFlow Dev';
 const BUNDLE_ID = 'de.christophlabestin.projectflow.desktop.dev';
 const electronDir = path.dirname(require.resolve('electron/package.json'));
 const distDir = path.join(electronDir, 'dist');
@@ -16,7 +17,9 @@ const pathFile = path.join(electronDir, 'path.txt');
 
 // The Dock labels a running app by its bundle file name, so the bundle itself is renamed and
 // electron's path.txt (used by `electron .`) pointed at it.
-const genericApp = path.join(distDir, 'Electron.app');
+const genericApp = fs.existsSync(path.join(distDir, 'Electron.app'))
+    ? path.join(distDir, 'Electron.app')
+    : path.join(distDir, 'ProjectFlow.app'); // bundles branded before the rename
 const renamed = fs.existsSync(genericApp);
 if (renamed) {
     fs.rmSync(appDir, { recursive: true, force: true });
@@ -27,7 +30,17 @@ if (fs.existsSync(pathFile) && fs.readFileSync(pathFile, 'utf8') !== executableP
     fs.writeFileSync(pathFile, executablePath);
 }
 const plist = path.join(appDir, 'Contents', 'Info.plist');
-const icon = path.join(__dirname, '..', 'assets', 'icon.icns');
+const baseIcon = path.join(__dirname, '..', 'assets', 'icon.icns');
+// DEV band drawn once into dist/ (see dev-icon.swift); falls back to the plain icon without swift.
+const icon = path.join(__dirname, '..', 'dist', 'icon-dev.icns');
+if (!fs.existsSync(icon) || fs.statSync(icon).mtimeMs < fs.statSync(baseIcon).mtimeMs) {
+    try {
+        fs.mkdirSync(path.dirname(icon), { recursive: true });
+        execFileSync('xcrun', ['swift', path.join(__dirname, 'dev-icon.swift'), baseIcon, icon], { stdio: 'ignore' });
+    } catch {
+        fs.copyFileSync(baseIcon, icon);
+    }
+}
 const targetIcon = path.join(appDir, 'Contents', 'Resources', 'electron.icns');
 
 if (!fs.existsSync(plist)) process.exit(0);

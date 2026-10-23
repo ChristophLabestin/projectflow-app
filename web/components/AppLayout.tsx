@@ -1,7 +1,9 @@
 import { WelcomeDialog } from './onboarding/WelcomeDialog';
-import React, { Suspense, lazy, useEffect, useState, useMemo } from 'react';
+import React, { Suspense, lazy, useEffect, useState, useMemo, useRef } from 'react';
+import { useMotionOnChange } from './motion';
 import { Outlet, useLocation, useParams, useNavigate } from 'react-router-dom';
 import { useUIState } from '../context/UIContext';
+import { buildBreadcrumbs } from '../utils/breadcrumbs';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
 import { subscribeUserProjectNavPrefs } from '../services/dataService';
@@ -15,7 +17,7 @@ import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
 
-const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
+const Sidebar = lazy(() => import('./SidebarNavigator').then((module) => ({ default: module.SidebarNavigator })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
 const TaskCreateModal = lazy(() => import('./TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 const CreateProjectModal = lazy(() => import('./CreateProjectModal').then((module) => ({ default: module.CreateProjectModal })));
@@ -198,81 +200,17 @@ export const AppLayout = () => {
         manualStatus: statusPreference
     });
 
-    // Global Breadcrumb Logic
-    const breadcrumbs = useMemo(() => {
-        const path = location.pathname;
-        const rawItems: { label: string; to?: string }[] = [];
+    // Breadcrumbs: one route table for the whole app (utils/breadcrumbs.ts).
+    // Route content fades in on navigation; the outlet is not remounted.
+    const routeViewRef = useRef<HTMLDivElement>(null);
+    useMotionOnChange(routeViewRef, location.pathname, 'route');
 
-        // Always start with Dashboard or relevant root
-        if (path === '/' || path === '/dashboard') {
-            return [];
-        }
-
-        const parts = path.split('/').filter(Boolean);
-
-        // Handle Projects Route
-        if (parts[0] === 'projects') {
-            rawItems.push({ label: t('breadcrumbs.projects'), to: '/projects' });
-        }
-
-        // Handle Individual Project Routes
-        else if (parts[0] === 'project' && parts[1]) {
-            rawItems.push({ label: t('breadcrumbs.projects'), to: '/projects' });
-            if (companyProject && companyProject.id !== parts[1]) {
-                rawItems.push({ label: companyProject.title, to: `/project/${companyProject.id}` });
-            }
-
-            // Project Title (or loading state)
-            const pTitle = project?.title || t('breadcrumbs.loading');
-            rawItems.push({ label: pTitle, to: `/project/${parts[1]}` });
-
-            // Project Sub-pages
-            if (parts[2]) {
-                const sub = parts[2];
-                switch (sub) {
-                    case 'tasks':
-                        rawItems.push({ label: t('breadcrumbs.tasks'), to: `/project/${parts[1]}/tasks` });
-                        if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.taskDetails') });
-                        break;
-                    case 'initiatives':
-                        rawItems.push({ label: t('breadcrumbs.initiatives'), to: `/project/${parts[1]}/initiatives` });
-                        if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.initiativeDetails') });
-                        break;
-                    case 'activity':
-                        rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
-                        break;
-                    default:
-                        rawItems.push({ label: sub.charAt(0).toUpperCase() + sub.slice(1) });
-                }
-            }
-        }
-
-        // Handle Other Top-Level Routes
-        else if (parts[0] === 'tasks') {
-            rawItems.push({ label: t('breadcrumbs.myTasks') });
-        } else if (parts[0] === 'brainstorm') {
-            rawItems.push({ label: t('breadcrumbs.aiStudio') });
-        } else if (parts[0] === 'team') {
-            rawItems.push({ label: t('breadcrumbs.team') });
-        } else if (parts[0] === 'calendar') {
-            rawItems.push({ label: t('breadcrumbs.calendar') });
-        } else if (parts[0] === 'finance') {
-            rawItems.push({ label: t('breadcrumbs.finance') });
-        } else if (parts[0] === 'settings') {
-            rawItems.push({ label: t('breadcrumbs.settings') });
-        } else if (parts[0] === 'profile') {
-            rawItems.push({ label: t('breadcrumbs.profile') });
-        }
-
-        // Finalize: Remove link from the last item
-        return rawItems.map((item, idx) => {
-            if (idx === rawItems.length - 1) {
-                const { to, ...rest } = item;
-                return rest;
-            }
-            return item;
-        });
-    }, [location.pathname, project, companyProject, taskTitle, t]);
+    const breadcrumbs = useMemo(() => buildBreadcrumbs(location.pathname, {
+        t,
+        projectTitle: project?.title,
+        companyProject: companyProject ? { id: companyProject.id, title: companyProject.title } : null,
+        entityTitle: taskTitle
+    }), [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
         <div className="flex app-viewport-height w-full bg-surface overflow-hidden relative">
@@ -304,7 +242,7 @@ export const AppLayout = () => {
             {navOpen && (
                 <div className="fixed inset-0 z-50 md:hidden flex">
                     <div
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm motion-fade-in"
                         onClick={() => setNavOpen(false)}
                     />
                     <div className="relative w-4/5 max-w-xs h-full bg-card shadow-2xl animate-fade-in-left">
@@ -345,7 +283,7 @@ export const AppLayout = () => {
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
-                    <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
+                    <div ref={routeViewRef} className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>
                 </main>

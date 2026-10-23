@@ -77,6 +77,21 @@ Use status colors for feedback states only (alerts, badges, validation states). 
 | `--color-warning` | `#f59e0b` | Warning state |
 | `--color-error` | `#ef4444` | Error state |
 
+### 1.4.1 Brand Palette (Accent Set, 2026-10-23)
+
+The four status hues double as ProjectFlow's brand accents (iOS `PFBrandPalette`, desktop `splash.html`). They alias the status tokens, so status meaning never shifts.
+
+| Token | Alias of | Use |
+|------|----------|-----|
+| `--brand-blue` / `-rgb` / `-text` | `--status-open-*` | open |
+| `--brand-violet` / `-rgb` / `-text` | `--status-planning-*` | planning |
+| `--brand-amber` / `-rgb` / `-text` | `--status-review-*` | review / warning |
+| `--brand-green` / `-rgb` / `-text` | `--status-done-*` | done / success |
+| `--brand-gradient`, `--brand-gradient-linear` | the four hues | aurora, loading track |
+| `--brand-field-dot` | theme-aware neutral | FlowField resting dots |
+
+Rules: accents, not fills. Allowed spots: loading scenes (`BrandScene`), the brand mark, success moments (completion burst), the login hero field, `/ui`. Use `-text` for coloured text (AA on surfaces); `rgba(var(--brand-*-rgb), a)` for tints. No hardcoded `#3b82f6/#8b5cf6/#f59e0b/#10b981` or their rgb triplets in SCSS. Motion is transform/opacity only, pauses off-screen / in hidden tabs and stops under `prefers-reduced-motion` (components in `web/components/brand/`).
+
 ### 1.5 Blue Palette (Pre-Beta / Limited Use)
 
 These colors are reserved for specific pre-beta settings. Do not introduce them broadly without a clear reason.
@@ -187,16 +202,51 @@ Shadows define elevation and depth. Use them sparingly to keep the monochrome de
 
 ## 4) Transitions
 
-Transitions should feel responsive but not abrupt. Use the tokens below consistently for interactive elements.
+Legacy tokens `--transition-fast` (150 ms) / `--transition-normal` (300 ms) stay valid for colour
+hovers. New and touched code uses the motion tokens below.
 
-| Token | Value |
-|------|-------|
-| `--transition-fast` | `150ms cubic-bezier(0.4, 0, 0.2, 1)` |
-| `--transition-normal` | `250ms cubic-bezier(0.4, 0, 0.2, 1)` |
+### 4.1 Motion system (2026-10-23)
 
-**Guideline:**
-- Use `--transition-fast` for hover/focus states.
-- Use `--transition-normal` for component open/close animations (dropdowns, modals).
+Purpose over decoration: motion shows origin and destination, confirms actions, makes state changes
+traceable and shortens perceived loading. No bouncing, no wobble. Reference: Linear, Things, Raycast.
+
+| Token | Value | Use |
+|------|-------|-----|
+| `--motion-duration-instant` | 90 ms | press (`:active`) |
+| `--motion-duration-fast` | 140 ms | hover, focus, toggles, colour |
+| `--motion-duration-base` | 200 ms | menus, popovers, tabs, list items |
+| `--motion-duration-slow` | 280 ms | modals, drawers, route content, toasts |
+| `--motion-duration-exit` | 150 ms | every exit (shorter than its enter) |
+| `--motion-ease-out` | `cubic-bezier(0.16,1,0.3,1)` | entering, settling |
+| `--motion-ease-in` | `cubic-bezier(0.4,0,1,1)` | leaving |
+| `--motion-ease-in-out` / `-standard` | | state morphs |
+| `--motion-ease-spring` | `cubic-bezier(0.34,1.3,0.64,1)` | drag-drop settle, checkmarks only |
+| `--motion-stagger` | 24 ms | list entrance step (max 12 items) |
+| `--motion-rise` / `--motion-scale-from` / `--motion-press-scale` / `--motion-lift` | 6px / .97 / .97 / -1px | offsets |
+
+Files: tokens in `web/styles/_tokens.scss`; keyframes + utilities + reduced-motion contract in
+`web/styles/_motion.scss`; mixins (`enter`, `exit`, `press`, `lift`, `hover-colors`, `motion-ok`) in
+`web/styles/_motion-mixins.scss` (`@use '…/styles/motion-mixins' as motion;`, emits no CSS);
+JS mirror `MOTION` + primitives in `web/components/motion/`. Demo: `/ui` → Motion.
+
+- Keyframes: `pf-fade-in/out`, `pf-rise-in`, `pf-sink-out`, `pf-pop-in/out`, `pf-drop-in` (menus, set
+  `transform-origin` at the trigger edge), `pf-slide-in-right/left/up`, `pf-drawer-in-*`, `pf-modal-in/out`,
+  `pf-shimmer`, `pf-confirm-flash`, `pf-tick`, `pf-nudge` (validation only, one 3px cycle).
+- Utilities: `.motion-fade-in|rise-in|pop-in|drop-in|slide-in-right`, `.motion-exit(-pop)`,
+  `.motion-stagger` (children), `.motion-collapse[data-open]` (height via grid rows), `.motion-press`,
+  `.motion-confirm` (optimistic success flash), `.motion-tick`, `.motion-nudge`, `.motion-indicator`.
+- Primitives: `usePresence(open)` (keep mounted for the exit), `useFlipList(ref)` (items with
+  `data-flip-key` glide on reorder, rise in, slide out on removal; scroll-compensated, max 80 per commit),
+  `useMotionOnChange(ref, key, preset)` (one-off entrance without remount: route content, tab panels),
+  `useSlidingIndicator(ref, activeKey)` (tabs/segments), `<AnimatedNumber value>` (tween on change only,
+  SR gets the final value).
+- Legacy Tailwind vocabulary `animate-in fade-in zoom-in-95 slide-in-from-*`, `animate-scale-up`,
+  `animate-fade-in-left` was never generated (only `@tailwind base` runs); `_motion.scss` now defines it.
+- Rules: animate `transform`/`opacity` (`clip-path` for reveals) only; no `transition: all` in new code;
+  enter = keyframes when the element mounts already open (a transition cannot run on the first frame),
+  exit = transition or `usePresence`. Reduced motion: offsets collapse to 0 and every animation/transition
+  becomes 1 ms globally (spinners `.animate-spin` keep turning) — end states always render.
+- Brand: `playCompletionBurst` on task completion only; no brand colour as motion fill.
 
 ### Focus Loop Controls
 
@@ -222,8 +272,7 @@ These tokens define key layout constants used across the app shell.
 | Token | Value | Description |
 |------|-------|-------------|
 | `--app-sidebar-width` | `0px (Mobile) / 280px (Desktop)` | Width of the main navigation sidebar |
-| `--help-center-width-collapsed` | `calc((100vw - sidebar) * 0.75)` | Default width of the help center drawer |
-| `--help-center-width-expanded` | `calc(100vw - sidebar)` | Expanded width of the help center drawer |
+| `--help-center-width` | `680px` | Help center sheet width (floating, inset 12px; full screen below 720px) |
 
 **Guideline:**
 - Mobile layout: sidebar is collapsed/hidden (`0px`).
@@ -270,6 +319,13 @@ The `/ui` style guide now shows first-version standards for six common operation
 Treat these as v1 defaults before creating one-off versions in feature screens; refine each primitive as screens adopt it.
 
 ---
+
+## 5.9) Breadcrumbs (2026-10-23)
+
+- Hierarchy, not history. Only pages with a parent get a trail: project pages (`Projects › Project › Section › Item`, client projects under their company project), personal task detail, finance sections (`Finance › Section`), admin crash issue.
+- Top-level destinations (Dashboard, My Tasks, Calendar, Team, Projects, Notifications, Media, Profile, Personal tasks list, Finance cockpit, admin areas) show no trail — the sidebar marks the location and the page has its own heading. No lone home icon.
+- The back arrow goes one level up; every crumb except the current page is a link. Labels are localized (project sections reuse the sidebar `nav.*` labels).
+- New routes: add them to `web/utils/breadcrumbs.ts` and its test, never in a page.
 
 ## 6) Interaction Guidelines (UX Patterns)
 
@@ -386,6 +442,15 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - New UI components must reference tokens from `web/styles/_tokens.scss`.
 - If a new token is introduced, it must be documented here and added to `_tokens.scss`.
 - **Borderless Design (Strict):** Never use borders or outlines on any element. Separate layers with **background contrast** (lighter/darker surfaces) and **shadows** only.
+- **Container-driven grids:** card grids inside the app shell (sidebar + optional side panels) use
+  `repeat(auto-fill|auto-fit, minmax(min(100%, <card>px), 1fr))` instead of viewport breakpoints
+  (`lg:grid-cols-3`, `@media (max-width: 1024px)`), because the viewport width does not include the sidebar or an open
+  detail panel (UI sweep 2026-10-23: Team, Finance cockpit).
+- **Buttons never wrap:** `.btn` is `white-space: nowrap; flex-shrink: 0; max-width: 100%` (fixed heights). Rows that
+  hold a description plus a button use `flex-wrap` so the button drops below the text on narrow widths.
+- **Tailwind color utilities:** use the token aliases (`text-main/muted/subtle`, `bg-surface-card/hover`,
+  `text-primary`, `bg-success/15`, `text-warning`, `text-error`, `border-error/30` …) from `web/tailwind.config.cjs`;
+  never palette classes like `text-rose-600` or `bg-zinc-100 dark:bg-zinc-800`.
 
 ---
 
@@ -395,3 +460,4 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Components should consume tokens via CSS variables (recommended) or SCSS variables mapped to them.
 - Keep styles reusable and consistent across the UI.
 - Migration utilities live in `web/styles/_utilities.scss`; use them sparingly and prefer component SCSS + tokens for new work.
+- Button icons (`Button icon={…}`) are sized by the button: sm 16 px, md 18 px, lg 20 px (`common/Button/button.scss`). Don't pass `text-[…]` sizes on the icon, and scope page rules for big decorative icons with `>` so they don't reach buttons.

@@ -393,7 +393,7 @@ export const MediaLibraryPage: React.FC = () => {
                         <section key={pid} className="space-y-6">
                             <div className="flex items-center gap-4">
                                 <div className={`size-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-surface
-                                    ${group.project?.squareIcon ? 'bg-surface' : 'bg-card dark:bg-white'}
+                                    ${group.project?.squareIcon ? 'bg-surface' : 'bg-surface-card'}
                                 `}>
                                     {group.project?.squareIcon ? (
                                         <img
@@ -404,7 +404,7 @@ export const MediaLibraryPage: React.FC = () => {
                                     ) : (
                                         <span className={`material-symbols-outlined text-[20px] 
                                             ${pid === 'uncategorized' ? '' : ''} 
-                                            text-zinc-500 dark:text-black
+                                            text-muted
                                         `}>
                                             {pid === 'uncategorized' ? 'folder_open' : 'folder'}
                                         </span>
@@ -443,34 +443,34 @@ export const MediaLibraryPage: React.FC = () => {
                                         {/* Overlay */}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
                                             <div className="flex gap-2">
-                                                <button aria-label="Copy Link"
+                                                <button aria-label={t('mediaPage.copyLink')}
                                                     onClick={() => {
                                                         navigator.clipboard.writeText(asset.url);
-                                                        showSuccess("Link copied to clipboard");
+                                                        showSuccess(t('mediaPage.linkCopied'));
                                                     }}
-                                                    className="size-10 rounded-xl bg-white text-zinc-600 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                                                    title="Copy Link"
+                                                    className="size-10 rounded-xl bg-surface-card text-muted flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title={t('mediaPage.copyLink')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">link</span>
                                                 </button>
-                                                <button aria-label="Download"
+                                                <button aria-label={t('mediaPage.download')}
                                                     onClick={() => downloadFile(asset.url, asset.name)}
-                                                    className="size-10 rounded-xl bg-white text-zinc-600 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                                                    title="Download"
+                                                    className="size-10 rounded-xl bg-surface-card text-muted flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title={t('mediaPage.download')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">download</span>
                                                 </button>
-                                                <button aria-label="Edit"
+                                                <button aria-label={t('common.edit')}
                                                     onClick={() => setEditingImage(asset)}
-                                                    className="size-10 rounded-xl bg-white text-zinc-800 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                                                    title="Edit"
+                                                    className="size-10 rounded-xl bg-surface-card text-main flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title={t('common.edit')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">edit</span>
                                                 </button>
-                                                <button aria-label="Delete"
+                                                <button aria-label={t('common.delete')}
                                                     onClick={() => handleDelete(asset)}
-                                                    className="size-10 rounded-xl bg-white text-red-600 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
-                                                    title="Delete"
+                                                    className="size-10 rounded-xl bg-surface-card text-error flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title={t('common.delete')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">delete</span>
                                                 </button>

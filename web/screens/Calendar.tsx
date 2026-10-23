@@ -522,6 +522,69 @@ export const Calendar = () => {
                         </div>
                     </header>
 
+                    {/* Phones (< md): date strip + agenda of the selected day instead of seven ~45 px columns
+                        (pattern of the iOS week strip). Hidden on larger screens via CSS. */}
+                    {viewMode === 'week' && (() => {
+                        const agendaDay = days.find((day) => isSameDay(day, selectedDate))
+                            || days.find((day) => isToday(day))
+                            || days[0];
+                        const agendaItems = getItemsForDate(agendaDay);
+                        return (
+                            <div className="calendar-agenda">
+                                <div className="calendar-agenda__strip" role="tablist" aria-label={t('calendar.agenda.days')}>
+                                    {days.map((day) => {
+                                        const count = getItemsForDate(day).length;
+                                        const selected = isSameDay(day, agendaDay);
+                                        return (
+                                            <button
+                                                key={day.toISOString()}
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={selected}
+                                                aria-label={`${format(day, t('calendar.agenda.dateFormat'), { locale: dateLocale })} · ${t(count === 1 ? 'calendar.agenda.countOne' : 'calendar.agenda.count').replace('{count}', String(count))}`}
+                                                className={`calendar-agenda__day${selected ? ' is-selected' : ''}${isToday(day) ? ' is-today' : ''}`}
+                                                onClick={() => setSelectedDate(day)}
+                                            >
+                                                <span className="calendar-agenda__weekday">{format(day, 'EEEEEE', { locale: dateLocale })}</span>
+                                                <span className="calendar-agenda__date">{format(day, 'd', { locale: dateLocale })}</span>
+                                                <span className="calendar-agenda__load" aria-hidden="true">
+                                                    {Array.from({ length: Math.min(count, 3) }).map((_, index) => <i key={index} />)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <div className="calendar-agenda__head">
+                                    <span className="calendar-agenda__title">{format(agendaDay, t('calendar.agenda.dateFormat'), { locale: dateLocale })}</span>
+                                    <span className="calendar-agenda__count">{t(agendaItems.length === 1 ? 'calendar.agenda.countOne' : 'calendar.agenda.count').replace('{count}', String(agendaItems.length))}</span>
+                                </div>
+                                {agendaItems.length === 0 ? (
+                                    <p className="calendar-agenda__empty">{t('calendar.agenda.empty')}</p>
+                                ) : (
+                                    <ul className="calendar-agenda__list">
+                                        {agendaItems.map((item) => {
+                                            const due = (item as Task).dueDate;
+                                            return (
+                                                <li key={item.id}>
+                                                    <button type="button" className="calendar-agenda__item" onClick={(e) => handleItemClick(e, item, 'task')}>
+                                                        <span className={`calendar-priority-dot calendar-priority-dot--${getPriorityTone((item as Task).priority)}`} />
+                                                        <span className="calendar-agenda__item-main">
+                                                            <span className="calendar-agenda__item-title">{item.title}</span>
+                                                        </span>
+                                                        {hasTimeComponent(due) && (
+                                                            <span className="calendar-agenda__item-time">{format(parseDateValue(due!), 'HH:mm', { locale: dateLocale })}</span>
+                                                        )}
+                                                        <span className="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </div>
+                        );
+                    })()}
+
                     <div className={`calendar-grid calendar-grid--${viewMode}`}>
                         {days.map(day => {
                             const dayKey = day.toISOString();

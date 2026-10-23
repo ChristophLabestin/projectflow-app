@@ -82,6 +82,27 @@
   --color-status-done-text: #047857;
   --color-status-planning-text: #6d28d9;
 
+  /* Brand palette — the four status hues (open / planning / review / done) as the
+     ProjectFlow accent set (iOS PFBrandPalette, desktop splash). Same values as the
+     --status-* tokens, so status meaning never shifts. Use sparingly: loading
+     scenes, the brand mark, success moments. -text variants are AA on surfaces. */
+  --brand-blue-rgb: var(--status-open-rgb);
+  --brand-violet-rgb: var(--status-planning-rgb);
+  --brand-amber-rgb: var(--status-review-rgb);
+  --brand-green-rgb: var(--status-done-rgb);
+  --brand-blue: rgb(var(--brand-blue-rgb));
+  --brand-violet: rgb(var(--brand-violet-rgb));
+  --brand-amber: rgb(var(--brand-amber-rgb));
+  --brand-green: rgb(var(--brand-green-rgb));
+  --brand-blue-text: var(--color-status-open-text);
+  --brand-violet-text: var(--color-status-planning-text);
+  --brand-amber-text: var(--color-status-review-text);
+  --brand-green-text: var(--color-status-done-text);
+  --brand-gradient: conic-gradient(var(--brand-blue), var(--brand-violet), var(--brand-amber), var(--brand-green), var(--brand-blue));
+  --brand-gradient-linear: linear-gradient(90deg, var(--brand-blue), var(--brand-violet), var(--brand-amber), var(--brand-green));
+  /* Neutral dot of the FlowField canvas (theme-aware). */
+  --brand-field-dot: rgba(0, 0, 0, 0.06);
+
   /* Priority */
   --priority-urgent: #7c3aed;
   --priority-urgent-rgb: 124, 58, 237;
@@ -128,10 +149,29 @@
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 300ms cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Motion (see styles/_motion.scss + components/motion, STYLING.md §4.1).
+     Durations: instant = press feedback, fast = hover/focus/toggles,
+     base = menus/popovers/tabs, slow = modals/drawers/page surfaces. */
+  --motion-duration-instant: 90ms;
+  --motion-duration-fast: 140ms;
+  --motion-duration-base: 200ms;
+  --motion-duration-slow: 280ms;
+  --motion-duration-exit: 150ms;
+  --motion-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  /* Gentle overshoot – drag & drop settle and toggles only. */
+  --motion-ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+  --motion-stagger: 24ms;
+  --motion-rise: 6px;
+  --motion-scale-from: 0.97;
+  --motion-press-scale: 0.97;
+  --motion-lift: -1px;
+
   /* Layout */
   --app-sidebar-width: 0px;
-  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.75);
-  --help-center-width-expanded: calc(100vw - var(--app-sidebar-width));
+  --help-center-width: 680px;
 }
 
 @media (min-width: 768px) {
@@ -198,6 +238,7 @@ html.dark {
   --color-status-blocked-text: #f87171;
   --color-status-done-text: #10b981;
   --color-status-planning-text: #a78bfa;
+  --brand-field-dot: rgba(255, 255, 255, 0.05);
 
   /* Priority — slightly brighter on dark backgrounds */
   --priority-urgent: #a78bfa;

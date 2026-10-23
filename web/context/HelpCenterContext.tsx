@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
+/** `pageId` is a help article id; without one the drawer opens on its home view. */
 export type HelpCenterTarget = {
     pageId?: string;
     sectionId?: string;
@@ -8,13 +9,13 @@ export type HelpCenterTarget = {
 
 interface HelpCenterContextType {
     isOpen: boolean;
-    activePageId: string;
+    activePageId: string | null;
     activeSectionId: string | null;
     searchQuery: string;
     openHelpCenter: (target?: HelpCenterTarget) => void;
     closeHelpCenter: () => void;
     toggleHelpCenter: (target?: HelpCenterTarget) => void;
-    setActivePage: (pageId: string) => void;
+    setActivePage: (pageId: string | null) => void;
     setActiveSection: (sectionId: string | null) => void;
     setSearchQuery: (query: string) => void;
 }
@@ -23,22 +24,15 @@ const HelpCenterContext = createContext<HelpCenterContextType | undefined>(undef
 
 export const HelpCenterProvider = ({ children }: { children: React.ReactNode }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [activePageId, setActivePageId] = useState('getting-started');
+    const [activePageId, setActivePageId] = useState<string | null>(null);
     const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     const openHelpCenter = useCallback((target?: HelpCenterTarget) => {
         setIsOpen(true);
 
-        if (target?.pageId) {
-            setActivePageId(target.pageId);
-        }
-
-        if (target?.sectionId) {
-            setActiveSectionId(target.sectionId);
-        } else if (target?.pageId) {
-            setActiveSectionId(null);
-        }
+        setActivePageId(target?.pageId ?? null);
+        setActiveSectionId(target?.sectionId ?? null);
 
         if (target?.searchQuery !== undefined) {
             setSearchQuery(target.searchQuery);
@@ -59,7 +53,7 @@ export const HelpCenterProvider = ({ children }: { children: React.ReactNode }) 
         openHelpCenter(target);
     }, [closeHelpCenter, isOpen, openHelpCenter]);
 
-    const setActivePage = useCallback((pageId: string) => {
+    const setActivePage = useCallback((pageId: string | null) => {
         setActivePageId(pageId);
         setActiveSectionId(null);
     }, []);

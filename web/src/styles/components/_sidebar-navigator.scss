@@ -136,8 +136,7 @@
         .snav-group--pins .snav-row,
         .snav-row--external,
         .snav-dock,
-        .desktop-promo,
-        .snav-footer {
+        .desktop-promo {
             max-height: 0;
             padding-top: 0;
             padding-bottom: 0;
@@ -149,6 +148,18 @@
         .desktop-promo {
             margin-top: 0;
             border-width: 0;
+        }
+
+        // The footer stays so the collapse toggle sits exactly where it is when expanded
+        // (same 12 px inset; 28 px button in the 52 px spine). Theme switch keeps its box
+        // (stable row height), the notification bell steps out.
+        .snav-theme {
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        .snav-footer__actions {
+            display: none;
         }
     }
 }
@@ -184,6 +195,14 @@
     cursor: pointer;
 
     &:hover { background: var(--color-surface-hover); color: var(--color-text-main); }
+
+    // Footer row: same visual weight as the theme switch (24 px high segments, 16 px icons).
+    &--sm {
+        width: 28px;
+        height: 28px;
+
+        .material-symbols-outlined { font-size: 18px; }
+    }
 }
 
 // ---- Zoom viewport ---------------------------------------------------
@@ -272,15 +291,18 @@
     text-decoration: none;
     white-space: nowrap;
     overflow: hidden;
-    transition: color var(--transition-fast);
+    transition: color var(--motion-duration-fast) var(--motion-ease-out);
 
     &:hover { color: var(--color-text-main); }
     &.is-active { color: var(--color-text-main); font-weight: 600; }
+    // Press feedback on the icon only (the row keeps its width animation untouched).
+    &:active .snav-row__icon { transform: scale(0.9); transition-duration: var(--motion-duration-instant); }
 }
 
 .snav-row__icon {
     flex: 0 0 20px;
     font-size: 20px;
+    transition: transform var(--motion-duration-fast) var(--motion-ease-out);
 }
 
 .snav-row__label {
@@ -546,6 +568,14 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+    min-height: 32px;
+}
+
+.snav-footer__start {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
 }
 
 .snav-footer__actions {
@@ -561,20 +591,23 @@
     border-radius: var(--radius-full);
     background: var(--color-surface-hover);
 
+    // Icon-only segments; the label is the tooltip / aria-label.
     button {
         display: flex;
         align-items: center;
-        gap: 5px;
-        padding: 5px 10px;
+        justify-content: center;
+        width: 30px;
+        height: 24px;
+        padding: 0;
         border: none;
         border-radius: var(--radius-full);
         background: transparent;
         color: var(--color-text-muted);
-        font-size: 11px;
-        font-weight: 700;
         cursor: pointer;
 
-        .material-symbols-outlined { font-size: 14px; }
+        .material-symbols-outlined { font-size: 16px; }
+        &:hover:not(.is-active) { color: var(--color-text-main); }
+        &:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 1px; }
         &.is-active { background: var(--color-surface-card); color: var(--color-text-main); box-shadow: var(--shadow-sm); }
     }
 }

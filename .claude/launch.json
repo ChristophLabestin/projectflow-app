@@ -170,6 +170,77 @@
         "web"
       ],
       "port": 3091
+    },
+    {
+      "name": "web-ui-sweep",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3071",
+        "AUTH_PORT=9771",
+        "FIRESTORE_PORT=8771",
+        "STORAGE_PORT=9772",
+        "FUNCTIONS_PORT=5771",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3071
+    },
+    {
+      "name": "web-e2e-web-session-signed-out",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "E2E_LOGIN=none",
+        "PORT=3061",
+        "AUTH_PORT=9761",
+        "FIRESTORE_PORT=8761",
+        "STORAGE_PORT=9762",
+        "FUNCTIONS_PORT=5761",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3061
+    },
+    {
+      "name": "web-e2e-help",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3081",
+        "AUTH_PORT=9781",
+        "FIRESTORE_PORT=8781",
+        "STORAGE_PORT=9782",
+        "FUNCTIONS_PORT=5781",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3081
+    },
+    {
+      "name": "web-motion",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3091",
+        "AUTH_PORT=9791",
+        "FIRESTORE_PORT=8791",
+        "STORAGE_PORT=9792",
+        "FUNCTIONS_PORT=5791",
+        "E2E_FUNCTIONS=0",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3091,
+      "autoPort": false
     }
   ]
 }

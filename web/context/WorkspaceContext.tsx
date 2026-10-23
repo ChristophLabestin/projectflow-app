@@ -1,9 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { signOut } from 'firebase/auth';
 
+import { getDesktopBridge } from '../services/desktop';
 import { auth } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
+import { BrandScene } from '../components/brand/BrandScene';
+import { clearWorkspaceSnapshot, readWorkspaceSnapshot, writeWorkspaceSnapshot } from '../services/desktopWorkspaceSnapshot';
 import {
     createWorkspace as createWorkspaceDoc,
     listMyPendingInvitations,
@@ -41,22 +44,11 @@ export const useWorkspace = () => {
  * Resolves the active workspace once per signed-in user and renders the app
  * only when it is known, so every tenant-scoped read has a valid tenant id.
  */
-const WorkspaceConnectingPanel = () => {
-    const { t } = useLanguage();
-    return (
-        <div className="workspace-gate__panel">
-            <span className="material-symbols-outlined workspace-gate__icon workspace-gate__spin">progress_activity</span>
-            <p className="workspace-gate__text">{t('app.loading.connecting')}</p>
-        </div>
-    );
-};
-
 /** The gate's loading screen, for screens that hand over to the app right after sign-in. */
-export const WorkspaceConnecting = () => (
-    <div className="workspace-gate">
-        <WorkspaceConnectingPanel />
-    </div>
-);
+export const WorkspaceConnecting = () => {
+    const { t } = useLanguage();
+    return <BrandScene label={t('app.loading.connecting')} />;
+};
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const { user, isAuthReady } = useAuth();
@@ -76,7 +68,16 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
 
     const resolve = useCallback(async () => {
         const attempt = ++attemptRef.current;
-        setStatus('loading');
+        // Desktop: start from the last known workspace and resolve in the background (offline: keep it).
+        const uid = auth.currentUser?.uid;
+        const snapshot = uid ? readWorkspaceSnapshot(uid) : null;
+        if (snapshot) {
+            setWorkspaces(snapshot.workspaces);
+            setActiveWorkspaceId(snapshot.activeId);
+            setStatus('ready');
+        } else {
+            setStatus('loading');
+        }
         let timer: ReturnType<typeof setTimeout> | undefined;
         try {
             // A stalled Firestore connection would otherwise leave the spinner up forever.
@@ -85,12 +86,22 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
             });
             const { activeId, workspaces: list } = await Promise.race([resolveWorkspaceForCurrentUser(defaultName()), timeout]);
             if (attempt !== attemptRef.current) return;
+            if (uid) writeWorkspaceSnapshot({ uid, activeId, workspaces: list });
+            // Started from a snapshot of another workspace: reload into the right one (like switching).
+            if (snapshot && snapshot.activeId !== activeId) {
+                window.location.reload();
+                return;
+            }
             setWorkspaces(list);
             setActiveWorkspaceId(activeId);
             setStatus('ready');
             void listMyPendingInvitations().then(setPendingInvitations);
         } catch (error) {
             if (attempt !== attemptRef.current) return;
+            if (snapshot) {
+                console.warn('Workspace resolution failed; staying on the cached workspace (offline?)', error);
+                return;
+            }
             console.error('Workspace resolution failed', error);
             setStatus('error');
         } finally {
@@ -101,6 +112,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         if (!isAuthReady) return;
         if (!user) {
+            if (resolvedFor.current) clearWorkspaceSnapshot();
             resolvedFor.current = null;
             setStatus('signed-out');
             setActiveWorkspaceId(null);
@@ -136,26 +148,29 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         createWorkspace
     }), [status, activeWorkspaceId, workspaces, pendingInvitations, refresh, createWorkspace]);
 
-    if (user && status !== 'ready') {
+    // Desktop: the launch scene waits for the app; the error page never mounts it, so end the scene here.
+    useEffect(() => {
+        if (status === 'error') getDesktopBridge()?.splashDone?.();
+    }, [status]);
+
+    if (user && status !== 'ready' && status !== 'error') return <WorkspaceConnecting />;
+
+    if (user && status === 'error') {
         return (
             <div className="workspace-gate">
-                {status === 'error' ? (
-                    <div className="workspace-gate__panel">
-                        <span className="material-symbols-outlined workspace-gate__icon workspace-gate__icon--error">error</span>
-                        <p className="workspace-gate__title">{t('workspace.gate.errorTitle')}</p>
-                        <p className="workspace-gate__text">{t('workspace.gate.errorText')}</p>
-                        <div className="workspace-gate__actions">
-                            <button type="button" className="workspace-gate__button" onClick={() => void resolve()}>
-                                {t('workspace.gate.retry')}
-                            </button>
-                            <button type="button" className="workspace-gate__button workspace-gate__button--ghost" onClick={() => void signOut(auth)}>
-                                {t('workspace.gate.signOut')}
-                            </button>
-                        </div>
+                <div className="workspace-gate__panel">
+                    <span className="material-symbols-outlined workspace-gate__icon workspace-gate__icon--error">error</span>
+                    <p className="workspace-gate__title">{t('workspace.gate.errorTitle')}</p>
+                    <p className="workspace-gate__text">{t('workspace.gate.errorText')}</p>
+                    <div className="workspace-gate__actions">
+                        <button type="button" className="workspace-gate__button" onClick={() => void resolve()}>
+                            {t('workspace.gate.retry')}
+                        </button>
+                        <button type="button" className="workspace-gate__button workspace-gate__button--ghost" onClick={() => void signOut(auth)}>
+                            {t('workspace.gate.signOut')}
+                        </button>
                     </div>
-                ) : (
-                    <WorkspaceConnectingPanel />
-                )}
+                </div>
             </div>
         );
     }

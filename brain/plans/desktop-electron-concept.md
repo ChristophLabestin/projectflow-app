@@ -466,3 +466,29 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   main window) and a row above the menu bar panel footer. Dev: `PF_DESKTOP_FAKE_UPDATE=ready:0.1.2` shows it.
 - **v0.1.1 released** (2026-10-23): macOS signed + notarized, DMG notarized + stapled; Windows unsigned; `--verify-tag`
   prepare step verified.
+- **Dev next to the installed app** (2026-10-23): dev = "ProjectFlow Dev" (bundle renamed by `brand-dev-app.cjs`,
+  orange DEV band drawn by `scripts/dev-icon.swift` into `dist/icon-dev.icns`), scheme `projectflow-dev://` (the browser
+  handoff passes `scheme=projectflow-dev`, the web page accepts only the two schemes), no global shortcuts
+  (`PF_DESKTOP_DEV_SHORTCUTS=1` to opt in) and no Spotlight (`PF_DESKTOP_DEV_SPOTLIGHT=1`). Userdata/settings were already
+  separate (`ProjectFlow Dev`).
+- **Launch scene** (2026-10-23, shell ≥ 0.1.3): `desktop/assets/splash.html` (+ `glyph-mark.svg`) is a `WebContentsView`
+  overlay in the main window (`windows/splash.ts`): the window opens at once with the iOS launch motion (dot field with
+  status-hue ripples, glyph disc with orbiting status dots, staggered name, loading track + "preparing" / "slow" label from
+  `labels.ts`), theme from the last app background. It fades out on `markRendererReady`, a failed load (offline page),
+  `splashDone` (workspace error page, `WorkspaceContext`) or after 25 s; minimum 1.4 s. Not shown for launch-at-login.
+- **Offline cache + instant start** (2026-10-23, shell ≥ 0.1.4, capability `offline-cache`): `services/firebase.ts`
+  uses `persistentLocalCache` + `persistentMultipleTabManager` in the desktop app; `desktopWorkspaceSnapshot.ts` keeps the
+  last resolved workspace per user, so `WorkspaceContext` renders at once and resolves in the background (offline: stays;
+  other workspace resolved: reload). Sign-out → `clearOfflineCache` (shell clears IndexedDB, reloads all windows) and the
+  palette's local results are removed. Verified: reload ≈0.3 s to the app (was seconds), app usable with the Firestore
+  emulator stopped.
+- **Command palette** (capability `command-palette`): `windows/paletteWindow.ts` (panel, created on first use, hidden on
+  blur), route `/desktop/palette` (`screens/DesktopCommandPalette.tsx`, data `services/desktopSearch.ts`, shared with
+  Spotlight). ↩ open in main, ⌘/Ctrl↩ complete, ⌥/Alt↩ start focus, last row = new task via Quick Capture. Shortcut ⌃⌘K /
+  Ctrl+Shift+Alt+K (Settings → Desktop). Last results cached per workspace in localStorage (shown at once / offline).
+- **Screenshot → task** (capability `screenshot`): `features/screenshot.ts` — macOS `screencapture -i` (Screen Recording
+  permission on first use), Windows `ms-screenclip:` + new clipboard image (Electron 45 async clipboard API). Opens Quick
+  Capture with the image as attachment; saving needs a project (`#project`), then `attachFilesToItem`. Shortcut ⌃⌘S /
+  Ctrl+Shift+Alt+S. Deep links `<scheme>://desktop/command/palette|screenshot`. Dev flag `PF_DESKTOP_FAKE_SCREENSHOT=1`.
+  Upload verified only up to the call (emulator cannot sign upload URLs).
+- **Smoother launch handover** (2026-10-23, shell ≥ 0.1.4 for the grace): on `markRendererReady` the launch scene waits up to 1.5 s for the page's `splashDone` (Dashboard sends it once its data is in) and fades straight into the finished page; otherwise into the layout-matching `DashboardSkeleton`. Verified launch trace: splash → (skeleton under the splash) → dashboard, no first-run flash.

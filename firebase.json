@@ -229,16 +229,6 @@
         "region": "europe-west3"
       },
       {
-        "source": "/tiktokCallback",
-        "function": "tiktokCallback",
-        "region": "europe-west3"
-      },
-      {
-        "source": "/youtubeCallback",
-        "function": "youtubeCallback",
-        "region": "europe-west3"
-      },
-      {
         "source": "/googleDriveStorageCallback",
         "function": "googleDriveStorageCallback",
         "region": "europe-west3"

@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
+import { BrandScene } from './components/brand/BrandScene';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { OfflineBanner } from './components/OfflineBanner';
 import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal';
@@ -29,6 +30,7 @@ import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
+import { DesktopCommandPalette } from './screens/DesktopCommandPalette';
 import { OAuthConsent } from './screens/OAuthConsent';
 import { SettingsUrlOpener } from './components/settings/SettingsUrlOpener';
 import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
@@ -79,7 +81,6 @@ const MarketingSettings = React.lazy(() => import('./screens/marketing/Marketing
 const BlogList = React.lazy(() => import('./screens/marketing/BlogList').then((module) => ({ default: module.BlogList })));
 const BlogEditor = React.lazy(() => import('./screens/marketing/BlogEditor').then((module) => ({ default: module.BlogEditor })));
 const AccountingPlaceholder = React.lazy(() => import('./screens/AccountingPlaceholder').then((module) => ({ default: module.AccountingPlaceholder })));
-const FinanceTracking = React.lazy(() => import('./screens/FinanceTracking').then((module) => ({ default: module.FinanceTracking })));
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -124,10 +125,7 @@ const RoutePending = () => {
     const { t } = useLanguage();
 
     return (
-        <div className="flex flex-col items-center justify-center h-full p-10 text-center">
-            <span className="material-symbols-outlined text-4xl text-gray-400 mb-4">progress_activity</span>
-            <h2 className="text-xl font-bold mb-2">{t('app.loading.connecting')}</h2>
-        </div>
+        <BrandScene variant="inline" label={t('app.loading.connecting')} />
     );
 };
 
@@ -157,7 +155,7 @@ const RootLayout = () => {
     // Desktop utility windows (Quick Access pop-out, Quick Capture, day window): only their own content,
     // none of the global overlays (no second Quick Access modal, help, banners, bridge).
     const windowKind = desktopWindowKind();
-    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray';
+    const isUtilityWindow = windowKind === 'quick-access' || windowKind === 'capture' || windowKind === 'day' || windowKind === 'tray' || windowKind === 'palette';
     if (isUtilityWindow && location.pathname.startsWith('/desktop/')) {
         return (
             <>
@@ -240,6 +238,7 @@ export const AppRouter = () => {
                     <Route path="/desktop/day" element={<LegalConsentGate><DesktopDayWindow /></LegalConsentGate>} />
                     <Route path="/desktop/tray" element={<LegalConsentGate><DesktopTrayPanel /></LegalConsentGate>} />
                     <Route path="/desktop/auth" element={<DesktopAuthHandoff />} />
+                    <Route path="/desktop/palette" element={<DesktopCommandPalette />} />
                     {/* Consent first, then authorize: the gate keeps ?request=… (it never navigates). /desktop/auth stays ungated: it only hands a sign-in code to the desktop app, whose windows are gated. */}
                     <Route path="/oauth/consent" element={<LegalConsentGate><OAuthConsent /></LegalConsentGate>} />
                     {/* Public project intake was removed; old share links land on the app start. */}
@@ -270,9 +269,6 @@ export const AppRouter = () => {
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/finance" element={withRouteSuspense(<FinanceTracking />)} />
-                        <Route path="/finance/:financeSection/:financeOperationType" element={withRouteSuspense(<FinanceTracking />)} />
-                        <Route path="/finance/:financeSection" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
@@ -344,14 +340,7 @@ export const AppRouter = () => {
     }, [isAuthReady]);
 
     if (!isAuthReady || !router) {
-        return (
-            <div className="h-screen w-full flex items-center justify-center bg-surface">
-                <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-                    <span className="text-sm font-semibold text-muted">{t('app.loading.connecting')}</span>
-                </div>
-            </div>
-        );
+        return <BrandScene label={t('app.loading.connecting')} />;
     }
 
     if (error) {

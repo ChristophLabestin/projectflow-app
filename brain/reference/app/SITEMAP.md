@@ -27,6 +27,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/capture` — Desktop only: Quick Capture panel (`QuickCaptureWindow`), opened by the global shortcut.
 - [x] `/desktop/day?mode=start|close` — Desktop only: day start / day close window (`DesktopDayWindow`, plan logic from `utils/dayPlan`).
 - [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
+- [x] `/desktop/palette` — Desktop only: command palette window (`DesktopCommandPalette`): search projects/my tasks, open, complete, start focus, create via Quick Capture.
 - [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
 - [x] `/oauth/consent?request=…` — OAuth consent for AI/MCP clients (`OAuthConsent`): signed-in user picks one workspace and the scopes, then returns to the client with a code (server: `functions/src/oauth-server.ts`). Hosting rewrites `/oauth/authorize|token|register|revoke` and `/.well-known/oauth-*` go to the functions `oauth` / `mcp`, not to the SPA.
 - [x] `?openSettings=account|security|notifications|preferences` — any signed-in route: opens the personal settings modal on that tab (`SettingsUrlOpener`; used by the desktop app to link accounts in the browser).
@@ -49,20 +50,8 @@ These routes are rendered inside the authenticated app shell/layout.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
-- [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
-- [x] `/finance` — Finance V2 cockpit (tracking + ledger/subledgers + bank/reconciliation + tax/reports + exports/close + BWL/AI-token planning with project profitability)
-- [x] `/finance/cockpit` — Finance V2 cockpit overview (KPI, period status, warnings)
-- [x] `/finance/bookings` — Journal and booking workflows (postings + drilldown)
-- [x] `/finance/receivables` — Debitoren workflows (customers, invoices, dunning, OPOS)
-- [x] `/finance/payables` — Kreditoren workflows (vendors, bills, payable status)
-- [x] `/finance/bank` — Bank transactions and reconciliation actions
-- [x] `/finance/tax` — Tax code/period/report workflows
-- [x] `/finance/reports` — Financial reporting and project profitability views
-- [x] `/finance/functions` — Finance Functions Workspace (guided operation wizard, run console, approvals, templates, AI insights)
-- [x] `/finance/functions/:financeOperationType` — Deep link into a specific operation flow
-- [x] `/finance/exports` — Export and monthly close workflows (DATEV/jobs)
-- [x] `/finance/sync` — External sync connections and sync run history
-- [x] `/finance/settings` — Finance settings, numbering defaults, and controls
+- [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment) Phones (< 768 px, week view): date strip + agenda of the selected day (`.calendar-agenda`).
+- [ ] `/finance*` — **removed 2026-10-23** (Finance V2 cockpit, bookings, receivables, payables, bank, tax, reports, functions, exports, sync, settings). Old links land on 404. Backend removed too: the 47 `finance-v2` Cloud Functions were deleted in production (139 → 92 functions); the `finance_*` tenant collections stay in Firestore but are closed to clients (no read/write rule, covered by the rules test).
 - [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge) — **disabled by default since 2026-09-26** (`VITE_CORA_STUDIO_ENABLED`, `web/config/features.ts`): redirects to `/`, nav entries hidden; code kept.
 - [x] `/create` — Legacy create-project deep link that opens the global Create Project modal with one project purpose field, optional success criteria/cadence, and returns to `/projects`
 - [x] `/team` — Team / members management

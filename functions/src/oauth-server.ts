@@ -18,7 +18,7 @@ import { checkWorkspaceAccess, effectiveScopes, normalizeRole, RateLimiter, type
 import { loadAiPolicy } from './ai-store';
 import { aiTokenRef, grantRef, issueOAuthTokens, revokeGrant } from './ai-tokens';
 import { db } from './init';
-import { acceptedResources, consentUrl, issuerFor } from './oauth-config';
+import { acceptedResources, consentUrl, issuerFor, MCP_DOCS_URL } from './oauth-config';
 import {
     AUTH_CODE_TTL_S,
     AUTH_REQUEST_TTL_S,
@@ -154,7 +154,7 @@ const authorizationServerMetadata = (req: any) => {
         scopes_supported: [...OAUTH_SCOPES, 'offline_access'],
         client_id_metadata_document_supported: true,
         authorization_response_iss_parameter_supported: true,
-        service_documentation: 'https://getprojectflow.com/docs/mcp'
+        service_documentation: MCP_DOCS_URL
     };
 };
 

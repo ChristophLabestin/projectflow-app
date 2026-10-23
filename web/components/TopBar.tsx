@@ -1,11 +1,9 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getSubTasks } from '../services/domain/tasksService';
 import { Project } from '../types';
 import { useHelpCenter } from '../context/HelpCenterContext';
-import { getHelpTargetForPath } from './help/helpCenterContent';
 import { useLanguage } from '../context/LanguageContext';
 
 const GlobalSearch = lazy(() => import('./search/GlobalSearch').then((module) => ({ default: module.GlobalSearch })));
@@ -89,18 +87,17 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, onOpenNav }) => {
-    const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
     void project;
 
     const handleOpenHelp = () => {
-        openHelpCenter(getHelpTargetForPath(location.pathname));
+        openHelpCenter();
     };
 
     return (
         <header className="topbar-shell">
-            <div className="topbar-context-pill">
+            <div className={`topbar-context-pill${breadcrumbs.length ? '' : ' topbar-context-pill--no-crumbs'}`}>
                 <button
                     onClick={onOpenNav}
                     className="topbar-icon-button topbar-nav-toggle"
@@ -109,9 +106,11 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
                     <span className="material-symbols-outlined">menu</span>
                 </button>
 
-                <div className="topbar-breadcrumbs">
-                    <Breadcrumbs items={breadcrumbs} />
-                </div>
+                {breadcrumbs.length > 0 && (
+                    <div className="topbar-breadcrumbs">
+                        <Breadcrumbs items={breadcrumbs} />
+                    </div>
+                )}
             </div>
 
             <div className="topbar-right">

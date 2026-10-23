@@ -614,3 +614,60 @@
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
+
+// Brand accents section (/ui)
+.guide-brand__intro {
+    margin: -8px 0 16px;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    max-width: 60ch;
+}
+
+.guide-brand__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 32px;
+    margin-top: 24px;
+
+    figure {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+    }
+
+    figcaption {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+        font-family: var(--font-mono, monospace);
+    }
+}
+
+.guide-brand__field,
+.guide-brand__scene {
+    position: relative;
+    overflow: hidden;
+    margin-top: 24px;
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-bg);
+}
+
+.guide-brand__field {
+    height: 160px;
+
+    span {
+        position: absolute;
+        left: 16px;
+        bottom: 12px;
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+        font-family: var(--font-mono, monospace);
+    }
+}
+
+.guide-brand__scene {
+    height: 280px;
+}

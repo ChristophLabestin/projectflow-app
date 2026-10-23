@@ -51,20 +51,6 @@
     box-shadow: var(--shadow-md);
 }
 
-/* --- Help Center Utilities --- */
-.help-section {
-    scroll-margin-top: 24px;
-}
-
-.help-highlight {
-    box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
-    background: var(--color-surface-hover);
-
-    html.dark & {
-        box-shadow: 0 0 0 2px rgba(229, 229, 229, 0.2);
-    }
-}
-
 /* --- Prose / Typography Content --- */
 .prose {
     ul {
@@ -161,11 +147,11 @@
 }
 
 .health-ring-warning {
-    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-    border-color: rgba(245, 158, 11, 0.6);
+    box-shadow: 0 0 20px rgba(var(--brand-amber-rgb), 0.4);
+    border-color: rgba(var(--brand-amber-rgb), 0.6);
 }
 
 .health-ring-success {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 20px rgba(var(--brand-green-rgb), 0.4);
+    border-color: rgba(var(--brand-green-rgb), 0.6);
 }

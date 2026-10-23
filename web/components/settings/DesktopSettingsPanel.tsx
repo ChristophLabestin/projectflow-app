@@ -153,6 +153,12 @@ export const DesktopSettingsPanel = () => {
                 {row(t('settings.desktop.quickAccess.title'), t('settings.desktop.quickAccess.hint'), (
                     <ShortcutField value={prefs.quickAccessShortcut} isMac={isMac} label={t('settings.desktop.quickAccess.title')} onChange={(value) => void update({ quickAccessShortcut: value })} />
                 ))}
+                {prefs.paletteShortcut !== undefined && row(t('settings.desktop.palette.title'), t('settings.desktop.palette.hint'), (
+                    <ShortcutField value={prefs.paletteShortcut} isMac={isMac} label={t('settings.desktop.palette.title')} onChange={(value) => void update({ paletteShortcut: value })} />
+                ))}
+                {prefs.screenshotShortcut !== undefined && row(t('settings.desktop.screenshot.title'), t('settings.desktop.screenshot.hint'), (
+                    <ShortcutField value={prefs.screenshotShortcut} isMac={isMac} label={t('settings.desktop.screenshot.title')} onChange={(value) => void update({ screenshotShortcut: value })} />
+                ))}
             </section>
 
             <section className="notification-settings__card" aria-labelledby="desktop-settings-day">

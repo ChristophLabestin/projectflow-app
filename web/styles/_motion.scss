@@ -1,0 +1,157 @@
+// Motion system: global keyframes, utilities and the reduced-motion contract.
+// Tokens: _tokens.scss (--motion-*). Mixins: _motion-mixins.scss. React primitives: components/motion.
+// Only transform/opacity (and clip-path) are animated. Documented in STYLING.md §4.1, demo on /ui.
+
+/* ---------- Keyframes ---------- */
+@keyframes pf-fade-in { from { opacity: 0; } }
+@keyframes pf-fade-out { to { opacity: 0; } }
+@keyframes pf-rise-in { from { opacity: 0; transform: translateY(var(--motion-rise)); } }
+@keyframes pf-sink-out { to { opacity: 0; transform: translateY(var(--motion-rise)); } }
+@keyframes pf-pop-in { from { opacity: 0; transform: scale(var(--motion-scale-from)); } }
+@keyframes pf-pop-out { to { opacity: 0; transform: scale(var(--motion-scale-from)); } }
+// Menus/popovers: a short drop from their trigger (pair with transform-origin at the trigger edge).
+@keyframes pf-drop-in { from { opacity: 0; transform: translateY(calc(var(--motion-rise) * -0.66)) scale(0.98); } }
+@keyframes pf-slide-in-right { from { opacity: 0; transform: translateX(calc(var(--motion-rise) * 4)); } }
+@keyframes pf-slide-out-right { to { opacity: 0; transform: translateX(calc(var(--motion-rise) * 4)); } }
+@keyframes pf-slide-in-left { from { opacity: 0; transform: translateX(calc(var(--motion-rise) * -4)); } }
+@keyframes pf-slide-in-up { from { opacity: 0; transform: translateY(calc(var(--motion-rise) * 3)); } }
+// Drawers that enter from fully off-screen.
+@keyframes pf-drawer-in-right { from { transform: translateX(100%); } }
+@keyframes pf-drawer-out-right { to { transform: translateX(100%); } }
+@keyframes pf-drawer-in-left { from { transform: translateX(-100%); } }
+@keyframes pf-shimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+// Optimistic confirmation: a one-off tint flash on an ::after overlay.
+@keyframes pf-confirm-flash { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; } }
+// Badge/counter change: a tiny tick.
+@keyframes pf-tick { 40% { transform: scale(1.12); } }
+// Validation: subtle horizontal nudge (one cycle, 3px) – the only "shake" allowed.
+@keyframes pf-nudge { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+
+/* ---------- Utilities ---------- */
+.motion-fade-in { animation: pf-fade-in var(--motion-duration-base) var(--motion-ease-out) both; }
+.motion-rise-in { animation: pf-rise-in var(--motion-duration-base) var(--motion-ease-out) both; }
+.motion-pop-in { animation: pf-pop-in var(--motion-duration-base) var(--motion-ease-out) both; }
+.motion-drop-in { animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both; transform-origin: top center; }
+.motion-slide-in-right { animation: pf-slide-in-right var(--motion-duration-slow) var(--motion-ease-out) both; }
+.motion-exit { animation: pf-fade-out var(--motion-duration-exit) var(--motion-ease-in) both; pointer-events: none; }
+.motion-exit-pop { animation: pf-pop-out var(--motion-duration-exit) var(--motion-ease-in) both; pointer-events: none; }
+
+// Staggered list entrance: children rise in one after another (first 12, the rest together).
+.motion-stagger > * {
+  animation: pf-rise-in var(--motion-duration-base) var(--motion-ease-out) both;
+  animation-delay: calc(12 * var(--motion-stagger));
+}
+
+@for $i from 1 through 12 {
+  .motion-stagger > :nth-child(#{$i}) { animation-delay: calc(#{$i - 1} * var(--motion-stagger)); }
+}
+
+// Collapse/expand with real height (grid 0fr → 1fr); the child needs min-height: 0 / overflow hidden.
+.motion-collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows var(--motion-duration-slow) var(--motion-ease-out),
+    opacity var(--motion-duration-base) var(--motion-ease-out);
+
+  > * { min-height: 0; overflow: hidden; }
+
+  &[data-open='true'] { grid-template-rows: 1fr; opacity: 1; }
+}
+
+.motion-press {
+  transition: transform var(--motion-duration-fast) var(--motion-ease-out);
+  &:active:not(:disabled) { transform: scale(var(--motion-press-scale)); transition-duration: var(--motion-duration-instant); }
+}
+
+// One-off success flash for optimistic updates (toggle the class or remount the key).
+.motion-confirm {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(var(--brand-green-rgb), 0.12);
+    pointer-events: none;
+    opacity: 0;
+    animation: pf-confirm-flash 700ms var(--motion-ease-out) both;
+  }
+}
+
+.motion-tick { animation: pf-tick var(--motion-duration-base) var(--motion-ease-out); }
+.motion-nudge { animation: pf-nudge 240ms var(--motion-ease-in-out); }
+
+// Route content entrance (AppLayout runs it on pathname change via useRouteTransition).
+.motion-route-enter { animation: pf-route-in var(--motion-duration-slow) var(--motion-ease-out) both; }
+@keyframes pf-route-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* ---------- Legacy animation utilities (Tailwind "animate-in" vocabulary) ----------
+   Used across the app but never defined since tailwindcss-animate is not installed;
+   they now map onto the motion tokens. */
+@keyframes pf-enter {
+  from {
+    opacity: var(--pf-enter-opacity, 1);
+    transform: translate3d(var(--pf-enter-x, 0), var(--pf-enter-y, 0), 0) scale(var(--pf-enter-scale, 1));
+  }
+}
+
+.animate-in { animation: pf-enter var(--motion-duration-base) var(--motion-ease-out) both; }
+.animate-in.fade-in { --pf-enter-opacity: 0; }
+.animate-in.zoom-in-95 { --pf-enter-scale: 0.95; }
+.animate-in.slide-in-from-top-2 { --pf-enter-y: -0.5rem; }
+.animate-in.slide-in-from-right { --pf-enter-x: 1rem; }
+.animate-scale-up { animation: pf-pop-in var(--motion-duration-base) var(--motion-ease-out) both; }
+.animate-fade-in-left { animation: pf-drawer-in-left var(--motion-duration-slow) var(--motion-ease-out) both; }
+
+/* ---------- Reduced motion ----------
+   Movement goes, states stay: offsets collapse to zero, durations become near-instant, so every
+   end state renders immediately. Spinners keep turning (they signal progress, not decoration). */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-rise: 0px;
+    --motion-scale-from: 1;
+    --motion-press-scale: 1;
+    --motion-lift: 0px;
+    --motion-stagger: 0ms;
+  }
+
+  *:not(.animate-spin):not(.animate-spin-slow),
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- Primitive helpers ---------- */
+// Sliding tab/segment indicator (useSlidingIndicator supplies transform/width/height).
+.motion-indicator {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transition: transform var(--motion-duration-base) var(--motion-ease-out),
+    width var(--motion-duration-base) var(--motion-ease-out),
+    opacity var(--motion-duration-fast) var(--motion-ease-out);
+}
+
+// Tweened counters keep their width steady while digits change.
+.motion-number { font-variant-numeric: tabular-nums; }
+.motion-number__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+// Dialog panels: rise + settle from 97 %.
+@keyframes pf-modal-in { from { opacity: 0; transform: scale(var(--motion-scale-from)) translateY(var(--motion-rise)); } }
+@keyframes pf-modal-out { to { opacity: 0; transform: scale(0.98) translateY(calc(var(--motion-rise) * 0.5)); } }

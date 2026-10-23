@@ -1,5 +1,6 @@
 @use './tokens';
 @use './utilities';
+@use './motion';
 @use '../src/styles/components/dashboard';
 @use '../src/styles/components/scheduled-tasks-card';
 @use '../src/styles/components/tasks';
@@ -525,31 +526,6 @@ html.dark .switch-track.active {
   scrollbar-width: none;
 }
 
-/* --- Help Center Utilities --- */
-.help-section {
-  scroll-margin-top: 24px;
-}
-
-.help-highlight {
-  box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
-  background: var(--color-surface-hover);
-}
-
-.help-center-floating-button {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 72%, transparent);
-}
-
-.help-center-floating-button:hover {
-  background: var(--color-primary-hover);
-  color: var(--color-primary-text);
-}
-
-html.dark .help-highlight {
-  box-shadow: 0 0 0 2px rgba(229, 229, 229, 0.2);
-}
-
 @keyframes gradient-xy {
   0%,
   100% {
@@ -742,13 +718,13 @@ html.dark .glass-strong {
 }
 
 .health-ring-warning {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 20px rgba(var(--brand-amber-rgb), 0.4);
+  border-color: rgba(var(--brand-amber-rgb), 0.6);
 }
 
 .health-ring-success {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 20px rgba(var(--brand-green-rgb), 0.4);
+  border-color: rgba(var(--brand-green-rgb), 0.6);
 }
 
 .animate-pulse-ring {
@@ -797,13 +773,13 @@ html.dark .glass-strong {
 }
 
 .progress-segment.active-amber {
-  background-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  background-color: var(--brand-amber);
+  box-shadow: 0 0 8px rgba(var(--brand-amber-rgb), 0.5);
 }
 
 .progress-segment.active-emerald {
-  background-color: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background-color: var(--brand-green);
+  box-shadow: 0 0 8px rgba(var(--brand-green-rgb), 0.5);
 }
 
 .progress-segment.active-rose {

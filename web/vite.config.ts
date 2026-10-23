@@ -153,17 +153,14 @@ export default defineConfig(({ mode }) => {
               }
 
               if (
-                id.includes('/web/locales/finance-en.ts') ||
-                id.includes('/web/locales/finance-de.ts')
-              ) {
-                return 'finance-i18n';
-              }
-
-              if (
                 id.includes('/web/locales/profile-en.ts') ||
                 id.includes('/web/locales/profile-de.ts')
               ) {
                 return 'profile-i18n';
+              }
+
+              if (id.includes('/web/locales/help/')) {
+                return id.includes('-de.ts') ? 'help-content-de' : 'help-content-en';
               }
 
               if (

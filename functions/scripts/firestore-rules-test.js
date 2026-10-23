@@ -285,6 +285,9 @@ const run = async () => {
         await check('member cannot forge consent event', 'deny', () =>
             member.collection('legal_acceptances/memberA/events').add({ type: 'terms', version: 1, decision: 'accepted' }));
         await check('platform admin cannot read mail jobs', 'deny', () => platformAdmin.doc('legal_mail_jobs/terms_v1').get());
+        // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
+        await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());
+        await check('member cannot write legacy finance data', 'deny', () => member.doc(`${T}/finance_journal/j1`).set({ amount: 1 }));
     } finally {
         await testEnv.cleanup();
     }

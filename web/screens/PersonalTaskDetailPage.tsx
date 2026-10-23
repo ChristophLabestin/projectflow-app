@@ -170,15 +170,15 @@ export const PersonalTaskDetailPage = () => {
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 {/* Personal Task Badge */}
-                                <Link to="/personal-tasks" className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 transition-all group">
-                                    <span className="material-symbols-outlined text-[14px] text-indigo-500">person</span>
-                                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-wide">{t('personalTaskDetail.badge.personal')}</span>
+                                <Link to="/personal-tasks" className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 transition-all group">
+                                    <span className="material-symbols-outlined text-[14px] text-primary">person</span>
+                                    <span className="text-xs font-bold text-primary uppercase tracking-wide">{t('personalTaskDetail.badge.personal')}</span>
                                 </Link>
 
                                 {/* Status Badge */}
-                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                    task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.status === 'Done' ? 'bg-success/10 text-success border-success/20' :
+                                    task.status === 'In Progress' ? 'bg-primary/10 text-primary border-primary/20' :
+                                        'bg-surface-hover text-muted border-surface'
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px] leading-none">
                                         {task.status === 'Done' ? 'check_circle' : 'radio_button_unchecked'}
@@ -223,7 +223,7 @@ export const PersonalTaskDetailPage = () => {
                                         size="sm"
                                         onClick={() => setShowMoveDropdown(!showMoveDropdown)}
                                         disabled={moving}
-                                        className="flex-1 lg:flex-none hover:bg-indigo-50 dark:hover:bg-indigo-900/20 hover:text-indigo-600"
+                                        className="flex-1 lg:flex-none hover:bg-primary/10 hover:text-primary"
                                         icon={moving ?
                                             <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> :
                                             <span className="material-symbols-outlined text-[20px]">drive_file_move</span>
@@ -266,7 +266,7 @@ export const PersonalTaskDetailPage = () => {
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="flex-1 lg:flex-none text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                    className="flex-1 lg:flex-none text-error hover:bg-error/10"
                                     onClick={() => setShowDeleteConfirm(true)}
                                 >
                                     <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -409,7 +409,7 @@ export const PersonalTaskDetailPage = () => {
 
                             <div className="pt-3 border-t border-surface flex items-center justify-between">
                                 <span className="text-[10px] font-bold text-subtle uppercase">{t('personalTaskDetail.labels.completion')}</span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${task.isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${task.isCompleted ? 'bg-success/10 text-success border-success/20' : 'bg-primary/10 text-primary border-primary/20'}`}>
                                     {task.isCompleted ? t('personalTaskDetail.labels.finished') : t('personalTaskDetail.labels.active')}
                                 </span>
                             </div>

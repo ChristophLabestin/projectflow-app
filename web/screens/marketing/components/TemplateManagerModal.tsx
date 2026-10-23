@@ -163,7 +163,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                                 </div>
                                                 <button
                                                     onClick={(e) => handleDelete(template.id, e)}
-                                                    className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="p-1.5 rounded-lg text-error hover:bg-error/10 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     title={t('marketing.templateManager.actions.deleteTemplate')}
                                                 >
                                                     <Trash2 size={16} />

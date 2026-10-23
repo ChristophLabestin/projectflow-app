@@ -1135,3 +1135,38 @@
         transform: rotate(360deg);
     }
 }
+
+// Loading skeleton in the real Today layout (DashboardSkeleton): the page is swapped in place once the data is in,
+// so the launch (desktop splash → app) and reloads do not show it building up piece by piece. No entrance animation:
+// in an occluded Electron window it stayed at its first frame (opacity 0).
+.dashboard-skeleton {
+    .dashboard-today__top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    // Beats `.dashboard-today__headline` (block) so the two bars keep their gap.
+    .dashboard-today__headline.dashboard-skeleton__headline {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .dashboard-skeleton__band {
+        border-radius: var(--radius-full);
+    }
+
+    .dashboard-skeleton__rows {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        margin-top: 11px;
+    }
+
+    .dashboard-skeleton__rail {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+}

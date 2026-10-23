@@ -30,8 +30,6 @@ interface LanguageProviderState {
     loadProjectOverviewTranslations: () => Promise<void>;
     dashboardTranslationsReady: boolean;
     loadDashboardTranslations: () => Promise<void>;
-    financeTranslationsReady: boolean;
-    loadFinanceTranslations: () => Promise<void>;
     profileTranslationsReady: boolean;
     loadProfileTranslations: () => Promise<void>;
     teamTranslationsReady: boolean;
@@ -61,8 +59,6 @@ const LanguageProviderContext = createContext<LanguageProviderState>({
     loadProjectOverviewTranslations: async () => undefined,
     dashboardTranslationsReady: true,
     loadDashboardTranslations: async () => undefined,
-    financeTranslationsReady: true,
-    loadFinanceTranslations: async () => undefined,
     profileTranslationsReady: true,
     loadProfileTranslations: async () => undefined,
     teamTranslationsReady: true,
@@ -87,7 +83,6 @@ export function LanguageProvider({
     const [settingsTranslations, setSettingsTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [projectOverviewTranslations, setProjectOverviewTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [dashboardTranslations, setDashboardTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
-    const [financeTranslations, setFinanceTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [profileTranslations, setProfileTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [teamTranslations, setTeamTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
     const [calendarTranslations, setCalendarTranslations] = useState<Partial<Record<Language, Record<string, any>>>>({});
@@ -96,7 +91,6 @@ export function LanguageProvider({
     const hasSettingsTranslations = Boolean(settingsTranslations.en && settingsTranslations.de);
     const hasProjectOverviewTranslations = Boolean(projectOverviewTranslations.en && projectOverviewTranslations.de);
     const hasDashboardTranslations = Boolean(dashboardTranslations.en && dashboardTranslations.de);
-    const hasFinanceTranslations = Boolean(financeTranslations.en && financeTranslations.de);
     const hasProfileTranslations = Boolean(profileTranslations.en && profileTranslations.de);
     const hasTeamTranslations = Boolean(teamTranslations.en && teamTranslations.de);
     const hasCalendarTranslations = Boolean(calendarTranslations.en && calendarTranslations.de);
@@ -105,7 +99,6 @@ export function LanguageProvider({
     const [settingsTranslationsReady, setSettingsTranslationsReady] = useState<boolean>(false);
     const [projectOverviewTranslationsReady, setProjectOverviewTranslationsReady] = useState<boolean>(false);
     const [dashboardTranslationsReady, setDashboardTranslationsReady] = useState<boolean>(false);
-    const [financeTranslationsReady, setFinanceTranslationsReady] = useState<boolean>(false);
     const [profileTranslationsReady, setProfileTranslationsReady] = useState<boolean>(false);
     const [teamTranslationsReady, setTeamTranslationsReady] = useState<boolean>(false);
     const [calendarTranslationsReady, setCalendarTranslationsReady] = useState<boolean>(false);
@@ -162,23 +155,6 @@ export function LanguageProvider({
         });
         setDashboardTranslationsReady(true);
     }, [hasDashboardTranslations]);
-    const loadFinanceTranslations = useCallback(async () => {
-        if (hasFinanceTranslations) {
-            setFinanceTranslationsReady(true);
-            return;
-        }
-
-        const [{ default: nextFinanceEn }, { default: nextFinanceDe }] = await Promise.all([
-            import('../locales/finance-en'),
-            import('../locales/finance-de')
-        ]);
-
-        setFinanceTranslations({
-            en: nextFinanceEn,
-            de: nextFinanceDe
-        });
-        setFinanceTranslationsReady(true);
-    }, [hasFinanceTranslations]);
     const loadProfileTranslations = useCallback(async () => {
         if (hasProfileTranslations) {
             setProfileTranslationsReady(true);
@@ -335,7 +311,6 @@ export function LanguageProvider({
             const currentSettingsTranslations = settingsTranslations[targetLang];
             const currentProjectOverviewTranslations = projectOverviewTranslations[targetLang];
             const currentDashboardTranslations = dashboardTranslations[targetLang];
-            const currentFinanceTranslations = financeTranslations[targetLang];
             const currentProfileTranslations = profileTranslations[targetLang];
             const currentTeamTranslations = teamTranslations[targetLang];
             const currentCalendarTranslations = calendarTranslations[targetLang];
@@ -354,9 +329,6 @@ export function LanguageProvider({
             }
             if (currentDashboardTranslations && currentDashboardTranslations[key] !== undefined) {
                 return currentDashboardTranslations[key];
-            }
-            if (currentFinanceTranslations && currentFinanceTranslations[key] !== undefined) {
-                return currentFinanceTranslations[key];
             }
             if (currentProfileTranslations && currentProfileTranslations[key] !== undefined) {
                 return currentProfileTranslations[key];
@@ -400,7 +372,6 @@ export function LanguageProvider({
             const englishSettingsTranslations = settingsTranslations.en;
             const englishProjectOverviewTranslations = projectOverviewTranslations.en;
             const englishDashboardTranslations = dashboardTranslations.en;
-            const englishFinanceTranslations = financeTranslations.en;
             const englishProfileTranslations = profileTranslations.en;
             const englishTeamTranslations = teamTranslations.en;
             const englishCalendarTranslations = calendarTranslations.en;
@@ -418,9 +389,6 @@ export function LanguageProvider({
             }
             if (englishDashboardTranslations && englishDashboardTranslations[key] !== undefined) {
                 return englishDashboardTranslations[key];
-            }
-            if (englishFinanceTranslations && englishFinanceTranslations[key] !== undefined) {
-                return englishFinanceTranslations[key];
             }
             if (englishProfileTranslations && englishProfileTranslations[key] !== undefined) {
                 return englishProfileTranslations[key];
@@ -454,7 +422,7 @@ export function LanguageProvider({
 
             return value !== undefined ? value : (fallback || key);
         };
-    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, financeTranslations, language, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
+    }, [authActionTranslations, authScreenTranslations, calendarTranslations, dashboardTranslations, language, profileTranslations, projectOverviewTranslations, settingsTranslations, teamTranslations, translations]);
 
     const setLanguage = (nextLanguage: Language) => {
         localStorage.setItem(storageKey, nextLanguage);
@@ -493,8 +461,6 @@ export function LanguageProvider({
                 loadProjectOverviewTranslations,
                 dashboardTranslationsReady,
                 loadDashboardTranslations,
-                financeTranslationsReady,
-                loadFinanceTranslations,
                 profileTranslationsReady,
                 loadProfileTranslations,
                 teamTranslationsReady,

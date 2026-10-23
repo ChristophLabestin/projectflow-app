@@ -1,6 +1,6 @@
 import { shell } from 'electron';
 import { createHash, randomBytes } from 'crypto';
-import { APP_ORIGIN } from '../config';
+import { APP_ORIGIN, PROTOCOL } from '../config';
 import { sendCommand, showMainWindow } from '../windows/mainWindow';
 
 /**
@@ -19,6 +19,7 @@ export const startExternalSignIn = async (provider?: unknown) => {
     const url = new URL('/desktop/auth', APP_ORIGIN);
     url.searchParams.set('challenge', challenge);
     if (typeof provider === 'string' && /^(google|github|apple)$/.test(provider)) url.searchParams.set('provider', provider);
+    if (PROTOCOL !== 'projectflow') url.searchParams.set('scheme', PROTOCOL);
     await shell.openExternal(url.toString());
     return true;
 };

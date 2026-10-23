@@ -67,4 +67,11 @@
     .error-page__actions {
         flex-direction: row;
     }
+
+    // Side by side: equal halves (`.btn` doesn't shrink by default, so width: 100% would push
+    // the second button out of the card).
+    .error-page__button {
+        flex: 1 1 0;
+        min-width: 0;
+    }
 }

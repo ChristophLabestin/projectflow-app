@@ -44,24 +44,6 @@ export type TenantPermissionNode =
     | 'tenant.seats.manage'
     | 'tenant.plan.view'
     | 'tenant.plan.manage'
-    // Finance
-    | 'tenant.finance.view'
-    | 'tenant.finance.manage'
-    | 'tenant.finance.accounts.manage'
-    | 'tenant.finance.ledger.post'
-    | 'tenant.finance.ar.manage'
-    | 'tenant.finance.ap.manage'
-    | 'tenant.finance.tax.manage'
-    | 'tenant.finance.close'
-    | 'tenant.finance.export.datev'
-    | 'tenant.finance.audit.view'
-    | 'tenant.finance.reconciliation.manage'
-    | 'tenant.finance.reports.manage'
-    | 'tenant.finance.functions.view'
-    | 'tenant.finance.functions.execute'
-    | 'tenant.finance.functions.retry'
-    | 'tenant.finance.functions.template.manage'
-    | 'tenant.finance.functions.approve.high_risk'
     // SSO (Organization tier)
     | 'tenant.sso.view'
     | 'tenant.sso.configure'
@@ -357,7 +339,6 @@ export const DEFAULT_MEMBER_PERMISSIONS: PermissionNode[] = [
     'tenant.view',
     'tenant.members.view',
     'tenant.roles.view',
-    'tenant.finance.view',
     // Media library access
     'tenant.media.view',
     'tenant.media.upload',
@@ -463,17 +444,6 @@ export const ALL_TENANT_PERMISSIONS: TenantPermissionNode[] = [
     'tenant.seats.manage',
     'tenant.plan.view',
     'tenant.plan.manage',
-    'tenant.finance.view',
-    'tenant.finance.manage',
-    'tenant.finance.accounts.manage',
-    'tenant.finance.ledger.post',
-    'tenant.finance.ar.manage',
-    'tenant.finance.ap.manage',
-    'tenant.finance.tax.manage',
-    'tenant.finance.close',
-    'tenant.finance.export.datev',
-    'tenant.finance.audit.view',
-    'tenant.finance.reconciliation.manage',
     'tenant.sso.view',
     'tenant.sso.configure',
     'tenant.sso.enforce',

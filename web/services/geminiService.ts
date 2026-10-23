@@ -479,19 +479,6 @@ export const suggestBlogTopicsAI = async (project: Project): Promise<{ title: st
 };
 
 
-// ... existing definitions
-
-export interface SocialPostDraft {
-    platforms: string[];
-    content: string; // The main text/caption
-    hashtags: string[];
-    scheduledDayOffset: number; // 0-6
-    type: 'Image' | 'Video' | 'Carousel' | 'Story' | 'Reel'; // Format suggestion
-    imagePrompt?: string; // Prompt for image generation if needed
-}
-
-// ... existing code ...
-
 
 export const translateBlogPostAI = async (
     content: string,

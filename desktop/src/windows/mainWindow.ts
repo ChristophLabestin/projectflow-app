@@ -3,6 +3,7 @@ import path from 'node:path';
 import { APP_ORIGIN, APP_URL, IS_DEV, appUrlFor, isAppUrl } from '../config';
 import { IPC, type DesktopCommandEvent, type DesktopWindowState, type TitleBarTheme, type WindowKind } from '../contract';
 import { hardenAppContents, openExternalSafe } from '../security';
+import { attachSplash, finishSplash, finishSplashSoon } from './splash';
 import { getSettings, updateSettings, visibleBounds } from '../store';
 import { currentLanguage, labels } from '../labels';
 
@@ -91,6 +92,7 @@ export const markRendererReady = () => {
     rendererReady = true;
     const win = getMainWindow();
     if (!win) return;
+    finishSplashSoon();
     const queued = pendingCommands;
     pendingCommands = [];
     queued.forEach((event) => win.webContents.send(IPC.command, event));
@@ -275,6 +277,8 @@ export const createMainWindow = (initialPath = '/', options: { hidden?: boolean 
     if (settings.mainMaximized) win.maximize();
     // Launched at login: stay in the menu bar / tray until the user opens the window.
     if (!options.hidden) {
+        // The launch scene is local, so the window can open at once and fade into the app when it is ready.
+        attachSplash(win, () => { if (!win.isDestroyed() && !win.isVisible()) win.show(); });
         win.once('ready-to-show', () => win.show());
         // Never wait forever for ready-to-show (e.g. a slow remote load).
         setTimeout(() => { if (!win.isDestroyed() && !win.isVisible()) win.show(); }, 4000);
@@ -283,6 +287,7 @@ export const createMainWindow = (initialPath = '/', options: { hidden?: boolean 
     const contents = win.webContents;
     attachCommonContentsHandlers(win, () => {
         rendererReady = false;
+        finishSplash();
         showOfflinePage(win);
     });
 

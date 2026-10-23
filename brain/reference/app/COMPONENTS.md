@@ -16,7 +16,7 @@ Rules:
 | `Button` | Primary/secondary/ghost/danger styles | Actions, forms | Supports `sm`, `md`, `lg`, `icon` sizes. Loading state + optional icon support. |
 | `IconButton` | Compact icon-only button | Toolbars, inline actions | Must include tooltip/aria-label support |
 | `Card` | Standard surface container | Dashboards, lists, panels | Includes `CardHeader`, `CardBody`, `CardFooter`. |
-| `Badge` / `Tag` | Status + labeling | Priority, states, categories | Variants: `neutral`, `success`, `warning`, `error`. |
+| `Badge` / `Tag` | Status + labeling | Priority, states, categories | Variants: `neutral`, `success`, `warning`, `error`. `components/ui/Badge` variants (`primary`, `secondary`, `success`, `warning`, `error`) map to theme tokens only. |
 | `Avatar` | User/brand avatar | Member lists, headers | Fallback initials + optional image |
 | `Divider` | Visual separation | Layout sections | Uses surface border token. |
 | `Tooltip` | Hover help | Dense UI actions | Avoid for mobile-only reliance |
@@ -49,15 +49,14 @@ Rules:
 |---|---|---|---|
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
 | `GlobalSearch` | ⌘K / `/` command palette in the TopBar (`web/components/search/GlobalSearch.tsx`, matching in `web/utils/globalSearch.ts`) | Global navigation and quick actions | No AI. Loads projects/tasks/initiatives once per open (60s cache, prefetched on trigger hover) and matches in memory: multi-word, diacritic-insensitive, fuzzy fallback, highlighted hits. Scope tabs (Tab cycles) and prefixes `>` actions, `#` projects, `!` tasks, `?` help; task filters `is:open|done|overdue|today|mine`, `prio:urgent|high|medium|low`. Empty state: recently opened + recent searches (localStorage per user), actions, pages, tips. ⌘/Ctrl+Enter opens in a new tab. Current project's hits rank higher. Styles in `_global-search.scss`. |
-| `Sidebar` | Main navigation | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
+| `SidebarNavigator` | Main navigation (`components/SidebarNavigator.tsx`; the old `Sidebar`/`WorkspaceTeamIndicator` were removed 2026-10-23) | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. Workspace group: Projects, Team, Media (behind "More" for new accounts), Workspace settings (Owner/Admin; action row → `SettingsModal` scope workspace). `NavRowDef.onSelect` = action row instead of a link. |
 | `DesktopTitleBar` | Window title bar of the desktop app (`web/components/desktop/`) | Mounted by `RootLayout` when `isDesktop()` | Drag region hosting the native window controls (macOS traffic lights in the left inset, Windows `titleBarOverlay` caption buttons on the right, menu button for the app menu). `inline` mode (authenticated shell, content offset via `--app-viewport-height` / `#root` padding) or `overlay` (public routes). Renders nothing in the browser. Styles in `_desktop.scss`. |
 | `DesktopBridge` | Glue to the Electron shell (`web/components/desktop/DesktopBridge.tsx`) | Mounted once in the main desktop window | Routes menu/tray/deep-link commands, pushes language, theme colors, tray snapshot (focus + pins), badge count and native notifications (baseline snapshot, active tenant only). Bridge access and capability checks live in `web/services/desktop.ts`. |
 | `DesktopSettingsPanel` | Settings → Desktop app (`web/components/settings/DesktopSettingsPanel.tsx`) | `SettingsModal` tab `desktop`, only with the bridge capability `preferences` | Launch at login, global shortcuts (key recorder), day start/close, calendar, macOS Shortcuts for focus mode, media key. Values live in the shell (`getPreferences`/`setPreferences`), not Firestore. Reuses the `notification-settings` card styles. |
 | `AiIntegrationsPanel` | Settings → AI & integrations (`web/components/settings/AiIntegrationsPanel.tsx`, recipes in `aiClients.ts`) | Workspace `SettingsModal` tab `ai` (all members; deep link `?openSettings=ai`) | Client tiles with steps/snippet/one-click install (Claude, Claude Code, ChatGPT, Codex, Cursor, VS Code, Gemini CLI, other), connected apps with disconnect, personal access tokens, workspace AI policy (Owner/Admin edit), AI activity log (Owner/Admin). Styles `web/src/styles/components/_ai-settings.scss`; code blocks reuse `.mcp-connect__code`. |
 | `OAuthConsent` | OAuth consent screen (`web/screens/OAuthConsent.tsx`) | Route `/oauth/consent` | Workspace picker with policy state, scope checkboxes (delete scopes off by default / blocked by policy), unverified-client warning, returns to the client via `approveOAuthConsent`/`denyOAuthConsent`. |
 | `DesktopAppPromo` | Desktop app promo card, inverted (primary gradient, OS-mark watermark, pill CTA) (`web/components/desktop/DesktopAppPromo.tsx`, styles `.desktop-promo` in `_desktop.scss`) | `SidebarNavigator` above the project dock (hidden in the collapsed spine), browsers on macOS/Windows only | Shown once the latest release has the installer for the OS (`services/desktopDownloads.ts`, GitHub API cached 6 h); links to `/download`; × = remind later (30 days, `pf_desktop_promo_until`), "Don't show again" = permanently (`pf_desktop_promo_never`). The user menu has a matching "Get the Mac/Windows app" link. |
-| `ProjectSwitcher` | Sidebar workspace/project switcher | Sidebar project context trigger | Lazy-loads projects, supports current/pinned quick access, company/workstream grouping, search by title/status/company context, pin/unpin, dashboard switch, and create-project entry. |
-| `Breadcrumbs` | Single trail in the top bar pill (back arrow + path + current page) | Every page via `TopBar`; pages must not render their own in-page breadcrumbs | Mobile shows back arrow + current page only |
+| `Breadcrumbs` | Single trail in the top bar pill (back arrow one level up + path + current page) | `TopBar`, items from `utils/breadcrumbs.ts` (`buildBreadcrumbs`, the one route table; unit-tested) | Renders nothing below 2 items; top-level pages have no trail and the desktop context pill hides (`--no-crumbs`). Phones: back arrow + current page only. Pages never render their own breadcrumbs; detail pages pass their entity title via the outlet `setTaskTitle`. |
 | `PinnedProjectPill` | Current pinned project shortcut and menu | Top bar project quick access | Uses portal-rendered fixed dropdown with health, project module stats, quick create actions, and project navigation. |
 | `PinnedTasksModal` | Quick-access focus workspace | Top bar focus pill, dashboard resume action, pinned task/issue/initiative shortcuts | Uses persisted `focusState` with start, snooze, block, and complete controls. |
 | `Notifications` diagnostics card | Notification delivery verification | `/notifications` delivery health panel | Registers web push, sends a self-test notification, and shows recent `notificationDeliveryLogs`. |
@@ -73,7 +72,7 @@ Rules:
 
 | Component | Purpose | Typical Usage | Notes |
 |---|---|---|---|
-| `Modal` | Standard modal dialog | Forms, pickers | Focus trap + escape handling |
+| `Modal` | Standard modal dialog | Forms, pickers | Focus trap + escape handling; header close button is the material `close` icon with `common.close` label. |
 | `Drawer` | Side overlay | Mobile/detail panels | |
 | `ConfirmDialog` | Destructive confirmations | Deletes, irreversible actions | |
 | `Toast` / `Notifications` | Non-blocking feedback | Success/error/info | |
@@ -128,13 +127,7 @@ Example usage:
 
 ## Finance Feature Components
 
-| Component | Purpose | Typical Usage | Notes |
-|---|---|---|---|
-| `FinanceFunctionsWorkspace` | Dedicated operations control center for Finance V2 | `/finance/functions` | Includes operation catalog, tabs, run tray, and deep-link handling |
-| `FinanceOperationWizard` | Guided operation execution flow | Operate tab in Finance Functions Workspace | Scope -> Preview -> Confirm -> Result, supports idempotent execution path |
-| `FinanceOperationRunTimeline` | Step-level runtime inspection | Runs tab details panel | Shows lifecycle steps, warnings, artifacts, and timestamps |
-| `FinanceOperationTemplatesPanel` | Save/reuse operation payload presets | Templates tab in Finance Functions Workspace | CRUD for tenant-scoped templates |
-| `FinanceOpsAssistantPanel` | Explainable AI recommendations for ops actions | Insights tab in Finance Functions Workspace | Presents confidence/rationale and only suggests (no auto-execute) |
+Removed 2026-10-23 together with the `/finance` module (`components/finance/*`, `screens/FinanceTracking.tsx`, `services/finance-v2/*`, `tenant.finance.*` permissions in the role catalog).
 
 ---
 
@@ -272,6 +265,20 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `notificationPrefs.ts`: defaults and (de)serialisation of `users/{uid}.notificationPrefs`.
 - `services/domain/workspaceTasksService.ts` (`getWorkspaceTasks`): loads all tasks of the given projects once and splits them into `mine` / `others` (the Dashboard needs the others for dependency counts and "Waiting on you").
 
+## Brand accents (`web/components/brand/`, 2026-10-23)
+Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.html`; tokens in STYLING 1.4.1; showcased on `/ui` ("Brand accents").
+- `BrandGlyph`: the ProjectFlow glyph as inline SVG in `currentColor` (login brand mark).
+- `BrandMark` (`size` sm/md/lg): glyph on a floating disc, conic brand aurora, breathing ring, four orbiting status dots (z-index flips behind/in front of the disc; rAF only while visible).
+- `FlowField` (`originX/Y`, `spacing`, `period`, `tone` auto/onDark): canvas dot grid with ripples coloured by direction; fills its positioned parent; ResizeObserver repaints, pauses off-screen / hidden tab, static frame under reduced motion. Used in the login hero and `BrandScene`.
+- `StatusDots` (`size` xs/sm/md, `motion` static/wave, optional `label`) and `LoadingTrack` (gliding brand-gradient segment).
+- `BrandScene` (`variant` screen/inline, `label`): loading scene (field + mark + staggered name + track, `role="status"`). Used by the root auth loading and `WorkspaceConnecting` (screen) and `RoutePending` (inline).
+- `playCompletionBurst(element)`: one-shot burst of the four dots from an element's centre, fixed on `<body>` so it survives rows moving groups; used by `TaskRow`'s complete check. Skipped under reduced motion.
+
+## Motion primitives (`web/components/motion/`, 2026-10-23)
+- `usePresence`, `useFlipList`, `useMotionOnChange`, `useSlidingIndicator`, `AnimatedNumber`, `MOTION` (JS token mirror). Rules and CSS utilities: STYLING.md §4.1; live demo `/ui` → Motion (`screens/style-guide/MotionShowcase.tsx`).
+- `AppLayout` runs `useMotionOnChange(…, location.pathname, 'route')` on the outlet wrapper: route content fades/rises in without remounting.
+- `ui/Modal` keeps itself mounted for its exit via `usePresence` (`.ui-modal.is-exiting`); `common/Modal` enters with keyframes, exits with transitions; `GlobalToast` is a live region (`status`/`alert`).
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.
@@ -280,6 +287,14 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `hooks/useNotifications.ts`: live inbox for the active workspace (re-subscribes on sign-in/out and workspace switch, exposes `error`), unread counts of the other workspaces (one `userId + read == false` listener each), `setRead`, `markAllRead`, `remove`, `removeAll`.
 - `utils/notificationPresentation.ts`: icon/tone per type, `getNotificationPath` (task > initiative > project > relative `deepLink`), `getNotificationText` (renders `notifications.type.<type>.title|message` from the doc's `params`, falls back to the stored English text), `groupNotifications`.
 - `screens/Notifications.tsx` uses the same parts plus the collapsed delivery diagnostics.
+
+## Help Center (`web/components/help/`, rebuilt 2026-10-23)
+
+Concept: `brain/plans/help-center-rework.md`.
+- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`; `activePageId` = article id, `null` = home): floating one-column sheet (`--help-center-width`, inset 12 px, full screen < 720 px). Views: **Home** ("For this page" via `helpRouting.ts` + articles by category) → **Article** (`HelpArticleView`) or **Search** (`searchHelp` + Ask CORA). Back arrow returns home, Esc/scrim close. Opened by `?`, the top-bar help button, ⌘K results, the desktop menu, and `HelpCenterFloatingButton` (`.help-fab`) on public routes.
+- Content: `web/locales/help/articles/<id>-en|de.ts` (one `HelpArticle` each, typed by `helpTypes.ts`), ordered in `articles-en|de.ts`; loaded per language by `useHelpContent()` (chunks `help-content-en|de`). Blocks: text, steps, list, callout (tip/note/warning), terms, shortcuts; inline `**bold**`, `` `code` ``, `[label](/route)` (`HelpInline`).
+- `__tests__/helpCenter.test.ts` enforces EN/DE structural parity, unique ids, valid routes, no retired concepts (Flows/Issues/Social), and that every routed article/section exists.
+- Styling: `help-center.scss` only (borderless, surface contrast, brand tokens for callouts) — no Tailwind in help components.
 
 ## Reminders and settings controls
 
@@ -311,3 +326,5 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `GettingStartedCard` (`web/components/onboarding/`): dashboard checklist (confirm email, first project, three tasks, invite, passkey/2FA) derived from live data; hides when done or dismissed.
 - `useOnboarding` (`web/hooks/`): shared first-run state from `users/{uid}/private/onboarding`. Only accounts whose first workspace was created after the rework have this doc — older accounts never see welcome, checklist or the sidebar "More" grouping.
 - `userPrivateData` (`web/services/domain/`): owner-only user data (`private/usage`, `private/workspace`, `private/onboarding`); `emailVerification` helpers for sending/rechecking the confirmation mail.
+
+- `DashboardSkeleton` (`web/components/dashboard/DashboardSkeleton.tsx`, 2026-10-23): loading state of the Dashboard in its real Today layout (same containers, measured heights), shown until projects *and* tasks are loaded; styles at the end of `src/styles/components/_dashboard.scss`.

@@ -150,8 +150,8 @@ Zusätzlich `…/mcp/readonly` als Read-only-Endpunkt (wie Linear/GitHub) für v
 | ✅ P2 OAuth-AS | Metadata (RFC 8414/9728), CIMD+DCR, authorize/token/revoke, PKCE S256, Refresh-Rotation + Reuse-Erkennung, Consent-Seite `/oauth/consent`, PATs `pfp_`, Verbindungen listen/widerrufen — `brain/operations/projectflow-oauth.md` | L |
 | ✅ P3 MCP v2 | SDK v2 (2026-07-28 + Legacy-Fallback), Gen2 `mcpServer` (Concurrency 80), Tools `search` + `my_today`, Tages-Quote je Tenant (5000 Writes), Activity „via <Client>“, Domain vorbereitet (DNS beim User). `outputSchema`/`structuredContent` bewusst weggelassen (verdoppelt Tokens) | M |
 | ✅ P4 Web-UI | Consent-Screen, Tab „KI & Integrationen“ (`AiIntegrationsPanel`: Client-Kacheln + Schnipsel + One-Click Cursor/VS Code, Verbundene Apps, PATs, Policy, KI-Aktivität), Legacy-Tab „API & MCP“ nur noch für Owner, i18n de/en | L |
-| ◐ P5 Doku | Quelle `brain/operations/mcp-install-guide.md`, Brain-Docs, Codex-Plugin-README erledigt; öffentliche Seite `getprojectflow.com/docs/mcp` (Landing-Session) offen — `resource_documentation` zeigt schon darauf | S |
-| ☐ P6 iOS (optional) | Liste verbundener Apps + Widerruf (Callables `listAiConnections`/`revokeAiConnection`) — an iOS-Session übergeben | S |
+| ✅ P5 Doku | Quelle `brain/operations/mcp-install-guide.md`, Brain-Docs, Codex-Plugin-README; öffentliche Seite `/docs/mcp` DE/EN in `landing/` (`eea0ee98`, `MCP_URL` in `landing/src/templates/pages.ts`) — live erst nach Domain-Umschaltung der Landing-Site | S |
+| ✅ P6 iOS | Liste „Verbundene KI-Apps“ mit Widerruf (`6f82716e`) | S |
 | ☐ P7 Listings (optional) | Claude-Connector-Verzeichnis, ChatGPT-Apps, Cursor-/VS-Code-Verzeichnisse — braucht Konten/Einreichung durch den User | S |
 
 Reihenfolge: P0 → P1 → P2+P3 parallel → P4 → P5/P6/P7.

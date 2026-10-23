@@ -18,15 +18,6 @@
     box-shadow: var(--shadow-md);
 }
 
-.login-page__hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    opacity: 0.08;
-    background-image: radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0);
-    background-size: 40px 40px;
-}
-
 .login-page__hero-content {
     position: relative;
     z-index: 1;
@@ -52,9 +43,12 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
     box-shadow: var(--shadow-soft);
+
+    .brand-glyph {
+        width: 26px;
+        height: 26px;
+    }
 }
 
 .login-page__brand-name {

@@ -11,6 +11,7 @@ struct TodayTopBar: View {
     let compact: String?
 
     @Environment(AppModel.self) private var model
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     var body: some View {
         HStack(spacing: PFSpace.xs) {
@@ -27,18 +28,31 @@ struct TodayTopBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             PFRootActions {
-                PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
-
-                // Account: the photo (or initials) fills the whole circle, no frame around it.
-                Button { model.router.push(.account) } label: {
-                    PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 44)
+                // iPhone: capture, then account. Duo outer display (stacked rail): account on top, capture below it.
+                if sideRegion > 0 {
+                    accountButton
+                    captureButton
+                } else {
+                    captureButton
+                    accountButton
                 }
-                .buttonStyle(.pfPressable)
-                .accessibilityLabel(L10n.t("today.account"))
             }
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.vertical, 6)
+    }
+
+    private var captureButton: some View {
+        PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
+    }
+
+    /// Account: the photo (or initials) fills the whole circle, no frame around it.
+    private var accountButton: some View {
+        Button { model.router.push(.account) } label: {
+            PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 44)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityLabel(L10n.t("today.account"))
     }
 
     private var workspaceChip: some View {
