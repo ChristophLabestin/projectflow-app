@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '../Button/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 import './modal.scss';
 
 export interface ModalProps {
@@ -26,6 +27,7 @@ export const Modal: React.FC<ModalProps> = ({
     footer,
     closeOnOutsideClick = true,
 }) => {
+    const { t } = useLanguage();
     const [isRendered, setIsRendered] = useState(false);
     const modalRef = useRef<HTMLDivElement>(null);
 
@@ -77,9 +79,9 @@ export const Modal: React.FC<ModalProps> = ({
                             size="sm"
                             className="modal__close-btn"
                             onClick={onClose}
-                            aria-label="Close modal"
+                            aria-label={t('common.close')}
                         >
-                            ✕
+                            <span className="material-symbols-outlined text-[20px]">close</span>
                         </Button>
                     </div>
                 )}

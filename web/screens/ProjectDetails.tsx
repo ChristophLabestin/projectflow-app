@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import '../src/styles/components/_project-details.scss';
 import { getProjectById } from '../services/domain/projectsService';
@@ -60,7 +60,8 @@ export const ProjectDetails = () => {
 
     const memberCount = Array.isArray(project.members) ? project.members.length : 0;
     const moduleCount = project.modules?.length || 0;
-    const summaryCards = useMemo(() => [
+    // Plain value: a hook here would run after the early returns above (rules of hooks).
+    const summaryCards = [
         {
             key: 'status',
             label: t('projectDetails.workbench.status'),
@@ -76,7 +77,7 @@ export const ProjectDetails = () => {
             label: t('projectDetails.workbench.modules'),
             value: `${moduleCount}`
         }
-    ], [memberCount, moduleCount, project.status, statusLabels, t]);
+    ];
 
     return (
         <div className="project-details animate-fade-up">

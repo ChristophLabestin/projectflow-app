@@ -117,12 +117,12 @@ export const Profile = () => {
             <div className="max-w-[1600px] mx-auto px-6 pt-8">
 
                 {/* 1. HERO BANNER */}
-                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-surface shadow-sm group">
+                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-surface-hover border border-surface shadow-sm group">
                     {coverURL ? (
                         <img src={coverURL} alt={t('profile.cover.alt')} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                            <span className="material-symbols-outlined text-6xl text-zinc-300 dark:text-zinc-700 opacity-20">image</span>
+                            <span className="material-symbols-outlined text-6xl text-subtle opacity-20">image</span>
                         </div>
                     )}
 
@@ -142,11 +142,11 @@ export const Profile = () => {
                 <div className="relative px-4 md:px-10 -mt-20 mb-12 flex flex-col md:flex-row items-end gap-8">
                     {/* Avatar */}
                     <div className="relative group shrink-0">
-                        <div className="size-40 md:size-48 rounded-full border-[8px] border-[var(--color-surface-bg)] shadow-2xl bg-white dark:bg-black overflow-hidden relative z-10">
+                        <div className="size-40 md:size-48 rounded-full border-[8px] border-[var(--color-surface-bg)] shadow-2xl bg-surface-card overflow-hidden relative z-10">
                             {photoURL ? (
                                 <img src={photoURL} alt={t('profile.avatar.alt')} className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-black dark:text-white bg-white dark:bg-black">
+                                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-main bg-surface-card">
                                     {initialOf(displayName, 'U')}
                                 </div>
                             )}
@@ -154,7 +154,7 @@ export const Profile = () => {
                         <button
                             onClick={() => setShowEditModal(true)}
                             aria-label={t('profile.actions.edit')}
-                            className="absolute bottom-2 right-2 z-20 size-10 bg-black text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg border-2 border-white dark:border-zinc-800"
+                            className="absolute bottom-2 right-2 z-20 size-10 bg-primary text-on-primary rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg border-2 border-[var(--color-surface-bg)]"
                         >
                             <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                         </button>
@@ -162,11 +162,11 @@ export const Profile = () => {
 
                     {/* Info */}
                     <div className="flex-1 pb-4 text-center md:text-left">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex flex-col md:flex-row md:flex-wrap md:items-center justify-between gap-x-6 gap-y-4">
                             <div>
-                                <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 flex items-center justify-center md:justify-start gap-3">
+                                <h1 className="text-3xl md:text-4xl xl:text-5xl font-black tracking-tight mb-2 flex items-center justify-center md:justify-start gap-3">
                                     {displayName || t('profile.fallback.anonymous')}
-                                    <span className="material-symbols-outlined text-2xl text-blue-500" title={t('profile.badges.verified')}>verified</span>
+                                    <span className="material-symbols-outlined text-2xl text-primary" title={t('profile.badges.verified')}>verified</span>
                                 </h1>
                                 <p className="text-xl font-medium text-muted flex items-center justify-center md:justify-start gap-2">
                                     {title || t('profile.fallback.title')}
@@ -269,11 +269,11 @@ export const Profile = () => {
                                 <div className="space-y-6 animate-fade-in">
                                     {/* Stats Grid */}
                                     <div className="grid grid-cols-2 gap-4">
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                        <div className="p-4 rounded-2xl bg-surface-card border border-surface shadow-sm">
                                             <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.projects')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.projects}</div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                        <div className="p-4 rounded-2xl bg-surface-card border border-surface shadow-sm">
                                             <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.teams')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.teams}</div>
                                         </div>
@@ -318,20 +318,20 @@ export const Profile = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {projects.length > 0 ? projects.map(project => (
-                                            <div key={project.id} className="group bg-white dark:bg-black rounded-3xl border border-surface overflow-hidden shadow-sm hover:translate-y-[-4px] transition-all duration-300 cursor-pointer">
+                                            <div key={project.id} className="group bg-surface-card rounded-3xl border border-surface overflow-hidden shadow-sm hover:translate-y-[-4px] transition-all duration-300 cursor-pointer">
                                                 {/* Cover */}
-                                                <div className="h-40 bg-zinc-100 dark:bg-zinc-800 relative">
+                                                <div className="h-40 bg-surface-hover relative">
                                                     {project.coverImage ? (
                                                         <img src={project.coverImage} alt={project.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                                     ) : (
                                                         <div className="w-full h-full flex items-center justify-center">
-                                                            <span className="material-symbols-outlined text-4xl text-zinc-300 dark:text-zinc-700">folder</span>
+                                                            <span className="material-symbols-outlined text-4xl text-subtle">folder</span>
                                                         </div>
                                                     )}
                                                     <div className="absolute top-3 right-3">
-                                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md ${project.status === 'Active' ? 'bg-green-100/90 text-green-700 dark:bg-green-900/60 dark:text-green-300' :
-                                                            project.status === 'Completed' ? 'bg-blue-100/90 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300' :
-                                                                'bg-zinc-100/90 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
+                                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md ${project.status === 'Active' ? 'bg-success/15 text-success' :
+                                                            project.status === 'Completed' ? 'bg-surface-card/90 text-main' :
+                                                                'bg-surface-card/90 text-muted'
                                                             }`}>
                                                             {projectStatusLabels[project.status || 'Active'] || project.status || projectStatusLabels.Active}
                                                         </span>
@@ -348,12 +348,12 @@ export const Profile = () => {
                                                     <div className="flex items-center justify-between mt-auto pt-4 border-t border-surface">
                                                         <div className="flex -space-x-2">
                                                             {project.members?.slice(0, 3).map((m, i) => (
-                                                                <div key={i} className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold overflow-hidden" title={m.role}>
+                                                                <div key={i} className="size-8 rounded-full border-2 border-[var(--color-surface-card)] bg-surface-hover flex items-center justify-center text-[10px] font-bold overflow-hidden" title={m.role}>
                                                                     <span className="material-symbols-outlined text-[14px]">person</span>
                                                                 </div>
                                                             ))}
                                                             {(project.members?.length || 0) > 3 && (
-                                                                <div className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-subtle">
+                                                                <div className="size-8 rounded-full border-2 border-[var(--color-surface-card)] bg-surface-hover flex items-center justify-center text-[10px] font-bold text-subtle">
                                                                     +{(project.members?.length || 0) - 3}
                                                                 </div>
                                                             )}
@@ -365,8 +365,8 @@ export const Profile = () => {
                                                 </div>
                                             </div>
                                         )) : (
-                                            <div className="col-span-full py-20 text-center bg-zinc-50 dark:bg-zinc-900/30 rounded-3xl border border-dashed border-surface">
-                                                <span className="material-symbols-outlined text-5xl text-zinc-300 mb-4">folder_off</span>
+                                            <div className="col-span-full py-20 text-center bg-surface-hover/40 rounded-3xl border border-dashed border-surface">
+                                                <span className="material-symbols-outlined text-5xl text-subtle mb-4">folder_off</span>
                                                 <p className="text-muted font-medium">{t('profile.projects.empty')}</p>
                                             </div>
                                         )}
@@ -418,7 +418,7 @@ export const Profile = () => {
                                         <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">{t('profile.about.skills')}</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {(skills.length > 0 ? skills : 'React, TypeScript, Firebase, Tailwind CSS, UI/UX Design'.split(',').map(item => item.trim())).map((skill, i) => (
-                                                <span key={i} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-medium border border-surface">
+                                                <span key={i} className="px-3 py-1.5 rounded-full bg-surface-hover text-sm font-medium border border-surface">
                                                     {skill.trim()}
                                                 </span>
                                             ))}
