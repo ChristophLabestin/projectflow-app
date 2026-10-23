@@ -266,6 +266,12 @@
       ]
     },
     {
+      "collectionGroup": "ai_audit",
+      "fieldPath": "expireAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "marketing_recipients",
       "fieldPath": "unsubscribeToken",
       "indexes": [

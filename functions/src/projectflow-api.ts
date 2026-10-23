@@ -3,16 +3,22 @@ import * as crypto from 'crypto';
 
 import { getAuthToken, getWorkspaceMemberRole, type ApiPermission, validateAPIToken } from './authUtils';
 import { db } from './init';
+import { canReachProject, checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
+import { type AiAuditEntry, aiRateLimiter, loadAiPolicy, writeAiAudit } from './ai-store';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 
 type ApiContext = {
     tenantId: string;
     tokenData: Record<string, any>;
-    // Workspace role of a signed-in caller; null for API tokens.
+    // Workspace role of the acting user (signed-in caller, or the creator of an API token).
     memberRole: string | null;
     actorId: string;
     actorLabel: string;
+    kind: PrincipalKind;
 };
+
+/** Set by authRequest on machine-client writes; handleProjectflowApiRoute writes the AI audit entry. */
+type PendingAudit = Omit<AiAuditEntry, 'status'>;
 
 const PROJECTS = 'projects';
 const TASKS = 'tasks';
@@ -349,8 +355,11 @@ const authRequest = async (
     }
 
     // Signed-in users (Firebase ID token) must be full members of the tenant.
-    let memberRole: string | null = null;
-    if (validation.tokenData.authType === 'firebase') {
+    const kind: PrincipalKind = validation.tokenData.authType === 'firebase'
+        ? 'firebase'
+        : (validation.tokenData.kind as PrincipalKind) || 'workspace-token';
+    let memberRole: string | null = validation.memberRole || null;
+    if (kind === 'firebase') {
         memberRole = await getWorkspaceMemberRole(tenantId, validation.tokenData.uid);
         if (!memberRole || memberRole === 'Guest') {
             forbidden(res, 'Not a member of this workspace.');
@@ -371,6 +380,66 @@ const authRequest = async (
         }
     }
 
+    // Machine clients: token scopes ∩ role ceiling ∩ workspace AI policy, rate limits, guest project reach.
+    if (kind !== 'firebase') {
+        const role = normalizeRole(memberRole);
+        if (!role) {
+            forbidden(res, 'Token creator is no longer a member of this workspace.');
+            return null;
+        }
+        const policy = await loadAiPolicy(tenantId);
+        const access = checkWorkspaceAccess({ role, policy, kind });
+        if (!access.ok) {
+            forbidden(res, access.error);
+            return null;
+        }
+        const tokenScopes = Array.isArray(validation.tokenData.permissions) ? validation.tokenData.permissions : [];
+        if (!effectiveScopes({ tokenScopes, role, policy, kind }).includes(permission)) {
+            forbidden(res, `Your workspace role (${role}) or the workspace AI policy does not allow ${permission}.`);
+            return null;
+        }
+
+        const credentialKey = validation.tokenId || getString(validation.tokenData.tokenPrefix) || tenantId;
+        const isWrite = !permission.endsWith(':read');
+        const retryAfter = aiRateLimiter.take(`req:${credentialKey}`, RATE_LIMITS.request) ||
+            (isWrite ? aiRateLimiter.take(`write:${credentialKey}`, RATE_LIMITS.write) : 0);
+        if (retryAfter > 0) {
+            res.set?.('Retry-After', String(retryAfter));
+            res.status(429).json({ success: false, error: `Rate limit exceeded. Retry in ${retryAfter}s.`, retryAfter });
+            return null;
+        }
+
+        if (role === 'Guest') {
+            const uid = getString(validation.tokenData.uid) || getString(validation.tokenData.createdBy);
+            if (projectId) {
+                const project = await projectRef(tenantId, projectId).get();
+                if (!canReachProject(role, uid, project.exists ? project.data() : null)) {
+                    notFound(res, 'Project not found.');
+                    return null;
+                }
+            } else if (!allowScopedList) {
+                forbidden(res, 'Guests can only work inside their projects.');
+                return null;
+            }
+        }
+
+        if (isWrite) {
+            const audit: PendingAudit = {
+                tenantId,
+                kind,
+                actorId: getString(validation.tokenData.uid) || getString(validation.tokenData.createdBy),
+                credentialId: validation.tokenId || null,
+                credentialLabel: getString(validation.tokenData.name) || getString(validation.tokenData.tokenPrefix) || null,
+                clientName: getString(validation.tokenData.clientName) || null,
+                permission,
+                method: String(req.method || ''),
+                path: String(req.path || ''),
+                projectId: projectId || null
+            };
+            req.__pfAudit = audit;
+        }
+    }
+
     const actorId =
         getString(validation.tokenData.createdBy) ||
         getString(validation.tokenData.uid) ||
@@ -386,7 +455,8 @@ const authRequest = async (
         tokenData: validation.tokenData,
         memberRole,
         actorId,
-        actorLabel
+        actorLabel,
+        kind
     };
 };
 
@@ -432,10 +502,15 @@ const listProjects = async (req: any, res: any) => {
         .orderBy('createdAt', 'desc')
         .get();
 
-    const projects = snapshot.docs.map((docSnap) => ({
-        id: docSnap.id,
-        ...serializeValue(docSnap.data())
-    }));
+    const guestUid = context.kind !== 'firebase' && context.memberRole === 'Guest'
+        ? getString(context.tokenData.uid) || getString(context.tokenData.createdBy)
+        : '';
+    const projects = snapshot.docs
+        .filter((docSnap) => !guestUid || canReachProject('Guest', guestUid, docSnap.data()))
+        .map((docSnap) => ({
+            id: docSnap.id,
+            ...serializeValue(docSnap.data())
+        }));
 
     res.status(200).json({ success: true, projects });
 };
@@ -2586,6 +2661,17 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
 ];
 
 export const handleProjectflowApiRoute = async (req: any, res: any, path: string): Promise<boolean> => {
+    const handled = await routeProjectflowApi(req, res, path);
+    const audit: PendingAudit | undefined = req.__pfAudit;
+    if (handled && audit) {
+        await writeAiAudit({ ...audit, status: Number(res.statusCode) || 200 }).catch((error) => {
+            console.error('AI audit write failed', { tenantId: audit.tenantId, message: error?.message });
+        });
+    }
+    return handled;
+};
+
+const routeProjectflowApi = async (req: any, res: any, path: string): Promise<boolean> => {
     try {
     const normalized = path.startsWith('/') ? path.slice(1) : path;
     const segments = normalized.split('/').filter(Boolean);

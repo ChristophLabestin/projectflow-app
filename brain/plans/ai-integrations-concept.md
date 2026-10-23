@@ -1,6 +1,6 @@
 # KI & Integrationen — Konzept (Multi-Tenant MCP für alle Nutzer)
 
-Stand: 2026-10-23 · Status: Entwurf, wartet auf Freigabe · Bestand: `brain/operations/projectflow-mcp-server.md`
+Stand: 2026-10-23 · Status: freigegeben (alle 7 Empfehlungen), Umsetzung läuft — Fortschritt in §9 · Bestand: `brain/operations/projectflow-mcp-server.md`
 
 ## 1. Bestand (Ist-Analyse)
 
@@ -145,8 +145,8 @@ Zusätzlich `…/mcp/readonly` als Read-only-Endpunkt (wie Linear/GitHub) für v
 
 | Paket | Inhalt | Aufwand |
 |---|---|---|
-| P0 Sofort-Fixes | S1 (blog-Rechte), S3 (Tenant-Scan raus), S2 (Ersteller-Mitgliedschaft prüfen), Annotations S5 | S |
-| P1 Principal & Policy | `resolveAiPrincipal` (Scopes ∩ Rolle ∩ Policy, Gast-Projektfilter) für MCP+REST, Workspace-AI-Policy, Rate-Limit, Audit-Collection | M |
+| ✅ P0 Sofort-Fixes | S1 (blog-Rechte, Web-Session `7809af7b`), S3 (Tenant-Scans raus), S2 (Ersteller-Mitgliedschaft prüfen), Annotations S5 — `7a5ef35d`, main | S |
+| ✅ P1 Principal & Policy | `ai-access.ts` (Scopes ∩ Rolle ∩ Policy, Gast-Projektfilter) in `authRequest` + `/mcp`, Policy `ai_config/policy` + Callables, Rate-Limit (In-Instanz), Audit `ai_audit` (TTL 180 T), `lastUsedAt` gedrosselt. Tages-Quote je Tenant → P3 | M |
 | P2 OAuth-AS | Metadata, CIMD+DCR, authorize/token/revoke, PKCE, Refresh-Rotation, Firestore-Storage, TTL | L |
 | P3 MCP v2 | SDK v1→v2 (Spec 2026-07-28 + Fallback), Gen2-Function, Domain `mcp.getprojectflow.com`, neue Tools (search, my_today), outputSchema, Legacy-Alias | M |
 | P4 Web-UI | Consent-Screen, „KI & Integrationen“ (Client-Kacheln, Snippets, Deeplinks), Verbundene Apps, PATs, Policy, Audit-Ansicht, i18n de/en | L |

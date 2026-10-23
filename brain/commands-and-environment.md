@@ -35,7 +35,7 @@ Use this to QA signed-in screens without touching production.
 
 **One command, already signed in:** `npm --prefix web run dev:e2e` (launch config `web-e2e`) runs `scripts/dev-e2e.sh`: builds functions, starts Auth/Firestore/Storage/Functions emulators on their own port block (9631/8631/9632/5631, override via `AUTH_PORT` etc.) so it does not collide with other local Firebase projects, seeds the demo workspace, adds `outsider@projectflow.test` / `pf-outsider-e2e` (no workspace, for permission tests) and starts Vite auto-signed-in as the demo owner (`E2E_LOGIN=outsider` to sign in as the outsider, `E2E_FUNCTIONS=0` to skip functions). Auto-login only exists in dev builds with emulators.
 
-**Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
+**Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure), `npm run test:ai-access` (AI access model on `/api` + `/mcp` against own emulators, ports 9951/8951/5951: creator membership, role ceiling, AI policy, audit, annotations). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
 
 
 ## Functions Commands

@@ -249,6 +249,15 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // AI integrations: audit log and workspace AI policy (Admin SDK / callables only).
+      match /ai_audit/{entryId} {
+        allow read, write: if false;
+      }
+
+      match /ai_config/{configId} {
+        allow read, write: if false;
+      }
+
       match /files/{fileId} {
         allow read: if canAccessTenant(tenantId);
         allow write: if false;
@@ -331,7 +340,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -345,6 +354,8 @@ service cloud.firestore {
               'projects',
               'users',
               'api_tokens',
+              'ai_audit',
+              'ai_config',
               'files',
               'file_upload_drafts',
               'notifications',
