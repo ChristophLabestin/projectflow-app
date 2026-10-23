@@ -109,7 +109,8 @@ jobs:
             unset CSC_LINK CSC_KEY_PASSWORD
             export CSC_KEYCHAIN="$KEYCHAIN"
             export CSC_NAME="Christoph Labestin (48BM67TY9G)"
-            EXTRA+=(-c.extraMetadata.pfSigned=true)
+            # Sign the DMG itself too (electron-builder only signs the .app by default).
+            EXTRA+=(-c.extraMetadata.pfSigned=true -c.dmg.sign=true)
             if [[ -n "$APPLE_API_KEY_CONTENT" ]]; then
               echo "$APPLE_API_KEY_CONTENT" > "$RUNNER_TEMP/apple-api-key.p8"
               export APPLE_API_KEY="$RUNNER_TEMP/apple-api-key.p8"
@@ -120,6 +121,15 @@ jobs:
             echo "::warning::macOS build is unsigned (no MAC_CSC_LINK secret)."
           fi
           npx electron-builder --mac --publish always -c.publish.releaseType=draft "${EXTRA[@]}"
+          if [[ -n "${APPLE_API_KEY:-}" ]]; then
+            # electron-builder notarizes the app inside, not the DMG: notarize + staple the DMG so it also
+            # opens offline without a Gatekeeper lookup, then replace the uploaded file. The updater uses the
+            # zip (latest-mac.yml), so the changed DMG checksum does not matter.
+            xcrun notarytool submit release/ProjectFlow-mac.dmg --key "$APPLE_API_KEY" \
+              --key-id "$APPLE_API_KEY_ID" --issuer "$APPLE_API_ISSUER" --wait
+            xcrun stapler staple release/ProjectFlow-mac.dmg
+            gh release upload "v${{ needs.prepare.outputs.version }}" release/ProjectFlow-mac.dmg --clobber --repo "${{ github.repository }}"
+          fi
       - name: Package and upload (Windows)
         if: runner.os == 'Windows'
         env:
