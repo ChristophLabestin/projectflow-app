@@ -51,8 +51,9 @@ Warnung im Run.
 + `task.completed`/`task.reopened`; „zugewiesen“ = `task.assigned` (`meta.assigneeIds`);
 außerdem `task.created`, `comment.created`, `subtask.completed`, `project.member_added`,
 `file.uploaded` (Files). Flows schreibt nur `automation.ran`/`automation.failed`.
-**Offene Vertragslücke:** `writeVia` trägt bisher nur `id`/`name` → angefragt bei „Aktivität &
-Insights“: optional `runId` + `depth`, durchgereicht als `actor.automationRunId/automationDepth`.
+**Kettenkontext:** `writeVia` trägt `runId` + `depth` (main 894164d1); jedes Event hat
+`cause {kind, id, automationRunId?, depth}` (`causeOf(actor)`), Flows liest Tiefe und Herkunft
+daraus. `meta.path` (optional) liefert die App-Route für Links in Benachrichtigungen.
 
 **Ablauf:** `onAutomationEvent` (onCreate auf `activity/{eventId}`) → lädt aktive Flows des
 Tenants mit passendem `trigger.type` (Query `enabled == true && trigger.type == X`, Projekt-Flows
@@ -166,5 +167,4 @@ Flow-Versionierung; Tarif-gebundene Kontingente; Initiativen/Meilensteine als En
 5. **Verzögerungen in 15-min-Raster** (Scheduler statt Cloud Tasks) — genügt für PM-Fälle.
 6. **Flow-Ketten standardmäßig aus**, pro Flow aktivierbar, Tiefe max. 3.
 7. **Route `/flows`** neu belegen (alte Ideen-Route ist entfernt).
-8. **Abhängigkeit:** nur noch `runId`/`depth` in `writeVia` (siehe §3); bis zur Antwort baut
-   Paket 1 es selbst additiv in `activity-logic.ts` ein, falls „Aktivität & Insights“ zustimmt.
+8. **Abhängigkeit:** erledigt — `cause` mit Tiefe ist im Vertrag (main 894164d1).
