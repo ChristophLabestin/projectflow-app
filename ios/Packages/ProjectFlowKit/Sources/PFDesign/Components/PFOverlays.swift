@@ -176,8 +176,9 @@ struct PFSheetContent: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let footer {
                 footer.view
-                    // Side region: close sits on the footer's row, right of the primary action.
-                    // The row keeps the same margin to the sheet's left, right and bottom edge.
+                    // Side region: close sits on the footer's row, right of the primary action, and the action
+                    // widens into the region so action → close and close → sheet edge are both `PFSpace.page`.
+                    .padding(.trailing, -footerWidening)
                     .overlay(alignment: .trailing) {
                         if sideRegion > 0, sheet.dismissable {
                             closeButton.offset(x: sideRegion - PFSpace.page)
@@ -239,6 +240,12 @@ struct PFSheetContent: View {
     }
 
     private var isFitted: Bool { sheet.detents == [.fit] }
+
+    /// How far the footer action reaches into the side region (to `PFSpace.page` before the 44 pt close button).
+    private var footerWidening: CGFloat {
+        guard sideRegion > 0, sheet.dismissable else { return 0 }
+        return max(0, sideRegion - 44 - PFSpace.page)
+    }
 
     /// Footer distance to the sheet's bottom edge: reaches into the bottom safe area so the action row sits
     /// `PFSpace.page` above the edge, the same as its side margins.
