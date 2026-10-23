@@ -26,6 +26,8 @@ public final class SessionStore {
     public private(set) var workspaces: [WorkspaceSummary] = []
     public private(set) var activeWorkspaceId: String?
     public private(set) var state: State = .idle
+    /// `users/{uid}/private/onboarding.welcomePending`: the first-sign-in onboarding is still open (shared with web).
+    public private(set) var welcomePending = false
     private let listeners = ListenerBag()
     private let defaults: UserDefaults
 
@@ -41,6 +43,7 @@ public final class SessionStore {
         guard state != .loading else { return }
         state = .loading
         listenProfile()
+        listenOnboarding()
         do {
             try await ensureUserProfile()
             try await loadWorkspaces(defaultWorkspaceName: defaultWorkspaceName)
@@ -74,6 +77,26 @@ public final class SessionStore {
         listeners.set("profile", registration)
     }
 
+    private static func onboardingDoc(_ uid: String) -> DocumentReference {
+        PFPath.user(uid).collection("private").document("onboarding")
+    }
+
+    private func listenOnboarding() {
+        let registration = Self.onboardingDoc(uid).addSnapshotListener { [weak self] snapshot, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.welcomePending = (snapshot?.data()?["welcomePending"] as? Bool) == true
+            }
+        }
+        listeners.set("onboarding", registration)
+    }
+
+    /// Ends the onboarding for good on every platform (web `update({ welcomePending: false })`).
+    public func finishWelcome() async {
+        welcomePending = false
+        try? await Self.onboardingDoc(uid).setData(["welcomePending": false, "updatedAt": FieldValue.serverTimestamp()], merge: true)
+    }
+
     /// Same as web `ensureTenantAndUser`: make sure `users/{uid}` exists with basic profile fields.
     private func ensureUserProfile() async throws {
         guard let user = Auth.auth().currentUser else { throw PFDataError.notSignedIn }
@@ -95,6 +118,8 @@ public final class SessionStore {
         var summaries = try await fetchWorkspaces()
         if let defaultWorkspaceName, !summaries.contains(where: { $0.role == .owner }) {
             _ = try await createWorkspace(name: defaultWorkspaceName)
+            try? await Self.onboardingDoc(uid).setData(
+                ["welcomePending": true, "checklistDismissed": false, "updatedAt": FieldValue.serverTimestamp()], merge: true)
             summaries = try await fetchWorkspaces()
         }
         workspaces = summaries

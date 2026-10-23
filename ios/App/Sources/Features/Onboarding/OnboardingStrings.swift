@@ -1,6 +1,21 @@
 // Copy for the Onboarding feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them.
 enum OnboardingStrings {
     static let de: [String: String] = [
+        // Welcome onboarding (first sign-in)
+        "welcome.step": "Schritt {n} von {total}", "welcome.back": "Zurück",
+        "welcome.name.title": "Wie heißt du?", "welcome.name.subtitle": "So sehen dich andere in Projekten und Kommentaren.",
+        "welcome.name.placeholder": "Dein Name",
+        "welcome.workspace.title": "Dein Arbeitsbereich", "welcome.workspace.subtitle": "Gib ihm einen Namen und sag, wie du arbeitest.",
+        "welcome.workspace.name": "Name des Arbeitsbereichs",
+        "welcome.mode.solo": "Allein", "welcome.mode.team": "Mit Team",
+        "welcome.mode.soloHint": "Eigene Arbeit planen und im Blick behalten.",
+        "welcome.mode.teamHint": "Leute einladen und Projekte teilen.",
+        "welcome.invite.label": "Kolleg:innen einladen (optional)", "welcome.invite.placeholder": "anna@firma.de, ben@firma.de",
+        "welcome.invite.hint": "Sie bekommen eine E-Mail und treten als Mitglieder bei. Weitere Leute lädst du später ein.",
+        "welcome.invite.invalid": "Diese Adressen sind ungültig: {emails}",
+        "welcome.invite.send": "Einladungen senden & weiter", "welcome.error": "Das hat nicht geklappt. Prüfe die Verbindung und versuche es noch einmal.",
+        "welcome.notify.title": "Bleib auf dem Laufenden", "welcome.notify.subtitle": "Mitteilungen sagen dir Bescheid, wenn dir jemand eine Aufgabe zuweist oder dich erwähnt. Du kannst sie jederzeit in den Einstellungen ändern.",
+        "welcome.notify.allow": "Mitteilungen erlauben", "welcome.notify.skip": "Ohne Mitteilungen starten",
         "onboarding.defaultWorkspace": "Mein Arbeitsbereich",
         "onboarding.welcome": "Willkommen bei ProjectFlow",
         "onboarding.skip": "Überspringen", "onboarding.next": "Weiter", "onboarding.start": "Los geht's",
@@ -32,6 +47,21 @@ enum OnboardingStrings {
         "invite.error.message": "Prüfe deine Verbindung und versuche es erneut.",
     ]
     static let en: [String: String] = [
+        // Welcome onboarding (first sign-in)
+        "welcome.step": "Step {n} of {total}", "welcome.back": "Back",
+        "welcome.name.title": "What's your name?", "welcome.name.subtitle": "This is how others see you in projects and comments.",
+        "welcome.name.placeholder": "Your name",
+        "welcome.workspace.title": "Your workspace", "welcome.workspace.subtitle": "Give it a name and tell us how you work.",
+        "welcome.workspace.name": "Workspace name",
+        "welcome.mode.solo": "Solo", "welcome.mode.team": "With a team",
+        "welcome.mode.soloHint": "Plan your own work and keep it in view.",
+        "welcome.mode.teamHint": "Invite people and share projects.",
+        "welcome.invite.label": "Invite colleagues (optional)", "welcome.invite.placeholder": "anna@company.com, ben@company.com",
+        "welcome.invite.hint": "They get an email and join as members. You can invite more people later.",
+        "welcome.invite.invalid": "These addresses are invalid: {emails}",
+        "welcome.invite.send": "Send invitations & continue", "welcome.error": "That didn't work. Check your connection and try again.",
+        "welcome.notify.title": "Stay in the loop", "welcome.notify.subtitle": "Notifications tell you when someone assigns you a task or mentions you. You can change this anytime in Settings.",
+        "welcome.notify.allow": "Allow notifications", "welcome.notify.skip": "Start without notifications",
         "onboarding.defaultWorkspace": "My workspace",
         "onboarding.welcome": "Welcome to ProjectFlow",
         "onboarding.skip": "Skip", "onboarding.next": "Next", "onboarding.start": "Let's go",

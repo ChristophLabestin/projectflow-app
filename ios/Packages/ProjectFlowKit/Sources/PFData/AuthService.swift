@@ -58,11 +58,9 @@ public final class AuthService {
         }
     }
 
-    public func signUp(name: String, email: String, password: String) async throws {
+    /// The display name is asked for in the onboarding afterwards.
+    public func signUp(email: String, password: String) async throws {
         let result = try await Auth.auth().createUser(withEmail: email.trimmingCharacters(in: .whitespaces), password: password)
-        let change = result.user.createProfileChangeRequest()
-        change.displayName = name.trimmingCharacters(in: .whitespaces)
-        try await change.commitChanges()
         try? await result.user.sendEmailVerification()
         apply(Auth.auth().currentUser)
     }

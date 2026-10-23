@@ -93,6 +93,7 @@
 		6D3FAB63DBE271F27037472F /* TodayWidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BBB89863690CB4FCD76AAD2 /* TodayWidgetViews.swift */; };
 		6D72A5BDA7BD2D53AB73172D /* FirestoreWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44F310BCFDA8B6E1D0701374 /* FirestoreWriter.swift */; };
 		6DFDD2DDBC0B884668280057 /* ProjectTaskIndex.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7BE01BF918DB1F016063093 /* ProjectTaskIndex.swift */; };
+		713988753A8FA4D3F2AC5D4E /* WelcomeOnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC8B43F37E72C6DE915F853F /* WelcomeOnboardingView.swift */; };
 		73DF1BA54E5111935185F7D6 /* AccountComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C441DA94F4A46BE7E15F8A2 /* AccountComponents.swift */; };
 		741A0F2D02E7CFFF406D7E82 /* ProjectsCockpitStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3627E3867B172BAB75D98D3F /* ProjectsCockpitStrings.swift */; };
 		750449F9A8FBC6A547523B0D /* MediaUpload.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC953F44C1AEBBF747F1FB3 /* MediaUpload.swift */; };
@@ -340,6 +341,7 @@
 		A6F21AD5892131A8CD9F3610 /* OnboardingIntro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingIntro.swift; sourceTree = "<group>"; };
 		AB7AE0A7A730052421068FA4 /* WidgetSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSupport.swift; sourceTree = "<group>"; };
 		ABC953F44C1AEBBF747F1FB3 /* MediaUpload.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaUpload.swift; sourceTree = "<group>"; };
+		AC8B43F37E72C6DE915F853F /* WelcomeOnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboardingView.swift; sourceTree = "<group>"; };
 		ADA588D640F94EA3DE37F4AD /* WorkItemActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkItemActions.swift; sourceTree = "<group>"; };
 		B00603851C276F2A7710DE3A /* AccountPages.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountPages.swift; sourceTree = "<group>"; };
 		B295237A1222F8FBDEEE0125 /* PlanningLogic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanningLogic.swift; sourceTree = "<group>"; };
@@ -506,6 +508,7 @@
 				3D4A9CFEB27D4BFBBF394733 /* InviteFlow.swift */,
 				A6F21AD5892131A8CD9F3610 /* OnboardingIntro.swift */,
 				9F2C55D6DEF452B4EC3875A3 /* OnboardingStrings.swift */,
+				AC8B43F37E72C6DE915F853F /* WelcomeOnboardingView.swift */,
 			);
 			path = Onboarding;
 			sourceTree = "<group>";
@@ -1235,6 +1238,7 @@
 				A20B8F9A90746CDD44E391E3 /* TodaySections.swift in Sources */,
 				640DF259E028900127483AF0 /* TodayStrings.swift in Sources */,
 				C82C85355E109F5886D12BF8 /* TodayWidgetViews.swift in Sources */,
+				713988753A8FA4D3F2AC5D4E /* WelcomeOnboardingView.swift in Sources */,
 				36A9DF2710A8756523E7772A /* WidgetIntents.swift in Sources */,
 				FEAB0D02936B433E8AA959CD /* WidgetSupport.swift in Sources */,
 				E50BBD6AA0F55E9CB8F6800E /* WorkFilterSheet.swift in Sources */,

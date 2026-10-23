@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, updateProfile, type AuthProvider, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, OAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, type AuthProvider, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { sendVerificationEmail } from '../services/domain/emailVerification';
 import { auth } from '../services/firebase';
-import { refreshCurrentUserProfile } from '../services/internal/workspaceDataCore';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
@@ -22,7 +21,6 @@ export const Login = () => {
     const [isRegister, setIsRegister] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [name, setName] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [mfaResolver, setMfaResolver] = useState<any>(null);
@@ -114,13 +112,9 @@ export const Login = () => {
 
         try {
             if (isRegister) {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await createUserWithEmailAndPassword(auth, email, password);
                 // Confirmation mail right away; invitations require a verified address.
                 void sendVerificationEmail(redirectUrl.startsWith('/') ? redirectUrl : '/').catch((verifyError) => console.warn('Could not send verification email', verifyError));
-                if (name) {
-                    await updateProfile(userCredential.user, { displayName: name });
-                    await refreshCurrentUserProfile();
-                }
             } else {
                 await signInWithEmailAndPassword(auth, email.trim(), password);
             }
@@ -397,14 +391,6 @@ export const Login = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="login-page__form">
-                                {isRegister && (
-                                    <TextInput
-                                        label={t('login.label.fullName')}
-                                        value={name}
-                                        onChange={(e) => setName(e.target.value)}
-                                        placeholder={t('login.placeholder.fullName')}
-                                    />
-                                )}
                                 <TextInput
                                     label={t('login.label.email')}
                                     type="email"

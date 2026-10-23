@@ -318,6 +318,10 @@ public struct TeamActions {
         ])
     }
 
+    public func renameWorkspace(_ name: String) async throws {
+        try await tenant.updateData(["name": name.trimmingCharacters(in: .whitespaces), "updatedAt": FieldValue.serverTimestamp()])
+    }
+
     public func transferOwnership(to newOwnerId: String) async throws {
         _ = try await PFCallables.call("transferWorkspaceOwnership", ["tenantId": tenantId, "newOwnerId": newOwnerId])
     }

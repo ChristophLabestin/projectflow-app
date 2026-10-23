@@ -53,6 +53,8 @@ struct OnboardingHost: ViewModifier {
         let forced = ProcessInfo.processInfo.arguments.contains("-pfShowIntro")
         guard forced || !OnboardingState.hasSeenIntro(uid: uid) else { return }
         guard model.workspace != nil, model.presenter.sheets.isEmpty else { return }
+        // New accounts get the full-screen welcome onboarding instead (it marks the intro as seen).
+        guard !model.showsWelcome, model.session?.welcomePending != true else { return }
         model.presenter.present(detents: [.large], onDismiss: { OnboardingState.markIntroSeen(uid: uid) }) {
             OnboardingIntroSheet()
         }

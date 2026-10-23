@@ -7,7 +7,6 @@ import PFDesign
 struct AuthFlowView: View {
     @Environment(AppModel.self) private var model
     @State private var mode: Mode = .signIn
-    @State private var name = ""
     @State private var email = ""
     @State private var password = ""
     @State private var isBusy = false
@@ -173,11 +172,6 @@ struct AuthFlowView: View {
             }
 
             VStack(spacing: PFSpace.s) {
-                if mode == .register {
-                    PFTextField(L10n.t("auth.name"), text: $name, systemImage: "person")
-                        .textContentType(.name)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
                 PFTextField(L10n.t("auth.email"), text: $email, systemImage: "envelope", submitLabel: .next)
                     .textContentType(.username)
                     .keyboardType(.emailAddress)
@@ -190,7 +184,7 @@ struct AuthFlowView: View {
 
             PFButton(mode == .signIn ? L10n.t("auth.signIn") : L10n.t("auth.createAccount"),
                      systemImage: "arrow.right", size: .large, fullWidth: true) { submit() }
-                .disabled(isBusy || email.isEmpty || password.count < 6 || (mode == .register && name.isEmpty))
+                .disabled(isBusy || email.isEmpty || password.count < 6)
                 .overlay(alignment: .trailing) { if isBusy { ProgressSpinner().padding(.trailing, 20) } }
 
             if mode == .signIn {
@@ -217,7 +211,7 @@ struct AuthFlowView: View {
                 if mode == .signIn {
                     try await model.auth.signIn(email: email, password: password)
                 } else {
-                    try await model.auth.signUp(name: name, email: email, password: password)
+                    try await model.auth.signUp(email: email, password: password)
                 }
             }
         }

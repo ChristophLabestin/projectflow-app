@@ -38,6 +38,11 @@ struct RootView: View {
                         // Strings re-render through the observable LanguageStore; no rebuild, so navigation is kept.
                         MainShell()
                             .transition(.opacity.combined(with: .scale(scale: 1.02)))
+                        if model.showsWelcome {
+                            WelcomeOnboardingView()
+                                .transition(.opacity)
+                                .zIndex(1)
+                        }
                     }
                 }
             }

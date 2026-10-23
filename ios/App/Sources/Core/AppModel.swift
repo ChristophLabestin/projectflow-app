@@ -87,6 +87,18 @@ final class AppModel {
     // MARK: Convenience
 
     var uid: String? { auth.uid }
+
+    /// Set when the user finishes (or leaves) the onboarding in this run, before the shared flag round-trips.
+    var welcomeDismissed = false
+    /// First-sign-in onboarding (`users/{uid}/private/onboarding.welcomePending`, shared with web).
+    /// QA (DEBUG): `-pfShowOnboarding` forces it for the signed-in user.
+    var showsWelcome: Bool {
+        guard !welcomeDismissed, session?.state == .ready, workspace != nil, router.pendingInvite == nil else { return false }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-pfShowOnboarding") { return true }
+        #endif
+        return session?.welcomePending == true
+    }
     var profile: UserProfile? { session?.profile }
 
     var actions: WorkActions? {
