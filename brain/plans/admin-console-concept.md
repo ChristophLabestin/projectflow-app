@@ -1,0 +1,82 @@
+# Admin-Konsole — Konzept (2026-10-23)
+
+Eigenständige Plattform-Admin-Konsole für ProjectFlow. Ersetzt `/admin*`, `/insights/onboarding` und
+den Plattform-Blog-Zugang in der Web-App. Gleiche Firebase-Datenbank und Auth (`projectflow-labestin`),
+Zugang ausschließlich für den Plattform-Admin.
+
+## Architektur
+
+- `admin/`: Vite + React 19 + TS + SCSS, eigenes Bundle, Dev-Port 3141, eigene Hosting-Site
+  `projectflow-admin` (`admin/firebase.json`, Muster wie `landing/`), später `admin.getprojectflow.com`.
+- Design-Basis wird geteilt, nicht kopiert: Sass-`loadPaths` auf `web/styles` (`_tokens.scss`), Vite-Aliase
+  `@pf/brand` → `web/components/brand`, `@pf/motion` → `web/components/motion` (`resolve.dedupe` für React).
+- Header: strikte CSP (erzwungen, nicht Report-Only), `X-Robots-Tag: noindex, nofollow`, `robots.txt` Disallow,
+  `X-Frame-Options: DENY`, kein Google-Fonts-CDN (Plus Jakarta Sans self-hosted, Icons `lucide-react`).
+- Backend: **ein** Gateway-Callable `adminApi` (`functions/src/admin-console/`). Er erwartet
+  `{ action, params, sessionId }`, führt Gate → Handler → Audit aus. Die Handler sind reine Module je Bereich
+  (`crashes`, `legal`, `onboarding`, `blog`, `overview`, `users`, `ai`, `system`, `audit`).
+  Ein Eintrittspunkt bedeutet: eine Prüfkette, ein Audit, ein Deploy-Ziel.
+
+## Auth-Kette (jede Stufe serverseitig)
+
+1. Firebase-Login in der Konsole: Google oder E-Mail/Passwort. Passkeys der App sind an den RP
+   `app.getprojectflow.com` gebunden und gelten auf einer anderen Subdomain nicht, deshalb gibt es in der Konsole keinen Passkey-Login.
+2. Zweiter Faktor ist Pflicht: Das ID-Token muss `firebase.sign_in_second_factor` (TOTP) tragen. Ohne
+   eingerichteten Faktor zeigt die Konsole nur die TOTP-Einrichtung, aber keine Daten.
+3. Claim `platformAdmin === true`.
+4. Serverseitige Allowlist `platform_admins/{uid}` (`email`, `active`), E-Mail muss zum Token passen. Gepflegt
+   per `functions/scripts/grant-platform-admin.mjs`. Rules: kein Client-Zugriff.
+5. Token-Widerruf: `verifyIdToken(raw, checkRevoked=true)` bei jedem Aufruf.
+6. Admin-Session `admin_sessions/{uid}`: `session.start` braucht einen frischen Login (`auth_time` ≤ 10 min),
+   Leerlauf-Ablauf nach 30 min serverseitig, absolut nach 12 h. Der Client meldet sich nach 15 min Inaktivität ab.
+7. Audit `admin_audit/{id}`: `{ at, uid, email, action, target, summary, ok, error, ip, userAgent, sessionId }`.
+   Protokolliert werden alle Mutationen, Session-Start und -Ende, abgelehnte Aufrufe und sensible Reads
+   (Nutzerdetail, Export).
+- Rules: `platform_admins`, `admin_sessions`, `admin_audit`, `admin_config` sind dicht. `crashIssues` und
+  `legal_documents/*/drafts` sind für Clients nicht mehr lesbar, nur noch über `adminApi`.
+- Emulator: Die Auth-Emulation kennt kein TOTP. Nur bei `FUNCTIONS_EMULATOR=true` zählt deshalb der
+  Custom-Token-Claim `adminMfaTest` als zweiter Faktor (für E2E-Tests).
+
+## Module (Priorität und Begründung)
+
+| P | Modul | Inhalt | Warum |
+|---|-------|--------|-------|
+| 1 | Shell | Login, Gate, Navigation, ⌘K-Palette, Tastatur (g+x), Dark Mode, Audit-Log | Sicherheit und Bedienbarkeit tragen alles andere |
+| 2 | Crashes | Gruppen, 14-Tage-Trend, Plattform-/Release-/Statusfilter, Stack, Events, betroffene Installationen | heute schon im Einsatz, höchster Betriebsnutzen |
+| 2 | Rechtsdokumente | Übersicht, Entwurf, Diff zur aktuellen Version, Veröffentlichen, Zustimmungsquote | Umzug aus der App, Pflicht |
+| 2 | Onboarding | bestehende Statistik schöner | Umzug |
+| 2 | Blog | Plattform-Blog `blog_posts`/`blog_categories`, Newsletter-Liste + CSV | Umzug aus dem Token-API-Weg |
+| 3 | Übersicht | KPIs (Nutzer, DAU/WAU/MAU, Signups, Workspaces, Projekte, Aufgaben, Crashes, KI), Sparklines, Zeitraum | Gesamtbild |
+| 3 | Nutzer & Workspaces | Suche, Detail-Drawer (Auth, Mitgliedschaften, Geräte, Zustimmungen, KI), Support-Aktionen | Support |
+| 4 | KI & MCP | Nutzung und Kosten je Workspace, Verbindungen, OAuth-Clients | Kostenkontrolle |
+| 4 | System | Ankündigungsbanner, Feature-Flags, Scheduled Functions, Versionen | Betrieb |
+
+Support-Aktionen (Bestätigungsdialog + Audit): Sessions widerrufen (`revokeRefreshTokens`), KI-Verbindung
+trennen, Workspace sperren/freigeben, Datenexport anstoßen. Kein Impersonieren ohne Rückfrage beim Orchestrator.
+
+**Nicht umgezogen:** Das Projekt-Modul „Marketing“ (`/project/:id/marketing`). Es ist ein Kunden-Feature
+(externe Blogs per Integration) und kein Plattform-Admin-Werkzeug. Es bleibt in der App.
+
+## UI
+
+Desktop-first, dicht (Linear/Vercel/Stripe): Sidebar mit Gruppen, Topbar mit Breadcrumb, Suche (⌘K),
+Session-Countdown, Theme-Schalter. Tabellen-Primitive `DataTable` (Sortieren, Filtern, Spaltenauswahl,
+CSV-Export, j/k-Navigation, Enter öffnet den Drawer). Detail-Drawer rechts, `Sparkline`/`AreaChart`/`BarList`
+als eigene SVG-Komponenten (keine Chart-Bibliothek, CSP-freundlich). Tokens aus `web/styles/_tokens.scss`,
+Akzent = Brand-Mark und Status-Dots.
+
+## Reihenfolge
+
+1. Gerüst, Auth-Kette, `adminApi` + Gate-Unit-Tests, Rules + Rules-Tests, Audit, Hosting-Site.
+2. Umzug von Crashes, Legal, Onboarding und Blog. Entfernen aus `web/`, `/admin*` und `/insights/onboarding` leiten auf die Konsole um.
+3. Übersicht, Nutzer & Workspaces.
+4. KI & MCP, System, Feinschliff.
+
+## Betrieb
+
+- Dev: `npm --prefix admin run dev` (Port 3141; `.env.local` mit `VITE_FIREBASE_*` wie `web/`).
+- Deploy: `npm --prefix admin run build && (cd admin && firebase deploy --only hosting --project projectflow-labestin)`.
+- Domain: In der Firebase-Konsole unter Hosting → Site `projectflow-admin` → „Benutzerdefinierte Domain“
+  `admin.getprojectflow.com` hinzufügen und die DNS-Einträge (TXT/A) beim Registrar setzen. Danach die Domain unter Auth →
+  Settings → „Autorisierte Domains“ eintragen und beim Google-OAuth-Client die Redirect-URI
+  `https://admin.getprojectflow.com/__/auth/handler` ergänzen.

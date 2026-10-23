@@ -277,6 +277,17 @@
       ],
       "port": 3111,
       "autoPort": false
+    },
+    {
+      "name": "admin-emulator",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev:emulator",
+        "--prefix",
+        "admin"
+      ],
+      "port": 3141
     }
   ]
 }

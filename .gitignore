@@ -184,3 +184,5 @@ ios/Packages/ProjectFlowKit/Package.resolved
 
 # Firebase hosting deploy cache (changes on every deploy)
 .firebase/
+.firebase.admin-e2e.json
+.firebase-admin-e2e.log

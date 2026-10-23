@@ -1,0 +1,47 @@
+
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    src: url('/fonts/pjs-latin.woff2') format('woff2');
+    font-weight: 200 800;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: 'Plus Jakarta Sans';
+    src: url('/fonts/pjs-latin-ext.woff2') format('woff2');
+    font-weight: 200 800;
+    font-display: swap;
+    unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, monospace;
+    --ac-sidebar: 232px;
+    --ac-topbar: 48px;
+    --ac-row: 34px;
+    --ac-drawer: 560px;
+    --ac-chart-1: var(--brand-blue);
+    --ac-chart-2: var(--brand-violet);
+    --ac-chart-3: var(--brand-green);
+    --ac-chart-4: var(--brand-amber);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body {
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--color-text-main);
+    background: var(--color-surface-bg);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: 'tnum' 1, 'cv11' 1;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: inherit; }
+code, pre, .mono { font-family: var(--font-mono); font-size: 12px; }
+::selection { background: rgba(var(--brand-blue-rgb), 0.25); }
+:focus-visible { outline: 2px solid rgba(var(--brand-blue-rgb), 0.6); outline-offset: 1px; }
+

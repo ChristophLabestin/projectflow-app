@@ -471,8 +471,8 @@ User profile changes are typically self-service. If you want admin control:
 - `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from native capture surfaces
 
 ### Legal documents and consent (platform level, 2026-10-23)
-- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts only with the `platformAdmin` custom claim. No client writes at all.
-- Drafting, publishing and the acceptance overview (`/admin/legal`, callables `saveLegalDraft`, `deleteLegalDraft`, `publishLegalDraft`, `getLegalAdminOverview`) require `platformAdmin` — not a tenant role.
+- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts are closed to clients (admin console via `adminApi` only). No client writes at all.
+- Drafting, publishing and the acceptance overview run in the admin console (`adminApi` actions `legal.*`, full admin gate below) — not a tenant role.
 - Every user can only record consent for themselves and only for the *current effective* version (`acceptLegalDocuments` / `declineLegalDocuments`); `legal_acceptances/{uid}` is readable by its owner only (no list), never writable by clients. Mail jobs/logs are Admin-SDK only.
 
 ---
@@ -561,3 +561,14 @@ Decision: Store system roles explicitly except Member.
   - in tenant contexts: `tenant.media.*`
   - in project contexts: `project.media.*`
   - plus AI feature permissions (`ai.image.*`) and entitlements
+
+## Platform admin (admin console `admin/`)
+
+Not a tenant role. One gateway callable `adminApi` (`functions/src/admin-console/`) checks on every call:
+claim `platformAdmin === true` → allowlist doc `platform_admins/{uid}` (`active`, email = token email) →
+second factor (`firebase.sign_in_second_factor`, TOTP; emulator only: claim `adminMfaTest`) → token not revoked →
+admin session `admin_sessions/{uid}` (start needs a login ≤ 10 min old; 30 min idle, 12 h max). Every mutation,
+session start/end, sensitive read and refusal of an admin is written to `admin_audit` (2-year TTL).
+Rules: `platform_admins`, `admin_sessions`, `admin_audit`, `crashIssues/**`, `legal_documents/*/drafts` are closed to
+all clients. Grant/revoke: `node functions/scripts/grant-platform-admin.mjs <email> [--revoke]` (claim + allowlist).
+

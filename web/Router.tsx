@@ -39,6 +39,7 @@ import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingBu
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
+import { AdminConsoleRedirect } from './screens/AdminConsoleRedirect';
 import { LegalConsentGate } from './components/legal/LegalConsentGate';
 import { DownloadPage } from './screens/DownloadPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
@@ -46,10 +47,6 @@ import { useAuth } from './context/AuthContext';
 import { useUIState } from './context/UIContext';
 
 // Style guide is a dev-only tool; lazy-loaded so it never ships in the main bundle.
-const AdminLayout = React.lazy(() => import('./screens/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })));
-const CrashReports = React.lazy(() => import('./screens/admin/CrashReports').then((module) => ({ default: module.CrashReports })));
-const CrashIssueDetail = React.lazy(() => import('./screens/admin/CrashIssueDetail').then((module) => ({ default: module.CrashIssueDetail })));
-const LegalAdmin = React.lazy(() => import('./screens/LegalAdmin').then((module) => ({ default: module.LegalAdmin })));
 const StyleGuidePage = React.lazy(() => import('./screens/StyleGuidePage').then((module) => ({ default: module.StyleGuidePage })));
 
 /** Old project sub-routes now live inside the overview (query params pick the view). */
@@ -77,7 +74,6 @@ const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').the
 const WorkspaceInsights = React.lazy(() => import('./screens/WorkspaceInsights').then((module) => ({ default: module.WorkspaceInsights })));
 const WorkspaceActivity = React.lazy(() => import('./screens/WorkspaceActivity').then((module) => ({ default: module.WorkspaceActivity })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
-const OnboardingInsights = React.lazy(() => import('./screens/OnboardingInsights').then((module) => ({ default: module.OnboardingInsights })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
 const MarketingSettings = React.lazy(() => import('./screens/marketing/MarketingSettings').then((module) => ({ default: module.MarketingSettings })));
 const BlogList = React.lazy(() => import('./screens/marketing/BlogList').then((module) => ({ default: module.BlogList })));
@@ -231,6 +227,9 @@ export const AppRouter = () => {
                     <Route path="/register" element={<Login />} />
                     <Route path="/auth/action" element={<AuthAction />} />
                     <Route path="/legal/:type" element={<LegalPage />} />
+                    {/* Platform admin moved to the admin console (admin/). */}
+                    <Route path="/admin/*" element={<AdminConsoleRedirect />} />
+                    <Route path="/insights/onboarding" element={<AdminConsoleRedirect />} />
                     <Route path="/download" element={<DownloadPage />} />
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
@@ -262,13 +261,6 @@ export const AppRouter = () => {
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/insights" element={withRouteSuspense(<WorkspaceInsights />)} />
-                        <Route path="/insights/onboarding" element={withRouteSuspense(<OnboardingInsights />)} />
-                        <Route path="/admin" element={withRouteSuspense(<AdminLayout />)}>
-                            <Route index element={<Navigate to="/admin/crashes" replace />} />
-                            <Route path="crashes" element={withRouteSuspense(<CrashReports />)} />
-                            <Route path="crashes/:issueId" element={withRouteSuspense(<CrashIssueDetail />)} />
-                            <Route path="legal" element={withRouteSuspense(<LegalAdmin />)} />
-                        </Route>
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
