@@ -10,6 +10,12 @@
 
 ## Recent Sessions
 
+- Date: 2026-10-22/23
+  - Goal: implement the iOS concept end to end.
+  - Actions: contracts doc; backend + web work packages (merged, deployed: 15 functions, rules, indexes, hosting; pushed to main); iOS foundation (XcodeGen project, ProjectFlowKit, shell, auth, push) plus four parallel feature packages merged; owner changes applied: custom nav bar without Liquid Glass, one simulator at a time, native SwiftUI sheets/page navigation.
+  - Validation: functions build, 48 unit + 28 emulator trigger + 49 rules tests; web build, 167 tests, theme lint; iOS build of all targets, 24 domain tests (golden fixtures), swiftlint 0 errors; simulator walkthrough against the emulator.
+  - Next: production backfill decision, Apple/Firebase console setup, device tests, TestFlight.
+
 - Date: 2026-10-22
   - Goal: delete the old iOS app completely and conceive a new iOS app from scratch, based on the current web app.
   - Actions: removed `swift/` and the iOS/mobile reference docs; cleaned references in CLAUDE.md, AGENTS.md, README.md and Brain files; made the provisioning check skip iOS source checks; analysed the web app (feature/IA inventory, design tokens, live walkthrough in the emulator via `scripts/dev-e2e.sh`); wrote `plans/ios-app-concept.md`; ran an independent critical review agent and revised the concept.

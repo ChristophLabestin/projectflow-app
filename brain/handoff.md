@@ -4,6 +4,8 @@ Last updated: 2026-06-04
 
 ## Where Things Stand
 
+**2026-10-23 update — iOS app built.** `ios/` holds the complete new app (see `ios/README.md`, concept `brain/plans/ios-app-concept.md`, contracts `brain/plans/ios-implementation-contracts.md`). Verified in the simulator against `scripts/dev-e2e.sh`: login, Today, Work (list/week, drag to plan), task detail, native push/swipe-back, native sheets, custom nav bar. Production already runs the iOS backend (triggers, reminders, nudges, Live Activity push, passkey native origin, AASA applinks) and the web follow-ups. Next: owner decisions/actions listed in current-focus, then device testing and TestFlight.
+
 **2026-10-22 update — iOS reset.** The previous native app under `swift/` was removed completely (1,454 tracked files incl. committed build output) together with its Brain docs. No iOS project exists in the repo now; `scripts/check-retention-provisioning.sh` skips iOS source-entitlement checks until a new project exists. `web/public/.well-known/apple-app-site-association` and the APNs payload in `functions/src/notifications.ts` were kept on purpose (reusable by the new app). The new app is conceived from scratch in [plans/ios-app-concept.md](./plans/ios-app-concept.md); nothing is implemented yet.
 
 **2026-09-26 update.** ProjectFlow now targets the Firebase project `projectflow-labestin`. Tenancy is multi-workspace:
