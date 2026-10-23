@@ -128,6 +128,108 @@ const mcp = (t: SiteCopy, lang: Lang) => {
 </section>`;
 };
 
+/* ------------------------------------------------------------------ audience, apps, pricing */
+
+const audience = (t: SiteCopy) => `
+<section class="section audience" id="teams" aria-labelledby="teams-title">
+    <div class="container">
+        <header class="sec-head" data-reveal>
+            <p class="eyebrow">${esc(t.audience.eyebrow)}</p>
+            <h2 class="sec-title" id="teams-title">${headline(t.audience.title)}</h2>
+        </header>
+        <ul class="audience__grid">
+            ${t.audience.items.map((it) => `
+            <li class="audience__item" data-reveal data-spot>
+                <span class="more__icon">${icon(it.icon as IconName)}</span>
+                <h3>${esc(it.title)}</h3>
+                <p>${esc(it.text)}</p>
+                <ul class="ticks">${it.points.map((p) => `<li>${icon('check')}${esc(p)}</li>`).join('')}</ul>
+            </li>`).join('')}
+        </ul>
+    </div>
+</section>`;
+
+const apps = (t: SiteCopy) => {
+    const a = t.apps;
+    return `
+<section class="section apps" id="apps" aria-labelledby="apps-title">
+    <div class="container">
+        <header class="sec-head sec-head--split" data-reveal>
+            <div>
+                <p class="eyebrow">${esc(a.eyebrow)}</p>
+                <h2 class="sec-title" id="apps-title">${headline(a.title)}</h2>
+            </div>
+            <p class="sec-text">${esc(a.text)}</p>
+        </header>
+        <div class="apps__grid">
+            <article class="app-card app-card--desktop" data-reveal data-spot>
+                <div class="app-card__copy">
+                    <h3>${icon('monitor')}${esc(a.desktop.title)}</h3>
+                    <p>${esc(a.desktop.text)}</p>
+                </div>
+                <ul class="shortcuts" data-shortcuts>
+                    ${a.desktop.shortcuts.map((sc) => `<li><span class="keys">${sc.keys.map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</span><span>${esc(sc.label)}</span></li>`).join('')}
+                </ul>
+                <p class="fineprint">${esc(a.desktop.note)}</p>
+                <a class="btn btn--primary" href="${links.download}">${icon('download')}${esc(a.desktop.cta)}</a>
+            </article>
+            <article class="app-card app-card--iphone" data-reveal data-spot>
+                <div class="app-card__copy">
+                    <h3>${icon('phone')}${esc(a.iphone.title)}</h3>
+                    <p>${esc(a.iphone.text)}</p>
+                </div>
+                <ul class="ticks">${a.iphone.points.map((p) => `<li>${icon('check')}${esc(p)}</li>`).join('')}</ul>
+                <span class="soon">${icon('phone')}${esc(a.iphone.cta)}</span>
+            </article>
+        </div>
+    </div>
+</section>`;
+};
+
+const pricing = (t: SiteCopy) => {
+    const p = t.pricing;
+    const price = (plan: (typeof p.plans)[number], yearly: boolean) => (yearly ? plan.yearly : plan.monthly);
+    return `
+<section class="section pricing" id="pricing" aria-labelledby="pricing-title">
+    <div class="container">
+        <header class="pricing__head" data-reveal>
+            <p class="eyebrow">${esc(p.eyebrow)} <span class="pill-badge">${esc(p.badge)}</span></p>
+            <h2 class="sec-title" id="pricing-title">${headline(p.title)}</h2>
+            <p class="sec-text">${esc(p.text)}</p>
+            <div class="billing-toggle" role="group" aria-label="${esc(p.monthly)} / ${esc(p.yearly)}" data-billing>
+                <button type="button" aria-pressed="false" data-billing-option="monthly">${esc(p.monthly)}</button>
+                <button type="button" aria-pressed="true" data-billing-option="yearly">${esc(p.yearly)} <em>${esc(p.save)}</em></button>
+                <i class="billing-toggle__thumb" aria-hidden="true"></i>
+            </div>
+        </header>
+        <ul class="plans">
+            ${p.plans.map((plan) => {
+                const featured = plan.key === 'team';
+                const href = plan.key === 'org' ? 'mailto:hello@getprojectflow.com?subject=ProjectFlow%20Organization' : links.register;
+                const amount = plan.key === 'org'
+                    ? `<span class="plan__from">${esc(p.from)}</span> <b>${plan.yearly}&nbsp;${p.currency}</b>`
+                    : `<b data-price data-monthly="${plan.monthly}" data-yearly="${plan.yearly}">${price(plan, true)}&nbsp;${p.currency}</b>`;
+                const unit = plan.key === 'free' ? esc(p.forever)
+                    : plan.key === 'org' ? `${esc(p.perSeat)}, ${esc(p.billedYearly)}`
+                    : `${esc(p.perSeat)}, <span data-billing-unit data-monthly="${esc(p.billedMonthly)}" data-yearly="${esc(p.billedYearly)}">${esc(p.billedYearly)}</span>`;
+                return `
+            <li class="plan${featured ? ' plan--featured theme-dark' : ''}" data-reveal data-spot>
+                <div class="plan__top">
+                    <h3>${esc(plan.name)}${featured ? `<span class="pill-badge pill-badge--light">${esc(p.popular)}</span>` : ''}</h3>
+                    <p>${esc(plan.desc)}</p>
+                </div>
+                <p class="plan__price">${amount}</p>
+                <p class="plan__unit">${unit}</p>
+                <a class="btn ${featured ? 'btn--primary' : 'btn--ghost'}" href="${href}">${esc(plan.cta)}${icon('arrowRight')}</a>
+                <ul class="ticks">${plan.features.map((f) => `<li>${icon('check')}${esc(f)}</li>`).join('')}</ul>
+            </li>`;
+            }).join('')}
+        </ul>
+        <p class="fineprint pricing__note">${esc(p.note)}</p>
+    </div>
+</section>`;
+};
+
 /* ------------------------------------------------------------------ more, faq, cta */
 
 const more = (t: SiteCopy) => `
@@ -180,4 +282,4 @@ const cta = (t: SiteCopy) => `
 </section>`;
 
 export const homeBody = (t: SiteCopy, lang: Lang): string =>
-    [story(t, lang), mcp(t, lang), more(t), faq(t, lang), cta(t)].join('\n');
+    [story(t, lang), audience(t), apps(t), mcp(t, lang), more(t), pricing(t), faq(t, lang), cta(t)].join('\n');
