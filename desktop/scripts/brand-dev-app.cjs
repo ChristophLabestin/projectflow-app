@@ -37,6 +37,9 @@ set('CFBundleIdentifier', BUNDLE_ID);
 fs.copyFileSync(icon, targetIcon);
 // Editing the bundle breaks Electron's ad-hoc signature; re-sign so macOS keeps launching it.
 execFileSync('codesign', ['--force', '--deep', '--sign', '-', appDir], { stdio: 'ignore' });
+// Bump the bundle's mtime so the icon cache does not keep serving the old Electron icon.
+const now = new Date();
+fs.utimesSync(appDir, now, now);
 // Refresh Launch Services so the Dock and menu bar pick up the new name/icon.
 execFileSync('/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister', ['-f', appDir], { stdio: 'ignore' });
 console.log(`desktop: branded dev Electron.app as ${NAME}`);

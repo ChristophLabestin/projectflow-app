@@ -1,7 +1,6 @@
 // Renders the desktop icons from assets/glyph.svg (run after changing the glyph):
 //   npx electron scripts/render-icons.cjs && iconutil -c icns assets/icon.iconset -o assets/icon.icns
-// - icon.png / icon.iconset: macOS app icon on the macOS grid (824px squircle on a 1024 canvas, shadow).
-//   macOS does not mask icons like iOS, so the shape must be baked in.
+// - icon.png / icon.iconset: full-bleed app icon; macOS 26+ masks it into the system squircle.
 // - trayTemplate*.png (macOS menu bar, template image), tray.png (Windows tray).
 const { app, BrowserWindow } = require('electron');
 const fs = require('node:fs');
@@ -26,46 +25,22 @@ const renderGlyph = (win, size, color) => win.webContents.executeJavaScript(`new
     img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 })`);
 
+// macOS 26+ masks full-bleed legacy icons into the system squircle itself; icons with their own shape,
+// margin or shadow get placed inside a grey container instead. So: full-bleed square, no baked-in shape.
 const renderAppIcon = (win, size) => win.webContents.executeJavaScript(`(() => {
     const S = ${size};
-    const k = S / 1024;
     const canvas = document.createElement('canvas');
     canvas.width = S; canvas.height = S;
     const ctx = canvas.getContext('2d');
-    // Superellipse (n = 5) approximates Apple's continuous-corner squircle.
-    const squircle = (cx, cy, r) => {
-        ctx.beginPath();
-        for (let i = 0; i <= 360; i++) {
-            const t = (i / 360) * Math.PI * 2;
-            const c = Math.cos(t), s = Math.sin(t);
-            const x = cx + r * Math.sign(c) * Math.pow(Math.abs(c), 2 / 5);
-            const y = cy + r * Math.sign(s) * Math.pow(Math.abs(s), 2 / 5);
-            i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
-        }
-        ctx.closePath();
-    };
-    const cx = 512 * k, cy = 502 * k, r = 412 * k;
-    // Drop shadow like system icons.
-    ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
-    ctx.shadowBlur = 24 * k;
-    ctx.shadowOffsetY = 10 * k;
-    squircle(cx, cy, r);
-    const fill = ctx.createLinearGradient(0, cy - r, 0, cy + r);
+    const fill = ctx.createLinearGradient(0, 0, 0, S);
     fill.addColorStop(0, '#ffffff');
-    fill.addColorStop(1, '#e9e9ec');
+    fill.addColorStop(1, '#ececef');
     ctx.fillStyle = fill;
-    ctx.fill();
-    ctx.restore();
-    // Hairline edge so the white tile reads on light docks.
-    squircle(cx, cy, r - 0.5 * k);
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.10)';
-    ctx.lineWidth = Math.max(1, 2 * k);
-    ctx.stroke();
-    // Glyph (viewBox 48) centred in the tile, same proportion as the iOS icon.
-    const glyphSize = 520 * k;
+    ctx.fillRect(0, 0, S, S);
+    // Glyph (viewBox 48) centred, same proportion as the iOS icon.
+    const glyphSize = S * 0.56;
     ctx.save();
-    ctx.translate(cx - glyphSize / 2, cy - glyphSize / 2);
+    ctx.translate((S - glyphSize) / 2, (S - glyphSize) / 2);
     ctx.scale(glyphSize / 48, glyphSize / 48);
     ctx.fillStyle = '#111318';
     ctx.fill(new Path2D(${JSON.stringify(glyphPath)}), 'evenodd');

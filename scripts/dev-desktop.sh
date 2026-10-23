@@ -82,4 +82,22 @@ fi
 echo "Desktop app → http://localhost:$PORT (CDP on 127.0.0.1:$DEBUG_PORT)"
 cd "$DESKTOP"
 PF_DESKTOP_URL="http://localhost:$PORT" PF_DESKTOP_USER_DATA="$PROFILE_DIR" \
-    npx electron . --remote-debugging-port="$DEBUG_PORT"
+    "$DESKTOP/node_modules/.bin/electron" . --remote-debugging-port="$DEBUG_PORT" &
+ELECTRON_PID=$!
+
+# If the web stack dies underneath (e.g. another session kills emulators/Vite), the app would keep running
+# with failing requests and chunk loads. Quit it with a clear message instead.
+while kill -0 "$ELECTRON_PID" 2>/dev/null; do
+    if [[ -n "$WEB_PID" ]] && ! kill -0 "$WEB_PID" 2>/dev/null; then
+        echo "Web stack (emulators + Vite) stopped unexpectedly — see .desktop-web.log / .firebase-e2e.log. Quitting the desktop app."
+        kill -TERM "$ELECTRON_PID" 2>/dev/null || true
+        break
+    fi
+    if ! curl -s -o /dev/null --max-time 5 "http://localhost:$PORT"; then
+        echo "Dev server on :$PORT is gone. Quitting the desktop app."
+        kill -TERM "$ELECTRON_PID" 2>/dev/null || true
+        break
+    fi
+    sleep 5
+done
+wait "$ELECTRON_PID" 2>/dev/null || true
