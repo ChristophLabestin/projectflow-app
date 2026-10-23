@@ -232,8 +232,8 @@
         0 0 20px -5px rgba(0, 0, 0, 0.2),
         0 0 15px -5px var(--spotlight-glow-color);
 
-    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-        box-shadow 0.4s ease;
+    transition: transform var(--motion-duration-base) var(--motion-ease-out),
+        box-shadow var(--motion-duration-slow) var(--motion-ease-out);
 
     &:hover {
         transform: scale(1.005);
@@ -805,10 +805,12 @@
     box-shadow:
         0 10px 30px -12px rgba(0, 0, 0, 0.35),
         0 0 18px -8px rgba(var(--color-primary-rgb), 0.35);
-    transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.28s ease;
+    // Calm lift (no overshoot), matching the motion tokens.
+    transition: transform var(--motion-duration-base) var(--motion-ease-out),
+        box-shadow var(--motion-duration-base) var(--motion-ease-out);
 
     &:hover {
-        transform: translateY(-4px);
+        transform: translateY(-2px);
         box-shadow:
             0 18px 40px -14px rgba(0, 0, 0, 0.45),
             0 0 28px -6px rgba(var(--color-primary-rgb), 0.45);
@@ -1471,7 +1473,7 @@
         font-size: 0.85rem;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
         border: 2px solid var(--color-surface-card);
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: transform var(--motion-duration-base) var(--motion-ease-out), box-shadow var(--motion-duration-base) var(--motion-ease-out), background-color var(--motion-duration-base) var(--motion-ease-out), color var(--motion-duration-base) var(--motion-ease-out);
         z-index: 3;
 
         &--critical {
@@ -1694,10 +1696,10 @@
         background: var(--color-text-main);
         color: var(--color-surface-card);
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        transition: transform var(--motion-duration-base) var(--motion-ease-out), box-shadow var(--motion-duration-base) var(--motion-ease-out), background-color var(--motion-duration-base) var(--motion-ease-out), color var(--motion-duration-base) var(--motion-ease-out);
 
         &:hover {
-            transform: translateY(-3px) scale(1.02);
+            transform: translateY(-2px);
             box-shadow: 0 12px 24px -4px rgba(var(--color-primary-rgb), 0.4); // Colored shadow
             background: var(--color-primary); // Shift to brand color on hover
         }

@@ -475,7 +475,8 @@ html.dark .switch-track.active {
   border: 1px solid color-mix(in srgb, var(--color-surface-border) 60%, transparent);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-sm);
-  transition: all var(--transition-normal);
+  transition: box-shadow var(--motion-duration-base) var(--motion-ease-out),
+    border-color var(--motion-duration-base) var(--motion-ease-out);
 }
 
 .app-card:hover {
