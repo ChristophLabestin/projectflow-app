@@ -7,7 +7,7 @@ import { useLanguage } from '../context/LanguageContext';
 export const WorkspaceActivity = () => {
     const { t } = useLanguage();
     return (
-        <div className="activity-page custom-scrollbar">
+        <div className="activity-page">
             <div className="activity-page__content">
                 <header className="activity-page__header">
                     <div>

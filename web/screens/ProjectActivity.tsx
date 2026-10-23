@@ -193,7 +193,7 @@ export const ProjectActivity = () => {
     if (!id) return null;
 
     return (
-        <div className="activity-page custom-scrollbar">
+        <div className="activity-page">
             <div className="activity-page__content">
                 <header className="activity-page__header">
                     <Link to={`/project/${id}`} className="activity-page__back" aria-label={t('projectActivity.back', 'Back to project')}>
