@@ -140,6 +140,21 @@
         gap: 0.25rem;
     }
 
+    // Icons follow the button size (Material Symbols default to 24 px, taller than the label).
+    // Three classes deep so page-level `.x .material-symbols-outlined` rules don't override it.
+    & &__icon .material-symbols-outlined {
+        font-size: 18px;
+        line-height: 1;
+    }
+
+    &--sm &__icon .material-symbols-outlined {
+        font-size: 16px;
+    }
+
+    &--lg &__icon .material-symbols-outlined {
+        font-size: 20px;
+    }
+
     &__icon--left {
         margin-right: 0.5em;
     }

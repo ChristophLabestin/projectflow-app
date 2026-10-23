@@ -419,3 +419,4 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Components should consume tokens via CSS variables (recommended) or SCSS variables mapped to them.
 - Keep styles reusable and consistent across the UI.
 - Migration utilities live in `web/styles/_utilities.scss`; use them sparingly and prefer component SCSS + tokens for new work.
+- Button icons (`Button icon={…}`) are sized by the button: sm 16 px, md 18 px, lg 20 px (`common/Button/button.scss`). Don't pass `text-[…]` sizes on the icon, and scope page rules for big decorative icons with `>` so they don't reach buttons.

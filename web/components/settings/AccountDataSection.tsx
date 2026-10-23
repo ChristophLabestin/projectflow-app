@@ -110,7 +110,7 @@ export const AccountDataSection: React.FC = () => {
                         <p className="text-sm text-muted mt-1">{t('accountData.export.description')}</p>
                     </div>
                     <Button variant="secondary" onClick={handleExport} loading={exporting}
-                        icon={<span className="material-symbols-outlined text-[18px]">download</span>}>
+                        icon={<span className="material-symbols-outlined">download</span>}>
                         {t('accountData.export.button')}
                     </Button>
                 </div>

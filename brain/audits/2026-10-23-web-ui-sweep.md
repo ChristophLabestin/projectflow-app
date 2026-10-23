@@ -31,7 +31,7 @@ Severity: **S** small (cosmetic), **M** medium (visibly broken/unusable in a sta
 | 15 | Workspace settings → Roles | "N permissions" + "SYSTEM" English-only; role list squeezed to 232 px inside the modal (viewport `lg`) | S | fixed (i18n keys, split at `xl`) |
 | 16 | i18n (DE) | English-only copy in Profile settings modal, comments (incl. raw relative times), role management, 2FA setup/challenge, media library + image editor, editor menus, whole marketing/blog module (list, editor, settings, connection wizard, AI modal) | M | fixed (342 keys EN+DE, palette colors → tokens) |
 | 17 | `ui/Badge`, personal tasks list/detail, accounting placeholder, profile dropdown | Tailwind palette colors (`indigo/emerald/rose/amber/slate`) instead of tokens | S | fixed |
-| 18 | Effort / Invoices | Icons passed via `Button icon` render at 24 px (taller than the label); other buttons use 18 px | S | open (global `.btn__icon` size change needs a pass over all icon buttons) |
+| 18 | Effort / Invoices | Icons passed via `Button icon` render at 24 px (taller than the label); other buttons use 18 px | S | fixed 2026-10-23 (`.btn .btn__icon .material-symbols-outlined` sm 16 / md 18 / lg 20; overrides in AccountDataSection, projects-list and the invoices empty state removed/scoped) |
 | 19 | Calendar week (desktop 1024 px) | Event chips in narrow columns cut titles without ellipsis | S | open |
 | 20 | Team | "By department" groups by base role when no custom roles exist (ADMIN/MEMBER/OWNER), which reads odd | S | open (product decision: label or fallback) |
 
@@ -56,7 +56,7 @@ initiatives + initiative detail, sprints, milestones, activity, details, effort,
   `web/components/help/pages/*`). Needs a content translation pass into locale keys (or MDX per language). L.
 - ✅ **Done 2026-10-23 (web-app):** `Sidebar.tsx` was still lazy-imported by `AppLayout` as a flag switch (`config/sidebarV2.ts`, default on) to the legacy sidebar; `AppLayout` now loads `SidebarNavigator` directly and `Sidebar.tsx`, `WorkspaceTeamIndicator.tsx`, `ProjectSwitcher.tsx` and the flag are deleted. Original note — **Dead code:** `web/components/Sidebar.tsx` and `web/components/WorkspaceTeamIndicator.tsx` are no longer imported
   (replaced by `SidebarNavigator`) but carry ~55 hardcoded palette classes; delete them. S.
-- **Button icon size:** give `.btn__icon .material-symbols-outlined` a size per button size (sm 16 / md 18 / lg 20) and
+- ✅ **Done 2026-10-23 (web-app), see finding 18.** **Button icon size:** give `.btn__icon .material-symbols-outlined` a size per button size (sm 16 / md 18 / lg 20) and
   drop the per-call `text-[18px]` overrides. S/M, touches many call sites.
 - **Calendar on phones:** the stacked week works, but a real day/agenda view with a date strip would fit the iOS app's
   pattern better. M.
