@@ -43,8 +43,7 @@ struct ReauthSheet: View {
         TeamSheet(eyebrow: L10n.t("account.security"), title: L10n.t("security.reauth.title")) {
             Text(L10n.t("security.reauth.message")).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
             if Reauth.hasPassword {
-                PFTextField(L10n.t("security.password.current"), text: $password, systemImage: "lock", submitLabel: .go) { run { try await Reauth.withPassword(password) } }
-                    .textContentType(.password)
+                PFSecureField(L10n.t("security.password.current"), text: $password, isNew: false) { run { try await Reauth.withPassword(password) } }
                 PFButton(isWorking ? L10n.t("common.loading") : L10n.t("security.reauth.confirm"), size: .large, fullWidth: true) {
                     run { try await Reauth.withPassword(password) }
                 }
@@ -101,11 +100,10 @@ struct PasswordSheet: View {
     var body: some View {
         TeamSheet(eyebrow: L10n.t("account.security"), title: hasPassword ? L10n.t("security.password.change") : L10n.t("security.password.set")) {
             if hasPassword {
-                PFTextField(L10n.t("security.password.current"), text: $current, systemImage: "lock").textContentType(.password)
+                PFSecureField(L10n.t("security.password.current"), text: $current, isNew: false) {}
             }
-            PFTextField(L10n.t("security.password.new"), text: $next, systemImage: "lock.rotation").textContentType(.newPassword)
-            PFTextField(L10n.t("security.password.confirm"), text: $confirm, systemImage: "lock.rotation", submitLabel: .go) { if isValid { submit() } }
-                .textContentType(.newPassword)
+            PFSecureField(L10n.t("security.password.new"), text: $next, isNew: true) {}
+            PFSecureField(L10n.t("security.password.confirm"), text: $confirm, isNew: true) { if isValid { submit() } }
             Text(L10n.t("security.password.hint")).pfText(.meta).foregroundStyle(next.count >= 8 || next.isEmpty ? PFColor.textMuted : PFColor.warningText)
             if !confirm.isEmpty, next != confirm { Text(L10n.t("security.password.mismatch")).pfText(.meta).foregroundStyle(PFColor.dangerText) }
             if let errorText { Text(errorText).pfText(.meta).foregroundStyle(PFColor.dangerText) }
@@ -193,8 +191,7 @@ struct TotpEnrollSheet: View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
             Text(L10n.t("security.totp.intro")).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
             if Reauth.hasPassword {
-                PFTextField(L10n.t("security.password.current"), text: $password, systemImage: "lock", submitLabel: .go) { run { try await Reauth.withPassword(password) } }
-                    .textContentType(.password)
+                PFSecureField(L10n.t("security.password.current"), text: $password, isNew: false) { run { try await Reauth.withPassword(password) } }
                 PFButton(isWorking ? L10n.t("common.loading") : L10n.t("security.totp.start"), size: .large, fullWidth: true) {
                     run { try await Reauth.withPassword(password) }
                 }
