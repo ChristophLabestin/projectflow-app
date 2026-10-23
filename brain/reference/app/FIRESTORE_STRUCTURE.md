@@ -159,6 +159,19 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `sourceUrl`: string (optional)
 - `shareCaptureId`: string (optional, native Share Sheet import id)
 
+
+### 📂 **`activity`** (workspace activity stream, 2026-10-23)
+**Path:** `/tenants/{tenantId}/activity/{eventId}`
+- Typed, server-written events (`emitActivityEvent`, `functions/src/activity-events.ts`): `{ v, type, domain, actor{kind,id,name,photoURL?,client?,automationId?,automationRunId?,automationDepth?}, cause{kind,id,automationRunId?,depth}, actorId, object{type,id,title,parentType?,parentId?}, projectId|null, projectTitle?, changes?, meta?, source, createdAt, expireAt }`. Contract and type list: `brain/plans/activity-events-contract.md`.
+- Written by `onTaskWritten`/`onSubtaskWritten`/`onCommentCreated`/`onProjectWritten` next to the legacy `projects/{p}/activities` entries. TTL 365 days on `expireAt`.
+- Access: full members read all; guests only events of their projects and only with a `projectId` filter (`==`/`in`); no client writes.
+
+### 📂 **`insights_daily`** / **`insights_reports`** (2026-10-23)
+**Path:** `/tenants/{tenantId}/insights_daily/{YYYY-MM-DD|latest}`, `/tenants/{tenantId}/insights_reports/{isoWeek}-{lang}`
+- `insights_daily`: `{ v, day, weeks[12], projects[{ id, title, status, created[], completed[], cycleDaysSum[], cycleCount[], scope[], done[], open, overdue, blocked, dueNext7, onTime, late, activity7d, health, people{uid:[open,overdue,dueNext7]} }], truncated, computedAt }` from `computeWorkspaceInsights` (daily 03:30 Berlin) / `refreshWorkspaceInsights` (callable, 10-min cooldown).
+- `insights_reports`: `{ week, language, markdown, createdBy, createdAt }` from `generateWeeklyInsightsReport` (OpenAI).
+- Access: full members read; guests none; no client writes.
+
 #### ↳ 📂 **`notifications`**
 **Path:** `/tenants/{tenantId}/notifications/{notificationId}`
 **Schema:** `Notification`
@@ -377,7 +390,7 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 *   **`submissions`** *(External project intake — see `intakeForm` above)*
     *   📄 `ProjectSubmission`: `{ categoryId, categoryLabel, status: "new"|"reviewed"|"accepted"|"archived", title, description, submitter: { name, email, company }, fields: SubmittedField[], attachments: Attachment[], linkedTaskId, source: "public-form", submittedAt, createdAt }`. Created by `submitProjectIntake` (Admin SDK). Project members read/triage via the project `{document=**}` rule; status/convert/delete happen client-side. Attachments live in Storage at `project-intake/{tenantId}/{projectId}/{submissionId}/…` and are served via signed URLs.
 *   **`activities`**
-    *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Audit log; Codex activity uses `type: "codex"`)
+    *   📄 `Activity`: `{ action, target, user, details, type, ... }` (Legacy free-text audit log; Codex activity uses `type: "codex"`). Still written; the typed stream is `tenants/{t}/activity`. Shown as "Earlier activity" on `/project/:id/activity`.
 *   **`comments`** _(Implied)_
     *   📄 `Comment`: `{ content, targetId, targetType, userId, userDisplayName, userPhotoURL, mentionedUserIds?, updatedBy, createdAt }`. Created by clients (web `addComment`/`addIdeaComment`, iOS); `onCommentCreated` writes the activity + notifications.
 *   **`codex_sessions`**

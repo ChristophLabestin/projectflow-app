@@ -272,6 +272,18 @@ const mimeTypeToExtension = (mimeType: string) => {
 
 // --- Ask Cora ---
 
+/**
+ * Plain text generation for server features (e.g. the insights weekly report). Consumes the
+ * caller's daily text quota and tracks token usage like the callables below.
+ */
+export const generateServerText = async (uid: string, instructions: string, input: string): Promise<string> => {
+    await consumeAiQuota(uid, 'text');
+    const client = getClient();
+    const response: any = await client.responses.create({ model: TEXT_MODEL, instructions, input });
+    await trackUsage(uid, extractTokensUsed(response));
+    return extractTextFromResponse(response).trim();
+};
+
 export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');

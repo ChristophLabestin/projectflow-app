@@ -42,6 +42,8 @@ These routes are rendered inside the authenticated app shell/layout.
 
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
+- [x] `/activity` — Workspace activity feed (`WorkspaceActivity`, `components/activity/ActivityFeed`): filters person/project/type/period in the URL (`?person=&project=&type=&period=`), grouped by day, endless scroll, live first page; guests see their projects only
+- [x] `/insights` — Workspace insights (`WorkspaceInsights`, full members; guests redirect to `/activity`): KPIs, throughput, cycle time, burn-up, workload, project health, AI weekly report
 - [x] `/insights/onboarding` — Onboarding survey statistics (lazy; only with custom claim `platformAdmin`, else NotFound; data from callable `getOnboardingStats`; grant via `functions/scripts/grant-platform-admin.mjs <email>`)
 - [x] `/admin` — Admin platform shell (lazy `AdminLayout`, `web/screens/admin/`; `platformAdmin` claim only, others 404): side nav Crash reports / Legal documents / Onboarding insights; `/admin` redirects to `/admin/crashes`.
 - [x] `/admin/crashes` — Crash reports (`CrashReports`): issues from web/desktop/iOS grouped by fingerprint, filters platform/status/environment, totals.
@@ -76,7 +78,7 @@ Base:
 
 - [x] `/project/:id` (index) — Project overview (command-first layout with compact/showcase masthead modes, command strip, attention queue, conditional right-column project triage for overdue/blocked/unassigned task cleanup and team delegation, demoted reference modules, compact delivery guardrails card without repeating the masthead purpose, explicit pause/resume/cancel lifecycle; company/startup projects add an action-first company command surface with founder action, launch readiness, a workstream modal/drawer task inspector, company context, a dedicated founding-brief modal, source references, and linked-project rollups)
 - [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
-- [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
+- [x] `/project/:id/activity` — Project activity: `ActivityFeed` for the project (stream) + collapsible legacy log ("Earlier activity")
 - [x] `/project/:id/codex` — removed 2026-09-26; redirects to the project overview (sessions still appear in activity)
 
 ### 3.2 Project Tasks
