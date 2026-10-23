@@ -484,6 +484,19 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
     background: var(--color-surface-hover);
 }
 
+// In-app AI (⌘J): the ✦ glyph in the brand colour.
+.topbar-icon-button.topbar-ai-button {
+    color: var(--color-primary);
+    font-size: 1.05rem;
+    line-height: 1;
+
+    &:hover,
+    &:focus-visible,
+    &.is-active {
+        color: var(--color-primary);
+    }
+}
+
 .topbar-icon-button {
     display: inline-flex;
     align-items: center;

@@ -159,6 +159,9 @@ export const DesktopSettingsPanel = () => {
                 {prefs.screenshotShortcut !== undefined && row(t('settings.desktop.screenshot.title'), t('settings.desktop.screenshot.hint'), (
                     <ShortcutField value={prefs.screenshotShortcut} isMac={isMac} label={t('settings.desktop.screenshot.title')} onChange={(value) => void update({ screenshotShortcut: value })} />
                 ))}
+                {prefs.aiShortcut !== undefined && row(t('settings.desktop.ai.title'), t('settings.desktop.ai.hint'), (
+                    <ShortcutField value={prefs.aiShortcut} isMac={isMac} label={t('settings.desktop.ai.title')} onChange={(value) => void update({ aiShortcut: value })} />
+                ))}
             </section>
 
             <section className="notification-settings__card" aria-labelledby="desktop-settings-day">

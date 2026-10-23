@@ -20,6 +20,7 @@ export interface DesktopSettings {
     paletteShortcut?: string | null;
     /** Global screenshot → task shortcut; null disables it. */
     screenshotShortcut?: string | null;
+    aiShortcut?: string | null;
     launchAtLogin: boolean;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;

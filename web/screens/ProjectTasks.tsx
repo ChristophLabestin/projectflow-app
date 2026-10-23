@@ -22,6 +22,7 @@ import { WorkBulkBar } from '../components/work/WorkBulkBar';
 import type { InlineMenuOption } from '../components/work/InlineMenu';
 import { WorkMenuChip } from '../components/work/WorkMenuChip';
 import { UNASSIGNED_VALUE } from '../components/work/workMenuOptions';
+import { useAiScreenContext } from '../context/AiPanelContext';
 
 const TaskCreateModal = lazy(() => import('../components/TaskCreateModal').then((module) => ({ default: module.TaskCreateModal })));
 
@@ -256,6 +257,13 @@ export const ProjectTasks = () => {
     const visibleTaskIds = filteredTasks.map((task) => task.id);
     const selectedTasks = tasks.filter((task) => selectedIds.has(task.id));
     const selectedVisibleCount = visibleTaskIds.filter((taskId) => selectedIds.has(taskId)).length;
+
+    // In-app AI (⌘J): what is on screen and what is selected.
+    useAiScreenContext({
+        surface: 'list',
+        view: { items: filteredTasks.slice(0, 50).map((task) => ({ id: task.id, title: task.title })) },
+        selection: selectedIds.size ? { ids: Array.from(selectedIds).slice(0, 50) } : undefined
+    });
     const allVisibleSelected = visibleTaskIds.length > 0 && selectedVisibleCount === visibleTaskIds.length;
 
     const toggleSelectAllVisible = () => setMany(visibleTaskIds, !allVisibleSelected);
