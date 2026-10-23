@@ -137,7 +137,7 @@ const de = {
     },
     pricing: {
         eyebrow: 'Preise',
-        title: 'Einfache Preise. KI inklusive.',
+        title: 'Einfache Preise. KI, wenn du sie brauchst.',
         badge: 'Ab Start der Bezahlpläne',
         text: 'Bis zum Start der Bezahlpläne nutzt du ProjectFlow kostenlos – mit allen Funktionen.',
         monthly: 'Monatlich',
@@ -152,9 +152,17 @@ const de = {
         popular: 'Beliebt',
         plans: [
             { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'Für Einzelpersonen, die ihren Alltag ordnen.', features: ['1 Person, bis 3 Projekte', 'Heute, Fokus, Inbox & Boards', 'Web, Desktop & iPhone', 'KI mit eigenem OpenAI-Schlüssel', 'MCP-Zugang für deine KI-Clients'], cta: 'Kostenlos starten' },
-            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'Für Teams, die gemeinsam liefern.', features: ['Bis 50 Mitglieder, unbegrenzte Projekte', 'Externe pro Projekt kostenlos', 'KI inklusive: 1 Mio. Tokens + 50 Bilder pro Platz', 'Initiativen, Sprints & Module', 'Persönliche Tokens & KI-Aktivitätsprotokoll', '14 Tage kostenlos testen'], cta: 'Team kostenlos testen' },
-            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'Für Unternehmen mit Governance-Anforderungen.', features: ['Alles aus Team, ab 10 Plätzen', 'Single Sign-on (SSO)', 'Eigene KI-Kontingente & Richtlinien', 'AV-Vertrag & erweiterte Protokolle', 'Priorisierter Support'], cta: 'Kontakt aufnehmen' },
+            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'Für Teams, die gemeinsam liefern.', features: ['Bis 50 Mitglieder, unbegrenzte Projekte', 'Externe pro Projekt kostenlos', 'KI-Paket pro Nutzer zubuchbar', 'Initiativen, Sprints & Module', 'Persönliche Tokens & KI-Aktivitätsprotokoll', '14 Tage kostenlos testen'], cta: 'Team kostenlos testen' },
+            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'Für Unternehmen mit Governance-Anforderungen.', features: ['Alles aus Team, ab 10 Plätzen', 'Single Sign-on (SSO)', 'KI-Paket mit eigenen Kontingenten & Richtlinien', 'AV-Vertrag & erweiterte Protokolle', 'Priorisierter Support'], cta: 'Kontakt aufnehmen' },
         ],
+        addon: {
+            name: 'KI-Paket',
+            price: 10,
+            unit: 'pro Nutzer / Monat',
+            text: 'Schaltet die KI-Assistenz frei: Beschreibungen zusammenfassen, Unteraufgaben vorschlagen, Texte überarbeiten und Bilder erzeugen. Pro Nutzer zubuchbar, monatlich kündbar.',
+            points: ['1 Mio. Tokens pro Nutzer und Monat', '50 Bilder pro Nutzer und Monat', 'Für Team & Organization'],
+            note: 'MCP-Zugang für deine eigenen KI-Clients ist in allen Plänen enthalten.',
+        },
         note: 'Alle Preise netto zzgl. USt.',
     },
     mcp: {
@@ -188,7 +196,7 @@ const de = {
         title: 'Häufige Fragen',
         items: [
             { q: 'Für wen ist ProjectFlow gemacht?', a: 'Für Teams im digitalen Bereich – Produkt, Entwicklung, Design und Marketing – sowie für Gründer:innen und Freelancer, die ihre Arbeit an einem Ort organisieren wollen.' },
-            { q: 'Was kostet ProjectFlow?', a: 'Bis zum Start der Bezahlpläne ist ProjectFlow kostenlos. Danach gibt es einen kostenlosen Plan für Einzelpersonen und den Team-Plan für 10 € pro Platz und Monat bei jährlicher Zahlung (12 € monatlich) – KI inklusive, Externe in Projekten kosten nichts extra.' },
+            { q: 'Was kostet ProjectFlow?', a: 'Bis zum Start der Bezahlpläne ist ProjectFlow kostenlos. Danach gibt es einen kostenlosen Plan für Einzelpersonen und den Team-Plan für 10 € pro Platz und Monat bei jährlicher Zahlung (12 € monatlich). KI-Funktionen buchst du pro Nutzer für 10 € im Monat dazu; Externe in Projekten kosten nichts extra.' },
             { q: 'Was passiert mit meinen Daten, wenn ich nicht upgrade?', a: 'Nichts geht verloren. Du behältst Zugriff auf alle Projekte und kannst jederzeit später upgraden.' },
             { q: 'Auf welchen Geräten läuft ProjectFlow?', a: 'Im Browser, als Desktop-App für macOS und Windows und bald als iPhone-App im App Store. Alle greifen auf dieselben Daten zu.' },
             { q: 'Wie arbeite ich mit Kunden oder Externen?', a: 'Externe lädst du zu einzelnen Projekten ein. Sie sehen nur dieses Projekt und werden nicht Mitglied deines Workspace.' },
@@ -374,7 +382,7 @@ const en: SiteCopy = {
     },
     pricing: {
         eyebrow: 'Pricing',
-        title: 'Simple pricing. AI included.',
+        title: 'Simple pricing. AI when you need it.',
         badge: 'From paid launch',
         text: 'Until paid plans launch, ProjectFlow is free to use – with every feature.',
         monthly: 'Monthly',
@@ -389,9 +397,17 @@ const en: SiteCopy = {
         popular: 'Popular',
         plans: [
             { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'For individuals organising their day.', features: ['1 person, up to 3 projects', 'Today, focus, inbox & boards', 'Web, desktop & iPhone', 'AI with your own OpenAI key', 'MCP access for your AI clients'], cta: 'Start for free' },
-            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'For teams that ship together.', features: ['Up to 50 members, unlimited projects', 'Externals per project for free', 'AI included: 1M tokens + 50 images per seat', 'Initiatives, sprints & modules', 'Personal tokens & AI activity log', 'Free 14-day trial'], cta: 'Try Team for free' },
-            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'For companies with governance needs.', features: ['Everything in Team, from 10 seats', 'Single sign-on (SSO)', 'Custom AI quotas & policies', 'DPA & extended logs', 'Priority support'], cta: 'Contact us' },
+            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'For teams that ship together.', features: ['Up to 50 members, unlimited projects', 'Externals per project for free', 'AI add-on per user', 'Initiatives, sprints & modules', 'Personal tokens & AI activity log', 'Free 14-day trial'], cta: 'Try Team for free' },
+            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'For companies with governance needs.', features: ['Everything in Team, from 10 seats', 'Single sign-on (SSO)', 'AI add-on with custom quotas & policies', 'DPA & extended logs', 'Priority support'], cta: 'Contact us' },
         ],
+        addon: {
+            name: 'AI add-on',
+            price: 10,
+            unit: 'per user / month',
+            text: 'Unlocks AI assistance: summarise descriptions, suggest subtasks, polish text and generate images. Added per user, cancel monthly.',
+            points: ['1M tokens per user and month', '50 images per user and month', 'For Team & Organization'],
+            note: 'MCP access for your own AI clients is included in every plan.',
+        },
         note: 'All prices net, plus VAT.',
     },
     mcp: {
@@ -425,7 +441,7 @@ const en: SiteCopy = {
         title: 'Frequently asked questions',
         items: [
             { q: 'Who is ProjectFlow for?', a: 'For teams in digital work – product, engineering, design and marketing – and for founders and freelancers who want to organise their work in one place.' },
-            { q: 'How much does ProjectFlow cost?', a: 'Until paid plans launch, ProjectFlow is free. After that there is a free plan for individuals and the Team plan at €10 per seat and month billed yearly (€12 monthly) – AI included, externals in projects cost nothing extra.' },
+            { q: 'How much does ProjectFlow cost?', a: 'Until paid plans launch, ProjectFlow is free. After that there is a free plan for individuals and the Team plan at €10 per seat and month billed yearly (€12 monthly). AI features are added per user for €10 a month; externals in projects cost nothing extra.' },
             { q: 'What happens to my data if I don’t upgrade?', a: 'Nothing gets lost. You keep access to all projects and can upgrade later at any time.' },
             { q: 'Which devices does ProjectFlow run on?', a: 'In the browser, as a desktop app for macOS and Windows, and soon as an iPhone app on the App Store. All of them work with the same data.' },
             { q: 'How do I work with clients or externals?', a: 'Invite externals to individual projects. They only see that project and do not become members of your workspace.' },
