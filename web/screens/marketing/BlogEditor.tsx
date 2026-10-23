@@ -6,6 +6,7 @@ import { publishBlogPost, fetchExternalBlogPosts, BlogPost, updateBlogPost, fetc
 import { subscribeMarketingSettings } from '../../services/marketingSettingsService';
 import { translateBlogPostAI } from '../../services/geminiService';
 import { useToast, useConfirm } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Globe } from 'lucide-react';
 import { AdvancedEditor } from '../../components/editor/AdvancedEditor';
@@ -41,6 +42,7 @@ export const BlogEditor = () => {
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const { showSuccess, showError } = useToast();
+    const { t } = useLanguage();
     const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(false);
 
     // Store content in state to pass to preview
@@ -98,10 +100,10 @@ export const BlogEditor = () => {
             if (translatedTitle) setTitle(translatedTitle);
             if (translatedExcerpt) setExcerpt(translatedExcerpt);
 
-            showSuccess(`Content translated to ${((location.state as any)?.blogPost?.language || currentLanguage).toUpperCase()}`);
+            showSuccess(t('marketing.blogEditor.translated').replace('{lang}', ((location.state as any)?.blogPost?.language || currentLanguage).toUpperCase()));
         } catch (error) {
             console.error(error);
-            showError('Failed to translate content');
+            showError(t('marketing.blogEditor.translateFailed'));
         } finally {
             setIsTranslating(false);
         }
@@ -194,11 +196,11 @@ export const BlogEditor = () => {
                         // Reset change tracking after initial load from API
                         hasChangesRef.current = false;
                     } else {
-                        showError('Blog post not found');
+                        showError(t('marketing.blogEditor.notFound'));
                     }
                 } catch (e) {
                     console.error('Failed to load post', e);
-                    showError('Failed to load blog post');
+                    showError(t('marketing.blogEditor.loadFailed'));
                 }
             }
         };
@@ -248,7 +250,7 @@ export const BlogEditor = () => {
         // Update both local state and editor
         setContent(data.content);
         editorRef.current?.commands.setContent(data.content);
-        showSuccess('Blog post drafted by CORA!');
+        showSuccess(t('marketing.blogEditor.coraDrafted'));
     };
 
     const confirm = useConfirm();
@@ -331,7 +333,7 @@ export const BlogEditor = () => {
                 }
 
                 await updateBlogPost(projectId, blogId, postData);
-                if (!isAutosave) showSuccess(`Blog post updated successfully!`);
+                if (!isAutosave) showSuccess(t('marketing.blogEditor.updated'));
             } else {
                 // Create new post
                 if (forceCreate && !isAutosave) {
@@ -356,7 +358,7 @@ export const BlogEditor = () => {
                     navigate(`/project/${projectId}/marketing/blog/${newId}`, { replace: true, state: { blogPost: { ...postData, id: newId } } });
                 }
 
-                if (!isAutosave) showSuccess(`Blog post ${newStatus === 'published' ? 'published' : 'saved'} successfully!`);
+                if (!isAutosave) showSuccess(newStatus === 'published' ? t('marketing.blogEditor.published') : t('marketing.blogEditor.savedOk'));
             }
 
             // Autosave complete
@@ -368,7 +370,7 @@ export const BlogEditor = () => {
             }
         } catch (error) {
             console.error('Failed to save', error);
-            if (!isAutosave) showError('Failed to save blog post.');
+            if (!isAutosave) showError(t('marketing.blogEditor.saveFailed'));
         } finally {
             setIsPublishing(false);
             setIsAutosaving(false);
@@ -414,14 +416,14 @@ export const BlogEditor = () => {
                         className="flex items-center gap-2 text-muted hover:text-main transition-colors"
                     >
                         <ArrowLeft size={18} />
-                        <span>Back to Blogs</span>
+                        <span>{t('marketing.blogEditor.back')}</span>
                     </button>
 
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsFullscreen(!isFullscreen)}
                             className={`p-2 rounded-lg text-sm font-medium transition-colors ${isFullscreen ? 'bg-surface-hover text-main' : 'text-muted hover:bg-surface-hover'}`}
-                            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                            title={isFullscreen ? t('marketing.blogEditor.exitFullscreen') : t('marketing.blogEditor.enterFullscreen')}
                         >
                             <span className="material-symbols-outlined text-[20px]">
                                 {isFullscreen ? 'close_fullscreen' : 'open_in_full'}
@@ -433,19 +435,19 @@ export const BlogEditor = () => {
 
                         <button
                             onClick={() => setIsAIModalOpen(true)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-2"
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-primary bg-primary/10 hover:bg-primary/15 transition-colors flex items-center gap-2"
                         >
                             <Sparkles size={16} />
-                            <span>Ask CORA</span>
+                            <span>{t('marketing.blogEditor.askCora')}</span>
                         </button>
 
                         <button
                             onClick={() => setIsTemplateModalOpen(true)}
                             className="px-4 py-2 rounded-lg text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-2"
-                            title="Manage Templates"
+                            title={t('marketing.blogEditor.manageTemplates')}
                         >
                             <Layout size={16} />
-                            <span>Templates</span>
+                            <span>{t('marketing.blogEditor.templates')}</span>
                         </button>
 
 
@@ -456,7 +458,7 @@ export const BlogEditor = () => {
                                 <button
                                     onClick={() => setShowLanguageMenu(!showLanguageMenu)}
                                     className="px-3 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors flex items-center gap-2 border border-surface"
-                                    title="Select Language"
+                                    title={t('marketing.blogEditor.selectLanguage')}
                                 >
                                     <Globe size={16} />
                                     <span className="uppercase">{currentLanguage}</span>
@@ -471,7 +473,7 @@ export const BlogEditor = () => {
                                         />
                                         <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-surface rounded-xl shadow-lg py-1 min-w-[180px]">
                                             <div className="px-3 py-2 text-xs text-muted uppercase tracking-wider border-b border-surface">
-                                                Post Language
+                                                {t('marketing.blogEditor.postLanguage')}
                                             </div>
                                             {supportedLanguages.map(lang => {
                                                 const isCurrent = currentLanguage === lang;
@@ -532,15 +534,15 @@ export const BlogEditor = () => {
                                                                             setTranslationId(activeId);
                                                                         } catch (e) {
                                                                             console.error("Failed to init translation ID", e);
-                                                                            showError("Failed to prepare translation");
+                                                                            showError(t('marketing.blogEditor.prepareTranslationFailed'));
                                                                             return;
                                                                         }
                                                                     }
 
                                                                     // Ask for AI Translation
                                                                     const useAI = await confirm(
-                                                                        'Use AI Translation?',
-                                                                        `Do you want to automatically translate the content to ${lang.toUpperCase()} using AI?`
+                                                                        t('marketing.blogEditor.useAiTitle'),
+                                                                        t('marketing.blogEditor.useAiMessage').replace('{lang}', lang.toUpperCase())
                                                                     );
 
                                                                     navigate(`/project/${projectId}/marketing/blog/create`, {
@@ -578,7 +580,7 @@ export const BlogEditor = () => {
 
                         {/* Autosave Status */}
                         <div className="text-xs text-muted opacity-70">
-                            {isAutosaving ? 'Autosaving...' : lastSavedTime ? `Saved ${lastSavedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                            {isAutosaving ? t('marketing.blogEditor.autosaving') : lastSavedTime ? t('marketing.blogEditor.savedAt').replace('{time}', lastSavedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}
                         </div>
 
                         {blogId && (
@@ -586,10 +588,10 @@ export const BlogEditor = () => {
                                 onClick={() => handleSave('draft', true)}
                                 disabled={isPublishing}
                                 className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors disabled:opacity-50 flex items-center gap-2"
-                                title="Save as a new post (copy)"
+                                title={t('marketing.blogEditor.saveAsNewTitle')}
                             >
                                 <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                                Save as New
+                                {t('marketing.blogEditor.saveAsNew')}
                             </button>
                         )}
 
@@ -598,7 +600,7 @@ export const BlogEditor = () => {
                             disabled={isPublishing}
                             className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors disabled:opacity-50"
                         >
-                            {isPublishing && status === 'draft' ? 'Saving...' : 'Save as Draft'}
+                            {isPublishing && status === 'draft' ? t('marketing.blogEditor.saving') : t('marketing.blogEditor.saveDraft')}
                         </button>
 
                         <Button
@@ -607,19 +609,19 @@ export const BlogEditor = () => {
                             className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed gap-2"
                         >
                             {isPublishing && status === 'published' && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
-                            {isPublishing && status === 'published' ? 'Publishing...' : 'Publish Post'}
+                            {isPublishing && status === 'published' ? t('marketing.blogEditor.publishing') : t('marketing.blogEditor.publish')}
                         </Button>
                     </div>
                 </div>
 
                 {isTranslating && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top-2">
-                        <div className="flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                    <div className="bg-warning/10 border-b border-warning/20 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3 text-warning">
                             <span className="animate-spin material-symbols-outlined text-[20px]">refresh</span>
-                            <span className="font-medium">Translating content to {currentLanguage.toUpperCase()}...</span>
+                            <span className="font-medium">{t('marketing.blogEditor.translating').replace('{lang}', currentLanguage.toUpperCase())}</span>
                         </div>
                         <div className="text-xs opacity-75">
-                            This may take a few seconds
+                            {t('marketing.blogEditor.translatingHint')}
                         </div>
                     </div>
                 )}
@@ -632,11 +634,11 @@ export const BlogEditor = () => {
                     {/* LEFT: Editor Side */}
                     <div className={`flex-1 flex flex-col bg-card border border-surface rounded-xl overflow-hidden shadow-sm relative ${isFullscreen ? 'w-1/2' : 'w-1/2'}`}>
                         {/* Meta Data Inputs */}
-                        <div className="border-b border-surface bg-white/50 dark:bg-black/20">
+                        <div className="border-b border-surface bg-surface-card/50">
                             <div className="p-6 pb-4 flex items-center justify-between gap-4">
                                 <input
                                     type="text"
-                                    placeholder="Post Title"
+                                    placeholder={t('marketing.blogEditor.titlePlaceholder')}
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
                                     className="flex-1 text-3xl font-bold bg-transparent border-none outline-none placeholder:text-muted/50 text-main"
@@ -644,7 +646,7 @@ export const BlogEditor = () => {
                                 <button
                                     onClick={() => setIsSettingsCollapsed(!isSettingsCollapsed)}
                                     className="p-2 rounded-lg hover:bg-surface-hover text-muted transition-colors flex items-center justify-center"
-                                    title={isSettingsCollapsed ? 'Expand Settings' : 'Collapse Settings'}
+                                    title={isSettingsCollapsed ? t('marketing.blogEditor.expandSettings') : t('marketing.blogEditor.collapseSettings')}
                                 >
                                     <span className="material-symbols-outlined">
                                         {isSettingsCollapsed ? 'expand_more' : 'expand_less'}
@@ -665,7 +667,7 @@ export const BlogEditor = () => {
                                 <div className="px-6 pb-6 space-y-4">
                                     {/* Excerpt Input */}
                                     <textarea
-                                        placeholder="Enter a short excerpt (optional)..."
+                                        placeholder={t('marketing.blogEditor.excerptPlaceholder')}
                                         value={excerpt}
                                         onChange={(e) => setExcerpt(e.target.value)}
                                         className="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted/50 text-muted resize-none h-[40px] focus:h-[80px] transition-all"
@@ -678,14 +680,14 @@ export const BlogEditor = () => {
                                             className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-                                            {coverImage ? 'Change Cover Image' : 'Add Cover Image'}
+                                            {coverImage ? t('marketing.blogEditor.changeCover') : t('marketing.blogEditor.addCover')}
                                         </button>
                                         {coverImage && (
                                             <button
                                                 onClick={() => setCoverImage(null)}
-                                                className="text-xs text-red-500 hover:text-red-600 font-medium"
+                                                className="text-xs text-error hover:text-error font-medium"
                                             >
-                                                Remove
+                                                {t('common.remove')}
                                             </button>
                                         )}
                                     </div>
@@ -693,7 +695,7 @@ export const BlogEditor = () => {
                                     {/* Category & Tags Row */}
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1.5 text-muted">Category</label>
+                                            <label className="block text-sm font-medium mb-1.5 text-muted">{t('marketing.blogEditor.category')}</label>
                                             <div className="flex gap-2">
                                                 <div className="relative flex-1">
                                                     <select
@@ -704,7 +706,7 @@ export const BlogEditor = () => {
                                                             setSelectedCategory(cat || null);
                                                         }}
                                                     >
-                                                        <option value="">Select a category...</option>
+                                                        <option value="">{t('marketing.blogEditor.selectCategory')}</option>
                                                         {categories.map(cat => (
                                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                                         ))}
@@ -717,14 +719,14 @@ export const BlogEditor = () => {
                                                     variant="secondary"
                                                     className="shrink-0 aspect-square flex items-center justify-center p-0 w-10"
                                                     onClick={() => setShowCategoryManager(true)}
-                                                    title="Manage Categories"
+                                                    title={t('marketing.blogEditor.manageCategories')}
                                                 >
                                                     <span className="material-symbols-outlined">settings</span>
                                                 </Button>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1.5 text-muted">Tags</label>
+                                            <label className="block text-sm font-medium mb-1.5 text-muted">{t('marketing.blogEditor.tags')}</label>
                                             <div className="space-y-2">
                                                 {tags.length > 0 && (
                                                     <div className="flex flex-wrap gap-2">
@@ -733,7 +735,7 @@ export const BlogEditor = () => {
                                                                 {tag}
                                                                 <button
                                                                     onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
-                                                                    className="hover:text-red-500 flex items-center justify-center"
+                                                                    className="hover:text-error flex items-center justify-center"
                                                                 >
                                                                     <span className="material-symbols-outlined text-[14px]">close</span>
                                                                 </button>
@@ -743,7 +745,7 @@ export const BlogEditor = () => {
                                                 )}
                                                 <input
                                                     type="text"
-                                                    placeholder="Add tag and press Enter..."
+                                                    placeholder={t('marketing.blogEditor.tagPlaceholder')}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') {
                                                             e.preventDefault();
@@ -769,7 +771,7 @@ export const BlogEditor = () => {
                                 editorRef={editorRef}
                                 initialContent={content}
                                 onUpdate={setContent}
-                                placeholder="Write something amazing... Type '/' for commands."
+                                placeholder={t('marketing.blogEditor.contentPlaceholder')}
                             />
                         </div>
                     </div>
@@ -777,8 +779,8 @@ export const BlogEditor = () => {
 
                     {/* RIGHT: Preview Side */}
                     <div className="flex-1 flex flex-col bg-card border border-surface rounded-xl overflow-hidden shadow-sm relative w-1/2">
-                        <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-black/5 text-xs font-semibold uppercase tracking-wider text-black/50 pointer-events-none dark:bg-white/10 dark:text-white/50">
-                            Live Preview
+                        <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-surface-hover text-xs font-semibold uppercase tracking-wider text-muted pointer-events-none">
+                            {t('marketing.blogEditor.livePreview')}
                         </div>
 
                         {/* Reusable Template Usage */}

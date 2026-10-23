@@ -14,7 +14,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { initialOf } from '../utils/initials';
 
 // Simple time formatter if date-fns is not available or to reduce deps
-const timeAgo = (date: any) => {
+const timeAgo = (date: any, t: (key: string) => string) => {
     const millis = toMillis(date);
     if (!millis) return '';
     const now = Date.now();
@@ -23,10 +23,10 @@ const timeAgo = (date: any) => {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    return `${days}d ago`;
+    if (minutes < 1) return t('comments.justNow');
+    if (minutes < 60) return t('comments.minutesAgo').replace('{n}', String(minutes));
+    if (hours < 24) return t('comments.hoursAgo').replace('{n}', String(hours));
+    return t('comments.daysAgo').replace('{n}', String(days));
 };
 
 interface CommentSectionProps {
@@ -267,7 +267,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         }
     };
 
-    if (loading) return <div className="text-sm text-[var(--color-text-muted)] animate-pulse py-4">Loading comments...</div>;
+    if (loading) return <div className="text-sm text-[var(--color-text-muted)] animate-pulse py-4">{t('comments.loading')}</div>;
 
     return (
         <div className="flex flex-col gap-6">
@@ -275,7 +275,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 <div className="pb-2 border-b border-[var(--color-surface-border)]">
                     <h3 className="text-base font-bold flex items-center gap-2 text-[var(--color-text-main)]">
                         <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">chat</span>
-                        Comments ({comments.length})
+                        {t('comments.heading').replace('{count}', String(comments.length))}
                     </h3>
                 </div>
             )}
@@ -310,13 +310,13 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         {comment.userDisplayName}
                                     </span>
                                     <span className="text-[12px] font-medium text-[var(--color-text-subtle)]">
-                                        {timeAgo(comment.createdAt)}
+                                        {timeAgo(comment.createdAt, t)}
                                     </span>
                                     {(isProjectOwner || user?.uid === comment.userId) && (
-                                        <button aria-label="Delete comment"
+                                        <button aria-label={t('comments.delete')}
                                             onClick={() => handleDelete(comment.id)}
-                                            className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-opacity"
-                                            title="Delete comment"
+                                            className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-error transition-opacity"
+                                            title={t('comments.delete')}
                                         >
                                             <span className="material-symbols-outlined text-[16px]">delete</span>
                                         </button>
@@ -360,7 +360,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                             {target.photoURL ? <img src={target.photoURL} className="size-full object-cover" alt="" /> : <div className="size-full flex items-center justify-center text-[10px] font-bold">{target.name[0]}</div>}
                                         </div>
                                     ) : target.type === 'group' ? (
-                                        <div className="size-5 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                                        <div className="size-5 rounded bg-primary/15 text-primary flex items-center justify-center shrink-0">
                                             <span className="material-symbols-outlined text-[12px]">groups</span>
                                         </div>
                                     ) : (
@@ -372,8 +372,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         </div>
                                     )}
                                     <span className="truncate flex-1 font-medium">{target.name}</span>
-                                    {target.type === 'group' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Group</span>}
-                                    {target.type === 'role' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Role</span>}
+                                    {target.type === 'group' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('comments.group')}</span>}
+                                    {target.type === 'role' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">{t('comments.role')}</span>}
                                 </button>
                             ))}
                         </div>
@@ -385,7 +385,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                         ref={textareaRef}
                         value={newComment}
                         onChange={enhancedHandleInput}
-                        placeholder="Write a comment... (Type @ to mention)"
+                        placeholder={t('comments.placeholder')}
                         className="flex-1 min-h-[44px] max-h-[160px] p-2.5 text-[15px] bg-transparent border-0 outline-none focus:ring-0 focus:outline-none resize-none w-full text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
                         rows={1}
                         onKeyDown={handleKeyDown}
@@ -414,13 +414,13 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Comment?</h3>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('comments.deleteTitle')}</h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                This action cannot be undone.
+                                {t('comments.deleteBody')}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
-                                <Button variant="ghost" onClick={() => setCommentToDelete(null)}>Cancel</Button>
-                                <Button variant="danger" onClick={confirmDelete}>Delete</Button>
+                                <Button variant="ghost" onClick={() => setCommentToDelete(null)}>{t('common.cancel')}</Button>
+                                <Button variant="danger" onClick={confirmDelete}>{t('common.delete')}</Button>
                             </div>
                         </div>
                     </div>

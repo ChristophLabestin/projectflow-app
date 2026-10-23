@@ -79,6 +79,7 @@ function PermissionGroup({
     onToggleDeny,
     disabled
 }: PermissionGroupProps) {
+    const { t } = useLanguage();
     const [isExpanded, setIsExpanded] = useState(false);
 
     const displayName = groupName.split('.').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' → ');
@@ -117,9 +118,9 @@ function PermissionGroup({
                                         disabled={disabled}
                                         onClick={() => onToggleAllow(permission)}
                                         className={`size-4 rounded flex items-center justify-center border transition-all text-xs
-                                            ${isAllowed ? 'bg-green-500 border-green-500 text-white' : 'border-surface hover:border-green-500'}
+                                            ${isAllowed ? 'bg-success border-success text-white' : 'border-surface hover:border-success'}
                                             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        title="Allow"
+                                        title={t('roles.form.allow')}
                                     >
                                         {isAllowed && <span className="material-symbols-outlined text-xs">check</span>}
                                     </button>
@@ -128,9 +129,9 @@ function PermissionGroup({
                                         disabled={disabled}
                                         onClick={() => onToggleDeny(permission)}
                                         className={`size-4 rounded flex items-center justify-center border transition-all text-xs
-                                            ${isDenied ? 'bg-red-500 border-red-500 text-white' : 'border-surface hover:border-red-500'}
+                                            ${isDenied ? 'bg-error border-error text-white' : 'border-surface hover:border-error'}
                                             ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-                                        title="Deny"
+                                        title={t('roles.form.deny')}
                                     >
                                         {isDenied && <span className="material-symbols-outlined text-xs">close</span>}
                                     </button>
@@ -138,7 +139,7 @@ function PermissionGroup({
                                 <div className="flex-1 min-w-0 flex items-center gap-2">
                                     <code className="text-[10px] text-muted font-mono truncate">{permission}</code>
                                     {meta?.dangerLevel === 'high' && (
-                                        <span className="text-[9px] px-1 py-0.5 rounded bg-red-500/10 text-red-500 shrink-0">!</span>
+                                        <span className="text-[9px] px-1 py-0.5 rounded bg-error/10 text-error shrink-0">!</span>
                                     )}
                                 </div>
                             </div>
@@ -183,6 +184,7 @@ function DraggableRoleItem({
     onDragLeave,
     onDrop
 }: DraggableRoleItemProps) {
+    const { t } = useLanguage();
     const isOwner = role.systemKey === 'OWNER';
     const isGuest = role.systemKey === 'GUEST';
     const canDrag = canReorder && !isOwner && !isGuest;
@@ -211,7 +213,7 @@ function DraggableRoleItem({
         return (
             <div className="relative">
                 {dropPosition === 'below' && (
-                    <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 rounded-full animate-pulse z-10" />
+                    <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary rounded-full animate-pulse z-10" />
                 )}
                 <div
                     onClick={onSelect}
@@ -220,22 +222,22 @@ function DraggableRoleItem({
                     onDrop={handleDrop}
                     className={`
                         flex items-center gap-4 p-4 rounded-xl transition-all duration-200 cursor-pointer shadow-sm
-                        bg-gradient-to-r from-amber-500/5 to-orange-500/5
+                        bg-gradient-to-r from-warning/5 to-warning/5
                         hover:shadow-md hover:-translate-y-0.5
-                        ${isSelected ? 'ring-2 ring-amber-500/50 bg-amber-500/10' : ''}
+                        ${isSelected ? 'ring-2 ring-warning/50 bg-warning/10' : ''}
                     `}
                 >
-                    <div className="size-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/20">
+                    <div className="size-9 rounded-full bg-gradient-to-br from-warning to-warning flex items-center justify-center text-white shadow-lg shadow-warning/20">
                         <span className="material-symbols-outlined text-lg">star</span>
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                             <span className="font-semibold text-main">{role.name}</span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-medium">
-                                OWNER
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-warning/20 text-warning font-medium">
+                                {t('roles.manage.ownerBadge')}
                             </span>
                         </div>
-                        <p className="text-xs text-muted">Full access to all features</p>
+                        <p className="text-xs text-muted">{t('roles.ownerDescription')}</p>
                     </div>
                 </div>
             </div>
@@ -246,11 +248,11 @@ function DraggableRoleItem({
         <div className="relative">
             {/* Drop indicator - above */}
             {dropPosition === 'above' && !isDragging && (
-                <div className="absolute -top-1 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 rounded-full animate-pulse z-10" />
+                <div className="absolute -top-1 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary rounded-full animate-pulse z-10" />
             )}
             {/* Drop indicator - below */}
             {dropPosition === 'below' && !isDragging && (
-                <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 rounded-full animate-pulse z-10" />
+                <div className="absolute -bottom-1 left-0 right-0 h-1 bg-gradient-to-r from-primary via-primary to-primary rounded-full animate-pulse z-10" />
             )}
 
             <div
@@ -330,6 +332,7 @@ interface PermissionDisplayPanelProps {
 }
 
 function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: PermissionDisplayPanelProps) {
+    const { t } = useLanguage();
     const permissionGroups = useMemo(() => {
         if (!role) return new Map<string, PermissionNode[]>();
 
@@ -347,7 +350,7 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
         return (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
                 <span className="material-symbols-outlined text-5xl text-muted/30 mb-3">touch_app</span>
-                <p className="text-muted">Select a role to view its permissions</p>
+                <p className="text-muted">{t('roles.manage.selectToView')}</p>
             </div>
         );
     }
@@ -358,21 +361,21 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
     return (
         <div className="flex flex-col h-full">
             {/* Header */}
-            <div className={`p-6 border-b border-surface ${isOwner ? 'bg-gradient-to-r from-amber-500/10 to-transparent' : ''}`}>
+            <div className={`p-6 border-b border-surface ${isOwner ? 'bg-gradient-to-r from-warning/10 to-transparent' : ''}`}>
                 <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
                         <div
-                            className={`size-10 rounded-full flex items-center justify-center text-white font-bold ${isOwner ? 'bg-gradient-to-br from-amber-400 to-amber-600 shadow-lg shadow-amber-500/25' : ''}`}
+                            className={`size-10 rounded-full flex items-center justify-center text-white font-bold ${isOwner ? 'bg-gradient-to-br from-warning to-warning shadow-lg shadow-warning/25' : ''}`}
                             style={isOwner ? {} : { backgroundColor: role.color || 'var(--color-primary)' }}
                         >
                             {isOwner ? <span className="material-symbols-outlined">crown</span> : initialOf(role.name)}
                         </div>
                         <div>
-                            <h3 className={`font-bold text-lg ${isOwner ? 'text-amber-600 dark:text-amber-400' : 'text-main'}`}>
+                            <h3 className={`font-bold text-lg ${isOwner ? 'text-warning' : 'text-main'}`}>
                                 {role.name}
                             </h3>
                             <p className="text-xs text-muted">
-                                {role.description || `Position: ${role.position === Number.MAX_SAFE_INTEGER ? '∞ (Highest)' : role.position}`}
+                                {role.description || t('roles.manage.position').replace('{position}', role.position === Number.MAX_SAFE_INTEGER ? t('roles.manage.highest') : String(role.position))}
                             </p>
                         </div>
                     </div>
@@ -384,7 +387,7 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
                                 </Button>
                             )}
                             {protection.canDelete && (
-                                <Button variant="ghost" size="sm" onClick={onDelete} className="text-red-500 hover:text-red-600 hover:bg-red-500/10">
+                                <Button variant="ghost" size="sm" onClick={onDelete} className="text-error hover:text-error hover:bg-error/10">
                                     <span className="material-symbols-outlined text-base">delete</span>
                                 </Button>
                             )}
@@ -397,30 +400,30 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
             <div className="flex-1 overflow-y-auto p-4">
                 {isOwner ? (
                     <div className="text-center py-8">
-                        <div className="inline-flex items-center justify-center size-16 rounded-full bg-amber-500/10 mb-4">
-                            <span className="material-symbols-outlined text-3xl text-amber-500">verified</span>
+                        <div className="inline-flex items-center justify-center size-16 rounded-full bg-warning/10 mb-4">
+                            <span className="material-symbols-outlined text-3xl text-warning">verified</span>
                         </div>
-                        <h4 className="font-bold text-main mb-1">Full Access</h4>
+                        <h4 className="font-bold text-main mb-1">{t('roles.manage.fullAccess')}</h4>
                         <p className="text-sm text-muted">
-                            The Owner role has unrestricted access to all features and cannot be modified.
+                            {t('roles.manage.ownerUnmodifiable')}
                         </p>
                     </div>
                 ) : role.permissions.allow.length === 0 ? (
                     <div className="text-center py-8 text-muted">
                         <span className="material-symbols-outlined text-4xl mb-2">block</span>
-                        <p>No permissions granted</p>
+                        <p>{t('roles.manage.noPermissions')}</p>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between text-xs text-muted">
-                            <span>Allowed Permissions</span>
-                            <span className="font-mono">{role.permissions.allow.length} total</span>
+                            <span>{t('roles.manage.allowedPermissions')}</span>
+                            <span className="font-mono">{t('roles.manage.total').replace('{count}', String(role.permissions.allow.length))}</span>
                         </div>
 
                         {Array.from(permissionGroups.entries()).map(([group, perms]) => (
                             <div key={group} className="space-y-1">
                                 <div className="text-xs font-medium text-main flex items-center gap-2">
-                                    <span className="size-1.5 rounded-full bg-green-500" />
+                                    <span className="size-1.5 rounded-full bg-success" />
                                     {group.split('.').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' → ')}
                                 </div>
                                 <div className="pl-3 space-y-0.5">
@@ -428,10 +431,10 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
                                         const meta = PERMISSION_CATALOG[p];
                                         return (
                                             <div key={p} className="flex items-center gap-2 text-xs">
-                                                <span className="text-green-500">✓</span>
+                                                <span className="text-success">✓</span>
                                                 <code className="text-muted font-mono text-[10px]">{p.split('.').slice(2).join('.')}</code>
                                                 {meta?.dangerLevel === 'high' && (
-                                                    <span className="text-[9px] px-1 rounded bg-red-500/10 text-red-500">dangerous</span>
+                                                    <span className="text-[9px] px-1 rounded bg-error/10 text-error">{t('roles.manage.dangerous')}</span>
                                                 )}
                                             </div>
                                         );
@@ -443,14 +446,14 @@ function PermissionDisplayPanel({ role, onEdit, onDelete, canManage }: Permissio
                         {role.permissions.deny.length > 0 && (
                             <>
                                 <div className="border-t border-surface my-4" />
-                                <div className="text-xs font-medium text-red-500 flex items-center gap-2 mb-2">
-                                    <span className="size-1.5 rounded-full bg-red-500" />
-                                    Explicitly Denied ({role.permissions.deny.length})
+                                <div className="text-xs font-medium text-error flex items-center gap-2 mb-2">
+                                    <span className="size-1.5 rounded-full bg-error" />
+                                    {t('roles.manage.explicitlyDenied').replace('{count}', String(role.permissions.deny.length))}
                                 </div>
                                 <div className="pl-3 space-y-0.5">
                                     {role.permissions.deny.map(p => (
                                         <div key={p} className="flex items-center gap-2 text-xs">
-                                            <span className="text-red-500">✗</span>
+                                            <span className="text-error">✗</span>
                                             <code className="text-muted font-mono text-[10px]">{p}</code>
                                         </div>
                                     ))}
@@ -508,32 +511,32 @@ export function RoleManagement() {
         const systemRoles: Role[] = [
             {
                 id: 'system-owner',
-                name: 'Owner',
+                name: t('roles.owner'),
                 position: Number.MAX_SAFE_INTEGER,
                 isSystem: true,
                 systemKey: 'OWNER',
                 color: '#f59e0b',
-                description: 'Full access to everything',
+                description: t('roles.ownerDescription'),
                 permissions: SYSTEM_ROLE_DEFAULTS.OWNER.permissions,
             },
             {
                 id: 'system-member',
-                name: 'Member',
+                name: t('roles.member'),
                 position: 0,
                 isSystem: true,
                 systemKey: 'MEMBER',
                 color: '#3b82f6',
-                description: 'Default baseline for all members',
+                description: t('roles.manage.memberDescription'),
                 permissions: SYSTEM_ROLE_DEFAULTS.MEMBER.permissions,
             },
             {
                 id: 'system-guest',
-                name: 'Guest',
+                name: t('roles.guest'),
                 position: -1,
                 isSystem: true,
                 systemKey: 'GUEST',
                 color: '#78716c',
-                description: 'External project collaborators',
+                description: t('roles.manage.guestDescription'),
                 permissions: SYSTEM_ROLE_DEFAULTS.GUEST.permissions,
             },
         ];
@@ -660,7 +663,7 @@ export function RoleManagement() {
                 console.log('Firebase updated successfully');
             } catch (error) {
                 console.error('Failed to update role position:', error);
-                showError('Failed to reorder role');
+                showError(t('roles.manage.reorderFailed'));
             }
         } else {
             // For system roles like Member, update local state only
@@ -893,8 +896,8 @@ export function RoleManagement() {
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium text-main">{t('roles.form.permissions')}</label>
                             <div className="flex items-center gap-3 text-[10px] text-muted">
-                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-green-500" /> {t('roles.form.allow')}</span>
-                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-red-500" /> {t('roles.form.deny')}</span>
+                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-success" /> {t('roles.form.allow')}</span>
+                                <span className="flex items-center gap-1"><span className="size-2 rounded bg-error" /> {t('roles.form.deny')}</span>
                             </div>
                         </div>
 
@@ -907,7 +910,7 @@ export function RoleManagement() {
                                     setFormData(prev => ({ ...prev, permissions: { allow: allPerms, deny: [] } }));
                                 }}
                                 disabled={editingRole?.systemKey === 'OWNER' || editingRole?.systemKey === 'GUEST'}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-green-500/10 text-green-600 dark:text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-success/10 text-success hover:bg-success/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
                                 {t('roles.form.allowAll')}
@@ -919,7 +922,7 @@ export function RoleManagement() {
                                     setFormData(prev => ({ ...prev, permissions: { allow: [], deny: allPerms } }));
                                 }}
                                 disabled={editingRole?.systemKey === 'OWNER' || editingRole?.systemKey === 'GUEST'}
-                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center gap-1 px-2 py-1 text-xs rounded-md bg-error/10 text-error hover:bg-error/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined text-sm">cancel</span>
                                 {t('roles.form.denyAll')}

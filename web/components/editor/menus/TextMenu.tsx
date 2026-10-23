@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Editor } from '@tiptap/react';
+import { useLanguage } from '../../../context/LanguageContext';
 import {
     Bold, Italic, Underline, Strikethrough, Code, Link as LinkIcon, Heading2, Check
 } from 'lucide-react';
@@ -9,6 +10,7 @@ interface TextMenuProps {
 }
 
 export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
+    const { t } = useLanguage();
     const [isVisible, setIsVisible] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
 
@@ -119,9 +121,9 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                     <button
                         onClick={() => editor.chain().focus().unsetColor().run()}
                         className="px-1.5 py-0.5 text-[10px] font-medium rounded hover:bg-surface-hover text-main border border-black/10"
-                        title="Reset Color"
+                        title={t('editor.menu.text.resetColor')}
                     >
-                        Auto
+                        {t('editor.menu.text.auto')}
                     </button>
                     {colors.map(color => (
                         <button

@@ -3,6 +3,7 @@ import { Editor } from '@tiptap/react';
 import { Check, Save, BoxSelect, Maximize, LayoutGrid, Plus } from 'lucide-react';
 import { HexColorPicker } from 'react-colorful';
 import { useToast } from '../../../context/UIContext';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface CardMenuProps {
     editor: Editor;
@@ -36,6 +37,7 @@ const areValuesUnified = (vals: { t: string, r: string, b: string, l: string }) 
 
 export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
     const { showSuccess } = useToast();
+    const { t } = useLanguage();
     const [isVisible, setIsVisible] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef<HTMLDivElement>(null);
@@ -257,7 +259,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
 
         const newPreset = {
             title: presetName,
-            description: 'Custom card preset',
+            description: t('editor.menu.card.presetDescription'),
             icon: 'web_asset',
             attributes: {
                 backgroundColor,
@@ -273,7 +275,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
         window.dispatchEvent(new Event('storage'));
         setShowSaveInput(false);
         setPresetName('');
-        showSuccess(`Saved preset "${presetName}".`);
+        showSuccess(t('editor.menu.card.presetSaved').replace('{name}', presetName));
     };
 
     return (
@@ -289,13 +291,13 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
             onClick={(e) => e.stopPropagation()}
         >
             <div className="flex items-center justify-between px-1 mb-2">
-                <span className="text-xs font-bold text-main">Card Settings</span>
+                <span className="text-xs font-bold text-main">{t('editor.menu.card.title')}</span>
                 {/* Save Preset Button - Small and integrated into header */}
                 {!showSaveInput ? (
                     <button
                         onClick={() => setShowSaveInput(true)}
                         className="p-1 hover:bg-surface-hover rounded-md text-muted hover:text-primary transition-colors"
-                        title="Save as Preset"
+                        title={t('editor.menu.card.savePreset')}
                     >
                         <Save size={14} />
                     </button>
@@ -303,7 +305,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                     <div className="flex bg-surface rounded-md border border-surface overflow-hidden h-6">
                         <input
                             type="text"
-                            placeholder="Name"
+                            placeholder={t('editor.menu.card.presetName')}
                             value={presetName}
                             onChange={(e) => setPresetName(e.target.value)}
                             className="w-20 text-[10px] px-2 bg-transparent outline-none text-main"
@@ -336,7 +338,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
             <div className="mb-4 min-h-[80px]">
                 {activeTab === 'fill' && (
                     <div className="animate-in fade-in duration-200">
-                        <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Background Color</div>
+                        <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.card.backgroundColor')}</div>
                         <div className="flex flex-wrap gap-2">
                             {/* Color Picker Toggle */}
                             <div className="relative">
@@ -367,7 +369,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                                 onClick={() => handleSaveColor('bg')}
                                                 className="px-3 py-1 bg-primary text-on-primary text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                             >
-                                                Save
+                                                {t('common.save')}
                                             </button>
                                         </div>
                                     </div>
@@ -391,7 +393,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                 {activeTab === 'border' && (
                     <div className="animate-in fade-in duration-200 space-y-3">
                         <div>
-                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Color</div>
+                            <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.color')}</div>
                             <div className="flex flex-wrap gap-2">
                                 {/* Color Picker Toggle */}
                                 <div className="relative">
@@ -422,7 +424,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                                     onClick={() => handleSaveColor('border')}
                                                     className="px-3 py-1 bg-primary text-on-primary text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                                 >
-                                                    Save
+                                                    {t('common.save')}
                                                 </button>
                                             </div>
                                         </div>
@@ -444,7 +446,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
 
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-surface rounded-lg p-2 border border-surface">
-                                <span className="text-[9px] text-muted uppercase block mb-1">Width</span>
+                                <span className="text-[9px] text-muted uppercase block mb-1">{t('editor.menu.width')}</span>
                                 <div className="flex items-center gap-1">
                                     <input
                                         type="text"
@@ -456,17 +458,17 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                 </div>
                             </div>
                             <div className="bg-surface rounded-lg p-2 border border-surface">
-                                <span className="text-[9px] text-muted uppercase block mb-1">Style</span>
+                                <span className="text-[9px] text-muted uppercase block mb-1">{t('editor.menu.style')}</span>
                                 <select
                                     value={borderStyle || 'solid'}
                                     onChange={(e) => updateAttribute('borderStyle', e.target.value)}
                                     className="w-full text-xs font-medium bg-transparent outline-none appearance-none cursor-pointer"
                                 >
-                                    <option value="solid">Solid</option>
-                                    <option value="dashed">Dashed</option>
-                                    <option value="dotted">Dotted</option>
-                                    <option value="double">Double</option>
-                                    <option value="none">None</option>
+                                    <option value="solid">{t('editor.menu.border.solid')}</option>
+                                    <option value="dashed">{t('editor.menu.border.dashed')}</option>
+                                    <option value="dotted">{t('editor.menu.border.dotted')}</option>
+                                    <option value="double">{t('editor.menu.border.double')}</option>
+                                    <option value="none">{t('editor.menu.border.none')}</option>
                                 </select>
                             </div>
                         </div>
@@ -475,13 +477,13 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
 
                 {activeTab === 'text' && (
                     <div className="animate-in fade-in duration-200">
-                        <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">Text Color</div>
+                        <div className="text-[10px] font-medium text-muted mb-2 uppercase tracking-wide">{t('editor.menu.textColor')}</div>
                         <div className="flex flex-wrap gap-2">
                             {/* Auto Button */}
                             <button
                                 onClick={() => updateAttribute('textColor', 'inherit')}
                                 className={`w-6 h-6 rounded-full border border-dashed border-muted flex items-center justify-center hover:bg-surface-hover ${textColor === 'inherit' ? 'ring-2 ring-offset-1 ring-primary' : ''}`}
-                                title="Inherit / Auto"
+                                title={t('editor.menu.inheritAuto')}
                             >
                                 <span className="text-[9px] font-bold text-muted">A</span>
                             </button>
@@ -515,7 +517,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                                 onClick={() => handleSaveColor('text')}
                                                 className="px-3 py-1 bg-primary text-on-primary text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                             >
-                                                Save
+                                                {t('common.save')}
                                             </button>
                                         </div>
                                     </div>
@@ -546,12 +548,12 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5 text-muted">
                             <Maximize size={12} />
-                            <span className="text-[10px] uppercase font-medium tracking-wide">Radius</span>
+                            <span className="text-[10px] uppercase font-medium tracking-wide">{t('editor.menu.radius')}</span>
                         </div>
                         <button
                             onClick={() => setIsUnifiedRadius(!isUnifiedRadius)}
                             className={`p-1 rounded hover:bg-surface-hover transition-colors ${!isUnifiedRadius ? 'text-primary bg-primary/10' : 'text-muted'}`}
-                            title="Toggle individual corners"
+                            title={t('editor.menu.radius.toggle')}
                         >
                             <LayoutGrid size={12} />
                         </button>
@@ -565,7 +567,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                             onBlur={commitRadius}
                             onKeyDown={(e) => e.key === 'Enter' && commitRadius()}
                             className="w-full p-1.5 text-xs rounded bg-card border-none focus:ring-1 focus:ring-primary text-center outline-none transition-shadow"
-                            placeholder="e.g. 8px"
+                            placeholder={t('editor.menu.radius.placeholder')}
                         />
                     ) : (
                         <div className="grid grid-cols-2 gap-2">
@@ -593,12 +595,12 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5 text-muted">
                             <BoxSelect size={12} />
-                            <span className="text-[10px] uppercase font-medium tracking-wide">Padding</span>
+                            <span className="text-[10px] uppercase font-medium tracking-wide">{t('editor.menu.padding')}</span>
                         </div>
                         <button
                             onClick={() => setIsUnifiedPadding(!isUnifiedPadding)}
                             className={`p-1 rounded hover:bg-surface-hover transition-colors ${!isUnifiedPadding ? 'text-primary bg-primary/10' : 'text-muted'}`}
-                            title="Toggle individual sides"
+                            title={t('editor.menu.padding.toggle')}
                         >
                             <LayoutGrid size={12} />
                         </button>
@@ -612,7 +614,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                             onBlur={commitPadding}
                             onKeyDown={(e) => e.key === 'Enter' && commitPadding()}
                             className="w-full p-1.5 text-xs rounded bg-card border-none focus:ring-1 focus:ring-primary text-center outline-none transition-shadow"
-                            placeholder="e.g. 16px"
+                            placeholder={t('editor.menu.padding.placeholder')}
                         />
                     ) : (
                         <div className="grid grid-cols-2 gap-2">

@@ -124,7 +124,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
                                 </button>
                                 <button aria-label={t('common.delete')}
                                     onClick={() => handleDelete(cat.id)}
-                                    className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-red-500"
+                                    className="p-1.5 hover:bg-surface-hover rounded-lg text-muted hover:text-error"
                                 >
                                     <span className="material-symbols-outlined text-sm">delete</span>
                                 </button>

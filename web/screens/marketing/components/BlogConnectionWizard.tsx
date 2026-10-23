@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Card } from '../../../components/ui/Card';
 import { useToast } from '../../../context/UIContext';
+import { useLanguage } from '../../../context/LanguageContext';
 import { ApiResourceConfig, ApiEndpoint } from '../../../types';
 
 interface BlogConnectionWizardProps {
@@ -61,7 +62,7 @@ const KNOWN_FIELDS = [
 ];
 
 // Parse data model and detect which fields are present
-const parseDataModel = (dataModel: string): { isValid: boolean; detectedFields: string[]; error?: string } => {
+const parseDataModel = (dataModel: string, t: (key: string) => string): { isValid: boolean; detectedFields: string[]; error?: string } => {
     if (!dataModel.trim()) {
         return { isValid: true, detectedFields: [] }; // Empty is valid (optional)
     }
@@ -74,7 +75,7 @@ const parseDataModel = (dataModel: string): { isValid: boolean; detectedFields: 
         return {
             isValid: false,
             detectedFields: [],
-            error: 'Data model should be a TypeScript interface or JSON object'
+            error: t('marketing.wizard.invalidModelFormat')
         };
     }
 
@@ -99,13 +100,13 @@ const parseDataModel = (dataModel: string): { isValid: boolean; detectedFields: 
     // Check for required fields
     const missingRequired = KNOWN_FIELDS
         .filter(f => f.required && !detectedFields.includes(f.key))
-        .map(f => f.label);
+        .map(f => t('marketing.wizard.field.' + f.key));
 
     if (missingRequired.length > 0 && detectedFields.length > 0) {
         return {
             isValid: false,
             detectedFields,
-            error: `Missing required fields: ${missingRequired.join(', ')}`
+            error: t('marketing.wizard.missingRequired').replace('{fields}', missingRequired.join(', '))
         };
     }
 
@@ -114,6 +115,7 @@ const parseDataModel = (dataModel: string): { isValid: boolean; detectedFields: 
 
 export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ initialSettings, onSave, onCancel }) => {
     const { showSuccess, showError } = useToast();
+    const { t } = useLanguage();
     const [step, setStep] = useState<WizardStep>('welcome');
 
     // Core Config
@@ -134,7 +136,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             setSupportedLanguages([]);
         }
         // Validate the data model
-        setDataModelValidation(parseDataModel(dataModel));
+        setDataModelValidation(parseDataModel(dataModel, t));
     }, [dataModel]);
 
     // Resources Config
@@ -189,13 +191,13 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
         if (step === 'welcome') setStep('base_auth');
         else if (step === 'base_auth') {
             if (!baseUrl) {
-                showError('Base URL is required');
+                showError(t('marketing.wizard.baseUrlRequired'));
                 return;
             }
             try {
                 JSON.parse(headers);
             } catch (e) {
-                showError('Headers must be valid JSON');
+                showError(t('marketing.wizard.headersInvalid'));
                 return;
             }
             setStep('resources');
@@ -204,12 +206,12 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
         else if (step === 'data_model') {
             // Validate data model if provided
             if (dataModel.trim() && !dataModelValidation.isValid) {
-                showError(dataModelValidation.error || 'Invalid data model format');
+                showError(dataModelValidation.error || t('marketing.wizard.invalidDataModel'));
                 return;
             }
             // If language field detected but no languages selected, show warning
             if (hasLanguageField && supportedLanguages.length === 0) {
-                showError('Please select at least one language to enable multi-language support');
+                showError(t('marketing.wizard.selectLanguage'));
                 return;
             }
             setStep('validation');
@@ -226,7 +228,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
     const testResource = async (resource: ResourceType) => {
         const endpoint = resources[resource]?.endpoints?.list;
         if (!endpoint?.path) {
-            showError(`Please configure the List endpoint for ${resource}`);
+            showError(t('marketing.wizard.configureList').replace('{resource}', t('marketing.wizard.resource.' + resource)));
             return;
         }
 
@@ -237,7 +239,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
         try {
             parsedHeaders = JSON.parse(headers);
         } catch (e) {
-            showError('Invalid Headers JSON');
+            showError(t('marketing.wizard.headersInvalidJson'));
             setResourceTestStatus(prev => ({ ...prev, [resource]: 'error' }));
             return;
         }
@@ -249,17 +251,17 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             });
 
             if (res.ok) {
-                showSuccess(`${resource.charAt(0).toUpperCase() + resource.slice(1)} endpoint verified!`);
+                showSuccess(t('marketing.wizard.endpointVerified').replace('{resource}', t('marketing.wizard.resource.' + resource)));
                 setResourceTestStatus(prev => ({ ...prev, [resource]: 'success' }));
             } else {
                 const body = await res.text();
                 const detailedError = `Status: ${res.status} ${res.statusText}\nBody: ${body}\nURL: ${url}`;
-                showError(`Failed to verify ${resource} endpoint`, detailedError);
+                showError(t('marketing.wizard.endpointVerifyFailed').replace('{resource}', t('marketing.wizard.resource.' + resource)), detailedError);
                 setResourceTestStatus(prev => ({ ...prev, [resource]: 'error' }));
             }
         } catch (e: any) {
             const detailedError = `Error: ${e.message}\nThis might be a CORS issue if your API is not configured to allow requests from ${window.location.origin}.`;
-            showError(`Network error while testing ${resource} endpoint`, detailedError);
+            showError(t('marketing.wizard.networkError').replace('{resource}', t('marketing.wizard.resource.' + resource)), detailedError);
             setResourceTestStatus(prev => ({ ...prev, [resource]: 'error' }));
         }
     };
@@ -274,7 +276,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             try {
                 new URL(baseUrl);
             } catch (e) {
-                throw new Error('Invalid Base URL');
+                throw new Error(t('marketing.wizard.invalidBaseUrl'));
             }
 
             // Test Posts List Endpoint
@@ -301,8 +303,8 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             setConnectionStatus('success');
         } catch (e: any) {
             setConnectionStatus('error');
-            setConnectionError(e.message || 'Validation failed');
-            showError('Validation failed', e.message || 'Unknown error');
+            setConnectionError(e.message || t('marketing.wizard.validationFailed'));
+            showError(t('marketing.wizard.validationFailed'), e.message || t('marketing.wizard.unknownError'));
         } finally {
             setTestingConnection(false);
         }
@@ -319,7 +321,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             });
             setStep('completion');
         } catch (e) {
-            showError('Failed to save configuration');
+            showError(t('marketing.wizard.saveFailed'));
         }
     };
 
@@ -340,7 +342,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
                             <span className="material-symbols-outlined text-sm">api</span>
                         </span>
-                        API Integration Setup
+                        {t('marketing.wizard.title')}
                     </h2>
                     <Button variant="ghost" size="sm" onClick={onCancel}>
                         <span className="material-symbols-outlined text-lg">close</span>
@@ -363,32 +365,32 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             <div className="flex-1 p-8 overflow-y-auto">
                 {step === 'welcome' && (
                     <div className="flex flex-col items-center text-center space-y-6 animate-fade-up">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-purple-600 flex items-center justify-center mb-4 shadow-lg shadow-[var(--color-primary)]/20">
+                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--color-primary)] to-primary flex items-center justify-center mb-4 shadow-lg shadow-[var(--color-primary)]/20">
                             <span className="material-symbols-outlined text-4xl text-white">hub</span>
                         </div>
-                        <h3 className="text-2xl font-bold">Connect Your Content API</h3>
+                        <h3 className="text-2xl font-bold">{t('marketing.wizard.welcome.title')}</h3>
                         <p className="text-muted max-w-lg text-lg">
-                            Configure a generic REST client to manage your blog posts and categories externally.
+                            {t('marketing.wizard.welcome.body')}
                         </p>
                     </div>
                 )}
 
                 {step === 'base_auth' && (
                     <div className="space-y-6 animate-fade-up max-w-2xl mx-auto">
-                        <h3 className="text-lg font-bold">Base Configuration</h3>
+                        <h3 className="text-lg font-bold">{t('marketing.wizard.base.title')}</h3>
 
                         <Input
-                            label="Base URL"
+                            label={t('marketing.wizard.base.url')}
                             placeholder="https://api.example.com/v1"
                             value={baseUrl}
                             onChange={(e) => setBaseUrl(e.target.value)}
                         />
-                        <p className="text-xs text-muted">Root URL for your API</p>
+                        <p className="text-xs text-muted">{t('marketing.wizard.base.urlHint')}</p>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium">Global Headers (JSON)</label>
+                            <label className="block text-sm font-medium">{t('marketing.wizard.base.headers')}</label>
                             <textarea
-                                className="w-full h-40 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
+                                className="w-full h-40 bg-surface-hover text-main font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
                                 value={headers}
                                 onChange={(e) => setHeaders(e.target.value)}
                                 placeholder={`{\n  "Authorization": "Bearer ...",\n  "Content-Type": "application/json"\n}`}
@@ -400,7 +402,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                 {step === 'resources' && (
                     <div className="space-y-6 animate-fade-up">
-                        <h3 className="text-lg font-bold">Resource Configuration</h3>
+                        <h3 className="text-lg font-bold">{t('marketing.wizard.res.title')}</h3>
 
                         {/* Tabs */}
                         <div className="flex border-b border-surface">
@@ -412,20 +414,20 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                         ? 'border-primary text-primary'
                                         : 'border-transparent text-muted hover:text-main'}`}
                                 >
-                                    {res.charAt(0).toUpperCase() + res.slice(1)}
+                                    {t('marketing.wizard.resource.' + res)}
                                 </button>
                             ))}
                         </div>
 
                         <div className="flex items-center justify-between p-4 bg-surface rounded-xl border border-surface">
                             <div className="flex items-center gap-3">
-                                <span className={`material-symbols-outlined ${resourceTestStatus[activeResourceTab] === 'success' ? 'text-green-500' : 'text-muted'}`}>
+                                <span className={`material-symbols-outlined ${resourceTestStatus[activeResourceTab] === 'success' ? 'text-success' : 'text-muted'}`}>
                                     {resourceTestStatus[activeResourceTab] === 'success' ? 'check_circle' :
                                         resourceTestStatus[activeResourceTab] === 'testing' ? 'progress_activity' : 'info'}
                                 </span>
                                 <div>
-                                    <div className="text-sm font-medium">Endpoint Verification</div>
-                                    <p className="text-xs text-muted">Test the list endpoint before proceeding</p>
+                                    <div className="text-sm font-medium">{t('marketing.wizard.res.verification')}</div>
+                                    <p className="text-xs text-muted">{t('marketing.wizard.res.verificationHint')}</p>
                                 </div>
                             </div>
                             <Button
@@ -434,7 +436,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                 onClick={() => testResource(activeResourceTab)}
                                 isLoading={resourceTestStatus[activeResourceTab] === 'testing'}
                             >
-                                {resourceTestStatus[activeResourceTab] === 'success' ? 'Test Again' : 'Test Endpoint'}
+                                {resourceTestStatus[activeResourceTab] === 'success' ? t('marketing.wizard.res.testAgain') : t('marketing.wizard.res.test')}
                             </Button>
                         </div>
 
@@ -445,7 +447,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                 return (
                                     <div key={action} className="grid grid-cols-[100px_1fr_120px] gap-4 items-start">
                                         <div className="pt-3 text-sm font-medium text-muted uppercase tracking-wider">
-                                            {action}
+                                            {t('marketing.wizard.action.' + action)}
                                         </div>
                                         <Input
                                             placeholder={action === 'list' ? '/posts' : action === 'update' ? '/posts/:id' : '/posts'}
@@ -469,7 +471,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         </div>
 
                         <div className="p-4 bg-surface rounded-lg text-xs text-muted mt-4">
-                            <p><strong>Tip:</strong> Use <code>:id</code> as a placeholder for resource IDs in Update/Delete/Get paths.</p>
+                            <p><strong>{t('marketing.wizard.res.tipLabel')}</strong> {t('marketing.wizard.res.tipPre')} <code>:id</code> {t('marketing.wizard.res.tipPost')}</p>
                         </div>
                     </div>
                 )}
@@ -477,16 +479,16 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                 {step === 'data_model' && (
                     <div className="space-y-6 animate-fade-up max-w-2xl mx-auto">
                         <div>
-                            <h3 className="text-lg font-bold mb-2">Data Model (Optional)</h3>
+                            <h3 className="text-lg font-bold mb-2">{t('marketing.wizard.model.title')}</h3>
                             <p className="text-sm text-muted">
-                                Define your blog post structure. If your API supports multiple languages, include a <code className="bg-surface-hover px-1.5 py-0.5 rounded text-xs">language</code> field.
+                                {t('marketing.wizard.model.bodyPre')} <code className="bg-surface-hover px-1.5 py-0.5 rounded text-xs">language</code> {t('marketing.wizard.model.bodyPost')}
                             </p>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="block text-sm font-medium">Post Interface / Schema</label>
+                            <label className="block text-sm font-medium">{t('marketing.wizard.model.schema')}</label>
                             <textarea
-                                className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
+                                className="w-full h-64 bg-surface-hover text-main font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
                                 value={dataModel}
                                 onChange={(e) => setDataModel(e.target.value)}
                                 placeholder={`interface BlogPost {
@@ -512,7 +514,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                 spellCheck={false}
                             />
                             <p className="text-xs text-muted">
-                                This helps ProjectFlow understand how to map data to your API.
+                                {t('marketing.wizard.model.help')}
                             </p>
                         </div>
 
@@ -520,22 +522,22 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         {dataModel.trim() && (
                             <div className={`p-4 rounded-xl border ${dataModelValidation.isValid
                                     ? 'bg-surface border-surface'
-                                    : 'bg-red-500/5 border-red-500/20'
+                                    : 'bg-error/5 border-error/20'
                                 }`}>
                                 {dataModelValidation.error ? (
                                     <div className="flex items-start gap-3">
-                                        <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
+                                        <span className="material-symbols-outlined text-error shrink-0">error</span>
                                         <div>
-                                            <div className="font-medium text-red-500">Invalid Data Model</div>
-                                            <div className="text-sm text-red-400">{dataModelValidation.error}</div>
+                                            <div className="font-medium text-error">{t('marketing.wizard.model.invalid')}</div>
+                                            <div className="text-sm text-error">{dataModelValidation.error}</div>
                                         </div>
                                     </div>
                                 ) : dataModelValidation.detectedFields.length > 0 ? (
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-green-500 text-lg">check_circle</span>
-                                            <span className="font-medium text-green-600 dark:text-green-400">
-                                                Valid Data Model — {dataModelValidation.detectedFields.length} fields detected
+                                            <span className="material-symbols-outlined text-success text-lg">check_circle</span>
+                                            <span className="font-medium text-success">
+                                                {t('marketing.wizard.model.valid').replace('{count}', String(dataModelValidation.detectedFields.length))}
                                             </span>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
@@ -545,34 +547,34 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                     <span
                                                         key={field.key}
                                                         className={`px-2 py-1 rounded text-xs font-medium ${isDetected
-                                                                ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                                                ? 'bg-success/10 text-success border border-success/20'
                                                                 : 'bg-surface-hover text-muted border border-transparent opacity-50'
                                                             }`}
                                                     >
                                                         {isDetected && <span className="mr-1">✓</span>}
-                                                        {field.label}
-                                                        {field.required && !isDetected && <span className="ml-1 text-red-400">*</span>}
+                                                        {t('marketing.wizard.field.' + field.key)}
+                                                        {field.required && !isDetected && <span className="ml-1 text-error">*</span>}
                                                     </span>
                                                 );
                                             })}
                                         </div>
                                         <p className="text-xs text-muted">
-                                            Fields marked with * are required for full functionality.
+                                            {t('marketing.wizard.model.requiredHint')}
                                         </p>
                                     </div>
                                 ) : null}
                             </div>
                         )}
                         {hasLanguageField && (
-                            <div className="p-4 bg-green-500/5 rounded-xl border border-green-500/20 space-y-4">
+                            <div className="p-4 bg-success/5 rounded-xl border border-success/20 space-y-4">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-green-500">translate</span>
+                                    <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-success">translate</span>
                                     </div>
                                     <div>
-                                        <div className="font-medium text-green-600 dark:text-green-400">Language Field Detected!</div>
+                                        <div className="font-medium text-success">{t('marketing.wizard.lang.detected')}</div>
                                         <div className="text-sm text-muted">
-                                            Multi-language support is available. Select the languages you want to support.
+                                            {t('marketing.wizard.lang.detectedHint')}
                                         </div>
                                     </div>
                                 </div>
@@ -591,7 +593,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                     }`}
                                             >
                                                 {isSelected && <span className="mr-1">✓</span>}
-                                                {lang.name} ({lang.code})
+                                                {t('marketing.wizard.langName.' + lang.code)} ({lang.code})
                                             </button>
                                         );
                                     })}
@@ -599,7 +601,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                                 {supportedLanguages.length > 0 && (
                                     <p className="text-xs text-muted">
-                                        Selected: {supportedLanguages.join(', ')}
+                                        {t('marketing.wizard.lang.selected').replace('{languages}', supportedLanguages.join(', '))}
                                     </p>
                                 )}
                             </div>
@@ -610,7 +612,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                 <div className="flex items-start gap-3">
                                     <span className="material-symbols-outlined text-muted">info</span>
                                     <div className="text-sm text-muted">
-                                        <strong>Tip:</strong> To enable multi-language support, add a <code className="bg-surface-hover px-1 rounded">language: string</code> field to your data model.
+                                        <strong>{t('marketing.wizard.lang.tipLabel')}</strong> {t('marketing.wizard.lang.tipPre')} <code className="bg-surface-hover px-1 rounded">language: string</code> {t('marketing.wizard.lang.tipPost')}
                                     </div>
                                 </div>
                             </div>
@@ -623,7 +625,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         {connectionStatus === 'idle' && !testingConnection && (
                             <div className="text-center">
                                 <Button variant="primary" size="lg" onClick={runValidation}>
-                                    Validate Configuration
+                                    {t('marketing.wizard.validate')}
                                 </Button>
                             </div>
                         )}
@@ -631,23 +633,23 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         {testingConnection && (
                             <div className="text-center">
                                 <span className="material-symbols-outlined animate-spin text-4xl text-primary mb-4">progress_activity</span>
-                                <p>Testing connection to {baseUrl}...</p>
+                                <p>{t('marketing.wizard.testing').replace('{url}', baseUrl)}</p>
                             </div>
                         )}
 
                         {connectionStatus === 'success' && (
                             <div className="text-center">
-                                <span className="material-symbols-outlined text-5xl text-green-500 mb-4">check_circle</span>
-                                <h3 className="text-xl font-bold mb-2">Validated!</h3>
-                                <Button variant="primary" onClick={handleFinalSave}>Save Configuration</Button>
+                                <span className="material-symbols-outlined text-5xl text-success mb-4">check_circle</span>
+                                <h3 className="text-xl font-bold mb-2">{t('marketing.wizard.validated')}</h3>
+                                <Button variant="primary" onClick={handleFinalSave}>{t('marketing.wizard.saveConfig')}</Button>
                             </div>
                         )}
 
                         {connectionStatus === 'error' && (
-                            <div className="text-center text-red-500">
+                            <div className="text-center text-error">
                                 <span className="material-symbols-outlined text-5xl mb-4">error</span>
                                 <p className="mb-4">{connectionError}</p>
-                                <Button variant="secondary" onClick={() => setStep('resources')}>Adjust Settings</Button>
+                                <Button variant="secondary" onClick={() => setStep('resources')}>{t('marketing.wizard.adjust')}</Button>
                             </div>
                         )}
                     </div>
@@ -656,8 +658,8 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                 {step === 'completion' && (
                     <div className="flex flex-col items-center justify-center h-full animate-fade-up">
                         <span className="material-symbols-outlined text-5xl text-primary mb-4">celebration</span>
-                        <h3 className="text-2xl font-bold mb-6">Setup Complete</h3>
-                        <Button variant="primary" onClick={onCancel}>Done</Button>
+                        <h3 className="text-2xl font-bold mb-6">{t('marketing.wizard.complete')}</h3>
+                        <Button variant="primary" onClick={onCancel}>{t('common.done')}</Button>
                     </div>
                 )}
             </div>
@@ -666,7 +668,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             {step !== 'completion' && (
                 <div className="p-6 border-t border-surface bg-surface flex justify-between">
                     {step !== 'welcome' ? (
-                        <Button variant="ghost" onClick={handleBack}>Back</Button>
+                        <Button variant="ghost" onClick={handleBack}>{t('marketing.wizard.back')}</Button>
                     ) : <div></div>}
 
                     {step !== 'validation' && (
@@ -675,7 +677,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                             onClick={handleNext}
                             disabled={step === 'resources' && (resourceTestStatus.posts !== 'success' || resourceTestStatus.categories !== 'success')}
                         >
-                            Next
+                            {t('common.next')}
                         </Button>
                     )}
                 </div>

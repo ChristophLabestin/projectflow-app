@@ -3,6 +3,7 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useToast } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { auth } from '../../services/firebase';
 import { reauthenticateWithProvider } from '../../services/reauth';
 import {
@@ -33,6 +34,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
     const [loading, setLoading] = useState(false);
     const [sendingVerification, setSendingVerification] = useState(false);
     const { showSuccess, showError } = useToast();
+    const { t } = useLanguage();
 
     const [reauthProvider, setReauthProvider] = useState<string>('password');
     const [availableProviders, setAvailableProviders] = useState<string[]>([]);
@@ -73,7 +75,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
 
             if (reauthProvider === 'password') {
                 if (!password) {
-                    showError('Please enter your password');
+                    showError(t('twoFactor.passwordRequired'));
                     setLoading(false);
                     return;
                 }
@@ -111,7 +113,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             if (error.code === 'auth/unverified-email') {
                 setStep('verify-email');
             } else {
-                showError('Authentication failed: ' + error.message);
+                showError(t('twoFactor.authFailed').replace('{error}', error.message));
             }
         } finally {
             setLoading(false);
@@ -123,10 +125,10 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
         setSendingVerification(true);
         try {
             await sendEmailVerification(auth.currentUser);
-            showSuccess('Verification email sent! Please check your inbox.');
+            showSuccess(t('twoFactor.emailSent'));
         } catch (error: any) {
             console.error(error);
-            showError('Failed to send verification email: ' + error.message);
+            showError(t('twoFactor.emailSendFailed').replace('{error}', error.message));
         } finally {
             setSendingVerification(false);
         }
@@ -141,11 +143,11 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 // If verified, proceed to generate secret
                 await handleReauth();
             } else {
-                showError('Email not verified. Please check your inbox and click the link.');
+                showError(t('twoFactor.emailNotVerified'));
             }
         } catch (error: any) {
             console.error(error);
-            showError('Failed to check verification status: ' + error.message);
+            showError(t('twoFactor.checkFailed').replace('{error}', error.message));
         } finally {
             setLoading(false);
         }
@@ -161,10 +163,10 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             );
             await multiFactor(auth.currentUser).enroll(multiFactorAssertion, "Authenticator App");
             setStep('success');
-            showSuccess('Two-factor authentication enabled successfully!');
+            showSuccess(t('twoFactor.enabledToast'));
         } catch (error: any) {
             console.error(error);
-            showError('Verification failed: ' + error.message);
+            showError(t('twoFactor.verifyFailed').replace('{error}', error.message));
         } finally {
             setLoading(false);
         }
@@ -175,20 +177,19 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             case 'intro':
                 return (
                     <div className="space-y-4">
-                        <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl flex items-start gap-4">
-                            <div className="p-2 bg-indigo-100 dark:bg-indigo-800 rounded-lg text-indigo-600 dark:text-indigo-300">
+                        <div className="bg-primary/10 p-4 rounded-xl flex items-start gap-4">
+                            <div className="p-2 bg-primary/15 rounded-lg text-primary">
                                 <span className="material-symbols-outlined">security</span>
                             </div>
                             <div>
-                                <h3 className="font-bold text-main">Secure your account</h3>
+                                <h3 className="font-bold text-main">{t('twoFactor.intro.title')}</h3>
                                 <p className="text-sm text-muted mt-1">
-                                    Two-factor authentication adds an extra layer of security to your account.
-                                    Once enabled, you'll need to enter a code from your authenticator app when you sign in.
+                                    {t('twoFactor.intro.body')}
                                 </p>
                             </div>
                         </div>
                         <div className="flex justify-end pt-4">
-                            <Button onClick={() => setStep('reauth')}>Get Started</Button>
+                            <Button onClick={() => setStep('reauth')}>{t('twoFactor.getStarted')}</Button>
                         </div>
                     </div>
                 );
@@ -196,7 +197,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 return (
                     <div className="space-y-4">
                         <p className="text-sm text-muted">
-                            Confirm your identity to continue.
+                            {t('twoFactor.reauth.hint')}
                         </p>
 
                         {availableProviders.length > 1 && (
@@ -213,7 +214,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                         <span className="material-symbols-outlined text-[16px]">
                                             {provider === 'password' ? 'lock' : 'link'}
                                         </span>
-                                        {provider === 'password' ? 'Password' : (provider.includes('github') ? 'GitHub' : 'Google')}
+                                        {provider === 'password' ? t('twoFactor.provider.password') : (provider.includes('github') ? 'GitHub' : 'Google')}
                                     </button>
                                 ))}
                             </div>
@@ -222,7 +223,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                         {reauthProvider === 'password' ? (
                             <Input
                                 type="password"
-                                placeholder="Current Password"
+                                placeholder={t('twoFactor.currentPassword')}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleReauth()}
@@ -244,15 +245,15 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                         className={`w-5 h-5 ${reauthProvider === 'github.com' ? 'dark:invert' : ''}`}
                                         alt={reauthProvider}
                                     />
-                                    Verify with {reauthProvider === 'github.com' ? 'GitHub' : 'Google'}
+                                    {t('twoFactor.verifyWith').replace('{provider}', reauthProvider === 'github.com' ? 'GitHub' : 'Google')}
                                 </Button>
                             </div>
                         )}
 
                         <div className="flex justify-between pt-4">
-                            <Button variant="ghost" onClick={() => setStep('intro')}>Back</Button>
+                            <Button variant="ghost" onClick={() => setStep('intro')}>{t('twoFactor.back')}</Button>
                             {reauthProvider === 'password' && (
-                                <Button onClick={handleReauth} loading={loading}>Confirm Password</Button>
+                                <Button onClick={handleReauth} loading={loading}>{t('twoFactor.confirmPassword')}</Button>
                             )}
                         </div>
                     </div>
@@ -260,14 +261,14 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             case 'verify-email':
                 return (
                     <div className="space-y-4">
-                        <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl flex items-start gap-4">
-                            <div className="p-2 bg-amber-100 dark:bg-amber-800 rounded-lg text-amber-600 dark:text-amber-300">
+                        <div className="bg-warning/15 p-4 rounded-xl flex items-start gap-4">
+                            <div className="p-2 bg-warning/15 rounded-lg text-warning">
                                 <span className="material-symbols-outlined">mark_email_unread</span>
                             </div>
                             <div>
-                                <h3 className="font-bold text-main">Verify your email</h3>
+                                <h3 className="font-bold text-main">{t('twoFactor.verifyEmail.title')}</h3>
                                 <p className="text-sm text-muted mt-1">
-                                    Firebase requires a verified email address before you can enable two-factor authentication.
+                                    {t('twoFactor.verifyEmail.body')}
                                 </p>
                             </div>
                         </div>
@@ -279,17 +280,17 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                 onClick={handleSendVerificationEmail}
                                 loading={sendingVerification}
                             >
-                                Send Verification Email
+                                {t('twoFactor.sendVerificationEmail')}
                             </Button>
                             <p className="text-[10px] text-center text-muted">
-                                Once you've clicked the link in your email, click the button below.
+                                {t('twoFactor.verifyEmail.hint')}
                             </p>
                         </div>
 
                         <div className="flex justify-between pt-4 border-t border-surface">
-                            <Button variant="ghost" onClick={() => setStep('reauth')}>Back</Button>
+                            <Button variant="ghost" onClick={() => setStep('reauth')}>{t('twoFactor.back')}</Button>
                             <Button onClick={handleCheckVerification} loading={loading}>
-                                I've Verified My Email
+                                {t('twoFactor.emailVerified')}
                             </Button>
                         </div>
                     </div>
@@ -298,19 +299,19 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 return (
                     <div className="space-y-6 text-center">
                         <div>
-                            <h3 className="font-bold text-main mb-2">Scan QR Code</h3>
+                            <h3 className="font-bold text-main mb-2">{t('twoFactor.scan.title')}</h3>
                             <p className="text-sm text-muted">
-                                Open your authenticator app (like Google Authenticator or Authy) and scan this code.
+                                {t('twoFactor.scan.body')}
                             </p>
                         </div>
 
                         <div className="flex justify-center my-6">
                             {qrCodeUrl ? (
-                                <div className="p-4 bg-white rounded-xl shadow-sm border border-gray-200">
-                                    <img src={qrCodeUrl} alt="QR Code" className="w-[200px] h-[200px]" />
+                                <div className="p-4 bg-white rounded-xl shadow-sm border border-surface">
+                                    <img src={qrCodeUrl} alt={t('twoFactor.qr.alt')} className="w-[200px] h-[200px]" />
                                 </div>
                             ) : (
-                                <div className="w-[200px] h-[200px] flex items-center justify-center bg-gray-100 rounded-xl">
+                                <div className="w-[200px] h-[200px] flex items-center justify-center bg-surface-hover rounded-xl">
                                     <span className="material-symbols-outlined animate-spin">progress_activity</span>
                                 </div>
                             )}
@@ -318,15 +319,15 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
 
                         {secret && (
                             <div className="text-xs text-muted">
-                                <p>Can't scan?</p>
-                                <p className="font-mono mt-1 select-all bg-gray-100 dark:bg-gray-800 p-2 rounded inline-block">
+                                <p>{t('twoFactor.cantScan')}</p>
+                                <p className="font-mono mt-1 select-all bg-surface-hover p-2 rounded inline-block">
                                     {secret.secretKey}
                                 </p>
                             </div>
                         )}
 
                         <div className="flex justify-end pt-4">
-                            <Button onClick={() => setStep('verify')}>Next</Button>
+                            <Button onClick={() => setStep('verify')}>{t('common.next')}</Button>
                         </div>
                     </div>
                 );
@@ -335,9 +336,9 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                     <div className="space-y-4">
                         <div className="text-center mb-6">
                             <span className="material-symbols-outlined text-4xl text-primary mb-2">lock_clock</span>
-                            <h3 className="font-bold text-main">Enter Verification Code</h3>
+                            <h3 className="font-bold text-main">{t('twoFactor.enterCode')}</h3>
                             <p className="text-sm text-muted">
-                                Enter the 6-digit code generated by your authenticator app.
+                                {t('twoFactor.verify.hint')}
                             </p>
                         </div>
 
@@ -350,13 +351,13 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                         />
 
                         <div className="flex justify-between pt-4">
-                            <Button variant="ghost" onClick={() => setStep('scan')}>Back</Button>
+                            <Button variant="ghost" onClick={() => setStep('scan')}>{t('twoFactor.back')}</Button>
                             <Button
                                 onClick={handleVerifyCode}
                                 loading={loading}
                                 disabled={verificationCode.length !== 6}
                             >
-                                Verify & Enable
+                                {t('twoFactor.verifyEnable')}
                             </Button>
                         </div>
                     </div>
@@ -364,15 +365,15 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             case 'success':
                 return (
                     <div className="text-center space-y-4 py-8">
-                        <div className="size-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <div className="size-16 bg-success/15 text-success rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="material-symbols-outlined text-3xl">check_circle</span>
                         </div>
-                        <h3 className="text-xl font-bold text-main">Two-Factor Authentication Enabled</h3>
+                        <h3 className="text-xl font-bold text-main">{t('twoFactor.success.title')}</h3>
                         <p className="text-muted max-w-xs mx-auto">
-                            Your account is now more secure. You will be asked for a code when you sign in from a new device.
+                            {t('twoFactor.success.body')}
                         </p>
                         <div className="pt-6">
-                            <Button onClick={onClose} className="w-full">Done</Button>
+                            <Button onClick={onClose} className="w-full">{t('common.done')}</Button>
                         </div>
                     </div>
                 );
@@ -380,7 +381,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Setup Two-Factor Authentication" size="md">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('twoFactor.setup.title')} size="md">
             <div className="p-6">
                 {renderContent()}
             </div>

@@ -47,7 +47,7 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
             setSuggestedTopics(topics);
         } catch (error) {
             console.error(error);
-            showError('Failed to suggest topics.');
+            showError(t('marketing.blogAi.suggestFailed'));
         } finally {
             setIsSuggestingTopics(false);
         }
@@ -63,7 +63,7 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
             onClose();
         } catch (error: any) {
             console.error(error);
-            showError('Failed to generate blog post. Please try again.');
+            showError(t('marketing.blogAi.generateFailed'));
         } finally {
             setIsGenerating(false);
         }
@@ -85,7 +85,7 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                 <div className="p-4 border-b border-surface flex items-center justify-between bg-surface">
                     <div className="flex items-center gap-2 text-primary">
                         <Sparkles size={20} className="fill-current" />
-                        <h3 className="font-semibold text-lg">CORA Blog Assistant</h3>
+                        <h3 className="font-semibold text-lg">{t('marketing.blogAi.title')}</h3>
                     </div>
                     <button onClick={onClose} className="text-muted hover:text-main transition-colors">
                         <X size={20} />
@@ -95,11 +95,11 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-main">What should the blog post be about?</label>
+                        <label className="text-sm font-medium text-main">{t('marketing.blogAi.promptLabel')}</label>
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
-                            placeholder="E.g. The future of remote work in 2025 and why async communication is key..."
+                            placeholder={t('marketing.blogAi.promptPlaceholder')}
                             className="w-full h-32 p-3 rounded-lg border border-surface bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                         />
                         <div className="flex justify-end">
@@ -113,14 +113,14 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                                 ) : (
                                     <Sparkles size={12} />
                                 )}
-                                Suggest Topics
+                                {t('marketing.blogAi.suggestTopics')}
                             </button>
                         </div>
                     </div>
 
                     {suggestedTopics.length > 0 && (
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-muted uppercase tracking-wider">Suggested Topics</label>
+                            <label className="text-xs font-medium text-muted uppercase tracking-wider">{t('marketing.blogAi.suggestedTopics')}</label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {suggestedTopics.map((topic, i) => (
                                     <button
@@ -138,29 +138,29 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
 
                     <div className="flex gap-4">
                         <div className="flex-1 space-y-2">
-                            <label className="text-sm font-medium text-main">Language</label>
+                            <label className="text-sm font-medium text-main">{t('marketing.blogAi.language')}</label>
                             <select
                                 value={selectedLanguage}
                                 onChange={(e) => setSelectedLanguage(e.target.value as 'en' | 'de')}
                                 className="w-full p-2.5 rounded-lg border border-surface bg-surface text-main focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
                             >
-                                <option value="en">English (English)</option>
-                                <option value="de">German (Deutsch)</option>
+                                <option value="en">{t('marketing.blogAi.langEn')}</option>
+                                <option value="de">{t('marketing.blogAi.langDe')}</option>
                             </select>
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-main">Web Search</label>
+                            <label className="text-sm font-medium text-main">{t('marketing.blogAi.webSearch')}</label>
                             <button
                                 onClick={() => setUseSearch(!useSearch)}
                                 className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all ${useSearch
                                     ? 'bg-primary/10 border-primary text-primary'
                                     : 'bg-surface border-surface text-muted'
                                     }`}
-                                title="Enable Google Search for sources"
+                                title={t('marketing.blogAi.webSearchTitle')}
                             >
                                 <Search size={18} />
-                                <span className="text-sm font-medium">{useSearch ? 'Enabled' : 'Disabled'}</span>
+                                <span className="text-sm font-medium">{useSearch ? t('marketing.blogAi.enabled') : t('marketing.blogAi.disabled')}</span>
                             </button>
                         </div>
                     </div>
@@ -174,12 +174,12 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                             {isGenerating ? (
                                 <>
                                     <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                                    <span>Generating Draft...</span>
+                                    <span>{t('marketing.blogAi.generating')}</span>
                                 </>
                             ) : (
                                 <>
                                     <Wand2 size={18} />
-                                    <span>Generate Full Post</span>
+                                    <span>{t('marketing.blogAi.generate')}</span>
                                 </>
                             )}
                         </Button>
