@@ -39,6 +39,8 @@ export interface NudgeRunStats {
     evaluated: number;
     sent: number;
     skipped: number;
+    /** task_overdue docs created by the overdue pass (not counted in `sent`). */
+    overdue: number;
 }
 
 const mapTask = (id: string, data: Json, refs: { taskId?: string; projectId?: string; tenantId?: string } = {}): DayTask => ({
@@ -186,7 +188,7 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
     if (sent.includes('morning_briefing')) update.briefingStops = dayStats.stops;
 
     if (overdueTodo) {
-        runStats.sent += await sendOverdue(uid, tasks, nowMs, prefs.timezone);
+        runStats.overdue += await sendOverdue(uid, tasks, nowMs, prefs.timezone);
         update.overdueChecked = true;
     }
     await logRef.set(update, { merge: true });
@@ -196,7 +198,7 @@ const processUser = async (uid: string, data: Json, nowMs: number, runStats: Nud
 };
 
 export const runSendNudges = async (nowMs: number = Date.now(), onlyUserId?: string): Promise<NudgeRunStats> => {
-    const stats: NudgeRunStats = { users: 0, evaluated: 0, sent: 0, skipped: 0 };
+    const stats: NudgeRunStats = { users: 0, evaluated: 0, sent: 0, skipped: 0, overdue: 0 };
     const fields = ['notificationPrefs', 'language', 'fcmTokens', 'lastTenantId'];
 
     if (onlyUserId) {
