@@ -234,18 +234,17 @@ struct PFSheetContent: View {
 
     private var isFitted: Bool { sheet.detents == [.fit] }
 
-    /// Footer distance to the sheet's bottom edge. Side region (iPhone Duo outer display): reaches into the
-    /// bottom safe area so the action row sits `PFSpace.page` above the edge, like its side margins.
+    /// Footer distance to the sheet's bottom edge: reaches into the bottom safe area so the action row sits
+    /// `PFSpace.page` above the edge, the same as its side margins.
     private var footerBottomPadding: CGFloat {
-        if keyboardHeight > 0 { return PFSpace.s }
-        return sideRegion > 0 ? PFSpace.page - bottomSafe : PFSpace.xs
+        keyboardHeight > 0 ? PFSpace.s : PFSpace.page - bottomSafe
     }
 
     /// Moves a trailing-aligned close button from the content edge into the side region, on the rail line.
-    /// iPhone Duo outer display: every sheet keeps `PFSpace.page` between its last row (and the close button)
-    /// and the sheet's bottom edge, the same as to its sides — so fitted sheets reach into the bottom safe area.
+    /// Every sheet keeps `PFSpace.page` between its last row (and, on iPhone Duo, the close button) and the
+    /// sheet's bottom edge, the same as to its sides — so fitted sheets reach into the bottom safe area.
     private var extendsIntoBottomSafeArea: Bool {
-        sideRegion > 0 && footer == nil && isFitted && keyboardHeight == 0
+        footer == nil && isFitted && keyboardHeight == 0
     }
 
     private var closeButton: some View {
