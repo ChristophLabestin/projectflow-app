@@ -94,8 +94,8 @@ export const AccountDataSection: React.FC = () => {
     return (
         <>
             <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="min-w-[14rem] flex-1">
                         <h3 className="font-bold text-main text-lg">{t('accountData.crash.title')}</h3>
                         <p className="text-sm text-muted mt-1">{t('accountData.crash.description')}</p>
                     </div>
@@ -104,22 +104,22 @@ export const AccountDataSection: React.FC = () => {
             </section>
 
             <section className="p-6 rounded-2xl bg-surface-card shadow-sm">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="min-w-[14rem] flex-1">
                         <h3 className="font-bold text-main text-lg">{t('accountData.export.title')}</h3>
                         <p className="text-sm text-muted mt-1">{t('accountData.export.description')}</p>
                     </div>
-                    <Button variant="secondary" onClick={handleExport} loading={exporting}>
-                        <span className="material-symbols-outlined mr-2">download</span>
+                    <Button variant="secondary" onClick={handleExport} loading={exporting}
+                        icon={<span className="material-symbols-outlined text-[18px]">download</span>}>
                         {t('accountData.export.button')}
                     </Button>
                 </div>
             </section>
 
-            <section className="p-6 rounded-2xl bg-surface-card shadow-sm border border-rose-500/30">
-                <div className="flex items-center justify-between gap-4">
-                    <div>
-                        <h3 className="font-bold text-rose-600 text-lg">{t('accountData.delete.title')}</h3>
+            <section className="p-6 rounded-2xl bg-surface-card shadow-sm border border-error/30">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="min-w-[14rem] flex-1">
+                        <h3 className="font-bold text-error text-lg">{t('accountData.delete.title')}</h3>
                         <p className="text-sm text-muted mt-1">{t('accountData.delete.description')}</p>
                     </div>
                     <Button variant="danger" onClick={() => setDialogOpen(true)}>
@@ -153,7 +153,7 @@ export const AccountDataSection: React.FC = () => {
                     <p className="text-sm text-muted">{t('accountData.delete.warning')}</p>
 
                     {blockers.length > 0 && (
-                        <div className="p-4 rounded-xl bg-rose-500/10 text-sm text-main space-y-2">
+                        <div className="p-4 rounded-xl bg-error/10 text-sm text-main space-y-2">
                             <p className="font-medium">{t('accountData.delete.blockedIntro')}</p>
                             <ul className="list-disc pl-5">
                                 {blockers.map((workspace) => (
@@ -172,7 +172,7 @@ export const AccountDataSection: React.FC = () => {
                     />
 
                     {needsReauth && (
-                        <div className="p-4 rounded-xl bg-amber-500/10 text-sm text-main space-y-3">
+                        <div className="p-4 rounded-xl bg-warning/10 text-sm text-main space-y-3">
                             <p>{t('accountData.delete.reauthRequired')}</p>
                             {reauthMethod === 'password' && (
                                 <Input

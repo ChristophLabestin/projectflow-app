@@ -9,6 +9,7 @@ const deTeam = {
     'team.v2.view.all': 'Alle',
     'team.v2.view.invites': 'Einladungen',
     'team.v2.stats': '{agents} KI-Agenten · {humans} Menschen · {departments} Abteilungen · {projects} Projekte',
+    'team.v2.statsNoAgents': '{humans} Menschen · {departments} Abteilungen · {projects} Projekte',
     'team.v2.invite': 'Einladen',
     'team.v2.allMembers': 'Alle Mitglieder',
     'team.v2.companyWide': 'Firmenweit',
