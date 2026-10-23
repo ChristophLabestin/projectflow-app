@@ -16,6 +16,8 @@ public final class ProjectStore {
     public private(set) var activity: [ActivityEntry] = []
     public private(set) var isLoaded = false
     public private(set) var isMissing = false
+    /// The signed-in user's project navigation (`projectNavPrefs`): order + hidden items.
+    public private(set) var navPrefs = ProjectNavPrefs()
     private let listeners = ListenerBag()
 
     public init(tenantId: String, projectId: String) {
@@ -67,6 +69,19 @@ public final class ProjectStore {
             MainActor.assumeIsolated {
                 guard let self, let snapshot else { return }
                 self.activity = snapshot.documents.compactMap { doc in doc.fields.map { ActivityEntry(id: doc.documentID, fields: $0) } }
+            }
+        })
+    }
+
+    /// Follows the user's navigation preferences for this project (set in the project settings).
+    public func watchNavPrefs(uid: String) {
+        guard !listeners.keys.contains("nav") else { return }
+        let ref = PFPath.tenant(tenantId).collection("users").document(uid).collection("projectNavPrefs").document(projectId)
+        listeners.set("nav", ref.addSnapshotListener { [weak self] snapshot, _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let fields = snapshot?.fields
+                self.navPrefs = ProjectNavPrefs(order: fields?.strings("order") ?? [], hidden: fields?.strings("hidden") ?? [])
             }
         })
     }

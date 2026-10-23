@@ -1,0 +1,889 @@
+{
+ "generatedBy": "scripts/export-startup-seeds.mjs",
+ "suggestedTrackIds": [
+  "validation",
+  "legal_formation",
+  "finance_accounting",
+  "product_delivery",
+  "marketing_sales",
+  "operations"
+ ],
+ "tracks": [
+  {
+   "id": "validation",
+   "sensitive": false,
+   "label": {
+    "en": "Validation",
+    "de": "Validierung"
+   },
+   "description": {
+    "en": "Validate customers, problems, demand, and evidence.",
+    "de": "Kunden, Probleme, Nachfrage und Evidenz validieren."
+   }
+  },
+  {
+   "id": "legal_formation",
+   "sensitive": true,
+   "label": {
+    "en": "Legal formation",
+    "de": "Rechtliche Gründung"
+   },
+   "description": {
+    "en": "Plan structure, agreements, registration, and review.",
+    "de": "Struktur, Vereinbarungen, Registrierung und Prüfung planen."
+   }
+  },
+  {
+   "id": "finance_accounting",
+   "sensitive": true,
+   "label": {
+    "en": "Finance / accounting",
+    "de": "Finanzen / Buchhaltung"
+   },
+   "description": {
+    "en": "Set budget, banking, tax, bookkeeping, and runway.",
+    "de": "Budget, Banking, Steuern, Buchhaltung und Runway setzen."
+   }
+  },
+  {
+   "id": "compliance",
+   "sensitive": true,
+   "label": {
+    "en": "Compliance",
+    "de": "Compliance"
+   },
+   "description": {
+    "en": "Check permits, privacy, regulated risks, and launch.",
+    "de": "Genehmigungen, Datenschutz, Risiken und Launch prüfen."
+   }
+  },
+  {
+   "id": "product_delivery",
+   "sensitive": false,
+   "label": {
+    "en": "Product / delivery",
+    "de": "Produkt / Lieferung"
+   },
+   "description": {
+    "en": "Shape the offer, delivery system, and support readiness.",
+    "de": "Angebot, Delivery-System und Support-Bereitschaft formen."
+   }
+  },
+  {
+   "id": "marketing_sales",
+   "sensitive": false,
+   "label": {
+    "en": "Marketing / sales",
+    "de": "Marketing / Sales"
+   },
+   "description": {
+    "en": "Set positioning, first channel, and sales follow-up.",
+    "de": "Positionierung, ersten Kanal und Sales-Follow-up setzen."
+   }
+  },
+  {
+   "id": "funding",
+   "sensitive": true,
+   "label": {
+    "en": "Funding",
+    "de": "Finanzierung"
+   },
+   "description": {
+    "en": "Prepare capital needs, materials, and outreach pipeline.",
+    "de": "Kapitalbedarf, Unterlagen und Outreach-Pipeline vorbereiten."
+   }
+  },
+  {
+   "id": "operations",
+   "sensitive": false,
+   "label": {
+    "en": "Operations",
+    "de": "Operations"
+   },
+   "description": {
+    "en": "Define cadence, resources, advisors, and decisions.",
+    "de": "Kadenz, Ressourcen, Berater und Entscheidungen definieren."
+   }
+  }
+ ],
+ "jurisdictions": [
+  {
+   "id": "global_generic",
+   "label": {
+    "en": "Generic startup template",
+    "de": "Generisches Startup-Template"
+   },
+   "description": {
+    "en": "Generic founding work until a supported jurisdiction is selected.",
+    "de": "Generische Gründungsarbeit, bis eine unterstützte Jurisdiktion ausgewählt ist."
+   },
+   "countryCodes": [],
+   "advisorReviewRequired": true,
+   "suggestedTrackIds": [
+    "validation",
+    "legal_formation",
+    "finance_accounting",
+    "compliance",
+    "operations"
+   ],
+   "sources": []
+  },
+  {
+   "id": "de_generic",
+   "label": {
+    "en": "Germany startup template",
+    "de": "Startup-Template Deutschland"
+   },
+   "description": {
+    "en": "Formation, registration, tax, and compliance prompts backed by German official startup sources.",
+    "de": "Gründungs-, Registrierungs-, Steuer- und Compliance-Impulse auf Basis offizieller deutscher Gründungsquellen."
+   },
+   "regionHint": {
+    "en": "Use federal state or chamber context for follow-up checks.",
+    "de": "Bundesland oder Kammerkontext für Folgeprüfungen erfassen."
+   },
+   "countryCodes": [
+    "DE",
+    "DEU",
+    "GERMANY",
+    "DEUTSCHLAND"
+   ],
+   "advisorReviewRequired": true,
+   "suggestedTrackIds": [
+    "legal_formation",
+    "finance_accounting",
+    "compliance",
+    "operations"
+   ],
+   "sources": [
+    {
+     "id": "de-bmwk-rechtsformen",
+     "labelKey": "startupSources.de.bmwkRechtsformen",
+     "url": "https://www.existenzgruendungsportal.de/Navigation/DE/Gruendungswissen/Rechtsformen/rechtsformen",
+     "publisher": "BMWK Existenzgründungsportal",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "de-bmwk-anmeldung-recht",
+     "labelKey": "startupSources.de.bmwkAnmeldungRecht",
+     "url": "https://www.existenzgruendungsportal.de/Redaktion/DE/Downloads/DE/GruenderZeiten/GruenderZeiten-24.pdf?__blob=publicationFile",
+     "publisher": "BMWK Existenzgründungsportal",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "de-ihk-formal-steps",
+     "labelKey": "startupSources.de.ihkFormalSteps",
+     "url": "https://www.ihk.de/stuttgart/gruendung/orientierungsphase/anmeldung-eines-unternehmens/formerfordernisse-einer-gruendung-685190",
+     "publisher": "IHK Region Stuttgart",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "de-ihk-tax-registration",
+     "labelKey": "startupSources.de.ihkTaxRegistration",
+     "url": "https://www.ihk.de/darmstadt/produktmarken/gruendung/existenzgruendung-und-steuern/aufnahme-einer-gewerblichen-taetigkeit-2538356",
+     "publisher": "IHK Darmstadt",
+     "lastReviewedAt": "2026-05-27"
+    }
+   ]
+  },
+  {
+   "id": "us_generic",
+   "label": {
+    "en": "United States startup template",
+    "de": "Startup-Template USA"
+   },
+   "description": {
+    "en": "Entity, registration, tax ID, and permit prompts backed by SBA and IRS sources.",
+    "de": "Entity-, Registrierungs-, Tax-ID- und Permit-Impulse auf Basis von SBA- und IRS-Quellen."
+   },
+   "regionHint": {
+    "en": "Use state context for registration and permit checks.",
+    "de": "Bundesstaat für Registrierung und Permit-Checks erfassen."
+   },
+   "countryCodes": [
+    "US",
+    "USA",
+    "UNITED STATES",
+    "UNITED STATES OF AMERICA"
+   ],
+   "advisorReviewRequired": true,
+   "suggestedTrackIds": [
+    "legal_formation",
+    "finance_accounting",
+    "compliance",
+    "operations"
+   ],
+   "sources": [
+    {
+     "id": "us-sba-launch",
+     "labelKey": "startupSources.us.sbaLaunch",
+     "url": "https://www.sba.gov/business-guide/launch-your-business",
+     "publisher": "U.S. Small Business Administration",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "us-sba-register",
+     "labelKey": "startupSources.us.sbaRegister",
+     "url": "https://www.sba.gov/business-guide/launch-your-business/register-your-business",
+     "publisher": "U.S. Small Business Administration",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "us-sba-tax-id",
+     "labelKey": "startupSources.us.sbaTaxId",
+     "url": "https://www.sba.gov/business-guide/launch-your-business/get-federal-state-tax-id-numbers",
+     "publisher": "U.S. Small Business Administration",
+     "lastReviewedAt": "2026-05-27"
+    },
+    {
+     "id": "us-irs-starting-business",
+     "labelKey": "startupSources.us.irsStartingBusiness",
+     "url": "https://www.irs.gov/businesses/small-businesses-self-employed/starting-a-business",
+     "publisher": "Internal Revenue Service",
+     "lastReviewedAt": "2026-05-27"
+    }
+   ]
+  }
+ ],
+ "initiatives": [
+  {
+   "id": "validation-system",
+   "trackId": "validation",
+   "priority": "High",
+   "title": {
+    "en": "Validate customer demand",
+    "de": "Kundennachfrage validieren"
+   },
+   "description": {
+    "en": "Collect evidence that the customer, problem, and first offer are worth building around.",
+    "de": "Evidenz sammeln, dass Kunde, Problem und erstes Angebot den Aufbau rechtfertigen."
+   }
+  },
+  {
+   "id": "formation-readiness",
+   "trackId": "legal_formation",
+   "priority": "High",
+   "title": {
+    "en": "Prepare legal formation",
+    "de": "Rechtliche Gründung vorbereiten"
+   },
+   "description": {
+    "en": "Decide the legal structure, founder agreements, IP assignment, and registration path.",
+    "de": "Rechtsform, Founder Agreements, IP-Abtretung und Registrierungsweg klären."
+   }
+  },
+  {
+   "id": "finance-foundation",
+   "trackId": "finance_accounting",
+   "priority": "High",
+   "title": {
+    "en": "Set up finance foundation",
+    "de": "Finanzgrundlage aufsetzen"
+   },
+   "description": {
+    "en": "Prepare budget, bank, tax, and bookkeeping setup before operating.",
+    "de": "Budget, Bank, Steuern und Buchhaltung vor dem Betrieb vorbereiten."
+   }
+  },
+  {
+   "id": "compliance-review",
+   "trackId": "compliance",
+   "priority": "High",
+   "title": {
+    "en": "Review launch compliance",
+    "de": "Launch-Compliance prüfen"
+   },
+   "description": {
+    "en": "Identify permits, privacy requirements, regulated risks, and advisor review needs.",
+    "de": "Genehmigungen, Datenschutzanforderungen, regulierte Risiken und Beraterbedarf identifizieren."
+   }
+  },
+  {
+   "id": "offer-delivery",
+   "trackId": "product_delivery",
+   "priority": "Medium",
+   "title": {
+    "en": "Define the first offer",
+    "de": "Erstes Angebot definieren"
+   },
+   "description": {
+    "en": "Shape the product or service delivery system for the first customers.",
+    "de": "Produkt- oder Dienstleistungsablauf für erste Kunden ausarbeiten."
+   }
+  },
+  {
+   "id": "go-to-market",
+   "trackId": "marketing_sales",
+   "priority": "Medium",
+   "title": {
+    "en": "Build first go-to-market loop",
+    "de": "Ersten Go-to-Market-Loop bauen"
+   },
+   "description": {
+    "en": "Create positioning, channel, and follow-up steps for first sales.",
+    "de": "Positionierung, Kanal und Follow-up-Schritte für erste Verkäufe erstellen."
+   }
+  },
+  {
+   "id": "funding-path",
+   "trackId": "funding",
+   "priority": "Medium",
+   "title": {
+    "en": "Prepare funding path",
+    "de": "Finanzierungsweg vorbereiten"
+   },
+   "description": {
+    "en": "Clarify capital needs, funding route, materials, and outreach rhythm.",
+    "de": "Kapitalbedarf, Finanzierungsroute, Unterlagen und Outreach-Rhythmus klären."
+   }
+  },
+  {
+   "id": "operating-rhythm",
+   "trackId": "operations",
+   "priority": "Medium",
+   "title": {
+    "en": "Install operating rhythm",
+    "de": "Betriebsrhythmus installieren"
+   },
+   "description": {
+    "en": "Create the cadence, advisor loop, and decision system for the company project.",
+    "de": "Kadenz, Beraterloop und Entscheidungssystem für das Unternehmensprojekt anlegen."
+   }
+  }
+ ],
+ "tasks": [
+  {
+   "id": "validation-customer",
+   "trackId": "validation",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Define the target customer segment",
+    "de": "Zielkundensegment definieren"
+   },
+   "description": {
+    "en": "Write the customer group, urgent problem, and why they should care now.",
+    "de": "Kundengruppe, dringendes Problem und Kaufgrund jetzt beschreiben."
+   }
+  },
+  {
+   "id": "validation-evidence",
+   "trackId": "validation",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Collect first validation evidence",
+    "de": "Erste Validierungsevidenz sammeln"
+   },
+   "description": {
+    "en": "Run interviews, landing-page tests, pre-sales, or other evidence-gathering steps.",
+    "de": "Interviews, Landingpage-Tests, Pre-Sales oder andere Evidenzschritte durchführen."
+   }
+  },
+  {
+   "id": "validation-success",
+   "trackId": "validation",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Set validation success criteria",
+    "de": "Validierungs-Erfolgskriterien festlegen"
+   },
+   "description": {
+    "en": "Define the signal that proves the startup should move to the next stage.",
+    "de": "Signal definieren, ab dem das Startup in die nächste Phase gehen soll."
+   }
+  },
+  {
+   "id": "legal-structure",
+   "trackId": "legal_formation",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Compare legal structure options",
+    "de": "Rechtsformoptionen vergleichen"
+   },
+   "description": {
+    "en": "Document candidate legal structures and advisor questions before choosing.",
+    "de": "Mögliche Rechtsformen und Beraterfragen vor der Auswahl dokumentieren."
+   }
+  },
+  {
+   "id": "legal-founder-agreement",
+   "trackId": "legal_formation",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Track founder agreement and IP assignment",
+    "de": "Founder Agreement und IP-Abtretung tracken"
+   },
+   "description": {
+    "en": "Create an advisor-reviewed checklist for founder roles, equity, vesting, and IP.",
+    "de": "Advisor-geprüfte Checkliste für Rollen, Anteile, Vesting und IP erstellen."
+   }
+  },
+  {
+   "id": "legal-registration",
+   "trackId": "legal_formation",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Prepare registration filing steps",
+    "de": "Registrierungsschritte vorbereiten"
+   },
+   "description": {
+    "en": "List required forms, authorities, dates, and documents for registration.",
+    "de": "Benötigte Formulare, Stellen, Termine und Dokumente für Registrierung erfassen."
+   }
+  },
+  {
+   "id": "finance-budget",
+   "trackId": "finance_accounting",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Create startup budget and runway view",
+    "de": "Startup-Budget und Runway erstellen"
+   },
+   "description": {
+    "en": "Estimate fixed costs, variable costs, launch budget, and runway.",
+    "de": "Fixkosten, variable Kosten, Launch-Budget und Runway schätzen."
+   }
+  },
+  {
+   "id": "finance-bookkeeping",
+   "trackId": "finance_accounting",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Choose bookkeeping process",
+    "de": "Buchhaltungsprozess wählen"
+   },
+   "description": {
+    "en": "Decide who owns receipts, invoices, chart of accounts, and monthly review.",
+    "de": "Verantwortung für Belege, Rechnungen, Kontenrahmen und Monatsreview klären."
+   }
+  },
+  {
+   "id": "finance-bank-tax",
+   "trackId": "finance_accounting",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Prepare bank and tax setup",
+    "de": "Bank- und Steuer-Setup vorbereiten"
+   },
+   "description": {
+    "en": "Track business bank account, tax registration, and advisor handoff steps.",
+    "de": "Geschäftskonto, steuerliche Registrierung und Beraterübergabe tracken."
+   }
+  },
+  {
+   "id": "compliance-permits",
+   "trackId": "compliance",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Identify permits and regulated risks",
+    "de": "Genehmigungen und regulierte Risiken identifizieren"
+   },
+   "description": {
+    "en": "List required permits, regulated activities, or explicit no-permit assumptions.",
+    "de": "Benötigte Genehmigungen, regulierte Tätigkeiten oder explizite Annahmen ohne Genehmigung erfassen."
+   }
+  },
+  {
+   "id": "compliance-privacy",
+   "trackId": "compliance",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Prepare privacy and customer-facing policies",
+    "de": "Datenschutz und kundenseitige Policies vorbereiten"
+   },
+   "description": {
+    "en": "Track privacy notice, terms, data processing, and customer-facing legal pages.",
+    "de": "Datenschutzhinweise, AGB, Datenverarbeitung und rechtliche Kundenseiten tracken."
+   }
+  },
+  {
+   "id": "compliance-advisor",
+   "trackId": "compliance",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Schedule advisor review for sensitive assumptions",
+    "de": "Beraterprüfung für sensible Annahmen planen"
+   },
+   "description": {
+    "en": "Mark which legal, tax, or compliance assumptions need professional review.",
+    "de": "Markieren, welche Legal-, Steuer- oder Compliance-Annahmen professionell geprüft werden müssen."
+   }
+  },
+  {
+   "id": "product-offer",
+   "trackId": "product_delivery",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Define first offer and promise",
+    "de": "Erstes Angebot und Versprechen definieren"
+   },
+   "description": {
+    "en": "Write what the customer gets, what is excluded, and what makes the offer credible.",
+    "de": "Beschreiben, was der Kunde bekommt, was ausgeschlossen ist und warum das Angebot glaubwürdig ist."
+   }
+  },
+  {
+   "id": "product-delivery",
+   "trackId": "product_delivery",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Map delivery workflow",
+    "de": "Delivery-Workflow abbilden"
+   },
+   "description": {
+    "en": "Define how the offer is delivered from sale through support.",
+    "de": "Definieren, wie das Angebot vom Verkauf bis zum Support geliefert wird."
+   }
+  },
+  {
+   "id": "product-support",
+   "trackId": "product_delivery",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Prepare first-customer support path",
+    "de": "Supportpfad für erste Kunden vorbereiten"
+   },
+   "description": {
+    "en": "Set response ownership, escalation paths, and refund or issue handling basics.",
+    "de": "Antwortverantwortung, Eskalation und Grundlagen für Rückerstattung oder Probleme festlegen."
+   }
+  },
+  {
+   "id": "marketing-positioning",
+   "trackId": "marketing_sales",
+   "jurisdictionId": null,
+   "priority": "High",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Write positioning and message",
+    "de": "Positionierung und Message schreiben"
+   },
+   "description": {
+    "en": "Create the first headline, proof points, objections, and target use case.",
+    "de": "Erste Headline, Proof Points, Einwände und Ziel-Use-Case erstellen."
+   }
+  },
+  {
+   "id": "marketing-channel",
+   "trackId": "marketing_sales",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Choose the first acquisition channel",
+    "de": "Ersten Akquisekanal wählen"
+   },
+   "description": {
+    "en": "Pick one first channel and define the weekly activity target.",
+    "de": "Einen ersten Kanal auswählen und das wöchentliche Aktivitätsziel definieren."
+   }
+  },
+  {
+   "id": "marketing-sales-loop",
+   "trackId": "marketing_sales",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Define sales follow-up loop",
+    "de": "Sales-Follow-up-Loop definieren"
+   },
+   "description": {
+    "en": "Track lead capture, follow-up cadence, qualification, and close criteria.",
+    "de": "Lead-Erfassung, Follow-up-Kadenz, Qualifizierung und Abschlusskriterien tracken."
+   }
+  },
+  {
+   "id": "funding-needs",
+   "trackId": "funding",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Estimate funding need and use of funds",
+    "de": "Finanzierungsbedarf und Mittelverwendung schätzen"
+   },
+   "description": {
+    "en": "Write the amount, timing, use of funds, and fallback if funding is delayed.",
+    "de": "Betrag, Timing, Mittelverwendung und Fallback bei Verzögerung erfassen."
+   }
+  },
+  {
+   "id": "funding-materials",
+   "trackId": "funding",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Prepare funding materials",
+    "de": "Finanzierungsunterlagen vorbereiten"
+   },
+   "description": {
+    "en": "Create pitch, data room checklist, metrics, and investor FAQ tasks.",
+    "de": "Pitch, Data-Room-Checkliste, Kennzahlen und Investor-FAQ-Aufgaben erstellen."
+   }
+  },
+  {
+   "id": "funding-pipeline",
+   "trackId": "funding",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Build funding outreach pipeline",
+    "de": "Finanzierungs-Outreach-Pipeline bauen"
+   },
+   "description": {
+    "en": "List target grants, investors, banks, or partners and the outreach rhythm.",
+    "de": "Ziel-Förderungen, Investoren, Banken oder Partner und Outreach-Rhythmus listen."
+   }
+  },
+  {
+   "id": "operations-cadence",
+   "trackId": "operations",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Set founder operating cadence",
+    "de": "Founder-Betriebskadenz festlegen"
+   },
+   "description": {
+    "en": "Define weekly review, decision log, finance review, and next-action ownership.",
+    "de": "Weekly Review, Decision Log, Finanzreview und Next-Action-Verantwortung definieren."
+   }
+  },
+  {
+   "id": "operations-resources",
+   "trackId": "operations",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Collect restricted startup resources",
+    "de": "Eingeschränkte Startup-Ressourcen sammeln"
+   },
+   "description": {
+    "en": "Create links or restricted resources for legal, finance, and advisor documents.",
+    "de": "Links oder eingeschränkte Ressourcen für Legal-, Finanz- und Beraterdokumente anlegen."
+   }
+  },
+  {
+   "id": "operations-advisors",
+   "trackId": "operations",
+   "jurisdictionId": null,
+   "priority": "Medium",
+   "sourceReferenceIds": [],
+   "title": {
+    "en": "Define advisor access and boundaries",
+    "de": "Beraterzugriff und Grenzen definieren"
+   },
+   "description": {
+    "en": "Decide which advisors need project access and what they should not see.",
+    "de": "Festlegen, welche Berater Projektzugriff brauchen und was sie nicht sehen sollen."
+   }
+  },
+  {
+   "id": "de-choose-legal-form",
+   "trackId": "legal_formation",
+   "jurisdictionId": "de_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "de-bmwk-rechtsformen"
+   ],
+   "title": {
+    "en": "Select German legal form with advisor review",
+    "de": "Deutsche Rechtsform mit Beraterprüfung auswählen"
+   },
+   "description": {
+    "en": "Compare legal form options against liability, capital, co-founder, and tax assumptions using official German startup sources.",
+    "de": "Rechtsformoptionen gegen Haftung, Kapital, Co-Founder- und Steuerannahmen mit offiziellen deutschen Gründungsquellen prüfen."
+   }
+  },
+  {
+   "id": "de-register-business-and-tax",
+   "trackId": "finance_accounting",
+   "jurisdictionId": "de_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "de-ihk-tax-registration",
+    "de-ihk-formal-steps"
+   ],
+   "title": {
+    "en": "Prepare German tax and business registration",
+    "de": "Steuer- und Gewerbeanmeldung vorbereiten"
+   },
+   "description": {
+    "en": "Plan Gewerbe or freelance registration, tax questionnaire, tax number/VAT topics, and bookkeeping setup.",
+    "de": "Gewerbe- oder Freiberufler-Anmeldung, steuerlichen Fragebogen, Steuernummer/USt-Themen und Buchhaltung planen."
+   }
+  },
+  {
+   "id": "de-authorities-and-permits",
+   "trackId": "compliance",
+   "jurisdictionId": "de_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "de-bmwk-anmeldung-recht",
+    "de-ihk-formal-steps"
+   ],
+   "title": {
+    "en": "Check German authorities, permits, and chamber obligations",
+    "de": "Behörden, Genehmigungen und Kammerpflichten prüfen"
+   },
+   "description": {
+    "en": "Identify registrations, permit checks, IHK/HWK obligations, and local authority dependencies before launch.",
+    "de": "Registrierungen, Genehmigungschecks, IHK/HWK-Pflichten und lokale Behördenabhängigkeiten vor dem Launch klären."
+   }
+  },
+  {
+   "id": "us-entity-state-registration",
+   "trackId": "legal_formation",
+   "jurisdictionId": "us_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "us-sba-register"
+   ],
+   "title": {
+    "en": "Plan U.S. entity and state registration",
+    "de": "US-Entity und State Registration planen"
+   },
+   "description": {
+    "en": "Select entity path, registered agent needs, state registration, and local business-name requirements.",
+    "de": "Entity-Pfad, Registered-Agent-Bedarf, State Registration und lokale Business-Name-Anforderungen festlegen."
+   }
+  },
+  {
+   "id": "us-ein-and-tax-setup",
+   "trackId": "finance_accounting",
+   "jurisdictionId": "us_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "us-sba-tax-id",
+    "us-irs-starting-business"
+   ],
+   "title": {
+    "en": "Prepare EIN and tax setup",
+    "de": "EIN und Steuer-Setup vorbereiten"
+   },
+   "description": {
+    "en": "Plan EIN, federal/state tax IDs, bookkeeping, and tax calendar ownership before operations.",
+    "de": "EIN, Federal/State Tax IDs, Buchhaltung und Steuerkalender-Verantwortung vor dem Betrieb planen."
+   }
+  },
+  {
+   "id": "us-licenses-permits-insurance",
+   "trackId": "compliance",
+   "jurisdictionId": "us_generic",
+   "priority": "High",
+   "sourceReferenceIds": [
+    "us-sba-launch",
+    "us-sba-register"
+   ],
+   "title": {
+    "en": "Check licenses, permits, and insurance",
+    "de": "Licenses, Permits und Insurance prüfen"
+   },
+   "description": {
+    "en": "Review federal, state, and local permits plus insurance needs for the first operating model.",
+    "de": "Federal, State und Local Permits sowie Versicherungsbedarf für das erste Betriebsmodell prüfen."
+   }
+  }
+ ],
+ "milestones": [
+  {
+   "id": "validation-gate",
+   "trackIds": [
+    "validation"
+   ],
+   "riskRating": "Medium",
+   "title": {
+    "en": "Validation gate reached",
+    "de": "Validierungsgate erreicht"
+   },
+   "description": {
+    "en": "The target customer, problem, and first offer have enough evidence to proceed.",
+    "de": "Zielkunde, Problem und erstes Angebot haben genug Evidenz für den nächsten Schritt."
+   }
+  },
+  {
+   "id": "formation-ready",
+   "trackIds": [
+    "legal_formation",
+    "finance_accounting",
+    "compliance"
+   ],
+   "riskRating": "High",
+   "title": {
+    "en": "Formation ready",
+    "de": "Gründungsreife erreicht"
+   },
+   "description": {
+    "en": "Legal, finance, and compliance basics are ready for formation or operation.",
+    "de": "Legal-, Finanz- und Compliance-Grundlagen sind bereit für Gründung oder Betrieb."
+   }
+  },
+  {
+   "id": "launch-gate",
+   "trackIds": [
+    "product_delivery",
+    "marketing_sales",
+    "compliance"
+   ],
+   "riskRating": "High",
+   "title": {
+    "en": "Launch gate ready",
+    "de": "Launch Gate bereit"
+   },
+   "description": {
+    "en": "Offer, channel, privacy/compliance, and support basics are ready for customers.",
+    "de": "Angebot, Kanal, Datenschutz/Compliance und Support sind kundentauglich vorbereitet."
+   }
+  },
+  {
+   "id": "operating-cadence",
+   "trackIds": [
+    "operations",
+    "finance_accounting"
+   ],
+   "riskRating": "Medium",
+   "title": {
+    "en": "Operating cadence live",
+    "de": "Betriebskadenz aktiv"
+   },
+   "description": {
+    "en": "The company has a recurring review rhythm for finance, priorities, and founder decisions.",
+    "de": "Das Unternehmen hat einen wiederkehrenden Review-Rhythmus für Finanzen, Prioritäten und Founder-Entscheidungen."
+   }
+  }
+ ]
+}

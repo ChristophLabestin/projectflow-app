@@ -25,7 +25,11 @@ settings:
     SWIFT_EMIT_LOC_STRINGS: YES
     TARGETED_DEVICE_FAMILY: "1"
     SUPPORTS_MACCATALYST: NO
+    # Push environment written into the app entitlements: sandbox APNs for local builds, production for archives.
+    PF_APS_ENVIRONMENT: development
   configs:
+    Release:
+      PF_APS_ENVIRONMENT: production
     Emulator:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: "DEBUG EMULATOR"
     Debug:

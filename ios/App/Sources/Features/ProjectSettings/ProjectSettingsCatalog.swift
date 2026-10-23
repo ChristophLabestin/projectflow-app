@@ -1,5 +1,6 @@
 import Foundation
 import PFDesign
+import PFData
 import PFModel
 
 /// Static option lists of the project settings (same values as `web/components/project/ProjectEditModal.tsx`).
@@ -23,7 +24,7 @@ enum ProjectSettingsCatalog {
     /// Items of the per-user project navigation (`projectNavPrefs`): the overview is always visible.
     static let navItems: [(id: String, labelKey: String, canHide: Bool, symbol: String)] = [
         ("overview", "projectSettings.nav.overview", false, "square.grid.2x2"),
-        ("initiatives", "projectSettings.module.initiatives", true, "rocket"),
+        ("initiatives", "projectSettings.module.initiatives", true, "target"),
         ("tasks", "projectSettings.module.tasks", true, "checklist"),
         ("sprints", "projectSettings.module.sprints", true, "figure.run"),
         ("milestones", "projectSettings.module.milestones", true, "flag"),
@@ -52,4 +53,38 @@ enum ProjectSettingsCatalog {
     static func isSoftware(category: String, templateId: String?, type: String) -> Bool {
         category == "software" || templateId == "software_release" || type == "software"
     }
+}
+
+/// Applies the user's project navigation (`projectNavPrefs`) and the project's modules to the cockpit:
+/// hidden items and disabled modules disappear, and a custom order moves tabs and plan sections.
+struct ProjectNavLayout {
+    let prefs: ProjectNavPrefs
+    let modules: [ProjectModule]
+
+    func isVisible(_ id: String) -> Bool {
+        if id == "overview" { return true }
+        // Older projects have no module list: everything is on.
+        if !modules.isEmpty, let module = ProjectModule(rawValue: id), !modules.contains(module) { return false }
+        return !prefs.hidden.contains(id)
+    }
+
+    /// Plan sections in the user's order (the plan's own order when none is set).
+    var planSections: [String] {
+        ordered(["milestones", "sprints", "initiatives"]).filter(isVisible)
+    }
+
+    var showsTasks: Bool { isVisible("tasks") }
+
+    /// Whether the tasks tabs come before the plan tab.
+    var tasksBeforePlan: Bool {
+        guard !prefs.order.isEmpty, let firstPlan = planSections.first else { return true }
+        return rank("tasks") <= rank(firstPlan)
+    }
+
+    private func ordered(_ ids: [String]) -> [String] {
+        guard !prefs.order.isEmpty else { return ids }
+        return ids.enumerated().sorted { (rank($0.element), $0.offset) < (rank($1.element), $1.offset) }.map(\.element)
+    }
+
+    private func rank(_ id: String) -> Int { prefs.order.firstIndex(of: id) ?? Int.max }
 }

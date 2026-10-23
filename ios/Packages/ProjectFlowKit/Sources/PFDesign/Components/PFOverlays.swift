@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import Observation
 
 // MARK: - Presenter (custom sheets and peek, replaces .sheet / .contextMenu)
@@ -125,17 +126,51 @@ struct PFSheetLayer: ViewModifier {
 
 struct PFSheetContent: View {
     let sheet: PFPresenter.Sheet
-    @State private var fitHeight: CGFloat = 320
+    @State private var contentHeight: CGFloat = 312
+    @State private var footerHeight: CGFloat = 0
+    @State private var keyboardHeight: CGFloat = 0
+    @State private var footer: PFSheetFooterBox?
 
     var body: some View {
         ScrollView {
             sheet.content
                 .frame(maxWidth: .infinity, alignment: .top)
                 .padding(.top, 26)
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fitHeight = $0 + 8 }
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 + 8 }
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
+        // The primary actions sit outside the scroll view, so the keyboard can never cover them.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if let footer {
+                footer.view
+                    .padding(.top, PFSpace.s)
+                    .padding(.bottom, keyboardHeight > 0 ? PFSpace.s : PFSpace.xs)
+                    .frame(maxWidth: .infinity)
+                    // Content scrolling under the buttons fades out instead of showing through them.
+                    .background {
+                        // The sheet surface is slightly translucent, so it is stacked twice to hide the content.
+                        let fade = LinearGradient(stops: [.init(color: PFColor.sheetSurface.opacity(0), location: 0),
+                                                          .init(color: PFColor.sheetSurface, location: 0.4)],
+                                                  startPoint: .top, endPoint: .bottom)
+                        ZStack { fade; fade }
+                            .padding(.top, -PFSpace.l)
+                            .ignoresSafeArea(edges: .bottom)
+                    }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { footerHeight = $0 }
+            }
+        }
+        .onPreferenceChange(PFSheetFooterKey.self) { value in
+            footer = value
+            if value == nil { footerHeight = 0 }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { note in
+            let frame = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect) ?? .zero
+            keyboardHeight = frame.height
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardHeight = 0
+        }
         .presentationDetents(Set(sheet.detents.map(detent)))
         // System sheet chrome (material, corner radius, insets, grabber) — only the content is ProjectFlow's.
         .presentationDragIndicator(.visible)
@@ -148,12 +183,37 @@ struct PFSheetContent: View {
         .interactiveDismissDisabled(!sheet.dismissable)
     }
 
+    /// A fitted sheet grows by the keyboard height while typing, so its content stays above the keyboard.
+    private var fitHeight: CGFloat { contentHeight + footerHeight + keyboardHeight }
+
     private func detent(_ value: PFDetent) -> PresentationDetent {
         switch value {
         case .fit: .height(fitHeight)
         case .fraction(let f): .fraction(f)
         case .large: .large
         }
+    }
+}
+
+struct PFSheetFooterBox: Equatable, @unchecked Sendable {
+    let token: AnyHashable
+    let view: AnyView
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.token == rhs.token }
+}
+
+struct PFSheetFooterKey: PreferenceKey {
+    static let defaultValue: PFSheetFooterBox? = nil
+    static func reduce(value: inout PFSheetFooterBox?, nextValue: () -> PFSheetFooterBox?) {
+        value = value ?? nextValue()
+    }
+}
+
+public extension View {
+    /// Pins `footer` (a sheet's primary actions) below the scrolling sheet content, above the keyboard.
+    /// `token` must change whenever the footer looks different (enabled state, titles), since the footer
+    /// is only re-read when the token changes.
+    func pfSheetFooter<Token: Hashable, Footer: View>(_ token: Token, @ViewBuilder footer: () -> Footer) -> some View {
+        preference(key: PFSheetFooterKey.self, value: PFSheetFooterBox(token: AnyHashable(token), view: AnyView(footer())))
     }
 }
 

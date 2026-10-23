@@ -40,14 +40,19 @@ struct ProjectScreen: View {
     /// The tab bar is pinned once the header has scrolled away (native pinned section header).
     private var isPinned: Bool { scrolledY > headerHeight - 2 }
 
+    /// The user's project navigation (hidden items, order) applied to the cockpit tabs.
+    private var navLayout: ProjectNavLayout { ProjectNavLayout(prefs: store.navPrefs, modules: project?.modules ?? []) }
+
     private var tabOptions: [CockpitTabBar<ProjectTab>.Option] {
-        [
-            .init(.overview, L10n.t("projects.tab.overview")),
+        let layout = navLayout
+        let tasks: [CockpitTabBar<ProjectTab>.Option] = layout.showsTasks ? [
             .init(.list, L10n.t("projects.tab.tasks"), badge: pulse.summary.open),
             .init(.board, L10n.t("projects.tab.board")),
-            .init(.plan, L10n.t("projects.tab.plan")),
-            .init(.team, L10n.t("projects.tab.team")),
-        ]
+        ] : []
+        let plan: [CockpitTabBar<ProjectTab>.Option] = layout.planSections.isEmpty ? [] : [.init(.plan, L10n.t("projects.tab.plan"))]
+        return [.init(.overview, L10n.t("projects.tab.overview"))]
+            + (layout.tasksBeforePlan ? tasks + plan : plan + tasks)
+            + [.init(.team, L10n.t("projects.tab.team"))]
     }
 
     var body: some View {
@@ -66,8 +71,15 @@ struct ProjectScreen: View {
             if project == nil || tab == .board { topBar }
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
-        .task { store.start() }
+        .task {
+            store.start()
+            if let uid = model.uid { store.watchNavPrefs(uid: uid) }
+        }
         .onDisappear { store.stop() }
+        // A tab the user just hid in the project settings falls back to the overview.
+        .onChange(of: tabOptions.map(\.value)) { _, tabs in
+            if !tabs.contains(tab) { tab = .overview }
+        }
         .onChange(of: store.isMissing) { _, missing in
             if missing, project == nil {
                 model.router.pop()
@@ -202,13 +214,14 @@ struct ProjectScreen: View {
         case .board:
             ProjectBoardView(tasks: store.tasks, canMove: access.canEditTasks, emptyText: L10n.t("projects.board.empty"))
         case .plan:
-            ProjectPlanView(store: store, canEdit: access.canManage, onOpenBoard: { selectTab(.board) }).padding(.top, PFSpace.m)
+            ProjectPlanView(store: store, canEdit: access.canManage, sections: navLayout.planSections, onOpenBoard: { selectTab(.board) }).padding(.top, PFSpace.m)
         case .team:
             ProjectTeamView(store: store, canEdit: access.canManage).padding(.top, PFSpace.m)
         }
     }
 
     private func selectTab(_ value: ProjectTab) {
+        guard tabOptions.contains(where: { $0.value == value }) else { return }
         PFHaptics.selection()
         withAnimation(PFMotion.respecting(PFMotion.snappy)) { tab = value }
     }

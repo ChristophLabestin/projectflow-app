@@ -61,8 +61,6 @@ struct GroupSheet: View {
             PFTextField(L10n.t("team.group.name"), text: $name, systemImage: "person.3")
             PFTextField(L10n.t("team.group.description"), text: $summary, systemImage: "text.alignleft", axis: .vertical)
             TeamSwatchPicker(L10n.t("team.color"), selection: $color)
-            PFButton(isWorking ? L10n.t("common.loading") : L10n.t("common.save"), size: .large, fullWidth: true) { save() }
-                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
             if let group {
                 PFSectionHeader(L10n.plural("team.group.members", group.memberIds.count))
                 PFCardList {
@@ -79,6 +77,11 @@ struct GroupSheet: View {
                 }
                 PFButton(L10n.t("team.group.delete"), kind: .danger, size: .large, fullWidth: true) { confirmDelete(group) }
             }
+        }
+        .pfSheetFooter([isWorking, name.trimmingCharacters(in: .whitespaces).isEmpty]) {
+            PFButton(isWorking ? L10n.t("common.loading") : L10n.t("common.save"), size: .large, fullWidth: true) { save() }
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
+                .padding(.horizontal, PFSpace.page)
         }
         .onAppear {
             guard !loadedFields, let group else { return }

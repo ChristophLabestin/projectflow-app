@@ -89,11 +89,14 @@ struct RoleSheet: View {
             VStack(spacing: PFSpace.xs) {
                 ForEach(TeamPermissionCatalog.groups) { group in groupView(group) }
             }
-            PFButton(isWorking ? L10n.t("common.loading") : L10n.t("common.save"), size: .large, fullWidth: true) { save() }
-                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
             if let role {
                 PFButton(L10n.t("team.role.delete"), kind: .danger, size: .large, fullWidth: true) { confirmDelete(role) }
             }
+        }
+        .pfSheetFooter([isWorking, name.trimmingCharacters(in: .whitespaces).isEmpty]) {
+            PFButton(isWorking ? L10n.t("common.loading") : L10n.t("common.save"), size: .large, fullWidth: true) { save() }
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || isWorking)
+                .padding(.horizontal, PFSpace.page)
         }
         .onAppear {
             guard !prepared else { return }

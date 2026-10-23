@@ -206,6 +206,9 @@ struct PlanningEditorScaffold<Content: View>: View {
             VStack(alignment: .leading, spacing: PFSpace.m) { content }
                 .padding(.horizontal, PFSpace.page)
                 .padding(.bottom, PFSpace.s)
+        }
+        // Pinned by the sheet below the form, so the keyboard never hides it.
+        .pfSheetFooter([saveTitle, deleteTitle ?? "", canSave ? "1" : "0"]) {
             HStack(spacing: PFSpace.s) {
                 if let deleteTitle, let onDelete {
                     PFButton(deleteTitle, systemImage: "trash", kind: .ghost, action: onDelete)
@@ -216,7 +219,6 @@ struct PlanningEditorScaffold<Content: View>: View {
             }
             .padding(.horizontal, PFSpace.page)
         }
-        .padding(.bottom, PFSpace.l)
     }
 }
 

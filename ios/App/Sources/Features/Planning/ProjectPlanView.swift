@@ -9,6 +9,8 @@ import PFModel
 struct ProjectPlanView: View {
     let store: ProjectStore
     let canEdit: Bool
+    /// Visible sections in display order ("milestones", "sprints", "initiatives"), from the project navigation.
+    var sections = ["milestones", "sprints", "initiatives"]
     /// Opens the project's sprint board (provided by the project screen).
     var onOpenBoard: (() -> Void)?
 
@@ -24,9 +26,14 @@ struct ProjectPlanView: View {
     var body: some View {
         let snapshot = snapshot
         VStack(alignment: .leading, spacing: PFSpace.xl) {
-            milestonesSection(snapshot)
-            sprintsSection(snapshot)
-            initiativesSection(snapshot)
+            ForEach(sections, id: \.self) { section in
+                switch section {
+                case "milestones": milestonesSection(snapshot)
+                case "sprints": sprintsSection(snapshot)
+                case "initiatives": initiativesSection(snapshot)
+                default: EmptyView()
+                }
+            }
         }
         .padding(.top, PFSpace.xs)
     }

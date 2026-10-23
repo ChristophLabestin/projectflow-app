@@ -13,7 +13,8 @@ extension AppModel {
 }
 
 /// Project templates (`web/config/projectTemplates.ts`). Starting a company project from the phone creates the
-/// project with its template fields; the guided workstream seeding of the web wizard is not part of it.
+/// project with its template fields; for the company template the guided workstream seeding of the web wizard
+/// (initiatives, milestones, tasks per track and jurisdiction, see `StartupSeeding.swift`) runs after the project doc.
 struct ProjectTemplate: Identifiable, Hashable {
     let id: String
     let labelKey: String
@@ -63,13 +64,31 @@ struct NewProjectInput {
     var dueDate: FlexDate?
     var modules: Set<String> = Set(ProjectTemplate.all[0].modules)
     var isPrivate = false
+    // Startup template only (web wizard: jurisdiction + selected workstreams).
+    var startupJurisdictionId = ""
+    var startupTrackIds: Set<String> = []
+    var startupSensitiveConfirmed = false
+
+    /// Selects a template and applies its defaults (modules, startup jurisdiction + workstreams).
+    mutating func apply(_ template: ProjectTemplate) {
+        self.template = template
+        modules = Set(template.modules)
+        startupSensitiveConfirmed = false
+        if template.isCompany, let catalog = StartupSeedCatalog.shared {
+            if startupJurisdictionId.isEmpty { startupJurisdictionId = catalog.defaultJurisdictionId }
+            startupTrackIds = catalog.defaultTrackIds(jurisdictionId: startupJurisdictionId)
+        } else {
+            startupTrackIds = []
+        }
+    }
 }
 
 /// Creates a project doc with the base fields of web `createProject` (projectAdminService) plus the
 /// template fields the web wizard writes. Returns the new project id.
 @MainActor
 enum ProjectCreation {
-    static func create(tenantId: String, uid: String, actorName: String, input: NewProjectInput) async throws -> String {
+    /// Returns the new project id and whether the startup seeding failed (project exists either way).
+    static func create(tenantId: String, uid: String, actorName: String, input: NewProjectInput) async throws -> (id: String, setupWarning: Bool) {
         let doc = PFPath.projects(tenantId).document()
         let template = input.template
         let description = input.description.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -102,20 +121,48 @@ enum ProjectCreation {
             "dueDate": input.dueDate?.webString ?? "",
             "createdAt": FieldValue.serverTimestamp(),
         ]
+        let catalog = template.isCompany ? StartupSeedCatalog.shared : nil
         if template.isCompany { data["companyProjectRole"] = "company" }
+        if let catalog {
+            data.merge(catalog.projectFields(title: data["title"] as? String ?? "", jurisdictionId: input.startupJurisdictionId,
+                                             trackIds: input.startupTrackIds, targetLaunchDate: input.dueDate?.webString)) { _, new in new }
+        }
         try await doc.setData(data)
         _ = try? await PFPath.activities(tenantId, doc.documentID).addDocument(data: [
             "projectId": doc.documentID, "tenantId": tenantId, "ownerId": uid, "user": actorName, "userAvatar": "",
             "action": "Created project \"\(input.title)\"", "target": "Project", "details": "", "relatedId": NSNull(),
             "type": "status", "createdAt": FieldValue.serverTimestamp(),
         ])
-        return doc.documentID
+        var setupWarning = template.isCompany && catalog == nil
+        if let catalog, !input.startupTrackIds.isEmpty {
+            do {
+                try await catalog.seed(tenantId: tenantId, uid: uid, projectId: doc.documentID,
+                                       trackIds: input.startupTrackIds, jurisdictionId: input.startupJurisdictionId)
+            } catch {
+                setupWarning = true
+            }
+        }
+        return (doc.documentID, setupWarning)
     }
 }
 
 /// "Neues Projekt" in three short steps: name + template → description + dates → modules + privacy.
+/// The startup company template gets an extra step after the template: jurisdiction + workstreams.
 struct ProjectCreateSheet: View {
-    private enum Step: Int, CaseIterable { case basics, plan, setup }
+    private enum Step: Int, CaseIterable {
+        case basics, startup, plan, setup
+        var titleKey: String {
+            switch self {
+            case .basics: "projects.new.step.0"
+            case .startup: "projects.new.step.startup"
+            case .plan: "projects.new.step.1"
+            case .setup: "projects.new.step.2"
+            }
+        }
+    }
+
+    private var steps: [Step] { Step.allCases.filter { $0 != .startup || input.template.isCompany } }
+    private var stepIndex: Int { steps.firstIndex(of: step) ?? 0 }
 
     @Environment(AppModel.self) private var model
     @Environment(PFPresenter.self) private var presenter
@@ -129,34 +176,32 @@ struct ProjectCreateSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
             header
-            ScrollView {
-                VStack(alignment: .leading, spacing: PFSpace.m) {
-                    switch step {
-                    case .basics: basics
-                    case .plan: plan
-                    case .setup: setup
-                    }
+            VStack(alignment: .leading, spacing: PFSpace.m) {
+                switch step {
+                case .basics: basics
+                case .startup: startupStep
+                case .plan: plan
+                case .setup: setup
                 }
-                .padding(.horizontal, PFSpace.page)
-                .padding(.bottom, PFSpace.m)
             }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
-            footer
+            .padding(.horizontal, PFSpace.page)
+            .padding(.bottom, PFSpace.m)
         }
         .padding(.bottom, PFSpace.l)
         .animation(PFMotion.respecting(PFMotion.snappy), value: step)
+        // Pinned by the sheet below the content, so the keyboard never hides it.
+        .pfSheetFooter([step.rawValue, trimmedTitle.isEmpty ? 1 : 0, isCreating ? 1 : 0]) { footer }
     }
 
     // MARK: Chrome
 
     private var header: some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
-            PFSheetHeader(L10n.t("projects.new.eyebrow") + " · " + L10n.t("projects.new.step", ["step": step.rawValue + 1, "total": Step.allCases.count]),
-                          title: L10n.t("projects.new.step.\(step.rawValue)"))
+            PFSheetHeader(L10n.t("projects.new.eyebrow") + " · " + L10n.t("projects.new.step", ["step": stepIndex + 1, "total": steps.count]),
+                          title: L10n.t(step.titleKey))
             HStack(spacing: 4) {
-                ForEach(Step.allCases, id: \.rawValue) { item in
-                    Capsule().fill(item.rawValue <= step.rawValue ? PFColor.textMain : PFColor.raised).frame(height: 3)
+                ForEach(Array(steps.enumerated()), id: \.offset) { index, _ in
+                    Capsule().fill(index <= stepIndex ? PFColor.textMain : PFColor.raised).frame(height: 3)
                 }
             }
             .padding(.horizontal, PFSpace.page)
@@ -169,21 +214,33 @@ struct ProjectCreateSheet: View {
             if step != .basics {
                 PFButton(L10n.t("common.back"), kind: .ghost, fullWidth: true) {
                     openDate = nil
-                    step = Step(rawValue: step.rawValue - 1) ?? .basics
+                    step = stepIndex > 0 ? steps[stepIndex - 1] : .basics
                 }
             }
             if step == .setup {
                 PFButton(L10n.t("projects.new.create"), systemImage: "plus", fullWidth: true, action: create)
                     .disabled(isCreating || trimmedTitle.isEmpty)
             } else {
-                PFButton(L10n.t("projects.new.next"), fullWidth: true) {
-                    openDate = nil
-                    step = Step(rawValue: step.rawValue + 1) ?? .setup
-                }
-                .disabled(trimmedTitle.isEmpty)
+                PFButton(L10n.t("projects.new.next"), fullWidth: true, action: next)
+                    .disabled(trimmedTitle.isEmpty)
             }
         }
         .padding(.horizontal, PFSpace.page)
+    }
+
+    private func next() {
+        if step == .startup, needsSensitiveConfirmation, !input.startupSensitiveConfirmed {
+            PFHaptics.warning()
+            model.toasts.show(PFToast(L10n.t("createProjectWizard.startup.confirmSensitive.error"), style: .warning))
+            return
+        }
+        openDate = nil
+        step = stepIndex + 1 < steps.count ? steps[stepIndex + 1] : .setup
+    }
+
+    private var catalog: StartupSeedCatalog? { StartupSeedCatalog.shared }
+    private var needsSensitiveConfirmation: Bool {
+        catalog?.tracks.contains { $0.sensitive && input.startupTrackIds.contains($0.id) } ?? false
     }
 
     private var trimmedTitle: String { input.title.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -202,6 +259,79 @@ struct ProjectCreateSheet: View {
             }
             .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
         }
+    }
+
+    private var startupStep: some View {
+        VStack(alignment: .leading, spacing: PFSpace.m) {
+            if let catalog {
+                PFEyebrow(L10n.t("projects.new.startup.jurisdiction"))
+                VStack(spacing: 0) {
+                    ForEach(Array(catalog.jurisdictions.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { PFRowDivider() }
+                        jurisdictionRow(item, catalog: catalog)
+                    }
+                }
+                .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                PFEyebrow(L10n.t("projects.new.startup.tracks"))
+                VStack(spacing: 0) {
+                    ForEach(Array(catalog.tracks.enumerated()), id: \.element.id) { index, track in
+                        if index > 0 { PFRowDivider() }
+                        VStack(alignment: .leading, spacing: 2) {
+                            PFSwitch(track.label.current, isOn: trackBinding(track.id))
+                            Text(track.description.current).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(.horizontal, PFSpace.m).padding(.vertical, PFSpace.s)
+                    }
+                }
+                .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                let counts = catalog.counts(tracks: input.startupTrackIds, jurisdictionId: input.startupJurisdictionId)
+                Text(L10n.t("projects.new.startup.summary", ["tracks": input.startupTrackIds.count, "tasks": counts.tasks,
+                                                              "initiatives": counts.initiatives, "milestones": counts.milestones]))
+                    .pfText(.meta).foregroundStyle(PFColor.textMuted)
+                if needsSensitiveConfirmation {
+                    VStack(alignment: .leading, spacing: PFSpace.xs) {
+                        PFSwitch(L10n.t("projects.new.startup.sensitive"), isOn: $input.startupSensitiveConfirmed)
+                        Text(L10n.t("createProjectWizard.startup.confirmSensitive.label")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.horizontal, PFSpace.m).padding(.vertical, PFSpace.s)
+                    .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                }
+            }
+        }
+    }
+
+    private func trackBinding(_ id: String) -> Binding<Bool> {
+        Binding(get: { input.startupTrackIds.contains(id) }, set: { on in
+            if on { input.startupTrackIds.insert(id) } else { input.startupTrackIds.remove(id) }
+        })
+    }
+
+    private func jurisdictionRow(_ item: StartupSeedCatalog.Jurisdiction, catalog: StartupSeedCatalog) -> some View {
+        let selected = item.id == input.startupJurisdictionId
+        return Button {
+            PFHaptics.selection()
+            withAnimation(PFMotion.fast) {
+                input.startupJurisdictionId = item.id
+                input.startupTrackIds = catalog.defaultTrackIds(jurisdictionId: item.id)
+                input.startupSensitiveConfirmed = false
+            }
+        } label: {
+            HStack(spacing: PFSpace.s) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.label.current).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
+                    Text(item.description.current).pfText(.meta).foregroundStyle(PFColor.textMuted).lineLimit(2)
+                }
+                Spacer(minLength: 0)
+                if selected { Image(systemName: "checkmark").font(.system(size: 13, weight: .bold)).foregroundStyle(PFColor.textMain) }
+            }
+            .padding(.horizontal, PFSpace.m)
+            .frame(minHeight: 58)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 
     private var plan: some View {
@@ -253,8 +383,7 @@ struct ProjectCreateSheet: View {
         return Button {
             PFHaptics.selection()
             withAnimation(PFMotion.fast) {
-                input.template = template
-                input.modules = Set(template.modules)
+                input.apply(template)
             }
         } label: {
             HStack(spacing: PFSpace.s) {
@@ -324,10 +453,13 @@ struct ProjectCreateSheet: View {
         let actor = model.profile?.displayName ?? ""
         Task {
             do {
-                let id = try await ProjectCreation.create(tenantId: tenantId, uid: uid, actorName: actor, input: input)
+                let created = try await ProjectCreation.create(tenantId: tenantId, uid: uid, actorName: actor, input: input)
                 PFHaptics.success()
                 presenter.dismiss()
-                model.router.push(.project(tenantId: tenantId, projectId: id))
+                model.router.push(.project(tenantId: tenantId, projectId: created.id))
+                if created.setupWarning {
+                    model.toasts.show(PFToast(L10n.t("createProjectWizard.toast.createdWithSetupWarning", ["name": trimmedTitle]), style: .warning))
+                }
             } catch {
                 isCreating = false
                 model.toasts.show(PFToast(L10n.t("common.error"), style: .error))

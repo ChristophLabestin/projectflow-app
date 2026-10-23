@@ -38,6 +38,9 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   page navigation (`PFNavigator`, backed by `NavigationStack`, system bar hidden) are native SwiftUI so
   dragging, swipe-back and transitions feel like iOS. Everything visible (navigation bar/dock, headers,
   buttons, controls, sheet content) is ProjectFlow's own design.
+- **Sheet actions go in `.pfSheetFooter(token) { … }`.** The sheet pins them below its scrolling content and
+  above the keyboard; `.fit` sheets grow by the keyboard height. Put every value that changes the footer
+  (enabled state, titles, step) into the token, since the footer is only re-read when the token changes.
 - **No native controls.** Build UI from `PFDesign` components (`PFButton`, `PFIconButton`, `PFPill`,
   `PFRingCheck`, `PFPrioritySignal`, `PFDayBand`, `PFAvatar(Stack)`, `PFHealthRing`, `PFProgressBar`,
   `PFSegmented`, `PFChip(Row)`, `PFSwitch`, `PFTextField`, `PFDateStrip`, `PFSwipeRow`, `PFCardList`,
@@ -54,3 +57,11 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   effects are server triggers).
 - **Accessibility**: every icon-only control has a label; components expose traits/actions; respect
   Dynamic Type (`pfText`) and Reduce Motion (`PFMotion.respecting`).
+
+## Startup template seed data
+
+`App/Resources/StartupSeeds.json` holds the content of the `startup_company_formation` template (tracks,
+jurisdictions, initiatives, tasks, milestones, de/en copy resolved). It is generated from the web config
+(`web/config/projectTemplates.ts`) and locales (`web/locales/{en,de}.ts`) — do not edit by hand. After changing
+those web sources run `node scripts/export-startup-seeds.mjs` from the repo root, then `cd ios && xcodegen generate`.
+Seeding itself: `App/Sources/Features/Projects/StartupSeeding.swift`.

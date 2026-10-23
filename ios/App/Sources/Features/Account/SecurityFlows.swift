@@ -107,8 +107,11 @@ struct PasswordSheet: View {
             Text(L10n.t("security.password.hint")).pfText(.meta).foregroundStyle(next.count >= 8 || next.isEmpty ? PFColor.textMuted : PFColor.warningText)
             if !confirm.isEmpty, next != confirm { Text(L10n.t("security.password.mismatch")).pfText(.meta).foregroundStyle(PFColor.dangerText) }
             if let errorText { Text(errorText).pfText(.meta).foregroundStyle(PFColor.dangerText) }
+        }
+        .pfSheetFooter([isWorking, isValid]) {
             PFButton(isWorking ? L10n.t("common.loading") : L10n.t("common.save"), size: .large, fullWidth: true) { submit() }
                 .disabled(!isValid || isWorking)
+                .padding(.horizontal, PFSpace.page)
         }
     }
 

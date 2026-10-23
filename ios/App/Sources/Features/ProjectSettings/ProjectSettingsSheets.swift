@@ -20,13 +20,12 @@ struct SettingsSheetFrame<Content: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.m) {
             PFSheetHeader(eyebrow, title: title)
-            ScrollView {
-                VStack(alignment: .leading, spacing: PFSpace.m) { content }
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.bottom, PFSpace.m)
-            }
-            .scrollIndicators(.hidden)
-            .scrollDismissesKeyboard(.interactively)
+            // The sheet itself scrolls; the save button is pinned below it, above the keyboard.
+            VStack(alignment: .leading, spacing: PFSpace.m) { content }
+                .padding(.horizontal, PFSpace.page)
+                .padding(.bottom, PFSpace.s)
+        }
+        .pfSheetFooter([saveTitle, canSave ? "1" : "0"]) {
             PFButton(saveTitle, fullWidth: true) {
                 onSave()
                 presenter.dismiss()
@@ -34,7 +33,6 @@ struct SettingsSheetFrame<Content: View>: View {
             .disabled(!canSave)
             .padding(.horizontal, PFSpace.page)
         }
-        .padding(.bottom, PFSpace.l)
     }
 }
 
