@@ -237,8 +237,7 @@ These tokens define key layout constants used across the app shell.
 | Token | Value | Description |
 |------|-------|-------------|
 | `--app-sidebar-width` | `0px (Mobile) / 280px (Desktop)` | Width of the main navigation sidebar |
-| `--help-center-width-collapsed` | `calc((100vw - sidebar) * 0.75)` | Default width of the help center drawer |
-| `--help-center-width-expanded` | `calc(100vw - sidebar)` | Expanded width of the help center drawer |
+| `--help-center-width` | `680px` | Help center sheet width (floating, inset 12px; full screen below 720px) |
 
 **Guideline:**
 - Mobile layout: sidebar is collapsed/hidden (`0px`).

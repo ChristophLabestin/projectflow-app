@@ -525,31 +525,6 @@ html.dark .switch-track.active {
   scrollbar-width: none;
 }
 
-/* --- Help Center Utilities --- */
-.help-section {
-  scroll-margin-top: 24px;
-}
-
-.help-highlight {
-  box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
-  background: var(--color-surface-hover);
-}
-
-.help-center-floating-button {
-  background: var(--color-primary);
-  color: var(--color-primary-text);
-  border: 1px solid color-mix(in srgb, var(--color-primary) 72%, transparent);
-}
-
-.help-center-floating-button:hover {
-  background: var(--color-primary-hover);
-  color: var(--color-primary-text);
-}
-
-html.dark .help-highlight {
-  box-shadow: 0 0 0 2px rgba(229, 229, 229, 0.2);
-}
-
 @keyframes gradient-xy {
   0%,
   100% {

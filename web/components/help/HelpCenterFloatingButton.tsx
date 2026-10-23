@@ -1,32 +1,17 @@
 import React from 'react';
-import { useLocation } from 'react-router-dom';
 import { useHelpCenter } from '../../context/HelpCenterContext';
-import { getHelpTargetForPath } from './helpCenterContent';
 import { useLanguage } from '../../context/LanguageContext';
+import './help-center.scss';
 
+/** Help entry point on public routes (no top bar there). */
 export const HelpCenterFloatingButton = () => {
-    const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
 
-    const handleOpen = () => {
-        openHelpCenter(getHelpTargetForPath(location.pathname));
-    };
-
     return (
-        <button
-            type="button"
-            onClick={handleOpen}
-            className="
-                help-center-floating-button
-                fixed bottom-6 right-6 z-[80]
-                flex items-center gap-2 px-4 py-2 rounded-full
-                shadow-lg hover:opacity-90 transition-opacity
-            "
-            aria-label={t('help.openAria')}
-        >
-            <span className="material-symbols-outlined text-[18px]">help</span>
-            <span className="text-xs font-semibold tracking-wide">{t('help.open')}</span>
+        <button type="button" onClick={() => openHelpCenter()} className="help-fab" aria-label={t('help.openAria')}>
+            <span className="material-symbols-outlined" aria-hidden="true">help</span>
+            <span>{t('help.open')}</span>
         </button>
     );
 };

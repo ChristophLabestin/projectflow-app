@@ -166,8 +166,8 @@ export default defineConfig(({ mode }) => {
                 return 'profile-i18n';
               }
 
-              if (id.includes('/web/locales/help-') || id.includes('/web/locales/help/')) {
-                return 'help-i18n';
+              if (id.includes('/web/locales/help/')) {
+                return id.includes('-de.ts') ? 'help-content-de' : 'help-content-en';
               }
 
               if (

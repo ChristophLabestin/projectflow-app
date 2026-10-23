@@ -76,7 +76,7 @@ the partial. Tailwind spacing scale: `N * 4px` (e.g. `p-6` = 24px, `gap-3` = 12p
 - [ ] ~163 files remaining.
 
 ### Remaining hot spots (convert with authenticated QA)
-`screens/social/**` (densest), `screens/marketing/**`, `components/help/pages/**`,
+`screens/social/**` (densest), `screens/marketing/**`,
 `components/SettingsModal.tsx`, `screens/Team.tsx`, `screens/Profile.tsx`,
 `components/settings/RoleManagement.tsx`.
 

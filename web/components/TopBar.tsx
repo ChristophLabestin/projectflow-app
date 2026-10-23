@@ -1,11 +1,9 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getSubTasks } from '../services/domain/tasksService';
 import { Project } from '../types';
 import { useHelpCenter } from '../context/HelpCenterContext';
-import { getHelpTargetForPath } from './help/helpCenterContent';
 import { useLanguage } from '../context/LanguageContext';
 
 const GlobalSearch = lazy(() => import('./search/GlobalSearch').then((module) => ({ default: module.GlobalSearch })));
@@ -89,13 +87,12 @@ interface TopBarProps {
 }
 
 export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, onOpenNav }) => {
-    const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
     void project;
 
     const handleOpenHelp = () => {
-        openHelpCenter(getHelpTargetForPath(location.pathname));
+        openHelpCenter();
     };
 
     return (

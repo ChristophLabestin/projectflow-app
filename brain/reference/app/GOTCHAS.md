@@ -198,3 +198,5 @@ Living log of pitfalls, edge cases, and workflow surprises discovered while work
 - `2026-10-23 | Web | Viewport breakpoints lie inside the app shell` - Tailwind `sm/lg` and SCSS `@media` use the window width, not the content width next to the sidebar or a detail panel; Team cards collapsed to 40 px with the panel open. Use auto-fill grids (see STYLING §7).
 
 - `2026-10-23 | E2E emulator | login screen QA needs a signed-out start` - `scripts/dev-e2e.sh` auto-signs in (`VITE_E2E_AUTO_LOGIN_*`) after `authStateReady`, so deleting the auth IndexedDB just logs you back in. Use `E2E_LOGIN=none` (launch config `web-e2e-web-session-signed-out`) and delete `firebaseLocalStorageDb` once in the tab.
+
+- `2026-10-23 | Web | Help articles drift with the product` - Help content (`web/locales/help/articles/<id>-en|de.ts`) names real UI labels, routes and shortcuts. When you rename a label, retire a feature or add/remove a shortcut, update the matching article in **both** languages — `components/help/__tests__/helpCenter.test.ts` fails on EN/DE structure drift, retired terms (Flows/Issues/Social) and routed articles/sections that no longer exist, but not on stale wording.
