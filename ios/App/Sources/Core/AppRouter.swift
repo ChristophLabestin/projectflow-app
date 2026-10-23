@@ -17,6 +17,7 @@ enum AppRoute: Hashable {
     case account
     case notificationSettings
     case securitySettings
+    case aiConnections
     case appearanceSettings
     case team
     /// Profile, workspace settings, roles, groups, member detail (Team package).

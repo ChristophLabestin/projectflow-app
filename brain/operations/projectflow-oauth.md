@@ -19,6 +19,10 @@ Date: 2026-10-23 · Concept: `brain/plans/ai-integrations-concept.md` · Code: `
 - `createPersonalAccessToken({tenantId, name, scopes, expiresInDays ≤ 365})` → `pfp_…` shown once.
 - `listAiConnections({tenantId, all?})` (all = Owner/Admin), `revokeAiConnection({grantId})` (owner of the grant or Owner/Admin) — deletes the grant's tokens immediately.
 
+iOS: Account → "Verbundene KI-Apps" (`ios/App/Sources/Features/Account/AiConnectionsScreen.swift`) lists the user's own
+connections across all their workspaces (one `listAiConnections` call per workspace, without `all`) and revokes them;
+connecting and creating tokens link to the web (`/?openSettings=ai`).
+
 ## Storage (Admin SDK only, rules deny-all)
 `oauth_clients`, `oauth_requests`, `oauth_codes`, `ai_grants`, `ai_tokens` (TTL on `expireAt`; revoked grants kept 180 days).
 

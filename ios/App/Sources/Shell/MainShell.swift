@@ -243,6 +243,7 @@ struct RouteDestination: View {
         case .account: AccountScreen()
         case .notificationSettings: NotificationSettingsScreen()
         case .securitySettings: SecuritySettingsScreen()
+        case .aiConnections: AiConnectionsScreen()
         case .appearanceSettings: AppearanceSettingsScreen()
         case .team: TeamScreen()
         case .accountPage(let page): AccountPageView(page: page)
