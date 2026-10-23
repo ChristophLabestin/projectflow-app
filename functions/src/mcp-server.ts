@@ -20,7 +20,7 @@ import { db } from './init';
 import { checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
 import { aiRateLimiter, loadAiPolicy } from './ai-store';
 import { isAiToken, resolveAiToken } from './ai-tokens';
-import { issuerFor, mcpResourceFor, protectedResourceMetadataUrl } from './oauth-config';
+import { issuerFor, MCP_DOCS_URL, mcpResourceFor, protectedResourceMetadataUrl } from './oauth-config';
 import { audienceMatches, DEFAULT_OAUTH_SCOPES, OAUTH_SCOPES } from './oauth-core';
 import { checkApiTokenUsable, findApiToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
@@ -651,7 +651,7 @@ export const protectedResourceMetadata = (req: any) => ({
     scopes_supported: [...OAUTH_SCOPES],
     bearer_methods_supported: ['header'],
     resource_name: 'ProjectFlow',
-    resource_documentation: 'https://getprojectflow.com/docs/mcp'
+    resource_documentation: MCP_DOCS_URL
 });
 
 const mcpHandler = toNodeHandler(createMcpHandler((ctx: any) => {
