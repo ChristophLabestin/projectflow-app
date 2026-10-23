@@ -2,6 +2,23 @@
 // (`settings.security.*` keys are the web's).
 enum AccountStrings {
     static let de: [String: String] = [
+        // Verbundene KI-Apps (texts aligned with web aiSettings.*)
+        "aiApps.title": "Verbundene KI-Apps", "aiApps.subtitle": "Alles, was in deinem Namen in deinen Workspaces handeln kann. Trennen wirkt sofort.",
+        "aiApps.connected": "Verbunden", "aiApps.empty": "Noch keine KI-Clients verbunden.",
+        "aiApps.footer": "Persönliche Zugriffstokens kannst du hier widerrufen; neue legst du im Web an.",
+        "aiApps.error": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+        "aiApps.kind.token": "Persönliches Zugriffstoken", "aiApps.unknownClient": "KI-Client",
+        "aiApps.scopes.read": "Nur lesen", "aiApps.scopes.write": "Lesen & schreiben", "aiApps.scopes.delete": "Lesen, schreiben & löschen",
+        "aiApps.connectedAt": "Verbunden am {date}", "aiApps.lastUsed": "zuletzt genutzt {date}", "aiApps.neverUsed": "noch nicht genutzt",
+        "aiApps.expires": "läuft ab am {date}",
+        "aiApps.revoke": "Trennen", "aiApps.revokeTitle": "App trennen?",
+        "aiApps.revokeMessage": "{name} verliert sofort den Zugriff auf {workspace}. Du kannst die App später erneut verbinden.",
+        "aiApps.revoked": "App getrennt.",
+        "aiApps.connect.title": "Neue App verbinden",
+        "aiApps.connect.body": "Claude, ChatGPT, Codex, Cursor oder andere MCP-Clients verbindest du in ProjectFlow im Web unter Einstellungen → KI & Integrationen. Dort meldest du dich an und wählst Workspace und Berechtigungen.",
+        "aiApps.connect.open": "Im Web öffnen",
+        "aiApps.connect.note": "Der Client handelt in deinem Namen mit deiner Rolle.",
+        "account.aiApps": "Verbundene KI-Apps", "account.aiApps.hint": "Claude, ChatGPT & Co. verwalten",
         "account.editProfile": "Profil bearbeiten", "account.currentWorkspace": "Aktueller Arbeitsbereich",
         "account.switchTo": "Wechseln zu", "account.notifications.hint": "Push, E-Mail, Zusammenfassung",
         "account.security.hint": "Passwort & Passkeys", "account.team.hint": "Mitglieder & Rollen",
@@ -80,6 +97,23 @@ enum AccountStrings {
     ]
 
     static let en: [String: String] = [
+        // Connected AI apps (texts aligned with web aiSettings.*)
+        "aiApps.title": "Connected AI apps", "aiApps.subtitle": "Everything that can act on your behalf in your workspaces. Disconnecting takes effect immediately.",
+        "aiApps.connected": "Connected", "aiApps.empty": "No AI clients connected yet.",
+        "aiApps.footer": "You can revoke personal access tokens here; create new ones on the web.",
+        "aiApps.error": "Something went wrong. Please try again.",
+        "aiApps.kind.token": "Personal access token", "aiApps.unknownClient": "AI client",
+        "aiApps.scopes.read": "Read only", "aiApps.scopes.write": "Read & write", "aiApps.scopes.delete": "Read, write & delete",
+        "aiApps.connectedAt": "Connected {date}", "aiApps.lastUsed": "last used {date}", "aiApps.neverUsed": "not used yet",
+        "aiApps.expires": "expires {date}",
+        "aiApps.revoke": "Disconnect", "aiApps.revokeTitle": "Disconnect this app?",
+        "aiApps.revokeMessage": "{name} loses access to {workspace} right away. You can connect it again later.",
+        "aiApps.revoked": "App disconnected.",
+        "aiApps.connect.title": "Connect a new app",
+        "aiApps.connect.body": "Connect Claude, ChatGPT, Codex, Cursor or other MCP clients in ProjectFlow on the web under Settings → AI & integrations. You sign in there and choose the workspace and permissions.",
+        "aiApps.connect.open": "Open on the web",
+        "aiApps.connect.note": "The client acts on your behalf with your role.",
+        "account.aiApps": "Connected AI apps", "account.aiApps.hint": "Manage Claude, ChatGPT & co.",
         "account.editProfile": "Edit profile", "account.currentWorkspace": "Current workspace",
         "account.switchTo": "Switch to", "account.notifications.hint": "Push, email, digest",
         "account.security.hint": "Password & passkeys", "account.team.hint": "Members & roles",

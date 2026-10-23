@@ -45,6 +45,7 @@ struct OnboardingHost: ViewModifier {
         }
         if arguments.contains("-pfSearch") { model.router.openSearch() }
         if arguments.contains("-pfAccount") { model.router.push(.account) }
+        if arguments.contains("-pfAiApps") { model.router.push(.account); model.router.push(.aiConnections) }
         #endif
     }
 

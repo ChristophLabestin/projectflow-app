@@ -121,6 +121,7 @@
 		8F612D6F82F3A594E9544236 /* NotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C235E6B619C86CA4DA87D382 /* NotificationService.swift */; };
 		92B27CB1D6855A7333AB2222 /* PFSnapshot in Frameworks */ = {isa = PBXBuildFile; productRef = B1E3E524B99DA009BB15CD2D /* PFSnapshot */; };
 		934ED132F4378BF50D7B3AC4 /* InboxStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40A4B73CC6D0A23B03BA9B6 /* InboxStrings.swift */; };
+		948A50574A89B2307AAD7993 /* AiConnectionsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEDCC7B8A41226D8BE0E20D8 /* AiConnectionsScreen.swift */; };
 		9601B2E5BDC08C0464B91042 /* DesignCatalogScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B919D08E2EE3DCF129E3D79 /* DesignCatalogScreen.swift */; };
 		98EE301894AC4CA4145D6699 /* WorkItemRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6C596E15E3844EB1E2C22DF /* WorkItemRow.swift */; };
 		9A43638B9FA468A1CEB44FD5 /* TeamMemberViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35F1B3D88491AA9401F60620 /* TeamMemberViews.swift */; };
@@ -410,6 +411,7 @@
 		FC0C8A43283A498FFE420F3A /* SharedSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedSessionStore.swift; sourceTree = "<group>"; };
 		FCAF802B7D3EDF1487F470E2 /* WorkSmartSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSmartSchedule.swift; sourceTree = "<group>"; };
 		FE46C6DB7BFE91513C8E4B93 /* CaptureModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureModel.swift; sourceTree = "<group>"; };
+		FEDCC7B8A41226D8BE0E20D8 /* AiConnectionsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AiConnectionsScreen.swift; sourceTree = "<group>"; };
 		FFB5BEB5DC2BF20E0CF0E1C1 /* ProjectFlowApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectFlowApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -891,6 +893,7 @@
 				B00603851C276F2A7710DE3A /* AccountPages.swift */,
 				99D5743839E573A37EA8B5A5 /* AccountScreen.swift */,
 				7E4A3133B83DED8047A0C162 /* AccountStrings.swift */,
+				FEDCC7B8A41226D8BE0E20D8 /* AiConnectionsScreen.swift */,
 				3E9BCD778AB8DB999CB21EF9 /* AppearanceSettingsScreen.swift */,
 				2E8ADB646766500730AF6A52 /* NotificationSettingsScreen.swift */,
 				19E773E5D6E25EBB73D1A36F /* PasskeyRegistration.swift */,
@@ -1151,6 +1154,7 @@
 				9BB88635AFCF70D5AA0DC34C /* AccountPages.swift in Sources */,
 				442FFF1D59516F911FD0D37B /* AccountScreen.swift in Sources */,
 				13936272B4E37FEBEAFC9CCE /* AccountStrings.swift in Sources */,
+				948A50574A89B2307AAD7993 /* AiConnectionsScreen.swift in Sources */,
 				41218B6657D08E6542467810 /* AppDelegate.swift in Sources */,
 				AF7C9A5550E2AF5646964165 /* AppIntentBridge.swift in Sources */,
 				525C998C1C53CF20B8C83026 /* AppModel.swift in Sources */,

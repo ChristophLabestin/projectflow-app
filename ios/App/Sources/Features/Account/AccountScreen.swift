@@ -25,7 +25,7 @@ struct AccountScreen: View {
                         HStack(alignment: .top, spacing: PFSpace.xl) {
                             VStack(alignment: .leading, spacing: PFSpace.xl) { identity; workspaces }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            VStack(alignment: .leading, spacing: PFSpace.xl) { settingsGrid; dataCard; footer }
+                            VStack(alignment: .leading, spacing: PFSpace.xl) { settingsGrid; aiCard; dataCard; footer }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } else {
@@ -33,6 +33,7 @@ struct AccountScreen: View {
                             identity
                             workspaces
                             settingsGrid
+                            aiCard
                             dataCard
                             footer
                         }
@@ -159,6 +160,14 @@ struct AccountScreen: View {
     }
 
     // MARK: Data, legal, session
+
+    private var aiCard: some View {
+        SettingsCard {
+            SettingsRow(systemImage: "sparkles", title: L10n.t("account.aiApps"), subtitle: L10n.t("account.aiApps.hint")) {
+                model.router.push(.aiConnections)
+            }
+        }
+    }
 
     private var dataCard: some View {
         VStack(alignment: .leading, spacing: PFSpace.s) {
