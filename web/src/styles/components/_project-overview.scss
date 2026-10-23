@@ -7768,6 +7768,7 @@ button.project-next-action-card__primary.is-warning:hover {
 }
 
 .project-overview-workspace__tabs {
+    --motion-indicator-radius: var(--radius-md);
     display: flex;
     gap: 0.35rem;
     padding: 0.28rem;

@@ -239,7 +239,15 @@ JS mirror `MOTION` + primitives in `web/components/motion/`. Demo: `/ui` → Mot
   `data-flip-key` glide on reorder, rise in, slide out on removal; scroll-compensated, max 80 per commit),
   `useMotionOnChange(ref, key, preset)` (one-off entrance without remount: route content, tab panels),
   `useSlidingIndicator(ref, activeKey)` (tabs/segments), `<AnimatedNumber value>` (tween on change only,
-  SR gets the final value).
+  SR gets the final value), `<TabIndicator activeKey>` (first child of a `.motion-tabs` tablist: sliding
+  active background; tune with `--motion-indicator-bg/-shadow/-radius`), `useMotionOnChange(…, 'directional')`
+  (numeric key, e.g. calendar paging, slides in from the side it moved to).
+- Reveals: `pf-wipe-in` (clip-path, dashboard day band), `pf-grow-x` (progress/workload bars, `transform-origin: left`).
+- Where it runs (2026-10-23): route content (AppLayout), modals/toasts/selects/menus (UI library), task lists
+  (TaskGroupList FLIP, completion slide-out), board (lift overlay, placeholder, cross-lane settle), task detail
+  subtasks (FLIP) and menus, notification list (FLIP) + bell badge pop + panel unfold, tab thumbs (project
+  workspace tabs, notification filter, search scopes, calendar week/month), calendar paging, dashboard band
+  wipe, workload bars, pulse counters, inline-edit save flash, inline menus (origin-aware).
 - Legacy Tailwind vocabulary `animate-in fade-in zoom-in-95 slide-in-from-*`, `animate-scale-up`,
   `animate-fade-in-left` was never generated (only `@tailwind base` runs); `_motion.scss` now defines it.
 - Rules: animate `transform`/`opacity` (`clip-path` for reveals) only; no `transition: all` in new code;

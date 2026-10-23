@@ -15,6 +15,7 @@ import { useHelpContent } from '../help/useHelpContent';
 import { blockToText } from '../help/helpSearch';
 import { DESKTOP_OPEN_SEARCH_EVENT } from '../../services/desktop';
 import type { Initiative, Project, Task } from '../../types';
+import { TabIndicator } from '../motion';
 import {
     highlightRanges,
     parseQuery,
@@ -758,7 +759,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
                             )}
                         </div>
 
-                        <div className="gsearch__scopes" role="tablist" aria-label={t('search.scope.label')}>
+                        <div className="gsearch__scopes motion-tabs" role="tablist" aria-label={t('search.scope.label')}>
+                            <TabIndicator activeKey={effectiveScope} />
                             {SCOPES.map((s) => (
                                 <button
                                     key={s}

@@ -15,7 +15,7 @@
     font: inherit;
     text-align: left;
     cursor: pointer;
-    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out), box-shadow var(--motion-duration-fast) var(--motion-ease-out);
 
     &:hover:not(:disabled),
     &:focus-visible {
@@ -72,6 +72,7 @@
 }
 
 .inline-edit-cell__editor {
+    animation: pf-fade-in var(--motion-duration-fast) var(--motion-ease-out) both;
     display: grid;
     grid-template-columns: minmax(0, 1fr) 34px 34px;
     gap: 6px;

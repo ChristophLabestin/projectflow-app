@@ -844,7 +844,15 @@
 
 // ---- Inline menu popover ------------------------------------------------------
 
+.inline-menu[data-placement='above'] {
+    transform-origin: bottom left;
+    animation-name: pf-rise-in;
+}
+
 .inline-menu {
+    // Unfolds from its trigger: drops down below it, rises when placed above.
+    transform-origin: top left;
+    animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
     position: fixed;
     z-index: 10000; // portaled popover — must sit above modals (task modal overlay is 9999)
     display: flex;

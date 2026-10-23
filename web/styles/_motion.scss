@@ -155,3 +155,28 @@
 // Dialog panels: rise + settle from 97 %.
 @keyframes pf-modal-in { from { opacity: 0; transform: scale(var(--motion-scale-from)) translateY(var(--motion-rise)); } }
 @keyframes pf-modal-out { to { opacity: 0; transform: scale(0.98) translateY(calc(var(--motion-rise) * 0.5)); } }
+
+// Tablists with a <TabIndicator>: the indicator paints the active background behind the tabs.
+.motion-tabs {
+  position: relative;
+  isolation: isolate;
+
+  > .motion-indicator {
+    z-index: -1;
+    background: var(--motion-indicator-bg, var(--color-surface-card));
+    box-shadow: var(--motion-indicator-shadow, var(--shadow-sm));
+    border-radius: var(--motion-indicator-radius, var(--radius-full));
+  }
+
+  &[data-indicator='ready'] > [aria-selected='true'],
+  &[data-indicator='ready'] > .is-active {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+}
+
+// Reveals: clip-path wipe (bands, timelines) and scaleX growth (progress bars, set transform-origin).
+@keyframes pf-wipe-in { from { clip-path: inset(0 100% 0 0); } }
+@keyframes pf-grow-x { from { transform: scaleX(0); } }
+.motion-wipe-in { animation: pf-wipe-in 560ms var(--motion-ease-out) both; }
+.motion-grow-x { transform-origin: left center; animation: pf-grow-x 480ms var(--motion-ease-out) both; }

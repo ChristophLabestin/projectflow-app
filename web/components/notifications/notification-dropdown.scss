@@ -45,6 +45,8 @@
     border-radius: var(--radius-full);
     background: var(--color-error);
     color: var(--color-absolute-white);
+    // Remounted per count (key), so every change pops once.
+    animation: pf-pop-in var(--motion-duration-base) var(--motion-ease-spring) both;
     font-size: 0.625rem;
     font-weight: 700;
     line-height: 12px;
@@ -62,14 +64,9 @@
     border-radius: var(--radius-xl);
     background: var(--color-surface-card);
     box-shadow: var(--shadow-lg);
-    animation: notification-panel-in 0.14s ease-out;
-}
-
-@keyframes notification-panel-in {
-    from {
-        opacity: 0;
-        transform: translateY(4px);
-    }
+    // Unfolds from the bell (top right).
+    transform-origin: top right;
+    animation: pf-drop-in var(--motion-duration-base) var(--motion-ease-out) both;
 }
 
 // Filter tabs double as the header; the dialog's aria-label carries the title.
@@ -96,7 +93,7 @@
     background: transparent;
     color: var(--color-text-muted);
     cursor: pointer;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: background-color var(--motion-duration-fast) var(--motion-ease-out), color var(--motion-duration-fast) var(--motion-ease-out);
 
     .material-symbols-outlined {
         font-size: 1.25rem;

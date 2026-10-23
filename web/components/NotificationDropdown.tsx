@@ -137,7 +137,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                 <span className="material-symbols-outlined" aria-hidden="true">
                     {badgeCount > 0 ? 'notifications_active' : 'notifications'}
                 </span>
-                {badgeCount > 0 && <span className="notification-bell__badge" aria-hidden="true">{badgeLabel}</span>}
+                {badgeCount > 0 && <span key={badgeLabel} className="notification-bell__badge" aria-hidden="true">{badgeLabel}</span>}
             </button>
 
             {isOpen && createPortal(
