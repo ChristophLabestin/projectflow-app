@@ -29,6 +29,7 @@ import {
     saveWorkspaceFinancialConfig,
     saveWorkspaceSmtpConfig
 } from './workspace-admin';
+import { getWorkspaceAiPolicy, listWorkspaceAiAudit, updateWorkspaceAiPolicy } from './ai-integrations';
 import {
     createTenantFileUploadSession,
     deleteTenantFile,
@@ -130,6 +131,9 @@ export {
     getWorkspaceSmtpConfig,
     saveWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
+    getWorkspaceAiPolicy,
+    updateWorkspaceAiPolicy,
+    listWorkspaceAiAudit,
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
     getWorkspaceFinancialConfig,

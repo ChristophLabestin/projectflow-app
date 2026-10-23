@@ -8,7 +8,7 @@ export const BRIDGE_VERSION = 1;
 export const CAPABILITIES = [
     'titlebar', 'app-menu', 'popout', 'badge', 'tray', 'notifications', 'language',
     'preferences', 'quick-capture', 'notification-actions', 'day-flow', 'file-drop', 'calendar', 'recents', 'windows',
-    'tray-panel', 'external-auth', 'spotlight'
+    'tray-panel', 'external-auth', 'spotlight', 'open-in-browser'
 ] as const;
 export type DesktopCapability = typeof CAPABILITIES[number];
 
@@ -136,7 +136,8 @@ export const IPC = {
     upcomingEvents: 'pf:upcoming-events',
     appAction: 'pf:app-action',
     signInExternally: 'pf:sign-in-externally',
-    indexSpotlight: 'pf:index-spotlight'
+    indexSpotlight: 'pf:index-spotlight',
+    openInBrowser: 'pf:open-in-browser'
 } as const;
 
 /** Shell actions offered by the menu bar panel. */

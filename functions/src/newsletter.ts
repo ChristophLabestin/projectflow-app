@@ -388,15 +388,17 @@ export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((r
             let tenantId = tenantIdFromMaster;
 
             if (!tenantId) {
-                // If no master token, we need to find the tenant by searching projects
-                // This is a bit expensive, but necessary for secure unsubscribes without master tokens
-                const tenantsSnapshot = await db.collection('tenants').get();
-                for (const tenantDoc of tenantsSnapshot.docs) {
-                    const projectDoc = await tenantDoc.ref.collection('projects').doc(projectId).get();
-                    if (projectDoc.exists) {
-                        tenantId = tenantDoc.id;
-                        break;
-                    }
+                // Recipient-specific unsubscribe token: one collection-group lookup by token instead of
+                // scanning every tenant (index: marketing_recipients.unsubscribeToken, collection group).
+                const match = await db
+                    .collectionGroup('marketing_recipients')
+                    .where('unsubscribeToken', '==', token)
+                    .limit(1)
+                    .get();
+                const recipientPath = match.docs[0]?.ref.path.split('/') || [];
+                // tenants/{tenantId}/projects/{projectId}/marketing_recipients/{recipientId}
+                if (recipientPath[0] === 'tenants' && recipientPath[3] === projectId) {
+                    tenantId = recipientPath[1];
                 }
             }
 

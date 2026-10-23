@@ -27,6 +27,8 @@ const seedData = async (testEnv) => {
         await set(`${T}/members/guestA`, { uid: 'guestA', role: 'Guest' });
         await set(`${T}/secrets/smtp`, { username: 'smtp-user' });
         await set(`${T}/api_tokens/tokenA`, { name: 'Token A' });
+        await set(`${T}/ai_audit/entryA`, { tool: 'create_task', actorId: 'ownerA' });
+        await set(`${T}/ai_config/policy`, { enabled: true });
         await set(`${T}/entitlements/plan`, { plan: 'free', seats: 3 });
         await set(PROJECT, {
             title: 'Project A',
@@ -133,6 +135,11 @@ const run = async () => {
         await check('member cannot write secrets', 'deny', () =>
             member.doc(`${T}/secrets/smtp`).set({ username: 'x' }, { merge: true }));
         await check('owner cannot read api tokens', 'deny', () => owner.doc(`${T}/api_tokens/tokenA`).get());
+        await check('owner cannot read ai audit directly', 'deny', () => owner.doc(`${T}/ai_audit/entryA`).get());
+        await check('owner cannot forge ai audit', 'deny', () => owner.doc(`${T}/ai_audit/x`).set({ tool: 'x' }));
+        await check('owner cannot write ai policy directly', 'deny', () =>
+            owner.doc(`${T}/ai_config/policy`).set({ enabled: false }));
+        await check('member cannot read ai policy directly', 'deny', () => member.doc(`${T}/ai_config/policy`).get());
         await check('member reads entitlements', 'allow', () => member.doc(`${T}/entitlements/plan`).get());
         await check('owner cannot self-grant entitlements', 'deny', () =>
             owner.doc(`${T}/entitlements/plan`).set({ plan: 'enterprise', seats: 999 }));

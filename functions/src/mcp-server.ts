@@ -16,7 +16,9 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { z } from 'zod';
 
 import { db } from './init';
-import { findApiToken } from './authUtils';
+import { checkWorkspaceAccess, effectiveScopes, normalizeRole, type PrincipalKind, RATE_LIMITS } from './ai-access';
+import { aiRateLimiter, loadAiPolicy } from './ai-store';
+import { checkApiTokenUsable, findApiToken } from './authUtils';
 import { handleProjectflowApiRoute } from './projectflow-api';
 
 const REGION = 'europe-west3';
@@ -124,7 +126,18 @@ const summarizeInitiative = (initiative: any) => compact({
 // Server definition
 // ---------------------------------------------------------------------------
 
-type TokenInfo = { tenantId: string; tokenData: any; permissions: Set<string> };
+/**
+ * Full MCP tool annotations. Unset hints default to the cautious side (destructive, open world),
+ * so every tool states all four explicitly. ProjectFlow tools never reach outside the workspace.
+ */
+const ANNOTATIONS = {
+    read: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    create: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
+    update: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+    destroy: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false }
+} as const;
+
+type TokenInfo = { tenantId: string; tokenData: any; role: string; permissions: Set<string> };
 
 const buildServer = (token: string, info: TokenInfo) => {
     const server = new McpServer(
@@ -137,15 +150,16 @@ const buildServer = (token: string, info: TokenInfo) => {
     // --- Workspace -----------------------------------------------------------
     server.registerTool('whoami', {
         title: 'Who am I',
+        annotations: ANNOTATIONS.read,
         description: 'Workspace, token name, permissions and project scope of the connected API token.',
         inputSchema: {},
-        annotations: { readOnlyHint: true }
     }, async () => {
         const tenant = await db.doc(`tenants/${info.tenantId}`).get().catch(() => null);
         return textResult(compact({
             workspaceId: info.tenantId,
             workspaceName: tenant?.data()?.name,
             tokenName: info.tokenData.name,
+            role: info.role,
             permissions: [...info.permissions].sort(),
             projectScope: info.tokenData.projectScope || undefined
         }));
@@ -155,11 +169,11 @@ const buildServer = (token: string, info: TokenInfo) => {
     if (can('projects:read')) {
         server.registerTool('list_projects', {
             title: 'List projects',
+            annotations: ANNOTATIONS.read,
             description: 'List projects in the workspace (id, title, status, priority, due date, short description).',
             inputSchema: {
                 includeClosed: z.boolean().optional().describe('Include completed and canceled projects. Default false.')
             },
-            annotations: { readOnlyHint: true }
         }, async ({ includeClosed }) => {
             const result = await callApi(token, 'GET', '/projects');
             if (result.status >= 400) return apiError(result);
@@ -171,9 +185,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('get_project', {
             title: 'Get project',
+            annotations: ANNOTATIONS.read,
             description: 'Full details of one project, including brief, modules and links.',
             inputSchema: { projectId },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}`);
             return result.status >= 400 ? apiError(result) : textResult(result.payload.project);
@@ -181,9 +195,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('list_milestones', {
             title: 'List milestones',
+            annotations: ANNOTATIONS.read,
             description: 'Milestones of a project with due dates and status.',
             inputSchema: { projectId },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/milestones`);
             return result.status >= 400 ? apiError(result) : textResult(result.payload);
@@ -191,12 +205,12 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('list_comments', {
             title: 'List comments',
+            annotations: ANNOTATIONS.read,
             description: 'Comments in a project, optionally only those on one task or initiative.',
             inputSchema: {
                 projectId,
                 targetId: z.string().optional().describe('Only comments on this task or initiative id.')
             },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/comments`);
             if (result.status >= 400) return apiError(result);
@@ -206,12 +220,12 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('list_activity', {
             title: 'List activity',
+            annotations: ANNOTATIONS.read,
             description: 'Recent activity log of a project (newest first).',
             inputSchema: {
                 projectId,
                 limit: z.number().int().min(1).max(200).optional().describe('Max entries, default 30.')
             },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/activities`);
             if (result.status >= 400) return apiError(result);
@@ -223,6 +237,7 @@ const buildServer = (token: string, info: TokenInfo) => {
     if (can('projects:write')) {
         server.registerTool('create_milestone', {
             title: 'Create milestone',
+            annotations: ANNOTATIONS.create,
             description: 'Add a milestone to a project.',
             inputSchema: {
                 projectId,
@@ -238,6 +253,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('update_milestone', {
             title: 'Update milestone',
+            annotations: ANNOTATIONS.update,
             description: 'Change a milestone (title, due date, status, description).',
             inputSchema: {
                 projectId,
@@ -254,6 +270,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('add_comment', {
             title: 'Add comment',
+            annotations: ANNOTATIONS.create,
             description: 'Comment on a task or initiative.',
             inputSchema: {
                 projectId,
@@ -271,6 +288,7 @@ const buildServer = (token: string, info: TokenInfo) => {
     if (can('tasks:read')) {
         server.registerTool('list_tasks', {
             title: 'List tasks',
+            annotations: ANNOTATIONS.read,
             description: 'Tasks of a project, filtered and trimmed to the essentials. Open tasks only unless includeDone is set.',
             inputSchema: {
                 projectId,
@@ -281,7 +299,6 @@ const buildServer = (token: string, info: TokenInfo) => {
                 search: z.string().optional().describe('Case-insensitive match on title and description.'),
                 limit: z.number().int().min(1).max(500).optional().describe('Default 50.')
             },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/tasks`);
             if (result.status >= 400) return apiError(result);
@@ -301,9 +318,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('get_task', {
             title: 'Get task',
+            annotations: ANNOTATIONS.read,
             description: 'Full task details including description and subtasks.',
             inputSchema: { projectId, taskId: z.string().min(1) },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const [task, subtasks] = await Promise.all([
                 callApi(token, 'GET', `/projects/${args.projectId}/tasks/${args.taskId}`),
@@ -315,9 +332,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('list_codex_sessions', {
             title: 'List Codex sessions',
+            annotations: ANNOTATIONS.read,
             description: 'Recent coding sessions recorded for a project.',
             inputSchema: { projectId },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/codex/sessions`);
             return result.status >= 400 ? apiError(result) : textResult(result.payload);
@@ -339,6 +356,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('create_task', {
             title: 'Create task',
+            annotations: ANNOTATIONS.create,
             description: 'Create a task in a project.',
             inputSchema: { projectId, ...taskFields, title: z.string().min(1) }
         }, async ({ projectId: id, ...fields }) => {
@@ -348,6 +366,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('update_task', {
             title: 'Update task',
+            annotations: ANNOTATIONS.update,
             description: 'Change fields of a task. Only the fields you pass are updated.',
             inputSchema: { projectId, taskId: z.string().min(1), ...taskFields }
         }, async ({ projectId: id, taskId, ...fields }) => {
@@ -359,9 +378,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('complete_task', {
             title: 'Complete task',
+            annotations: ANNOTATIONS.update,
             description: 'Mark a task as done.',
             inputSchema: { projectId, taskId: z.string().min(1) },
-            annotations: { idempotentHint: true }
         }, async (args) => {
             const result = await callApi(token, 'PATCH', `/projects/${args.projectId}/tasks/${args.taskId}`, { body: { status: 'Done', isCompleted: true } });
             return result.status >= 400 ? apiError(result) : textResult(result.payload);
@@ -369,9 +388,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('upsert_task', {
             title: 'Create or update task by external key',
+            annotations: ANNOTATIONS.update,
             description: 'Idempotent task sync: creates the task the first time and updates it on later calls with the same externalKey (e.g. "github:owner/repo#12" or "plan:auth-refactor/step-3").',
             inputSchema: { projectId, externalKey: z.string().min(1), ...taskFields },
-            annotations: { idempotentHint: true }
         }, async ({ projectId: id, ...fields }) => {
             const result = await callApi(token, 'POST', `/projects/${id}/tasks/upsert-by-external-key`, { body: compact({ ...fields, source: 'mcp' }) });
             return result.status >= 400 ? apiError(result) : textResult(result.payload);
@@ -379,6 +398,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('add_subtask', {
             title: 'Add subtask',
+            annotations: ANNOTATIONS.create,
             description: 'Add a checklist item to a task.',
             inputSchema: { projectId, taskId: z.string().min(1), title: z.string().min(1) }
         }, async (args) => {
@@ -388,6 +408,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('update_subtask', {
             title: 'Update subtask',
+            annotations: ANNOTATIONS.update,
             description: 'Rename or tick off a subtask.',
             inputSchema: {
                 projectId,
@@ -412,6 +433,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('codex_start_session', {
             title: 'Start coding session',
+            annotations: ANNOTATIONS.create,
             description: 'Record the start of a coding session. Creates or reuses the linked task (by externalKey, derived from repo/branch/title when omitted) and returns the sessionId.',
             inputSchema: {
                 projectId,
@@ -429,6 +451,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('codex_checkpoint', {
             title: 'Coding session checkpoint',
+            annotations: ANNOTATIONS.create,
             description: 'Record progress in a running coding session (phase, summary, files, validation).',
             inputSchema: {
                 projectId,
@@ -444,6 +467,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('codex_finish_session', {
             title: 'Finish coding session',
+            annotations: ANNOTATIONS.update,
             description: 'Close a coding session with its outcome; completed sessions complete the linked task.',
             inputSchema: {
                 projectId,
@@ -459,6 +483,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('create_followups', {
             title: 'Create follow-up tasks',
+            annotations: ANNOTATIONS.create,
             description: 'Create follow-up tasks from a coding session (e.g. TODOs or deferred work). Idempotent per session and title.',
             inputSchema: {
                 projectId,
@@ -478,9 +503,9 @@ const buildServer = (token: string, info: TokenInfo) => {
     if (can('tasks:delete')) {
         server.registerTool('delete_task', {
             title: 'Delete task',
+            annotations: ANNOTATIONS.destroy,
             description: 'Permanently delete a task. Prefer complete_task unless the task was created by mistake.',
             inputSchema: { projectId, taskId: z.string().min(1) },
-            annotations: { destructiveHint: true }
         }, async (args) => {
             const result = await callApi(token, 'DELETE', `/projects/${args.projectId}/tasks/${args.taskId}`);
             return result.status >= 400 ? apiError(result) : textResult(result.payload);
@@ -491,9 +516,9 @@ const buildServer = (token: string, info: TokenInfo) => {
     if (can('initiatives:read')) {
         server.registerTool('list_initiatives', {
             title: 'List initiatives',
+            annotations: ANNOTATIONS.read,
             description: 'Initiatives (larger bodies of work grouping tasks) of a project.',
             inputSchema: { projectId },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/initiatives`);
             if (result.status >= 400) return apiError(result);
@@ -503,9 +528,9 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('get_initiative', {
             title: 'Get initiative',
+            annotations: ANNOTATIONS.read,
             description: 'Full details of one initiative.',
             inputSchema: { projectId, initiativeId: z.string().min(1) },
-            annotations: { readOnlyHint: true }
         }, async (args) => {
             const result = await callApi(token, 'GET', `/projects/${args.projectId}/initiatives/${args.initiativeId}`);
             return result.status >= 400 ? apiError(result) : textResult(result.payload.initiative);
@@ -525,6 +550,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('create_initiative', {
             title: 'Create initiative',
+            annotations: ANNOTATIONS.create,
             description: 'Create an initiative in a project.',
             inputSchema: { projectId, ...initiativeFields, title: z.string().min(1) }
         }, async ({ projectId: id, ...fields }) => {
@@ -534,6 +560,7 @@ const buildServer = (token: string, info: TokenInfo) => {
 
         server.registerTool('update_initiative', {
             title: 'Update initiative',
+            annotations: ANNOTATIONS.update,
             description: 'Change fields of an initiative. Only the fields you pass are updated.',
             inputSchema: { projectId, initiativeId: z.string().min(1), ...initiativeFields }
         }, async ({ projectId: id, initiativeId, ...fields }) => {
@@ -578,17 +605,42 @@ export const mcp = functions.region(REGION).runWith({ memory: '512MB', timeoutSe
         return;
     }
 
-    const found = await findApiToken(token).catch(() => null);
-    const expiresAt = found?.tokenData?.expiresAt?.toDate?.();
-    if (!found || (expiresAt && expiresAt < new Date())) {
-        jsonRpcError(res, 401, found ? 'API token expired.' : 'Invalid API token.', unauthorizedHeaders);
+    const found = await findApiToken(token).catch((error) => {
+        console.error('MCP token lookup failed', error);
+        return null;
+    });
+    if (!found) {
+        jsonRpcError(res, 401, 'Invalid API token.', unauthorizedHeaders);
+        return;
+    }
+    const usable = await checkApiTokenUsable(found.tokenData, found.tenantId);
+    if (!usable.ok) {
+        jsonRpcError(res, 401, usable.error, unauthorizedHeaders);
         return;
     }
 
+    const role = normalizeRole(usable.role);
+    const kind: PrincipalKind = found.tokenData.kind || 'workspace-token';
+    const policy = await loadAiPolicy(found.tenantId);
+    const access = role ? checkWorkspaceAccess({ role, policy, kind }) : { ok: false as const, error: 'Not a member of this workspace.' };
+    if (!role || !access.ok) {
+        jsonRpcError(res, 403, access.ok ? 'Not a member of this workspace.' : access.error);
+        return;
+    }
+    const retryAfter = aiRateLimiter.take(`mcp:${found.tokenRef.id}`, RATE_LIMITS.request);
+    if (retryAfter > 0) {
+        res.set('Retry-After', String(retryAfter));
+        jsonRpcError(res, 429, `Rate limit exceeded. Retry in ${retryAfter}s.`);
+        return;
+    }
+
+    // tools/list only shows what the token may actually do: scopes ∩ role ceiling ∩ workspace AI policy.
+    const tokenScopes = Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [];
     const server = buildServer(token, {
         tenantId: found.tenantId,
         tokenData: found.tokenData,
-        permissions: new Set<string>(Array.isArray(found.tokenData.permissions) ? found.tokenData.permissions : [])
+        role,
+        permissions: new Set<string>(effectiveScopes({ tokenScopes, role, policy, kind }))
     });
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => {

@@ -1319,21 +1319,33 @@ html.is-desktop.desktop-window-tray {
 // ---------------------------------------------------------------------------
 
 // Desktop-app promo card in the sidebar, above the project dock (web app in macOS / Windows browsers).
+// Inverted card (primary surface) so it reads as an offer, not as navigation; flips with the theme.
 .desktop-promo {
     position: relative;
+    overflow: hidden;
     margin: 4px 10px 6px;
-    padding: 12px;
-    border: 1px solid var(--color-surface-border);
+    padding: 12px 12px 10px;
     border-radius: var(--radius-lg);
-    background:
-        radial-gradient(120% 90% at 0% 0%, rgba(var(--color-primary-rgb), 0.07), transparent 60%),
-        var(--color-surface-hover-light);
+    background: linear-gradient(150deg, var(--color-primary-light), var(--color-primary) 70%);
+    color: var(--color-primary-text);
+    box-shadow: var(--shadow-md);
     animation: desktop-promo-in 0.3s ease-out;
 }
 
 @keyframes desktop-promo-in {
     from { opacity: 0; transform: translateY(6px); }
     to { opacity: 1; transform: none; }
+}
+
+.desktop-promo__watermark {
+    position: absolute;
+    right: -14px;
+    bottom: -18px;
+    width: 92px;
+    height: 92px;
+    font-size: 92px;
+    opacity: 0.08;
+    pointer-events: none;
 }
 
 .desktop-promo__close {
@@ -1345,7 +1357,7 @@ html.is-desktop.desktop-window-tray {
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--color-text-subtle);
+    color: rgba(var(--color-primary-text-rgb), 0.55);
     cursor: pointer;
 
     .material-symbols-outlined {
@@ -1354,12 +1366,13 @@ html.is-desktop.desktop-window-tray {
 
     &:hover,
     &:focus-visible {
-        background: var(--color-surface-hover);
-        color: var(--color-text-main);
+        background: rgba(var(--color-primary-text-rgb), 0.12);
+        color: var(--color-primary-text);
     }
 }
 
 .desktop-promo__head {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -1370,92 +1383,77 @@ html.is-desktop.desktop-window-tray {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 30px;
+    height: 30px;
     flex-shrink: 0;
     border-radius: var(--radius-md);
-    background: var(--color-primary);
-    color: var(--color-primary-text);
-    font-size: 18px;
-    box-shadow: var(--shadow-sm);
+    background: rgba(var(--color-primary-text-rgb), 0.12);
 }
 
-.desktop-promo__heading {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-    min-width: 0;
-}
-
-.desktop-promo__eyebrow {
-    color: var(--color-text-subtle);
-    font-size: 0.625rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+.desktop-promo__mark {
+    width: 16px;
+    height: 16px;
+    font-size: 17px;
 }
 
 .desktop-promo__title {
-    color: var(--color-text-main);
+    margin: 0;
     font-size: 0.8125rem;
     font-weight: 700;
     line-height: 1.25;
 }
 
 .desktop-promo__body {
+    position: relative;
     margin: 8px 0 10px;
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
+    color: rgba(var(--color-primary-text-rgb), 0.7);
+    font-size: 0.72rem;
     line-height: 1.4;
 }
 
 .desktop-promo__actions {
+    position: relative;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
 }
 
 .desktop-promo__cta {
     display: inline-flex;
     align-items: center;
-    justify-content: center;
     gap: 4px;
-    height: 30px;
-    border-radius: var(--radius-md);
-    background: var(--color-primary);
-    color: var(--color-primary-text);
-    font-size: 0.78rem;
+    height: 28px;
+    padding: 0 12px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-text);
+    color: var(--color-primary);
+    font-size: 0.75rem;
     font-weight: 650;
     text-decoration: none;
-    transition: background-color var(--transition-fast);
 
     .material-symbols-outlined {
-        font-size: 16px;
+        font-size: 15px;
         transition: transform var(--transition-fast);
     }
 
-    &:hover {
-        background: var(--color-primary-hover);
-
-        .material-symbols-outlined {
-            transform: translateX(2px);
-        }
+    &:hover .material-symbols-outlined {
+        transform: translateX(2px);
     }
 }
 
 .desktop-promo__never {
-    height: 26px;
+    padding: 4px 2px;
     border: 0;
-    border-radius: var(--radius-md);
     background: transparent;
-    color: var(--color-text-subtle);
-    font-size: 0.72rem;
+    color: rgba(var(--color-primary-text-rgb), 0.6);
+    font-size: 0.7rem;
     font-weight: 500;
     cursor: pointer;
 
     &:hover,
     &:focus-visible {
-        color: var(--color-text-main);
-        background: var(--color-surface-hover);
+        color: var(--color-primary-text);
+        text-decoration: underline;
     }
 }

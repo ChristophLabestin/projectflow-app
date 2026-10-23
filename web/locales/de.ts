@@ -3054,6 +3054,7 @@ const de = {
     'desktop.titlebar.menu': 'Menü',
     'desktop.titlebar.back': 'Zurück',
     'desktop.titlebar.forward': 'Vorwärts',
+    'desktop.titlebar.reload': 'Neu laden',
     'desktop.titlebar.popOutQuickAccess': 'Schnellzugriff als Fenster öffnen',
     'desktop.titlebar.closeQuickAccessWindow': 'Schnellzugriff-Fenster schließen',
     'pinnedTasks.window.popOut': 'Als Fenster lösen',

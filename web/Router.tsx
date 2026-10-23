@@ -29,6 +29,7 @@ import { QuickCaptureWindow } from './screens/QuickCaptureWindow';
 import { DesktopDayWindow } from './screens/DesktopDayWindow';
 import { DesktopTrayPanel } from './screens/DesktopTrayPanel';
 import { DesktopAuthHandoff } from './screens/DesktopAuthHandoff';
+import { SettingsUrlOpener } from './components/settings/SettingsUrlOpener';
 import { DESKTOP_QUICK_ACCESS_PATH, desktopWindowKind, isDesktop } from './services/desktop';
 import { ErrorPage } from './screens/ErrorPage';
 import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
@@ -198,6 +199,7 @@ const AuthenticatedLayout = () => {
         <RequireAuth>
             <LegalConsentGate>
                 <AppLayout />
+                <SettingsUrlOpener />
             </LegalConsentGate>
         </RequireAuth>
     );

@@ -5,6 +5,7 @@
         "build": "tsc",
         "test:unit": "tsc && node --test scripts/unit/*.test.js",
         "test:triggers": "npm run build && node scripts/run-triggers-test.js",
+        "test:ai-access": "npm run build && node scripts/run-ai-access-test.js",
         "test:account-data": "firebase emulators:exec --only firestore --project demo-projectflow --config scripts/firebase.account-data-test.json \"node scripts/account-data-test.js\"",
         "test:legal": "firebase emulators:exec --only firestore --project demo-projectflow --config scripts/firebase.legal-test.json \"node scripts/legal-test.js\"",
         "test:rules": "firebase emulators:exec --only firestore --project demo-projectflow --config ../firebase.json \"node scripts/firestore-rules-test.js\"",

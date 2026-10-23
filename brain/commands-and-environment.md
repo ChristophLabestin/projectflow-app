@@ -35,7 +35,7 @@ Use this to QA signed-in screens without touching production.
 
 **One command, already signed in:** `npm --prefix web run dev:e2e` (launch config `web-e2e`) runs `scripts/dev-e2e.sh`: builds functions, starts Auth/Firestore/Storage/Functions emulators on their own port block (9631/8631/9632/5631, override via `AUTH_PORT` etc.) so it does not collide with other local Firebase projects, seeds the demo workspace, adds `outsider@projectflow.test` / `pf-outsider-e2e` (no workspace, for permission tests) and starts Vite auto-signed-in as the demo owner (`E2E_LOGIN=outsider` to sign in as the outsider, `E2E_FUNCTIONS=0` to skip functions). Auto-login only exists in dev builds with emulators.
 
-**Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
+**Security tests** (from `functions/`): `npm run test:rules` (Firestore rules, 33 checks), `node scripts/storage-rules-test.js` under `firebase emulators:exec --only firestore,storage`, `npm run test:account-data` (GDPR export/erasure), `npm run test:ai-access` (AI access model on `/api` + `/mcp` against own emulators, ports 9951/8951/5951: creator membership, role ceiling, AI policy, audit, annotations). `RULES_PATH=<file>` runs the Firestore suite against another rules file (e.g. an older version) for comparison.
 
 
 ## Functions Commands
@@ -64,6 +64,13 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - **Release** (concept §17): bump `desktop/package.json` version, commit, then `git tag v<version> && git push origin v<version>` → `.github/workflows/desktop-release.yml` builds macOS + Windows and publishes the GitHub Release (download links + auto-update feed). Signing/notarization secrets are optional (see workflow header).
 - App + tray icons are generated from `desktop/assets/glyph.svg`: `cd desktop && npx electron scripts/render-icons.cjs && iconutil -c icns assets/icon.iconset -o assets/icon.icns && rm -r assets/icon.iconset`.
 - macOS dev: `npm --prefix desktop install` / `run build` brand the dev Electron bundle as ProjectFlow (`scripts/brand-dev-app.cjs`: renames it to `ProjectFlow.app`, name, icon, bundle id, ad-hoc re-sign), so menu bar and Dock do not say "Electron".
+
+## Landing Page (`landing/`)
+- `cd landing && npm install && npm run dev` — Vite on port 4300 (launch config `landing`).
+- `npm run build` — typecheck + static build to `landing/dist/` (pages rendered from TS templates).
+- `npm run deploy:preview` — build + `firebase hosting:channel:deploy preview` on site `getprojectflow` (uses `landing/firebase.json`, independent from the app's root `firebase.json`).
+- `npm run deploy` — live deploy of the landing site (only after the owner signs off).
+- Domain: connect `getprojectflow.com` (+ `www`) to Hosting site `getprojectflow` in the Firebase console; `app.getprojectflow.com` stays on site `projectflow-labestin`.
 
 ## Firestore Commands
 
