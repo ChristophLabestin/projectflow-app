@@ -1,7 +1,9 @@
 # Pricing-Strategie ProjectFlow (Vorschlag)
 
 Status: 2026-10-23 – **vom Owner bestätigt:** Team 10 € jährlich / 12 € monatlich, Free bis 3 Projekte, Team bis 50 Mitglieder
-(übernommen in `APP_CONCEPT.md §3`). Noch offen: Gründungspreis, Stichtag Bezahlstart, Organization-Preis final. Nichts davon ist live: Bezahlpläne sind im Code noch
+(übernommen in `APP_CONCEPT.md §3`). **KI-Paket (Owner, 2026-10-23):** KI ist nicht im Team-Preis enthalten, sondern ein Zusatz für **10 € pro Nutzer/Monat**,
+der die KI-Funktionen freischaltet (1 Mio. Tokens + 50 Bilder pro Nutzer/Monat). Noch offen: Gründungspreis, Stichtag Bezahlstart,
+Organization-Preis final. Nichts davon ist live: Bezahlpläne sind im Code noch
 nicht umgesetzt (kein Stripe/Checkout, Plan-Limits aus `APP_CONCEPT.md §3` werden nicht erzwungen; einzig erzwungen
 ist das KI-Kontingent pro Nutzer: 1 Mio. Tokens + 50 Bilder/Monat, `functions/src/ai-service.ts`).
 Die Landing zeigt die Preise als „geplant“ (Preview-Channel), bis der Owner sie bestätigt.
@@ -37,7 +39,7 @@ Fazit: Teamplätze liegen bei 8–12 €; KI ist oft ein Aufpreis (8–10 $). Pr
 | Web, Desktop, iPhone | ✓ | ✓ | ✓ |
 | Heute, Fokus, Inbox, Boards, Workbench | ✓ | ✓ | ✓ |
 | Initiativen, Sprints, Module | Initiativen | ✓ | ✓ |
-| KI-Assistenz | mit eigenem OpenAI-Schlüssel | inkl. 1 Mio. Tokens + 50 Bilder/Platz/Monat | individuelle Kontingente & Richtlinien |
+| KI-Assistenz | mit eigenem OpenAI-Schlüssel | **KI-Paket +10 €/Nutzer/Monat**: 1 Mio. Tokens + 50 Bilder/Nutzer/Monat | KI-Paket bzw. individuelle Kontingente & Richtlinien |
 | MCP (Claude, ChatGPT, Cursor …) | ✓ (eigener Zugriff) | ✓ + persönliche Tokens für CI | ✓ + zentrale Richtlinien |
 | Sicherheit | Passkeys, 2FA | + Rollen, KI-Aktivitätsprotokoll (180 Tage) | + SSO, erweiterte Protokolle, AV-Vertrag, SLA |
 | Support | Hilfe-Center | E-Mail | Priorisiert, fester Ansprechpartner |
@@ -47,14 +49,15 @@ Begründungen:
   (Einladen) bleiben der Upgrade-Grund. Abweichung von `APP_CONCEPT.md §3.1` (dort: max. 1 Projekt) → Entscheidung nötig.
 - **Team-Limit 50 statt 20**: 20 ist zu knapp für wachsende Agenturen; Organization wird über Governance verkauft, nicht über Kopfzahl.
 - **Externe kostenlos**: klares Unterscheidungsmerkmal für Agenturen (Kunden sehen genau ein Projekt) und viraler Kanal.
-- **KI inklusive** statt Add-on: einfache Botschaft; Kosten pro Platz gedeckt. Fair-Use über die bestehende Server-Quote.
+- **KI als Zusatzpaket** (Owner-Entscheidung, ersetzt „KI inklusive“): 10 €/Nutzer/Monat, pro Nutzer zubuchbar; schaltet KI-Assistenz frei.
+  Marge hoch (Ø KI-Kosten 0,5–3 €/Nutzer). MCP-Zugang (eigene KI-Clients) bleibt in allen Plänen ohne Paket nutzbar.
 - **Jahresrabatt ~17 %** (10 statt 12 €) – üblicher Anker, verbessert Cashflow.
 
 ## 4. Zusätze
 - **14 Tage Team-Test** ohne Kreditkarte für jeden neuen Workspace; danach automatisch Free (keine Datenverluste,
   Projekte über dem Limit werden schreibgeschützt).
 - **Gründungspreis** für Beta-Workspaces: 40 % Rabatt im ersten Jahr (6 €/Platz), Preisgarantie 24 Monate.
-- **KI-Zusatzpakete** (Team): +1 Mio. Tokens 4 € · +50 Bilder 4 €, monatlich kündbar.
+- **KI-Paket**: +10 €/Nutzer/Monat (Team/Organization), monatlich kündbar; darüber hinaus Nachkauf +1 Mio. Tokens 4 € · +50 Bilder 4 € (optional).
 - **Gemeinnützige Organisationen & Bildung**: 50 % auf Team.
 - **Mindestabnahme**: keine im Team-Plan (auch 2 Plätze ok); Organization ab 10 Plätzen.
 
@@ -72,6 +75,8 @@ Begründungen:
 
 ## 7. Entscheidungen
 - ✅ 2026-10-23: Team 10 €/12 €, Free bis 3 Projekte, Team bis 50 Mitglieder.
+- ✅ 2026-10-23: KI als Zusatzpaket für 10 € pro Nutzer/Monat (schaltet KI-Funktionen frei).
+- Annahmen (bestätigen): KI-Paket nur für Team/Organization buchbar, pro einzelnem Nutzer wählbar; Free nutzt KI nur mit eigenem Schlüssel.
 - Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
 - Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).
