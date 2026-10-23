@@ -113,6 +113,7 @@ const wikiDe: Record<string, string> = {
     'wiki.rail.mentioned': 'Auf dieser Seite erwähnt',
     'wiki.rail.backlinks': 'Rückverweise',
     'wiki.rail.backlinksEmpty': 'Keine andere Seite verweist hierher.',
+    'wiki.rail.files': 'Dateien',
     'wiki.rail.subpages': 'Unterseiten',
     'wiki.save.dirty': 'Nicht gespeichert',
     'wiki.save.saving': 'Speichert …',

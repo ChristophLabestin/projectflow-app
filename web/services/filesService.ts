@@ -160,7 +160,7 @@ export const fileOriginPath = (file: Pick<FileItem, 'parent' | 'projectId'>) => 
     if (rootType === 'task' && projectId) return `/project/${projectId}/tasks/${rootId}`;
     if (rootType === 'initiative' && projectId) return `/project/${projectId}/initiatives/${rootId}`;
     if (rootType === 'project' && projectId) return `/project/${projectId}/files`;
-    if (rootType === 'doc') return projectId ? `/project/${projectId}/docs/${rootId}` : `/docs/${rootId}`;
+    if (rootType === 'doc') return projectId ? `/project/${projectId}/wiki/${rootId}` : `/wiki/${rootId}`;
     return null;
 };
 

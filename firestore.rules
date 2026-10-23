@@ -149,8 +149,7 @@ service cloud.firestore {
 
     // ---- Versioned legal documents (contract: brain/plans/legal-consent-contract.md)
     // Published index + immutable versions are public (landing page, iOS, signed-out
-    // /legal pages). Drafts are platform-admin only. All writes go through Cloud
-    // Functions (saveLegalDraft / publishLegalDraft), never the client.
+    // /legal pages). Drafts and all writes go through Cloud Functions (adminApi), never the client.
     match /legal_documents/{type} {
       allow read: if true;
       allow write: if false;
@@ -160,25 +159,31 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Drafts: only through adminApi in the admin console (admin/).
       match /drafts/{draftId} {
-        allow read: if authed() && request.auth.token.platformAdmin == true;
-        allow write: if false;
+        allow read, write: if false;
       }
     }
 
-    // Crash reports (web + iOS, opt-in): written only by the crashIngest function; platform admins
-    // read them and triage the issue status in the admin platform (/admin/crashes).
+    // Admin console (admin/, brain/plans/admin-console-concept.md): allowlist, sessions, audit log
+    // and platform config are read and written only by the adminApi function (Admin SDK).
+    match /platform_admins/{uid} {
+      allow read, write: if false;
+    }
+    match /admin_sessions/{uid} {
+      allow read, write: if false;
+    }
+    match /admin_audit/{entryId} {
+      allow read, write: if false;
+    }
+
+    // Crash reports (web + iOS, opt-in): written only by the crashIngest function, read and triaged only
+    // through adminApi in the admin console (admin/) — no client access, platform admins included.
     match /crashIssues/{issueId} {
-      allow read: if authed() && request.auth.token.platformAdmin == true;
-      allow update: if authed() && request.auth.token.platformAdmin == true
-        && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['status', 'statusChangedAt', 'statusChangedBy', 'resolvedRelease', 'note'])
-        && request.resource.data.status in ['open', 'resolved', 'ignored'];
-      allow create, delete: if false;
+      allow read, write: if false;
 
       match /crashEvents/{eventId} {
-        allow read: if authed() && request.auth.token.platformAdmin == true;
-        allow write: if false;
+        allow read, write: if false;
       }
     }
 

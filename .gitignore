@@ -185,6 +185,8 @@ ios/Packages/ProjectFlowKit/Package.resolved
 
 # Firebase hosting deploy cache (changes on every deploy)
 .firebase/
+.firebase.admin-e2e.json
+.firebase-admin-e2e.log
 
 # Local Functions emulator secret overrides (never commit)
 functions/.secret.local

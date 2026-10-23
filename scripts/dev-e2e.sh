@@ -75,10 +75,10 @@ FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" FIREBASE_AUTH_EMULATOR_HOST=
 if [[ "${E2E_LEGAL:-0}" == "1" ]]; then
     GCLOUD_PROJECT="$PROJECT_ID" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
         node functions/scripts/import-legal-docs.mjs legal/v1 --publish-initial
-    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
         node functions/scripts/grant-platform-admin.mjs demo@projectflow.test
 elif [[ "${E2E_ADMIN:-0}" == "1" ]]; then
-    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" \
+    GCLOUD_PROJECT="$PROJECT_ID" FIREBASE_AUTH_EMULATOR_HOST="127.0.0.1:$AUTH_PORT" FIRESTORE_EMULATOR_HOST="127.0.0.1:$FIRESTORE_PORT" \
         node functions/scripts/grant-platform-admin.mjs demo@projectflow.test
 fi
 

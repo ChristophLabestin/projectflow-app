@@ -77,10 +77,6 @@ const rawTrail = (parts: string[], ctx: BreadcrumbContext): Crumb[] => {
             return first
                 ? [{ label: t('breadcrumbs.personalTasks'), to: '/personal-tasks' }, { label: entityTitle || t('breadcrumbs.taskDetails') }]
                 : [];
-        case 'admin':
-            return first === 'crashes' && parts[2]
-                ? [{ label: t('crashAdmin.title'), to: '/admin/crashes' }, { label: entityTitle || t('breadcrumbs.crashIssue') }]
-                : [];
         default:
             return [];
     }

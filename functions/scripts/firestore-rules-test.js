@@ -320,7 +320,7 @@ const run = async () => {
         await check('signed-out lists versions', 'allow', () => anon.collection('legal_documents/terms/versions').get());
         await check('signed-out cannot read draft', 'deny', () => anon.doc('legal_documents/terms/drafts/current').get());
         await check('member cannot read draft', 'deny', () => member.doc('legal_documents/terms/drafts/current').get());
-        await check('platform admin reads draft', 'allow', () => platformAdmin.doc('legal_documents/terms/drafts/current').get());
+        await check('platform admin cannot read draft (admin console only)', 'deny', () => platformAdmin.doc('legal_documents/terms/drafts/current').get());
         await check('platform admin cannot write draft directly', 'deny', () =>
             platformAdmin.doc('legal_documents/terms/drafts/current').set({ type: 'terms' }));
         await check('platform admin cannot publish directly', 'deny', () =>
@@ -411,6 +411,17 @@ const run = async () => {
         await check('guest cannot read insights', 'deny', () => guest.doc(`${T}/insights_daily/latest`).get());
         await check('guest cannot read insights report', 'deny', () => guest.doc(`${T}/insights_reports/2026-W43`).get());
         await check('owner cannot write insights', 'deny', () => owner.doc(`${T}/insights_daily/latest`).set({ day: 'x' }));
+
+        // Admin console collections: closed to every client, platform admin included (adminApi only).
+        for (const path of ['platform_admins/platformAdminA', 'admin_sessions/platformAdminA', 'admin_audit/a1']) {
+            await check(`platform admin cannot read ${path}`, 'deny', () => platformAdmin.doc(path).get());
+            await check(`platform admin cannot write ${path}`, 'deny', () => platformAdmin.doc(path).set({ email: 'x' }));
+            await check(`member cannot write ${path}`, 'deny', () => member.doc(path).set({ email: 'x' }));
+        }
+        await check('platform admin cannot list audit log', 'deny', () => platformAdmin.collection('admin_audit').get());
+        await check('platform admin cannot read crash issue (adminApi only)', 'deny', () => platformAdmin.doc('crashIssues/fp1').get());
+        await check('platform admin cannot triage crash issue directly', 'deny', () => platformAdmin.doc('crashIssues/fp1').set({ status: 'resolved' }));
+        await check('member cannot read crash events', 'deny', () => member.collection('crashIssues/fp1/crashEvents').get());
 
         // Removed Finance V2 module: its data stays in Firestore but is closed to clients.
         await check('owner cannot read legacy finance data', 'deny', () => owner.doc(`${T}/finance_accounts/acc1`).get());
