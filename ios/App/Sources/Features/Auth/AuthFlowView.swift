@@ -54,12 +54,23 @@ struct AuthFlowView: View {
         }
         .onAppear { withAnimation(.spring(response: 0.8, dampingFraction: 0.8).delay(0.15)) { appeared = true } }
         .task {
-            if ProcessInfo.processInfo.arguments.contains("-pfAutoLogin") {
+            let arguments = ProcessInfo.processInfo.arguments
+            if arguments.contains("-pfAutoLogin") {
                 emailExpanded = true
                 email = "demo@projectflow.test"
                 password = "projectflow-demo"
                 submit()
             }
+            #if DEBUG
+            // QA: `-pfLoginEmail <email> -pfLoginPassword <password>` signs in with another emulator account.
+            if let index = arguments.firstIndex(of: "-pfLoginEmail"), arguments.count > index + 1,
+               let passwordIndex = arguments.firstIndex(of: "-pfLoginPassword"), arguments.count > passwordIndex + 1 {
+                emailExpanded = true
+                email = arguments[index + 1]
+                password = arguments[passwordIndex + 1]
+                submit()
+            }
+            #endif
         }
     }
 

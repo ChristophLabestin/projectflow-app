@@ -114,6 +114,8 @@ private struct TodayContent: View {
 
             TodayBand(plan: plan).padding(.top, PFSpace.l).pfAppear(3)
 
+            TodayGettingStarted().padding(.top, PFSpace.xl).pfAppear(4)
+
             TodayPlanSection(plan: plan, now: now).pfAppear(4)
             TodayWaitingSection(plan: plan).pfAppear(5)
             TodayWeekSection(plan: plan).pfAppear(6)
@@ -180,12 +182,19 @@ private struct TodayFirstRun: View {
     var body: some View {
         VStack(alignment: .leading, spacing: PFSpace.l) {
             PFEyebrow(Formatting.longToday(now)).padding(.top, PFSpace.s)
-            PFEmptyState(
-                systemImage: "sun.horizon", title: L10n.t("today.empty.title"), message: L10n.t("today.empty.message"),
-                actionTitle: L10n.t("today.empty.capture")
-            ) { CaptureLauncher.present(model: model) }
-            PFButton(L10n.t("today.empty.project"), systemImage: "square.stack.3d.up", kind: .ghost, fullWidth: true) {
-                presenter.present(detents: [.large]) { ProjectCreateSheet() }
+            if TodayGettingStarted.isActive(model: model) {
+                // New accounts: the getting-started list instead of an empty card (same steps as the web dashboard).
+                PFEditorialHeadline(before: L10n.t("today.firstRun.headline.before"), value: L10n.t("today.firstRun.headline.value"),
+                                    after: L10n.t("today.firstRun.headline.after"))
+                TodayGettingStarted()
+            } else {
+                PFEmptyState(
+                    systemImage: "sun.horizon", title: L10n.t("today.empty.title"), message: L10n.t("today.empty.message"),
+                    actionTitle: L10n.t("today.empty.capture")
+                ) { CaptureLauncher.present(model: model) }
+                PFButton(L10n.t("today.empty.project"), systemImage: "square.stack.3d.up", kind: .ghost, fullWidth: true) {
+                    presenter.present(detents: [.large]) { ProjectCreateSheet() }
+                }
             }
         }
         .pfAppear(0)

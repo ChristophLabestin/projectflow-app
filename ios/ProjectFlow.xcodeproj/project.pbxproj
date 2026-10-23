@@ -69,6 +69,7 @@
 		4ECBBBB8AE89471D404FEADF /* PFSnapshot in Frameworks */ = {isa = PBXBuildFile; productRef = AF65F6C4898A59FDEA10E996 /* PFSnapshot */; };
 		4ED506A0665057F0DDAF1431 /* WorkMonthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3608ECF2009356C64A35E8A0 /* WorkMonthView.swift */; };
 		4F7249CB76C4FD1F09397862 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3E962C4EB40FCEF33B2D4918 /* SwiftUI.framework */; };
+		5086B53110AB634EAABA27AD /* TodayGettingStarted.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B9894D6C3F43745AE3F0BC5 /* TodayGettingStarted.swift */; };
 		509446ED9B215E5E1847F541 /* AuthCoordinators.swift in Sources */ = {isa = PBXBuildFile; fileRef = E50B796034553AE06808F353 /* AuthCoordinators.swift */; };
 		50B337E0EAF75351B321FBA0 /* ProjectSituation.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3EC65A00AA38ED0CDB005C2 /* ProjectSituation.swift */; };
 		5239DA4B060F776C19B6E368 /* SearchCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD52CBFAE464FA1CB347C35B /* SearchCommands.swift */; };
@@ -330,6 +331,7 @@
 		958BD2E9871A8009746472EB /* SearchRecents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchRecents.swift; sourceTree = "<group>"; };
 		97E6BD243CE9BEA9A85E76B9 /* WorkspaceSettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkspaceSettingsScreen.swift; sourceTree = "<group>"; };
 		99D5743839E573A37EA8B5A5 /* AccountScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountScreen.swift; sourceTree = "<group>"; };
+		9B9894D6C3F43745AE3F0BC5 /* TodayGettingStarted.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayGettingStarted.swift; sourceTree = "<group>"; };
 		9BBB89863690CB4FCD76AAD2 /* TodayWidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayWidgetViews.swift; sourceTree = "<group>"; };
 		9BC753BC1A7E9C4F19B10416 /* ShareComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareComposerView.swift; sourceTree = "<group>"; };
 		9E0C27BEB335C7031E096371 /* ProjectsStrings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectsStrings.swift; sourceTree = "<group>"; };
@@ -843,6 +845,7 @@
 			isa = PBXGroup;
 			children = (
 				12A2D230FC996843CF2F20E6 /* TodayDayClose.swift */,
+				9B9894D6C3F43745AE3F0BC5 /* TodayGettingStarted.swift */,
 				892FC778388E5CBF12F71BD3 /* TodayHeader.swift */,
 				EAE839C858AB95607CB3D6B8 /* TodayPlanner.swift */,
 				60F1C328F1E6493F83CAFFC6 /* TodayScreen.swift */,
@@ -1236,6 +1239,7 @@
 				F4F88AF6E010E3A59F3D9A19 /* TeamStrings.swift in Sources */,
 				E6069E60551F4C89D90E8175 /* TeamSupport.swift in Sources */,
 				9B8A35F4BD0FB234F14CA1E3 /* TodayDayClose.swift in Sources */,
+				5086B53110AB634EAABA27AD /* TodayGettingStarted.swift in Sources */,
 				0B4649CC78EA203B8CB91C62 /* TodayHeader.swift in Sources */,
 				14F687A1BFD9DEE1CEE4A77A /* TodayPlanner.swift in Sources */,
 				5DD75CA739FE6E4393B21A2B /* TodayScreen.swift in Sources */,

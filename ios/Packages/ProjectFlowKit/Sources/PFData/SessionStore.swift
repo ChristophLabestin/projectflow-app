@@ -30,6 +30,10 @@ public final class SessionStore {
     public private(set) var welcomePending = false
     /// `onboarding.survey.useCases` (shared survey, web + iOS); drives the suggested project template.
     public private(set) var surveyUseCases: [String] = []
+    /// The account has an onboarding doc (created after the onboarding rework): it may see the getting-started checklist.
+    public private(set) var hasOnboarding = false
+    /// `checklistDismissed`: the user hid the getting-started checklist (shared with the web dashboard card).
+    public private(set) var checklistDismissed = false
     private let listeners = ListenerBag()
     private let defaults: UserDefaults
 
@@ -89,6 +93,8 @@ public final class SessionStore {
                 guard let self else { return }
                 self.welcomePending = (snapshot?.data()?["welcomePending"] as? Bool) == true
                 self.surveyUseCases = ((snapshot?.data()?["survey"] as? [String: Any])?["useCases"] as? [String]) ?? []
+                self.hasOnboarding = snapshot?.exists == true
+                self.checklistDismissed = (snapshot?.data()?["checklistDismissed"] as? Bool) == true
             }
         }
         listeners.set("onboarding", registration)
@@ -105,6 +111,12 @@ public final class SessionStore {
         if let previousTool { survey["previousTool"] = previousTool }
         surveyUseCases = useCases
         try? await Self.onboardingDoc(uid).setData(["survey": survey, "updatedAt": FieldValue.serverTimestamp()], merge: true)
+    }
+
+    /// Hides the getting-started checklist everywhere (web `update({ checklistDismissed: true })`).
+    public func dismissChecklist() async {
+        checklistDismissed = true
+        try? await Self.onboardingDoc(uid).setData(["checklistDismissed": true, "updatedAt": FieldValue.serverTimestamp()], merge: true)
     }
 
     /// Ends the onboarding for good on every platform (web `update({ welcomePending: false })`).

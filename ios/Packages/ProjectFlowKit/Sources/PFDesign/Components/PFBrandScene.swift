@@ -218,12 +218,15 @@ public struct PFRotatingWord: View {
 
     public var body: some View {
         let word = words.isEmpty ? "" : words[index % words.count]
-        Text(word)
-            .pfText(style)
-            .foregroundStyle(PFBrandPalette.textColors[index % PFBrandPalette.textColors.count])
-            .id(index)
-            .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
-                                    removal: .move(edge: .top).combined(with: .opacity)))
+        // The container clips, so the outgoing word never slides over the line above.
+        ZStack {
+            Text(word)
+                .pfText(style)
+                .foregroundStyle(PFBrandPalette.textColors[index % PFBrandPalette.textColors.count])
+                .id(index)
+                .transition(.asymmetric(insertion: .move(edge: .bottom).combined(with: .opacity),
+                                        removal: .move(edge: .top).combined(with: .opacity)))
+        }
             .frame(maxWidth: .infinity)
             .clipped()
             .accessibilityLabel(words.first ?? "")
