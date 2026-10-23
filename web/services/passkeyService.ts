@@ -61,6 +61,44 @@ export const registerPasskey = async (deviceName?: string) => {
     }
 };
 
+type AuthOptionsRequest = { email?: string, origin: string };
+type VerifyAuthRequest = { response: AuthenticationResponseJSON, email?: string, origin: string } | { warmup: true };
+
+// Challenges expire after 5 minutes on the server; reuse a prefetched one only
+// while it is clearly still valid.
+const PREFETCH_MAX_AGE_MS = 4 * 60 * 1000;
+let prefetchedOptions: { promise: Promise<PublicKeyCredentialRequestOptionsJSON>, fetchedAt: number } | null = null;
+
+const fetchAuthenticationOptions = async (email?: string) => {
+    const generateOptionsFn = getFunction<AuthOptionsRequest, PublicKeyCredentialRequestOptionsJSON>('generatePasskeyAuthenticationOptions');
+    const optionsResp = await generateOptionsFn({ email, origin: CLIENT_ORIGIN });
+    return optionsResp.data;
+};
+
+const takePrefetchedOptions = () => {
+    const prefetched = prefetchedOptions;
+    // Single use: a challenge is consumed by the verify call either way.
+    prefetchedOptions = null;
+    if (!prefetched || Date.now() - prefetched.fetchedAt > PREFETCH_MAX_AGE_MS) return null;
+    return prefetched.promise;
+};
+
+/**
+ * Prepares a passkey sign-in while the login screen is open: fetches a
+ * (discoverable) challenge and wakes the verify function, so the click only
+ * waits for the WebAuthn dialog instead of two function cold starts.
+ */
+export const preparePasskeyLogin = () => {
+    if (!prefetchedOptions || Date.now() - prefetchedOptions.fetchedAt > PREFETCH_MAX_AGE_MS) {
+        const promise = fetchAuthenticationOptions();
+        promise.catch(() => {
+            if (prefetchedOptions?.promise === promise) prefetchedOptions = null;
+        });
+        prefetchedOptions = { promise, fetchedAt: Date.now() };
+    }
+    void getFunction<VerifyAuthRequest, unknown>('verifyPasskeyAuthentication')({ warmup: true }).catch(() => undefined);
+};
+
 /**
  * Login with a passkey.
  * @param email Optional email to help identify the user (for non-discoverable credentials)
@@ -68,16 +106,15 @@ export const registerPasskey = async (deviceName?: string) => {
  */
 export const loginWithPasskey = async (email?: string) => {
     try {
-        // 1. Get options from server
-        const generateOptionsFn = getFunction<{ email?: string, origin: string }, PublicKeyCredentialRequestOptionsJSON>('generatePasskeyAuthenticationOptions');
-        const optionsResp = await generateOptionsFn({ email, origin: CLIENT_ORIGIN });
-        const options = optionsResp.data;
+        // 1. Get options from server (prefetched challenge when no email narrows the credentials)
+        const prefetched = email ? null : takePrefetchedOptions();
+        const options = (prefetched ? await prefetched.catch(() => null) : null) ?? await fetchAuthenticationOptions(email);
 
         // 2. Start authentication on browser
         const authenticationResponse = await startAuthentication({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = getFunction<{ response: AuthenticationResponseJSON, email?: string, origin: string }, { success: boolean, token: string }>('verifyPasskeyAuthentication');
+        const verifyFn = getFunction<VerifyAuthRequest, { success: boolean, token: string }>('verifyPasskeyAuthentication');
         const verificationResp = await verifyFn({
             response: authenticationResponse,
             email, // Send email back just in case

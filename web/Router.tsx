@@ -156,8 +156,11 @@ const RootLayout = () => {
 };
 
 // Auth Protected Layout
-const AuthenticatedLayout = ({ user }: { user: any }) => {
+// Reads the user from context so the router itself never has to be rebuilt
+// on sign-in/sign-out (that remounted the whole tree and made login flicker).
+const AuthenticatedLayout = () => {
     const location = useLocation();
+    const { user } = useAuth();
 
     if (!user) {
         return <Navigate to="/login" state={{ from: location }} replace />;
@@ -172,7 +175,7 @@ const AuthenticatedLayout = ({ user }: { user: any }) => {
 
 export const AppRouter = () => {
     const { t } = useLanguage();
-    const { user, isAuthReady } = useAuth();
+    const { isAuthReady } = useAuth();
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -209,7 +212,7 @@ export const AppRouter = () => {
                     )}
 
                     {/* Authenticated Routes Block */}
-                    <Route element={<AuthenticatedLayout user={user} />}>
+                    <Route element={<AuthenticatedLayout />}>
                         <Route path="/" element={<Dashboard />} />
                         <Route path="/notifications" element={<Notifications />} />
                         <Route path="/projects" element={<ProjectsList />} />
@@ -286,7 +289,7 @@ export const AppRouter = () => {
                 </Route>
             )
         );
-    }, [isAuthReady, user]);
+    }, [isAuthReady]);
 
     if (!isAuthReady || !router) {
         return (

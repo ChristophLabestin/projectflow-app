@@ -41,6 +41,23 @@ export const useWorkspace = () => {
  * Resolves the active workspace once per signed-in user and renders the app
  * only when it is known, so every tenant-scoped read has a valid tenant id.
  */
+const WorkspaceConnectingPanel = () => {
+    const { t } = useLanguage();
+    return (
+        <div className="workspace-gate__panel">
+            <span className="material-symbols-outlined workspace-gate__icon workspace-gate__spin">progress_activity</span>
+            <p className="workspace-gate__text">{t('app.loading.connecting')}</p>
+        </div>
+    );
+};
+
+/** The gate's loading screen, for screens that hand over to the app right after sign-in. */
+export const WorkspaceConnecting = () => (
+    <div className="workspace-gate">
+        <WorkspaceConnectingPanel />
+    </div>
+);
+
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const { user, isAuthReady } = useAuth();
     const { t } = useLanguage();
@@ -137,10 +154,7 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
                         </div>
                     </div>
                 ) : (
-                    <div className="workspace-gate__panel">
-                        <span className="material-symbols-outlined workspace-gate__icon workspace-gate__spin">progress_activity</span>
-                        <p className="workspace-gate__text">{t('app.loading.connecting')}</p>
-                    </div>
+                    <WorkspaceConnectingPanel />
                 )}
             </div>
         );

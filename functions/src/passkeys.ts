@@ -318,6 +318,13 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
         return Buffer.from(field); // Try standard conversion (e.g. from array or string)
     };
 
+    // The login screen pings this function so the instance is warm (and its
+    // Firestore channel open) by the time a real verification arrives.
+    if (data?.warmup === true) {
+        await db.collection('auth_challenges').doc('_warmup').get().catch(() => undefined);
+        return { success: false, warmup: true };
+    }
+
     try {
         const { response } = data;
         const authResponse = response as AuthenticationResponseJSON;
@@ -331,9 +338,16 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             throw new functions.https.HttpsError('invalid-argument', 'Invalid or expired challenge.');
         }
         const challengeData = challengeDoc.data();
-        // Single use: delete right away so it cannot be replayed.
-        await challengeDoc.ref.delete();
+        // Single use: delete right away so it cannot be replayed. The exists
+        // precondition makes concurrent replays of the same challenge fail;
+        // the delete runs alongside the passkey lookup and is awaited before
+        // the signature is verified.
+        const consumeChallenge = challengeDoc.ref.delete({ exists: true }).catch(() => {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid or expired challenge.');
+        });
+        consumeChallenge.catch(() => undefined);
         if (isChallengeExpired(challengeData?.createdAt)) {
+            await consumeChallenge;
             throw new functions.https.HttpsError('invalid-argument', 'Invalid or expired challenge.');
         }
 
@@ -428,6 +442,8 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
             throw new functions.https.HttpsError('not-found', 'Passkey not found for user.');
         }
 
+        await consumeChallenge;
+
         // 3. Verify
         let verification;
         try {
@@ -458,14 +474,12 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
         const { verified, authenticationInfo } = verification;
 
         if (verified) {
-            // Update counter
-            await db.collection('users').doc(userId).collection('passkeys').doc(credentialID).update({
+            // Update counter (in parallel with minting the token; both must succeed)
+            const counterUpdate = db.collection('users').doc(userId).collection('passkeys').doc(credentialID).update({
                 counter: authenticationInfo.newCounter,
                 lastUsedAt: FieldValue.serverTimestamp(),
             });
-
-            // Delete challenge
-            await db.collection('auth_challenges').doc(challenge).delete();
+            counterUpdate.catch(() => undefined);
 
             // 4. Mint Custom Token
             let customToken: string;
@@ -496,6 +510,8 @@ export const verifyPasskeyAuthentication = functions.region(REGION).https.onCall
                     throw e;
                 }
             }
+
+            await counterUpdate;
 
             return {
                 success: true,
