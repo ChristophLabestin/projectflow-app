@@ -53,7 +53,7 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   `PFSegmented`, `PFChip(Row)`, `PFSwitch`, `PFTextField`, `PFDateStrip`, `PFSwipeRow`, `PFCardList`,
   `PFEmptyState`, `PFSkeleton`, `PFToast`, `PFPresenter` sheets + `pfPeek`, `PFNavigator`, `PFTopBar`,
   `PFDock`, `PFFocusBar`). Back buttons are always `PFIconButton("chevron.left", …)` (glass); pills
-  (choice/capture chips, small inline actions) use `.pfPillSurface(selected:)` so both share one look. No `List`, `Form`, `NavigationStack`, `TabView`, `Toggle`, `Picker`,
+  (choice/capture chips, small inline actions) and `PFButton(kind: .ghost)` use `.pfPillSurface(selected:)` so they share one look. No `List`, `Form`, `NavigationStack`, `TabView`, `Toggle`, `Picker`,
   `DatePicker`, `Menu`, `.alert`, `.contextMenu`, system navigation bars/`.navigationTitle`; present sheets
   and push pages only through `PFPresenter` / `PFNavigator`. Allowed natives: text input
   (styled plain), `ScrollView`/`LazyVStack`, gestures, shapes, `Canvas`, system integrations.
