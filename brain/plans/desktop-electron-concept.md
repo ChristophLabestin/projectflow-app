@@ -450,3 +450,13 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   A click arrives as `continue-activity` (`com.apple.corespotlightitem`, `NSUserActivityTypes`) → item id = app path.
   Verified: helper indexes inside the bundle, packaged layout + Info.plist. Not verified: clicking a result in the
   Spotlight UI. Windows Search: not planned.
+- **Account linking** (2026-10-23): Google/GitHub/Apple "Connect" in Settings → Account opens `/?openSettings=account` in the system browser (`SettingsUrlOpener`, bridge `openInBrowser`); embedded OAuth popups are rejected by Apple/Google.
+- **All SSO providers in the desktop app** (2026-10-23): desktop Login shows Google / GitHub / Apple (same grid as web);
+  each calls `signInExternally(provider)` → `/desktop/auth?challenge=…&provider=…` → (not signed in) `/login?redirect=…&provider=…`
+  starts that provider at once via `signInWithRedirect` (once per tab; the buttons remain as fallback). A browser session
+  of a *different* account is not handed over automatically (only when its providerData contains the picked provider).
+  Re-authentication (password change, 2FA setup, account data/deletion) uses `services/reauth.ts`
+  `reauthenticateWithProvider`: popup on the web, browser handoff on desktop — `redeemDesktopAuthCode` refreshes the
+  session only for the same uid (custom-token uid check) and fires `projectflow:desktop-reauth`. Needs a shell with
+  `external-auth` (next release); v0.1.0 keeps the email/password hint. Local check: the emulator redirect result is lost
+  (cross-site `127.0.0.1` auth handler under storage partitioning) — production uses the same-origin authDomain.

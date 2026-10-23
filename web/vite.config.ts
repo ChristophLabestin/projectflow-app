@@ -35,7 +35,8 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react(), ...(isProd ? [requireFirebaseConfig(env)] : [])],
       // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
-      define: { 'process.env': {} },
+      // __PF_BUILD__ identifies the web build in legal consent records (platform web/desktop).
+      define: { 'process.env': {}, __PF_BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
       // Strip noisy debug logging from production bundles. console.warn/error are
       // kept so genuine problems still surface (and feed Sentry breadcrumbs).
       esbuild: isProd
@@ -182,13 +183,6 @@ export default defineConfig(({ mode }) => {
                 id.includes('/web/locales/settings-de.ts')
               ) {
                 return 'settings-i18n';
-              }
-
-              if (
-                id.includes('/web/locales/legal-en.ts') ||
-                id.includes('/web/locales/legal-de.ts')
-              ) {
-                return 'legal-i18n';
               }
 
               // LanguageContext pulls in firebase auth/data services; keep it out of the

@@ -20,6 +20,19 @@ These collections are largely public or allow unauthenticated access (e.g., for 
     *   📄 `{postId}`: Blog content
 *   📂 **`news`** (Public Read)
     *   📄 `{docId}`: News items
+*   📂 **`legal_documents`** (Public Read; writes via Cloud Functions only) — contract `brain/plans/legal-consent-contract.md`
+    *   📄 `{type}` (`privacy` | `terms` | `imprint`): `acceptanceRequired`, `currentVersion`, `title {de,en}`,
+        `versions[]` = `{version, changeType, effectiveAt, publishedAt, summary {de,en}}`
+    *   📂 `versions/{n}` (Public Read, immutable): `title`, `content {de,en}` (Markdown), `summary`, `changeType`
+        (`requiresAcceptance` | `notifyOnly`), `notifyByEmail`, `effectiveAt`, `publishedAt`, `publishedBy`
+    *   📂 `drafts/current` (platform admin read): editable draft + `baseVersion`
+*   📂 **`legal_acceptances`** (owner `get` only; written by `acceptLegalDocuments`/`declineLegalDocuments`)
+    *   📄 `{uid}`: `docs.{type} = {version, acceptedAt, platform (web|desktop|ios), appVersion, decision}`
+    *   📂 `events/{id}`: audit trail `{type, version, decision (accepted|acknowledged|declined), platform, appVersion, at}`.
+        Included in `exportMyData`, deleted by `deleteMyAccount`.
+*   📂 **`legal_mail_jobs`** (Functions/Admin-SDK only)
+    *   📄 `{type}_v{n}`: `status` (pending|running|done), `open`, `sendAfter`, `cursor`, `leaseUntil`, `counts {sent, skipped, failed}`
+    *   📂 `recipients/{uid}`: per-recipient send log (`sending` → `sent` | `failed`), created before sending = dedupe
 *   📂 **`public_initiative_feedback`** (Functions/Admin-SDK only — not in rules)
     *   📄 `{token}`: Public index for an initiative feedback form (tokenized)
 *   📂 **`public_project_intake`** (Functions/Admin-SDK only — not in rules)

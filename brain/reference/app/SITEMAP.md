@@ -18,7 +18,7 @@ These routes must remain accessible without being logged in.
 - [x] `/login` — Login page (SCSS + i18n pass; hero fixed black in dark mode)
 - [x] `/register` — Registration page (shares Login component; hero fixed black in dark mode)
 - [x] `/auth/action` — Auth action handler (email verification, password reset, etc.) (SCSS + i18n pass)
-- [x] `/legal/:type` — Legal pages (e.g., privacy policy, terms, imprint) (SCSS + i18n pass)
+- [x] `/legal/:type` — Legal pages `privacy` | `terms` | `imprint` (`impressum` redirects) rendered from the versioned legal documents system (`legal_documents/*`); `?v=<n>` archive version, `&diff=1` diff to the previous version. Public JSON: `/api/legal[/<type>]` (function `legalDocument`). See `brain/operations/legal-documents.md`.
 - [x] `/download` — Public desktop app download page (`DownloadPage`): detects macOS/Windows, offers the matching installer from the latest GitHub Release (direct file link, no GitHub page), install steps, features, requirements, FAQ.
 - [x] `/invite/:tenantId/:inviteId` — Accept a workspace invitation (email or link; `screens/AcceptInvite.tsx`). Replaced `/invite/:tenantId`, `/invite-project/:projectId`, `/join/:inviteLinkId` and `/join-workspace/:inviteLinkId` on 2026-09-26.
 - [x] `/feedback/initiative/:token` — Public initiative feedback form with required-field validation that creates linked initiative tasks from customer submissions
@@ -29,6 +29,7 @@ These routes must remain accessible without being logged in.
 - [x] `/desktop/tray` — Desktop only: menu bar panel (`DesktopTrayPanel`): focus timer + controls, inline capture, Today / Pinned / Inbox, next meeting, quick actions.
 - [x] `/desktop/auth?challenge=…` — Browser page of the desktop OAuth handoff (`DesktopAuthHandoff`): after web sign-in it creates a one-time code and opens `projectflow://auth`.
 - [x] `/oauth/consent?request=…` — OAuth consent for AI/MCP clients (`OAuthConsent`): signed-in user picks one workspace and the scopes, then returns to the client with a code (server: `functions/src/oauth-server.ts`). Hosting rewrites `/oauth/authorize|token|register|revoke` and `/.well-known/oauth-*` go to the functions `oauth` / `mcp`, not to the SPA.
+- [x] `?openSettings=account|security|notifications|preferences` — any signed-in route: opens the personal settings modal on that tab (`SettingsUrlOpener`; used by the desktop app to link accounts in the browser).
 
 ---
 
@@ -41,6 +42,8 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] Refactored SCSS | `/` | Main dashboard command center (quiet date/greeting with persisted current focus, resume/focus action, then scroll-driven stages for today plan and workspace health/momentum)
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
 - [x] `/insights/onboarding` — Onboarding survey statistics (lazy; only with custom claim `platformAdmin`, else NotFound; data from callable `getOnboardingStats`; grant via `functions/scripts/grant-platform-admin.mjs <email>`)
+- [x] `/admin/legal` — Legal documents admin (lazy `LegalAdmin`; `platformAdmin` claim only): drafts with DE/EN Markdown editor, preview, diff, change summary, type, effective date, publish dialog, history with acceptance rate and mail status.
+- Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
 - [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)

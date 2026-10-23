@@ -69,10 +69,13 @@ export const buildUserExport = async (db: Firestore, uid: string, email?: string
     };
 
     const userRef = db.doc(`users/${uid}`);
-    const [userSnap, privateDocs, passkeys] = await Promise.all([
+    const legalRef = db.doc(`legal_acceptances/${uid}`);
+    const [userSnap, privateDocs, passkeys, legalSnap, legalEvents] = await Promise.all([
         userRef.get(),
         capped(userRef.collection('private'), 'users.private'),
         capped(userRef.collection('passkeys'), 'users.passkeys', PASSKEY_DROP_KEYS),
+        legalRef.get(),
+        capped(legalRef.collection('events'), 'legal_acceptances.events'),
     ]);
 
     const memberships = await listMemberships(db, uid);
@@ -132,6 +135,7 @@ export const buildUserExport = async (db: Firestore, uid: string, email?: string
         profile: userSnap.exists ? docToJson(userSnap) : null,
         privateData: privateDocs,
         passkeys,
+        legalConsents: { current: legalSnap.exists ? docToJson(legalSnap) : null, events: legalEvents },
         workspaces,
         truncatedCollections: truncated,
         notes: 'Secrets, tokens and passkey credentials are intentionally omitted.',
@@ -245,6 +249,7 @@ export const eraseUserData = async (
     }
     for (const tenantId of plan.otherTenants) await detachFromTenant(db, tenantId, uid);
     await db.recursiveDelete(db.doc(`users/${uid}`)); // includes private/ and passkeys/
+    await db.recursiveDelete(db.doc(`legal_acceptances/${uid}`)); // consent record + events/
     if (storageDelete) await storageDelete(`users/${uid}/`);
 };
 

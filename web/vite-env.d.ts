@@ -36,3 +36,5 @@ interface ImportMetaEnv {
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
+
+declare const __PF_BUILD__: string;

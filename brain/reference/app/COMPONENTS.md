@@ -287,6 +287,11 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `components/ui/AppleLogo.tsx`: Apple glyph (`currentColor`) for Sign in with Apple (`screens/Login.tsx`) and "Connected accounts" in the security settings.
 - Dashboard plan rows (`screens/Dashboard.tsx`) show personal tasks with a lock glyph (`dashboard.route.personal`), a "+ N more open tasks" link (`moreCount`) and a "Waiting on you" rail section.
 
+## Legal documents (`web/components/legal/`, 2026-10-23)
+- `LegalConsentGate` — wraps signed-in surfaces (Router: `AuthenticatedLayout` + desktop utility routes). Loads `legal_documents/*` + `legal_acceptances/{uid}`; renders nothing while loading, a blocking `Modal` (`hideHeader`, no close) *instead of* the app when consent is missing, the locked "declined" page (reuses `AccountDataSection` for export/delete + sign out), or a non-blocking bottom notice for `notifyOnly` changes. Fails open after 5 s / on errors. Logic in `web/utils/legalConsent.ts` (mirrors `functions/src/legal-logic.ts`).
+- `LegalDocumentViewer` — modal with one version's Markdown and a toggle to the diff against an older version.
+- `MarkdownContent` / `MarkdownDiff` — sanitized (DOMPurify) renderer for the legal Markdown subset (`renderMarkdown`) and paragraph-level LCS diff (`diffMarkdown`); unchanged paragraphs are hidden, headings before changes stay as context.
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

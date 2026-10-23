@@ -4,13 +4,13 @@ import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { useToast } from '../../context/UIContext';
 import { auth } from '../../services/firebase';
+import { reauthenticateWithProvider } from '../../services/reauth';
 import {
     multiFactor,
     TotpMultiFactorGenerator,
     TotpSecret,
     EmailAuthProvider,
     reauthenticateWithCredential,
-    reauthenticateWithPopup,
     GoogleAuthProvider,
     GithubAuthProvider,
     sendEmailVerification
@@ -83,7 +83,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 const provider = reauthProvider === 'github.com'
                     ? new GithubAuthProvider()
                     : new GoogleAuthProvider();
-                await reauthenticateWithPopup(auth.currentUser, provider);
+                await reauthenticateWithProvider(auth.currentUser, provider);
             }
 
             // After successful re-auth, check if email is verified

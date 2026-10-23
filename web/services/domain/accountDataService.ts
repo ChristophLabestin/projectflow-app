@@ -3,12 +3,13 @@ import {
     EmailAuthProvider,
     GithubAuthProvider,
     GoogleAuthProvider,
+    OAuthProvider,
     reauthenticateWithCredential,
-    reauthenticateWithPopup,
     signOut,
 } from 'firebase/auth';
 
 import { auth, functions } from '../firebase';
+import { reauthenticateWithProvider } from '../reauth';
 
 export type SharedWorkspaceBlocker = { tenantId: string; name: string; memberCount: number };
 
@@ -61,11 +62,12 @@ export const deleteMyAccount = async (): Promise<void> => {
     }
 };
 
-export const getReauthMethod = (): 'password' | 'google' | 'github' | null => {
+export const getReauthMethod = (): 'password' | 'google' | 'github' | 'apple' | null => {
     const ids = auth.currentUser?.providerData.map((p) => p.providerId) || [];
     if (ids.includes('password')) return 'password';
     if (ids.includes('google.com')) return 'google';
     if (ids.includes('github.com')) return 'github';
+    if (ids.includes('apple.com')) return 'apple';
     return null;
 };
 
@@ -77,12 +79,14 @@ export const reauthenticateCurrentUser = async (password?: string): Promise<void
         if (!user.email || !password) throw new Error('password-required');
         await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password));
     } else if (method === 'google') {
-        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+        await reauthenticateWithProvider(user, new GoogleAuthProvider());
     } else if (method === 'github') {
-        await reauthenticateWithPopup(user, new GithubAuthProvider());
+        await reauthenticateWithProvider(user, new GithubAuthProvider());
+    } else if (method === 'apple') {
+        await reauthenticateWithProvider(user, new OAuthProvider('apple.com'));
     }
-    // Force a fresh ID token so the backend sees the new auth_time.
-    await user.getIdToken(true);
+    // Force a fresh ID token so the backend sees the new auth_time (desktop re-auth replaces the User object).
+    await (auth.currentUser ?? user).getIdToken(true);
 };
 
 export const signOutAfterAccountDeletion = async (): Promise<void> => {
