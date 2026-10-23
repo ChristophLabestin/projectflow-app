@@ -17,7 +17,9 @@ const acceleratorFromEvent = (event: React.KeyboardEvent, isMac: boolean) => {
     if (event.metaKey) parts.push(isMac ? 'Command' : 'Super');
     if (event.altKey) parts.push('Alt');
     if (event.shiftKey) parts.push('Shift');
-    if (parts.length === 0) return null;
+    // Global shortcuts need Ctrl or Cmd: Shift/Alt-only combos would hijack normal typing everywhere.
+    if (!event.ctrlKey && !event.metaKey) return null;
+    if (!isMac && event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey) return null; // AltGr
     const code = event.code;
     const key = code.startsWith('Key') ? code.slice(3)
         : code.startsWith('Digit') ? code.slice(5)
@@ -80,7 +82,7 @@ export const DesktopSettingsPanel = () => {
     const { t } = useLanguage();
     const bridge = getDesktopBridge();
     const [prefs, setPrefs] = useState<DesktopPreferencesInfo | null>(null);
-    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'conflict'>('idle');
     const isMac = bridge?.platform === 'darwin';
 
     useEffect(() => {
@@ -94,8 +96,9 @@ export const DesktopSettingsPanel = () => {
         setPrefs((current) => (current ? { ...current, ...patch } : current));
         setSaveState('saving');
         try {
-            setPrefs(await bridge.setPreferences(patch));
-            setSaveState('saved');
+            const next = await bridge.setPreferences(patch);
+            setPrefs(next);
+            setSaveState(next.shortcutConflict ? 'conflict' : 'saved');
         } catch {
             setSaveState('error');
         }
@@ -119,7 +122,9 @@ export const DesktopSettingsPanel = () => {
             ? t('settings.notifications.status.saved')
             : saveState === 'error'
                 ? t('settings.notifications.status.error')
-                : '';
+                : saveState === 'conflict'
+                    ? t('settings.desktop.shortcut.conflict')
+                    : '';
 
     const calendarHint = prefs.calendarStatus === 'denied'
         ? t('settings.desktop.calendar.denied')
@@ -132,7 +137,7 @@ export const DesktopSettingsPanel = () => {
                     <h2>{t('settings.desktop.title')}</h2>
                     <p>{t('settings.desktop.subtitle')}</p>
                 </div>
-                <span className={`notification-settings__status ${saveState === 'error' ? 'is-error' : ''}`.trim()} role="status" aria-live="polite">
+                <span className={`notification-settings__status ${saveState === 'error' || saveState === 'conflict' ? 'is-error' : ''}`.trim()} role="status" aria-live="polite">
                     {statusLabel}
                 </span>
             </div>

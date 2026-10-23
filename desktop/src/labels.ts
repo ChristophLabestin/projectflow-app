@@ -84,7 +84,16 @@ const EN = {
     dayCloseAction: 'Close day',
     minutesShort: 'min',
     hoursShort: 'h',
-    unreadCount: '{count} unread'
+    unreadCount: '{count} unread',
+    checkForUpdates: 'Check for Updates…',
+    updateAvailableTitle: 'ProjectFlow {version} is available',
+    updateAvailableBody: 'Download the new version and replace the app in your Applications folder.',
+    updateDownload: 'Download',
+    updateReadyTitle: 'ProjectFlow {version} is ready',
+    updateReadyBody: 'The update is installed the next time ProjectFlow restarts.',
+    updateRestart: 'Restart now',
+    updateNone: 'You are up to date (ProjectFlow {version}).',
+    updateCheckFailed: 'Could not check for updates.'
 };
 
 export type NativeLabels = typeof EN;
@@ -168,7 +177,16 @@ const DE: NativeLabels = {
     dayCloseAction: 'Tag abschließen',
     minutesShort: 'Min.',
     hoursShort: 'Std.',
-    unreadCount: '{count} ungelesen'
+    unreadCount: '{count} ungelesen',
+    checkForUpdates: 'Nach Updates suchen …',
+    updateAvailableTitle: 'ProjectFlow {version} ist verfügbar',
+    updateAvailableBody: 'Lade die neue Version herunter und ersetze die App im Programme-Ordner.',
+    updateDownload: 'Herunterladen',
+    updateReadyTitle: 'ProjectFlow {version} ist bereit',
+    updateReadyBody: 'Das Update wird beim nächsten Neustart von ProjectFlow installiert.',
+    updateRestart: 'Jetzt neu starten',
+    updateNone: 'ProjectFlow ist aktuell (Version {version}).',
+    updateCheckFailed: 'Updates konnten nicht geprüft werden.'
 };
 
 let current: NativeLabels | null = null;

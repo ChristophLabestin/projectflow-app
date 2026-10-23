@@ -53,6 +53,7 @@ export interface DesktopPreferences {
 export interface DesktopPreferencesInfo extends DesktopPreferences {
     supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
     calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
+    shortcutConflict?: boolean;
 }
 
 export type DesktopOpenWindowRequest =

@@ -29,6 +29,7 @@ let events: CalendarEvent[] = [];
 let pollTimer: NodeJS.Timeout | null = null;
 let tickTimer: NodeJS.Timeout | null = null;
 let status: 'unknown' | 'granted' | 'denied' | 'unavailable' = 'unknown';
+let generation = 0;
 const notifiedStart = new Set<string>();
 const notifiedEnd = new Set<string>();
 
@@ -112,9 +113,11 @@ export const stopCalendar = () => {
 /** (Re)starts polling according to the settings; the first fetch triggers the macOS permission prompt. */
 export const applyCalendarSettings = async () => {
     stopCalendar();
+    const run = ++generation;
     if (!getSettings().calendarEnabled || !calendarSupported()) return;
     await fetchEvents();
-    if (status !== 'granted') return;
+    // The first fetch can wait on the permission prompt; the setting may have changed meanwhile.
+    if (run !== generation || !getSettings().calendarEnabled || status !== 'granted') return;
     pollTimer = setInterval(() => { void fetchEvents(); }, POLL_MS);
     tickTimer = setInterval(tick, TICK_MS);
     tick();

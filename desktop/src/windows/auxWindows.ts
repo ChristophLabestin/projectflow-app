@@ -10,8 +10,9 @@ const DAY_PATH = '/desktop/day';
 const CAPTURE_SIZE = { width: 640, height: 420 };
 
 let captureWindow: BrowserWindow | null = null;
+/** True once the capture page has subscribed (it calls `ready()`); payloads are queued until then. */
 let captureReady = false;
-let pendingCapturePayload: Record<string, unknown> | null = null;
+let pendingCapturePayloads: Record<string, unknown>[] = [];
 let dayWindow: BrowserWindow | null = null;
 
 const alive = (win: BrowserWindow | null) => (win && !win.isDestroyed() ? win : null);
@@ -52,12 +53,8 @@ export const createCaptureWindow = () => {
     attachCommonContentsHandlers(win, () => {
         setTimeout(() => { if (!win.isDestroyed()) void win.loadURL(appUrlFor(CAPTURE_PATH)); }, 10000);
     });
-    win.webContents.on('did-finish-load', () => {
-        captureReady = true;
-        if (pendingCapturePayload) {
-            win.webContents.send(IPC.windowPayload, pendingCapturePayload);
-            pendingCapturePayload = null;
-        }
+    win.webContents.on('did-start-navigation', (details) => {
+        if (details.isMainFrame && !details.isSameDocument) captureReady = false;
     });
     win.on('blur', () => { if (!win.isDestroyed() && win.isVisible()) win.hide(); });
     win.on('close', (event) => {
@@ -84,7 +81,7 @@ export const showCapture = (text?: string) => {
     });
     const send = (payload: Record<string, unknown>) => {
         if (captureReady) win.webContents.send(IPC.windowPayload, payload);
-        else pendingCapturePayload = payload;
+        else pendingCapturePayloads = [...pendingCapturePayloads, payload].slice(-5);
     };
     send({ text: text ?? '', clipboard: '', openedAt: Date.now() });
     // Offered as a one-click chip in the capture field (short plain text only).
@@ -95,6 +92,18 @@ export const showCapture = (text?: string) => {
     win.show();
     win.focus();
 };
+
+/** The capture page subscribed to payloads: deliver what arrived before. */
+export const markCaptureReady = () => {
+    const win = alive(captureWindow);
+    if (!win) return;
+    captureReady = true;
+    const queued = pendingCapturePayloads;
+    pendingCapturePayloads = [];
+    queued.forEach((payload) => win.webContents.send(IPC.windowPayload, payload));
+};
+
+export const isCaptureWindow = (win: BrowserWindow | null) => Boolean(win && win === alive(captureWindow));
 
 export const toggleCapture = () => {
     const win = alive(captureWindow);

@@ -118,7 +118,9 @@ export const DesktopBridge = () => {
     const { activeWorkspaceId } = useWorkspace();
     const { openTaskCreateModal, openProjectCreateModal } = useUIState();
     const { openHelpCenter } = useHelpCenter();
-    const { isModalOpen, toggleModal, pinnedItems, focusItem, focusState, snoozeFocusItem, startFocusItem, completeFocusItem } = usePinnedTasks();
+    const { isModalOpen, toggleModal, pinnedItems, focusItem, focusState, snoozeFocusItem, startFocusItem, completeFocusItem, isLoading: pinsLoading } = usePinnedTasks();
+    const { isAuthReady } = useAuth();
+    const [snoozeTick, setSnoozeTick] = useState(0);
     const { showSuccess, showError, showInfo } = useToast();
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -203,10 +205,21 @@ export const DesktopBridge = () => {
                 }
             }
         });
-        // Only now may the shell flush queued commands (cold-start deep links).
-        bridge.ready();
         return unsubscribe;
     }, [bridge]);
+
+    // Queued commands (cold-start deep links, file drops) need the signed-in state and pins; flush only then.
+    useEffect(() => {
+        if (bridge && isAuthReady && (!user || !pinsLoading)) bridge.ready();
+    }, [bridge, isAuthReady, user, pinsLoading]);
+
+    // A snooze ends silently: re-push the tray state at that moment.
+    useEffect(() => {
+        const until = focusState?.status === 'snoozed' ? Date.parse(focusState.snoozedUntil || '') : NaN;
+        if (!Number.isFinite(until) || until <= Date.now()) return;
+        const timer = setTimeout(() => setSnoozeTick((tick) => tick + 1), until - Date.now() + 1000);
+        return () => clearTimeout(timer);
+    }, [focusState?.status, focusState?.snoozedUntil]);
 
     useEffect(() => {
         if (bridge && hasDesktopCapability('language')) bridge.setLanguage(language);
@@ -243,7 +256,7 @@ export const DesktopBridge = () => {
             pinned: pinnedItems.map((item) => ({ id: item.id, title: item.title, path: pinnedItemPath(item) })),
             unread: unreadCount
         });
-    }, [bridge, focusItem, focusState, pinnedItems, unreadCount]);
+    }, [bridge, focusItem, focusState, pinnedItems, unreadCount, snoozeTick]);
 
     // Badge + native notifications for the active workspace.
     useEffect(() => {

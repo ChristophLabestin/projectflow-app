@@ -17,14 +17,19 @@ export const DEFAULT_SHORTCUTS = {
 
 const registered: string[] = [];
 
+/** Returns false when the combination is taken by another app or invalid. */
 const register = (accelerator: string | null | undefined, handler: () => void) => {
-    if (!accelerator) return;
+    if (!accelerator) return true;
     try {
-        if (globalShortcut.register(accelerator, handler)) registered.push(accelerator);
-        else console.warn(`[desktop] global shortcut ${accelerator} is taken by another app`);
+        if (globalShortcut.register(accelerator, handler)) {
+            registered.push(accelerator);
+            return true;
+        }
+        console.warn(`[desktop] global shortcut ${accelerator} is taken by another app`);
     } catch (error) {
         console.warn(`[desktop] invalid global shortcut ${accelerator}`, error);
     }
+    return false;
 };
 
 const resolveShortcut = (value: string | null | undefined, fallback: string) => (value === undefined ? fallback : value);
@@ -32,15 +37,22 @@ const resolveShortcut = (value: string | null | undefined, fallback: string) => 
 export const applyGlobalShortcuts = () => {
     registered.splice(0).forEach((accelerator) => globalShortcut.unregister(accelerator));
     const settings = getSettings();
-    register(resolveShortcut(settings.quickAccessShortcut, DEFAULT_SHORTCUTS.quickAccess), toggleQuickAccess);
-    register(resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture), toggleCapture);
+    const access = register(resolveShortcut(settings.quickAccessShortcut, DEFAULT_SHORTCUTS.quickAccess), toggleQuickAccess);
+    const capture = register(resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture), toggleCapture);
+    return access && capture;
 };
 
 /** Launch at login only for the packaged app (dev would register the bare Electron binary). */
 const applyLoginItem = () => {
     if (IS_DEV) return;
-    app.setLoginItemSettings({ openAtLogin: getSettings().launchAtLogin });
+    const openAtLogin = getSettings().launchAtLogin;
+    // Only touch the login item when it changes (unsigned macOS builds may not change it at all).
+    if (app.getLoginItemSettings().openAtLogin === openAtLogin) return;
+    app.setLoginItemSettings({ openAtLogin, args: ['--hidden'] });
 };
+
+/** Started by the login item: open quietly into the menu bar / tray. */
+export const launchedHidden = () => process.argv.includes('--hidden') || (process.platform === 'darwin' && app.getLoginItemSettings().wasOpenedAtLogin === true);
 
 export const getPreferences = (): DesktopPreferencesInfo => {
     const settings = getSettings();
@@ -66,7 +78,12 @@ export const getPreferences = (): DesktopPreferencesInfo => {
     };
 };
 
-const isShortcut = (value: unknown) => value === null || (typeof value === 'string' && value.length < 60 && /^[\w+]+$/.test(value));
+/** Global shortcuts need Ctrl or Cmd (Shift/Alt-only combos would hijack typing; Ctrl+Alt alone is AltGr). */
+const isShortcut = (value: unknown) => value === null || (
+    typeof value === 'string' && value.length < 60 && /^[\w+]+$/.test(value)
+    && /(^|\+)(Command|Control|CommandOrControl|CmdOrCtrl|Super)(\+|$)/.test(value)
+    && !/^Control\+Alt\+[^+]+$/.test(value)
+);
 
 /** Validates every field; unknown keys and wrong types are ignored. */
 export const setPreferences = async (patch: unknown): Promise<DesktopPreferencesInfo> => {
@@ -96,7 +113,14 @@ export const setPreferences = async (patch: unknown): Promise<DesktopPreferences
     const before = getSettings();
     updateSettings(next);
     if ('launchAtLogin' in next) applyLoginItem();
-    if ('quickCaptureShortcut' in next || 'quickAccessShortcut' in next) applyGlobalShortcuts();
+    if ('quickCaptureShortcut' in next || 'quickAccessShortcut' in next) {
+        if (!applyGlobalShortcuts()) {
+            // Taken by another app: keep the previous combination working and report the conflict.
+            updateSettings({ quickCaptureShortcut: before.quickCaptureShortcut, quickAccessShortcut: before.quickAccessShortcut });
+            applyGlobalShortcuts();
+            return { ...getPreferences(), shortcutConflict: true };
+        }
+    }
     if ('mediaKeysEnabled' in next) applyMediaKeySetting();
     if ('calendarEnabled' in next && next.calendarEnabled !== before.calendarEnabled) await applyCalendarSettings();
     return getPreferences();

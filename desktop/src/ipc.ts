@@ -4,7 +4,7 @@ import { IPC, type AppAction, type DesktopNotificationPayload, type OpenWindowRe
 import { showAppNotification } from './features/notifications';
 import { getPreferences, setPreferences } from './features/preferences';
 import { refreshTouchBar } from './features/focus';
-import { hideCapture, openDayWindow, showCapture } from './windows/auxWindows';
+import { hideCapture, isCaptureWindow, markCaptureReady, openDayWindow, showCapture } from './windows/auxWindows';
 import { hideTrayPanel } from './windows/trayPanel';
 import { upcomingEvents } from './features/calendar';
 import { setLanguage } from './labels';
@@ -114,7 +114,9 @@ export const registerIpc = () => {
     });
 
     on(IPC.rendererReady, (event) => {
-        if (senderWindow(event) === getMainWindow()) markRendererReady();
+        const win = senderWindow(event);
+        if (win === getMainWindow()) markRendererReady();
+        else if (isCaptureWindow(win)) markCaptureReady();
     });
 
     // Badge, notifications and tray belong to the main window only (the pop-out would duplicate them).
@@ -166,9 +168,9 @@ export const registerIpc = () => {
     on(IPC.closeSelf, (event) => {
         const win = senderWindow(event);
         if (!win || win === getMainWindow()) return;
-        const url = win.webContents.getURL();
-        if (url.includes('/desktop/capture')) hideCapture();
-        else if (url.includes('/desktop/tray')) hideTrayPanel();
+        const pathname = new URL(win.webContents.getURL()).pathname;
+        if (pathname === '/desktop/capture') hideCapture();
+        else if (pathname === '/desktop/tray') hideTrayPanel();
         else win.close();
     });
 

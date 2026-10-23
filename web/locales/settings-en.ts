@@ -12,6 +12,7 @@ const enSettings = {
     'settings.desktop.shortcut.recording': 'Press keys…',
     'settings.desktop.shortcut.off': 'Off',
     'settings.desktop.shortcut.disable': 'Turn off',
+    'settings.desktop.shortcut.conflict': 'That shortcut is used by another app — kept the previous one.',
     'settings.desktop.day.title': 'Daily rhythm',
     'settings.desktop.dayStart.title': 'Day start',
     'settings.desktop.dayStart.hint': 'Show your plan for the day on the first unlock of the morning.',

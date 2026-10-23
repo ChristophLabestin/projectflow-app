@@ -4,6 +4,7 @@ import type { DesktopCommand } from './contract';
 import { labels } from './labels';
 import { openExternalSafe } from './security';
 import { getSettings, updateSettings } from './store';
+import { checkForUpdates } from './features/updater';
 import { showCapture } from './windows/auxWindows';
 import { createSecondaryWindow, getMainWindow, sendCommand, setZoomLevel, showMainWindow } from './windows/mainWindow';
 import { getQuickAccessState, setQuickAccessAlwaysOnTop, toggleQuickAccess } from './windows/quickAccess';
@@ -24,8 +25,12 @@ const command = (label: string, id: DesktopCommand, accelerator?: string, extra:
     ...extra
 });
 
-/** Page-level shortcuts (⌘K search, ⌘⇧F Quick Access) stay with the web app; the menu only shows them. */
+/**
+ * Page-level shortcuts (⌘K search, ⌘⇧F Quick Access) stay with the web app. `registerAccelerator: false` only
+ * works on Windows/Linux, so on macOS these items carry no accelerator at all (the menu would swallow the key).
+ */
 const pageShortcut = { registerAccelerator: false } as const;
+const pageAccelerator = (accelerator: string) => (isMac ? undefined : accelerator);
 
 const mainContents = () => getMainWindow()?.webContents;
 
@@ -90,6 +95,7 @@ export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
         label: app.name,
         submenu: [
             { role: 'about', label: l.about },
+            { label: l.checkForUpdates, enabled: app.isPackaged, click: () => checkForUpdates(true) },
             { type: 'separator' },
             command(l.settings, 'open-settings', 'CmdOrCtrl+,'),
             { type: 'separator' },
@@ -164,7 +170,7 @@ export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
             command(l.calendar, 'go-calendar', 'CmdOrCtrl+4'),
             command(l.notifications, 'go-notifications', 'CmdOrCtrl+5'),
             { type: 'separator' },
-            command(l.search, 'open-search', 'CmdOrCtrl+K', pageShortcut)
+            command(l.search, 'open-search', pageAccelerator('CmdOrCtrl+K'), pageShortcut)
         ]
     };
 
@@ -174,7 +180,7 @@ export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
             { role: 'minimize', label: l.minimize },
             ...(isMac ? [{ role: 'zoom', label: l.zoom } as MenuItemConstructorOptions] : []),
             { type: 'separator' },
-            command(l.quickAccess, 'open-quick-access-modal', 'CmdOrCtrl+Shift+F', pageShortcut),
+            command(l.quickAccess, 'open-quick-access-modal', pageAccelerator('CmdOrCtrl+Shift+F'), pageShortcut),
             {
                 label: l.quickAccessPopOut,
                 accelerator: 'CmdOrCtrl+Shift+P',
@@ -198,7 +204,11 @@ export const buildMenuTemplate = (): MenuItemConstructorOptions[] => {
         submenu: [
             command(l.helpCenter, 'open-help'),
             { label: l.website, click: () => openExternalSafe(WEBSITE_URL) },
-            ...(!isMac ? [{ type: 'separator' } as MenuItemConstructorOptions, { role: 'about', label: l.about } as MenuItemConstructorOptions] : [])
+            ...(!isMac ? [
+                { type: 'separator' } as MenuItemConstructorOptions,
+                { label: l.checkForUpdates, enabled: app.isPackaged, click: () => checkForUpdates(true) } as MenuItemConstructorOptions,
+                { role: 'about', label: l.about } as MenuItemConstructorOptions
+            ] : [])
         ]
     };
 

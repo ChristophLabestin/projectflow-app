@@ -39,6 +39,7 @@ export const QuickCaptureWindow = () => {
     const [chosenProject, setChosenProject] = useState<Project | null>(null);
     const [pin, setPin] = useState(false);
     const [state, setState] = useState<CaptureState>({ kind: 'idle' });
+    const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const loadProjects = useCallback(async () => {
         if (!user) return;
@@ -61,6 +62,7 @@ export const QuickCaptureWindow = () => {
             }
             setValue(typeof payload.text === 'string' ? payload.text : '');
             setClipboardText(typeof payload.clipboard === 'string' ? payload.clipboard : '');
+            if (closeTimer.current) clearTimeout(closeTimer.current);
             if (workspaceStatus === 'error') void refreshWorkspace();
             setChosenProject(null);
             setPin(false);
@@ -69,6 +71,9 @@ export const QuickCaptureWindow = () => {
             requestAnimationFrame(() => inputRef.current?.focus());
         });
     }, [bridge, loadProjects, workspaceStatus, refreshWorkspace]);
+
+    // Tell the shell we listen now, so a payload sent while the page loaded is delivered.
+    useEffect(() => { bridge?.ready(); }, [bridge]);
 
     useEffect(() => { void loadProjects(); }, [loadProjects]);
 
@@ -108,7 +113,7 @@ export const QuickCaptureWindow = () => {
                     : t('desktop.capture.savedPersonal')
             });
             if (openAfter) bridge.openInMain(path);
-            setTimeout(close, openAfter ? 200 : 900);
+            closeTimer.current = setTimeout(close, openAfter ? 200 : 900);
         } catch {
             setState({ kind: 'error' });
         }

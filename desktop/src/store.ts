@@ -59,7 +59,7 @@ let writeTimer: NodeJS.Timeout | null = null;
  * Shell settings live in userData; the dev script points PF_DESKTOP_SETTINGS_DIR at a stable folder so they survive
  * its throw-away browser profiles (language, window layout, preferences).
  */
-const filePath = () => path.join(process.env.PF_DESKTOP_SETTINGS_DIR || app.getPath('userData'), 'settings.json');
+const filePath = () => path.join((!app.isPackaged && process.env.PF_DESKTOP_SETTINGS_DIR) || app.getPath('userData'), 'settings.json');
 
 export const getSettings = (): DesktopSettings => {
     if (cache) return cache;

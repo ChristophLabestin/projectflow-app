@@ -14,6 +14,7 @@ import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
+import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -364,6 +365,9 @@ export const AppLayout = () => {
 
             {/* First sign-in: workspace name, solo/team, invites */}
             <WelcomeDialog />
+
+            {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
+            <DesktopAppPromo />
 
             {/* Global Project Create Modal */}
             {isProjectCreateModalOpen && (

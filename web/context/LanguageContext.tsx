@@ -349,7 +349,9 @@ export function LanguageProvider({
             }
         });
         return () => unsubscribe();
-    }, [storageKey, defaultLanguage, language]); // Added 'language' to deps to avoid stale closure if valid fallback logic needed, though less critical here
+    // Runs per sign-in only: re-subscribing on every language change re-read the profile before the new value was
+    // written and flipped the language back (and, via the storage event, in every other desktop window).
+    }, [storageKey, defaultLanguage]);
 
     useEffect(() => {
         document.documentElement.lang = language;

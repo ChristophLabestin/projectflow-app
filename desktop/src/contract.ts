@@ -60,6 +60,8 @@ export interface DesktopPreferencesInfo extends DesktopPreferences {
     supports: { calendar: boolean; focusShortcuts: boolean; touchBar: boolean; notificationActions: boolean };
     /** Result of the last calendar access attempt. */
     calendarStatus: 'unknown' | 'granted' | 'denied' | 'unavailable';
+    /** Set when a requested global shortcut was taken by another app (the previous one stays active). */
+    shortcutConflict?: boolean;
 }
 
 export interface DesktopFilePayload {

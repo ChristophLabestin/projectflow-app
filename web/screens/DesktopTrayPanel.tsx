@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks, type PinnedItem } from '../context/PinnedTasksContext';
 import { useWorkspace } from '../context/WorkspaceContext';
+import { useToast } from '../context/UIContext';
 import { dayPlanStopPath, useDesktopDayPlan } from '../hooks/useDesktopDayPlan';
 import { desktopWindowKind, getDesktopBridge, pinnedItemPath } from '../services/desktop';
 import { completeItem, createCapturedTask } from '../services/desktopActions';
@@ -63,6 +64,7 @@ export const DesktopTrayPanel = () => {
         startFocusItem, snoozeFocusItem, completeFocusItem, pinItem
     } = usePinnedTasks();
     const { plan, loading, handled, reload, complete, message, projects } = useDesktopDayPlan();
+    const { showError } = useToast();
     const [tab, setTab] = useState<Tab>('today');
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [events, setEvents] = useState<UpcomingEvent[]>([]);
@@ -146,6 +148,8 @@ export const DesktopTrayPanel = () => {
         try {
             await completeItem(focusItem);
             completeFocusItem(focusItem.id);
+        } catch {
+            showError(t('desktop.toast.actionFailed'));
         } finally {
             setBusy(false);
         }

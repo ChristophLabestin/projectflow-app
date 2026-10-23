@@ -3,7 +3,7 @@
   "productName": "ProjectFlow",
   "version": "0.1.0",
   "private": true,
-  "description": "ProjectFlow desktop shell (Electron) around the hosted web app",
+  "description": "ProjectFlow desktop app",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit && node scripts/build.mjs && node scripts/brand-dev-app.cjs",
@@ -11,9 +11,9 @@
     "start": "npm run build && electron .",
     "dev": "npm run build && PF_DESKTOP_URL=${PF_DESKTOP_URL:-http://localhost:3000} electron .",
     "dev:e2e": "bash ../scripts/dev-desktop.sh",
-    "dist": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
     "pack": "npm run build && electron-builder --dir",
     "postinstall": "node scripts/brand-dev-app.cjs"
   },
@@ -86,7 +86,12 @@
             "pf-calendar"
           ]
         }
-      ]
+      ],
+      "artifactName": "ProjectFlow-mac.${ext}",
+      "x64ArchFiles": "Contents/Resources/native/pf-calendar",
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "notarize": false
     },
     "win": {
       "icon": "assets/icon.png",
@@ -98,18 +103,39 @@
             "arm64"
           ]
         }
-      ]
+      ],
+      "artifactName": "ProjectFlow-Setup.${ext}"
     },
     "nsis": {
       "oneClick": true,
-      "perMachine": false
+      "perMachine": false,
+      "artifactName": "ProjectFlow-Setup.${ext}",
+      "shortcutName": "ProjectFlow",
+      "deleteAppDataOnUninstall": false
     },
     "linux": {
       "target": [
         "AppImage"
       ],
-      "category": "Office"
+      "category": "Office",
+      "artifactName": "ProjectFlow-linux.${ext}"
     },
-    "afterPack": "./scripts/after-pack.cjs"
+    "afterPack": "./scripts/after-pack.cjs",
+    "copyright": "\u00a9 Labestin Digital",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ChristophLabestin",
+        "repo": "projectflow-app",
+        "releaseType": "release"
+      }
+    ],
+    "dmg": {
+      "title": "ProjectFlow",
+      "artifactName": "ProjectFlow-mac.dmg"
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

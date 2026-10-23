@@ -5,7 +5,7 @@ const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-if (process.platform !== 'darwin') process.exit(0);
+if (process.platform !== 'darwin' || process.env.CI) process.exit(0);
 
 const NAME = 'ProjectFlow';
 const BUNDLE_ID = 'de.christophlabestin.projectflow.desktop.dev';

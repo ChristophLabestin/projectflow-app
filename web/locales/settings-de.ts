@@ -12,6 +12,7 @@ const deSettings = {
     'settings.desktop.shortcut.recording': 'Tasten drücken …',
     'settings.desktop.shortcut.off': 'Aus',
     'settings.desktop.shortcut.disable': 'Ausschalten',
+    'settings.desktop.shortcut.conflict': 'Dieses Kürzel nutzt bereits eine andere App – das bisherige bleibt aktiv.',
     'settings.desktop.day.title': 'Tagesrhythmus',
     'settings.desktop.dayStart.title': 'Tagesstart',
     'settings.desktop.dayStart.hint': 'Beim ersten Entsperren am Morgen deinen Tagesplan zeigen.',

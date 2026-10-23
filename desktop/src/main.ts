@@ -1,8 +1,9 @@
 import { app, globalShortcut, session } from 'electron';
 import { startDayFlow, stopDayFlow } from './features/dayFlow';
+import { startUpdater, stopUpdater } from './features/updater';
 import { filesFromArgv, queueFilesForFocus } from './features/files';
 import { refreshTouchBar } from './features/focus';
-import { initPreferences } from './features/preferences';
+import { initPreferences, launchedHidden } from './features/preferences';
 import { stopCalendar } from './features/calendar';
 import { setAppWindowOpener } from './security';
 import { createCaptureWindow, showCapture } from './windows/auxWindows';
@@ -95,7 +96,7 @@ if (!app.requestSingleInstanceLock()) {
 
         const coldStart = coldStartPath;
         coldStartPath = null;
-        const mainWindow = createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/');
+        const mainWindow = createMainWindow(coldStart?.startsWith('/desktop/command/') ? '/' : coldStart ?? '/', { hidden: launchedHidden() && !coldStart });
         // Preload the hidden helper windows (instant Quick Capture / menu bar panel) only after the main window
         // has loaded, so they do not compete with it for sign-in and workspace resolution at startup.
         mainWindow.webContents.once('did-finish-load', () => setTimeout(() => {
@@ -116,6 +117,7 @@ if (!app.requestSingleInstanceLock()) {
         restoreSecondaryWindows();
         refreshTouchBar();
         startDayFlow();
+        startUpdater();
         const argvFiles = filesFromArgv(process.argv);
         if (argvFiles.length) queueFilesForFocus(argvFiles);
 
@@ -134,6 +136,7 @@ if (!app.requestSingleInstanceLock()) {
     app.on('will-quit', () => {
         globalShortcut.unregisterAll();
         stopDayFlow();
+        stopUpdater();
         stopCalendar();
         destroyTray();
     });

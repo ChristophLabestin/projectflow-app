@@ -80,7 +80,8 @@ export const setZoomLevel = (win: BrowserWindow, level: number) => {
 export const sendCommand = (event: DesktopCommandEvent) => {
     const win = getMainWindow();
     if (!win || !rendererReady) {
-        pendingCommands.push(event);
+        // Bounded: a long offline phase must not pile up commands (file drops carry bytes).
+        pendingCommands = [...pendingCommands, event].slice(-20);
         return;
     }
     win.webContents.send(IPC.command, event);
@@ -250,7 +251,7 @@ export const restoreSecondaryWindows = () => {
     getSettings().secondaryWindows.forEach(({ path: saved, bounds }) => createSecondaryWindow(saved, bounds));
 };
 
-export const createMainWindow = (initialPath = '/') => {
+export const createMainWindow = (initialPath = '/', options: { hidden?: boolean } = {}) => {
     const settings = getSettings();
     const isWin = process.platform === 'win32';
     const bounds = visibleBounds(settings.mainBounds);
@@ -272,9 +273,12 @@ export const createMainWindow = (initialPath = '/') => {
     rendererReady = false;
 
     if (settings.mainMaximized) win.maximize();
-    win.once('ready-to-show', () => win.show());
-    // Never wait forever for ready-to-show (e.g. a slow remote load).
-    setTimeout(() => { if (!win.isDestroyed() && !win.isVisible()) win.show(); }, 4000);
+    // Launched at login: stay in the menu bar / tray until the user opens the window.
+    if (!options.hidden) {
+        win.once('ready-to-show', () => win.show());
+        // Never wait forever for ready-to-show (e.g. a slow remote load).
+        setTimeout(() => { if (!win.isDestroyed() && !win.isVisible()) win.show(); }, 4000);
+    }
 
     const contents = win.webContents;
     attachCommonContentsHandlers(win, () => {
@@ -283,7 +287,8 @@ export const createMainWindow = (initialPath = '/') => {
     });
 
     contents.on('did-finish-load', () => {
-        if (typeof settings.zoomLevel === 'number') contents.setZoomLevel(settings.zoomLevel);
+        const zoomLevel = getSettings().zoomLevel;
+        if (typeof zoomLevel === 'number') contents.setZoomLevel(zoomLevel);
         syncNativeTitleBar(win);
     });
     // Page reloads / navigations drop the renderer's bridge listeners until it says ready again.
