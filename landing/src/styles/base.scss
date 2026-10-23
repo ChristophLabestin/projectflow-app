@@ -620,6 +620,7 @@ main:focus {
     align-items: start;
 
     &:not(:has(.legal__toc)) {
+        // no table of contents (short documents)
         grid-template-columns: minmax(0, 760px);
     }
 
@@ -640,9 +641,14 @@ main:focus {
     box-shadow: var(--shadow-sm);
     font-size: var(--text-sm);
 
-    h2 {
+    summary {
         margin-bottom: 12px;
-        font-size: var(--text-sm);
+        font-weight: 650;
+        cursor: pointer;
+    }
+
+    &:not([open]) summary {
+        margin-bottom: 0;
     }
 
     ol {
@@ -697,11 +703,27 @@ main:focus {
         overflow-wrap: anywhere;
     }
 
-    ul {
+    ul,
+    ol {
         display: grid;
         gap: 6px;
-        padding-left: 1.2em;
+        padding-left: 1.4em;
         list-style: disc;
+    }
+
+    ol {
+        list-style: decimal;
+    }
+
+    h3 {
+        margin-top: 8px;
+        font-size: 1.05rem;
+        font-weight: 650;
+    }
+
+    h4 {
+        font-size: 0.95rem;
+        font-weight: 650;
     }
 
     strong {

@@ -964,6 +964,8 @@ const de = {
     'legalAdmin.field.changeType': "Art der Änderung",
     'legalAdmin.field.effectiveAt': "Gültig ab (optional)",
     'legalAdmin.field.effectiveAtHint': "Leer = gilt sofort mit Veröffentlichung. E-Mails gehen raus, sobald die Version gilt.",
+    'legalAdmin.field.machineGraceDays': 'Übergangsfrist für API/MCP (Tage)',
+    'legalAdmin.field.machineGraceDaysHint': 'Persönliche Tokens, OAuth-Verbindungen und Workspace-API-Tokens von Nutzern ohne Zustimmung funktionieren noch so viele Tage ab Gültigkeit, danach HTTP 403.',
     'legalAdmin.field.notifyByEmail': "Nutzer zusätzlich per E-Mail informieren",
     'legalAdmin.changeType.requiresAcceptance': "Zustimmung erforderlich",
     'legalAdmin.changeType.requiresAcceptanceHint': "Nutzer müssen zustimmen, bevor sie weiterarbeiten (blockierend). E-Mail an alle Nutzer.",

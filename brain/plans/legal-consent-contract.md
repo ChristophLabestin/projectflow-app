@@ -57,6 +57,22 @@ Error copy: `legalConsent.error.accept`; viewer `legalConsent.viewer.error`, `.s
 (`Changes since version {version}`), `.showDocument`; diff labels `legalConsent.diff.added|removed|unchanged`.
 All strings exist in `web/locales/en.ts` / `de.ts` (iOS: same keys in its String Catalog).
 
+## Machine access (`/mcp`, `/api`)
+
+`pfo_` / `pfp_` / workspace API tokens are checked against the token user's consent
+(`functions/src/legal-machine-access.ts`, called from `resolveAiToken` and `checkApiTokenUsable`).
+If a blocking item exists and `effectiveAt + machineGraceDays` (per version, default 14; for
+initial consent counted from the oldest version) has passed → HTTP 403
+(`/api`: `{success:false, error}`, `/mcp`: JSON-RPC error `-32000`) with the message
+`Please accept the updated <doc> (version n) in ProjectFlow before using the API: https://app.getprojectflow.com`.
+Firebase-ID-token calls are not affected (the app gate covers them). Lookup errors fail open.
+
+## Routes covered by the web gate
+
+All `AuthenticatedLayout` routes, `/desktop/quick-access|capture|day|tray` and `/oauth/consent`
+(consent first, then authorize; `?request=` stays). `/desktop/auth` is exempt: it only hands a
+sign-in code to the desktop app, whose windows are gated.
+
 ## Callables (`europe-west3`, Firebase callable protocol)
 
 | Name | Auth | Payload | Result / errors |
