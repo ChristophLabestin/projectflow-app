@@ -31,13 +31,13 @@ export const DesktopAuthHandoff = () => {
         setState('working');
         try {
             const code = await createDesktopAuthCode(challenge);
-            window.location.href = desktopAuthCallbackUrl(code);
+            window.location.href = desktopAuthCallbackUrl(code, searchParams.get('scheme'));
             setState('sent');
         } catch (error) {
             console.error('Desktop handoff failed', error);
             setState('error');
         }
-    }, [challenge]);
+    }, [challenge, searchParams]);
 
     // Hand over automatically only when the signed-in account matches the provider picked in the app;
     // otherwise the page asks (continue as this account / use a different one).

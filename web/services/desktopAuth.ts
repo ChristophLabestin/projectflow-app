@@ -39,6 +39,8 @@ export const redeemDesktopAuthCode = async (code: string, verifier: string) => {
     }
 };
 
-export const desktopAuthCallbackUrl = (code: string) => `projectflow://auth?code=${encodeURIComponent(code)}`;
+/** `scheme` comes from the shell's link; only the production and the dev scheme are accepted. */
+export const desktopAuthCallbackUrl = (code: string, scheme?: string | null) =>
+    `${scheme === 'projectflow-dev' ? 'projectflow-dev' : 'projectflow'}://auth?code=${encodeURIComponent(code)}`;
 
 export const isValidDesktopChallenge = (value: string | null): value is string => Boolean(value && /^[A-Za-z0-9_-]{43,128}$/.test(value));

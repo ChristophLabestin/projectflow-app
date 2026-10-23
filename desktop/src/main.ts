@@ -20,7 +20,7 @@ import { createTray, destroyTray, refreshTray } from './tray';
 import { createMainWindow, createSecondaryWindow, restoreSecondaryWindows, sendCommand, setQuitting, showMainWindow } from './windows/mainWindow';
 import { openQuickAccess, setQuickAccessStateListener } from './windows/quickAccess';
 
-app.setName('ProjectFlow');
+app.setName(IS_DEV ? 'ProjectFlow Dev' : 'ProjectFlow');
 if (IS_DEV) {
     // Separate profile for dev; the dev script passes a fresh temp dir per run.
     app.setPath('userData', process.env.PF_DESKTOP_USER_DATA || path.join(app.getPath('appData'), 'ProjectFlow Dev'));

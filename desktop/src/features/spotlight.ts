@@ -40,6 +40,8 @@ const ensureDevHelper = () => {
 
 export const spotlightSupported = () => {
     if (process.platform !== 'darwin') return false;
+    // Dev would index emulator demo data next to the real items (opt in: PF_DESKTOP_DEV_SPOTLIGHT=1).
+    if (!app.isPackaged && process.env.PF_DESKTOP_DEV_SPOTLIGHT !== '1') return false;
     ensureDevHelper();
     return fs.existsSync(helperPath());
 };

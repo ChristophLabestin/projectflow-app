@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { PROTOCOL } from '../config';
 import { sendCommand, showMainWindow } from '../windows/mainWindow';
 
 /**
@@ -55,7 +56,7 @@ export const queueFilesForFocus = (filePaths: string[]) => {
 
 /** Windows: files passed on the command line (drop on the shortcut, "Open with"). */
 export const filesFromArgv = (argv: string[]) => argv.slice(1).filter((arg) => {
-    if (arg.startsWith('-') || arg.startsWith('projectflow://')) return false;
+    if (arg.startsWith('-') || arg.startsWith(`${PROTOCOL}://`)) return false;
     try {
         return path.isAbsolute(arg) && fs.statSync(arg).isFile();
     } catch {

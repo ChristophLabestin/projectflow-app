@@ -466,3 +466,8 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   main window) and a row above the menu bar panel footer. Dev: `PF_DESKTOP_FAKE_UPDATE=ready:0.1.2` shows it.
 - **v0.1.1 released** (2026-10-23): macOS signed + notarized, DMG notarized + stapled; Windows unsigned; `--verify-tag`
   prepare step verified.
+- **Dev next to the installed app** (2026-10-23): dev = "ProjectFlow Dev" (bundle renamed by `brand-dev-app.cjs`,
+  orange DEV band drawn by `scripts/dev-icon.swift` into `dist/icon-dev.icns`), scheme `projectflow-dev://` (the browser
+  handoff passes `scheme=projectflow-dev`, the web page accepts only the two schemes), no global shortcuts
+  (`PF_DESKTOP_DEV_SHORTCUTS=1` to opt in) and no Spotlight (`PF_DESKTOP_DEV_SPOTLIGHT=1`). Userdata/settings were already
+  separate (`ProjectFlow Dev`).
