@@ -3,7 +3,7 @@ import PFDesign
 import PFDomain
 import PFModel
 
-/// Floating chrome row of Today: avatar (account) · workspace menu · capture. While the headline
+/// Floating chrome row of Today: workspace menu · capture · avatar (account). While the headline
 /// scrolls away, the workspace name gives way to a compact version of the day statement.
 struct TodayTopBar: View {
     /// 0 = headline fully visible, 1 = collapsed into the bar.
@@ -14,14 +14,6 @@ struct TodayTopBar: View {
 
     var body: some View {
         HStack(spacing: PFSpace.xs) {
-            Button { model.router.push(.account) } label: {
-                PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 36)
-                    .padding(4)
-                    .pfGlass(in: .circle)
-            }
-            .buttonStyle(.pfPressable)
-            .accessibilityLabel(L10n.t("today.account"))
-
             ZStack(alignment: .leading) {
                 workspaceChip
                     .opacity(Double(1 - min(collapse * 1.6, 1)))
@@ -35,6 +27,13 @@ struct TodayTopBar: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
+
+            // Account: the photo (or initials) fills the whole circle, no frame around it.
+            Button { model.router.push(.account) } label: {
+                PFAvatar(name: model.profile?.displayName ?? "", seed: model.uid, imageURL: model.profile?.photoURL, size: 44)
+            }
+            .buttonStyle(.pfPressable)
+            .accessibilityLabel(L10n.t("today.account"))
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.vertical, 6)
