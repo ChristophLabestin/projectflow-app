@@ -139,6 +139,12 @@ struct PFSheetContent: View {
         .presentationDetents(Set(sheet.detents.map(detent)))
         // System sheet chrome (material, corner radius, insets, grabber) — only the content is ProjectFlow's.
         .presentationDragIndicator(.visible)
+        .presentationBackground {
+            ZStack {
+                Rectangle().fill(.ultraThinMaterial)
+                PFColor.sheetSurface
+            }
+        }
         .interactiveDismissDisabled(!sheet.dismissable)
     }
 

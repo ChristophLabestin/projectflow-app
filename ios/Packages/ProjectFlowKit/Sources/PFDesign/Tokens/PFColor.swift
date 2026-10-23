@@ -44,7 +44,12 @@ public enum PFColor {
     /// Grouped rows inside system sheets: a light translucent fill that lets the sheet material show
     /// through, like native inset-grouped lists on iOS 26 sheets.
     public static let sheetGroup = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
-        ? UIColor(white: 1, alpha: 0.08) : UIColor(white: 1, alpha: 0.55) })
+        ? UIColor(white: 1, alpha: 0.07) : UIColor(white: 0, alpha: 0.045) })
+
+    /// Sheet surface laid over the system material: mostly opaque — near-white in light mode,
+    /// near-black in dark mode — so only a hint of the content behind shows through.
+    public static let sheetSurface = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(hex: 0x0B0D11, alpha: 0.86) : UIColor(white: 1, alpha: 0.86) })
 
     public static let scrim = Color(uiColor: UIColor(white: 0, alpha: 0.35))
 
