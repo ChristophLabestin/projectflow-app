@@ -20,6 +20,7 @@ export type DesktopCommand =
     | 'new-project'
     | 'open-settings'
     | 'open-search'
+    | 'open-ai'
     | 'open-help'
     | 'open-quick-access-modal'
     | 'go-dashboard'
@@ -48,6 +49,8 @@ export interface DesktopPreferences {
     quickAccessShortcut: string | null;
     paletteShortcut: string | null;
     screenshotShortcut: string | null;
+    /** Global shortcut that brings ProjectFlow to the front with the AI panel (⌘J) open. */
+    aiShortcut: string | null;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;
     dayCloseTime: string;

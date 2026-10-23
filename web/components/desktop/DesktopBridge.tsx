@@ -159,6 +159,9 @@ export const DesktopBridge = () => {
                 case 'open-search':
                     window.dispatchEvent(new Event(DESKTOP_OPEN_SEARCH_EVENT));
                     break;
+                case 'open-ai':
+                    window.dispatchEvent(new CustomEvent('pf:open-ai-panel'));
+                    break;
                 case 'open-help':
                     handlers.openHelpCenter();
                     break;

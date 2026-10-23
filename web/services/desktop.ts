@@ -23,6 +23,7 @@ export type DesktopCommand =
     | 'new-project'
     | 'open-settings'
     | 'open-search'
+    | 'open-ai'
     | 'open-help'
     | 'open-quick-access-modal'
     | 'go-dashboard'
@@ -51,6 +52,7 @@ export interface DesktopPreferences {
     /** Since 'command-palette' / 'screenshot'. */
     paletteShortcut?: string | null;
     screenshotShortcut?: string | null;
+    aiShortcut?: string | null;
     dayStartEnabled: boolean;
     dayCloseEnabled: boolean;
     dayCloseTime: string;

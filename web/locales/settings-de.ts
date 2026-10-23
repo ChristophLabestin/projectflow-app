@@ -40,6 +40,8 @@ const deSettings = {
     'settings.desktop.palette.hint': 'Projekte und Aufgaben von überall suchen und öffnen, erledigen oder fokussieren.',
     'settings.desktop.screenshot.title': 'Screenshot als Aufgabe',
     'settings.desktop.screenshot.hint': 'Bildschirmbereich auswählen; Quick Capture öffnet sich mit dem Bild als Anhang.',
+    'settings.desktop.ai.title': 'KI-Assistent',
+    'settings.desktop.ai.hint': 'Holt ProjectFlow aus jeder App nach vorn und öffnet das KI-Panel (⌘J).',
     'settings.desktop.mediaKeys.title': 'Play/Pause-Taste steuert den Fokus',
     'settings.desktop.mediaKeys.hint': 'Solange es eine Fokus-Aufgabe gibt, pausiert und setzt die Medientaste sie fort (Musik-Apps bekommen die Taste dann nicht).',
     'settings.desktop.touchBar.note': 'Auf Macs mit Touch Bar erscheinen dort automatisch Fokus-Aufgabe, Pause/Erledigt, Schnell erfassen und Schnellzugriff.',

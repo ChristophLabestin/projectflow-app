@@ -40,6 +40,8 @@ const enSettings = {
     'settings.desktop.palette.hint': 'Search projects and tasks from anywhere and open, complete or focus them.',
     'settings.desktop.screenshot.title': 'Screenshot to task',
     'settings.desktop.screenshot.hint': 'Select an area of the screen; it opens Quick Capture with the image attached.',
+    'settings.desktop.ai.title': 'AI assistant',
+    'settings.desktop.ai.hint': 'Brings ProjectFlow to the front with the AI panel (⌘J) open, from any app.',
     'settings.desktop.mediaKeys.title': 'Play/Pause key controls the focus',
     'settings.desktop.mediaKeys.hint': 'While a focus task exists, the media key pauses and resumes it (music players no longer get the key).',
     'settings.desktop.touchBar.note': 'On Macs with a Touch Bar, the focus task, Pause/Done, Quick Capture and Quick Access appear there automatically.',
