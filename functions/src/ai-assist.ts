@@ -15,6 +15,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import { normalizeRole } from './ai-access';
+import { isTenantSuspended, SUSPENDED_MESSAGE } from './tenant-status';
 import { aiPolicyRef, loadAiPolicy } from './ai-store';
 import { consumeAiQuota, trackUsage } from './ai-service';
 import { refundCredits, reserveCredits, recordModelUsage, resolveMonthlyLimit, type CreditCapability } from './ai-credits';
@@ -63,6 +64,7 @@ const authorizeWorkspace = async (tenantId: string, uid: string) => {
         loadAiPolicy(tenantId),
         aiPolicyRef(tenantId).get()
     ]);
+    if (await isTenantSuspended(tenantId)) throw new HttpError(403, SUSPENDED_MESSAGE, 'suspended');
     const role = normalizeRole(member.data()?.role);
     if (!member.exists || !role) throw new HttpError(403, 'Not a member of this workspace.', 'forbidden');
     const flag = rawPolicy.data()?.inAppAi;

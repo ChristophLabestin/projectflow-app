@@ -1,6 +1,6 @@
 /**
  * Workspace AI credits for the in-app assistant (brain/plans/in-app-ai-concept.md §4.7).
- * `tenants/{t}/ai_credits/{yyyy-mm}` and `…/members/{uid}` count credits, requests, tokens and estimated
+ * `tenants/{t}/ai_credits/{yyyy-mm}` and `…/users/{uid}` count credits, requests, tokens and estimated
  * cost per month (Admin SDK only; Owner/Admin may read). The per-user daily request quota in
  * `ai-service.ts` stays as the abuse brake.
  */
@@ -41,7 +41,9 @@ export const canSpend = (used: number, weight: number, limit: number) => used + 
 
 const usageRefs = (tenantId: string, uid: string, month: string) => {
     const workspace = db.doc(`tenants/${tenantId}/ai_credits/${month}`);
-    return { workspace, member: workspace.collection('members').doc(uid) };
+    // Per-user docs live in `users`, not `members`: a `members` subcollection would join the
+    // collectionGroup('members') used for workspace memberships.
+    return { workspace, member: workspace.collection('users').doc(uid) };
 };
 
 export interface CreditDecision { ok: boolean; used: number; limit: number }
