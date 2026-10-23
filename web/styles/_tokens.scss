@@ -82,6 +82,27 @@
   --color-status-done-text: #047857;
   --color-status-planning-text: #6d28d9;
 
+  /* Brand palette — the four status hues (open / planning / review / done) as the
+     ProjectFlow accent set (iOS PFBrandPalette, desktop splash). Same values as the
+     --status-* tokens, so status meaning never shifts. Use sparingly: loading
+     scenes, the brand mark, success moments. -text variants are AA on surfaces. */
+  --brand-blue-rgb: var(--status-open-rgb);
+  --brand-violet-rgb: var(--status-planning-rgb);
+  --brand-amber-rgb: var(--status-review-rgb);
+  --brand-green-rgb: var(--status-done-rgb);
+  --brand-blue: rgb(var(--brand-blue-rgb));
+  --brand-violet: rgb(var(--brand-violet-rgb));
+  --brand-amber: rgb(var(--brand-amber-rgb));
+  --brand-green: rgb(var(--brand-green-rgb));
+  --brand-blue-text: var(--color-status-open-text);
+  --brand-violet-text: var(--color-status-planning-text);
+  --brand-amber-text: var(--color-status-review-text);
+  --brand-green-text: var(--color-status-done-text);
+  --brand-gradient: conic-gradient(var(--brand-blue), var(--brand-violet), var(--brand-amber), var(--brand-green), var(--brand-blue));
+  --brand-gradient-linear: linear-gradient(90deg, var(--brand-blue), var(--brand-violet), var(--brand-amber), var(--brand-green));
+  /* Neutral dot of the FlowField canvas (theme-aware). */
+  --brand-field-dot: rgba(0, 0, 0, 0.06);
+
   /* Priority */
   --priority-urgent: #7c3aed;
   --priority-urgent-rgb: 124, 58, 237;
@@ -198,6 +219,7 @@ html.dark {
   --color-status-blocked-text: #f87171;
   --color-status-done-text: #10b981;
   --color-status-planning-text: #a78bfa;
+  --brand-field-dot: rgba(255, 255, 255, 0.05);
 
   /* Priority — slightly brighter on dark backgrounds */
   --priority-urgent: #a78bfa;

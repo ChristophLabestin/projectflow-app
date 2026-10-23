@@ -742,13 +742,13 @@ html.dark .glass-strong {
 }
 
 .health-ring-warning {
-  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
-  border-color: rgba(245, 158, 11, 0.6);
+  box-shadow: 0 0 20px rgba(var(--brand-amber-rgb), 0.4);
+  border-color: rgba(var(--brand-amber-rgb), 0.6);
 }
 
 .health-ring-success {
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-  border-color: rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 20px rgba(var(--brand-green-rgb), 0.4);
+  border-color: rgba(var(--brand-green-rgb), 0.6);
 }
 
 .animate-pulse-ring {
@@ -797,13 +797,13 @@ html.dark .glass-strong {
 }
 
 .progress-segment.active-amber {
-  background-color: #f59e0b;
-  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+  background-color: var(--brand-amber);
+  box-shadow: 0 0 8px rgba(var(--brand-amber-rgb), 0.5);
 }
 
 .progress-segment.active-emerald {
-  background-color: #10b981;
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+  background-color: var(--brand-green);
+  box-shadow: 0 0 8px rgba(var(--brand-green-rgb), 0.5);
 }
 
 .progress-segment.active-rose {

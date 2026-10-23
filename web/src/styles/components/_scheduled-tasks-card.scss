@@ -18,7 +18,7 @@
             font-size: 1.5rem;
 
             &.today {
-                color: #10b981;
+                color: var(--brand-green-text);
             }
 
             &.upcoming {

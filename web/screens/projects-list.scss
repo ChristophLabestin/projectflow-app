@@ -175,13 +175,13 @@
         flex-shrink: 0;
 
         &.icon-blue {
-            background: rgba(59, 130, 246, 0.1);
-            color: #3b82f6;
+            background: rgba(var(--brand-blue-rgb), 0.1);
+            color: var(--brand-blue-text);
         }
 
         &.icon-green {
-            background: rgba(16, 185, 129, 0.1);
-            color: #10b981;
+            background: rgba(var(--brand-green-rgb), 0.1);
+            color: var(--brand-green-text);
         }
 
         &.icon-red {
@@ -190,8 +190,8 @@
         }
 
         &.icon-purple {
-            background: rgba(139, 92, 246, 0.1);
-            color: #8b5cf6;
+            background: rgba(var(--brand-violet-rgb), 0.1);
+            color: var(--brand-violet-text);
         }
     }
 
@@ -252,12 +252,12 @@
     }
 
     &.status-warning {
-        --spotlight-glow-color: #f59e0b; // Amber
+        --spotlight-glow-color: var(--brand-amber); // Amber
     }
 
     &.status-healthy,
     &.status-excellent {
-        --spotlight-glow-color: #10b981; // Green
+        --spotlight-glow-color: var(--brand-green); // Green
     }
 
     &.status-normal {
@@ -538,7 +538,7 @@
 
     &.status-warning {
         animation: breathe-warning 5s infinite ease-in-out;
-        border-color: rgba(245, 158, 11, 0.3);
+        border-color: rgba(var(--brand-amber-rgb), 0.3);
     }
 
     &.status-excellent,
@@ -605,9 +605,9 @@
         }
 
         &.warning {
-            background: rgba(245, 158, 11, 0.2);
+            background: rgba(var(--brand-amber-rgb), 0.2);
             color: #fcd34d;
-            border-color: rgba(245, 158, 11, 0.3);
+            border-color: rgba(var(--brand-amber-rgb), 0.3);
         }
 
         &.stalemate {
@@ -688,11 +688,11 @@
 
     0%,
     100% {
-        border-color: rgba(245, 158, 11, 0.2);
+        border-color: rgba(var(--brand-amber-rgb), 0.2);
     }
 
     50% {
-        border-color: rgba(245, 158, 11, 0.5);
+        border-color: rgba(var(--brand-amber-rgb), 0.5);
     }
 }
 
@@ -1262,14 +1262,14 @@
     }
 
     &.rich-card--warning {
-        --glow-color: #f59e0b; // Amber
-        --health-rgb: 245, 158, 11;
+        --glow-color: var(--brand-amber); // Amber
+        --health-rgb: var(--brand-amber-rgb);
     }
 
     &.rich-card--healthy,
     &.rich-card--excellent {
-        --glow-color: #10b981; // Green
-        --health-rgb: 16, 185, 129;
+        --glow-color: var(--brand-green); // Green
+        --health-rgb: var(--brand-green-rgb);
     }
 
     &.rich-card--normal {
@@ -1480,12 +1480,12 @@
         }
 
         &--warning {
-            color: #f59e0b;
+            color: var(--brand-amber-text);
             background: #fef3c7;
         }
 
         &--healthy {
-            color: #10b981;
+            color: var(--brand-green-text);
             background: #d1fae5;
         }
 
@@ -1615,12 +1615,12 @@
             }
 
             &--warning .health-score {
-                color: #f59e0b;
+                color: var(--brand-amber-text);
             }
 
             &--healthy .health-score,
             &--excellent .health-score {
-                color: #10b981;
+                color: var(--brand-green-text);
             }
 
             &--stalemate .health-score {
@@ -1910,8 +1910,8 @@
 
         // Status-specific colors
         &.status-on-hold {
-            background: rgba(245, 158, 11, 0.15);
-            color: #f59e0b;
+            background: rgba(var(--brand-amber-rgb), 0.15);
+            color: var(--brand-amber-text);
         }
 
         &.status-in-testing {
@@ -1926,8 +1926,8 @@
         }
 
         &.status-completed {
-            background: rgba(16, 185, 129, 0.15);
-            color: #10b981;
+            background: rgba(var(--brand-green-rgb), 0.15);
+            color: var(--brand-green-text);
         }
 
         &.status-canceled,
@@ -1958,7 +1958,7 @@
 
     // Status color variants
     &[data-status="On Hold"] {
-        --status-color: #f59e0b;
+        --status-color: var(--brand-amber);
     }
 
     &[data-status="Backlog"],
@@ -1967,7 +1967,7 @@
     }
 
     &[data-status="Completed"] {
-        --status-color: #10b981;
+        --status-color: var(--brand-green);
     }
 
     &[data-status="Canceled"],
