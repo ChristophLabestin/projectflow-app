@@ -228,7 +228,7 @@ struct PersonalTaskScreen: View {
         }
         items.append(.init(title: L10n.t("taskDetail.delete.action"), systemImage: "trash", destructive: true) {
             presenter.present(detents: [.fit]) {
-                ConfirmSheet(title: L10n.t("taskDetail.confirm.delete.title"), message: L10n.t("taskDetail.confirm.delete.message", ["title": task.title]),
+                ProjectConfirmSheet(title: L10n.t("taskDetail.confirm.delete.title"), message: L10n.t("taskDetail.confirm.delete.message", ["title": task.title]),
                              confirmTitle: L10n.t("taskDetail.confirm.delete.confirm")) { delete() }
             }
         })

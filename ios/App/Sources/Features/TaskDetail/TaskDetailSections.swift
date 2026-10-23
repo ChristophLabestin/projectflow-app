@@ -268,7 +268,7 @@ extension TaskDetailScreen {
 
     private func confirmDeleteSubtask(_ subtask: SubTask) {
         presenter.present(detents: [.fit]) {
-            ConfirmSheet(title: L10n.t("taskDetail.confirm.deleteSubtask.title"), message: L10n.t("taskDetail.confirm.deleteSubtask.message"),
+            ProjectConfirmSheet(title: L10n.t("taskDetail.confirm.deleteSubtask.title"), message: L10n.t("taskDetail.confirm.deleteSubtask.message"),
                          confirmTitle: L10n.t("taskDetail.confirm.deleteSubtask.confirm")) {
                 run { try await $0.deleteSubtask(ref, subtaskId: subtask.id) }
             }
@@ -348,7 +348,7 @@ extension TaskDetailScreen {
         // The description is one field: ask before overwriting a change made elsewhere meanwhile.
         if (task.summary ?? "") != (descriptionBase ?? "") {
             presenter.present(detents: [.fit]) {
-                ConfirmSheet(title: L10n.t("taskDetail.description.conflict.title"), message: L10n.t("taskDetail.description.conflict.message"),
+                ProjectConfirmSheet(title: L10n.t("taskDetail.description.conflict.title"), message: L10n.t("taskDetail.description.conflict.message"),
                              confirmTitle: L10n.t("taskDetail.description.conflict.confirm")) { commitDescription(html) }
             }
             return

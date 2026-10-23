@@ -35,6 +35,8 @@ final class AppRouter {
     var pendingURL: URL?
     /// Opens the capture composer (`projectflow://capture`, Control Center, Action Button). Set by `AppIntentBridge`.
     @ObservationIgnored var onCapture: ((CaptureContext) -> Void)?
+    /// `/invite/<tenantId>/<inviteId>` waiting to be shown (Onboarding feature presents the accept sheet).
+    var pendingInvite: InviteLink?
 
     enum TodayMode: Equatable { case normal, dayClose }
 
@@ -96,6 +98,8 @@ final class AppRouter {
             #if DEBUG
             open(.designCatalog, in: .today)
             #endif
+        case "invite" where parts.count >= 3:
+            pendingInvite = InviteLink(tenantId: parts[1], inviteId: parts[2])
         case "personal-tasks" where parts.count >= 2:
             open(.personalTask(tenantId: tenant, id: parts[1]), in: .work)
         default:

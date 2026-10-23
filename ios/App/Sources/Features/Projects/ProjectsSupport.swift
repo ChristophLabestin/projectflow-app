@@ -258,7 +258,7 @@ struct ShareGlassButton: View {
 }
 
 /// Confirmation sheet for destructive actions (concept §6: confirmation only for deleting).
-struct ConfirmSheet: View {
+struct ProjectConfirmSheet: View {
     let title: String
     let message: String
     let confirmTitle: String

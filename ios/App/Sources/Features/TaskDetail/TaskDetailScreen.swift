@@ -165,7 +165,7 @@ struct TaskDetailScreen: View {
     private func confirmDelete() {
         guard let task else { return }
         presenter.present(detents: [.fit]) {
-            ConfirmSheet(title: L10n.t("taskDetail.confirm.delete.title"), message: L10n.t("taskDetail.confirm.delete.message", ["title": task.title]),
+            ProjectConfirmSheet(title: L10n.t("taskDetail.confirm.delete.title"), message: L10n.t("taskDetail.confirm.delete.message", ["title": task.title]),
                          confirmTitle: L10n.t("taskDetail.confirm.delete.confirm")) { delete() }
         }
     }

@@ -1,5 +1,88 @@
-// Copy for the Inbox feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them.
+// Copy for the Inbox feature (DE/EN). Keep keys and wording aligned with web/locales where the web has them
+// (`notifications.*` keys are the web's).
 enum InboxStrings {
-    static let de: [String: String] = [:]
-    static let en: [String: String] = [:]
+    static let de: [String: String] = [
+        // Web wording
+        "notifications.actions.markAllRead": "Alle als gelesen markieren",
+        "notifications.actions.accept": "Annehmen",
+        "notifications.toast.markAllRead": "Alle Benachrichtigungen als gelesen markiert",
+        "notifications.empty.title": "Du bist auf dem neuesten Stand!",
+        "notifications.empty.description": "Keine neuen Benachrichtigungen. Wir geben dir Bescheid, wenn etwas deine Aufmerksamkeit braucht.",
+        "notifications.time.justNow": "Gerade eben",
+        // Screen
+        "inbox.eyebrowSince": "Seit gestern Abend",
+        "inbox.filter.all": "Alles", "inbox.filter.mentions": "Erwähnungen", "inbox.filter.assignments": "Zuweisungen",
+        "inbox.group.today": "Heute", "inbox.group.week": "Diese Woche", "inbox.group.earlier": "Früher",
+        "inbox.empty.filteredTitle": "Nichts in diesem Filter",
+        "inbox.empty.filteredMessage": "Wechsle auf „Alles“, um alle Benachrichtigungen zu sehen.",
+        "inbox.quote": "„{text}“",
+        // Actions
+        "inbox.action.planToday": "In Plan für heute", "inbox.action.planned": "Eingeplant", "inbox.action.reply": "Antworten",
+        "inbox.markRead": "Gelesen", "inbox.markUnread": "Ungelesen", "inbox.later": "Später erinnern",
+        "inbox.later.done": "Wir erinnern dich in 1 Std.",
+        "inbox.reply.placeholder": "Antwort schreiben…", "inbox.reply.send": "Senden", "inbox.reply.sent": "Antwort gesendet",
+        // Headlines
+        "inbox.headline.assigned": "{name} hat dir eine Aufgabe zugewiesen", "inbox.headline.assignedAnon": "Neue Zuweisung",
+        "inbox.headline.subtask": "{name} hat dir eine Teilaufgabe zugewiesen", "inbox.headline.subtaskAnon": "Neue Teilaufgabe für dich",
+        "inbox.headline.mention": "{name} hat dich erwähnt", "inbox.headline.mentionAnon": "Du wurdest erwähnt",
+        "inbox.headline.comment": "{name} hat kommentiert", "inbox.headline.commentAnon": "Neuer Kommentar",
+        "inbox.headline.completed": "{name} hat eine Aufgabe erledigt", "inbox.headline.completedAnon": "Aufgabe erledigt",
+        "inbox.headline.updated": "{name} hat eine Aufgabe geändert", "inbox.headline.updatedAnon": "Aufgabe geändert",
+        "inbox.headline.workspaceInvite": "{name} lädt dich in einen Arbeitsbereich ein", "inbox.headline.workspaceInviteAnon": "Einladung in einen Arbeitsbereich",
+        "inbox.headline.projectInvite": "{name} hat dich zu einem Projekt eingeladen", "inbox.headline.projectInviteAnon": "Einladung zu einem Projekt",
+        "inbox.headline.projectShared": "Projekt mit dir geteilt",
+        "inbox.headline.joinRequest": "{name} möchte einem Projekt beitreten", "inbox.headline.joinRequestAnon": "Beitrittsanfrage",
+        "inbox.headline.joinAccepted": "Beitrittsanfrage angenommen", "inbox.headline.joinDenied": "Beitrittsanfrage abgelehnt",
+        "inbox.headline.reminder": "Erinnerung", "inbox.headline.dueToday": "Heute fällig",
+        "inbox.headline.briefing": "Dein Morgen-Briefing", "inbox.headline.dayClose": "Zeit für den Tagesabschluss",
+        "inbox.headline.other": "Benachrichtigung",
+        // "Seit gestern Abend" sentence
+        "inbox.summary.assignments.one": "1 neue Zuweisung", "inbox.summary.assignments.other": "{count} neue Zuweisungen",
+        "inbox.summary.mentionOnce": "{name} hat dich erwähnt", "inbox.summary.mentionTwice": "{name} hat dich zweimal erwähnt",
+        "inbox.summary.mentionMany": "{name} hat dich {count}-mal erwähnt",
+        "inbox.summary.mentions.one": "1 Erwähnung", "inbox.summary.mentions.other": "{count} Erwähnungen",
+        "inbox.summary.comments.one": "1 neuer Kommentar", "inbox.summary.comments.other": "{count} neue Kommentare",
+        "inbox.summary.invites.one": "1 Einladung", "inbox.summary.invites.other": "{count} Einladungen",
+        "inbox.summary.other.one": "1 neue Benachrichtigung", "inbox.summary.other.other": "{count} neue Benachrichtigungen",
+    ]
+
+    static let en: [String: String] = [
+        "notifications.actions.markAllRead": "Mark all as read",
+        "notifications.actions.accept": "Accept",
+        "notifications.toast.markAllRead": "All notifications marked as read",
+        "notifications.empty.title": "You're all caught up!",
+        "notifications.empty.description": "No new notifications. We'll let you know when something needs your attention.",
+        "notifications.time.justNow": "Just now",
+        "inbox.eyebrowSince": "Since last evening",
+        "inbox.filter.all": "All", "inbox.filter.mentions": "Mentions", "inbox.filter.assignments": "Assigned",
+        "inbox.group.today": "Today", "inbox.group.week": "This week", "inbox.group.earlier": "Earlier",
+        "inbox.empty.filteredTitle": "Nothing in this filter",
+        "inbox.empty.filteredMessage": "Switch to “All” to see every notification.",
+        "inbox.quote": "“{text}”",
+        "inbox.action.planToday": "Plan for today", "inbox.action.planned": "Planned", "inbox.action.reply": "Reply",
+        "inbox.markRead": "Read", "inbox.markUnread": "Unread", "inbox.later": "Remind later",
+        "inbox.later.done": "We'll remind you in 1 hr",
+        "inbox.reply.placeholder": "Write a reply…", "inbox.reply.send": "Send", "inbox.reply.sent": "Reply sent",
+        "inbox.headline.assigned": "{name} assigned you a task", "inbox.headline.assignedAnon": "New assignment",
+        "inbox.headline.subtask": "{name} assigned you a subtask", "inbox.headline.subtaskAnon": "New subtask for you",
+        "inbox.headline.mention": "{name} mentioned you", "inbox.headline.mentionAnon": "You were mentioned",
+        "inbox.headline.comment": "{name} commented", "inbox.headline.commentAnon": "New comment",
+        "inbox.headline.completed": "{name} completed a task", "inbox.headline.completedAnon": "Task completed",
+        "inbox.headline.updated": "{name} changed a task", "inbox.headline.updatedAnon": "Task changed",
+        "inbox.headline.workspaceInvite": "{name} invited you to a workspace", "inbox.headline.workspaceInviteAnon": "Workspace invitation",
+        "inbox.headline.projectInvite": "{name} invited you to a project", "inbox.headline.projectInviteAnon": "Project invitation",
+        "inbox.headline.projectShared": "Project shared with you",
+        "inbox.headline.joinRequest": "{name} wants to join a project", "inbox.headline.joinRequestAnon": "Join request",
+        "inbox.headline.joinAccepted": "Join request accepted", "inbox.headline.joinDenied": "Join request declined",
+        "inbox.headline.reminder": "Reminder", "inbox.headline.dueToday": "Due today",
+        "inbox.headline.briefing": "Your morning briefing", "inbox.headline.dayClose": "Time to close the day",
+        "inbox.headline.other": "Notification",
+        "inbox.summary.assignments.one": "1 new assignment", "inbox.summary.assignments.other": "{count} new assignments",
+        "inbox.summary.mentionOnce": "{name} mentioned you", "inbox.summary.mentionTwice": "{name} mentioned you twice",
+        "inbox.summary.mentionMany": "{name} mentioned you {count} times",
+        "inbox.summary.mentions.one": "1 mention", "inbox.summary.mentions.other": "{count} mentions",
+        "inbox.summary.comments.one": "1 new comment", "inbox.summary.comments.other": "{count} new comments",
+        "inbox.summary.invites.one": "1 invitation", "inbox.summary.invites.other": "{count} invitations",
+        "inbox.summary.other.one": "1 new notification", "inbox.summary.other.other": "{count} new notifications",
+    ]
 }
