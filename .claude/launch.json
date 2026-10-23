@@ -87,6 +87,23 @@
       ],
       "port": 3010,
       "autoPort": false
+    },
+    {
+      "name": "web-e2e-web-session",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3061",
+        "AUTH_PORT=9761",
+        "FIRESTORE_PORT=8761",
+        "STORAGE_PORT=9762",
+        "FUNCTIONS_PORT=5761",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3061
     }
   ]
 }

@@ -72,53 +72,51 @@
     }
 }
 
+// Filter tabs double as the header; the dialog's aria-label carries the title.
 .notification-panel__header {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 16px 16px 8px;
-}
-
-.notification-panel__title {
-    margin: 0;
-    color: var(--color-text-main);
-    font-size: 1rem;
-    font-weight: 700;
-}
-
-.notification-panel__subtitle {
-    margin: 2px 0 0;
-    color: var(--color-text-muted);
-    font-size: 0.75rem;
-}
-
-.notification-panel__link {
-    display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 4px 8px;
+    padding: 10px 10px 10px 12px;
+    border-bottom: 1px solid var(--color-surface-border);
+
+    .notification-filter {
+        margin-right: auto;
+    }
+}
+
+.notification-panel__icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
-    color: var(--color-text-main);
-    font-size: 0.75rem;
-    font-weight: 600;
+    color: var(--color-text-muted);
     cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
 
     .material-symbols-outlined {
-        font-size: 1rem;
+        font-size: 1.25rem;
     }
 
-    &:hover,
+    &:hover:not(:disabled),
     &:focus-visible {
         background: var(--color-surface-hover);
+        color: var(--color-text-main);
     }
-}
 
-.notification-panel__toolbar {
-    padding: 0 16px 10px;
-    border-bottom: 1px solid var(--color-surface-border);
+    &:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 1px;
+    }
+
+    &:disabled {
+        opacity: 0.4;
+        cursor: default;
+    }
 }
 
 .notification-panel__body {
@@ -129,6 +127,7 @@
 }
 
 .notification-panel__footer {
+    padding: 6px;
     border-top: 1px solid var(--color-surface-border);
 }
 
@@ -138,8 +137,9 @@
     justify-content: center;
     gap: 6px;
     width: 100%;
-    padding: 12px;
+    padding: 8px 12px;
     border: 0;
+    border-radius: var(--radius-lg);
     background: transparent;
     color: var(--color-text-main);
     font-size: 0.8125rem;

@@ -21,7 +21,7 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   `127.0.0.1` (auth 9631, firestore 8631, functions 5631). Start the emulators + seed with
   `PORT=3030 bash scripts/dev-e2e.sh`. Login: `demo@projectflow.test` / `projectflow-demo`
   (launch argument `-pfAutoLogin`). QA: `-pfLoginEmail <e> -pfLoginPassword <p>` signs in with another emulator account, `-pfSignedOut` starts on the
-  sign-in screen, `-pfHoldLaunch` keeps the cold-start scene on screen, `-pfShowOnboarding` (DEBUG) forces the first-sign-in welcome onboarding (name → workspace → notifications) for the signed-in user.
+  sign-in screen, `-pfHoldLaunch` keeps the cold-start scene on screen, `-pfShowOnboarding` (DEBUG) forces the first-sign-in welcome onboarding (name + optional photo → about → team → how → notifications) for the signed-in user.
 - `Debug`/`Release` use `App/Resources/Firebase/GoogleService-Info.plist` (project `projectflow-labestin`).
 
 ## Layout
@@ -52,7 +52,8 @@ xcodebuild -project ios/ProjectFlow.xcodeproj -scheme ProjectFlow \
   `PFRingCheck`, `PFPrioritySignal`, `PFDayBand`, `PFAvatar(Stack)`, `PFHealthRing`, `PFProgressBar`,
   `PFSegmented`, `PFChip(Row)`, `PFSwitch`, `PFTextField`, `PFDateStrip`, `PFSwipeRow`, `PFCardList`,
   `PFEmptyState`, `PFSkeleton`, `PFToast`, `PFPresenter` sheets + `pfPeek`, `PFNavigator`, `PFTopBar`,
-  `PFDock`, `PFFocusBar`). No `List`, `Form`, `NavigationStack`, `TabView`, `Toggle`, `Picker`,
+  `PFDock`, `PFFocusBar`). Back buttons are always `PFIconButton("chevron.left", …)` (glass); pills
+  (choice/capture chips, small inline actions) use `.pfPillSurface(selected:)` so both share one look. No `List`, `Form`, `NavigationStack`, `TabView`, `Toggle`, `Picker`,
   `DatePicker`, `Menu`, `.alert`, `.contextMenu`, system navigation bars/`.navigationTitle`; present sheets
   and push pages only through `PFPresenter` / `PFNavigator`. Allowed natives: text input
   (styled plain), `ScrollView`/`LazyVStack`, gestures, shapes, `Canvas`, system integrations.

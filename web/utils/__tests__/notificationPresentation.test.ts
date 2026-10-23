@@ -36,6 +36,19 @@ describe('notificationPresentation', () => {
             .toEqual({ title: 'Stored title', message: 'Stored message' });
     });
 
+    it('localizes legacy English task notifications from the quoted title', () => {
+        const legacyT = (key: string, fallback?: string) => ({
+            'notifications.type.comment_mention.title': 'Du wurdest erwähnt',
+            'notifications.type.comment_mention.message': '{actor} hat dich bei „{task}“ erwähnt',
+            'notifications.actor.someone': 'Jemand'
+        } as Record<string, string>)[key] ?? fallback ?? key;
+        const text = getNotificationText(base({
+            type: 'comment_mention', title: 'New Mention',
+            message: 'You were mentioned in a comment on task "Finalize homepage hero copy"'
+        }), legacyT, (value) => value);
+        expect(text).toEqual({ title: 'Du wurdest erwähnt', message: 'Jemand hat dich bei „Finalize homepage hero copy“ erwähnt' });
+    });
+
     it('routes task > project > deep link', () => {
         expect(getNotificationPath(base({ projectId: 'p', taskId: 't' }))).toBe('/project/p/tasks/t');
         expect(getNotificationPath(base({ projectId: 'p' }))).toBe('/project/p');

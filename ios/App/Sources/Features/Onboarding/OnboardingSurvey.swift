@@ -49,7 +49,7 @@ struct ChoiceChips: View {
                         .foregroundStyle(selected ? PFColor.onPrimary : PFColor.textMain)
                         .padding(.horizontal, 16)
                         .frame(minHeight: 44)
-                        .background(selected ? PFColor.primary : PFColor.raised, in: Capsule())
+                        .pfPillSurface(selected: selected)
                 }
                 .buttonStyle(.pfPressable)
                 .accessibilityAddTraits(selected ? .isSelected : [])

@@ -74,7 +74,10 @@ export const NotificationList = ({ notifications, compact = false, onOpen, onTog
                                         <span className="notification-row__body">
                                             <span className="notification-row__head">
                                                 <span className="notification-row__title">{text.title}</span>
-                                                <span className="notification-row__time">{formatTime(notification)}</span>
+                                                <span className="notification-row__meta">
+                                                    <span className="notification-row__time">{formatTime(notification)}</span>
+                                                    {!notification.read && <span className="notification-row__dot" role="img" aria-label={t('notifications.unread')} />}
+                                                </span>
                                             </span>
                                             <span className="notification-row__message">{text.message}</span>
                                             {notification.params?.projectTitle && (
@@ -103,7 +106,6 @@ export const NotificationList = ({ notifications, compact = false, onOpen, onTog
                                                 <span className="material-symbols-outlined" aria-hidden="true">close</span>
                                             </button>
                                         </span>
-                                        {!notification.read && <span className="notification-row__dot" aria-label={t('notifications.unread')} />}
                                     </div>
                                 </li>
                             );
