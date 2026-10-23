@@ -78,6 +78,18 @@ struct CommentsSection: View {
                     if let date = comment.createdAt?.instant {
                         Text(Formatting.relative(date)).pfText(.meta).foregroundStyle(PFColor.textMuted)
                     }
+                    Spacer(minLength: 0)
+                    if comment.userId == model.uid {
+                        Button { confirmDelete(comment) } label: {
+                            Image(systemName: "trash")
+                                .font(.system(size: 13, weight: .medium))
+                                .foregroundStyle(PFColor.textMuted)
+                                .frame(width: 32, height: 28)
+                                .contentShape(.rect)
+                        }
+                        .buttonStyle(.pfPressable)
+                        .accessibilityLabel(L10n.t("taskDetail.comments.delete"))
+                    }
                 }
                 Text(highlighted(comment.content))
                     .pfText(.body)
@@ -89,6 +101,23 @@ struct CommentsSection: View {
         }
         .padding(PFSpace.m)
         .accessibilityElement(children: .combine)
+    }
+
+    /// Own comments can be deleted (rules allow only the author).
+    private func confirmDelete(_ comment: Comment) {
+        let projectId = projectId
+        model.presenter.present(detents: [.fit]) {
+            ProjectConfirmSheet(title: L10n.t("taskDetail.comments.delete.title"), message: L10n.t("taskDetail.comments.delete.message"),
+                                confirmTitle: L10n.t("taskDetail.comments.delete")) {
+                guard let actions = model.planning else { return }
+                Task {
+                    if await model.perform({ try await actions.deleteComment(projectId: projectId, commentId: comment.id) }) {
+                        PFHaptics.success()
+                        model.toasts.show(PFToast(L10n.t("taskDetail.comments.deleted"), style: .success))
+                    }
+                }
+            }
+        }
     }
 
     /// `@Name` tokens for known people stand out (bold, like the web chip).
