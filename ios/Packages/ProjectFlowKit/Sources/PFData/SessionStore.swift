@@ -15,6 +15,9 @@ public final class SessionStore {
         public let name: String
         public let role: WorkspaceRole
         public let ownerId: String?
+        /// The user's own workspace (`personal_{uid}`, `workspaceType: 'personal'`, billing contract §7): one member,
+        /// no invites, shown as "Persönlich" above the team workspaces.
+        public var isPersonal = false
     }
 
     public enum State: Equatable {
@@ -38,6 +41,7 @@ public final class SessionStore {
     /// `checklistDismissed`: the user hid the getting-started checklist (shared with the web dashboard card).
     public private(set) var checklistDismissed = false
     private let listeners = ListenerBag()
+    private var language = "de"
     private let defaults: UserDefaults
 
     public init(uid: String, defaults: UserDefaults = UserDefaults(suiteName: "group.de.christophlabestin.projectflow") ?? .standard) {
@@ -49,7 +53,8 @@ public final class SessionStore {
     public var role: WorkspaceRole { activeWorkspace?.role ?? .member }
     public var isActiveSuspended: Bool { activeWorkspaceId.map(suspendedWorkspaceIds.contains) ?? false }
 
-    public func start(defaultWorkspaceName: String) async {
+    public func start(defaultWorkspaceName: String, language: String = "de") async {
+        self.language = language
         guard state != .loading else { return }
         state = .loading
         listenProfile()
@@ -169,16 +174,27 @@ public final class SessionStore {
 
     private func loadWorkspaces(defaultWorkspaceName: String?) async throws {
         var summaries = try await fetchWorkspaces()
-        if let defaultWorkspaceName, !summaries.contains(where: { $0.role == .owner }) {
-            _ = try await createWorkspace(name: defaultWorkspaceName)
-            try? await Self.onboardingDoc(uid).setData(
-                ["welcomePending": true, "checklistDismissed": false, "updatedAt": FieldValue.serverTimestamp()], merge: true)
-            summaries = try await fetchWorkspaces()
+        if let defaultWorkspaceName {
+            // Billing contract §7: the server owns the personal workspace (idempotent, called after every sign-in).
+            // Older backends without the callable: fall back to creating a first workspace on the client.
+            var created = false
+            if let result = try? await PFCallables.call("ensurePersonalWorkspace", ["language": language]) as? [String: Any] {
+                created = result["created"] as? Bool == true
+            } else if !summaries.contains(where: { $0.role == .owner }) {
+                _ = try await createWorkspace(name: defaultWorkspaceName)
+                created = true
+            }
+            if created {
+                try? await Self.onboardingDoc(uid).setData(
+                    ["welcomePending": true, "checklistDismissed": false, "updatedAt": FieldValue.serverTimestamp()], merge: true)
+                summaries = try await fetchWorkspaces()
+            }
         }
         workspaces = summaries
         let ids = Set(summaries.map(\.id))
         let cached = defaults.string(forKey: cacheKey)
         let active = cached.flatMap { ids.contains($0) ? $0 : nil }
+            ?? summaries.first(where: { $0.isPersonal })?.id
             ?? summaries.first(where: { $0.role == .owner })?.id
             ?? summaries.first?.id
         guard let active else { throw PFDataError.noWorkspace }
@@ -195,9 +211,15 @@ public final class SessionStore {
             let roleRaw = doc.data()["role"] as? String
             let workspace = Workspace(id: tenantRef.documentID, fields: fields)
             let role: WorkspaceRole = workspace.ownerId == uid ? .owner : WorkspaceRole(raw: roleRaw)
-            result.append(WorkspaceSummary(id: tenantRef.documentID, name: workspace.name, role: role, ownerId: workspace.ownerId))
+            let isPersonal = (snapshot.data()?["workspaceType"] as? String) == "personal" || tenantRef.documentID == "personal_\(uid)"
+            result.append(WorkspaceSummary(id: tenantRef.documentID, name: workspace.name, role: role, ownerId: workspace.ownerId,
+                                           isPersonal: isPersonal))
         }
-        return result.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        // Personal first, then the teams by name.
+        return result.sorted {
+            if $0.isPersonal != $1.isPersonal { return $0.isPersonal }
+            return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
+        }
     }
 
     /// Same batch as web `createWorkspace`.

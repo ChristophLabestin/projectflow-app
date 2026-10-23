@@ -25,7 +25,7 @@ struct AccountScreen: View {
                         HStack(alignment: .top, spacing: PFSpace.xl) {
                             VStack(alignment: .leading, spacing: PFSpace.xl) { identity; workspaces }
                                 .frame(maxWidth: .infinity, alignment: .leading)
-                            VStack(alignment: .leading, spacing: PFSpace.xl) { settingsGrid; aiCard; dataCard; footer }
+                            VStack(alignment: .leading, spacing: PFSpace.xl) { settingsGrid; PlanStatusCard(); aiCard; dataCard; footer }
                                 .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     } else {
@@ -33,6 +33,7 @@ struct AccountScreen: View {
                             identity
                             workspaces
                             settingsGrid
+                            PlanStatusCard()
                             aiCard
                             dataCard
                             footer
@@ -85,7 +86,7 @@ struct AccountScreen: View {
                 HStack(spacing: PFSpace.s) {
                     WorkspaceMonogram(name: active.name, size: 48)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(active.name).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
+                        Text(active.displayName).pfText(.section).foregroundStyle(PFColor.textMain).lineLimit(1)
                         PFPill(AccountLogic.roleLabel(active.role), compact: true)
                     }
                     Spacer(minLength: 0)
@@ -106,7 +107,7 @@ struct AccountScreen: View {
                         HStack(spacing: PFSpace.s) {
                             WorkspaceMonogram(name: workspace.name, size: 34)
                             VStack(alignment: .leading, spacing: 2) {
-                                Text(workspace.name).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
+                                Text(workspace.displayName).pfText(.rowTitle).foregroundStyle(PFColor.textMain).lineLimit(1)
                                 Text(AccountLogic.roleLabel(workspace.role)).pfText(.meta).foregroundStyle(PFColor.textMuted)
                             }
                             Spacer(minLength: 0)

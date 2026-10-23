@@ -490,7 +490,7 @@ public struct PlanningActions {
 /// live on the server; it answers `resource-exhausted` when the AI quota is used up.
 @MainActor
 public enum PlanningAI {
-    public enum Failure: Error, Equatable { case quotaExceeded, unavailable, empty }
+    public enum Failure: Error, Equatable { case quotaExceeded, unavailable, empty, plan(String) }
 
     public static func draftDescription(taskTitle: String, projectTitle: String?, currentText: String?, language: String) async throws -> String {
         let input: [String: Any] = [
@@ -508,6 +508,7 @@ public enum PlanningAI {
         } catch {
             let ns = error as NSError
             if ns.domain == FunctionsErrorDomain, ns.code == FunctionsErrorCode.resourceExhausted.rawValue { throw Failure.quotaExceeded }
+            if let code = PlanErrorCode.code(in: error) { throw Failure.plan(code) }
             throw Failure.unavailable
         }
     }

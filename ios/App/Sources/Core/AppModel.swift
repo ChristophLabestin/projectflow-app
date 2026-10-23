@@ -21,6 +21,8 @@ final class AppModel {
 
     private(set) var session: SessionStore?
     private(set) var workspace: WorkspaceStore?
+    /// Live plan entitlements of the active workspace (billing contract).
+    private(set) var plan: PlanStore?
     /// Bumped when the workspace store is replaced, so views can restart their tasks.
     private(set) var workspaceGeneration = 0
 
@@ -41,8 +43,10 @@ final class AppModel {
         guard let uid = auth.uid else {
             session?.stop()
             workspace?.stop()
+            plan?.stop()
             session = nil
             workspace = nil
+            plan = nil
             router.reset()
             SystemSync.signedOut()
             return
@@ -51,7 +55,7 @@ final class AppModel {
         session?.stop()
         let session = SessionStore(uid: uid)
         self.session = session
-        await session.start(defaultWorkspaceName: L10n.t("onboarding.defaultWorkspace"))
+        await session.start(defaultWorkspaceName: L10n.t("onboarding.defaultWorkspace"), language: L10n.language.rawValue)
         bindWorkspace()
     }
 
@@ -62,6 +66,8 @@ final class AppModel {
         if session.isActiveSuspended {
             workspace?.stop()
             workspace = nil
+            plan?.stop()
+            plan = nil
             router.reset()
             return
         }
@@ -71,6 +77,10 @@ final class AppModel {
         let store = WorkspaceStore(tenantId: tenantId, uid: session.uid, role: session.role)
         store.start()
         workspace = store
+        plan?.stop()
+        let planStore = PlanStore(tenantId: tenantId)
+        planStore.start()
+        plan = planStore
         workspaceGeneration += 1
         SystemSync.workspaceBound(model: self)
         if let pending = router.pendingURL {
@@ -134,10 +144,18 @@ final class AppModel {
             try await work()
             return true
         } catch {
-            toasts.show(PFToast(L10n.t("common.error"), style: .error))
+            toasts.show(PFToast(errorMessage(error), style: .error))
             return false
         }
     }
+
+    /// User-facing text for an error: plan error codes (billing contract §3) get their own neutral message.
+    func errorMessage(_ error: Error) -> String {
+        guard let code = PlanErrorCode.code(in: error) else { return L10n.t("common.error") }
+        return L10n.t("planError.\(code)", ["limit": plan?.entitlements.projectLimit ?? 3])
+    }
+
+    var entitlements: PlanEntitlements { plan?.entitlements ?? PlanEntitlements() }
 }
 
 /// Observes connectivity for the offline banner.

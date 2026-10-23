@@ -222,7 +222,8 @@ struct TeamSheet<Body: View>: View {
 @MainActor
 func teamFail(_ model: AppModel, _ error: Error) {
     let text = (error as NSError).localizedDescription
-    let message = text.localizedCaseInsensitiveContains("permission") ? L10n.t("team.error.permission") : L10n.t("common.error")
+    let message = PlanErrorCode.code(in: error) != nil ? model.errorMessage(error)
+        : text.localizedCaseInsensitiveContains("permission") ? L10n.t("team.error.permission") : L10n.t("common.error")
     model.toasts.show(PFToast(message, style: .error))
 }
 

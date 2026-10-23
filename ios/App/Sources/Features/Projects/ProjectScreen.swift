@@ -127,6 +127,7 @@ struct ProjectScreen: View {
                     header(project)
                         .padding(.bottom, PFSpace.l)
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                    if model.entitlements.isLocked(projectId: projectId) { PlanLockedNotice().padding(.bottom, PFSpace.l) }
                     Section {
                         tabContent(project)
                             .padding(.bottom, 120)

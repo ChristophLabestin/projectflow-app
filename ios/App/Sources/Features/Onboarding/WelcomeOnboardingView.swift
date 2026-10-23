@@ -7,7 +7,8 @@ import PFModel
 /// Shown while `users/{uid}/private/onboarding.welcomePending` is true (web shows the same flow);
 /// finishing it on any platform clears the flag everywhere.
 struct WelcomeOnboardingView: View {
-    private enum Step: Int { case name, about, team, how, notifications }
+    private enum Step: Int { case name, about, team, invite, how, notifications }
+    private enum WorkMode { case solo, team }
 
     @Environment(AppModel.self) private var model
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -18,7 +19,10 @@ struct WelcomeOnboardingView: View {
     @State private var name = ""
     @State private var photoURL = ""
     @State private var isUploadingPhoto = false
-    @State private var workspaceName = ""
+    @State private var teamName = ""
+    @State private var workMode: WorkMode?
+    /// Team workspace created in this onboarding (billing contract §7: team workspaces are separate from the personal one).
+    @State private var createdTeam: (id: String, name: String)?
     @State private var role: String?
     @State private var useCases: Set<String> = []
     @State private var teamSize: String?
@@ -37,10 +41,9 @@ struct WelcomeOnboardingView: View {
         PFLayout.sideRegionWidth(trailingInset: trailingInset, isCompact: horizontalSizeClass == .compact)
     }
 
-    private var isOwner: Bool { model.session?.role == .owner }
-    private var steps: [Step] { [.name, .about, .team, .how, .notifications] }
-    private var invitesEnabled: Bool { isOwner && teamSize != nil && teamSize != "solo" }
-    private var isSurveyStep: Bool { step == .about || step == .team || step == .how }
+    private var steps: [Step] { workMode == .team ? [.name, .about, .team, .invite, .how, .notifications] : [.name, .about, .team, .how, .notifications] }
+    private var invitesEnabled: Bool { step == .invite && createdTeam != nil }
+    private var isSurveyStep: Bool { step == .about || step == .team || step == .invite || step == .how }
     private var stepIndex: Int { steps.firstIndex(of: step) ?? 0 }
     private var parsedEmails: [String] {
         emails.split(whereSeparator: { ", ;\n\t".contains($0) }).map { $0.lowercased() }
@@ -78,7 +81,6 @@ struct WelcomeOnboardingView: View {
             guard !loaded else { return }
             loaded = true
             name = model.auth.displayName ?? ""
-            workspaceName = model.session?.activeWorkspace?.name ?? L10n.t("onboarding.defaultWorkspace")
             if let uid = model.uid { photoURL = await ProfileDraft(uid: uid).photoURL }
         }
     }
@@ -175,7 +177,7 @@ struct WelcomeOnboardingView: View {
     private var primaryIcon: String {
         switch step {
         case .notifications: "bell.badge"
-        case .team where invitesEnabled && !parsedEmails.isEmpty: "paperplane"
+        case .invite where !parsedEmails.isEmpty: "paperplane"
         default: "arrow.right"
         }
     }
@@ -187,6 +189,7 @@ struct WelcomeOnboardingView: View {
         case .name: nameStep
         case .about: aboutStep
         case .team: teamStep
+        case .invite: inviteStep
         case .how: howStep
         case .notifications: notificationsStep
         }
@@ -276,28 +279,73 @@ struct WelcomeOnboardingView: View {
 
     private var teamStep: some View {
         VStack(alignment: .leading, spacing: PFSpace.xl) {
-            heading(L10n.t("survey.team.title"), L10n.t("survey.team.subtitle"))
-            question(L10n.t("survey.teamSize.label")) { single("teamSize", OnboardingSurvey.teamSizes, $teamSize) }
-            question(L10n.t("survey.industry.label")) { single("industry", OnboardingSurvey.industries, $industry) }
-            if isOwner {
-                VStack(alignment: .leading, spacing: PFSpace.xs) {
-                    PFEyebrow(L10n.t("welcome.workspace.name"))
-                    PFTextField(L10n.t("welcome.workspace.name"), text: $workspaceName, systemImage: "building.2")
-                }
+            heading(L10n.t("welcome.mode.title"), L10n.t("welcome.mode.subtitle"))
+            VStack(spacing: PFSpace.s) {
+                modeOption(.solo, icon: "person", title: L10n.t("welcome.mode.solo"), hint: L10n.t("welcome.mode.soloHint"))
+                modeOption(.team, icon: "person.2", title: L10n.t("welcome.mode.team"), hint: L10n.t("welcome.mode.teamHint"))
             }
-            if invitesEnabled {
+            if workMode == .team {
                 VStack(alignment: .leading, spacing: PFSpace.xs) {
-                    PFEyebrow(L10n.t("welcome.invite.label"))
-                    PFTextField(L10n.t("welcome.invite.placeholder"), text: $emails, systemImage: "envelope", axis: .vertical)
-                        .keyboardType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                    Text(L10n.t("welcome.invite.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+                    PFEyebrow(L10n.t("welcome.team.name"))
+                    PFTextField(L10n.t("welcome.team.placeholder"), text: $teamName, systemImage: "building.2")
+                }
+                .transition(.opacity)
+                question(L10n.t("survey.teamSize.label")) {
+                    single("teamSize", OnboardingSurvey.teamSizes.filter { $0 != "solo" }, $teamSize)
                 }
                 .transition(.opacity)
             }
+            question(L10n.t("survey.industry.label")) { single("industry", OnboardingSurvey.industries, $industry) }
         }
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: invitesEnabled)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: workMode)
+    }
+
+    private func modeOption(_ mode: WorkMode, icon: String, title: String, hint: String) -> some View {
+        let selected = workMode == mode
+        return Button {
+            PFHaptics.selection()
+            workMode = mode
+            teamSize = mode == .solo ? "solo" : (teamSize == "solo" ? nil : teamSize)
+        } label: {
+            HStack(spacing: PFSpace.m) {
+                Image(systemName: icon).font(.system(size: 18, weight: .semibold)).foregroundStyle(PFColor.textMain)
+                    .frame(width: 28)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
+                    Text(hint).pfText(.meta).foregroundStyle(PFColor.textMuted).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundStyle(selected ? PFColor.textMain : PFColor.hairlineStrong)
+            }
+            .padding(.horizontal, PFSpace.m)
+            .padding(.vertical, 12)
+            .frame(minHeight: 64)
+            .background(PFColor.card, in: RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: PFRadius.card, style: .continuous)
+                    .strokeBorder(PFColor.textMain.opacity(selected ? 1 : 0), lineWidth: 2)
+            }
+            .pfElevation(.card, radius: PFRadius.card)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+    }
+
+    private var inviteStep: some View {
+        VStack(alignment: .leading, spacing: PFSpace.xl) {
+            heading(L10n.t("welcome.invite.title"), L10n.t("welcome.invite.subtitle", ["name": createdTeam?.name ?? teamName]))
+            VStack(alignment: .leading, spacing: PFSpace.xs) {
+                PFEyebrow(L10n.t("welcome.invite.label"))
+                PFTextField(L10n.t("welcome.invite.placeholder"), text: $emails, systemImage: "envelope", axis: .vertical)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                Text(L10n.t("welcome.invite.hint")).pfText(.meta).foregroundStyle(PFColor.textMuted)
+            }
+        }
     }
 
     private var howStep: some View {
@@ -328,8 +376,8 @@ struct WelcomeOnboardingView: View {
 
     private var primaryTitle: String {
         switch step {
-        case .team: invitesEnabled && !parsedEmails.isEmpty ? L10n.t("welcome.invite.send") : L10n.t("onboarding.next")
-        case .name, .about, .how: L10n.t("onboarding.next")
+        case .invite: parsedEmails.isEmpty ? L10n.t("onboarding.next") : L10n.t("welcome.invite.send")
+        case .name, .about, .team, .how: L10n.t("onboarding.next")
         case .notifications: L10n.t("welcome.notify.allow")
         }
     }
@@ -337,8 +385,8 @@ struct WelcomeOnboardingView: View {
     private var canContinue: Bool {
         switch step {
         case .name: !name.trimmingCharacters(in: .whitespaces).isEmpty && !isUploadingPhoto
-        case .team: !isOwner || !workspaceName.trimmingCharacters(in: .whitespaces).isEmpty
-        case .about, .how, .notifications: true
+        case .team: workMode == .solo || (workMode == .team && !teamName.trimmingCharacters(in: .whitespaces).isEmpty)
+        case .about, .invite, .how, .notifications: true
         }
     }
 
@@ -355,6 +403,7 @@ struct WelcomeOnboardingView: View {
         case .name: saveName()
         case .about: go(back: false)
         case .team: saveWorkspace()
+        case .invite: sendInvites()
         case .how:
             saveSurvey()
             go(back: false)
@@ -405,7 +454,11 @@ struct WelcomeOnboardingView: View {
     private func skip() {
         switch step {
         case .about: role = nil; useCases = []
-        case .team: teamSize = nil; industry = nil
+        case .team:
+            // Skipping the question means working alone in the personal workspace.
+            teamSize = nil; industry = nil; workMode = .solo
+            switchToPersonal()
+        case .invite: emails = ""
         case .how: source = nil; previousTool = nil; saveSurvey()
         default: break
         }
@@ -421,33 +474,64 @@ struct WelcomeOnboardingView: View {
         }
     }
 
+    /// Solo: continue in the personal workspace. Team: create a team workspace (once) and make it active; invites follow.
     private func saveWorkspace() {
-        guard isOwner, let session = model.session, let active = session.activeWorkspace else { go(back: false); return }
-        if invitesEnabled, !invalidEmails.isEmpty {
+        guard let session = model.session else { go(back: false); return }
+        guard workMode == .team else {
+            switchToPersonal()
+            go(back: false)
+            return
+        }
+        let newName = teamName.trimmingCharacters(in: .whitespaces)
+        isBusy = true
+        error = nil
+        Task {
+            defer { isBusy = false }
+            do {
+                if let team = createdTeam {
+                    if team.name != newName {
+                        try await TeamActions(tenantId: team.id, uid: session.uid).renameWorkspace(newName)
+                        createdTeam = (team.id, newName)
+                        await session.reloadWorkspaces()
+                    }
+                } else {
+                    let id = try await session.createWorkspace(name: newName)
+                    createdTeam = (id, newName)
+                    await session.reloadWorkspaces()
+                    model.switchWorkspace(to: id)
+                }
+                go(back: false)
+            } catch {
+                self.error = PlanErrorCode.code(in: error) != nil ? model.errorMessage(error) : L10n.t("welcome.error")
+            }
+        }
+    }
+
+    private func switchToPersonal() {
+        guard let session = model.session, let personal = session.workspaces.first(where: \.isPersonal) else { return }
+        model.switchWorkspace(to: personal.id)
+    }
+
+    private func sendInvites() {
+        guard let team = createdTeam, let session = model.session, !parsedEmails.isEmpty else { go(back: false); return }
+        if !invalidEmails.isEmpty {
             error = L10n.t("welcome.invite.invalid", ["emails": invalidEmails.joined(separator: ", ")])
             return
         }
         isBusy = true
         error = nil
-        let newName = workspaceName.trimmingCharacters(in: .whitespaces)
         Task {
             defer { isBusy = false }
             do {
-                let actions = TeamActions(tenantId: active.id, uid: session.uid)
-                if newName != active.name {
-                    try await actions.renameWorkspace(newName)
-                    await session.reloadWorkspaces()
-                }
-                if invitesEnabled {
-                    let language = L10n.locale.language.languageCode?.identifier ?? "de"
-                    for email in parsedEmails {
-                        try await actions.createInvitation(kind: .email, email: email, role: "Member", tenantName: newName,
-                                                           inviterName: name.trimmingCharacters(in: .whitespaces), language: language)
-                    }
+                let actions = TeamActions(tenantId: team.id, uid: session.uid)
+                let language = L10n.locale.language.languageCode?.identifier ?? "de"
+                for email in parsedEmails {
+                    try await actions.createInvitation(kind: .email, email: email, role: "Member", tenantName: team.name,
+                                                       inviterName: name.trimmingCharacters(in: .whitespaces), language: language)
                 }
                 go(back: false)
             } catch {
-                self.error = L10n.t("welcome.error")
+                self.error = PlanErrorCode.code(in: error) != nil ? model.errorMessage(error) : L10n.t("welcome.error")
             }
         }
     }

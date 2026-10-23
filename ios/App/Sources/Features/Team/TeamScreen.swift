@@ -95,6 +95,11 @@ private struct TeamScreenContent: View {
     }
 
     private func presentInvite() {
+        // Plan without invitations (Free, personal workspace): explain instead of opening the sheet.
+        guard model.entitlements.canInvite else {
+            model.toasts.show(PFToast(L10n.t("planError.plan-invites-disabled"), style: .warning))
+            return
+        }
         model.presenter.present(detents: [.large]) { InviteSheet(context: context) }
     }
 }

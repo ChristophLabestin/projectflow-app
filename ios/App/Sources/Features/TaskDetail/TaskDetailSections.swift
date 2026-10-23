@@ -294,14 +294,20 @@ extension TaskDetailScreen {
                 Text(L10n.t("taskDetail.description.label")).pfText(.section).foregroundStyle(PFColor.textMain)
                 Spacer()
                 if canEdit, !isEditingDescription, document.isEditable {
-                    Button { draftDescription(task) } label: {
+                    // Greyed out without server AI in this plan (billing contract: `aiEnabledFor`); a tap explains why.
+                    let aiEnabled = model.entitlements.aiEnabled(for: model.uid)
+                    Button {
+                        if aiEnabled { draftDescription(task) } else { model.toasts.show(PFToast(L10n.t("plan.aiOff"), style: .warning)) }
+                    } label: {
                         Image(systemName: "sparkles").font(.system(size: 14, weight: .semibold)).foregroundStyle(PFColor.textMuted)
                             .symbolEffect(.pulse, isActive: isDraftingDescription)
                             .frame(width: 34, height: 34).background(PFColor.raised, in: .circle)
+                            .opacity(aiEnabled ? 1 : 0.4)
                     }
                     .buttonStyle(.pfPressable)
                     .disabled(isDraftingDescription)
                     .accessibilityLabel(L10n.t("taskDetail.ai.draft"))
+                    .accessibilityHint(aiEnabled ? "" : L10n.t("plan.aiOff"))
                 }
                 if canEdit, !isEditingDescription, !document.isEmpty, document.isEditable {
                     Button {

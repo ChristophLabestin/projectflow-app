@@ -459,6 +459,11 @@ struct ProjectCreateSheet: View {
             model.toasts.show(PFToast(L10n.t("projects.new.dateOrder"), style: .warning))
             return
         }
+        // Plan limit (Free: 3 projects). The rules enforce it too, but they can't explain why.
+        guard model.entitlements.canCreateProject else {
+            model.toasts.show(PFToast(L10n.t("planError.plan-project-limit", ["limit": model.entitlements.projectLimit ?? 3]), style: .warning))
+            return
+        }
         isCreating = true
         let actor = model.profile?.displayName ?? ""
         Task {
@@ -472,7 +477,7 @@ struct ProjectCreateSheet: View {
                 }
             } catch {
                 isCreating = false
-                model.toasts.show(PFToast(L10n.t("common.error"), style: .error))
+                model.toasts.show(PFToast(model.errorMessage(error), style: .error))
             }
         }
     }

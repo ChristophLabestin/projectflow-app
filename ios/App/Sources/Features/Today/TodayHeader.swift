@@ -58,7 +58,7 @@ struct TodayTopBar: View {
     private var workspaceChip: some View {
         Button { presentWorkspaces() } label: {
             HStack(spacing: 6) {
-                Text(model.session?.activeWorkspace?.name ?? "")
+                Text(model.session?.activeWorkspace?.displayName ?? "")
                     .pfText(.section)
                     .foregroundStyle(PFColor.textMain)
                     .lineLimit(1)
@@ -92,17 +92,7 @@ struct TodayTopBar: View {
         let active = session.activeWorkspaceId
         let model = model
         model.presenter.present(detents: [.fit]) {
-            OptionSheet(title: L10n.t("today.workspaceSheet.title"), options: workspaces.map { workspace in
-                OptionSheet.Option(id: workspace.id, label: workspace.name, isSelected: workspace.id == active) {
-                    Text(String(workspace.name.first ?? "W").uppercased())
-                        .pfText(.buttonSmall)
-                        .foregroundStyle(PFColor.onPrimary)
-                        .frame(width: 28, height: 28)
-                        .background(PFColor.primary, in: .rect(cornerRadius: 8, style: .continuous))
-                }
-            }) { id in
-                model.switchWorkspace(to: id)
-            }
+            WorkspaceSwitcherSheet(workspaces: workspaces, activeId: active) { id in model.switchWorkspace(to: id) }
         }
     }
 }

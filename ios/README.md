@@ -82,6 +82,14 @@ open `/admin/crashes`. Release = `MARKETING_VERSION`, build = `CURRENT_PROJECT_V
 announcement banner (`platform_config/announcement` → `AnnouncementStore`, shown in `MainShell` above every tab; dismissed per
 version in `pf.announcement.dismissed`). Contract: admin-console iOS note, `brain/reference/app/FIRESTORE_STRUCTURE.md`.
 
+## Plans and personal workspace (billing contract)
+
+`brain/plans/billing-entitlements-contract.md` §5/§7. `PFData/PlanEntitlements.swift` (`PlanEntitlements`, `PlanStore`,
+`PlanErrorCode`), bound per workspace in `AppModel` (`model.entitlements`, `model.errorMessage(_:)`). UI in `Features/Billing`
+(plan card in Account, "Nur lesen" notice on locked projects); AI controls are greyed out without server AI; invites and
+new projects are pre-checked. Onboarding asks "Allein oder im Team?" (team → new team workspace + invite step); the
+workspace switcher lists "Persönlich" above "Teams". No purchase UI (App Store 3.1.1).
+
 ## Startup template seed data
 
 `App/Resources/StartupSeeds.json` holds the content of the `startup_company_formation` template (tracks,

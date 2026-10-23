@@ -177,6 +177,8 @@ extension TaskDetailScreen {
                 })
             } catch PlanningAI.Failure.quotaExceeded {
                 model.toasts.show(PFToast(L10n.t("taskDetail.ai.quota"), style: .warning))
+            } catch PlanningAI.Failure.plan(let code) {
+                model.toasts.show(PFToast(L10n.t("planError.\(code)"), style: .warning))
             } catch {
                 model.toasts.show(PFToast(L10n.t("taskDetail.ai.failed"), style: .error))
             }

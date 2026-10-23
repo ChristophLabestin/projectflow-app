@@ -112,6 +112,11 @@ private struct ProjectTeamContent: View {
     }
 
     private func presentInvite() {
+        // Plan without invitations (Free, personal workspace): explain instead of opening the sheet.
+        guard model.entitlements.canInvite else {
+            model.toasts.show(PFToast(L10n.t("planError.plan-invites-disabled"), style: .warning))
+            return
+        }
         guard let project else { return }
         model.presenter.present(detents: [.large]) { InviteSheet(context: context, presetProjectIds: [project.id], presetRole: .guest) }
     }
