@@ -284,6 +284,9 @@ const deSettings = {
     'settings.storage.errors.driveDisconnectFailed': 'Google-Drive-Speicher konnte nicht getrennt werden.',
     'settings.prebeta.saved': 'Pre-Alpha-Einstellungen erfolgreich gespeichert.',
     // --- Account data (GDPR export / erasure) ---
+    'accountData.crash.title': 'Anonyme Absturzberichte senden',
+    'accountData.crash.description': 'Wenn ProjectFlow abstürzt, schickt dieses Gerät einen anonymen Bericht: nur technische Daten wie Browser, Betriebssystem und die Stelle des Fehlers – ohne Namen, E-Mail oder Inhalte deiner Projekte. Gilt nur für dieses Gerät.',
+    'accountData.crash.label': 'Absturzberichte',
     'accountData.export.title': 'Meine Daten exportieren',
     'accountData.export.description': 'Lade eine JSON-Datei mit deinem Profil, deinen Workspace-Mitgliedschaften, Aufgaben, Kommentaren und Aktivitäten herunter. Geheimnisse und Passkey-Zugangsdaten sind nicht enthalten.',
     'accountData.export.button': 'Meine Daten exportieren',

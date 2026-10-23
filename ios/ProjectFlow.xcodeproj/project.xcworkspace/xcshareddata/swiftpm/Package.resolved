@@ -1,5 +1,5 @@
 {
-  "originHash" : "cd8978ef0c1c7ebe984d70b02fd1b53e08b3bfba4ea2956be29f282a5f5a7034",
+  "originHash" : "c1884fbc9f899403b1d6543e8d6171a7e64a63f0909d2904ebe6efbae5ae1090",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -143,15 +143,6 @@
       "state" : {
         "revision" : "f4a19a3c313dc2616c70bb49d29a799fb16be837",
         "version" : "2.4.1"
-      }
-    },
-    {
-      "identity" : "sentinel-swift",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/ChristophLabestin/sentinel-swift.git",
-      "state" : {
-        "revision" : "f220e720977a0e26a74c434a941012a18d128ba9",
-        "version" : "0.1.0"
       }
     }
   ],

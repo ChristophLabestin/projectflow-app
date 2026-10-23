@@ -133,6 +133,24 @@
         "landing"
       ],
       "port": 4300
+    },
+    {
+      "name": "web-e2e-crash",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3091",
+        "AUTH_PORT=9851",
+        "FIRESTORE_PORT=8851",
+        "STORAGE_PORT=9852",
+        "FUNCTIONS_PORT=5851",
+        "E2E_ADMIN=1",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3091
     }
   ]
 }

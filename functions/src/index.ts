@@ -202,6 +202,7 @@ export {
 export * from './passkeys';
 export * from './desktopAuth';
 export { mcp } from './mcp-server';
+export { crashIngest } from './crash-reports';
 export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecycle';
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';

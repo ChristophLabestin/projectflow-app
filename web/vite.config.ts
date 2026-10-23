@@ -1,3 +1,5 @@
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -24,6 +26,32 @@ const requireFirebaseConfig = (env: Record<string, string>): Plugin => ({
     }
 });
 
+// Crash reports carry this build id as `release` (web/services/errorReporting.ts). Production builds emit hidden
+// source maps and move them out of dist/ (never deployed) into PF_SOURCEMAP_DIR/<release>/ for
+// functions/scripts/crash-symbolicate.mjs.
+const BUILD_ID = new Date().toISOString().slice(0, 16);
+const SOURCEMAP_DIR = process.env.PF_SOURCEMAP_DIR
+    || path.join(os.homedir(), 'Library', 'Application Support', 'ProjectFlow', 'sourcemaps');
+
+const stashSourceMaps = (): Plugin => ({
+    name: 'projectflow-stash-sourcemaps',
+    apply: 'build',
+    closeBundle() {
+        const outDir = path.resolve(__dirname, 'dist');
+        const target = path.join(SOURCEMAP_DIR, BUILD_ID.replace(/:/g, '-'));
+        const walk = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true })
+            .flatMap((entry) => entry.isDirectory() ? walk(path.join(dir, entry.name)) : [path.join(dir, entry.name)]);
+        const maps = fs.existsSync(outDir) ? walk(outDir).filter((file) => file.endsWith('.map')) : [];
+        for (const file of maps) {
+            const dest = path.join(target, path.relative(outDir, file));
+            fs.mkdirSync(path.dirname(dest), { recursive: true });
+            fs.copyFileSync(file, dest);
+            fs.rmSync(file);
+        }
+        if (maps.length) console.log(`[crash] ${maps.length} source maps for release ${BUILD_ID} → ${target}`);
+    }
+});
+
 export default defineConfig(({ mode }) => {
     const isProd = mode === 'production';
     const env = loadEnv(mode, __dirname, 'VITE_');
@@ -33,12 +61,12 @@ export default defineConfig(({ mode }) => {
         port: 3000,
         host: '0.0.0.0',
       },
-      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env)] : [])],
+      plugins: [react(), ...(isProd ? [requireFirebaseConfig(env), stashSourceMaps()] : [])],
       // Some deps/legacy code read process.env.*; resolve to an empty object instead of a runtime shim.
-      // __PF_BUILD__ identifies the web build in legal consent records (platform web/desktop).
-      define: { 'process.env': {}, __PF_BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
+      // __PF_BUILD__ identifies the web build in legal consent records (platform web/desktop) and crash reports.
+      define: { 'process.env': {}, __PF_BUILD__: JSON.stringify(BUILD_ID) },
       // Strip noisy debug logging from production bundles. console.warn/error are
-      // kept so genuine problems still surface (and feed Sentry breadcrumbs).
+      // kept so genuine problems still surface.
       esbuild: isProd
         ? { drop: ['debugger'], pure: ['console.log', 'console.debug', 'console.info'] }
         : undefined,
@@ -48,6 +76,8 @@ export default defineConfig(({ mode }) => {
         }
       },
       build: {
+        // Hidden: no sourceMappingURL comment; the maps are stashed by stashSourceMaps, not deployed.
+        sourcemap: isProd ? 'hidden' : false,
         chunkSizeWarningLimit: 900,
         rollupOptions: {
           output: {

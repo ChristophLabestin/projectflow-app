@@ -285,6 +285,9 @@ const enSettings = {
     'settings.account.linkedAccounts.noteSuffix': 'remove your existing password. You will still be able to sign in using your email and password as long as they are linked.',
     'settings.prebeta.saved': 'Pre-Alpha settings saved successfully.',
     // --- Account data (GDPR export / erasure) ---
+    'accountData.crash.title': 'Send anonymous crash reports',
+    'accountData.crash.description': 'When ProjectFlow crashes, this device sends an anonymous report: only technical data such as browser, operating system and where it failed — no name, email or project content. Applies to this device only.',
+    'accountData.crash.label': 'Crash reports',
     'accountData.export.title': 'Export my data',
     'accountData.export.description': 'Download a JSON file with your profile, workspace memberships, tasks, comments and activity. Secrets and passkey credentials are not included.',
     'accountData.export.button': 'Export my data',

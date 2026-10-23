@@ -166,6 +166,22 @@ service cloud.firestore {
       }
     }
 
+    // Crash reports (web + iOS, opt-in): written only by the crashIngest function; platform admins
+    // read them and triage the issue status in the admin platform (/admin/crashes).
+    match /crashIssues/{issueId} {
+      allow read: if authed() && request.auth.token.platformAdmin == true;
+      allow update: if authed() && request.auth.token.platformAdmin == true
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'statusChangedAt', 'statusChangedBy', 'resolvedRelease', 'note'])
+        && request.resource.data.status in ['open', 'resolved', 'ignored'];
+      allow create, delete: if false;
+
+      match /crashEvents/{eventId} {
+        allow read: if authed() && request.auth.token.platformAdmin == true;
+        allow write: if false;
+      }
+    }
+
     // Per-user consent record: readable by its owner, written only by the
     // acceptLegalDocuments / declineLegalDocuments callables (current version only).
     match /legal_acceptances/{userId} {

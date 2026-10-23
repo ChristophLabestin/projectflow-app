@@ -41,7 +41,6 @@
 		2402A9BA6CEC4F8E8D650F24 /* ExtensionStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20B9649DFA960D9AA3B09B1 /* ExtensionStrings.swift */; };
 		240F1BD55EB301BBBE2661B4 /* ProjectFlowShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 830BDE5F5C6CAD9936D3FC4E /* ProjectFlowShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		27868D6BD87F5688E89D652E /* WorkItemActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADA588D640F94EA3DE37F4AD /* WorkItemActions.swift */; };
-		27BD138D2E87ECB67CB0397F /* SentinelKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8680B0DB498B4193218F269F /* SentinelKit */; };
 		288C81A6BED0634E26AAE076 /* PersonalTaskMove.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66B2397A7A74AC093FA14641 /* PersonalTaskMove.swift */; };
 		2897BCBC3337D6FEDF07C767 /* OnboardingSurvey.swift in Sources */ = {isa = PBXBuildFile; fileRef = 244E3BBFC7644105E695F68C /* OnboardingSurvey.swift */; };
 		2CC1D968E42F515A2E740B79 /* SystemStrings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288A008F6C9B89C7BC73E1BD /* SystemStrings.swift */; };
@@ -436,7 +435,6 @@
 				4993A897E4D481BCEEECB915 /* FirebaseMessaging in Frameworks */,
 				16E77E76AEA0589EDED9993E /* FirebaseAuth in Frameworks */,
 				6B49FA707F29A97971413497 /* GoogleSignIn in Frameworks */,
-				27BD138D2E87ECB67CB0397F /* SentinelKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -997,7 +995,6 @@
 				7F8BCA3C2BC2D1F0233FEA57 /* FirebaseMessaging */,
 				B7D94F4D8DEABAFC7314806D /* FirebaseAuth */,
 				F9EDDD28D9D07FFEF70C6A0B /* GoogleSignIn */,
-				8680B0DB498B4193218F269F /* SentinelKit */,
 			);
 			productName = ProjectFlow;
 			productReference = 939AE0BDE889F1161652064A /* ProjectFlow.app */;
@@ -1043,7 +1040,6 @@
 			packageReferences = (
 				DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
-				130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */,
 				EA16C933CED5F775572DD253 /* XCLocalSwiftPackageReference "Packages/ProjectFlowKit" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -1374,7 +1370,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PF_APS_ENVIRONMENT = development;
-				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1534,7 +1529,6 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PF_APS_ENVIRONMENT = production;
-				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1664,7 +1658,6 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PF_APS_ENVIRONMENT = development;
-				PF_SENTINEL_DSN = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -1812,14 +1805,6 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ChristophLabestin/sentinel-swift.git";
-			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 0.1.0;
-			};
-		};
 		B952F679DF3F0D0468875329 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
@@ -1863,11 +1848,6 @@
 			isa = XCSwiftPackageProductDependency;
 			package = DB395E993DE245DE7A4EA095 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseMessaging;
-		};
-		8680B0DB498B4193218F269F /* SentinelKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 130765F3A8CF797337BF5AFD /* XCRemoteSwiftPackageReference "sentinel-swift" */;
-			productName = SentinelKit;
 		};
 		9F06AC3B6186753189A0058B /* PFDesign */ = {
 			isa = XCSwiftPackageProductDependency;
