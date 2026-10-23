@@ -154,19 +154,19 @@ export const OAuthConsent = () => {
                         {user?.email && <p className="oauth-consent__meta">{t('oauthConsent.account').replace('{email}', user.email)}</p>}
 
                         <div className="oauth-consent__actions">
-                            <button type="button" className="btn btn--ghost" onClick={() => void finish(false)} disabled={state === 'working'}>
+                            <button type="button" className="btn btn--md btn--ghost" onClick={() => void finish(false)} disabled={state === 'working'}>
                                 {t('oauthConsent.deny')}
                             </button>
                             <button
                                 type="button"
-                                className="btn btn--primary"
+                                className="btn btn--md btn--primary"
                                 onClick={() => void finish(true)}
                                 disabled={state === 'working' || !workspace?.allowed || scopes.length === 0}
                             >
                                 {t('oauthConsent.allow')}
                             </button>
                         </div>
-                        <button type="button" className="btn btn--ghost oauth-consent__switch" onClick={() => void signOut(auth)}>
+                        <button type="button" className="btn btn--sm btn--ghost oauth-consent__switch" onClick={() => void signOut(auth)}>
                             {t('oauthConsent.switchAccount')}
                         </button>
                     </>

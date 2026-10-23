@@ -149,7 +149,7 @@ Zusätzlich `…/mcp/readonly` als Read-only-Endpunkt (wie Linear/GitHub) für v
 | ✅ P1 Principal & Policy | `ai-access.ts` (Scopes ∩ Rolle ∩ Policy, Gast-Projektfilter) in `authRequest` + `/mcp`, Policy `ai_config/policy` + Callables, Rate-Limit (In-Instanz), Audit `ai_audit` (TTL 180 T), `lastUsedAt` gedrosselt. Tages-Quote je Tenant → P3 | M |
 | ✅ P2 OAuth-AS | Metadata (RFC 8414/9728), CIMD+DCR, authorize/token/revoke, PKCE S256, Refresh-Rotation + Reuse-Erkennung, Consent-Seite `/oauth/consent`, PATs `pfp_`, Verbindungen listen/widerrufen — `brain/operations/projectflow-oauth.md` | L |
 | ✅ P3 MCP v2 | SDK v2 (2026-07-28 + Legacy-Fallback), Gen2 `mcpServer` (Concurrency 80), Tools `search` + `my_today`, Tages-Quote je Tenant (5000 Writes), Activity „via <Client>“, Domain vorbereitet (DNS beim User). `outputSchema`/`structuredContent` bewusst weggelassen (verdoppelt Tokens) | M |
-| P4 Web-UI | Consent-Screen, „KI & Integrationen“ (Client-Kacheln, Snippets, Deeplinks), Verbundene Apps, PATs, Policy, Audit-Ansicht, i18n de/en | L |
+| ✅ P4 Web-UI | Consent-Screen, Tab „KI & Integrationen“ (`AiIntegrationsPanel`: Client-Kacheln + Schnipsel + One-Click Cursor/VS Code, Verbundene Apps, PATs, Policy, KI-Aktivität), Legacy-Tab „API & MCP“ nur noch für Owner, i18n de/en | L |
 | P5 Doku | Öffentliche Install-Seite (Landing), Brain-Docs, Plugin-READMEs | S |
 | P6 iOS (optional) | Liste verbundener Apps + Widerruf in den Einstellungen | S |
 | P7 Listings (optional) | Claude-Connector-Verzeichnis, ChatGPT-Apps, Cursor-/VS-Code-MCP-Verzeichnisse | S |
