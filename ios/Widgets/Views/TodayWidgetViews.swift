@@ -146,7 +146,7 @@ private struct TodayFocusStrip: View {
                 if let started = focus.startedAt, focus.status == "active" {
                     Text(started, style: .timer)
                         .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                        .foregroundStyle(PFColor.textMain)
+                        .timerForeground(PFColor.textMain)
                         .multilineTextAlignment(.trailing)
                         .frame(maxWidth: 64, alignment: .trailing)
                 }

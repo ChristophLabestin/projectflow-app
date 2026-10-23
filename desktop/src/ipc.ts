@@ -10,6 +10,7 @@ import { upcomingEvents } from './features/calendar';
 import { startExternalSignIn } from './features/externalAuth';
 import { indexSpotlight } from './features/spotlight';
 import { applyUpdate, getUpdateState } from './features/updater';
+import { finishSplash } from './windows/splash';
 import { setLanguage } from './labels';
 import { addRecent, installMenus } from './menu';
 import { isTrustedSender } from './security';
@@ -135,6 +136,8 @@ export const registerIpc = () => {
         if (safe) void shell.openExternal(new URL(safe, APP_ORIGIN).toString());
     });
     handle(IPC.updateState, () => getUpdateState());
+    // Something other than the app is on screen (e.g. the workspace error page): end the launch scene.
+    on(IPC.splashDone, (event) => { if (senderWindow(event) === getMainWindow()) finishSplash(); });
     on(IPC.updateAction, () => applyUpdate());
     on(IPC.indexSpotlight, (event, items: unknown) => {
         if (senderWindow(event) === getMainWindow()) indexSpotlight(items);

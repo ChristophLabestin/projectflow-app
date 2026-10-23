@@ -59,6 +59,8 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 
 - Concept: [plans/desktop-electron-concept.md](./plans/desktop-electron-concept.md). Package `desktop/` (TypeScript, bundled by esbuild; `npm --prefix desktop install` once).
 - **Signed in, fully local:** `bash scripts/dev-desktop.sh` (`npm --prefix desktop run dev:e2e`) starts `dev-e2e.sh` (emulators + seed + auto-login Vite) in its own process group, picks a free app port, and launches Electron against it with a fresh profile and CDP on `127.0.0.1:9333` (`DEBUG_PORT`). `E2E_LOGIN=outsider`, `E2E_FUNCTIONS=0`, `MAIN_INSPECT_PORT=9339` (Node inspector of the main process), `DESKTOP_REUSE=1 PORT=<port>` (attach to a running web-e2e), `DESKTOP_KEEP_PROFILE=1`; emulator port overrides as in dev-e2e (`AUTH_PORT=9671 FIRESTORE_PORT=8671 STORAGE_PORT=9672 FUNCTIONS_PORT=5671` when another worktree's emulators hold the defaults).
+  Dev runs as "ProjectFlow Dev" (DEV icon, `projectflow-dev://`, no global shortcuts/Spotlight; opt in with `PF_DESKTOP_DEV_SHORTCUTS=1` / `PF_DESKTOP_DEV_SPOTLIGHT=1`), so it can run next to the installed app.
+  `PF_DESKTOP_HOLD_SPLASH=1` keeps the launch scene on screen (dev only, for design review).
 - Against a running dev server: `npm --prefix desktop run dev` (`PF_DESKTOP_URL`, default `http://localhost:3000`). Against production: `npm --prefix desktop start`.
 - Typecheck + bundle: `npm --prefix desktop run build`. Unsigned app bundle: `npm --prefix desktop run pack` (`release/`); installers `dist:mac` / `dist:win` need signing credentials.
 - **Release** (concept §17): bump `desktop/package.json` version, commit, then `git tag v<version> && git push origin v<version>` → `.github/workflows/desktop-release.yml` builds macOS + Windows and publishes the GitHub Release (download links + auto-update feed). Signing/notarization secrets are optional (see workflow header).
@@ -70,6 +72,7 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - `npm run build` — typecheck + static build to `landing/dist/` (pages rendered from TS templates).
 - `npm run deploy:preview` — build + `firebase hosting:channel:deploy preview` on site `getprojectflow` (uses `landing/firebase.json`, independent from the app's root `firebase.json`).
 - `npm run deploy` — live deploy of the landing site (only after the owner signs off).
+- From the repo root (matches the `firebase deploy` allow rule): `npm --prefix landing run build`, then `firebase deploy --config landing/firebase.json --only hosting --project projectflow-labestin` (live) or `firebase hosting:channel:deploy preview --config landing/firebase.json --project projectflow-labestin --expires 30d`. Without `--config` the root `firebase.json` deploys the **app** instead.
 - Domain: connect `getprojectflow.com` (+ `www`) to Hosting site `getprojectflow` in the Firebase console; `app.getprojectflow.com` stays on site `projectflow-labestin`.
 
 ## Firestore Commands

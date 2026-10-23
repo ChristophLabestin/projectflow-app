@@ -17,7 +17,8 @@ export const APP_URL = resolveAppUrl();
 export const APP_ORIGIN = APP_URL.origin;
 export const IS_DEV = !app.isPackaged;
 export const APP_ID = 'de.christophlabestin.projectflow.desktop';
-export const PROTOCOL = 'projectflow';
+/** Dev builds use their own scheme so they never take over `projectflow://` from the installed app. */
+export const PROTOCOL = IS_DEV ? 'projectflow-dev' : 'projectflow';
 
 export const QUICK_ACCESS_PATH = '/desktop/quick-access';
 

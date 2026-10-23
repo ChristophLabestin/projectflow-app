@@ -1,5 +1,5 @@
 import { BrowserWindow, Menu, app, type MenuItemConstructorOptions } from 'electron';
-import { IS_DEV } from './config';
+import { IS_DEV, PROTOCOL } from './config';
 import type { DesktopCommand } from './contract';
 import { labels } from './labels';
 import { openExternalSafe } from './security';
@@ -73,7 +73,7 @@ const applyJumpList = () => {
         type: 'task' as const,
         title,
         program: process.execPath,
-        args: `${process.defaultApp ? `"${process.argv[1]}" ` : ''}projectflow://${target.replace(/^\//, '')}`,
+        args: `${process.defaultApp ? `"${process.argv[1]}" ` : ''}${PROTOCOL}://${target.replace(/^\//, '')}`,
         iconPath: process.execPath,
         iconIndex: 0
     });

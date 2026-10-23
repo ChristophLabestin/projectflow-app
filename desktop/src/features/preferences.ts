@@ -37,6 +37,8 @@ const resolveShortcut = (value: string | null | undefined, fallback: string) => 
 
 export const applyGlobalShortcuts = () => {
     registered.splice(0).forEach((accelerator) => globalShortcut.unregister(accelerator));
+    // Dev runs next to the installed app, which owns the global shortcuts (opt in: PF_DESKTOP_DEV_SHORTCUTS=1).
+    if (IS_DEV && process.env.PF_DESKTOP_DEV_SHORTCUTS !== '1') return true;
     const settings = getSettings();
     const access = register(resolveShortcut(settings.quickAccessShortcut, DEFAULT_SHORTCUTS.quickAccess), toggleQuickAccess);
     const capture = register(resolveShortcut(settings.quickCaptureShortcut, DEFAULT_SHORTCUTS.quickCapture), toggleCapture);

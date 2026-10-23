@@ -93,7 +93,9 @@ const EN = {
     updateReadyBody: 'The update is installed the next time ProjectFlow restarts.',
     updateRestart: 'Restart now',
     updateNone: 'You are up to date (ProjectFlow {version}).',
-    updateCheckFailed: 'Could not check for updates.'
+    updateCheckFailed: 'Could not check for updates.',
+    splashPreparing: 'Preparing your workspace',
+    splashSlow: 'Taking longer than usual — check your connection'
 };
 
 export type NativeLabels = typeof EN;
@@ -186,7 +188,9 @@ const DE: NativeLabels = {
     updateReadyBody: 'Das Update wird beim nächsten Neustart von ProjectFlow installiert.',
     updateRestart: 'Jetzt neu starten',
     updateNone: 'ProjectFlow ist aktuell (Version {version}).',
-    updateCheckFailed: 'Updates konnten nicht geprüft werden.'
+    updateCheckFailed: 'Updates konnten nicht geprüft werden.',
+    splashPreparing: 'Arbeitsbereich wird vorbereitet',
+    splashSlow: 'Dauert länger als sonst – prüfe deine Verbindung'
 };
 
 let current: NativeLabels | null = null;
