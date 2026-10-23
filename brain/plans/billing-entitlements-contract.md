@@ -58,6 +58,15 @@ Locale-Schlüssel `billing.errors.<code>`. Upgrade-Link: `?openSettings=billing`
 | `ai-addon-unavailable`, `ai-addon-needs-subscription`, `ai-addon-invalid-member` | `setAiAddonMembers` | |
 | `billing-not-configured`, `billing-already-subscribed`, `billing-price-missing`, `billing-no-customer` | Checkout/Portal | |
 | `invalid-openai-key`, `ai-key-storage-unavailable` | `personalAiKey` | |
+| `plan-flow-limit` | `saveAutomation`, `setAutomationEnabled` | Limit aktiver Flows des Plans erreicht (nichts wird abgeschaltet) |
+| `plan-flow-runs-limit` | `runAutomation`; automatische Läufe enden als `skipped_limit` (Protokoll: „Kontingent erreicht“) | Flow-Läufe des Monats aufgebraucht |
+| `plan-flow-ai-limit` | Flow-KI-Schritte (Lauf `failed`) | KI-Schritte des Monats aufgebraucht |
+
+**Flow-Kontingent (`flowsQuota`, umgesetzt von Flows, `flowQuotaFor` in `functions/src/automation-logic.ts`):** `free` = 3 aktive Flows,
+200 Läufe/Monat, KI-Schritte nur mit eigenem OpenAI-Schlüssel des Flow-Verantwortlichen; `seat` = je bezahltem Platz 2.000 Läufe und
+200 KI-Schritte pro Monat, 50 aktive Flows + 10 je weiterem Platz (max. 200); Server-KI nur, wenn `aiEnabledFor(doc, flowOwner)`,
+sonst eigener Schlüssel, sonst `ai-not-enabled`. Ohne Entitlements-Dokument (Grace) = Ein-Platz-Kontingent. Override pro Workspace:
+`tenants/{t}.limits.automations`. Zählerstand und aktuelles Limit stehen in `tenants/{t}/automation_usage/{yyyy-mm}`.
 
 Callable-Fehler kommen als `HttpsError('failed-precondition' | 'invalid-argument', <code>)` — der Code steht in `message`.
 

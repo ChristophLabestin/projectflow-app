@@ -1,5 +1,6 @@
 // Flow editor (/flows/new, /flows/:flowId): vertical step builder Wenn → Falls → Dann, preview,
 // dry run and (package 3) run log. Concept: brain/plans/flows-concept.md §4.
+import { planErrorMessage } from '../../services/billingService';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 
@@ -200,7 +201,7 @@ const FlowEditorView = () => {
             setDirty(true);
             setPickedTemplate(true);
         } catch (err) {
-            setError(flowErrorMessage(err) || t('flows.fromText.failed'));
+            setError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.fromText.failed'));
         } finally {
             setDrafting(false);
         }
@@ -266,7 +267,7 @@ const FlowEditorView = () => {
             showSuccess(t('flows.saved'));
             if (isNew) navigate(`/flows/${result.id}`, { replace: true });
         } catch (err) {
-            setError(flowErrorMessage(err) || t('flows.error.save'));
+            setError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.error.save'));
         } finally {
             setSaving(false);
         }
@@ -281,7 +282,7 @@ const FlowEditorView = () => {
             await setFlowEnabled(tenantId, flowId, enabled);
             setDraft({ ...draft, enabled });
         } catch (err) {
-            showError(flowErrorMessage(err) || t('flows.error.save'));
+            showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.error.save'));
         }
     };
 
@@ -293,7 +294,7 @@ const FlowEditorView = () => {
             await deleteFlow(tenantId, flowId);
             navigate(backTo, { replace: true });
         } catch (err) {
-            showError(flowErrorMessage(err) || t('flows.error.delete'));
+            showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.error.delete'));
         }
     };
 
@@ -306,7 +307,7 @@ const FlowEditorView = () => {
             else showSuccess(t('flows.run.done'));
             setSideTab('log');
         } catch (err) {
-            showError(flowErrorMessage(err) || t('flows.run.failed'));
+            showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.run.failed'));
         } finally {
             setRunning(false);
         }

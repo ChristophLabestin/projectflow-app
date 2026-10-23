@@ -21,6 +21,7 @@ const FUNCTIONS = 'http://127.0.0.1:5831/demo-projectflow/europe-west3';
 const T = 'ws-flows';
 const T2 = 'ws-limits';
 const T3 = 'ws-suspended';
+const T4 = 'ws-free';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const waitFor = async (label, fn, { timeout = 30000, interval = 300 } = {}) => {
@@ -107,7 +108,7 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
     const guest = await signUp('guest@example.test');
     const outsider = await signUp('out@example.test');
 
-    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test'], [T3, 'Suspended Test']]) {
+    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test'], [T3, 'Suspended Test'], [T4, 'Free Test']]) {
         await db.doc(`tenants/${tenantId}`).set({ tenantId, name, ownerId: owner.uid });
         await db.doc(`tenants/${tenantId}/members/${owner.uid}`).set({ uid: owner.uid, role: 'Owner', displayName: 'Olga' });
         await db.doc(`tenants/${tenantId}/members/${anna.uid}`).set({ uid: anna.uid, role: 'Member', displayName: 'Anna' });
@@ -407,6 +408,37 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
         assert.equal((await db.doc(`tenants/${T3}/automation_runs/susp-event_waiting`).get()).data().status, 'skipped_suspended');
         await expectError(call('runAutomation', owner.token, { tenantId: T3, id: 'susp-event', taskId: 's1', projectId: 'p1' }), 'FAILED_PRECONDITION');
         await expectError(call('saveAutomation', owner.token, { tenantId: T3, automation: { name: 'x', trigger: { type: 'task.created' }, actions: [{ type: 'comment', config: { text: 'x' } }] } }), 'FAILED_PRECONDITION');
+    });
+
+    await check('plan quota (free): 3 active flows, billing code on the 4th, no server AI without own key', async () => {
+        await db.doc(`tenants/${T4}/entitlements/plan`).set({ plan: 'free', status: 'free', flowsQuota: 'free', workspaceType: 'personal', seats: 1 });
+        await db.doc(`tenants/${T4}/projects/p1`).set({ title: 'F', ownerId: owner.uid, memberIds: [owner.uid], tenantId: T4 });
+        const automation = (name) => ({ name, scope: 'project', projectId: 'p1', trigger: { type: 'task.created' }, actions: [{ type: 'add_label', config: { label: 'neu' } }] });
+        for (const name of ['F1', 'F2', 'F3']) await call('saveAutomation', owner.token, { tenantId: T4, automation: automation(name) });
+        await expectError(call('saveAutomation', owner.token, { tenantId: T4, automation: automation('F4') }), 'FAILED_PRECONDITION');
+        try {
+            await call('saveAutomation', owner.token, { tenantId: T4, automation: automation('F4') });
+        } catch (error) {
+            assert.equal(error.message, 'plan-flow-limit');
+        }
+        // A disabled 4th flow can still be saved (nothing is deleted or blocked beyond activation).
+        const off = await call('saveAutomation', owner.token, { tenantId: T4, automation: { ...automation('F4'), enabled: false } });
+        await expectError(call('setAutomationEnabled', owner.token, { tenantId: T4, id: off.id, enabled: true }), 'FAILED_PRECONDITION');
+        // AI condition on Free without own key → failed run with the billing code.
+        await db.doc('_test/flowsAi').set({ answers: { predicate: { probability: 0.9 } } });
+        await flowDoc(T4, 'free-ai', { name: 'KI', scope: 'project', projectId: 'p1', trigger: { type: 'task.created', config: {} },
+            conditions: { op: 'and', groups: [{ op: 'and', rules: [{ field: 'ai', operator: 'ai', ai: { kind: 'predicate', question: 'Ist das dringend?', threshold: 0.8 } }] }] },
+            actions: [{ id: 'a1', type: 'add_label', config: { label: 'dringend' } }] }, owner.uid);
+        await addTask(T4, 'p1', 'f1', owner.uid);
+        const [run] = await waitFor('free ai run', async () => {
+            const list = await runsOf(T4, 'free-ai');
+            return list.length && list[0].status === 'failed' && list;
+        });
+        assert.equal(run.error, 'ai-not-enabled');
+        const usage = (await db.doc(`tenants/${T4}/automation_usage/${new Date().toISOString().slice(0, 7)}`).get()).data();
+        assert.equal(usage.runsLimit, 200);
+        assert.equal(usage.quotaTier, 'free');
+        await db.doc('_test/flowsAi').delete();
     });
 
     await check('rules: members read flows and runs; guests and clients cannot write', async () => {

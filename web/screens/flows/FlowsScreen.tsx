@@ -15,14 +15,15 @@ import { TRIGGER_ICONS, actionSentence, triggerSentence } from '../../components
 import {
     flowErrorMessage,
     setFlowEnabled,
+    subscribeFlowQuota,
     subscribeFlowUsage,
     subscribeFlows,
     type Flow,
+    type FlowQuota,
 } from '../../services/domain/automationsService';
 import { useFlowContext } from './useFlowContext';
+import { planErrorMessage } from '../../services/billingService';
 import './flows.scss';
-
-const RUNS_PER_MONTH = 2000;
 
 export const FlowsScreen = () => {
     const { t, dateLocale, language } = useLanguage();
@@ -36,6 +37,12 @@ export const FlowsScreen = () => {
     const [filter, setFilter] = useState('');
     const [usage, setUsage] = useState({ runs: 0, aiSteps: 0, skipped: 0 });
     const [pending, setPending] = useState<string | null>(null);
+    const [quota, setQuota] = useState<FlowQuota | null>(null);
+
+    useEffect(() => {
+        if (!tenantId || ctx.isGuest) return undefined;
+        return subscribeFlowQuota(tenantId, setQuota);
+    }, [tenantId, ctx.isGuest]);
 
     useEffect(() => {
         if (!tenantId || ctx.isGuest) return undefined;
@@ -76,7 +83,7 @@ export const FlowsScreen = () => {
         try {
             await setFlowEnabled(tenantId!, flow.id, enabled);
         } catch (err) {
-            showError(flowErrorMessage(err) || t('flows.error.save'));
+            showError(planErrorMessage(err, t) || flowErrorMessage(err) || t('flows.error.save'));
         } finally {
             setPending(null);
         }
@@ -108,10 +115,14 @@ export const FlowsScreen = () => {
                     {!routeProjectId && (
                         <Select value={filter} onChange={(v) => setFilter(String(v))} options={filterOptions} className="flows-page__filter" />
                     )}
-                    <span className={`flows-usage ${usage.runs >= RUNS_PER_MONTH * 0.8 ? 'is-warning' : ''}`.trim()}>
-                        <span className="material-symbols-outlined" aria-hidden="true">bolt</span>
-                        {t('flows.usage').replace('{runs}', usage.runs.toLocaleString(language)).replace('{limit}', RUNS_PER_MONTH.toLocaleString(language))}
-                    </span>
+                    {quota && (
+                        <span className={`flows-usage ${usage.runs >= quota.runsPerMonth * 0.8 ? 'is-warning' : ''}`.trim()}>
+                            <span className="material-symbols-outlined" aria-hidden="true">bolt</span>
+                            {t('flows.usage').replace('{runs}', usage.runs.toLocaleString(language)).replace('{limit}', quota.runsPerMonth.toLocaleString(language))}
+                            {quota.aiStepsPerMonth > 0 && ` · ${t('flows.usageAi').replace('{steps}', usage.aiSteps.toLocaleString(language)).replace('{limit}', quota.aiStepsPerMonth.toLocaleString(language))}`}
+                            {quota.tier === 'free' && ` · ${t('flows.quota.free').replace('{active}', String(quota.activeFlowsPerWorkspace))}`}
+                        </span>
+                    )}
                 </div>
 
                 {failed ? (

@@ -38,6 +38,7 @@ export const BILLING_ERROR_CODES = [
     'ai-addon-unavailable', 'ai-addon-needs-subscription', 'ai-addon-invalid-member',
     'billing-not-configured', 'billing-already-subscribed', 'billing-price-missing', 'billing-no-customer',
     'invalid-openai-key', 'ai-key-storage-unavailable',
+    'plan-flow-limit', 'plan-flow-runs-limit', 'plan-flow-ai-limit',
 ] as const;
 
 /** Assigns the AI add-on to full members (owner only); Stripe quantity follows. */

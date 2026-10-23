@@ -11,6 +11,8 @@ import { emitActivityEvent } from './activity-events';
 import { createNotificationDoc, getActor } from './notification-writer';
 import { loadAiPolicy } from './ai-store';
 import { SUSPENDED_MESSAGE, assertTenantActive, isTenantSuspended, suspendedTenantIds } from './tenant-status';
+import { AI_KEY_SECRETS, ownAiKeyFor } from './billing';
+import { aiEnabledFor } from './billing-logic';
 import { aiDecide, aiGenerate, DecideResult, GenerateRequest } from './ai-decide';
 import { DraftContext, FLOW_DRAFT_SCHEMA, draftFromModel, flowDraftInstructions } from './automation-draft';
 import {
@@ -37,6 +39,7 @@ import {
     assigneesOf,
     canManageAutomation,
     checkLimits,
+    flowQuotaFor,
     computeNextRunAt,
     conditionsNeedTask,
     dueScanDate,
@@ -55,7 +58,6 @@ import {
     normalizeAutomation,
     planTaskPatch,
     renderTemplate,
-    resolveLimits,
     resolvePeople,
     runIdFor,
     slotKey,
@@ -77,6 +79,26 @@ const taskRefOf = (tenantId: string, projectId: string, taskId: string) =>
 const projectRefOf = (tenantId: string, projectId: string) => db.doc(`tenants/${tenantId}/projects/${projectId}`);
 
 const expireIn = (days: number) => Timestamp.fromMillis(Date.now() + days * DAY_MS);
+
+/** Billing entitlements (null = legacy workspace in grace) and the resulting flow quota. */
+const loadFlowQuota = async (tenantId: string) => {
+    const [tenantSnap, entSnap] = await Promise.all([
+        db.doc(`tenants/${tenantId}`).get(),
+        db.doc(`tenants/${tenantId}/entitlements/plan`).get()
+    ]);
+    const entitlement = entSnap.exists ? (entSnap.data() as Json) : null;
+    return { entitlement, quota: flowQuotaFor(entitlement, tenantSnap.data()) };
+};
+
+/** Billing codes (brain/plans/billing-entitlements-contract.md §3) used by Flows. */
+export const FLOW_PLAN_ERRORS = {
+    activeLimit: 'plan-flow-limit',
+    runsLimit: 'plan-flow-runs-limit',
+    aiLimit: 'plan-flow-ai-limit',
+    aiNotEnabled: 'ai-not-enabled'
+} as const;
+
+const FLOW_SECRETS = ['OPENAI_API_KEY', ...AI_KEY_SECRETS];
 
 // ---------------------------------------------------------------------------
 // AI (narrow interface over ai-decide.ts; emulator tests answer from `_test/flowsAi`)
@@ -193,14 +215,13 @@ interface StartInput {
     decisions?: AiDecisionRecord[];
 }
 
-/** Creates the run doc. Returns the run id, or null for duplicates / limit skips. */
-const startRun = async (input: StartInput): Promise<string | null> => {
+/** Creates the run doc. `runId` null = duplicate or skipped (`skipReason` set when a limit hit). */
+const startRun = async (input: StartInput): Promise<{ runId: string | null; skipReason?: string }> => {
     const { tenantId, automationId, automation, key, depth, context, entityId, decisions } = input;
     const now = Date.now();
     const runId = runIdFor(automationId, key);
     const runRef = runsCol(tenantId).doc(runId);
-    const tenantSnap = await db.doc(`tenants/${tenantId}`).get();
-    const limits = resolveLimits(tenantSnap.data());
+    const { quota: limits } = await loadFlowQuota(tenantId);
     const monthRef = usageRef(tenantId, now);
     const minuteRef = throttleRef(tenantId, `t_${minuteKey(now)}`);
     const entityRef = throttleRef(tenantId, `${automationId}_${entityId}_${hourKey(now)}`);
@@ -222,9 +243,11 @@ const startRun = async (input: StartInput): Promise<string | null> => {
         expireAt: expireIn(AUTOMATION_LIMITS.runRetentionDays)
     };
 
+    // The usage doc carries the current quota so the UI shows "x of y" without knowing the plan rules.
+    const quotaFields = { runsLimit: limits.runsPerMonth, aiStepsLimit: limits.aiStepsPerMonth, activeLimit: limits.activeFlowsPerWorkspace, quotaTier: limits.tier || 'legacy' };
     return db.runTransaction(async (tx) => {
         const [run, month, minute, entity] = await tx.getAll(runRef, monthRef, minuteRef, entityRef);
-        if (run.exists) return null;
+        if (run.exists) return { runId: null };
         const decision = checkLimits({
             monthRuns: Number(month.data()?.runs || 0),
             minuteRuns: Number(minute.data()?.count || 0),
@@ -233,14 +256,14 @@ const startRun = async (input: StartInput): Promise<string | null> => {
         });
         if (!decision.ok) {
             tx.create(runRef, { ...base, status: 'skipped_limit', skipReason: decision.reason, finishedAt: FieldValue.serverTimestamp() });
-            tx.set(monthRef, { month: monthKey(now), skipped: FieldValue.increment(1) }, { merge: true });
-            return null;
+            tx.set(monthRef, { month: monthKey(now), skipped: FieldValue.increment(1), ...quotaFields }, { merge: true });
+            return { runId: null, skipReason: decision.reason };
         }
         tx.create(runRef, { ...base, status: 'running' });
-        tx.set(monthRef, { month: monthKey(now), runs: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        tx.set(monthRef, { month: monthKey(now), runs: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp(), ...quotaFields }, { merge: true });
         tx.set(minuteRef, { count: FieldValue.increment(1), expireAt: expireIn(1) }, { merge: true });
         tx.set(entityRef, { count: FieldValue.increment(1), expireAt: expireIn(1) }, { merge: true });
-        return runId;
+        return { runId };
     });
 };
 
@@ -361,19 +384,31 @@ const addComment = async (state: ExecState, text: string, actionId: string) => {
     }
 };
 
-const consumeAiStep = async (state: { tenantId: string }) => {
+/**
+ * One AI step on behalf of `uid` (flow owner, or the caller for "Flow aus Satz"). Server AI when the
+ * plan enables it for that user (trial/grace/exempt or the AI add-on), else the user's own OpenAI key;
+ * neither → `ai-not-enabled`. Server AI counts against the plan's monthly AI steps.
+ */
+const consumeAiStep = async (state: { tenantId: string; uid: string }): Promise<{ apiKey?: string }> => {
     const policy = await loadAiPolicy(state.tenantId);
     if (!policy.enabled) throw new StepError('AI is turned off for this workspace.');
-    const tenantSnap = await db.doc(`tenants/${state.tenantId}`).get();
-    const limits = resolveLimits(tenantSnap.data());
+    const { entitlement, quota } = await loadFlowQuota(state.tenantId);
+    let apiKey: string | undefined;
+    if (!aiEnabledFor(entitlement, state.uid)) {
+        apiKey = (await ownAiKeyFor(state.uid)) || undefined;
+        if (!apiKey) throw new StepError(FLOW_PLAN_ERRORS.aiNotEnabled);
+    }
+    // Own keys are the user's cost: only a sanity cap. Server AI: the plan's monthly AI steps.
+    const limit = apiKey ? Math.max(quota.aiStepsPerMonth, AUTOMATION_LIMITS.aiStepsPerMonth) : quota.aiStepsPerMonth;
     const ref = usageRef(state.tenantId, Date.now());
     const denied = await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
-        if (Number(snap.data()?.aiSteps || 0) >= limits.aiStepsPerMonth) return true;
+        if (Number(snap.data()?.aiSteps || 0) >= limit) return true;
         tx.set(ref, { aiSteps: FieldValue.increment(1) }, { merge: true });
         return false;
     });
-    if (denied) throw new StepError(`Monthly limit of ${limits.aiStepsPerMonth} AI steps reached.`);
+    if (denied) throw new StepError(FLOW_PLAN_ERRORS.aiLimit);
+    return apiKey ? { apiKey } : {};
 };
 
 const taskDigest = async (state: ExecState): Promise<string> => {
@@ -422,7 +457,7 @@ const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> 
     requireTask(state);
     const c = action.config;
     if (state.dryRun) return { status: 'ok', output: `AI: ${c.mode}` };
-    await consumeAiStep(state);
+    const { apiKey } = await consumeAiStep({ tenantId: state.tenantId, uid: state.ownerId });
     const input = await taskDigest(state);
     const extra = c.instructions ? `\nAdditional instructions from the flow: ${c.instructions}` : '';
 
@@ -432,6 +467,7 @@ const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> 
             ? `Which label fits this task best?${extra}`
             : `Which priority should this task have (Low, Medium, High, Urgent)?${extra}`;
         const { answers } = await flowAi.decide({
+            apiKey,
             input,
             questions: [{ type: 'choice', name: 'pick', instructions: question, choices: options.map((value) => ({ value })) }]
         });
@@ -451,6 +487,7 @@ const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> 
     if (c.mode === 'draft_task') {
         const { data } = await flowAi.generate<{ title: string; description: string; priority: string; dueInDays: number | null }>({
             tier: 'fast',
+            apiKey,
             instructions: `Formulate one concrete follow-up task for the work item. Short actionable title, 1-3 sentence description. ${LANGUAGE_HINT}${extra}`,
             input,
             schema: TASK_SCHEMA
@@ -478,6 +515,7 @@ const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> 
     if (c.mode === 'draft_comment') {
         const { data } = await flowAi.generate<{ comment: string }>({
             tier: 'fast',
+            apiKey,
             instructions: `Draft a short, helpful comment for the team on this work item (max. 4 sentences). ${LANGUAGE_HINT}${extra}`,
             input,
             schema: COMMENT_SCHEMA
@@ -491,6 +529,7 @@ const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> 
 
     const { data } = await flowAi.generate<{ summary: string }>({
         tier: 'fast',
+        apiKey,
         instructions: `Summarize this work item in 2-4 short sentences for the team. ${LANGUAGE_HINT}${extra}`,
         input,
         schema: SUMMARY_SCHEMA
@@ -853,16 +892,18 @@ const conditionsPass = async (tenantId: string, automation: Json, ctx: RunContex
 
     const rules = aiRulesOf(automation.conditions);
     try {
-        await consumeAiStep({ tenantId });
+        const { apiKey } = await consumeAiStep({ tenantId, uid: String(automation.ownerId || '') });
         const project = ctx.projectId ? (await projectRefOf(tenantId, ctx.projectId).get()).data() : null;
         const input = aiWorkItemText({ task, projectTitle: project?.title, commentText: ctx.commentText, eventType: ctx.eventType });
-        const { answers } = await flowAi.decide({ input, questions: rules.map((rule) => aiQuestionFor(rule.key, rule.ai)) as any });
+        const { answers } = await flowAi.decide({ apiKey, input, questions: rules.map((rule) => aiQuestionFor(rule.key, rule.ai)) as any });
         const decisions = rules.map((rule) => aiVerdictFor(rule.key, rule.ai, answers.find((answer) => answer.name === rule.key) as Json | undefined));
         const verdicts = Object.fromEntries(decisions.map((decision) => [decision.key, decision.passed]));
         return { passed: evaluateConditions(automation.conditions, evalCtx, verdicts), decisions };
     } catch (error: any) {
         console.error('Flow AI condition failed', tenantId, error?.message);
-        return { passed: false, decisions: [], aiError: `AI condition could not be evaluated: ${String(error?.message || error).slice(0, 200)}` };
+        const message = String(error?.message || error).slice(0, 200);
+        // Billing codes stay bare so the run log can translate them.
+        return { passed: false, decisions: [], aiError: Object.values(FLOW_PLAN_ERRORS).includes(message as any) ? message : `AI condition could not be evaluated: ${message}` };
     }
 };
 
@@ -870,7 +911,7 @@ const conditionsPass = async (tenantId: string, automation: Json, ctx: RunContex
 const startAndExecute = async (input: StartInput & { outcome: ConditionOutcome }): Promise<boolean> => {
     const { outcome, ...start } = input;
     if (!outcome.passed && !outcome.aiError) return false;
-    const runId = await startRun({ ...start, decisions: outcome.decisions });
+    const { runId } = await startRun({ ...start, decisions: outcome.decisions });
     if (!runId) return false;
     await executeRun(start.tenantId, runId, outcome.aiError ? { preError: outcome.aiError } : {});
     return true;
@@ -911,7 +952,7 @@ export const handleActivityEvent = async (tenantId: string, event: StreamEvent):
 };
 
 export const onAutomationEvent = functions.region(REGION)
-    .runWith({ secrets: ['OPENAI_API_KEY'], timeoutSeconds: 300, memory: '512MB' })
+    .runWith({ secrets: FLOW_SECRETS, timeoutSeconds: 300, memory: '512MB' })
     .firestore.document('tenants/{tenantId}/activity/{eventId}')
     .onCreate(async (snap, context) => {
         const { tenantId, eventId } = context.params as Record<string, string>;
@@ -1002,7 +1043,7 @@ export const runAutomationSchedulesOnce = async (nowMs: number = Date.now()) => 
 };
 
 export const runAutomationSchedules = onSchedule(
-    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '512MiB', secrets: ['OPENAI_API_KEY'] },
+    { schedule: 'every 15 minutes', region: REGION, timeoutSeconds: 540, memory: '512MiB', secrets: FLOW_SECRETS },
     async () => {
         const stats = await runAutomationSchedulesOnce();
         console.log('runAutomationSchedules', JSON.stringify(stats));
@@ -1083,8 +1124,8 @@ const validateReferences = async (tenantId: string, def: AutomationDef) => {
     }
 };
 
-const assertActiveLimit = async (tenantId: string, tenant: Json, excludeId: string | null) => {
-    const limits = resolveLimits(tenant);
+const assertActiveLimit = async (tenantId: string, _tenant: Json, excludeId: string | null) => {
+    const { quota: limits } = await loadFlowQuota(tenantId);
     const count = await automationsCol(tenantId).where('enabled', '==', true).count().get();
     let active = count.data().count;
     if (excludeId) {
@@ -1092,13 +1133,14 @@ const assertActiveLimit = async (tenantId: string, tenant: Json, excludeId: stri
         if (current.data()?.enabled) active--;
     }
     if (active >= limits.activeFlowsPerWorkspace) {
-        throw new HttpsError('resource-exhausted', `At most ${limits.activeFlowsPerWorkspace} active flows per workspace.`);
+        // Billing code (UI: "Kontingent erreicht"); nothing is disabled or deleted.
+        throw new HttpsError('failed-precondition', FLOW_PLAN_ERRORS.activeLimit, { limit: limits.activeFlowsPerWorkspace, tier: limits.tier });
     }
 };
 
 /** All Flow callables refuse suspended workspaces (`failed-precondition`, reason `workspace-suspended`). */
 const callable = (handler: (data: Json, context: functions.https.CallableContext) => Promise<unknown>) =>
-    functions.region(REGION).runWith({ secrets: ['OPENAI_API_KEY'], timeoutSeconds: 120 }).https.onCall(async (data, context) => {
+    functions.region(REGION).runWith({ secrets: FLOW_SECRETS, timeoutSeconds: 120 }).https.onCall(async (data, context) => {
         await assertTenantActive(data?.tenantId);
         return handler(data, context);
     });
@@ -1184,10 +1226,13 @@ export const runAutomation = callable(async (data, context) => {
     }
     const ctx = emptyContext('manual', projectId, taskId, uid);
     ctx.actorName = (await getActor(uid)).name;
-    const runId = await startRun({
+    const { runId, skipReason } = await startRun({
         tenantId, automationId: ref.id, automation, key: `manual_${Date.now()}_${uid}`, depth: 1, context: ctx, entityId: taskId || 'manual'
     });
-    if (!runId) throw new HttpsError('resource-exhausted', 'Flow run limit reached. Try again later.');
+    if (!runId) {
+        if (skipReason === 'month') throw new HttpsError('failed-precondition', FLOW_PLAN_ERRORS.runsLimit);
+        throw new HttpsError('resource-exhausted', 'Flow run limit reached. Try again later.');
+    }
     const status = await executeRun(tenantId, runId, { ignoreDisabled: true });
     return { runId, status };
 });
@@ -1233,7 +1278,7 @@ export const previewAutomation = callable(async (data, context) => {
         ctx.actorName = (await getActor(uid)).name;
         const task = taskSnap.data() as Json;
         // AI conditions are really evaluated here (one AI step), so the test run shows probabilities.
-        const outcome = await conditionsPass(tenantId, def as unknown as Json, ctx);
+        const outcome = await conditionsPass(tenantId, { ...def, ownerId: uid } as unknown as Json, ctx);
         const matches = outcome.passed;
         const state: ExecState = {
             tenantId, automationId: 'preview', automation: { ...def, ownerId: uid }, runId: 'preview', depth: 1, ctx, ownerId: uid,
@@ -1303,10 +1348,11 @@ export const draftAutomationFromText = callable(async (data, context) => {
     if (text.length < 8) throw new HttpsError('invalid-argument', 'Describe the flow in one sentence.');
     const role = await memberRole(tenantId, uid);
     if (!role || role === 'Guest') throw new HttpsError('permission-denied', 'Flows are available to workspace members.');
+    let apiKey: string | undefined;
     try {
-        await consumeAiStep({ tenantId });
+        ({ apiKey } = await consumeAiStep({ tenantId, uid }));
     } catch (error: any) {
-        throw new HttpsError('resource-exhausted', error?.message || 'AI is not available.');
+        throw new HttpsError('failed-precondition', error?.message || 'AI is not available.');
     }
     const [membersSnap, projectsSnap] = await Promise.all([
         db.collection(`tenants/${tenantId}/members`).get(),
@@ -1324,7 +1370,7 @@ export const draftAutomationFromText = callable(async (data, context) => {
     };
     let raw: Json;
     try {
-        raw = (await flowAi.generate<Json>({ tier: 'agent', instructions: flowDraftInstructions(draftCtx), input: text, schema: FLOW_DRAFT_SCHEMA, maxOutputTokens: 3000 })).data;
+        raw = (await flowAi.generate<Json>({ apiKey, tier: 'agent', instructions: flowDraftInstructions(draftCtx), input: text, schema: FLOW_DRAFT_SCHEMA, maxOutputTokens: 3000 })).data;
     } catch (error: any) {
         console.error('draftAutomationFromText failed', error?.message);
         throw new HttpsError('unavailable', 'The AI could not draft this flow. Try again or rephrase.');

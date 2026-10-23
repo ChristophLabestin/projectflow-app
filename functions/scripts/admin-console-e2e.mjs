@@ -234,6 +234,15 @@ await check('workspace list flags orphaned owners and personal workspaces', asyn
     assert.equal(personal?.workspaceType, 'personal');
     assert.equal(personal?.billing?.mrr, 5);
 });
+await check('storage override is validated, audited and read back', async () => {
+    const id = 'personal_e2e';
+    assert.equal((await call(adminToken, 'billing.setStorageOverride', { id, bytes: 1024, reason: 'E2E: zu klein' }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'billing.setStorageOverride', { id, bytes: 50 * 1024 ** 3, reason: 'kurz' }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'billing.setStorageOverride', { id, bytes: 50 * 1024 ** 3, reason: 'E2E: Kulanz für Import' }, sessionId)).result?.ok, true);
+    const st = await call(adminToken, 'billing.storage', { id }, sessionId);
+    assert.equal(st.result?.quotaBytes, 50 * 1024 ** 3, JSON.stringify(st));
+    assert.equal((await call(adminToken, 'billing.setStorageOverride', { id, bytes: null, reason: 'E2E: Override zurück' }, sessionId)).result?.ok, true);
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

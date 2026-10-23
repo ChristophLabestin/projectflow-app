@@ -120,6 +120,9 @@ const decryptSecret = (box: { iv?: string; tag?: string; data?: string } | undef
     }
 };
 
+/** Decrypted own OpenAI key of a user, or null (needs AI_KEY_SECRETS in runWith). */
+export const ownAiKeyFor = async (uid: string): Promise<string | null> => decryptSecret((await aiKeyRef(uid).get()).data()?.secret);
+
 /** Functions that may use a caller's own OpenAI key must list this secret in runWith. */
 export const AI_KEY_SECRETS = ['AI_KEY_ENCRYPTION_KEY'];
 
@@ -632,6 +635,12 @@ export const billingSweep = functions.region(REGION).runWith({ timeoutSeconds: 5
             if (ent.plan && ent.maxFileBytes === undefined) {
                 await applyPlan(tenantId, ent.plan as PlanId, { status: ent.status });
                 ent = (await entRef(tenantId).get()).data() || {};
+            }
+            // Pooled Team storage follows full members (also covered by onMemberWrittenBilling once Stripe is set up).
+            if (ent.plan === 'team' || ent.plan === 'organization') {
+                const fullMembers = (await fullMemberRoles(tenantId)).filter((role) => role !== 'Guest').length;
+                const storage = storageFor(ent.plan, fullMembers);
+                if (storage.storageQuotaBytes !== ent.storageQuotaBytes) await entRef(tenantId).set(storage, { merge: true });
             }
             const status = String(ent.status) as BillingStatus;
             const trialOver = status === 'trialing' && !ent.stripeSubscriptionId && periodExpired(toMs(ent.trialEndsAt), now);
