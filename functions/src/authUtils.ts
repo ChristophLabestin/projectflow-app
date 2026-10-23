@@ -2,6 +2,8 @@ import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
+import { shouldTouchLastUsed } from './ai-access';
+import { isAiToken, resolveAiToken } from './ai-tokens';
 
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -29,8 +31,7 @@ export type ApiPermission =
 
 /**
  * Find a workspace API token by its hash. Uses one collection-group query
- * (index: api_tokens.tokenHash, collection-group scope); falls back to scanning
- * tenants if that index is not deployed yet.
+ * (index: api_tokens.tokenHash, collection-group scope).
  */
 export const findApiToken = async (token: string): Promise<{
     tokenRef: admin.firestore.DocumentReference;
@@ -38,23 +39,36 @@ export const findApiToken = async (token: string): Promise<{
     tenantId: string;
 } | null> => {
     const tokenHash = hashToken(token);
-    try {
-        const snapshot = await db.collectionGroup('api_tokens').where('tokenHash', '==', tokenHash).limit(1).get();
-        const doc = snapshot.docs[0];
-        const tenantId = doc?.ref.parent.parent?.id;
-        return doc && tenantId ? { tokenRef: doc.ref, tokenData: doc.data(), tenantId } : null;
-    } catch (error) {
-        console.warn('api_tokens collection-group lookup failed, scanning tenants', error);
+    // No fallback scan over all tenants: any unauthenticated request could trigger it. A missing index is
+    // an outage to fix (firestore.indexes.json → api_tokens.tokenHash), not a reason to read every tenant.
+    const snapshot = await db.collectionGroup('api_tokens').where('tokenHash', '==', tokenHash).limit(1).get();
+    const doc = snapshot.docs[0];
+    const tenantId = doc?.ref.parent.parent?.id;
+    return doc && tenantId ? { tokenRef: doc.ref, tokenData: doc.data(), tenantId } : null;
+};
+
+export type ApiTokenUsable = { ok: true; role: string } | { ok: false; error: string };
+
+/**
+ * A workspace API token is only usable while it is unexpired and its creator is still a full
+ * (non-guest) member of the token's workspace. Tokens act as their creator, so removing or
+ * demoting the creator must stop the token.
+ */
+export const checkApiTokenUsable = async (
+    tokenData: any,
+    tenantId: string,
+    deps: { getMemberRole: (tenantId: string, uid: string) => Promise<string | null>; now: () => Date } = {
+        getMemberRole: (t, uid) => getWorkspaceMemberRole(t, uid),
+        now: () => new Date()
     }
-    const tenantsSnapshot = await db.collection('tenants').get();
-    for (const tenantDoc of tenantsSnapshot.docs) {
-        const tokensQuery = await tenantDoc.ref.collection('api_tokens').where('tokenHash', '==', tokenHash).limit(1).get();
-        if (!tokensQuery.empty) {
-            const doc = tokensQuery.docs[0];
-            return { tokenRef: doc.ref, tokenData: doc.data(), tenantId: tenantDoc.id };
-        }
-    }
-    return null;
+): Promise<ApiTokenUsable> => {
+    const expiresAt = tokenData?.expiresAt?.toDate?.();
+    if (expiresAt && deps.now() > expiresAt) return { ok: false, error: 'Token expired' };
+    const creator = typeof tokenData?.createdBy === 'string' ? tokenData.createdBy : '';
+    if (!creator) return { ok: false, error: 'Token has no owner. Create a new token.' };
+    const role = await deps.getMemberRole(tenantId, creator);
+    if (!role || role === 'Guest') return { ok: false, error: 'Token creator is no longer a member of this workspace.' };
+    return { ok: true, role };
 };
 
 /**
@@ -63,8 +77,25 @@ export const findApiToken = async (token: string): Promise<{
 export const validateAPIToken = async (
     token: string,
     requiredPermission: ApiPermission
-): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; error?: string }> => {
+): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; tokenId?: string; memberRole?: string; error?: string }> => {
     try {
+        // 0. User-bound AI credentials (OAuth access tokens, personal access tokens).
+        if (isAiToken(token)) {
+            const resolved = await resolveAiToken(token);
+            if (!resolved) return { valid: false, error: 'Invalid token' };
+            if ('error' in resolved) return { valid: false, error: resolved.error };
+            if (!resolved.tokenData.permissions.includes(requiredPermission)) {
+                return { valid: false, error: 'Insufficient permissions' };
+            }
+            return {
+                valid: true,
+                tokenData: resolved.tokenData,
+                tenantId: resolved.tenantId,
+                tokenId: resolved.tokenId,
+                memberRole: resolved.memberRole
+            };
+        }
+
         // 1. Firebase ID tokens (signed-in app users) are only accepted for
         //    workspace-scoped PM endpoints. The caller must still verify the
         //    user's membership in the requested tenant (see requireWorkspaceMember).
@@ -92,12 +123,9 @@ export const validateAPIToken = async (
         if (found) {
             const { tokenRef, tokenData, tenantId } = found;
 
-            // Check expiration
-            if (tokenData.expiresAt) {
-                const expiresAt = tokenData.expiresAt.toDate();
-                if (new Date() > expiresAt) {
-                    return { valid: false, error: 'Token expired' };
-                }
+            const usable = await checkApiTokenUsable(tokenData, tenantId);
+            if (!usable.ok) {
+                return { valid: false, error: usable.error };
             }
 
             // Check permissions
@@ -105,15 +133,19 @@ export const validateAPIToken = async (
                 return { valid: false, error: 'Insufficient permissions' };
             }
 
-            // Update lastUsedAt
-            await tokenRef.update({
-                lastUsedAt: FieldValue.serverTimestamp()
-            });
+            // lastUsedAt at most every 5 minutes (one write per call adds up for agents).
+            if (shouldTouchLastUsed(tokenData.lastUsedAt, new Date())) {
+                await tokenRef.update({
+                    lastUsedAt: FieldValue.serverTimestamp()
+                });
+            }
 
             return {
                 valid: true,
                 tokenData,
-                tenantId
+                tenantId,
+                tokenId: tokenRef.id,
+                memberRole: usable.role
             };
         }
 

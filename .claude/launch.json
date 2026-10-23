@@ -106,6 +106,24 @@
       "port": 3061
     },
     {
+      "name": "web-e2e-legal",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3081",
+        "AUTH_PORT=9841",
+        "FIRESTORE_PORT=8841",
+        "STORAGE_PORT=9842",
+        "FUNCTIONS_PORT=5841",
+        "E2E_LEGAL=1",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3081
+    },
+    {
       "name": "landing",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
@@ -115,6 +133,25 @@
         "landing"
       ],
       "port": 4300
+    },
+    {
+      "name": "web-ai-emulator",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "VITE_EMULATOR_AUTH_PORT=9951",
+        "VITE_EMULATOR_FIRESTORE_PORT=8951",
+        "VITE_EMULATOR_FUNCTIONS_PORT=5951",
+        "npm",
+        "run",
+        "dev:emulator",
+        "--prefix",
+        "web",
+        "--",
+        "--port",
+        "3020",
+        "--strictPort"
+      ],
+      "port": 3020
     }
   ]
 }

@@ -59,6 +59,8 @@ const deSettings = {
     'settings.account.connected.notConnected': 'Nicht verbunden',
     'settings.account.connected.linked': 'Verknüpft',
     'settings.account.connected.connect': 'Verbinden',
+    'settings.account.connected.browserOpened': 'Deine ProjectFlow-Kontoeinstellungen sind im Browser geöffnet – verbinde das Konto dort.',
+    'settings.account.connected.browserHint': 'Konten verbindest du in der Desktop-App über app.getprojectflow.com im Browser: Einstellungen → Konto.',
     // --- Security: Zwei-Faktor-Authentifizierung ---
     'settings.security.2fa.title': 'Zwei-Faktor-Authentifizierung',
     'settings.security.2fa.enabled': 'Aktiviert',

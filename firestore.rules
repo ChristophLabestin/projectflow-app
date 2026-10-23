@@ -147,6 +147,42 @@ service cloud.firestore {
       allow read: if true;
     }
 
+    // ---- Versioned legal documents (contract: brain/plans/legal-consent-contract.md)
+    // Published index + immutable versions are public (landing page, iOS, signed-out
+    // /legal pages). Drafts are platform-admin only. All writes go through Cloud
+    // Functions (saveLegalDraft / publishLegalDraft), never the client.
+    match /legal_documents/{type} {
+      allow read: if true;
+      allow write: if false;
+
+      match /versions/{version} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      match /drafts/{draftId} {
+        allow read: if authed() && request.auth.token.platformAdmin == true;
+        allow write: if false;
+      }
+    }
+
+    // Per-user consent record: readable by its owner, written only by the
+    // acceptLegalDocuments / declineLegalDocuments callables (current version only).
+    match /legal_acceptances/{userId} {
+      allow get: if authed() && request.auth.uid == userId;
+      allow list, write: if false;
+
+      match /events/{eventId} {
+        allow read: if authed() && request.auth.uid == userId;
+        allow write: if false;
+      }
+    }
+
+    // Mail send jobs and per-recipient logs: Admin SDK only.
+    match /legal_mail_jobs/{document=**} {
+      allow read, write: if false;
+    }
+
     // Global user profiles
     match /users/{userId} {
       // Profiles (name, avatar, email) are fetched by uid for co-workers; listing
@@ -249,6 +285,15 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // AI integrations: audit log and workspace AI policy (Admin SDK / callables only).
+      match /ai_audit/{entryId} {
+        allow read, write: if false;
+      }
+
+      match /ai_config/{configId} {
+        allow read, write: if false;
+      }
+
       match /files/{fileId} {
         allow read: if canAccessTenant(tenantId);
         allow write: if false;
@@ -331,7 +376,7 @@ service cloud.firestore {
         // Guests may read/update docs addressed to them.
         allow read, update: if isTenantMember(tenantId) &&
           ('userId' in resource.data) && resource.data.userId == request.auth.uid &&
-          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs']);
+          !(subcollection.matches('finance_.*') || subcollection in ['secrets', 'api_tokens', 'ai_audit', 'ai_config', 'file_upload_drafts', 'notifications', 'notificationDeliveryLogs']);
         allow read, write: if canAccessTenant(tenantId) &&
           !(
             subcollection.matches('finance_.*') ||
@@ -345,6 +390,8 @@ service cloud.firestore {
               'projects',
               'users',
               'api_tokens',
+              'ai_audit',
+              'ai_config',
               'files',
               'file_upload_drafts',
               'notifications',

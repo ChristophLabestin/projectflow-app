@@ -463,6 +463,11 @@ User profile changes are typically self-service. If you want admin control:
 - `user.settings.editSelf` — Edit own settings (usually always allowed)
 - `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from native capture surfaces
 
+### Legal documents and consent (platform level, 2026-10-23)
+- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts only with the `platformAdmin` custom claim. No client writes at all.
+- Drafting, publishing and the acceptance overview (`/admin/legal`, callables `saveLegalDraft`, `deleteLegalDraft`, `publishLegalDraft`, `getLegalAdminOverview`) require `platformAdmin` — not a tenant role.
+- Every user can only record consent for themselves and only for the *current effective* version (`acceptLegalDocuments` / `declineLegalDocuments`); `legal_acceptances/{uid}` is readable by its owner only (no list), never writable by clients. Mail jobs/logs are Admin-SDK only.
+
 ---
 
 ## 8.23 AI Permissions (Feature-level)
@@ -489,7 +494,9 @@ ProjectFlow API tokens use coarse API permission strings rather than the in-app 
 - Codex session listing and inbox reads require `tasks:read`.
 - Codex task sessions, checkpoints, finish calls, and follow-up creation require `tasks:write`.
 - Starting a Codex session with `entity: "initiative"` requires `initiatives:write`.
-- The Settings API token preset "Codex Full Access" includes project, task, and initiative read/write/delete permissions and is the recommended token for the Codex plugin.
+- The Settings API token preset "Codex Full Access" includes project read/write, and task and initiative read/write/delete permissions (no `projects:delete` since 2026-10-23) and is the recommended token for the Codex plugin.
+- Workspace API tokens act as their creator (`createdBy`): a token only works while that creator is still a non-guest member of the token's workspace and the token is unexpired (`checkApiTokenUsable` in `functions/src/authUtils.ts`, applied to `/api/projectflow` and `/mcp`). Removing or demoting the creator to Guest disables all their tokens; tokens without `createdBy` are rejected.
+- **AI access model** (`functions/src/ai-access.ts`, since 2026-10-23): for every machine caller (API tokens, later OAuth/personal tokens) effective permissions = token scopes ∩ role ceiling ∩ workspace AI policy. Ceilings: Owner/Admin all PM scopes; Member everything except `projects:delete`; Guest `projects:read`, `tasks:read`, `tasks:write`, `initiatives:read` and only projects whose `memberIds` contain them. Workspace AI policy (`tenants/{t}/ai_config/policy`, callables `getWorkspaceAiPolicy` for members / `updateWorkspaceAiPolicy` for Owner+Admin): `enabled` (default true), `allowGuests` (false), `allowDeleteScopes` (false — applies to OAuth/personal tokens, not legacy workspace tokens), `allowPersonalTokens` (true). Every machine-client write lands in `tenants/{t}/ai_audit` (TTL 180 days, `listWorkspaceAiAudit` for Owner/Admin). Rate limits per credential and instance: 120 requests/min, 30 writes/min → 429 + `Retry-After`. Signed-in app sessions (Firebase ID tokens) are not affected. OAuth connections (`pfo_`) and personal access tokens (`pfp_`) are user-bound: they act as the connecting user with that user's live role in exactly one workspace; leaving the workspace or revoking the connection stops them immediately (`brain/operations/projectflow-oauth.md`).
 
 Codex follow-up tasks remain normal project tasks, so in-app visibility follows existing project membership and task visibility rules.
 

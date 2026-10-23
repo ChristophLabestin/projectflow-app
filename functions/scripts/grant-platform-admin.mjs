@@ -20,7 +20,9 @@ if (!email) {
     process.exit(1);
 }
 
-admin.initializeApp({ projectId: PROJECT_ID, credential: admin.credential.applicationDefault() });
+admin.initializeApp(process.env.FIREBASE_AUTH_EMULATOR_HOST
+    ? { projectId: PROJECT_ID }
+    : { projectId: PROJECT_ID, credential: admin.credential.applicationDefault() });
 
 const user = await admin.auth().getUserByEmail(email);
 const claims = { ...(user.customClaims || {}) };

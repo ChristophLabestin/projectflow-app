@@ -59,6 +59,8 @@ const enSettings = {
     'settings.account.connected.notConnected': 'Not connected',
     'settings.account.connected.linked': 'Linked',
     'settings.account.connected.connect': 'Connect',
+    'settings.account.connected.browserOpened': 'Your ProjectFlow account settings opened in your browser — connect the account there.',
+    'settings.account.connected.browserHint': 'In the desktop app, connect accounts on app.getprojectflow.com in your browser: Settings → Account.',
     // --- Security: two-factor authentication ---
     'settings.security.2fa.title': 'Two-Factor Authentication',
     'settings.security.2fa.enabled': 'Enabled',

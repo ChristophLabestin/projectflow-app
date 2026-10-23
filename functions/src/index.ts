@@ -29,6 +29,16 @@ import {
     saveWorkspaceFinancialConfig,
     saveWorkspaceSmtpConfig
 } from './workspace-admin';
+import { getWorkspaceAiPolicy, listWorkspaceAiAudit, updateWorkspaceAiPolicy } from './ai-integrations';
+import {
+    approveOAuthConsent,
+    createPersonalAccessToken,
+    denyOAuthConsent,
+    getOAuthConsentRequest,
+    listAiConnections,
+    oauth,
+    revokeAiConnection
+} from './oauth-server';
 import {
     createTenantFileUploadSession,
     deleteTenantFile,
@@ -130,6 +140,16 @@ export {
     getWorkspaceSmtpConfig,
     saveWorkspaceSmtpConfig,
     listWorkspaceApiTokens,
+    getWorkspaceAiPolicy,
+    updateWorkspaceAiPolicy,
+    listWorkspaceAiAudit,
+    oauth,
+    getOAuthConsentRequest,
+    approveOAuthConsent,
+    denyOAuthConsent,
+    createPersonalAccessToken,
+    listAiConnections,
+    revokeAiConnection,
     createWorkspaceApiToken,
     deleteWorkspaceApiToken,
     getWorkspaceFinancialConfig,
@@ -202,6 +222,17 @@ export { transferWorkspaceOwnership, deleteWorkspace } from './workspace-lifecyc
 export { exportMyData, deleteMyAccount } from './account-data';
 export { deleteProject } from './project-delete';
 export { getOnboardingStats } from './onboarding-stats';
+export {
+    saveLegalDraft,
+    deleteLegalDraft,
+    publishLegalDraft,
+    getLegalAdminOverview,
+    acceptLegalDocuments,
+    declineLegalDocuments,
+    legalDocument,
+    onLegalMailJobCreated,
+    processLegalMailJobs,
+} from './legal';
 // iOS backend work package (contracts C1-C5): side-effect triggers, reminders, nudges, Live Activity sync.
 export { onTaskWritten, onSubtaskWritten, onCommentCreated, onProjectWritten } from './task-triggers';
 export { deliverReminders } from './reminders';
