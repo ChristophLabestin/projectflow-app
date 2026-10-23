@@ -195,6 +195,7 @@ Startup/company legal, finance, compliance, funding, and advisor links use the s
 - Guests get only `GUEST_ROLE` permissions (no implicit Member baseline) and do not see workspace-wide areas such as Finance or Media.
 - Guests join through an invitation with `role: 'Guest'` and at least one `projectIds` entry; admins can later promote them in Team → member detail → Workspace access.
 - Removing a member also removes them from every project `memberIds` in that workspace.
+- Activity stream (`tenants/{t}/activity`): guests read only events of their projects (queries must filter `projectId`); workspace-level events and Insights (`insights_daily`, `insights_reports`, `/insights`) are full-member only.
 
 ---
 

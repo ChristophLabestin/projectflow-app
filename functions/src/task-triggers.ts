@@ -12,6 +12,17 @@ import { db } from './init';
 import { Actor, createActivityDoc, createNotificationDoc, getActor, idPart } from './notification-writer';
 import { computeNextReminderAt } from './reminder-logic';
 import {
+    ActivityActor,
+    PlannedEvent,
+    buildActor,
+    emitActivityEvent,
+    freshWriteVia,
+    planCommentEvent,
+    planProjectEvents,
+    planSubtaskEvents,
+    planTaskEvents
+} from './activity-events';
+import {
     addedItems,
     applyConsistency,
     computeProgress,
@@ -56,6 +67,27 @@ const loadProjectTitle = async (tenantId: string, projectId: string): Promise<st
 
 const toData = (snapshot: FirebaseFirestore.DocumentSnapshot): Json | null =>
     snapshot.exists ? ((snapshot.data() || {}) as Json) : null;
+
+/** Write planned stream events (tenants/{t}/activity) with deterministic ids `${eventId}-e${i}`. */
+const emitEvents = async (
+    tenantId: string,
+    projectId: string | null,
+    projectTitle: string,
+    actor: ActivityActor,
+    events: PlannedEvent[],
+    source: string,
+    eventId: string
+): Promise<void> => {
+    for (const [index, event] of events.entries()) {
+        await emitActivityEvent(tenantId, {
+            ...event,
+            actor,
+            projectId,
+            ...(projectTitle ? { projectTitle } : {}),
+            source
+        }, `${eventId}-e${index}`);
+    }
+};
 
 // ---------------------------------------------------------------------------
 // Project progress
@@ -102,6 +134,11 @@ export const onTaskWritten = functions.region(REGION).firestore
         // Deleted: only the progress sync. The deleting client does not leave a trace on the doc,
         // so the "Deleted task" activity stays a client-side write.
         if (!after) {
+            if (before) {
+                const deletedId = idPart(context.eventId || `${taskId}-${Date.now()}`);
+                await emitEvents(tenantId, projectId, await loadProjectTitle(tenantId, projectId),
+                    buildActor(null, null), planTaskEvents(before, null, taskId), 'onTaskWritten', deletedId);
+            }
             await syncProjectProgress(tenantId, projectId);
             return;
         }
@@ -148,7 +185,8 @@ export const onTaskWritten = functions.region(REGION).firestore
         const eventId = idPart(context.eventId || `${taskId}-${Date.now()}`);
 
         const added = addedItems(effectiveAssignees(before), effectiveAssignees(final));
-        await Promise.all(added.map((uid) => getActor(uid, actors)));
+        const removed = addedItems(effectiveAssignees(final), effectiveAssignees(before));
+        await Promise.all([...added, ...removed].map((uid) => getActor(uid, actors)));
         const names = (uid: string) => actors.get(uid)?.name || uid;
 
         const activities = planTaskActivities(before, final, taskId, names);
@@ -157,7 +195,13 @@ export const onTaskWritten = functions.region(REGION).firestore
         }
 
         const notifications = planTaskNotifications(before, final, actorId, actor.name);
-        const projectTitle = notifications.length > 0 ? await loadProjectTitle(tenantId, projectId) : '';
+        const streamEvents = planTaskEvents(before, final, taskId).map((event) =>
+            event.type === 'task.assigned' || event.type === 'task.unassigned'
+                ? { ...event, meta: { ...event.meta, assigneeNames: ((event.meta?.assigneeIds as string[]) || []).map(names) } }
+                : event);
+        const projectTitle = notifications.length > 0 || streamEvents.length > 0 ? await loadProjectTitle(tenantId, projectId) : '';
+        await emitEvents(tenantId, projectId, projectTitle, buildActor(actorId ? actor : null, freshWriteVia(before, after)),
+            streamEvents, 'onTaskWritten', eventId);
         for (const notification of notifications) {
             await createNotificationDoc({
                 userId: notification.userId,
@@ -203,6 +247,11 @@ export const onSubtaskWritten = functions.region(REGION).firestore
         const activities = planSubtaskActivities(before, after, parentTitle, taskId);
         for (const [index, activity] of activities.entries()) {
             await createActivityDoc(tenantId, projectId, actor, activity, `${eventId}-a${index}`);
+        }
+        const subtaskEvents = planSubtaskEvents(before, after, context.params.subtaskId, taskId, parentTitle);
+        if (subtaskEvents.length > 0) {
+            await emitEvents(tenantId, projectId, await loadProjectTitle(tenantId, projectId),
+                buildActor(actorId ? actor : null, freshWriteVia(before, after)), subtaskEvents, 'onSubtaskWritten', eventId);
         }
 
         const subtaskNotifications = planSubtaskNotifications(before, after, parentTitle, actorId);
@@ -324,6 +373,10 @@ export const onCommentCreated = functions.region(REGION).firestore
         const author = await getActor(authorId, actors);
         const eventId = idPart(context.eventId || commentId);
 
+        await emitEvents(tenantId, projectId, typeof project.title === 'string' ? project.title.trim() : '',
+            buildActor(author, freshWriteVia(null, comment)),
+            [planCommentEvent(comment, commentId, targetType, targetId, targetTitle)], 'onCommentCreated', eventId);
+
         await createActivityDoc(tenantId, projectId, author, {
             action: `Commented on ${targetType} "${targetTitle}"`,
             target: 'Tasks',
@@ -414,8 +467,26 @@ export const onProjectWritten = functions.region(REGION).firestore
             }
         }
 
+        if (isSystemWrite(before, after)) return;
+
+        // Stream events (creation, status, membership).
+        const projectEvents = planProjectEvents(before, after, projectId);
+        if (projectEvents.length > 0) {
+            const streamActorId = resolveActorId(before, after, ['createdBy', 'ownerId']);
+            const memberIds = Array.from(new Set(projectEvents.flatMap((event) => (event.meta?.userIds as string[]) || [])));
+            const nameCache = new Map<string, Actor>();
+            const streamActor = streamActorId ? await getActor(streamActorId, nameCache) : null;
+            await Promise.all(memberIds.map((uid) => getActor(uid, nameCache)));
+            const withNames = projectEvents.map((event) => event.meta?.userIds
+                ? { ...event, meta: { ...event.meta, userNames: (event.meta.userIds as string[]).map((uid) => nameCache.get(uid)?.name || uid) } }
+                : event);
+            const title = typeof after.title === 'string' ? after.title.trim() : '';
+            await emitEvents(tenantId, projectId, title, buildActor(streamActor, freshWriteVia(before, after)), withNames,
+                'onProjectWritten', `${idPart(context.eventId || `${projectId}-${Date.now()}`)}-p`);
+        }
+
         // Member notifications (skip creates and system writes; the patch write above has an identical memberIds list).
-        if (!before || isSystemWrite(before, after)) return;
+        if (!before) return;
         const planned = planProjectMemberNotifications(before, after);
         if (planned.length === 0) return;
 

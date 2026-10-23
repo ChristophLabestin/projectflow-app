@@ -10,14 +10,15 @@ Status: 2026-10-23, in Umsetzung (`landing/`). Ersetzt `brain/reference/app/LAND
   (Pläne sind noch nicht öffentlich bepreist). Nur Features, die im Produkt existieren.
 - H1 DE „Ruhe im Projekt. Tempo in der Umsetzung.“ / EN „Calm projects. Fast execution.“
 
-## Abschnittsfolge (v2, 2026-10-23 – dichter, ohne Pin-Szenen)
+## Abschnittsfolge (v3, 2026-10-23 – dicht, aber mit Scroll-Szenen ohne Leerlauf)
 Jede Sektion = Kopf (Titel links, Text rechts) + ein dichter Inhaltsblock; Abstand nur über `--section-space`.
 1. **Hero**: Headline, Lead, 2 CTAs, App-Fenster (Heute) sichtbar über dem Fold, 2 schwebende Fragmente,
    darunter ein Proof-Streifen (Heute & Fokus · Projekte & Boards · Teams & Rollen · Web/Desktop/iPhone).
-2. **So arbeitest du** (`#flow`): 4 Schritt-Karten nebeneinander (Erfassen → Planen → Fokus → Erledigt) mit
-   Mini-UI, Verbindungslinie füllt sich beim Scrollen. Ersetzt die frühere gepinnte Scroll-Story.
-3. **Funktionen** (`#features`): Bento-Grid – Board (groß), Workbench, Notification Center, KI-Assistenz, Initiativen & Sprints.
-4. **Teams & Sicherheit** (`#security`, dunkles Band): Rollenliste, Passkey-Prompt, 4 Punkte.
+2. **Statement**: großer Satz, Wörter leuchten beim Scrollen nacheinander auf (gedimmt ≥ 3:1 Kontrast).
+   **So arbeitest du** (`#flow`): Desktop = gepinnte Horizontal-Szene, 4 Panels gleiten seitlich, Fortschrittsleiste, Mini-UI startet je Panel;
+   Mobil = gestapelte Panels. Jedes Panel füllt den Viewport – kein leerer Scrollweg.
+3. **Funktionen** (`#features`): Bento-Grid (Kacheln steigen gescrubbt aus der Tiefe, Cursor-Spotlight) – Board (groß), Workbench, Notification Center, KI-Assistenz, Initiativen & Sprints.
+4. **Teams & Sicherheit** (`#security`, dunkles Band, Hell→Dunkel-Übergang beim Scrollen, Cursor-Lichtkegel): Rollenliste, Passkey-Prompt, 4 Punkte.
 5. **Plattformen** (`#platforms`): 3 Karten (Web, Desktop, iPhone) + Integrations-Streifen (MCP-Clients → `/docs/mcp`).
 6. **FAQ** (`#faq`), 7. **CTA**, Footer. Unterseiten: Rechtsseiten (Legal-API), `/docs/mcp`, 404.
 

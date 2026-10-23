@@ -36,6 +36,10 @@ const de = {
         { icon: 'users', title: 'Teams & Rollen', text: 'Workspaces, Gäste, Passkeys' },
         { icon: 'monitor', title: 'Web, Desktop, iPhone', text: 'Eine Datenbasis, drei Apps' },
     ],
+    statement: {
+        text: 'Weniger verwalten. Mehr erledigen. ProjectFlow hält Aufgaben, Projekte und Absprachen an einem ruhigen Ort zusammen – damit dein Team sich auf die Arbeit konzentriert, nicht auf das Werkzeug.',
+        highlight: ['erledigen.', 'ruhigen', 'Arbeit'],
+    },
     app: {
         workspace: 'Labestin Studio',
         nav: ['Heute', 'Inbox', 'Projekte', 'Benachrichtigungen'],
@@ -267,6 +271,10 @@ const en: SiteCopy = {
         { icon: 'users', title: 'Teams & roles', text: 'Workspaces, guests, passkeys' },
         { icon: 'monitor', title: 'Web, desktop, iPhone', text: 'One source of truth, three apps' },
     ],
+    statement: {
+        text: 'Manage less. Ship more. ProjectFlow keeps tasks, projects and decisions in one calm place – so your team focuses on the work, not on the tool.',
+        highlight: ['more.', 'calm', 'work,'],
+    },
     app: {
         workspace: 'Labestin Studio',
         nav: ['Today', 'Inbox', 'Projects', 'Notifications'],

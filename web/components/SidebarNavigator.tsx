@@ -14,7 +14,7 @@ import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 import logo from '../assets/logo.svg';
 import type { Project, ProjectExternalResource } from '../types';
 import { useWorkspace } from '../context/WorkspaceContext';
-import { isCoraStudioEnabled } from '../config/features';
+import { isCoraStudioEnabled, isWorkspaceAreaEnabled } from '../config/features';
 import { WorkspaceMenuSection } from './workspace/WorkspaceMenuSection';
 import { InlineMenu, type InlineMenuOption } from './work/InlineMenu';
 import { PROJECTS_CHANGED_EVENT, readRecentProjectAccess, recentProjectsStorageKey } from '../utils/recentProjects';
@@ -484,6 +484,11 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     // Group 2 ("Arbeitsbereich"): shared workspace areas.
     const secondaryAnchors: NavRowDef[] = [
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
+        ...(isWorkspaceAreaEnabled('documents') ? [{ key: 'documents', to: '/documents', icon: 'folder_open', label: t('nav.documents') }] : []),
+        ...(isWorkspaceAreaEnabled('wiki') ? [{ key: 'wiki', to: '/wiki', icon: 'menu_book', label: t('nav.wiki') }] : []),
+        ...(isWorkspaceAreaEnabled('flows') ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
+        { key: 'activity', to: '/activity', icon: 'history', label: t('nav.activity') },
+        ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'insights', to: '/insights', icon: 'insights', label: t('nav.insights'), exact: true }] : []),
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') }] : []),
         ...(activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin'
