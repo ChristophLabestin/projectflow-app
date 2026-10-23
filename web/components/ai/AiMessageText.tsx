@@ -40,7 +40,8 @@ export const renderInline = (text: string, keyPrefix: string): React.ReactNode[]
     return nodes;
 };
 
-export const AiMessageText: React.FC<{ text: string }> = ({ text }) => {
+/** `streaming`: lines mount as they arrive and fade in (key = line index, so finished lines stay put). */
+export const AiMessageText: React.FC<{ text: string; streaming?: boolean }> = ({ text, streaming = false }) => {
     const blocks: React.ReactNode[] = [];
     let list: React.ReactNode[] = [];
     const flush = (key: string) => {
@@ -51,16 +52,21 @@ export const AiMessageText: React.FC<{ text: string }> = ({ text }) => {
         const line = raw.trimEnd();
         const bullet = /^\s*(?:[-*•]|\d+\.)\s+(.*)$/.exec(line);
         if (bullet) {
-            list.push(<li key={`li-${i}`}>{renderInline(bullet[1], `l${i}`)}</li>);
+            list.push(<li key={`li-${i}`} className="ai-message__block">{renderInline(bullet[1], `l${i}`)}</li>);
             return;
         }
         flush(String(i));
         if (!line.trim()) return;
         const heading = /^#{1,4}\s+(.*)$/.exec(line);
         blocks.push(heading
-            ? <p key={`p-${i}`} className="ai-message__heading">{renderInline(heading[1], `h${i}`)}</p>
-            : <p key={`p-${i}`}>{renderInline(line, `p${i}`)}</p>);
+            ? <p key={`p-${i}`} className="ai-message__block ai-message__heading">{renderInline(heading[1], `h${i}`)}</p>
+            : <p key={`p-${i}`} className="ai-message__block">{renderInline(line, `p${i}`)}</p>);
     });
     flush('end');
-    return <div className="ai-message__text">{blocks}</div>;
+    return (
+        <div className={`ai-message__text${streaming ? ' is-streaming' : ''}`}>
+            {blocks}
+            {streaming && <span className="ai-stream__caret" aria-hidden="true" />}
+        </div>
+    );
 };

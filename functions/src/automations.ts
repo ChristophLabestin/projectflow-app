@@ -10,6 +10,7 @@ import { db } from './init';
 import { emitActivityEvent } from './activity-events';
 import { createNotificationDoc, getActor } from './notification-writer';
 import { loadAiPolicy } from './ai-store';
+import { SUSPENDED_MESSAGE, assertTenantActive, isTenantSuspended, suspendedTenantIds } from './tenant-status';
 import { aiDecide, aiGenerate, DecideResult, GenerateRequest } from './ai-decide';
 import { DraftContext, FLOW_DRAFT_SCHEMA, draftFromModel, flowDraftInstructions } from './automation-draft';
 import {
@@ -723,6 +724,8 @@ export const executeRun = async (tenantId: string, runId: string, options: Execu
     };
 
     if (!automation) return finish('cancelled', { error: 'Flow was deleted.' });
+    // Suspended workspaces (admin console) run nothing: covers events, schedules, resumes, retries, manual runs.
+    if (await isTenantSuspended(tenantId)) return finish('skipped_suspended', { error: SUSPENDED_MESSAGE });
     if (!automation.enabled && !options.ignoreDisabled) return finish('cancelled', { error: 'Flow is paused.' });
 
     const ownerId = String(automation.ownerId || '');
@@ -883,6 +886,8 @@ const causeOfEvent = (event: StreamEvent): Json | null => {
 export const handleActivityEvent = async (tenantId: string, event: StreamEvent): Promise<number> => {
     const triggerType = EVENT_TO_TRIGGER[event.type];
     if (!triggerType) return 0;
+    // No run docs for suspended workspaces (no AI or quota spent either).
+    if (await isTenantSuspended(tenantId)) return 0;
     const snap = await automationsCol(tenantId).where('enabled', '==', true).where('trigger.type', '==', triggerType).get();
     if (snap.empty) return 0;
     const docs = snap.docs.sort((a, b) => Number(a.data().order || 0) - Number(b.data().order || 0));
@@ -950,7 +955,7 @@ export const fireScheduledAutomation = async (ref: DocumentReference, automation
 };
 
 export const runAutomationSchedulesOnce = async (nowMs: number = Date.now()) => {
-    const stats = { resumed: 0, scheduled: 0 };
+    const stats = { resumed: 0, scheduled: 0, suspended: 0 };
     const now = Timestamp.fromMillis(nowMs);
 
     const waiting = await db.collectionGroup('automation_runs').where('status', '==', 'waiting').where('resumeAt', '<=', now).limit(100).get();
@@ -967,6 +972,7 @@ export const runAutomationSchedulesOnce = async (nowMs: number = Date.now()) => 
     }
 
     const due = await db.collectionGroup('automations').where('enabled', '==', true).where('nextRunAt', '<=', now).limit(100).get();
+    const suspended = due.empty ? new Set<string>() : await suspendedTenantIds();
     for (const doc of due.docs) {
         const automation = doc.data() as Json;
         const slotMs = (automation.nextRunAt as Timestamp).toMillis();
@@ -981,6 +987,11 @@ export const runAutomationSchedulesOnce = async (nowMs: number = Date.now()) => 
         if (!claimed) continue;
         // Skip slots older than a day (e.g. after an outage) instead of replaying them.
         if (nowMs - slotMs > DAY_MS) continue;
+        // Suspended workspace: the slot is consumed (nextRunAt moved on) but nothing runs.
+        if (suspended.has(tenantOf(doc.ref))) {
+            stats.suspended++;
+            continue;
+        }
         try {
             stats.scheduled += await fireScheduledAutomation(doc.ref, automation, slotMs);
         } catch (error) {
@@ -1085,8 +1096,12 @@ const assertActiveLimit = async (tenantId: string, tenant: Json, excludeId: stri
     }
 };
 
+/** All Flow callables refuse suspended workspaces (`failed-precondition`, reason `workspace-suspended`). */
 const callable = (handler: (data: Json, context: functions.https.CallableContext) => Promise<unknown>) =>
-    functions.region(REGION).runWith({ secrets: ['OPENAI_API_KEY'], timeoutSeconds: 120 }).https.onCall(handler);
+    functions.region(REGION).runWith({ secrets: ['OPENAI_API_KEY'], timeoutSeconds: 120 }).https.onCall(async (data, context) => {
+        await assertTenantActive(data?.tenantId);
+        return handler(data, context);
+    });
 
 export const saveAutomation = callable(async (data, context) => {
     const uid = requireAuth(context);

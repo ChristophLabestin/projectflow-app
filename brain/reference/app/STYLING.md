@@ -152,6 +152,30 @@ Use these RGB triplets with `rgba(var(--token), alpha)` when a translucent surfa
 
 ---
 
+## 1.9 In-app AI surface (2026-10-23)
+
+The AI has no name or persona; its only mark is ✦. Every AI interaction uses one floating surface
+(`AiPopover`) that stands apart from the regular UI but is built from its tokens. Tokens live in
+`web/styles/_tokens.scss` (light + `html.dark`), components in `web/components/ai/` (`ai-ds.scss`),
+live demo on `/ui` → AI (`screens/style-guide/AiShowcase.tsx`).
+
+| Token | Use |
+|---|---|
+| `--ai-glass-bg`, `--ai-glass-blur` | glass base of the popover and spark buttons (`backdrop-filter`) |
+| `--ai-veil` | quiet brand wash (blue top-left, violet top-right) layered over the glass |
+| `--ai-glow` | elevation: coloured soft glow + `--shadow-lg` (no borders) |
+| `--ai-spark-gradient` | ✦ glyph, primary AI buttons, send button, caret |
+| `--ai-accent`, `--ai-accent-soft` | links, icons, hover/selection tint inside AI surfaces |
+| `--ai-inner-bg` | chips, options, composer, action cards inside the popover |
+| `--ai-shimmer` | generating sweep along the popover's top edge, thinking lines |
+| `--ai-radius`, `--ai-text-fade` | popover radius; fade-in of streamed text |
+
+Rules: the AI style appears only on AI surfaces (✦ triggers, `AiPopover` and what it contains). Enter =
+rise + scale + un-blur (`--motion-duration-slow`, ease-out); exit shorter. Streamed text fades in per
+chunk/line; while generating the spark turns and the top edge shimmers. All motion is transform /
+opacity / filter and stops under `prefers-reduced-motion`. Section 1.6 (AI Studio mode accents) is
+legacy and goes with CORA.
+
 ## 2) Border Radius
 
 Border radius tokens define the rounding used across components. Use them consistently (cards, buttons, inputs, modals).

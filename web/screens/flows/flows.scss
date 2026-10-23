@@ -1054,6 +1054,7 @@
         &.is-waiting,
         &.is-running,
         &.is-skipped_limit,
+        &.is-skipped_suspended,
         &.is-cancelled {
             color: var(--color-text-subtle);
         }
