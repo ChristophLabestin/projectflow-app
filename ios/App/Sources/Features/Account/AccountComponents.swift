@@ -5,12 +5,15 @@ import PFDesign
 struct SettingsScaffold<Content: View>: View {
     let title: String
     var subtitle: String?
+    var topTrailing: AnyView?
     @ViewBuilder let content: Content
     @Environment(AppModel.self) private var model
 
     var body: some View {
         VStack(spacing: 0) {
-            PFTopBar(backLabel: L10n.t("common.back"), onBack: model.router.isDeep ? { model.router.pop() } : nil)
+            PFTopBar(backLabel: L10n.t("common.back"), onBack: model.router.isDeep ? { model.router.pop() } : nil) {
+                if let topTrailing { topTrailing }
+            }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     VStack(alignment: .leading, spacing: 4) {

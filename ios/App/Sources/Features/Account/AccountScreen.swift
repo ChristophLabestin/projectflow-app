@@ -13,7 +13,11 @@ struct AccountScreen: View {
 
     var body: some View {
         SettingsScaffold(title: L10n.t("account.title")) {
-            profileHeader.padding(.top, PFSpace.l)
+            Button { model.router.push(.accountPage(.profile)) } label: {
+                profileHeader.padding(.top, PFSpace.l).contentShape(.rect)
+            }
+            .buttonStyle(.pfPressable)
+            .accessibilityHint(L10n.t("profile.edit"))
             PFSectionHeader(L10n.t("account.workspaces"))
             workspaceCard
             PFSectionHeader(L10n.t("account.settings"))
@@ -46,6 +50,7 @@ struct AccountScreen: View {
                 }
             }
             Spacer(minLength: 0)
+            Image(systemName: "chevron.right").font(.system(size: 12, weight: .semibold)).foregroundStyle(PFColor.textSubtle)
         }
         .accessibilityElement(children: .combine)
     }
@@ -63,6 +68,7 @@ struct AccountScreen: View {
                 }
                 .accessibilityAddTraits(workspace.id == session?.activeWorkspaceId ? .isSelected : [])
             }
+            SettingsRow(systemImage: "gearshape", title: L10n.t("team.workspaceSettings")) { model.router.push(.accountPage(.workspaceSettings)) }
             SettingsRow(systemImage: "plus", title: L10n.t("account.newWorkspace")) { presentCreateWorkspace() }
         }
     }
@@ -83,6 +89,7 @@ struct AccountScreen: View {
         SettingsCard {
             SettingsRow(systemImage: "circle.lefthalf.filled", title: L10n.t("account.appearance"),
                         subtitle: AccountLogic.appearanceSummary(profile)) { model.router.push(.appearanceSettings) }
+            SettingsRow(systemImage: "person.crop.circle", title: L10n.t("profile.title")) { model.router.push(.accountPage(.profile)) }
             SettingsRow(systemImage: "bell", title: L10n.t("account.notifications")) { model.router.push(.notificationSettings) }
             SettingsRow(systemImage: "lock.shield", title: L10n.t("account.security")) { model.router.push(.securitySettings) }
             SettingsRow(systemImage: "person.2", title: L10n.t("account.team")) { model.router.push(.team) }

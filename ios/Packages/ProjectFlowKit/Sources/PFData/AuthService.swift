@@ -87,6 +87,11 @@ public final class AuthService {
         apply(Auth.auth().currentUser)
     }
 
+    /// Re-reads providers and display data after unlinking a provider or setting a password.
+    public func refreshProviders() {
+        apply(Auth.auth().currentUser)
+    }
+
     /// Passkey sign-in returns a Firebase custom token from `verifyPasskeyAuthentication`.
     public func signIn(customToken: String) async throws {
         _ = try await Auth.auth().signIn(withCustomToken: customToken)

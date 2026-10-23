@@ -43,7 +43,7 @@ enum AccountStrings {
         "security.apple.footer": "Verknüpfe Apple mit diesem Konto, damit „E-Mail verbergen“ bei Einladungen nicht stört.",
         "security.apple.linked": "Apple ist jetzt verknüpft",
         "security.twoFactor": "Zwei-Faktor", "security.twoFactor.off": "Aus",
-        "security.twoFactor.footer": "Einrichten und Verwalten geht im Web. Ein Passkey mit Face ID gilt bereits als zweiter Faktor.",
+        "security.twoFactor.footer": "Mit einer Authenticator-App wird die Anmeldung zusätzlich geschützt. Ein Passkey mit Face ID gilt bereits als zweiter Faktor.",
         "security.twoFactor.web": "Im Web einrichten",
         // Web wording
         "settings.security.passkeys.title": "Passkeys", "settings.security.passkeys.addButton": "Passkey hinzufügen",
@@ -57,7 +57,7 @@ enum AccountStrings {
         // Team
         "team.empty.title": "Noch keine Mitglieder", "team.empty.message": "Sobald jemand beitritt, erscheint er hier.",
         "team.count.one": "1 Mitglied", "team.count.other": "{count} Mitglieder",
-        "team.footer": "Einladen, Rollen und Gruppen verwaltest du im Web.", "team.you": "Du",
+        "team.footer": "Einladen und Rollen verwalten Admins und der Eigentümer.", "team.you": "Du",
         "team.presence.online": "Online", "team.presence.idle": "Abwesend", "team.presence.busy": "Beschäftigt", "team.presence.offline": "Offline",
         // Delete account
         "account.delete.eyebrow": "Konto löschen", "account.delete.title": "Konto endgültig löschen?",
@@ -114,7 +114,7 @@ enum AccountStrings {
         "security.apple.footer": "Link Apple to this account so “Hide My Email” doesn't get in the way of invitations.",
         "security.apple.linked": "Apple is now linked",
         "security.twoFactor": "Two-factor", "security.twoFactor.off": "Off",
-        "security.twoFactor.footer": "Set up and manage it on the web. A passkey with Face ID already counts as a second factor.",
+        "security.twoFactor.footer": "An authenticator app adds a second layer to signing in. A passkey with Face ID already counts as a second factor.",
         "security.twoFactor.web": "Set up on the web",
         "settings.security.passkeys.title": "Passkeys", "settings.security.passkeys.addButton": "Add Passkey",
         "settings.security.passkeys.description": "Sign in securely with FaceID, TouchID, or Windows Hello.",
@@ -126,7 +126,7 @@ enum AccountStrings {
         "settings.security.twoFactor.title": "Two-Factor Authentication", "settings.security.twoFactor.enabled": "Enabled",
         "team.empty.title": "No members yet", "team.empty.message": "As soon as someone joins they show up here.",
         "team.count.one": "1 member", "team.count.other": "{count} members",
-        "team.footer": "Invite people, roles and groups are managed on the web.", "team.you": "You",
+        "team.footer": "Admins and the owner invite people and manage roles.", "team.you": "You",
         "team.presence.online": "Online", "team.presence.idle": "Away", "team.presence.busy": "Busy", "team.presence.offline": "Offline",
         "account.delete.eyebrow": "Delete account", "account.delete.title": "Delete your account for good?",
         "account.delete.message": "Your profile, personal tasks and sign-ins will be deleted. In other people's workspaces your contributions stay, anonymised. This can't be undone.",

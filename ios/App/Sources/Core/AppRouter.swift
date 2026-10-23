@@ -18,6 +18,8 @@ enum AppRoute: Hashable {
     case securitySettings
     case appearanceSettings
     case team
+    /// Profile, workspace settings, roles, groups, member detail (Team package).
+    case accountPage(AccountPage)
     case designCatalog
 }
 
