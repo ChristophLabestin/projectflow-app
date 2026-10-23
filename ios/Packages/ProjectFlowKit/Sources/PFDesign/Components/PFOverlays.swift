@@ -131,15 +131,14 @@ struct PFSheetContent: View {
         ScrollView {
             sheet.content
                 .frame(maxWidth: .infinity, alignment: .top)
-                .padding(.top, 22)
+                .padding(.top, 26)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { fitHeight = $0 + 8 }
         }
         .scrollBounceBehavior(.basedOnSize)
         .scrollDismissesKeyboard(.interactively)
         .presentationDetents(Set(sheet.detents.map(detent)))
+        // System sheet chrome (material, corner radius, insets, grabber) — only the content is ProjectFlow's.
         .presentationDragIndicator(.visible)
-        .presentationCornerRadius(PFRadius.surface)
-        .presentationBackground(PFColor.card)
         .interactiveDismissDisabled(!sheet.dismissable)
     }
 

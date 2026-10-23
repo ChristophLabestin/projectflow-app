@@ -226,7 +226,7 @@ struct OptionSheet: View {
                     .accessibilityAddTraits(option.isSelected ? [.isButton, .isSelected] : .isButton)
                 }
             }
-            .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+            .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
             .padding(.horizontal, PFSpace.m)
         }
         .padding(.bottom, PFSpace.l)

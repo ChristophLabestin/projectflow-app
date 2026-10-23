@@ -65,7 +65,7 @@ struct PeopleSheet: View {
                         Text(L10n.t("taskDetail.people.none")).pfText(.meta).foregroundStyle(PFColor.textMuted).padding(PFSpace.l)
                     }
                 }
-                .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
                 .padding(.horizontal, PFSpace.m)
             }
             .frame(maxHeight: 360)
@@ -205,7 +205,7 @@ struct TaskPickerSheet: View {
                         Text(L10n.t("taskDetail.relationships.noMatches")).pfText(.meta).foregroundStyle(PFColor.textMuted).padding(PFSpace.l)
                     }
                 }
-                .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
                 .padding(.horizontal, PFSpace.m)
             }
             .frame(maxHeight: 380)

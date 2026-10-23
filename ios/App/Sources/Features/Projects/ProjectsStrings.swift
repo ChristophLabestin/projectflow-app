@@ -2,6 +2,10 @@
 // (`projects.portfolio.*`, `projectTemplates.*`, `dashboard.pulse.*`); `projects.*` keys not in the web are new.
 enum ProjectsStrings {
     static let de: [String: String] = [
+        "projects.pulse.progress": "Fortschritt", "projects.pulse.doneOf": "{done} von {total} Aufgaben erledigt",
+        "projects.pulse.health": "Health", "projects.stat.open": "Offen", "projects.stat.overdue": "Überfällig",
+        "projects.stat.blocked": "Blockiert", "projects.stat.soon": "Bald fällig", "projects.group.short": "Gruppieren",
+        "projects.eyebrow.due": "Fällig {date}",
         "dashboard.pulse.attention.empty": "Kein Projekt braucht gerade besondere Aufmerksamkeit.",
         "dashboard.pulse.attention.quiet.one": "1 weiteres Projekt ist ruhig und auf Kurs.",
         "dashboard.pulse.attention.quiet.other": "{count} weitere Projekte sind ruhig und auf Kurs.",
@@ -119,6 +123,10 @@ enum ProjectsStrings {
     ]
 
     static let en: [String: String] = [
+        "projects.pulse.progress": "Progress", "projects.pulse.doneOf": "{done} of {total} tasks done",
+        "projects.pulse.health": "Health", "projects.stat.open": "Open", "projects.stat.overdue": "Overdue",
+        "projects.stat.blocked": "Blocked", "projects.stat.soon": "Due soon", "projects.group.short": "Group",
+        "projects.eyebrow.due": "Due {date}",
         "dashboard.pulse.attention.empty": "No project needs special attention right now.",
         "dashboard.pulse.attention.quiet.one": "1 more project is quiet and on course.",
         "dashboard.pulse.attention.quiet.other": "{count} more projects are quiet and on course.",

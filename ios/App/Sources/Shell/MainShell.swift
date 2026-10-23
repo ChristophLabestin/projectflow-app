@@ -33,6 +33,8 @@ struct MainShell: View {
                 }
             }
             .background(PFCanvas())
+            // Every scroll view gets extra room below its content so the last rows clear the floating bar.
+            .contentMargins(.bottom, PFSpace.l, for: .scrollContent)
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomChrome }
 
             if !model.network.isOnline {
@@ -85,7 +87,8 @@ struct MainShell: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .padding(.bottom, router.isDeep ? 0 : 2)
+        // Sit the bar lower, into the home-indicator zone; the inset height (content clearance) is unchanged.
+        .offset(y: router.isDeep ? 0 : 14)
         .animation(PFMotion.respecting(PFMotion.snappy), value: model.profile?.focus)
     }
 }

@@ -113,6 +113,8 @@ struct TaskDetailScreen: View {
                 Color.clear.frame(height: 96)
             }
             .padding(.horizontal, PFSpace.page)
+            // Pin the content to the screen width so the vertical scroll view never pans sideways.
+            .containerRelativeFrame(.horizontal)
             .padding(.bottom, PFSpace.l)
         }
         .scrollIndicators(.hidden)

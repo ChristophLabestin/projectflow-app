@@ -143,42 +143,99 @@ struct ProjectScreen: View {
         }
     }
 
+    /// Editorial header: glyph + status eyebrow, display title, description, then the project pulse card.
     private func header(_ project: Project) -> some View {
         let hasCover = !(project.coverImage ?? "").isEmpty
-        return VStack(alignment: .leading, spacing: PFSpace.s) {
-            HStack(alignment: .top, spacing: PFSpace.s) {
-                VStack(alignment: .leading, spacing: PFSpace.s) {
-                    if !hasCover { PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: 60) }
-                    Text(project.title)
-                        .pfText(.title)
-                        .foregroundStyle(PFColor.textMain)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
+        return VStack(alignment: .leading, spacing: PFSpace.m) {
+            HStack(alignment: .center, spacing: PFSpace.s) {
+                if !hasCover { PFProjectGlyph(title: project.title, imageURL: project.squareIcon, size: 44) }
+                VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        PFPill(project.status.label, tone: .status(project.status.tone))
+                        PFDot(PFColor.statusBase(project.status.tone), size: 7)
+                        PFEyebrow(project.status.label)
                         if let priority = project.priority {
-                            PFPill(priority.label) { PFPrioritySignal(priority) }
-                        }
-                        if let due = project.dueDate, project.status.lifecycle != .closed {
-                            PFPill(Formatting.shortDate(due), tone: .severity(Formatting.severity(due: due)))
+                            Text("·").pfText(.eyebrow).foregroundStyle(PFColor.textSubtle)
+                            PFPrioritySignal(priority)
+                            PFEyebrow(priority.label)
                         }
                     }
+                    if let due = project.dueDate, project.status.lifecycle != .closed {
+                        Text(L10n.t("projects.eyebrow.due", ["date": Formatting.shortDate(due)]))
+                            .pfText(.metaStrong)
+                            .foregroundStyle(PFColor.severityText(Formatting.severity(due: due)))
+                    }
+                }
+            }
+            Text(project.title)
+                .pfText(.display)
+                .foregroundStyle(PFColor.textMain)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            if !project.summary.isEmpty {
+                Text(project.summary).pfText(.body).foregroundStyle(PFColor.textMuted).lineLimit(3)
+            }
+            pulseCard
+                .padding(.top, PFSpace.xs)
+        }
+        .padding(.horizontal, PFSpace.page)
+        .padding(.top, hasCover ? -28 : PFSpace.xs)
+    }
+
+    /// Progress, health and the four signals the web shows on the project overview, in one calm card.
+    private var pulseCard: some View {
+        let s = summary
+        return VStack(alignment: .leading, spacing: PFSpace.m) {
+            HStack(alignment: .center, spacing: PFSpace.m) {
+                VStack(alignment: .leading, spacing: 4) {
+                    PFEyebrow(L10n.t("projects.pulse.progress"))
+                    Text("\(Int((s.progress * 100).rounded())) %")
+                        .pfText(.displayLarge)
+                        .foregroundStyle(PFColor.textMain)
+                        .contentTransition(.numericText())
+                    Text(L10n.t("projects.pulse.doneOf", ["done": s.done, "total": s.total]))
+                        .pfText(.meta).foregroundStyle(PFColor.textMuted)
                 }
                 Spacer(minLength: 0)
                 if health?.score != nil {
                     VStack(spacing: 6) {
-                        PFHealthRing(score: health?.score, size: 56, lineWidth: 5)
-                        if let trend = PFTrend(raw: health?.trend) { PFTrendArrow(trend, size: 13) }
+                        PFHealthRing(score: health?.score, size: 62, lineWidth: 6)
+                        HStack(spacing: 4) {
+                            Text(L10n.t("projects.pulse.health")).pfText(.caption).foregroundStyle(PFColor.textMuted)
+                            if let trend = PFTrend(raw: health?.trend) { PFTrendArrow(trend, size: 11) }
+                        }
                     }
                 }
             }
-            summary.text.pfText(.metaStrong)
-            if !project.summary.isEmpty {
-                Text(project.summary).pfText(.body).foregroundStyle(PFColor.textMuted).lineLimit(3)
+            PFProgressBar(value: s.progress, height: 6)
+            HStack(spacing: 0) {
+                stat(L10n.t("projects.stat.open"), s.open, PFColor.textMain)
+                statDivider
+                stat(L10n.t("projects.stat.overdue"), s.overdue, s.overdue > 0 ? PFColor.dangerText : PFColor.textMain)
+                statDivider
+                stat(L10n.t("projects.stat.blocked"), s.blocked, s.blocked > 0 ? PFColor.dangerText : PFColor.textMain)
+                statDivider
+                stat(L10n.t("projects.stat.soon"), s.soon, s.soon > 0 ? PFColor.warningText : PFColor.textMain)
             }
         }
-        .padding(.horizontal, PFSpace.page)
-        .padding(.top, hasCover ? -28 : 0)
+        .padding(PFSpace.l)
+        .pfCard(radius: PFRadius.surface)
+    }
+
+    private func stat(_ label: String, _ value: Int, _ color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text("\(value)")
+                .font(.system(size: 22, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(color)
+                .contentTransition(.numericText())
+            Text(label).pfText(.caption).foregroundStyle(PFColor.textMuted).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statDivider: some View {
+        Rectangle().fill(PFColor.hairline).frame(width: 1, height: 30)
     }
 
     // MARK: Initiatives
@@ -234,15 +291,24 @@ struct ProjectScreen: View {
     private func listContent(_ project: Project) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: PFSpace.xs) {
-                PFChip(L10n.t("projects.group.by", ["group": grouping.label]), systemImage: "rectangle.3.group", showsChevron: true) { presentGrouping() }
-                Spacer(minLength: 0)
+                if access.canEditTasks {
+                    PFTextField(L10n.t("projects.addTask"), text: $newTaskTitle, systemImage: "plus", onSubmit: addTask)
+                } else {
+                    Text(L10n.t("projects.group.by", ["group": grouping.label])).pfText(.metaStrong).foregroundStyle(PFColor.textMuted)
+                    Spacer(minLength: 0)
+                }
+                Button { presentGrouping() } label: {
+                    Image(systemName: grouping.symbol)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(PFColor.textMain)
+                        .frame(width: 46, height: 46)
+                        .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
+                        .overlay { RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous).strokeBorder(PFColor.hairlineStrong, lineWidth: 1) }
+                }
+                .buttonStyle(.pfPressable)
+                .accessibilityLabel(L10n.t("projects.group.by", ["group": grouping.label]))
             }
             .padding(.horizontal, PFSpace.page)
-            if access.canEditTasks {
-                PFTextField(L10n.t("projects.addTask"), text: $newTaskTitle, systemImage: "plus", onSubmit: addTask)
-                    .padding(.horizontal, PFSpace.page)
-                    .padding(.top, PFSpace.s)
-            }
             if store.tasks.isEmpty {
                 if store.isLoaded {
                     PFEmptyState(systemImage: "checklist", title: L10n.t("projects.tasks.empty"), message: L10n.t("projects.tasks.emptyHint"))

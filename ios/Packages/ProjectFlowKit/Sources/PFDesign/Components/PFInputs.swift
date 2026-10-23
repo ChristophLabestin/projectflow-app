@@ -185,11 +185,13 @@ public struct PFTextField: View {
         }
         .padding(.horizontal, 14)
         .frame(minHeight: 46)
-        .background(focused ? PFColor.card : PFColor.raised, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
+        // Card surface + hairline ring: readable on the grey canvas and inside white cards alike.
+        .background(PFColor.card, in: .rect(cornerRadius: PFRadius.control, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: PFRadius.control, style: .continuous)
-                .strokeBorder(PFColor.hairlineStrong.opacity(focused ? 1 : 0), lineWidth: 1)
+                .strokeBorder(focused ? PFColor.textMuted.opacity(0.55) : PFColor.hairlineStrong, lineWidth: 1)
         }
+        .shadow(color: .black.opacity(0.04), radius: 2, y: 1)
         .animation(PFMotion.fast, value: focused)
         .contentShape(.rect)
         .onTapGesture { focused = true }

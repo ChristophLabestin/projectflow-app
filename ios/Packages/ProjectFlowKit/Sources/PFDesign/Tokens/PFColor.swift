@@ -41,6 +41,11 @@ public enum PFColor {
     public static let rowDivider = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
         ? UIColor(white: 1, alpha: 0.06) : UIColor(white: 0, alpha: 0.06) })
 
+    /// Grouped rows inside system sheets: a light translucent fill that lets the sheet material show
+    /// through, like native inset-grouped lists on iOS 26 sheets.
+    public static let sheetGroup = Color(uiColor: UIColor { @Sendable traits in traits.userInterfaceStyle == .dark
+        ? UIColor(white: 1, alpha: 0.08) : UIColor(white: 1, alpha: 0.55) })
+
     public static let scrim = Color(uiColor: UIColor(white: 0, alpha: 0.35))
 
     // Status: base hue (fills at 12 %) and AA text tone (C10).

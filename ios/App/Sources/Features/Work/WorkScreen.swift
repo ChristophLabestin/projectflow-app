@@ -48,8 +48,12 @@ struct WorkScreen: View {
                 }
             }
         }
-        .safeAreaInset(edge: .top, spacing: 0) {
-            WorkTopBar(collapse: collapse).background(alignment: .top) { topFade }
+        .overlay(alignment: .top) {
+            // Compact bar only appears once the large title has scrolled away.
+            WorkTopBar(collapse: collapse)
+                .background(alignment: .top) { topFade }
+                .opacity(Double(collapse))
+                .allowsHitTesting(collapse > 0.5)
         }
         .task { await tick() }
         .onChange(of: nav.mode) { _, _ in scrollOffset = 0 }
@@ -172,24 +176,30 @@ struct WorkHeader: View {
     var body: some View {
         @Bindable var nav = WorkNavigator.shared
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.t("work.title"))
-                .pfText(.displayLarge)
-                .foregroundStyle(PFColor.textMain)
-                .padding(.horizontal, PFSpace.page)
-                .padding(.top, PFSpace.xs)
-                .accessibilityAddTraits(.isHeader)
-            if let summary, !summary.isEmpty {
-                HStack(spacing: 6) {
-                    ForEach(Array(summary.enumerated()), id: \.element.id) { index, part in
-                        if index > 0 { Text("·").foregroundStyle(PFColor.textMuted) }
-                        Text(part.text).foregroundStyle(color(part.tone))
+            // Title + summary share one row with the capture button, so the "+" sits level with the title block.
+            HStack(alignment: .center, spacing: PFSpace.s) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(L10n.t("work.title"))
+                        .pfText(.displayLarge)
+                        .foregroundStyle(PFColor.textMain)
+                        .accessibilityAddTraits(.isHeader)
+                    if let summary, !summary.isEmpty {
+                        HStack(spacing: 6) {
+                            ForEach(Array(summary.enumerated()), id: \.element.id) { index, part in
+                                if index > 0 { Text("·").foregroundStyle(PFColor.textMuted) }
+                                Text(part.text).foregroundStyle(color(part.tone))
+                            }
+                        }
+                        .pfText(.metaStrong)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
                     }
                 }
-                .pfText(.metaStrong)
-                .lineLimit(1)
-                .padding(.horizontal, PFSpace.page)
-                .padding(.top, 6)
+                Spacer(minLength: 0)
+                PFIconButton("plus", label: L10n.t("today.capture")) { CaptureLauncher.present(model: model) }
             }
+            .padding(.horizontal, PFSpace.page)
+            .padding(.top, PFSpace.s)
             if showsFilters {
                 PFSegmented([(value: WorkNavigator.Mode.list, label: L10n.t("work.mode.list")),
                              (value: WorkNavigator.Mode.week, label: L10n.t("work.mode.week"))], selection: $nav.mode)

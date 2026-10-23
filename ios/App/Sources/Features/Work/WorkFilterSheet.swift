@@ -48,7 +48,7 @@ struct WorkMultiSelectSheet: View {
                             row(option)
                         }
                     }
-                    .background(PFColor.raisedSoft, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
+                    .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
                     .padding(.horizontal, PFSpace.m)
                 }
                 .frame(maxHeight: 420)
