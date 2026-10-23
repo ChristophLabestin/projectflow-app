@@ -9,12 +9,23 @@ This repo-local plugin package gives Codex a durable workflow for keeping Projec
 - Finish: marks the linked task or initiative as done, blocked, or partial.
 - Follow-ups: creates actionable ProjectFlow tasks and a Codex Inbox item for each follow-up.
 
-## Required Configuration
+## Recommended: MCP with sign-in (no script needed)
+
+Codex, Claude Code and other agents can use the ProjectFlow MCP server directly — the `codex_*` tools cover start, checkpoint, finish and follow-ups:
+
+```bash
+codex mcp add projectflow --url https://app.getprojectflow.com/mcp
+codex mcp login projectflow
+```
+
+Setup for every client: ProjectFlow → Workspace settings → AI & integrations. The script below stays for CI and shells without MCP.
+
+## Required Configuration (script)
 
 Set these values in the Codex environment or local shell profile:
 
 - `PROJECTFLOW_API_BASE_URL`: API root, for example `https://europe-west3-projectflow-labestin.cloudfunctions.net/api`.
-- `PROJECTFLOW_API_TOKEN`: ProjectFlow API token with the Codex Full Access preset.
+- `PROJECTFLOW_API_TOKEN`: a personal access token (`pfp_…`, Workspace settings → AI & integrations → Personal access tokens, "Read & write"). Legacy workspace tokens (`pfat_…`, Codex Full Access preset) keep working.
 - `PROJECTFLOW_PROJECT_ID`: default ProjectFlow project id for the current repo.
 
 Optional:
