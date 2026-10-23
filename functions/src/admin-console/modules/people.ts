@@ -204,7 +204,7 @@ export const peopleHandlers: HandlerMap = {
         audit: 'none',
         run: async ({ db }) => {
             const [tenants, members, projects, grants, policies] = await Promise.all([
-                db.collection('tenants').select('name', 'ownerId', 'createdAt', 'suspendedAt').get(),
+                db.collection('tenants').select('name', 'ownerId', 'createdAt', 'suspendedAt', 'workspaceType').get(),
                 db.collectionGroup('members').select('role').get(),
                 db.collectionGroup('projects').select('updatedAt').get(),
                 db.collection('ai_grants').where('revokedAt', '==', null).select('tenantId').get(),
@@ -229,6 +229,7 @@ export const peopleHandlers: HandlerMap = {
             policies.forEach((d) => { if (d.id === 'policy' && d.get('enabled') === false) entry(tenantOfRef(d.ref)).aiEnabled = false; });
             const [users, review] = await Promise.all([listDirectory(), reviewTenantIds(db)]);
             const emailOf = new Map(users.map((u) => [u.uid, u.email]));
+            const authUids = new Set(users.map((u) => u.uid));
             const billing = await loadBilling(db, tenants.docs.filter((d) => !review.has(d.id)).map((d) => d.id));
             return {
                 workspaces: tenants.docs.filter((d) => !review.has(d.id)).map((d) => ({
@@ -239,6 +240,9 @@ export const peopleHandlers: HandlerMap = {
                     createdAt: toMs(d.get('createdAt')),
                     suspendedAt: toMs(d.get('suspendedAt')),
                     billing: billing.get(d.id) ?? null,
+                    workspaceType: billing.get(d.id)?.workspaceType === 'personal' || d.id.startsWith('personal_') || d.get('workspaceType') === 'personal' ? 'personal' : 'team',
+                    // Owner without an Auth account (deleted user) — billing session asks to flag these.
+                    orphaned: !d.get('ownerId') || !authUids.has(d.get('ownerId')),
                     ...(stats.get(d.id) ?? { members: 0, guests: 0, projects: 0, lastProjectUpdate: null, grants: 0, aiEnabled: true }),
                 })),
             };

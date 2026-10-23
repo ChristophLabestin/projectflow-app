@@ -8,23 +8,28 @@ export type BillingSummary = {
     plan: string; status: string; seats: number; aiAddonSeats: number; billingInterval: string | null;
     trialEndsAt: number | null; graceEndsAt: number | null; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean;
     paid: boolean; mrr: number; missing: boolean; exempt: boolean;
+    workspaceType: 'personal' | 'team'; storageQuotaBytes: number | null; flowsQuota: string | null;
 };
 
 /** Net MRR in EUR: seats × 12 (monthly) or 10 (yearly) + AI add-on seats × 10, only for active/past_due. */
-export const mrrOf = (d: { status?: string; seats?: number; aiAddonSeats?: number; billingInterval?: string | null }) => {
+export const mrrOf = (d: { plan?: string; status?: string; seats?: number; aiAddonSeats?: number; billingInterval?: string | null }) => {
     if (d.status !== 'active' && d.status !== 'past_due') return 0;
+    const addons = (Number(d.aiAddonSeats) || 0) * 10;
+    // Personal plan (contract §7): flat 5 € monthly / 4 € on yearly billing, one seat.
+    if (d.plan === 'personal') return (d.billingInterval === 'year' ? 4 : 5) + addons;
     const perSeat = d.billingInterval === 'year' ? 10 : 12;
-    return (Number(d.seats) || 0) * perSeat + (Number(d.aiAddonSeats) || 0) * 10;
+    return (Number(d.seats) || 0) * perSeat + addons;
 };
 
 export const billingOf = (data: FirebaseFirestore.DocumentData | undefined): BillingSummary => {
     // No document = existing workspace in beta grace (contract §1).
-    if (!data) return { plan: 'team', status: 'grace', seats: 0, aiAddonSeats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, paid: false, mrr: 0, missing: true, exempt: false };
+    if (!data) return { plan: 'team', status: 'grace', seats: 0, aiAddonSeats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null, currentPeriodEnd: null, cancelAtPeriodEnd: false, paid: false, mrr: 0, missing: true, exempt: false, workspaceType: 'team', storageQuotaBytes: null, flowsQuota: null };
     return {
         plan: data.plan || 'free', status: data.status || 'free', seats: Number(data.seats) || 0, aiAddonSeats: Number(data.aiAddonSeats) || 0,
         billingInterval: data.billingInterval ?? null, trialEndsAt: toMs(data.trialEndsAt), graceEndsAt: toMs(data.graceEndsAt),
         currentPeriodEnd: toMs(data.currentPeriodEnd), cancelAtPeriodEnd: data.cancelAtPeriodEnd === true,
         paid: Boolean(data.stripeSubscriptionId), mrr: mrrOf(data), missing: false, exempt: data.billingExempt === true,
+        workspaceType: data.workspaceType === 'personal' ? 'personal' : 'team', storageQuotaBytes: Number.isFinite(data.storageQuotaBytes) ? data.storageQuotaBytes : null, flowsQuota: data.flowsQuota ?? null,
     };
 };
 

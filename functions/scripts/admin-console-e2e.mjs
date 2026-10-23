@@ -223,6 +223,17 @@ await check('billing exempt goes through setBillingExempt (reason required, MRR 
     assert.equal(off.result?.ok, true, JSON.stringify(off));
     assert.equal((await admin.firestore().doc(`tenants/${target.id}/entitlements/plan`).get()).get('status'), 'free');
 });
+await check('workspace list flags orphaned owners and personal workspaces', async () => {
+    await admin.firestore().doc('tenants/ws-orphan-e2e').set({ name: 'Orphan', ownerId: 'no-such-user', createdAt: admin.firestore.Timestamp.now() });
+    await admin.firestore().doc('tenants/personal_e2e').set({ name: 'Mein Workspace', ownerId: 'no-such-user-2', workspaceType: 'personal', createdAt: admin.firestore.Timestamp.now() });
+    await admin.firestore().doc('tenants/personal_e2e/entitlements/plan').set({ plan: 'personal', status: 'active', seats: 1, aiAddonSeats: 0, billingInterval: 'month', workspaceType: 'personal' });
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    const orphan = ws.result.workspaces.find((w) => w.id === 'ws-orphan-e2e');
+    const personal = ws.result.workspaces.find((w) => w.id === 'personal_e2e');
+    assert.equal(orphan?.orphaned, true);
+    assert.equal(personal?.workspaceType, 'personal');
+    assert.equal(personal?.billing?.mrr, 5);
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

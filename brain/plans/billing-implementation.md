@@ -56,7 +56,9 @@ Nicht enthalten (Owner-Follow-ups): USt./OSS, Live-Schlüssel, AGB/Datenschutz, 
 1. `firebase functions:secrets:set STRIPE_SECRET_KEY` (nur `sk_test_…`).
 2. `STRIPE_SECRET_KEY=sk_test_… node functions/scripts/stripe-setup.mjs` legt Produkt, Preise, Portal-Konfiguration und
    den Webhook-Endpunkt an und gibt das Webhook-Secret aus → `firebase functions:secrets:set STRIPE_WEBHOOK_SECRET`.
-3. Functions deployen (`billing*`, `stripeWebhook`, `sendInvitation`, `acceptWorkspaceInvite`, KI-Callables), Regeln deployen.
+3. `adminApi`: in `functions/src/admin-console/index.ts` `secrets: ['STRIPE_SECRET_KEY']` ergänzen und neu deployen (sonst fällt
+   das Entfernen von `billingExempt` bei bestehendem Abo auf Free statt auf den Stripe-Stand zurück).
+4. Functions deployen (`billing*`, `stripeWebhook`, `sendInvitation`, `acceptWorkspaceInvite`, KI-Callables), Regeln deployen.
 
 ## Owner-Follow-ups
 USt./OSS-Klärung und Stripe Tax · Live-Schlüssel + Live-Webhook · AGB „Entgelte/Laufzeit“ und Datenschutz (Stripe) ·
