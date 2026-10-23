@@ -17,8 +17,6 @@ const t = (key: string) => ({
     'nav.initiatives': 'Initiatives',
     'nav.marketing': 'Marketing',
     'nav.sprints': 'Sprints',
-    'nav.finance': 'Finance',
-    'finance.v2.nav.bookings': 'Bookings'
 } as Record<string, string>)[key] ?? key;
 
 const build = (path: string, extra: Record<string, unknown> = {}) => buildBreadcrumbs(path, { t, projectTitle: 'Website', ...extra });
@@ -26,7 +24,7 @@ const build = (path: string, extra: Record<string, unknown> = {}) => buildBreadc
 describe('buildBreadcrumbs', () => {
     it('shows no trail on top-level destinations', () => {
         for (const path of ['/', '/tasks', '/calendar', '/team', '/projects', '/notifications', '/media', '/profile',
-            '/personal-tasks', '/finance', '/finance/cockpit', '/admin/crashes', '/admin/legal', '/unknown']) {
+            '/personal-tasks', '/finance', '/admin/crashes', '/admin/legal', '/unknown']) {
             expect(build(path), path).toEqual([]);
         }
     });
@@ -58,12 +56,10 @@ describe('buildBreadcrumbs', () => {
         expect(build('/project/p1/marketing/settings')[2]).toEqual({ label: 'Marketing', to: '/project/p1/marketing/blog' });
     });
 
-    it('covers personal task detail, finance sections and crash issues', () => {
+    it('covers personal task detail and crash issues', () => {
         expect(build('/personal-tasks/x', { entityTitle: 'Renew passport' })).toEqual([
             { label: 'Personal tasks', to: '/personal-tasks' }, { label: 'Renew passport' }
         ]);
-        expect(build('/finance/bookings')).toEqual([{ label: 'Finance', to: '/finance/cockpit' }, { label: 'Bookings' }]);
-        expect(build('/finance/unknown-section')).toEqual([]);
         expect(build('/admin/crashes/abc').map((crumb) => crumb.label)).toEqual(['Crash reports', 'Issue']);
     });
 });

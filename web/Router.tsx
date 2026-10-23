@@ -81,7 +81,6 @@ const MarketingSettings = React.lazy(() => import('./screens/marketing/Marketing
 const BlogList = React.lazy(() => import('./screens/marketing/BlogList').then((module) => ({ default: module.BlogList })));
 const BlogEditor = React.lazy(() => import('./screens/marketing/BlogEditor').then((module) => ({ default: module.BlogEditor })));
 const AccountingPlaceholder = React.lazy(() => import('./screens/AccountingPlaceholder').then((module) => ({ default: module.AccountingPlaceholder })));
-const FinanceTracking = React.lazy(() => import('./screens/FinanceTracking').then((module) => ({ default: module.FinanceTracking })));
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -270,9 +269,6 @@ export const AppRouter = () => {
                         <Route path="/projects" element={<ProjectsList />} />
                         <Route path="/tasks" element={<Tasks />} />
                         <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/finance" element={withRouteSuspense(<FinanceTracking />)} />
-                        <Route path="/finance/:financeSection/:financeOperationType" element={withRouteSuspense(<FinanceTracking />)} />
-                        <Route path="/finance/:financeSection" element={withRouteSuspense(<FinanceTracking />)} />
                         <Route path="/brainstorm" element={isCoraStudioEnabled() ? <Brainstorming /> : <Navigate to="/" replace />} />
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />

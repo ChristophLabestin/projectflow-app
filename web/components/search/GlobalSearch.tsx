@@ -10,9 +10,9 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { useUIState, useToast } from '../../context/UIContext';
-import { usePermissions } from '../../context/PermissionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { getHelpCenterPages } from '../help/helpCenterContent';
+import { useHelpContent } from '../help/useHelpContent';
+import { blockToText } from '../help/helpSearch';
 import { DESKTOP_OPEN_SEARCH_EVENT } from '../../services/desktop';
 import type { Initiative, Project, Task } from '../../types';
 import {
@@ -165,12 +165,11 @@ const Highlight: React.FC<{ text: string; terms: string[] }> = ({ text, terms })
 type GlobalSearchProps = { tenantId?: string };
 
 export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
-    const { t, dateLocale, language, helpTranslationsReady, loadHelpTranslations } = useLanguage();
+    const { t, dateLocale, language } = useLanguage();
     const { theme, setTheme } = useTheme();
     const { openHelpCenter } = useHelpCenter();
     const { openTaskCreateModal, openProjectCreateModal } = useUIState();
     const { showSuccess } = useToast();
-    const { hasPermission } = usePermissions();
     const { activeWorkspace } = useWorkspace();
     const navigate = useNavigate();
     const location = useLocation();
@@ -267,9 +266,6 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
         if (activeWorkspace?.role !== 'Guest') {
             pages.push({ key: 'page:media', kind: 'page', title: t('nav.media'), icon: 'perm_media', tone: 'muted', href: '/media', keywords: ['files', 'dateien', 'bilder'] });
         }
-        if (hasPermission('tenant.finance.view')) {
-            pages.push({ key: 'page:finance', kind: 'page', title: t('nav.finance'), icon: 'account_balance_wallet', tone: 'muted', href: '/finance/cockpit', keywords: ['finanzen', 'money'] });
-        }
         if (currentProjectId) {
             const base = `/project/${currentProjectId}`;
             const projectTitle = index?.projects.find((p) => p.id === currentProjectId)?.title;
@@ -284,7 +280,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
             );
         }
         return pages;
-    }, [t, activeWorkspace?.role, hasPermission, currentProjectId, index]);
+    }, [t, activeWorkspace?.role, currentProjectId, index]);
 
     const actionItems = React.useMemo<SearchItem[]>(() => {
         const actions: SearchItem[] = [];
@@ -329,25 +325,23 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
         return actions;
     }, [t, theme, setTheme, currentProjectId, openTaskCreateModal, openProjectCreateModal, openHelpCenter, showSuccess]);
 
-    // Help copy is a lazy chunk; load it with the palette so help pages are searchable.
-    React.useEffect(() => {
-        if (open) void loadHelpTranslations();
-    }, [open, loadHelpTranslations]);
+    // Help articles are a lazy chunk per language; load them once the palette opens.
+    const helpContent = useHelpContent(open);
 
-    const helpItems = React.useMemo<SearchItem[]>(() => (helpTranslationsReady ? getHelpCenterPages(t) : []).flatMap((page) => [
+    const helpItems = React.useMemo<SearchItem[]>(() => (helpContent?.articles ?? []).flatMap((article) => [
         {
-            key: `help:${page.id}`, kind: 'help' as const, title: page.title, subtitle: page.description,
-            keywords: page.keywords, icon: 'menu_book', tone: 'muted' as const,
-            helpTarget: { pageId: page.id },
+            key: `help:${article.id}`, kind: 'help' as const, title: article.title, subtitle: article.summary,
+            keywords: article.keywords, icon: article.icon, tone: 'muted' as const,
+            helpTarget: { pageId: article.id },
         },
-        ...page.sections.map((section) => ({
-            key: `help:${page.id}:${section.id}`, kind: 'help' as const, title: section.title,
-            subtitle: t('search.helpSectionIn').replace('{page}', page.title),
-            keywords: [section.summary || '', section.content || '', ...(section.keywords || [])],
+        ...article.sections.map((section) => ({
+            key: `help:${article.id}:${section.id}`, kind: 'help' as const, title: section.title,
+            subtitle: t('search.helpSectionIn').replace('{page}', article.title),
+            keywords: [...(section.keywords || []), ...section.blocks.map(blockToText)],
             icon: 'description', tone: 'muted' as const,
-            helpTarget: { pageId: page.id, sectionId: section.id },
+            helpTarget: { pageId: article.id, sectionId: section.id },
         })),
-    ]), [helpTranslationsReady, t]);
+    ]), [helpContent, t]);
 
     // ---- Data items ------------------------------------------------------------
 

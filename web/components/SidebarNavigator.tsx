@@ -55,6 +55,8 @@ type NavRowDef = {
     label: string;
     badge?: number;
     exact?: boolean;
+    /** Action row (e.g. open a modal) instead of a route link; never "active". */
+    onSelect?: () => void;
 };
 
 // ----------------------------------------------------------------------
@@ -143,6 +145,7 @@ const NavGroup: React.FC<{
     const [pill, setPill] = React.useState<{ top: number; height: number } | null>(null);
 
     const isItemActive = React.useCallback((item: NavRowDef) => {
+        if (item.onSelect) return false;
         if (item.exact) return location.pathname === item.to;
         return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
     }, [location.pathname]);
@@ -174,21 +177,32 @@ const NavGroup: React.FC<{
                     aria-hidden="true"
                 />
             )}
-            {items.map(item => (
-                <Link
-                    key={item.key}
-                    to={item.to}
-                    onClick={onNavigate}
-                    title={item.label}
-                    className={`snav-row ${item.key === activeKey ? 'is-active' : ''}`}
-                >
-                    <span className="snav-row__icon material-symbols-outlined">{item.icon}</span>
-                    <span className="snav-row__label">{item.label}</span>
-                    {item.badge !== undefined && item.badge > 0 && (
-                        <span className="snav-row__badge">{item.badge}</span>
-                    )}
-                </Link>
-            ))}
+            {items.map(item => {
+                const content = (
+                    <>
+                        <span className="snav-row__icon material-symbols-outlined">{item.icon}</span>
+                        <span className="snav-row__label">{item.label}</span>
+                        {item.badge !== undefined && item.badge > 0 && (
+                            <span className="snav-row__badge">{item.badge}</span>
+                        )}
+                    </>
+                );
+                return item.onSelect ? (
+                    <button key={item.key} type="button" onClick={item.onSelect} title={item.label} className="snav-row">
+                        {content}
+                    </button>
+                ) : (
+                    <Link
+                        key={item.key}
+                        to={item.to}
+                        onClick={onNavigate}
+                        title={item.label}
+                        className={`snav-row ${item.key === activeKey ? 'is-active' : ''}`}
+                    >
+                        {content}
+                    </Link>
+                );
+            })}
         </div>
     );
 };
@@ -236,17 +250,11 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const [workspaceSettingsOpen, setWorkspaceSettingsOpen] = React.useState(false);
 
     const effectiveCollapsed = collapsed && !isDrawer;
-    const canViewFinance = hasPermission('tenant.finance.view');
     const pmCore = isPmCoreOnly();
 
-    const isFinanceContext = location.pathname === '/finance' || location.pathname.startsWith('/finance/');
-    const contextKind: 'project' | 'finance' | null = isFinanceContext && canViewFinance && !pmCore
-        ? 'finance'
-        : workspace?.projectId
-            ? 'project'
-            : null;
+    const contextKind: 'project' | null = workspace?.projectId ? 'project' : null;
 
-    // Depth: 0 = workspace anchors, 1 = active context (project/finance).
+    // Depth: 0 = workspace anchors, 1 = active context (project).
     // Auto-follows the route, but the user can pop back to preview the workspace.
     const [previewWorkspace, setPreviewWorkspace] = React.useState(false);
     React.useEffect(() => {
@@ -476,15 +484,18 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     // Group 2 ("Arbeitsbereich"): shared workspace areas.
     const secondaryAnchors: NavRowDef[] = [
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
-        ...(canViewFinance ? [{ key: 'finance', to: '/finance/cockpit', icon: 'account_balance_wallet', label: t('nav.finance') }] : []),
+        ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') }] : []),
+        ...(activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin'
+            ? [{ key: 'workspaceSettings', to: '', icon: 'settings', label: t('workspaceSettings.title'), onSelect: () => { closeOnNavigate?.(); setWorkspaceSettingsOpen(true); } }]
+            : []),
         ...(isCoraStudioEnabled() ? [{ key: 'aiStudio', to: '/brainstorm', icon: 'auto_awesome', label: t('nav.aiStudio') }] : []),
     ];
 
-    // New accounts see Finance and Media behind "More" until they open them;
+    // New accounts see Media behind "More" until they open it;
     // accounts from before the onboarding rework keep the full list.
     const { onboarding } = useOnboarding();
-    const extraKeys = ['finance', 'media'];
+    const extraKeys = ['media'];
     const moreStorageKey = `projectflow.sidebar.moreOpen.${user?.uid || 'anonymous'}`;
     const [moreOpen, setMoreOpen] = React.useState(() => {
         try { return window.localStorage.getItem(moreStorageKey) === '1'; } catch { return false; }
@@ -542,22 +553,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
             }));
     }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, pmCore, t]);
 
-    // ---- Finance subnav ------------------------------------------------------
-    const financeModules: NavRowDef[] = [
-        { key: 'fin-cockpit', to: '/finance/cockpit', icon: 'space_dashboard', label: t('finance.v2.nav.cockpit') },
-        { key: 'fin-bookings', to: '/finance/bookings', icon: 'receipt_long', label: t('finance.v2.nav.bookings') },
-        { key: 'fin-receivables', to: '/finance/receivables', icon: 'payments', label: t('finance.v2.nav.receivables') },
-        { key: 'fin-payables', to: '/finance/payables', icon: 'request_quote', label: t('finance.v2.nav.payables') },
-        { key: 'fin-bank', to: '/finance/bank', icon: 'account_balance', label: t('finance.v2.nav.bank') },
-        { key: 'fin-tax', to: '/finance/tax', icon: 'gavel', label: t('finance.v2.nav.tax') },
-        { key: 'fin-reports', to: '/finance/reports', icon: 'analytics', label: t('finance.v2.nav.reports') },
-        { key: 'fin-functions', to: '/finance/functions', icon: 'function', label: t('finance.v2.nav.functions') },
-        { key: 'fin-exports', to: '/finance/exports', icon: 'file_download', label: t('finance.v2.nav.exports') },
-        { key: 'fin-sync', to: '/finance/sync', icon: 'sync', label: t('finance.v2.nav.sync') },
-        { key: 'fin-settings', to: '/finance/settings', icon: 'tune', label: t('finance.v2.nav.settings') },
-        { key: 'fin-calc', to: '/finance/calculations', icon: 'calculate', label: t('finance.v2.nav.planning') },
-    ];
-
     const currentProject = workspace?.projectId ? projectsById.get(workspace.projectId) : undefined;
     const currentPinned = workspace?.projectId ? pinnedIds.includes(workspace.projectId) : false;
 
@@ -584,17 +579,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const externalResources = workspace?.externalResources || [];
 
     // ---- Context layer header ------------------------------------------------
-    const contextHeader = contextKind === 'finance' ? (
-        <div className="snav-context-head">
-            <span className="snav-avatar snav-avatar--finance">
-                <span className="material-symbols-outlined">account_balance_wallet</span>
-            </span>
-            <div className="snav-context-head__copy">
-                <span className="snav-context-head__title">{t('nav.finance')}</span>
-                <span className="snav-context-head__meta">{t('projectSwitcher.scope.workspace')}</span>
-            </div>
-        </div>
-    ) : contextKind === 'project' ? (
+    const contextHeader = contextKind === 'project' ? (
         <div className="snav-context-head">
             {currentProject
                 ? <ProjectAvatar project={currentProject} />
@@ -688,9 +673,6 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                                     </button>
                                 )}
                                 {contextHeader}
-                                {contextKind === 'finance' && (
-                                    <NavGroup items={financeModules} onNavigate={closeOnNavigate} />
-                                )}
                                 {contextKind === 'project' && (
                                     <>
                                         <NavGroup items={projectModules} onNavigate={closeOnNavigate} />

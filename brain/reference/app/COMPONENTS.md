@@ -49,7 +49,7 @@ Rules:
 |---|---|---|---|
 | `TopBar` | Global header | Search, user menu, breadcrumbs | Consistent layout and spacing |
 | `GlobalSearch` | ⌘K / `/` command palette in the TopBar (`web/components/search/GlobalSearch.tsx`, matching in `web/utils/globalSearch.ts`) | Global navigation and quick actions | No AI. Loads projects/tasks/initiatives once per open (60s cache, prefetched on trigger hover) and matches in memory: multi-word, diacritic-insensitive, fuzzy fallback, highlighted hits. Scope tabs (Tab cycles) and prefixes `>` actions, `#` projects, `!` tasks, `?` help; task filters `is:open|done|overdue|today|mine`, `prio:urgent|high|medium|low`. Empty state: recently opened + recent searches (localStorage per user), actions, pages, tips. ⌘/Ctrl+Enter opens in a new tab. Current project's hits rank higher. Styles in `_global-search.scss`. |
-| `SidebarNavigator` | Main navigation (`components/SidebarNavigator.tsx`; the old `Sidebar`/`WorkspaceTeamIndicator` were removed 2026-10-23) | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. |
+| `SidebarNavigator` | Main navigation (`components/SidebarNavigator.tsx`; the old `Sidebar`/`WorkspaceTeamIndicator` were removed 2026-10-23) | Tenant navigation | Collapsible behavior; project resources can show restricted/advisor-review signals and are filtered by resource role metadata when configured. Workspace group: Projects, Team, Media (behind "More" for new accounts), Workspace settings (Owner/Admin; action row → `SettingsModal` scope workspace). `NavRowDef.onSelect` = action row instead of a link. |
 | `DesktopTitleBar` | Window title bar of the desktop app (`web/components/desktop/`) | Mounted by `RootLayout` when `isDesktop()` | Drag region hosting the native window controls (macOS traffic lights in the left inset, Windows `titleBarOverlay` caption buttons on the right, menu button for the app menu). `inline` mode (authenticated shell, content offset via `--app-viewport-height` / `#root` padding) or `overlay` (public routes). Renders nothing in the browser. Styles in `_desktop.scss`. |
 | `DesktopBridge` | Glue to the Electron shell (`web/components/desktop/DesktopBridge.tsx`) | Mounted once in the main desktop window | Routes menu/tray/deep-link commands, pushes language, theme colors, tray snapshot (focus + pins), badge count and native notifications (baseline snapshot, active tenant only). Bridge access and capability checks live in `web/services/desktop.ts`. |
 | `DesktopSettingsPanel` | Settings → Desktop app (`web/components/settings/DesktopSettingsPanel.tsx`) | `SettingsModal` tab `desktop`, only with the bridge capability `preferences` | Launch at login, global shortcuts (key recorder), day start/close, calendar, macOS Shortcuts for focus mode, media key. Values live in the shell (`getPreferences`/`setPreferences`), not Firestore. Reuses the `notification-settings` card styles. |
@@ -127,13 +127,7 @@ Example usage:
 
 ## Finance Feature Components
 
-| Component | Purpose | Typical Usage | Notes |
-|---|---|---|---|
-| `FinanceFunctionsWorkspace` | Dedicated operations control center for Finance V2 | `/finance/functions` | Includes operation catalog, tabs, run tray, and deep-link handling |
-| `FinanceOperationWizard` | Guided operation execution flow | Operate tab in Finance Functions Workspace | Scope -> Preview -> Confirm -> Result, supports idempotent execution path |
-| `FinanceOperationRunTimeline` | Step-level runtime inspection | Runs tab details panel | Shows lifecycle steps, warnings, artifacts, and timestamps |
-| `FinanceOperationTemplatesPanel` | Save/reuse operation payload presets | Templates tab in Finance Functions Workspace | CRUD for tenant-scoped templates |
-| `FinanceOpsAssistantPanel` | Explainable AI recommendations for ops actions | Insights tab in Finance Functions Workspace | Presents confidence/rationale and only suggests (no auto-execute) |
+Removed 2026-10-23 together with the `/finance` module (`components/finance/*`, `screens/FinanceTracking.tsx`, `services/finance-v2/*`, `tenant.finance.*` permissions in the role catalog).
 
 ---
 
@@ -294,12 +288,13 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `utils/notificationPresentation.ts`: icon/tone per type, `getNotificationPath` (task > initiative > project > relative `deepLink`), `getNotificationText` (renders `notifications.type.<type>.title|message` from the doc's `params`, falls back to the stored English text), `groupNotifications`.
 - `screens/Notifications.tsx` uses the same parts plus the collapsed delivery diagnostics.
 
-## Help Center (`web/components/help/`, bilingual 2026-10-23)
+## Help Center (`web/components/help/`, rebuilt 2026-10-23)
 
-- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`): search over page/section index, CORA ask, category nav, active page. On open it calls `loadHelpTranslations()`; until ready it shows `help.drawer.loading` and an empty index.
-- `helpCenterContent.ts`: `getHelpCenterPages(t)` builds the page index (title/description/keywords from `help.pages.<pageKey>.*`); `getHelpTargetForPath` maps routes to pages. `splitHelpKeywords` turns the comma-separated keywords keys into arrays (DE keywords include German and English terms).
-- `pages/*Page.tsx`: each exports the component plus `get<Page>Sections: HelpCenterSectionsBuilder` (`(t) => sections`); index ids must equal the JSX `data-section-id`. All copy via `t('help.<pageKey>.…')`; accents only via brand/status tokens (`--brand-*-text`, `rgba(var(--brand-*-rgb), a)`, `--color-status-blocked-text`), no palette classes.
-- Copy lives in `web/locales/help/<page>-en.ts|-de.ts`, aggregated by `locales/help-en.ts|help-de.ts` and lazy-loaded into the `help-i18n` chunk (`vite.config.ts`) — new help pages add a fragment pair there, not keys in `en.ts`/`de.ts`.
+Concept: `brain/plans/help-center-rework.md`.
+- `HelpCenterDrawer` (mounted in `Router.tsx`, state in `context/HelpCenterContext`; `activePageId` = article id, `null` = home): floating one-column sheet (`--help-center-width`, inset 12 px, full screen < 720 px). Views: **Home** ("For this page" via `helpRouting.ts` + articles by category) → **Article** (`HelpArticleView`) or **Search** (`searchHelp` + Ask CORA). Back arrow returns home, Esc/scrim close. Opened by `?`, the top-bar help button, ⌘K results, the desktop menu, and `HelpCenterFloatingButton` (`.help-fab`) on public routes.
+- Content: `web/locales/help/articles/<id>-en|de.ts` (one `HelpArticle` each, typed by `helpTypes.ts`), ordered in `articles-en|de.ts`; loaded per language by `useHelpContent()` (chunks `help-content-en|de`). Blocks: text, steps, list, callout (tip/note/warning), terms, shortcuts; inline `**bold**`, `` `code` ``, `[label](/route)` (`HelpInline`).
+- `__tests__/helpCenter.test.ts` enforces EN/DE structural parity, unique ids, valid routes, no retired concepts (Flows/Issues/Social), and that every routed article/section exists.
+- Styling: `help-center.scss` only (borderless, surface contrast, brand tokens for callouts) — no Tailwind in help components.
 
 ## Reminders and settings controls
 
