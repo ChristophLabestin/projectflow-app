@@ -152,10 +152,10 @@ const de = {
         from: 'ab',
         popular: 'Beliebt',
         plans: [
-            { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'Zum Ausprobieren und für den Einstieg.', features: ['1 Person, bis 3 Projekte', 'Heute, Fokus, Inbox & Boards', 'Web, Desktop & iPhone', 'KI mit eigenem OpenAI-Schlüssel', 'MCP-Zugang für deine KI-Clients'], cta: 'Kostenlos starten' },
-            { key: 'personal', name: 'Personal', monthly: 5, yearly: 4, desc: 'Dein persönlicher Workspace – ohne Grenzen.', features: ['Unbegrenzte Projekte & Flows', 'Mehr Dateispeicher', 'Heute, Fokus, Inbox & Boards', 'KI-Paket zubuchbar', 'Für dich allein, getrennt vom Team-Abo'], cta: 'Personal starten' },
-            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'Für Teams, die gemeinsam liefern.', features: ['Bis 50 Mitglieder, unbegrenzte Projekte', 'Externe pro Projekt kostenlos', 'KI-Paket pro Nutzer zubuchbar', 'Initiativen, Sprints & Module', 'Persönliche Tokens & KI-Aktivitätsprotokoll', '14 Tage kostenlos testen'], cta: 'Team kostenlos testen' },
-            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'Für Unternehmen mit Governance-Anforderungen.', features: ['Alles aus Team, ab 10 Plätzen', 'Single Sign-on (SSO)', 'KI-Paket mit eigenen Kontingenten & Richtlinien', 'AV-Vertrag & erweiterte Protokolle', 'Priorisierter Support'], cta: 'Kontakt aufnehmen' },
+            { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'Zum Ausprobieren und für den Einstieg.', features: ['1 Person, bis 3 Projekte', '1 GB Dateispeicher', 'Heute, Fokus, Inbox & Boards', 'Web, Desktop & iPhone', 'KI mit eigenem OpenAI-Schlüssel', 'MCP-Zugang für deine KI-Clients'], cta: 'Kostenlos starten' },
+            { key: 'personal', name: 'Personal', monthly: 5, yearly: 4, desc: 'Dein persönlicher Workspace – ohne Grenzen.', features: ['Unbegrenzte Projekte & Flows', '25 GB Dateispeicher', 'Heute, Fokus, Inbox & Boards', 'KI-Paket zubuchbar', 'Für dich allein, getrennt vom Team-Abo'], cta: 'Personal starten' },
+            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'Für Teams, die gemeinsam liefern.', features: ['Bis 50 Mitglieder, unbegrenzte Projekte', '10 GB Speicher pro Platz, gemeinsam genutzt', 'Externe pro Projekt kostenlos', 'KI-Paket pro Nutzer zubuchbar', 'Initiativen, Sprints & Module', 'Persönliche Tokens & KI-Aktivitätsprotokoll', '14 Tage kostenlos testen'], cta: 'Team kostenlos testen' },
+            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'Für Unternehmen mit Governance-Anforderungen.', features: ['Alles aus Team, ab 10 Plätzen', '50 GB Speicher pro Platz', 'Single Sign-on (SSO)', 'KI-Paket mit eigenen Kontingenten & Richtlinien', 'AV-Vertrag & erweiterte Protokolle', 'Priorisierter Support'], cta: 'Kontakt aufnehmen' },
         ],
         addon: {
             name: 'KI-Paket',
@@ -199,6 +199,7 @@ const de = {
         items: [
             { q: 'Für wen ist ProjectFlow gemacht?', a: 'Für Teams im digitalen Bereich – Produkt, Entwicklung, Design und Marketing – sowie für Gründer:innen und Freelancer, die ihre Arbeit an einem Ort organisieren wollen.' },
             { q: 'Was kostet ProjectFlow?', a: 'Bis zum Start der Bezahlpläne ist ProjectFlow kostenlos. Danach gibt es einen kostenlosen Plan, Personal für deinen persönlichen Workspace (4 € im Monat bei jährlicher Zahlung) und den Team-Plan für 10 € pro Platz und Monat bei jährlicher Zahlung (12 € monatlich). KI-Funktionen buchst du pro Nutzer für 10 € im Monat dazu; Externe in Projekten kosten nichts extra.' },
+            { q: 'Wie viel Speicher habe ich?', a: 'Free hat 1 GB, Personal 25 GB (Dateien bis 50 MB). Team hat 10 GB pro Platz, gemeinsam genutzt und mindestens 25 GB, Organization 50 GB pro Platz (Dateien bis 250 MB).' },
             { q: 'Was passiert mit meinen Daten, wenn ich nicht upgrade?', a: 'Nichts geht verloren. Du behältst Zugriff auf alle Projekte und kannst jederzeit später upgraden.' },
             { q: 'Auf welchen Geräten läuft ProjectFlow?', a: 'Im Browser, als Desktop-App für macOS und Windows und bald als iPhone-App im App Store. Alle greifen auf dieselben Daten zu.' },
             { q: 'Wie arbeite ich mit Kunden oder Externen?', a: 'Externe lädst du zu einzelnen Projekten ein. Sie sehen nur dieses Projekt und werden nicht Mitglied deines Workspace.' },
@@ -399,10 +400,10 @@ const en: SiteCopy = {
         from: 'from',
         popular: 'Popular',
         plans: [
-            { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'To try it out and get started.', features: ['1 person, up to 3 projects', 'Today, focus, inbox & boards', 'Web, desktop & iPhone', 'AI with your own OpenAI key', 'MCP access for your AI clients'], cta: 'Start for free' },
-            { key: 'personal', name: 'Personal', monthly: 5, yearly: 4, desc: 'Your personal workspace – without limits.', features: ['Unlimited projects & Flows', 'More file storage', 'Today, focus, inbox & boards', 'AI add-on available', 'Just for you, separate from team billing'], cta: 'Start Personal' },
-            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'For teams that ship together.', features: ['Up to 50 members, unlimited projects', 'Externals per project for free', 'AI add-on per user', 'Initiatives, sprints & modules', 'Personal tokens & AI activity log', 'Free 14-day trial'], cta: 'Try Team for free' },
-            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'For companies with governance needs.', features: ['Everything in Team, from 10 seats', 'Single sign-on (SSO)', 'AI add-on with custom quotas & policies', 'DPA & extended logs', 'Priority support'], cta: 'Contact us' },
+            { key: 'free', name: 'Free', monthly: 0, yearly: 0, desc: 'To try it out and get started.', features: ['1 person, up to 3 projects', '1 GB file storage', 'Today, focus, inbox & boards', 'Web, desktop & iPhone', 'AI with your own OpenAI key', 'MCP access for your AI clients'], cta: 'Start for free' },
+            { key: 'personal', name: 'Personal', monthly: 5, yearly: 4, desc: 'Your personal workspace – without limits.', features: ['Unlimited projects & Flows', '25 GB file storage', 'Today, focus, inbox & boards', 'AI add-on available', 'Just for you, separate from team billing'], cta: 'Start Personal' },
+            { key: 'team', name: 'Team', monthly: 12, yearly: 10, desc: 'For teams that ship together.', features: ['Up to 50 members, unlimited projects', '10 GB storage per seat, pooled', 'Externals per project for free', 'AI add-on per user', 'Initiatives, sprints & modules', 'Personal tokens & AI activity log', 'Free 14-day trial'], cta: 'Try Team for free' },
+            { key: 'org', name: 'Organization', monthly: 18, yearly: 18, desc: 'For companies with governance needs.', features: ['Everything in Team, from 10 seats', '50 GB storage per seat', 'Single sign-on (SSO)', 'AI add-on with custom quotas & policies', 'DPA & extended logs', 'Priority support'], cta: 'Contact us' },
         ],
         addon: {
             name: 'AI add-on',
@@ -446,6 +447,7 @@ const en: SiteCopy = {
         items: [
             { q: 'Who is ProjectFlow for?', a: 'For teams in digital work – product, engineering, design and marketing – and for founders and freelancers who want to organise their work in one place.' },
             { q: 'How much does ProjectFlow cost?', a: 'Until paid plans launch, ProjectFlow is free. After that there is a free plan, Personal for your personal workspace (€4 a month billed yearly) and the Team plan at €10 per seat and month billed yearly (€12 monthly). AI features are added per user for €10 a month; externals in projects cost nothing extra.' },
+            { q: 'How much storage do I get?', a: 'Free has 1 GB, Personal 25 GB (files up to 50 MB). Team has 10 GB per seat, pooled and at least 25 GB, Organization 50 GB per seat (files up to 250 MB).' },
             { q: 'What happens to my data if I don’t upgrade?', a: 'Nothing gets lost. You keep access to all projects and can upgrade later at any time.' },
             { q: 'Which devices does ProjectFlow run on?', a: 'In the browser, as a desktop app for macOS and Windows, and soon as an iPhone app on the App Store. All of them work with the same data.' },
             { q: 'How do I work with clients or externals?', a: 'Invite externals to individual projects. They only see that project and do not become members of your workspace.' },

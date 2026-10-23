@@ -111,7 +111,8 @@ Everything else is not restricted unless explicitly specified elsewhere.
 
 #### Personal — 5 €/month, 4 €/month billed yearly (owner decision 2026-10-23)
 Paid upgrade of the **personal workspace** every user has. Billed separately from any team subscription.
-- **Unlimited projects** and **Flows**, **more file storage** than Free (exact quota set in the billing contract).
+- **Unlimited projects** and **Flows**, **25 GB file storage** (max. 50 MB per file). Free: 1 GB; Team: 10 GB per seat pooled,
+  at least 25 GB (max. 250 MB per file); Organization: 50 GB per seat (owner decision 2026-10-23).
 - **No members, no invitations** (single person only).
 - **AI add-on** (10 €/month) can be booked; without it AI only with the user's own OpenAI key.
 
