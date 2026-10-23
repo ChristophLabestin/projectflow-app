@@ -14,7 +14,7 @@ export const isCoraStudioEnabled = () => import.meta.env.VITE_CORA_STUDIO_ENABLE
 export const WORKSPACE_AREAS = {
     documents: true,
     wiki: true,
-    flows: false,
+    flows: true,
 } as const;
 
 export type WorkspaceArea = keyof typeof WORKSPACE_AREAS;

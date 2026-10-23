@@ -486,7 +486,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
         ...(isWorkspaceAreaEnabled('documents') ? [{ key: 'documents', to: '/files', icon: 'folder_open', label: t('nav.documents') }] : []),
         ...(isWorkspaceAreaEnabled('wiki') && activeWorkspace?.role !== 'Guest' ? [{ key: 'wiki', to: '/wiki', icon: 'menu_book', label: t('nav.wiki') }] : []),
-        ...(isWorkspaceAreaEnabled('flows') ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
+        ...(isWorkspaceAreaEnabled('flows') && activeWorkspace?.role !== 'Guest' ? [{ key: 'flows', to: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
         { key: 'activity', to: '/activity', icon: 'history', label: t('nav.activity') },
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'insights', to: '/insights', icon: 'insights', label: t('nav.insights'), exact: true }] : []),
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
@@ -536,6 +536,8 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
             { id: 'wiki', path: '/wiki', icon: 'menu_book', label: t('nav.wiki') },
             { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
             { id: 'files', path: '/files', icon: 'folder_open', label: t('nav.files') },
+            // Id 'automations': 'flows' is the retired ideas module and filtered as deprecated.
+            ...(isWorkspaceAreaEnabled('flows') && activeWorkspace?.role !== 'Guest' ? [{ id: 'automations', path: '/flows', icon: 'account_tree', label: t('nav.flows') }] : []),
         ];
 
         const defaultOrder = pmCore ? [...PM_CORE_PROJECT_NAV_ORDER] : defs.map(d => d.id);
@@ -557,7 +559,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 badge: d.badge,
                 exact: d.exact,
             }));
-    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, pmCore, t]);
+    }, [workspace?.projectId, workspace?.modules, workspace?.navPrefs, workspace?.tasksCount, workspace?.isClientProject, activeWorkspace?.role, pmCore, t]);
 
     const currentProject = workspace?.projectId ? projectsById.get(workspace.projectId) : undefined;
     const currentPinned = workspace?.projectId ? pinnedIds.includes(workspace.projectId) : false;

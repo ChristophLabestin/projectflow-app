@@ -16,6 +16,7 @@ import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-p
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, runAiCapability } from './ai-service';
 import { aiAssist } from './ai-assist';
+import { aiApplyProposal, aiUndoProposal } from './ai-actions';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
@@ -89,6 +90,8 @@ export {
     editImage,
     runAiCapability,
     aiAssist,
+    aiApplyProposal,
+    aiUndoProposal,
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,

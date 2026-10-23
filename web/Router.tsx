@@ -73,6 +73,8 @@ const FilesPage = React.lazy(() => import('./screens/FilesPage').then((module) =
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const WorkspaceInsights = React.lazy(() => import('./screens/WorkspaceInsights').then((module) => ({ default: module.WorkspaceInsights })));
 const WorkspaceActivity = React.lazy(() => import('./screens/WorkspaceActivity').then((module) => ({ default: module.WorkspaceActivity })));
+const FlowsScreen = React.lazy(() => import('./screens/flows/FlowsScreen').then((module) => ({ default: module.FlowsScreen })));
+const FlowEditor = React.lazy(() => import('./screens/flows/FlowEditor').then((module) => ({ default: module.FlowEditor })));
 const WikiScreen = React.lazy(() => import('./screens/wiki/WikiScreen').then((module) => ({ default: module.WikiScreen })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const MarketingLayout = React.lazy(() => import('./screens/marketing/MarketingLayout').then((module) => ({ default: module.MarketingLayout })));
@@ -275,6 +277,9 @@ export const AppRouter = () => {
                         <Route path="/media" element={<Navigate to="/files?type=image" replace />} />
                         <Route path="/wiki" element={withRouteSuspense(<WikiScreen />)} />
                         <Route path="/wiki/:docId" element={withRouteSuspense(<WikiScreen />)} />
+                        <Route path="/flows" element={withRouteSuspense(<FlowsScreen />)} />
+                        <Route path="/flows/new" element={withRouteSuspense(<FlowEditor />)} />
+                        <Route path="/flows/:flowId" element={withRouteSuspense(<FlowEditor />)} />
                         <Route path="/profile" element={<Profile />} />
 
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />
@@ -296,6 +301,7 @@ export const AppRouter = () => {
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
+                            <Route path="flows" element={withRouteSuspense(<FlowsScreen />)} />
                             <Route path="files" element={withRouteSuspense(<FilesPage />)} />
                             {/* The Codex view was removed; keep old links working. */}
                             <Route path="codex" element={<Navigate to=".." relative="path" replace />} />

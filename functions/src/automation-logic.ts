@@ -517,9 +517,10 @@ export const evaluateRule = (rule: ConditionRule, ctx: EvalContext): boolean => 
             return lower(actual) === lower(expected);
         case 'neq': return !evaluateRule({ ...rule, operator: 'eq' }, ctx);
         case 'in':
+            if (list.length === 0) return true; // nothing picked yet = no restriction
             if (Array.isArray(actual)) return actual.some((item) => list.includes(String(item)));
             return list.includes(String(actual));
-        case 'not_in': return !evaluateRule({ ...rule, operator: 'in' }, ctx);
+        case 'not_in': return list.length === 0 || !evaluateRule({ ...rule, operator: 'in' }, ctx);
         case 'contains':
             if (Array.isArray(actual)) return list.every((item) => actual.map(lower).includes(lower(item)));
             return lower(actual).includes(lower(expected));

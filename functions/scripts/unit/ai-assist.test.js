@@ -99,3 +99,24 @@ test('tool registry: JSON schemas for OpenAI, argument validation, result cap', 
     assert.throws(() => parseToolArgs(findTool('list_tasks'), '{"projectId":"p","status":"Nope"}'), ToolError);
     assert.ok(serializeToolResult({ text: 'x'.repeat(50000) }).length < 12100);
 });
+
+test('action cards: update diff only lists real changes and keeps the undo body', () => {
+    const { diffTaskUpdate, undoStepFor } = require('../../lib/ai-actions');
+    const current = { title: 'Login bug', status: 'Open', priority: 'Medium', dueDate: '', assigneeIds: ['u1'] };
+    const { changes, before } = diffTaskUpdate(current, { projectId: 'p', taskId: 't', status: 'Done', priority: 'Medium', dueDate: '2026-11-01' });
+    assert.deepEqual(changes, [{ field: 'status', from: 'Open', to: 'Done' }, { field: 'dueDate', from: '', to: '2026-11-01' }]);
+    assert.deepEqual(before, { status: 'Open', dueDate: '', isCompleted: false });
+    assert.deepEqual(diffTaskUpdate(current, { status: 'Open' }).changes, []);
+
+    assert.deepEqual(undoStepFor('create_task', { projectId: 'p' }, null, { task: { id: 'new' } }), { method: 'DELETE', path: '/projects/p/tasks/new' });
+    assert.deepEqual(undoStepFor('update_task', { projectId: 'p', taskId: 't' }, before, {}), { method: 'PATCH', path: '/projects/p/tasks/t', body: before });
+    assert.deepEqual(undoStepFor('add_comment', { projectId: 'p' }, null, { comment: { id: 'c1' } }), { method: 'DELETE', path: '/projects/p/comments/c1' });
+    assert.deepEqual(undoStepFor('add_subtask', { projectId: 'p', taskId: 't' }, null, { subtask: { id: 's1' } }), { method: 'DELETE', path: '/projects/p/tasks/t/subtasks/s1' });
+    assert.equal(undoStepFor('create_task', { projectId: 'p' }, null, {}), null);
+});
+
+test('assist instructions: changes are proposals the user confirms', () => {
+    const text = buildAssistInstructions('en', '<workspace_data></workspace_data>');
+    assert.match(text, /NOT applied/);
+    assert.match(text, /Never claim a change was made/);
+});

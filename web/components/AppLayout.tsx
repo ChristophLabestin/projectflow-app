@@ -17,6 +17,8 @@ import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
 import { PlatformAnnouncement } from './platform/PlatformAnnouncement';
+import { AiPanelProvider } from '../context/AiPanelContext';
+import { AiPanel } from './ai/AiPanel';
 
 const Sidebar = lazy(() => import('./SidebarNavigator').then((module) => ({ default: module.SidebarNavigator })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -214,6 +216,7 @@ export const AppLayout = () => {
     }), [location.pathname, project, companyProject, taskTitle, t]);
 
     return (
+        <AiPanelProvider>
         <div className="flex app-viewport-height w-full bg-surface overflow-hidden relative">
             {/* Sidebar Desktop — collapsed, it floats over the content (which
                 keeps its place via --app-content-inset-left) so wide boards can
@@ -315,6 +318,10 @@ export const AppLayout = () => {
                     />
                 </Suspense>
             )}
+
+            {/* In-app AI assistant (⌘J) */}
+            <AiPanel />
         </div>
+        </AiPanelProvider>
     );
 };

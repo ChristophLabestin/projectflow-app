@@ -1,6 +1,6 @@
 # Flows — Automationen für ProjectFlow (Konzept, Phase 1)
 
-Stand 2026-10-23 · Status: **Entwurf, wartet auf Freigabe** · Owner-Entscheid: Regel-Baukasten
+Stand 2026-10-23 · Status: **umgesetzt und live** (Pakete 1–4, Freigabe „Alle 8 übernehmen“) · Owner-Entscheid: Regel-Baukasten
 „Wenn → Falls → Dann“ mit Vorlagen, kein Power-Automate-Canvas. Der UI-Name ist **Flows**,
 im Code und in Firestore heißt es `automations` (die Collection `flows` gehört zum abgeschafften
 Ideen-Modul und bleibt unangetastet).

@@ -331,6 +331,12 @@ Concept: `brain/plans/help-center-rework.md`.
 - `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
 - Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
 
+## Flows (`web/screens/flows/`, `web/components/flows/`, 2026-10-23)
+- `FlowsScreen` (list + `FlowTemplateGallery`), `FlowEditor` (keyed by flow id), shared data hook `useFlowContext` (members, projects, role, name lookups).
+- `FlowStepEditors.tsx`: `TriggerEditor`, `ConditionsEditor` (AND/OR groups, per-field operators), `ActionEditor`, `PeoplePicker` (dynamic roles + members), `VariableChips` (`{{task.title}}` …).
+- `FlowPreviewPanel` (callable `previewAutomation`: matches + dry run, optional real run per task), `FlowRunLog` (runs, step details, retry), `flowText.ts` (sentences, icons, client validation with i18n keys).
+- Templates: `web/config/flowTemplates.ts` (11; texts via `flows.templates.<id>.*`). Service: `web/services/domain/automationsService.ts` (reads via listeners, writes only via callables).
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.
@@ -350,6 +356,8 @@ Concept: `brain/plans/help-center-rework.md`.
 - `AiTextAssist`: ✦ for any textarea (wrap the field: `<AiTextAssist value onApply field itemTitle projectTitle>`). Writing actions on the whole text or the selection (draft, write out, shorten, rephrase, list, tone, fix, translate, custom instruction), streamed suggestion below the field, written back only on „Übernehmen“; ⌘J/Ctrl+J inside the field opens the menu; errors are shown inline. Renders just the children unless the workspace has `inAppAi` + `inAppEnabled`. `className="ai-text-assist--compact"` for single-line composers. Used in TaskCreateModal, EditTaskModal, CommentSection, ProjectEditModal.
 - `useInAppAi` (`web/hooks/`): availability of the in-app AI for the active workspace (cached policy; `forgetInAppAi` after settings changes).
 - `streamAiAssist` (`web/services/aiAssistClient.ts`): SSE client for the `aiAssist` function (`/api/assist` in production, function URL in the emulator).
+- `AiPanel` + `AiPanelProvider` (`web/context/AiPanelContext.tsx`, P2): ⌘J/Ctrl+J or ✦ in the top bar opens the assistant on the right. Base context from the route (`contextFromPath`: dashboard, project, task, …); screens add visible items/selection with `useAiScreenContext({ surface, view: { items }, selection: { ids } })` (used in ProjectTasks). Answers render through `AiMessageText` (only `pf://task|project` links, no external links/images/HTML). Conversations per object in `users/{uid}/ai_threads/{tenant__object}` (owner only, 30-day TTL). Desktop: global shortcut ⌃⌘J (`aiShortcut`, command `open-ai`) → window event `pf:open-ai-panel`.
+- `AiActionCard` (P3): change the assistant proposed (new task, task change with old → new values, comment, subtask). Applied only via „Übernehmen“ (`aiApplyProposal`), undoable (`aiUndoProposal`); fires `pf:ai-data-changed` (`AI_DATA_CHANGED_EVENT` in `web/services/aiActions.ts`) so screens that load once (ProjectTaskDetail) refresh.
 
 ## Admin console (`admin/src/ui`, not shared with web)
 

@@ -5,6 +5,7 @@ import { getSubTasks } from '../services/domain/tasksService';
 import { Project } from '../types';
 import { useHelpCenter } from '../context/HelpCenterContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAiPanel } from '../context/AiPanelContext';
 
 const GlobalSearch = lazy(() => import('./search/GlobalSearch').then((module) => ({ default: module.GlobalSearch })));
 const PinnedProjectPill = lazy(() => import('./PinnedProjectPill').then((module) => ({ default: module.PinnedProjectPill })));
@@ -89,6 +90,7 @@ interface TopBarProps {
 export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, onOpenNav }) => {
     const { openHelpCenter } = useHelpCenter();
     const { t } = useLanguage();
+    const aiPanel = useAiPanel();
     void project;
 
     const handleOpenHelp = () => {
@@ -132,6 +134,18 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
                     <Suspense fallback={<div className="topbar-icon-button" />}>
                         <TopBarTeamMenu tenantId={tenantId || project?.tenantId} />
                     </Suspense>
+
+                    {aiPanel.enabled && (
+                        <button
+                            onClick={() => aiPanel.togglePanel()}
+                            className={`topbar-icon-button topbar-ai-button${aiPanel.open ? ' is-active' : ''}`}
+                            title={t('topbar.aiAssistant')}
+                            aria-label={t('topbar.aiAssistant')}
+                            aria-pressed={aiPanel.open}
+                        >
+                            <span aria-hidden="true">✦</span>
+                        </button>
+                    )}
 
                     <button
                         onClick={handleOpenHelp}

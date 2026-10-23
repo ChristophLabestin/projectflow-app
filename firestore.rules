@@ -237,6 +237,13 @@ service cloud.firestore {
         allow read, write: if authed() && request.auth.uid == userId;
       }
 
+      // In-app AI conversation per object (owner only, 30-day TTL via expireAt).
+      match /ai_threads/{threadId} {
+        allow read, delete: if authed() && request.auth.uid == userId;
+        allow create, update: if authed() && request.auth.uid == userId
+          && request.resource.data.messages is list && request.resource.data.messages.size() <= 40;
+      }
+
       // Passkeys (WebAuthn credentials). They are created and verified
       // server-side via Cloud Functions (admin SDK bypasses these rules), so
       // the client never needs create. The owner may list and delete their own
