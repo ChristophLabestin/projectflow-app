@@ -33,7 +33,9 @@ export const Login = () => {
     const [searchParams] = useSearchParams();
 
     // Get redirect URL from query param OR from location.state
-    const requestedRedirect = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '';
+    const fromLocation = (location.state as any)?.from;
+    // Keep the query (e.g. `?openSettings=account` from the desktop app) when coming back after sign-in.
+    const requestedRedirect = searchParams.get('redirect') || (fromLocation?.pathname ? `${fromLocation.pathname}${fromLocation.search || ''}` : '');
     const redirectUrl = requestedRedirect || '/';
     const inviteTenantId = (location.state as any)?.inviteTenantId;
     const hasRedirectContext = requestedRedirect !== '' && requestedRedirect !== location.pathname;

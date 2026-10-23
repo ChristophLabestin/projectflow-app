@@ -87,6 +87,7 @@ if (location.origin === appOrigin) {
         getUpcomingEvents: (): Promise<UpcomingEvent[]> => ipcRenderer.invoke(IPC.upcomingEvents),
         appAction: (action: AppAction) => ipcRenderer.send(IPC.appAction, action),
         signInExternally: (): Promise<boolean> => ipcRenderer.invoke(IPC.signInExternally),
-        indexSpotlight: (items: unknown[]) => ipcRenderer.send(IPC.indexSpotlight, items)
+        indexSpotlight: (items: unknown[]) => ipcRenderer.send(IPC.indexSpotlight, items),
+        openInBrowser: (path: string) => ipcRenderer.send(IPC.openInBrowser, path)
     });
 }

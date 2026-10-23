@@ -11,7 +11,8 @@ export type DesktopCapability =
     | 'preferences' | 'quick-capture' | 'notification-actions' | 'day-flow' | 'file-drop' | 'calendar' | 'recents' | 'windows'
     | 'tray-panel'
     | 'external-auth'
-    | 'spotlight';
+    | 'spotlight'
+    | 'open-in-browser';
 
 export type DesktopCommand =
     | 'new-task'
@@ -124,6 +125,8 @@ export interface DesktopBridge {
     // Since capability 'external-auth': opens the sign-in page in the system browser (OAuth handoff).
     signInExternally?(): Promise<boolean>;
     // Since capability 'spotlight': replaces the Spotlight index (macOS); [] clears it.
+    // Since capability 'open-in-browser': opens an app path in the system browser.
+    openInBrowser?(path: string): void;
     indexSpotlight?(items: { id: string; title: string; subtitle?: string; keywords?: string[] }[]): void;
 }
 

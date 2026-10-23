@@ -32,7 +32,7 @@ import { registerPasskey, shouldAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from './ui/Checkbox';
 import { NotificationSettingsPanel } from './settings/NotificationSettingsPanel';
 import { DesktopSettingsPanel } from './settings/DesktopSettingsPanel';
-import { hasDesktopCapability } from '../services/desktop';
+import { getDesktopBridge, hasDesktopCapability, isDesktop } from '../services/desktop';
 import { AppleLogo } from './ui/AppleLogo';
 import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
@@ -287,6 +287,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             loadAccountStatus();
         }
     }, [isOpen, activeTab]);
+
+    // Google/Apple reject embedded browsers (Electron): the desktop app links accounts in the system browser.
+    const linkInBrowser = isDesktop();
+    const openAccountInBrowser = () => {
+        const bridge = getDesktopBridge();
+        if (bridge?.openInBrowser && hasDesktopCapability('open-in-browser')) {
+            bridge.openInBrowser('/?openSettings=account');
+            showSuccess(t('settings.account.connected.browserOpened'));
+        } else {
+            showError(t('settings.account.connected.browserHint'));
+        }
+    };
 
     const handleConnectGithub = async () => {
         const user = auth.currentUser;
@@ -1704,7 +1716,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 {t('settings.account.github.disconnect')}
                                             </Button>
                                         ) : (
-                                            <Button variant="secondary" size="sm" onClick={handleConnectGithub} loading={connectingGithub}>
+                                            <Button variant="secondary" size="sm" onClick={linkInBrowser ? openAccountInBrowser : handleConnectGithub} loading={connectingGithub}>
                                                 {t('settings.account.connected.connect')}
                                             </Button>
                                         )}
@@ -1731,7 +1743,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 {t('settings.account.connected.linked')}
                                             </Button>
                                         ) : (
-                                            <Button variant="secondary" size="sm" onClick={handleConnectGoogle} loading={connectingGoogle}>
+                                            <Button variant="secondary" size="sm" onClick={linkInBrowser ? openAccountInBrowser : handleConnectGoogle} loading={connectingGoogle}>
                                                 {t('settings.account.connected.connect')}
                                             </Button>
                                         )}
@@ -1758,7 +1770,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                                                 {t('settings.account.connected.linked')}
                                             </Button>
                                         ) : (
-                                            <Button variant="secondary" size="sm" onClick={handleConnectApple} loading={connectingApple}>
+                                            <Button variant="secondary" size="sm" onClick={linkInBrowser ? openAccountInBrowser : handleConnectApple} loading={connectingApple}>
                                                 {t('settings.account.connected.connect')}
                                             </Button>
                                         )}

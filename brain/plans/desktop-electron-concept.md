@@ -450,3 +450,4 @@ route `/desktop/tray`, `web/screens/DesktopTrayPanel.tsx`), right click keeps th
   A click arrives as `continue-activity` (`com.apple.corespotlightitem`, `NSUserActivityTypes`) → item id = app path.
   Verified: helper indexes inside the bundle, packaged layout + Info.plist. Not verified: clicking a result in the
   Spotlight UI. Windows Search: not planned.
+- **Account linking** (2026-10-23): Google/GitHub/Apple "Connect" in Settings → Account opens `/?openSettings=account` in the system browser (`SettingsUrlOpener`, bridge `openInBrowser`); embedded OAuth popups are rejected by Apple/Google.

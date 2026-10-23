@@ -1,5 +1,5 @@
-import { BrowserWindow, app, ipcMain, nativeImage } from 'electron';
-import { sanitizeAppPath } from './config';
+import { BrowserWindow, app, ipcMain, nativeImage, shell } from 'electron';
+import { APP_ORIGIN, sanitizeAppPath } from './config';
 import { IPC, type AppAction, type DesktopNotificationPayload, type OpenWindowRequest, type QuickAccessAction, type TitleBarTheme, type WindowAction } from './contract';
 import { showAppNotification } from './features/notifications';
 import { getPreferences, setPreferences } from './features/preferences';
@@ -127,6 +127,11 @@ export const registerIpc = () => {
     });
     on(IPC.notify, (event, payload: DesktopNotificationPayload) => {
         if (senderWindow(event) === getMainWindow()) showAppNotification(payload);
+    });
+    // App page in the system browser (e.g. OAuth account linking, which embedded browsers cannot do).
+    on(IPC.openInBrowser, (_event, target: unknown) => {
+        const safe = sanitizeAppPath(target);
+        if (safe) void shell.openExternal(new URL(safe, APP_ORIGIN).toString());
     });
     on(IPC.indexSpotlight, (event, items: unknown) => {
         if (senderWindow(event) === getMainWindow()) indexSpotlight(items);
