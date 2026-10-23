@@ -26,7 +26,8 @@ struct RootView: View {
                     LaunchView(showsProgress: true)
                 }
             }
-            PFToastHost(center: model.toasts, bottomInset: model.router.isDeep ? 40 : 128)
+            // Just above the dock on the tab roots, near the home indicator on pushed screens.
+            PFToastHost(center: model.toasts, bottomInset: model.router.isDeep ? 12 : 66)
             PFPresenterHost(presenter: model.presenter)
         }
         .environment(model.presenter)

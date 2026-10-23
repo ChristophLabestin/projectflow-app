@@ -111,7 +111,8 @@ public struct PFWeekStrip: View {
                             .foregroundStyle(day.isToday ? PFColor.onPrimary : (day.isWeekend ? PFColor.textMuted : PFColor.textMain))
                             .frame(width: 34, height: 34)
                             .background(day.isToday ? PFColor.primary : Color.clear, in: .circle)
-                        loadBar(day)
+                        // The load row only takes as much height as the busiest day needs, and none in an empty week.
+                        if trackHeight > 0 { loadBar(day) }
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -125,13 +126,18 @@ public struct PFWeekStrip: View {
         .pfCard()
     }
 
+    private func barHeight(_ count: Int) -> CGFloat { count == 0 ? 0 : 4 + CGFloat(min(count, 6)) * 3 }
+
+    private var trackHeight: CGFloat { days.map { barHeight($0.count) }.max() ?? 0 }
+
     private func loadBar(_ day: Day) -> some View {
-        let height = 4 + CGFloat(min(day.count, 6)) * 4
-        return ZStack(alignment: .bottom) {
-            Color.clear.frame(width: 5, height: 28)
-            Capsule()
-                .fill(day.count == 0 ? PFColor.raised : (day.isToday ? PFColor.primary : PFColor.textSubtle.opacity(0.55)))
-                .frame(width: 5, height: day.count == 0 ? 4 : height)
+        ZStack(alignment: .bottom) {
+            Color.clear.frame(width: 5, height: trackHeight)
+            if day.count > 0 {
+                Capsule()
+                    .fill(day.isToday ? PFColor.primary : PFColor.textSubtle.opacity(0.55))
+                    .frame(width: 5, height: barHeight(day.count))
+            }
         }
         .animation(PFMotion.respecting(PFMotion.snappy), value: day.count)
         .accessibilityHidden(true)
