@@ -3001,6 +3001,7 @@ const de = {
     'desktop.day.openDashboard': 'Dashboard öffnen',
     'desktop.promo.label': 'Desktop-App',
     'desktop.promo.close': 'Nicht mehr anzeigen',
+    'desktop.promo.later': 'Später erinnern',
     'desktop.promo.menuItem': '{platform}-App herunterladen',
     'desktop.banner.title': 'ProjectFlow gibt’s jetzt für {platform}',
     'desktop.banner.body': 'Von überall erfassen, Fokus-Timer in der Menüleiste, native Benachrichtigungen.',

@@ -14,7 +14,6 @@ import { subscribeProjectTasks } from '../services/domain/tasksService';
 import { isProjectExcludedFromHealth } from '../services/healthService';
 import { isClientProject } from '../config/projectTemplates';
 import { getDesktopBridge } from '../services/desktop';
-import { DesktopAppPromo } from './desktop/DesktopAppPromo';
 
 const Sidebar = lazy(() => import('./Sidebar').then((module) => ({ default: module.Sidebar })));
 const TopBar = lazy(() => import('./TopBar').then((module) => ({ default: module.TopBar })));
@@ -346,8 +345,6 @@ export const AppLayout = () => {
 
                 {/* Main Scroll Area */}
                 <main className={`app-main-scroll dotted-bg ${(isFullWidthRoute || contentWide) ? 'app-main-scroll--full' : 'app-main-scroll--standard'}`}>
-                    {/* Browser on macOS / Windows: offer the desktop app once a release exists */}
-                    <DesktopAppPromo />
                     <div className={(isFullWidthRoute || contentWide) ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}>
                         <Outlet context={{ setTaskTitle, statusPreference, contentWide, setContentWide }} />
                     </div>

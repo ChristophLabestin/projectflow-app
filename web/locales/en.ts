@@ -3002,6 +3002,7 @@ const en = {
     'desktop.day.openDashboard': 'Open dashboard',
     'desktop.promo.label': 'Desktop app',
     'desktop.promo.close': 'Do not show again',
+    'desktop.promo.later': 'Remind me later',
     'desktop.promo.menuItem': 'Get the {platform} app',
     'desktop.banner.title': 'ProjectFlow for {platform} is here',
     'desktop.banner.body': 'Capture from anywhere, focus timer in the menu bar, native notifications.',
