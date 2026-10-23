@@ -61,7 +61,7 @@ struct ProjectsScreen: View {
             Spacer()
             if canCreate {
                 PFIconButton("plus", label: L10n.t("projects.new.title"), style: .glass) {
-                    presenter.present(detents: [.fit]) { ProjectCreateSheet() }
+                    presenter.present(detents: [.large]) { ProjectCreateSheet() }
                 }
             }
         }
@@ -212,7 +212,7 @@ struct ProjectsScreen: View {
     private var emptyState: some View {
         PFEmptyState(systemImage: "square.stack.3d.up", title: L10n.t("projects.portfolio.empty"), message: L10n.t("projects.portfolio.emptyHint"),
                      actionTitle: canCreate ? L10n.t("projects.portfolio.emptyCta") : nil,
-                     action: canCreate ? { presenter.present(detents: [.fit]) { ProjectCreateSheet() } } : nil)
+                     action: canCreate ? { presenter.present(detents: [.large]) { ProjectCreateSheet() } } : nil)
             .padding(.horizontal, PFSpace.page)
             .padding(.top, PFSpace.xl)
     }

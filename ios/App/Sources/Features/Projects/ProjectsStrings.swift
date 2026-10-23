@@ -1,7 +1,8 @@
 // Copy for the Projects feature (DE/EN). Keys that exist on the web keep the web key and wording
 // (`projects.portfolio.*`, `projectTemplates.*`, `dashboard.pulse.*`); `projects.*` keys not in the web are new.
 enum ProjectsStrings {
-    static let de: [String: String] = [
+    static let de: [String: String] = baseDe.merging(ProjectsCockpitStrings.de) { _, new in new }
+    private static let baseDe: [String: String] = [
         "projects.pulse.progress": "Fortschritt", "projects.pulse.doneOf": "{done} von {total} Aufgaben erledigt",
         "projects.pulse.health": "Health", "projects.stat.open": "Offen", "projects.stat.overdue": "Überfällig",
         "projects.stat.blocked": "Blockiert", "projects.stat.soon": "Bald fällig", "projects.group.short": "Gruppieren",
@@ -122,7 +123,8 @@ enum ProjectsStrings {
         "projects.tasks.emptyHint": "Tippe oben eine Aufgabe ein, um zu starten.",
     ]
 
-    static let en: [String: String] = [
+    static let en: [String: String] = baseEn.merging(ProjectsCockpitStrings.en) { _, new in new }
+    private static let baseEn: [String: String] = [
         "projects.pulse.progress": "Progress", "projects.pulse.doneOf": "{done} of {total} tasks done",
         "projects.pulse.health": "Health", "projects.stat.open": "Open", "projects.stat.overdue": "Overdue",
         "projects.stat.blocked": "Blocked", "projects.stat.soon": "Due soon", "projects.group.short": "Group",

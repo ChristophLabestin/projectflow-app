@@ -116,6 +116,7 @@ struct RouteDestination: View {
         case .task(let ref): TaskDetailScreen(ref: ref)
         case .personalTask(let tenantId, let id): PersonalTaskScreen(tenantId: tenantId, taskId: id)
         case .project(let tenantId, let projectId): ProjectScreen(tenantId: tenantId, projectId: projectId)
+        case .projectSettings(let tenantId, let projectId): ProjectSettingsScreen(tenantId: tenantId, projectId: projectId)
         case .initiative(let tenantId, let projectId, let initiativeId):
             InitiativeScreen(tenantId: tenantId, projectId: projectId, initiativeId: initiativeId)
         case .account: AccountScreen()

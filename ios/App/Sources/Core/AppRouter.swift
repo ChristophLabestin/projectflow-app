@@ -13,6 +13,7 @@ enum AppRoute: Hashable {
     case personalTask(tenantId: String, id: String)
     case project(tenantId: String, projectId: String)
     case initiative(tenantId: String, projectId: String, initiativeId: String)
+    case projectSettings(tenantId: String, projectId: String)
     case account
     case notificationSettings
     case securitySettings
