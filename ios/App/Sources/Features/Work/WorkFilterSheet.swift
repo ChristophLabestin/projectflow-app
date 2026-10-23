@@ -116,7 +116,8 @@ struct WorkFilterButton: View {
     }
 }
 
-/// Everything that narrows the Work list: projects, priorities, personal and completed tasks, plus smart planning.
+/// Everything that narrows the Work list, as one compact list: project and priority open a checklist on top,
+/// personal and completed tasks are switches. Smart planning sits below.
 struct WorkFiltersSheet: View {
     let filters: WorkFilters
     @Environment(AppModel.self) private var model
@@ -129,7 +130,7 @@ struct WorkFiltersSheet: View {
 
     var body: some View {
         @Bindable var filters = filters
-        VStack(alignment: .leading, spacing: PFSpace.l) {
+        VStack(alignment: .leading, spacing: PFSpace.m) {
             HStack {
                 Text(L10n.t("work.filter.title")).pfText(.section).foregroundStyle(PFColor.textMain)
                     .accessibilityAddTraits(.isHeader)
@@ -142,41 +143,14 @@ struct WorkFiltersSheet: View {
                 }
             }
 
-            section(L10n.t("work.filter.project")) {
-                if projects.isEmpty {
-                    Text(L10n.t("work.filter.noProjects")).pfText(.meta).foregroundStyle(PFColor.textMuted)
-                } else {
-                    ScrollView {
-                        FlowLayout(spacing: 8) {
-                            ForEach(projects) { project in
-                                PFChip(project.title, isSet: filters.projectIds.contains(project.id)) {
-                                    toggle(&filters.projectIds, project.id)
-                                }
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    .frame(maxHeight: 132)
-                    .scrollBounceBehavior(.basedOnSize)
-                }
-            }
-
-            section(L10n.t("common.priority")) {
-                FlowLayout(spacing: 8) {
-                    ForEach([TaskPriority.urgent, .high, .medium, .low], id: \.self) { priority in
-                        PFChip(priority.label, isSet: filters.priorities.contains(priority)) {
-                            toggle(&filters.priorities, priority)
-                        }
-                    }
-                }
-            }
-
             VStack(spacing: 0) {
-                PFSwitch(L10n.t("work.filter.personalSwitch"), isOn: $filters.includePersonal)
-                    .padding(.horizontal, PFSpace.m).frame(minHeight: 52)
+                pickerRow("square.stack.3d.up", L10n.t("work.filter.project"), value: projectValue) { presentProjects() }
                 PFRowDivider()
-                PFSwitch(L10n.t("work.filter.completedSwitch"), isOn: $filters.showCompleted)
-                    .padding(.horizontal, PFSpace.m).frame(minHeight: 52)
+                pickerRow("chart.bar", L10n.t("work.filter.priority"), value: priorityValue) { presentPriorities() }
+                PFRowDivider()
+                switchRow("lock", L10n.t("work.filter.personalSwitch"), isOn: $filters.includePersonal)
+                PFRowDivider()
+                switchRow("checkmark.circle", L10n.t("work.filter.completedSwitch"), isOn: $filters.showCompleted)
             }
             .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
 
@@ -191,21 +165,103 @@ struct WorkFiltersSheet: View {
                     PFButton(L10n.t("common.done"), size: .large, fullWidth: true) { presenter.dismiss() }
                 }
             }
+            .padding(.top, PFSpace.xs)
         }
         .padding(.horizontal, PFSpace.page)
         .padding(.bottom, PFSpace.l)
     }
 
-    private func section<Content: View>(_ title: String, @ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: PFSpace.xs) {
-            PFEyebrow(title)
-            content()
+    // MARK: Rows
+
+    private func icon(_ name: String) -> some View {
+        Image(systemName: name)
+            .font(.system(size: 15, weight: .semibold))
+            .foregroundStyle(PFColor.textMuted)
+            .frame(width: 24)
+            .accessibilityHidden(true)
+    }
+
+    private func pickerRow(_ systemImage: String, _ title: String, value: String, action: @escaping () -> Void) -> some View {
+        Button { PFHaptics.tap(); action() } label: {
+            HStack(spacing: PFSpace.s) {
+                icon(systemImage)
+                Text(title).pfText(.rowTitle).foregroundStyle(PFColor.textMain)
+                Spacer(minLength: PFSpace.s)
+                Text(value).pfText(.body).foregroundStyle(PFColor.textMuted).lineLimit(1)
+                Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(PFColor.textSubtle)
+            }
+            .padding(.horizontal, PFSpace.m)
+            .frame(minHeight: 52)
+            .contentShape(.rect)
+        }
+        .buttonStyle(.pfPressable)
+        .accessibilityValue(value)
+    }
+
+    private func switchRow(_ systemImage: String, _ title: String, isOn: Binding<Bool>) -> some View {
+        HStack(spacing: PFSpace.s) {
+            icon(systemImage)
+            PFSwitch(title, isOn: isOn)
+        }
+        .padding(.horizontal, PFSpace.m)
+        .frame(minHeight: 52)
+    }
+
+    private var projectValue: String {
+        switch filters.projectIds.count {
+        case 0: L10n.t("work.filter.all")
+        case 1: model.workspace?.project(filters.projectIds.first)?.title ?? L10n.t("work.filter.all")
+        default: L10n.t("work.filter.projects", ["count": filters.projectIds.count])
         }
     }
 
-    private func toggle<Value: Hashable>(_ set: inout Set<Value>, _ value: Value) {
-        withAnimation(PFMotion.respecting(PFMotion.fast)) {
-            if set.contains(value) { set.remove(value) } else { set.insert(value) }
+    private var priorityValue: String {
+        switch filters.priorities.count {
+        case 0: L10n.t("work.filter.all")
+        case 1: filters.priorities.first?.label ?? L10n.t("work.filter.all")
+        default: L10n.t("work.filter.priorities", ["count": filters.priorities.count])
+        }
+    }
+
+    // MARK: Checklists (stacked on top of this sheet)
+
+    private func presentProjects() {
+        let filters = filters
+        let projects = projects
+        presenter.present(detents: [.fit]) {
+            WorkMultiSelectSheet(
+                title: L10n.t("work.filter.project"), emptyText: L10n.t("work.filter.noProjects"),
+                options: projects.map { project in
+                    WorkMultiSelectSheet.Option(id: project.id, label: project.title) {
+                        Text(project.monogram).pfText(.buttonSmall).foregroundStyle(PFColor.onPrimary)
+                            .frame(width: 26, height: 26)
+                            .background(PFColor.primary, in: .rect(cornerRadius: 8, style: .continuous))
+                    }
+                },
+                isSelected: { filters.projectIds.contains($0) },
+                toggle: { id in
+                    if filters.projectIds.contains(id) { filters.projectIds.remove(id) } else { filters.projectIds.insert(id) }
+                },
+                clear: { filters.projectIds = [] }
+            )
+        }
+    }
+
+    private func presentPriorities() {
+        let filters = filters
+        presenter.present(detents: [.fit]) {
+            WorkMultiSelectSheet(
+                title: L10n.t("common.priority"), emptyText: "",
+                options: [TaskPriority.urgent, .high, .medium, .low].map { priority in
+                    WorkMultiSelectSheet.Option(id: priority.rawValue, label: priority.label) { PFPrioritySignal(priority) }
+                },
+                isSelected: { id in TaskPriority(rawValue: id).map { filters.priorities.contains($0) } ?? false },
+                toggle: { id in
+                    guard let priority = TaskPriority(rawValue: id) else { return }
+                    if filters.priorities.contains(priority) { filters.priorities.remove(priority) } else { filters.priorities.insert(priority) }
+                },
+                clear: { filters.priorities = [] }
+            )
         }
     }
 }
