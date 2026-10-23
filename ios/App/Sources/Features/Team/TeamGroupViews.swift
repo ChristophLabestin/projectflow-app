@@ -37,7 +37,7 @@ private struct GroupsContent: View {
         }
     }
 
-    private func present(_ group: WorkspaceGroup?) {
+    private func present(_ group: TeamGroup?) {
         model.presenter.present(detents: [.large]) { GroupSheet(context: context, groupId: group?.id) }
     }
 }
@@ -54,7 +54,7 @@ struct GroupSheet: View {
     @State private var isWorking = false
     @State private var loadedFields = false
 
-    private var group: WorkspaceGroup? { groupId.flatMap { context.store.group($0) } }
+    private var group: TeamGroup? { groupId.flatMap { context.store.group($0) } }
 
     var body: some View {
         TeamSheet(eyebrow: context.tenantName, title: group == nil ? L10n.t("team.group.new") : L10n.t("team.group.edit")) {
@@ -108,7 +108,7 @@ struct GroupSheet: View {
         }
     }
 
-    private func confirmDelete(_ group: WorkspaceGroup) {
+    private func confirmDelete(_ group: TeamGroup) {
         presenter.dismiss()
         Task {
             try? await Task.sleep(for: .milliseconds(380))

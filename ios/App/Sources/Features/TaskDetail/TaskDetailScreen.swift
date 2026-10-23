@@ -25,12 +25,17 @@ struct TaskDetailScreen: View {
     @State var keyboardVisible = false
     @State var focusBlockerField = false
     @State var isDeleting = false
+    @State var labelStore: ProjectLabelsStore
+    @State var groupStore: WorkspaceGroupsStore
+    @State var isDraftingDescription = false
     @SwiftUI.FocusState var subtaskFocused: Bool
 
     init(ref: TaskRef) {
         self.ref = ref
         _store = State(initialValue: TaskDetailStore(ref: ref))
         _project = State(initialValue: ProjectStore(tenantId: ref.tenantId, projectId: ref.projectId))
+        _labelStore = State(initialValue: ProjectLabelsStore(tenantId: ref.tenantId, projectId: ref.projectId))
+        _groupStore = State(initialValue: WorkspaceGroupsStore(tenantId: ref.tenantId))
     }
 
     // MARK: Derived
@@ -76,10 +81,14 @@ struct TaskDetailScreen: View {
         .task {
             store.start()
             project.start()
+            labelStore.start()
+            groupStore.start()
         }
         .onDisappear {
             store.stop()
             project.stop()
+            labelStore.stop()
+            groupStore.stop()
         }
         .onChange(of: task, initial: true) { old, new in
             guard let new else { return }
@@ -143,6 +152,11 @@ struct TaskDetailScreen: View {
         var items: [ActionSheet.Item] = []
         if !task.isCompleted {
             items.append(.init(title: isFocused ? L10n.t("taskDetail.focus.open") : L10n.t("common.startFocus"), systemImage: "scope") { startFocus() })
+        }
+        if let initiative {
+            items.append(.init(title: L10n.t("taskDetail.initiative.open"), systemImage: "flag") {
+                model.router.push(.initiative(tenantId: ref.tenantId, projectId: ref.projectId, initiativeId: initiative.id))
+            })
         }
         items.append(.init(title: L10n.t("common.copyLink"), systemImage: "link") { ProjectsClipboard.copy(url, model: model) })
         items.append(.init(title: L10n.t("common.openInWeb"), systemImage: "safari") { ProjectsClipboard.open(url) })

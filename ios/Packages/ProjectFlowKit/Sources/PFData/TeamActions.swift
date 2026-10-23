@@ -10,7 +10,7 @@ import PFModel
 
 // MARK: Models
 
-public struct WorkspaceGroup: Identifiable, Hashable, Sendable {
+public struct TeamGroup: Identifiable, Hashable, Sendable {
     public let id: String
     public var name: String
     public var color: String
@@ -104,7 +104,7 @@ extension ISO8601DateFormatter {
 public final class TeamStore {
     public let tenantId: String
     public let canAdmin: Bool
-    public private(set) var groups: [WorkspaceGroup] = []
+    public private(set) var groups: [TeamGroup] = []
     public private(set) var roles: [TenantRole] = []
     public private(set) var invitations: [TeamInvitation] = []
     public private(set) var profile = WorkspaceProfile()
@@ -146,7 +146,7 @@ public final class TeamStore {
         listeners.set("groups", PFPath.tenant(t).collection("groups").addSnapshotListener { [weak self] snapshot, _ in
             MainActor.assumeIsolated {
                 guard let self, let snapshot else { return }
-                self.groups = snapshot.documents.compactMap { doc in doc.fields.map { WorkspaceGroup(id: doc.documentID, fields: $0) } }
+                self.groups = snapshot.documents.compactMap { doc in doc.fields.map { TeamGroup(id: doc.documentID, fields: $0) } }
                     .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
                 self.loaded.insert("groups")
             }
@@ -176,7 +176,7 @@ public final class TeamStore {
         loaded = []
     }
 
-    public func group(_ id: String) -> WorkspaceGroup? { groups.first { $0.id == id } }
+    public func group(_ id: String) -> TeamGroup? { groups.first { $0.id == id } }
     public func role(_ id: String) -> TenantRole? { roles.first { $0.id == id } }
 }
 

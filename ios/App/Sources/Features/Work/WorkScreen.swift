@@ -41,6 +41,10 @@ struct WorkScreen: View {
                 WorkWeekView(items: visible, now: now, scrollOffset: $scrollOffset) {
                     WorkHeader(filters: filters, summary: summary(visible), showsFilters: true)
                 }
+            } else if nav.mode == .month {
+                WorkMonthView(items: visible, now: now, scrollOffset: $scrollOffset) {
+                    WorkHeader(filters: filters, summary: summary(visible), showsFilters: true)
+                }
             } else {
                 scrolling {
                     WorkHeader(filters: filters, summary: summary(visible), showsFilters: true)
@@ -202,7 +206,8 @@ struct WorkHeader: View {
             .padding(.top, PFSpace.s)
             if showsFilters {
                 PFSegmented([(value: WorkNavigator.Mode.list, label: L10n.t("work.mode.list")),
-                             (value: WorkNavigator.Mode.week, label: L10n.t("work.mode.week"))], selection: $nav.mode)
+                             (value: WorkNavigator.Mode.week, label: L10n.t("work.mode.week")),
+                             (value: WorkNavigator.Mode.month, label: L10n.t("work.mode.month"))], selection: $nav.mode)
                     .padding(.horizontal, PFSpace.page)
                     .padding(.top, PFSpace.m)
                 chips.padding(.top, PFSpace.xs)
@@ -228,6 +233,7 @@ struct WorkHeader: View {
             PFChip(L10n.t("work.filter.completed"), systemImage: "checkmark.circle", isSet: filters.showCompleted) {
                 withAnimation(PFMotion.snappy) { filters.showCompleted.toggle() }
             }
+            PFChip(L10n.t("work.smart.chip"), systemImage: "wand.and.stars") { SmartSchedule.present(model: model) }
             if filters.isActive {
                 PFChip(L10n.t("work.filter.reset"), systemImage: "xmark") { withAnimation(PFMotion.snappy) { filters.reset() } }
             }

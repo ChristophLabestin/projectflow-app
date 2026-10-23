@@ -41,6 +41,8 @@ public enum PFPath {
     public static func initiatives(_ t: String, _ p: String) -> CollectionReference { project(t, p).collection("initiatives") }
     public static func milestones(_ t: String, _ p: String) -> CollectionReference { project(t, p).collection("milestones") }
     public static func sprints(_ t: String, _ p: String) -> CollectionReference { project(t, p).collection("sprints") }
+    public static func categories(_ t: String, _ p: String) -> CollectionReference { project(t, p).collection("categories") }
+    public static func groups(_ t: String) -> CollectionReference { tenant(t).collection("groups") }
     public static func healthSnapshots(_ t: String, _ p: String) -> CollectionReference { project(t, p).collection("healthSnapshots") }
     public static func members(_ t: String) -> CollectionReference { tenant(t).collection("members") }
     public static func notifications(_ t: String) -> CollectionReference { tenant(t).collection("notifications") }

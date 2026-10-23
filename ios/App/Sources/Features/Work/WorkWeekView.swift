@@ -312,7 +312,7 @@ private struct DropHighlight: ViewModifier {
 }
 
 /// A task in the week: ring check · title · due/project · priority. The same row is the drag ghost.
-private struct WeekRowContent: View {
+struct WeekRowContent: View {
     let item: WorkItem
     let onToggle: (() -> Void)?
     @Environment(AppModel.self) private var model
