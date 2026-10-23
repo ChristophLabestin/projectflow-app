@@ -44,6 +44,9 @@ struct InitiativeScreen: View {
                         header(initiative)
                         if let metric = initiative.successMetric { metricCard(metric) }
                         progressCard
+                        if initiative.feedbackEnabled || access.canManage {
+                            InitiativeFeedbackCard(initiative: initiative, projectId: projectId)
+                        }
                         tasksSection(initiative)
                         CommentsSection(projectId: projectId, targetId: initiativeId, targetType: "initiative",
                                         comments: comments.comments, mentionable: mentionable, canComment: true)
@@ -154,10 +157,18 @@ struct InitiativeScreen: View {
 
     private func tasksSection(_ initiative: Initiative) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.t("projects.initiative.tasks"))
-                .pfText(.section)
-                .foregroundStyle(PFColor.textMain)
-                .padding(.horizontal, PFSpace.page)
+            HStack {
+                Text(L10n.t("projects.initiative.tasks"))
+                    .pfText(.section)
+                    .foregroundStyle(PFColor.textMain)
+                Spacer(minLength: 0)
+                if access.canManage {
+                    PFButton(L10n.t("planning.initiative.attach"), systemImage: "checklist", kind: .ghost, size: .small) {
+                        InitiativeManagement(model: model, store: store, initiative: initiative).presentAttach()
+                    }
+                }
+            }
+            .padding(.horizontal, PFSpace.page)
             if access.canEditTasks {
                 PFTextField(L10n.t("projects.addTask"), text: $newTaskTitle, systemImage: "plus", onSubmit: addTask)
                     .padding(.horizontal, PFSpace.page)
@@ -179,12 +190,14 @@ struct InitiativeScreen: View {
 
     private func presentMenu() {
         let url = ProjectLinks.initiative(projectId: projectId, id: initiativeId)
-        presenter.present(detents: [.fit]) {
-            ActionSheet(title: initiative?.title, items: [
-                .init(title: L10n.t("common.copyLink"), systemImage: "link") { ProjectsClipboard.copy(url, model: model) },
-                .init(title: L10n.t("common.openInWeb"), systemImage: "safari") { ProjectsClipboard.open(url) },
-            ])
+        var items: [ActionSheet.Item] = [
+            .init(title: L10n.t("common.copyLink"), systemImage: "link") { ProjectsClipboard.copy(url, model: model) },
+            .init(title: L10n.t("common.openInWeb"), systemImage: "safari") { ProjectsClipboard.open(url) },
+        ]
+        if access.canManage, let initiative {
+            items = InitiativeManagement(model: model, store: store, initiative: initiative).items() + items
         }
+        presenter.present(detents: [.fit]) { ActionSheet(title: initiative?.title, items: items) }
     }
 
     private func addTask() {
