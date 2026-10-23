@@ -104,7 +104,9 @@ struct WorkFiltersSheet: View {
         let isOpen = expanded == section
         return Button {
             PFHaptics.tap()
-            withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.9)) { expanded = isOpen ? nil : section }
+            // Same curve and start as the fitted sheet's own resize (PFMotion.smooth after its ~20 ms coalescing), so the
+            // sheet edge and the rows below the opened section move together instead of one chasing the other.
+            withAnimation(reduceMotion ? nil : PFMotion.smooth.delay(0.02)) { expanded = isOpen ? nil : section }
         } label: {
             HStack(spacing: PFSpace.s) {
                 icon(systemImage)
