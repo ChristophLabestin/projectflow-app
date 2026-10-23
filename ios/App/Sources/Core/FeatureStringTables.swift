@@ -11,6 +11,7 @@ enum FeatureStringTables {
         L10n.register(de: CaptureStrings.de, en: CaptureStrings.en)
         L10n.register(de: AccountStrings.de, en: AccountStrings.en)
         L10n.register(de: OnboardingStrings.de, en: OnboardingStrings.en)
+        L10n.register(de: FirstRunStrings.de, en: FirstRunStrings.en)
         L10n.register(de: SystemStrings.de, en: SystemStrings.en)
         L10n.register(de: PlanningStrings.de, en: PlanningStrings.en)
         L10n.register(de: TeamStrings.de, en: TeamStrings.en)

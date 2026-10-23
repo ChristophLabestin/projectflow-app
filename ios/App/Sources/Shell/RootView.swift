@@ -8,6 +8,14 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     /// The cold-start brand moment plays at least once in full, even when the session is ready sooner.
     @State private var introPlayed = false
+    /// First-install flow (welcome, language, crash reports, privacy, terms) runs once before the first sign-in.
+    @State private var firstRunDone: Bool = {
+        #if DEBUG
+        // QA: `-pfFirstRun` shows the first-install flow again.
+        if ProcessInfo.processInfo.arguments.contains("-pfFirstRun") { FirstRunState.reset(); return false }
+        #endif
+        return FirstRunState.isComplete
+    }()
 
     private var isPreparing: Bool {
         guard case .signedIn = model.auth.phase else { return false }
@@ -29,8 +37,13 @@ struct RootView: View {
                 case .launching:
                     EmptyView()
                 case .signedOut, .needsSecondFactor:
-                    AuthFlowView()
-                        .transition(.opacity)
+                    if firstRunDone {
+                        AuthFlowView()
+                            .transition(.opacity)
+                    } else {
+                        FirstRunFlowView { firstRunDone = true }
+                            .transition(.opacity)
+                    }
                 case .signedIn:
                     if case .failed(let message)? = model.session?.state {
                         SessionErrorView(message: message)
