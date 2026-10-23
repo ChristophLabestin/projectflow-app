@@ -1,4 +1,5 @@
 import type { HandlerMap } from './types';
+import { billingHandlers } from './modules/billing';
 import { contentHandlers } from './modules/content';
 import { crashHandlers } from './modules/crashes';
 import { legalHandlers } from './modules/legal';
@@ -14,4 +15,5 @@ export const handlers: HandlerMap = {
     ...overviewHandlers,
     ...peopleHandlers,
     ...opsHandlers,
+    ...billingHandlers,
 };

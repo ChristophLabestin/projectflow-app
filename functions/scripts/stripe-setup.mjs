@@ -22,6 +22,14 @@ const PRODUCTS = {
             { lookup_key: 'team_yearly', unit_amount: 12000, interval: 'year', nickname: 'Team yearly (10 €/seat/month)' },
         ],
     },
+    personal: {
+        name: 'ProjectFlow Personal',
+        description: 'Personal workspace: unlimited projects, Flows, 10 GB storage.',
+        prices: [
+            { lookup_key: 'personal_monthly', unit_amount: 500, interval: 'month', nickname: 'Personal monthly (5 €)' },
+            { lookup_key: 'personal_yearly', unit_amount: 4800, interval: 'year', nickname: 'Personal yearly (4 €/month)' },
+        ],
+    },
     ai_addon: {
         name: 'ProjectFlow AI add-on',
         description: 'Per user with AI. 1M tokens + 50 images per month.',
@@ -67,32 +75,36 @@ for (const [plan, def] of Object.entries(PRODUCTS)) {
     }
 }
 
-// Customer portal: payment method, invoices, seat interval switch, cancel at period end.
-const configs = await stripe.billingPortal.configurations.list({ is_default: true, limit: 1 });
-const portalFeatures = {
-    customer_update: { enabled: true, allowed_updates: ['email', 'address', 'name', 'tax_id'] },
-    invoice_history: { enabled: true },
-    payment_method_update: { enabled: true },
-    subscription_cancel: { enabled: true, mode: 'at_period_end' },
-    subscription_update: {
-        enabled: true,
-        default_allowed_updates: ['price'],
-        proration_behavior: 'create_prorations',
-        // Interval switch for single-item subscriptions; the AI add-on quantity is managed in the app.
-        products: [{ product: productIds.team, prices: [prices.team_monthly, prices.team_yearly] }],
-    },
-};
-const portalParams = {
-    business_profile: { headline: 'ProjectFlow – Abrechnung / Billing' },
-    default_return_url: `${APP_URL}/?openSettings=billing`,
-    features: portalFeatures,
-};
-if (configs.data[0]) {
-    await stripe.billingPortal.configurations.update(configs.data[0].id, portalParams);
-    console.log('Updated portal configuration', configs.data[0].id);
-} else {
-    const config = await stripe.billingPortal.configurations.create(portalParams);
-    console.log('Created portal configuration', config.id);
+// Customer portal: one configuration per workspace type (metadata.plan), so a Team subscription can never be
+// switched to the Personal price or vice versa. createBillingPortal picks the configuration by metadata.plan.
+const allConfigs = await stripe.billingPortal.configurations.list({ active: true, limit: 100 });
+for (const plan of ['team', 'personal']) {
+    const params = {
+        business_profile: { headline: 'ProjectFlow – Abrechnung / Billing' },
+        default_return_url: `${APP_URL}/?openSettings=billing`,
+        metadata: { plan },
+        features: {
+            customer_update: { enabled: true, allowed_updates: ['email', 'address', 'name', 'tax_id'] },
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: { enabled: true, mode: 'at_period_end' },
+            subscription_update: {
+                enabled: true,
+                default_allowed_updates: ['price'],
+                proration_behavior: 'create_prorations',
+                // Interval switch only; the AI add-on quantity is managed in the app.
+                products: [{ product: productIds[plan], prices: [prices[`${plan}_monthly`], prices[`${plan}_yearly`]] }],
+            },
+        },
+    };
+    const existingConfig = allConfigs.data.find((c) => c.metadata?.plan === plan);
+    if (existingConfig) {
+        await stripe.billingPortal.configurations.update(existingConfig.id, params);
+        console.log('Updated portal configuration', plan, existingConfig.id);
+    } else {
+        const config = await stripe.billingPortal.configurations.create(params);
+        console.log('Created portal configuration', plan, config.id);
+    }
 }
 
 const endpoints = await stripe.webhookEndpoints.list({ limit: 100 });

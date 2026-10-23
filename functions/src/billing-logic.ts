@@ -3,19 +3,37 @@
  * they are unit-testable. Mirrored for display in web/utils/billingPlans.ts — keep both in sync.
  */
 
-export type PlanId = 'free' | 'team' | 'organization';
-export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled';
+export type PlanId = 'free' | 'team' | 'organization' | 'personal';
+/** `personal` = each user's own workspace (id personal_{uid}), 1 member, never Team (contract §7). */
+export type WorkspaceType = 'personal' | 'team';
+export const personalWorkspaceId = (uid: string) => `personal_${uid}`;
+export const PERSONAL_STORAGE_BYTES = 10 * 1024 * 1024 * 1024;
+/** `exempt` = internal/comp workspace (admin console flag `billingExempt`): Team scope incl. AI, no payment. */
+export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
 export const TRIAL_DAYS = 14;
 export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
-/** Workspaces created before this moment are existing (beta) workspaces and start in grace. */
-export const BILLING_LAUNCH_AT = Date.parse('2026-10-24T00:00:00Z');
 
 export const PRICE_LOOKUP_KEYS: Record<BillingInterval, string> = {
     month: 'team_monthly',
     year: 'team_yearly',
+};
+/** Personal plan: 5 €/month, 4 €/month billed yearly; separate subscription per personal workspace. */
+export const PERSONAL_LOOKUP_KEYS: Record<BillingInterval, string> = {
+    month: 'personal_monthly',
+    year: 'personal_yearly',
+};
+export const isPersonalLookupKey = (key: string | null | undefined) =>
+    key === PERSONAL_LOOKUP_KEYS.month || key === PERSONAL_LOOKUP_KEYS.year;
+/** The paid plan a workspace type can book (personal ↔ personal, team ↔ team; never crossed). */
+export const paidPlanFor = (type: WorkspaceType): PlanId => (type === 'personal' ? 'personal' : 'team');
+/** Coerces a requested plan to one the workspace type may hold (free stays free). */
+export const planForType = (requested: PlanId, type: WorkspaceType): PlanId => {
+    if (requested === 'free') return 'free';
+    if (type === 'personal') return 'personal';
+    return requested === 'personal' ? 'team' : requested;
 };
 
 /** AI add-on (owner decision 2026-10-23): 10 €/user/month, Team/Organization only, quantity = users with AI. */
@@ -39,17 +57,23 @@ export const PLAN_LIMITS: Record<PlanId, PlanLimits> = {
     free: { memberLimit: 1, projectLimit: FREE_PROJECT_LIMIT, invitesAllowed: false, aiIncluded: false, aiAddonAvailable: false },
     team: { memberLimit: TEAM_MEMBER_LIMIT, projectLimit: null, invitesAllowed: true, aiIncluded: false, aiAddonAvailable: true },
     organization: { memberLimit: null, projectLimit: null, invitesAllowed: true, aiIncluded: false, aiAddonAvailable: true },
+    personal: { memberLimit: 1, projectLimit: null, invitesAllowed: false, aiIncluded: false, aiAddonAvailable: true },
 };
+
+/** Limits of a plan on a workspace type: personal workspaces never invite and have exactly one member. */
+export const limitsForType = (plan: PlanId, type: WorkspaceType): PlanLimits =>
+    type === 'personal' ? { ...PLAN_LIMITS[plan], memberLimit: 1, invitesAllowed: false } : PLAN_LIMITS[plan];
 
 /** Trial and beta grace unlock AI for every full member; paid plans need the add-on per user. */
 export const aiIncludedForStatus = (plan: PlanId, status: string) =>
-    plan !== 'free' && (status === 'trialing' || status === 'grace');
+    plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt');
 
 /** Effective limits; a missing entitlement doc means a legacy workspace in grace (= Team, AI for all). */
 export const limitsFor = (doc: Record<string, unknown> | undefined | null): PlanLimits => {
     const plan = doc?.plan;
-    if (plan === 'free' || plan === 'team' || plan === 'organization') {
-        return { ...PLAN_LIMITS[plan], aiIncluded: aiIncludedForStatus(plan, String(doc?.status || '')) };
+    if (plan === 'free' || plan === 'team' || plan === 'organization' || plan === 'personal') {
+        const type: WorkspaceType = doc?.workspaceType === 'personal' ? 'personal' : 'team';
+        return { ...limitsForType(plan, type), aiIncluded: aiIncludedForStatus(plan, String(doc?.status || '')) };
     }
     return { ...PLAN_LIMITS.team, aiIncluded: true };
 };
@@ -63,18 +87,18 @@ export const aiEnabledFor = (doc: Record<string, unknown> | undefined | null, ui
 };
 
 /** Stripe subscription status → our status + effective plan. */
-export const mapStripeStatus = (stripeStatus: string): { status: BillingStatus; plan: PlanId } => {
+export const mapStripeStatus = (stripeStatus: string, paidPlan: PlanId = 'team'): { status: BillingStatus; plan: PlanId } => {
     switch (stripeStatus) {
         case 'active':
-            return { status: 'active', plan: 'team' };
+            return { status: 'active', plan: paidPlan };
         case 'trialing':
-            return { status: 'trialing', plan: 'team' };
+            return { status: 'trialing', plan: paidPlan };
         // Stripe dunning: keep access while payment is retried.
         case 'past_due':
-            return { status: 'past_due', plan: 'team' };
+            return { status: 'past_due', plan: paidPlan };
         // incomplete = first payment pending (e.g. 3DS); the workspace keeps its previous state.
         case 'incomplete':
-            return { status: 'past_due', plan: 'team' };
+            return { status: 'past_due', plan: paidPlan };
         default:
             // canceled, unpaid, incomplete_expired, paused
             return { status: 'canceled', plan: 'free' };
@@ -110,10 +134,10 @@ export const periodExpired = (endsAtMs: number | null | undefined, now: number) 
     typeof endsAtMs === 'number' && Number.isFinite(endsAtMs) && endsAtMs <= now;
 
 /** Initial entitlement fields for a workspace that has none yet. */
-export const initialEntitlement = (createdAtMs: number | null, now: number) => {
-    if (createdAtMs !== null && createdAtMs < BILLING_LAUNCH_AT) {
-        return { plan: 'team' as PlanId, status: 'grace' as BillingStatus, trialEndsAtMs: null };
-    }
+// No grace for new workspaces (owner 2026-10-23: no customers yet, internal workspaces use `billingExempt`).
+// `grace` remains only on the pre-launch docs written by the first backfill until they are decided.
+export const initialEntitlement = (createdAtMs: number | null, now: number, type: WorkspaceType = 'team') => {
+    if (type === 'personal') return { plan: 'free' as PlanId, status: 'free' as BillingStatus, trialEndsAtMs: null };
     const start = createdAtMs ?? now;
     return {
         plan: 'team' as PlanId,

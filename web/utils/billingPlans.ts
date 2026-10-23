@@ -2,19 +2,25 @@
  * Plan entitlements for display/guards in the web app. Authoritative copy: functions/src/billing-logic.ts
  * (keep both in sync); enforcement lives in Firestore rules and Cloud Functions.
  */
-export type PlanId = 'free' | 'team' | 'organization';
-export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled';
+export type PlanId = 'free' | 'team' | 'organization' | 'personal';
+/** Contract §7: every user has one personal workspace (personal_{uid}); it never becomes Team. */
+export type WorkspaceType = 'personal' | 'team';
+export type BillingStatus = 'trialing' | 'active' | 'past_due' | 'grace' | 'free' | 'canceled' | 'exempt';
 export type BillingInterval = 'month' | 'year';
 
 export const FREE_PROJECT_LIMIT = 3;
 export const TEAM_MEMBER_LIMIT = 50;
 /** Net prices per seat and month (EUR). */
 export const TEAM_PRICE = { month: 12, year: 10 } as const;
+/** Personal plan, net per month (EUR). */
+export const PERSONAL_PRICE = { month: 5, year: 4 } as const;
+export const PERSONAL_STORAGE_GB = 10;
 /** AI add-on, net per user and month (EUR), Team/Organization only. */
 export const AI_ADDON_PRICE = 10;
 
 export type Entitlements = {
     plan: PlanId;
+    workspaceType: WorkspaceType;
     status: BillingStatus;
     seats: number;
     billingInterval: BillingInterval | null;
@@ -44,10 +50,12 @@ const toDate = (value: unknown): Date | null => {
 
 /** A missing entitlement doc is a legacy workspace in grace (= Team), exactly like the rules. */
 export const parseEntitlements = (data: Record<string, unknown> | undefined): Entitlements => {
-    const plan: PlanId = data?.plan === 'free' || data?.plan === 'organization' ? data.plan : 'team';
+    const plan: PlanId = data?.plan === 'free' || data?.plan === 'organization' || data?.plan === 'personal' ? data.plan : 'team';
+    const workspaceType: WorkspaceType = data?.workspaceType === 'personal' ? 'personal' : 'team';
     const status = (typeof data?.status === 'string' ? data.status : 'grace') as BillingStatus;
     return {
         plan,
+        workspaceType,
         status,
         seats: Number(data?.seats || 0),
         billingInterval: data?.billingInterval === 'month' || data?.billingInterval === 'year' ? data.billingInterval : null,
@@ -59,7 +67,7 @@ export const parseEntitlements = (data: Record<string, unknown> | undefined): En
         projectLimit: plan === 'free' ? Number(data?.projectLimit ?? FREE_PROJECT_LIMIT) : null,
         invitesAllowed: data?.invitesAllowed !== false,
         // Missing doc = legacy grace: AI for everyone (same as functions/src/billing-logic.ts).
-        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace') : true,
+        aiIncluded: data ? plan !== 'free' && (status === 'trialing' || status === 'grace' || status === 'exempt') : true,
         aiAddonAvailable: plan !== 'free',
         aiAddonSeats: Number(data?.aiAddonSeats || 0),
         aiMemberIds: Array.isArray(data?.aiMemberIds) ? (data.aiMemberIds as string[]) : [],
@@ -111,8 +119,7 @@ export const toPlanState = (ent: Entitlements): PlanState => ({
     aiEnabledFor: (uid) => aiEnabledFor(ent, uid),
 });
 
-/**
- * Whether online upgrades (Stripe Checkout) work yet. Until the billing contract exposes a live flag this is a
- * build switch; while off, upgrade buttons say "coming soon" instead of failing with billing-not-configured.
- */
-export const isCheckoutAvailable = () => import.meta.env.VITE_BILLING_CHECKOUT_ENABLED === 'true';
+
+/** Locale key variant for plan copy: personal workspaces upgrade to "Personal", team workspaces to "Team". */
+export const planCopyKey = (ent: Pick<Entitlements, 'workspaceType'> | null | undefined, key: string) =>
+    ent?.workspaceType === 'personal' ? `${key}.personal` : key;

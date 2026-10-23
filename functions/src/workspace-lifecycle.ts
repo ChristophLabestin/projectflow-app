@@ -35,6 +35,10 @@ export const transferWorkspaceOwnership = functions.region(REGION).https.onCall(
     await db.runTransaction(async (tx) => {
         const [tenant, current, next] = await Promise.all([tx.get(tenantRef), tx.get(currentRef), tx.get(nextRef)]);
         if (!tenant.exists) throw new functions.https.HttpsError('not-found', 'Workspace not found.');
+        // Personal workspaces belong to one account for good (billing contract §7).
+        if (tenant.data()?.workspaceType === 'personal') {
+            throw new functions.https.HttpsError('failed-precondition', 'personal-not-transferable');
+        }
         if (tenant.data()?.ownerId !== uid || current.data()?.role !== 'Owner') {
             throw new functions.https.HttpsError('permission-denied', 'Only the owner can transfer the workspace.');
         }
@@ -64,6 +68,9 @@ export const deleteWorkspace = functions.region(REGION).runWith({ timeoutSeconds
     const tenantRef = db.doc(`tenants/${tenantId}`);
     const [tenant, member] = await Promise.all([tenantRef.get(), db.doc(`tenants/${tenantId}/members/${uid}`).get()]);
     if (!tenant.exists) throw new functions.https.HttpsError('not-found', 'Workspace not found.');
+    if (tenant.data()?.workspaceType === 'personal') {
+        throw new functions.https.HttpsError('failed-precondition', 'personal-not-deletable');
+    }
     if (tenant.data()?.ownerId !== uid || member.data()?.role !== 'Owner') {
         throw new functions.https.HttpsError('permission-denied', 'Only the owner can delete the workspace.');
     }

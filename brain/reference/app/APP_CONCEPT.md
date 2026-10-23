@@ -84,7 +84,8 @@ Example modules:
 > `brain/plans/billing-implementation.md`. New workspaces get a 14-day Team trial without card, then Free
 > (projects over 3 become read-only, nothing is deleted). Existing workspaces are Team in `grace` until
 > `admin_config/billing.cutoverAt`. Free AI = user's own **OpenAI** key (not Gemini). AI add-on: per-user assignment
-> (`aiMemberIds`), trial/grace unlock AI for all members. Seats = full members (guests free),
+> (`aiMemberIds`), trial/grace unlock AI for all members. Internal/comp workspaces: `billingExempt` (admin console only) →
+> Team incl. AI without payment. No founding discount (owner 2026-10-23); no grace/cutover for new workspaces. Seats = full members (guests free),
 > synced to the Stripe quantity. License mode A/B (§3.2), owner quota pools (§3.3), overage (§3.4) and Organization/SSO are not built.
 
 ProjectFlow is intentionally designed with **three subscription tiers**. Plan entitlements must be enforced consistently in:
@@ -101,11 +102,18 @@ Rules:
 - Intended for **single-person usage only**.
 - **Max 3 projects** per tenant (owner decision 2026-10-23, was 1).
 - **No workspace invitations** (cannot invite members).
-- **Cannot join other workspaces** (cannot become a member of another tenant).
+- Every user automatically gets a **personal workspace** (also members of team workspaces); it starts on Free and
+  never has other members. (Replaces the old rule „cannot join other workspaces“, owner decision 2026-10-23.)
 - **AI features are not included**.
-  - Optional: user may use AI only if they provide their own **Gemini API key** (BYO key model).
+  - Optional: user may use AI only if they provide their own **OpenAI API key** (BYO key model).
 
 Everything else is not restricted unless explicitly specified elsewhere.
+
+#### Personal — 5 €/month, 4 €/month billed yearly (owner decision 2026-10-23)
+Paid upgrade of the **personal workspace** every user has. Billed separately from any team subscription.
+- **Unlimited projects** and **Flows**, **more file storage** than Free (exact quota set in the billing contract).
+- **No members, no invitations** (single person only).
+- **AI add-on** (10 €/month) can be booked; without it AI only with the user's own OpenAI key.
 
 #### Professional (Team) — public name „Team“, 10 €/seat/month billed yearly, 12 € monthly
 Target: teams and growing companies.
@@ -118,7 +126,7 @@ Rules:
 - **Unlimited external project collaborators** per project (no tenant membership required for externals).
 
 AI entitlements – **not included in the seat price** (owner decision 2026-10-23): AI features are unlocked per user by the
-**AI add-on, 10 €/user/month** – bookable on Team (Professional) and Organization only; Starter/Free uses AI only with the
+**AI add-on, 10 €/user/month** – bookable on Personal, Team (Professional) and Organization; Starter/Free uses AI only with the
 user's own OpenAI key. Each user with the add-on gets monthly:
 - **1,000,000 AI tokens / month / user**
 - **50 images / month / user**

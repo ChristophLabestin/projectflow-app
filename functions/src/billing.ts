@@ -13,10 +13,11 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import {
-    AI_ADDON_LOOKUP_KEYS, PLAN_LIMITS, PRICE_LOOKUP_KEYS, aiEnabledFor, aiIncludedForStatus, initialEntitlement,
-    isAiAddonLookupKey, isTestKey, limitsFor, mapStripeStatus,
+    AI_ADDON_LOOKUP_KEYS, PERSONAL_LOOKUP_KEYS, PERSONAL_STORAGE_BYTES, PRICE_LOOKUP_KEYS, aiEnabledFor,
+    aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
+    mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
     memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
-    type BillingInterval, type BillingStatus, type PlanId, type PlanLimits,
+    type BillingInterval, type BillingStatus, type PlanId, type PlanLimits, type WorkspaceType,
 } from './billing-logic';
 
 const REGION = 'europe-west3';
@@ -161,11 +162,25 @@ const recountProjects = async (tenantId: string) => {
 };
 
 /** Writes the effective plan; moving to Free locks projects over the limit, other plans unlock all. */
-const applyPlan = async (tenantId: string, plan: PlanId, fields: Record<string, unknown>) => {
-    const limits = { ...PLAN_LIMITS[plan], aiIncluded: aiIncludedForStatus(plan, String(fields.status || '')) };
+const applyPlan = async (tenantId: string, requestedPlan: PlanId, requestedFields: Record<string, unknown>) => {
+    const current = (await entRef(tenantId).get()).data() || {};
+    const type: WorkspaceType = (requestedFields.workspaceType ?? current.workspaceType) === 'personal' ? 'personal' : 'team';
+    // billingExempt (internal/comp, admin console) overrides trial expiry and Stripe state until it is removed.
+    const exempt = requestedFields.billingExempt === undefined ? current.billingExempt === true : requestedFields.billingExempt === true;
+    // A workspace type never holds the other type's paid plan (contract §7).
+    const plan: PlanId = exempt ? paidPlanFor(type) : planForType(requestedPlan, type);
+    const fields = exempt ? { ...requestedFields, status: 'exempt' } : requestedFields;
+    const limits = { ...limitsForType(plan, type), aiIncluded: aiIncludedForStatus(plan, String(fields.status || '')) };
+    // Personal plan: 10 GB storage; leaving it drops back to the default quota.
+    const storage = plan === 'personal'
+        ? { storageQuotaBytes: PERSONAL_STORAGE_BYTES }
+        : current.storageQuotaBytes === PERSONAL_STORAGE_BYTES ? { storageQuotaBytes: FieldValue.delete() } : {};
     const projects = await recountProjects(tenantId);
     await entRef(tenantId).set({
         ...(limits.aiAddonAvailable ? {} : { aiMemberIds: [], aiAddonSeats: 0 }),
+        ...storage,
+        workspaceType: type,
+        flowsQuota: plan === 'free' ? 'free' : 'seat',
         ...fields,
         plan,
         ...limits,
@@ -175,11 +190,12 @@ const applyPlan = async (tenantId: string, plan: PlanId, fields: Record<string, 
     }, { merge: true });
 };
 
-const ensureEntitlement = async (tenantId: string, createdAtMs: number | null) => {
+const ensureEntitlement = async (tenantId: string, createdAtMs: number | null, type: WorkspaceType = 'team') => {
     const snap = await entRef(tenantId).get();
     if (snap.exists && snap.data()?.plan) return false;
-    const initial = initialEntitlement(createdAtMs, Date.now());
+    const initial = initialEntitlement(createdAtMs, Date.now(), type);
     await applyPlan(tenantId, initial.plan, {
+        workspaceType: type,
         status: initial.status,
         trialEndsAt: initial.trialEndsAtMs ? Timestamp.fromMillis(initial.trialEndsAtMs) : null,
         graceEndsAt: null,
@@ -192,7 +208,8 @@ const ensureEntitlement = async (tenantId: string, createdAtMs: number | null) =
 export const onTenantCreatedBilling = functions.region(REGION).firestore
     .document('tenants/{tenantId}')
     .onCreate(async (snap, context) => {
-        await ensureEntitlement(context.params.tenantId, toMs(snap.data()?.createdAt) ?? Date.now());
+        const type: WorkspaceType = snap.data()?.workspaceType === 'personal' ? 'personal' : 'team';
+        await ensureEntitlement(context.params.tenantId, toMs(snap.data()?.createdAt) ?? Date.now(), type);
     });
 
 /** Keeps `projectCount` (used by the rules' project limit) and the lock list current. */
@@ -222,7 +239,7 @@ const syncSubscription = async (subscription: Stripe.Subscription, tenantHint?: 
     const items = subscription.items.data;
     const addonItem = items.find((entry) => isAiAddonLookupKey(entry.price?.lookup_key));
     const item = items.find((entry) => entry !== addonItem) || items[0];
-    const mapped = mapStripeStatus(subscription.status);
+    const mapped = mapStripeStatus(subscription.status, isPersonalLookupKey(item?.price?.lookup_key) ? 'personal' : 'team');
     const current = (await entRef(tenantId).get()).data() || {};
     // A canceled subscription only downgrades the workspace it currently drives.
     if (mapped.plan === 'free' && current.stripeSubscriptionId && current.stripeSubscriptionId !== subscription.id) return;
@@ -274,6 +291,81 @@ const setAddonQuantity = async (stripe: Stripe, subscriptionId: string, quantity
     });
 };
 
+/**
+ * Internal/comp workspaces (owner decision 2026-10-23): Team scope incl. AI for all members, no payment.
+ * Only the admin console calls this (it writes the audit entry). Removing the flag returns to the Stripe
+ * state when a subscription exists, else to Free (projects over the limit become read-only).
+ */
+export const setBillingExempt = async (tenantId: string, exempt: boolean, by: string) => {
+    if (exempt) {
+        // applyPlan maps 'team' to the paid plan of the workspace type (personal workspaces stay personal).
+        await applyPlan(tenantId, 'team', { billingExempt: true, status: 'exempt', exemptBy: by, exemptAt: FieldValue.serverTimestamp() });
+    } else {
+        const ent = (await entRef(tenantId).get()).data() || {};
+        const subId = typeof ent.stripeSubscriptionId === 'string' ? ent.stripeSubscriptionId : null;
+        await entRef(tenantId).set({ billingExempt: false, exemptBy: by, exemptAt: FieldValue.serverTimestamp() }, { merge: true });
+        if (subId && process.env.STRIPE_SECRET_KEY) {
+            await syncSubscription(await getStripe().subscriptions.retrieve(subId), tenantId);
+        } else {
+            await applyPlan(tenantId, 'free', { billingExempt: false, status: 'free', seats: 0, billingInterval: null });
+        }
+    }
+    aiAccessCache.clear();
+};
+
+// --- Personal workspaces (contract §7) ---
+
+const PERSONAL_NAMES: Record<string, string> = { de: 'Mein Workspace', en: 'My workspace' };
+
+/**
+ * Creates the user's personal workspace `personal_{uid}` (tenant, Owner membership, Free entitlement) in one
+ * transaction. Idempotent: returns created=false when it exists. Used by the callable and the backfill script.
+ */
+export const createPersonalWorkspace = async (uid: string, language?: string) => {
+    const tenantId = personalWorkspaceId(uid);
+    const tenantRef = db.doc(`tenants/${tenantId}`);
+    const user = await admin.auth().getUser(uid);
+    const email = String(user.email || '').toLowerCase();
+    const limits = limitsForType('free', 'personal');
+    const created = await db.runTransaction(async (tx) => {
+        if ((await tx.get(tenantRef)).exists) return false;
+        const now = FieldValue.serverTimestamp();
+        tx.set(tenantRef, {
+            tenantId,
+            name: PERSONAL_NAMES[language === 'de' ? 'de' : 'en'],
+            ownerId: uid,
+            createdBy: uid,
+            workspaceType: 'personal',
+            createdAt: now,
+            updatedAt: now,
+        });
+        tx.set(db.doc(`tenants/${tenantId}/members/${uid}`), {
+            uid,
+            role: 'Owner',
+            roleIds: [],
+            joinedAt: now,
+            displayName: user.displayName || email.split('@')[0] || 'User',
+            email,
+            photoURL: user.photoURL || '',
+        });
+        // Written with the tenant so onTenantCreatedBilling never starts a Team trial here.
+        tx.set(entRef(tenantId), {
+            plan: 'free', status: 'free', workspaceType: 'personal', ...limits, flowsQuota: 'free',
+            seats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null,
+            projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0, updatedAt: now,
+        });
+        return true;
+    });
+    return { tenantId, created };
+};
+
+/** Called by the client after every sign-in; replaces client-side creation of a first workspace. */
+export const ensurePersonalWorkspace = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = context.auth?.uid;
+    if (!uid) throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+    return createPersonalWorkspace(uid, typeof data?.language === 'string' ? data.language : undefined);
+});
+
 // --- Callables ---
 
 const requireOwner = async (tenantId: unknown, context: functions.https.CallableContext) => {
@@ -316,12 +408,17 @@ export const createBillingCheckout = functions.region(REGION).runWith({ secrets:
         if (ent.stripeSubscriptionId && ['active', 'trialing', 'past_due'].includes(String(ent.status))) {
             throw new functions.https.HttpsError('failed-precondition', 'billing-already-subscribed');
         }
-        const prices = await stripe.prices.list({ lookup_keys: [PRICE_LOOKUP_KEYS[interval]], active: true, limit: 1 });
+        const type: WorkspaceType = ent.workspaceType === 'personal' ? 'personal' : 'team';
+        if (data?.plan && data.plan !== paidPlanFor(type)) {
+            throw new functions.https.HttpsError('failed-precondition', 'plan-workspace-type-mismatch');
+        }
+        const lookupKey = (type === 'personal' ? PERSONAL_LOOKUP_KEYS : PRICE_LOOKUP_KEYS)[interval];
+        const prices = await stripe.prices.list({ lookup_keys: [lookupKey], active: true, limit: 1 });
         const price = prices.data[0];
         if (!price) throw new functions.https.HttpsError('failed-precondition', 'billing-price-missing');
 
         const customer = await ensureCustomer(stripe, tenantId, uid);
-        const quantity = seatQuantity(await fullMemberRoles(tenantId));
+        const quantity = type === 'personal' ? 1 : seatQuantity(await fullMemberRoles(tenantId));
         const origin = resolveOrigin(data?.origin);
         // Running in-app trial: charging starts when it ends (Stripe needs trial_end ≥ 48 h ahead).
         const trialEndsAtMs = ent.status === 'trialing' ? toMs(ent.trialEndsAt) : null;
@@ -351,7 +448,12 @@ export const createBillingPortal = functions.region(REGION).runWith({ secrets: S
         const { tenantId } = await requireOwner(data?.tenantId, context);
         const customerId = (await customerRef(tenantId).get()).data()?.customerId;
         if (!customerId) throw new functions.https.HttpsError('failed-precondition', 'billing-no-customer');
-        const session = await getStripe().billingPortal.sessions.create({
+        const stripe = getStripe();
+        const plan = (await entRef(tenantId).get()).data()?.workspaceType === 'personal' ? 'personal' : 'team';
+        const configs = await stripe.billingPortal.configurations.list({ active: true, limit: 100 });
+        const configuration = configs.data.find((entry) => entry.metadata?.plan === plan)?.id;
+        const session = await stripe.billingPortal.sessions.create({
+            ...(configuration ? { configuration } : {}),
             customer: String(customerId),
             return_url: `${resolveOrigin(data?.origin)}/?openSettings=billing`,
             locale: data?.language === 'de' ? 'de' : 'auto',
@@ -510,12 +612,13 @@ export const billingSweep = functions.region(REGION).runWith({ timeoutSeconds: 5
     .onRun(async () => {
         const now = Date.now();
         const cutoverAtMs = toMs((await db.doc('admin_config/billing').get()).data()?.cutoverAt);
-        const tenants = await db.collection('tenants').select('createdAt').get();
+        const tenants = await db.collection('tenants').select('createdAt', 'workspaceType').get();
         let backfilled = 0;
         let downgraded = 0;
         for (const tenant of tenants.docs) {
             const tenantId = tenant.id;
-            if (await ensureEntitlement(tenantId, toMs(tenant.data().createdAt))) {
+            const type: WorkspaceType = tenant.data().workspaceType === 'personal' ? 'personal' : 'team';
+            if (await ensureEntitlement(tenantId, toMs(tenant.data().createdAt), type)) {
                 backfilled += 1;
                 continue;
             }

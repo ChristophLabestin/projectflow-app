@@ -41,8 +41,10 @@ test('locks all but the most recently updated projects', () => {
     assert.deepEqual(billing.projectsToLock(projects, null), []);
 });
 
-test('existing workspaces start in grace, new ones in a 14-day trial', () => {
-    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'grace');
+test('every new workspace starts a 14-day trial; exempt workspaces get Team incl. AI', () => {
+    assert.equal(billing.initialEntitlement(Date.parse('2026-01-01'), Date.now()).status, 'trialing');
+    assert.equal(billing.aiEnabledFor({ plan: 'team', status: 'exempt' }, 'u1'), true);
+    assert.equal(billing.limitsFor({ plan: 'team', status: 'exempt' }).projectLimit, null);
     const created = Date.parse('2026-11-01T00:00:00Z');
     const trial = billing.initialEntitlement(created, created);
     assert.equal(trial.status, 'trialing');
@@ -54,4 +56,20 @@ test('existing workspaces start in grace, new ones in a 14-day trial', () => {
 test('only test keys are accepted', () => {
     assert.equal(billing.isTestKey('sk_test_123'), true);
     assert.equal(billing.isTestKey('sk_live_123'), false);
+});
+
+test('personal workspaces: Free start, never invite, never Team', () => {
+    assert.equal(billing.personalWorkspaceId('u1'), 'personal_u1');
+    assert.equal(billing.initialEntitlement(Date.now(), Date.now(), 'personal').status, 'free');
+    const personal = billing.limitsFor({ plan: 'personal', status: 'active', workspaceType: 'personal' });
+    assert.equal(personal.projectLimit, null);
+    assert.equal(personal.invitesAllowed, false);
+    assert.equal(personal.memberLimit, 1);
+    assert.equal(personal.aiAddonAvailable, true);
+    assert.equal(billing.planForType('team', 'personal'), 'personal');
+    assert.equal(billing.planForType('personal', 'team'), 'team');
+    assert.equal(billing.planForType('free', 'personal'), 'free');
+    assert.equal(billing.limitsFor({ plan: 'team', status: 'exempt', workspaceType: 'personal' }).invitesAllowed, false);
+    assert.deepEqual(billing.mapStripeStatus('active', 'personal'), { status: 'active', plan: 'personal' });
+    assert.equal(billing.isPersonalLookupKey('personal_yearly'), true);
 });

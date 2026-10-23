@@ -18,6 +18,7 @@ import { collection, getCountFromServer, query, where } from 'firebase/firestore
 import { db } from '../../services/firebase';
 import { useActivePlan } from '../../hooks/useEntitlements';
 import { PlanHint } from '../billing/PlanHint';
+import { planCopyKey } from '../../utils/billingPlans';
 
 interface InviteToWorkspaceModalProps {
     isOpen: boolean;
@@ -155,8 +156,10 @@ export const InviteToWorkspaceModal = ({
                 <PlanHint
                     tone="warning"
                     icon="group_add"
-                    title={t('billing.limit.invites.title')}
-                    message={t('billing.limit.invites.body')}
+                    // Personal workspaces never get invitations (no upgrade path) — teams live in a team workspace.
+                    cta={plan?.workspaceType !== 'personal'}
+                    title={t(planCopyKey(plan, 'billing.limit.invites.title'))}
+                    message={t(planCopyKey(plan, 'billing.limit.invites.body'))}
                 />
             ) : link ? (
                 <div className="invite-modal__result">

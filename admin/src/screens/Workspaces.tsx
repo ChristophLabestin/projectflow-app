@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../lib/api';
-import { dateTime, num, relative } from '../lib/format';
+import { dateTime, eur, num, relative } from '../lib/format';
 import { useAdminQuery } from '../lib/useAsync';
 import { AreaChart, Meter } from '../ui/charts';
 import { DataTable, type Column } from '../ui/DataTable';
@@ -10,7 +10,10 @@ import { Badge, Card, Empty, ErrorNote, PageHead, Segmented, Skeleton, Tabs } fr
 import { dayKeyList } from '../lib/days';
 import { GrantsTable, roleTone, UserDrawer } from './Users';
 
-type Ws = { id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
+type Billing = { plan: string; status: string; seats: number; aiAddonSeats: number; billingInterval: string | null; trialEndsAt: number | null; graceEndsAt: number | null; currentPeriodEnd: number | null; cancelAtPeriodEnd: boolean; paid: boolean; mrr: number; missing: boolean; exempt: boolean };
+export const STATUS_TONE_BILLING: Record<string, 'green' | 'amber' | 'red' | 'blue' | 'neutral' | 'violet'> = { active: 'green', trialing: 'blue', grace: 'violet', past_due: 'red', canceled: 'neutral', free: 'neutral', exempt: 'amber' };
+export const statusLabel = (status: string) => (status === 'exempt' ? 'Intern' : status);
+type Ws = { billing: Billing | null; id: string; name: string; ownerId: string | null; ownerEmail: string | null; createdAt: number | null; suspendedAt: number | null; members: number; guests: number; projects: number; lastProjectUpdate: number | null; grants: number; aiEnabled: boolean };
 type Policy = { enabled: boolean; allowGuests: boolean; allowDeleteScopes: boolean; allowPersonalTokens: boolean; inAppEnabled: boolean; inAppAi: boolean; monthlyCredits?: number | null };
 type WsDetail = {
     id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; suspensionLog: { id: string; suspended: boolean; reason: string; email: string; at: number | null }[]; modules: string[] | null;
@@ -22,6 +25,7 @@ type WsDetail = {
         flows: { id: string; name: string; scope: string; projectId: string | null; enabled: boolean; trigger: string; pausedReason: string | null; lastRunAt: number | null; lastStatus: string | null; lastError: string | null; consecutiveFailures: number }[];
         failedRuns: { id: string; name: string; error: string | null; startedAt: number | null }[];
     };
+    billing: Billing & { memberLimit: number | null; projectLimit: number | null; projectCount: number | null; lockedProjects: number; aiMemberIds: number; stripeSubscriptionId: string | null; customerId: string | null };
     aiPolicy: Policy; credits: { month: string; credits: number; limit: number | null; requests: number; costMicros: number; defaultLimit: number }; grants: any[]; machineWrites: { day: string; writes: number }[];
     apiTokens: { id: string; name: string; createdAt: number | null; lastUsedAt: number | null; expiresAt: number | null; permissions: string[] }[];
     activity: { id: string; type: string; actor: string; object: string; projectTitle: string | null; createdAt: number | null }[];
@@ -84,6 +88,53 @@ const FlowsTab: React.FC<{ data: WsDetail; onSaved: () => void }> = ({ data, onS
     );
 };
 
+const ExemptCard: React.FC<{ id: string; name: string; exempt: boolean; onSaved: () => void }> = ({ id, name, exempt, onSaved }) => {
+    const { confirm, toast } = useUi();
+    const [reason, setReason] = useState('');
+    const run = async () => {
+        const ok = await confirm({
+            title: exempt ? `„${name}“ wieder normal abrechnen?` : `„${name}“ als intern markieren?`,
+            message: exempt
+                ? 'Der Workspace fällt auf das Stripe-Abo zurück bzw. auf Free, wenn es keins gibt. Limits und Sperren werden neu berechnet.'
+                : 'Intern = Team-Plan inklusive KI für alle Mitglieder, ohne Zahlung (status exempt, zählt nicht zum MRR).',
+            danger: exempt,
+            confirmLabel: exempt ? 'Intern entfernen' : 'Als intern markieren',
+        });
+        if (!ok) return;
+        try { await adminApi('billing.setExempt', { id, exempt: !exempt, reason }); toast(exempt ? 'Intern entfernt' : 'Als intern markiert'); setReason(''); onSaved(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return (
+        <Card title="Intern / kostenlos" subtitle="Nur über die Billing-Logik (setBillingExempt), mit Begründung und Audit.">
+            <div className="ac-row">
+                <input className="ac-input" style={{ flex: 1 }} placeholder="Begründung (mind. 10 Zeichen)" value={reason} onChange={(e) => setReason(e.target.value)} />
+                <button className={`ac-btn ${exempt ? 'ac-btn--danger' : 'ac-btn--primary'}`} disabled={reason.trim().length < 10} onClick={run}>{exempt ? 'Intern entfernen …' : 'Als intern markieren …'}</button>
+            </div>
+        </Card>
+    );
+};
+
+const BillingTab: React.FC<{ b: WsDetail['billing']; id: string; name: string; onSaved: () => void }> = ({ b, id, name, onSaved }) => (
+    <div className="ac-stack">
+        <div className="ac-row">
+            <Badge tone="violet" plain>{b.plan}</Badge>
+            <Badge tone={STATUS_TONE_BILLING[b.status] || 'neutral'}>{statusLabel(b.status)}{b.missing ? ' (kein Dokument)' : ''}</Badge>
+            {b.cancelAtPeriodEnd && <Badge tone="amber">kündigt zum Periodenende</Badge>}
+            <span className="ac-muted">MRR netto <b>{eur(b.mrr)}</b></span>
+        </div>
+        <dl className="ac-kv">
+            <dt>Plätze / KI-Pakete</dt><dd>{num(b.seats)} / {num(b.aiAddonSeats)} <span className="ac-muted">({num(b.aiMemberIds)} zugewiesen)</span></dd>
+            <dt>Abrechnung</dt><dd>{b.billingInterval === 'year' ? 'jährlich' : b.billingInterval === 'month' ? 'monatlich' : '–'}</dd>
+            <dt>Periode bis</dt><dd>{dateTime(b.currentPeriodEnd)}</dd>
+            <dt>Test endet</dt><dd>{dateTime(b.trialEndsAt)}</dd>
+            <dt>Grace endet</dt><dd>{dateTime(b.graceEndsAt)}</dd>
+            <dt>Limits</dt><dd>Mitglieder {b.memberLimit ?? '∞'} · Projekte {b.projectCount ?? '–'}/{b.projectLimit ?? '∞'}{b.lockedProjects ? ` · ${b.lockedProjects} gesperrt` : ''}</dd>
+            <dt>Stripe</dt><dd>{b.customerId ? <a href={`https://dashboard.stripe.com/customers/${encodeURIComponent(b.customerId)}`} target="_blank" rel="noopener noreferrer" className="mono">{b.customerId}</a> : '–'}{b.stripeSubscriptionId ? <span className="mono ac-muted"> · {b.stripeSubscriptionId}</span> : ''}</dd>
+        </dl>
+        <p className="ac-muted">Plan und Abo ändern sich über Stripe bzw. die Billing-Functions; hier nur „intern“.</p>
+        <ExemptCard id={id} name={name} exempt={b.exempt} onSaved={onSaved} />
+    </div>
+);
+
 const SuspendCard: React.FC<{ data: WsDetail; onSaved: () => void }> = ({ data, onSaved }) => {
     const { confirm, toast } = useUi();
     const [reason, setReason] = useState('');
@@ -144,12 +195,14 @@ const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (
                         { value: 'members', label: `Mitglieder ${data.members.length}` },
                         { value: 'projects', label: `Projekte ${data.projects.length}` },
                         { value: 'ai', label: 'KI & API' },
+                        { value: 'billing', label: 'Abo' },
                         { value: 'flows', label: `Flows ${data.flows.flows.filter((x) => x.enabled).length}${data.flows.flows.some((x) => x.pausedReason) ? ' ●' : ''}` },
                         { value: 'activity', label: 'Aktivität' },
                         { value: 'status', label: data.suspendedAt ? 'Sperre ●' : 'Sperre' },
                     ]} />
                     {tab === 'status' && <SuspendCard data={data} onSaved={reload} />}
                     {tab === 'flows' && <FlowsTab data={data} onSaved={reload} />}
+                    {tab === 'billing' && <BillingTab b={data.billing} id={data.id} name={data.name} onSaved={reload} />}
                     {tab === 'members' && (
                         <table className="ac-table"><thead><tr><th>Mitglied</th><th>Rolle</th><th>Beigetreten</th><th>Zuletzt aktiv</th></tr></thead>
                             <tbody>{data.members.sort((a, b) => ['Owner', 'Admin', 'Member', 'Guest'].indexOf(a.role) - ['Owner', 'Admin', 'Member', 'Guest'].indexOf(b.role)).map((m) => (
@@ -197,12 +250,14 @@ export const WorkspacesScreen: React.FC = () => {
     const { data, loading, error, reload } = useAdminQuery<{ workspaces: Ws[] }>('workspaces.list');
     const q = search.trim().toLowerCase();
     const rows = (data?.workspaces || []).filter((w) => (!q || `${w.name} ${w.ownerEmail} ${w.id}`.toLowerCase().includes(q))
-        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0) || (filter === 'suspended' && Boolean(w.suspendedAt))));
+        && (filter === 'all' || (filter === 'team' && w.members > 1) || (filter === 'mcp' && w.grants > 0) || (filter === 'empty' && w.projects === 0) || (filter === 'suspended' && Boolean(w.suspendedAt)) || (filter === 'paying' && (w.billing?.mrr ?? 0) > 0) || (filter === 'trial' && w.billing?.status === 'trialing') || (filter === 'exempt' && w.billing?.status === 'exempt')));
     const setOpen = (id: string | null) => setParams((p) => { const n = new URLSearchParams(p); if (id) n.set('id', id); else n.delete('id'); return n; });
 
     const columns: Column<Ws>[] = [
         { key: 'name', label: 'Workspace', render: (w) => <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span className="ac-strong">{w.name}</span>{w.suspendedAt && <Badge tone="red">gesperrt</Badge>}</span> },
         { key: 'ownerEmail', label: 'Owner', render: (w) => <span className="ac-muted">{w.ownerEmail || w.ownerId}</span> },
+        { key: 'plan', label: 'Plan', value: (w) => w.billing?.plan || '', render: (w) => (w.billing ? <span className="ac-row" style={{ flexWrap: 'nowrap' }}><span>{w.billing.plan}</span><Badge tone={STATUS_TONE_BILLING[w.billing.status] || 'neutral'} plain>{statusLabel(w.billing.status)}</Badge></span> : '–') },
+        { key: 'mrr', label: 'MRR', num: true, value: (w) => w.billing?.mrr ?? 0, render: (w) => (w.billing?.mrr ? eur(w.billing.mrr) : <span className="ac-muted">–</span>) },
         { key: 'members', label: 'Mitglieder', num: true, render: (w) => <>{num(w.members)}{w.guests ? <span className="ac-muted"> +{w.guests} Gäste</span> : ''}</> },
         { key: 'projects', label: 'Projekte', num: true },
         { key: 'grants', label: 'MCP', num: true },
@@ -219,7 +274,7 @@ export const WorkspacesScreen: React.FC = () => {
             <DataTable id="workspaces" rows={data ? rows : null} loading={loading} columns={columns} rowKey={(w) => w.id} onOpen={(w) => setOpen(w.id)} selectedKey={openId} defaultSort={{ key: 'createdAt', dir: 'desc' }}
                 toolbar={<>
                     <div className="ac-search"><input className="ac-input" placeholder="Name, Owner, ID …" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }, { value: 'suspended', label: 'Gesperrt' }]} />
+                    <Segmented value={filter} onChange={setFilter} options={[{ value: 'all', label: 'Alle' }, { value: 'team', label: 'Teams' }, { value: 'mcp', label: 'Mit MCP' }, { value: 'empty', label: 'Leer' }, { value: 'paying', label: 'Zahlend' }, { value: 'trial', label: 'Test' }, { value: 'exempt', label: 'Intern' }, { value: 'suspended', label: 'Gesperrt' }]} />
                 </>} />
             {openId && <WorkspaceDrawer id={openId} onClose={() => setOpen(null)} onOpenUser={setUser} />}
             {user && <UserDrawer uid={user} onClose={() => setUser(null)} />}

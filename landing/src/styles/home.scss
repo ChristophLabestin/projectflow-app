@@ -1609,11 +1609,15 @@ kbd {
 
 .plans {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
     align-items: start;
 
-    @media (max-width: 960px) {
+    @media (max-width: 1180px) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @media (max-width: 680px) {
         grid-template-columns: minmax(0, 1fr);
         max-width: 520px;
         margin-inline: auto;
@@ -1683,7 +1687,7 @@ kbd {
 .plan--featured {
     box-shadow: var(--shadow-xl);
 
-    @media (min-width: 961px) {
+    @media (min-width: 1181px) {
         margin-top: -12px;
     }
 
@@ -1752,4 +1756,11 @@ kbd {
 .addon__text {
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+}
+
+// Four plans side by side: equal description height keeps the prices on one line.
+@media (min-width: 1181px) {
+    .plan__top p {
+        min-height: 2.9em;
+    }
 }

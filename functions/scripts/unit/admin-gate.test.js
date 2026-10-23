@@ -64,3 +64,11 @@ test('refused: missing, foreign, ended or expired session', async () => {
     assert.deepEqual(await gate(ADMIN, 'call', 's1', deps({ getSession: async () => ({ sessionId: 's1', startedAtMs: NOW - 1000, lastSeenAtMs: NOW - SESSION_IDLE_MS - 1 }) })), { ok: false, reason: 'session-expired' });
     assert.deepEqual(await gate(ADMIN, 'call', 's1', deps({ getSession: async () => ({ sessionId: 's1', startedAtMs: NOW - SESSION_MAX_MS - 1, lastSeenAtMs: NOW }) })), { ok: false, reason: 'session-expired' });
 });
+
+test('billing MRR per contract §6', () => {
+    const { mrrOf, billingOf } = require('../../lib/admin-console/modules/billing');
+    assert.equal(mrrOf({ status: 'active', seats: 5, aiAddonSeats: 2, billingInterval: 'month' }), 80);
+    assert.equal(mrrOf({ status: 'past_due', seats: 3, aiAddonSeats: 0, billingInterval: 'year' }), 30);
+    assert.equal(mrrOf({ status: 'trialing', seats: 9, billingInterval: 'month' }), 0);
+    assert.equal(billingOf(undefined).status, 'grace');
+});

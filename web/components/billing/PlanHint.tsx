@@ -12,6 +12,8 @@ interface PlanHintProps {
     tone?: 'info' | 'warning';
     /** Smaller single-line variant for menus, forms and toolbars. */
     compact?: boolean;
+    /** false: no upgrade path applies (e.g. invitations in a personal workspace). */
+    cta?: boolean;
     className?: string;
 }
 
@@ -19,7 +21,7 @@ interface PlanHintProps {
  * The one way to explain a plan limit: what is limited, and the way out — owners get a link to
  * Settings → Billing, everyone else is told to ask the owner (only owners can change the plan).
  */
-export const PlanHint: React.FC<PlanHintProps> = ({ message, title, icon = 'workspace_premium', tone = 'info', compact = false, className = '' }) => {
+export const PlanHint: React.FC<PlanHintProps> = ({ message, title, icon = 'workspace_premium', tone = 'info', compact = false, cta = true, className = '' }) => {
     const { t } = useLanguage();
     const { isOwner } = useActivePlan();
     return (
@@ -29,11 +31,11 @@ export const PlanHint: React.FC<PlanHintProps> = ({ message, title, icon = 'work
                 {title && <strong className="plan-hint__title">{title}</strong>}
                 <span className="plan-hint__message">{message}</span>
             </div>
-            {isOwner ? (
+            {cta && (isOwner ? (
                 <Link to="?openSettings=billing" className="plan-hint__cta">{t('billing.hint.viewPlans')}</Link>
             ) : (
                 <span className="plan-hint__note">{t('billing.hint.askOwner')}</span>
-            )}
+            ))}
         </div>
     );
 };

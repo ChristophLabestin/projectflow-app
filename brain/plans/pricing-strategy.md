@@ -29,20 +29,20 @@ Fazit: Teamplätze liegen bei 8–12 €; KI ist oft ein Aufpreis (8–10 $). Pr
 „Externe kostenlos“ bei ~10 € klar positioniert werden, ohne Billiganbieter zu sein.
 
 ## 3. Empfohlene Pläne (Netto-Preise, zzgl. USt.)
-| | **Free** | **Team** (Professional) | **Organization** |
-|---|---|---|---|
-| Preis | 0 € | **10 €**/Platz/Monat jährlich · **12 €** monatlich | ab **18 €**/Platz/Monat jährlich, ab 10 Plätzen, Angebot |
-| Für | Einzelpersonen | Teams bis 50 Mitglieder | Unternehmen mit Governance-Bedarf |
-| Projekte | bis 3 | unbegrenzt | unbegrenzt |
-| Mitglieder | 1 | bis 50 | unbegrenzt |
-| Externe pro Projekt | – | unbegrenzt, kostenlos | unbegrenzt, kostenlos |
-| Web, Desktop, iPhone | ✓ | ✓ | ✓ |
-| Heute, Fokus, Inbox, Boards, Workbench | ✓ | ✓ | ✓ |
-| Initiativen, Sprints, Module | Initiativen | ✓ | ✓ |
-| KI-Assistenz | mit eigenem OpenAI-Schlüssel | **KI-Paket +10 €/Nutzer/Monat**: 1 Mio. Tokens + 50 Bilder/Nutzer/Monat | KI-Paket bzw. individuelle Kontingente & Richtlinien |
-| MCP (Claude, ChatGPT, Cursor …) | ✓ (eigener Zugriff) | ✓ + persönliche Tokens für CI | ✓ + zentrale Richtlinien |
-| Sicherheit | Passkeys, 2FA | + Rollen, KI-Aktivitätsprotokoll (180 Tage) | + SSO, erweiterte Protokolle, AV-Vertrag, SLA |
-| Support | Hilfe-Center | E-Mail | Priorisiert, fester Ansprechpartner |
+| | **Free** | **Personal** | **Team** (Professional) | **Organization** |
+|---|---|---|---|---|
+| Preis | 0 € | **4 €**/Monat jährlich · **5 €** monatlich | **10 €**/Platz/Monat jährlich · **12 €** monatlich | ab **18 €**/Platz/Monat jährlich, ab 10 Plätzen, Angebot |
+| Für | Einzelpersonen | dein persönlicher Workspace (jeder Nutzer hat einen, auch Team-Mitglieder) | Teams bis 50 Mitglieder | Unternehmen mit Governance-Bedarf |
+| Projekte | bis 3 | unbegrenzt (+ Flows, mehr Dateispeicher) | unbegrenzt | unbegrenzt |
+| Mitglieder | 1 | 1 (keine Einladungen) | bis 50 | unbegrenzt |
+| Externe pro Projekt | – | – | unbegrenzt, kostenlos | unbegrenzt, kostenlos |
+| Web, Desktop, iPhone | ✓ | ✓ | ✓ | ✓ |
+| Heute, Fokus, Inbox, Boards, Workbench | ✓ | ✓ | ✓ | ✓ |
+| Initiativen, Sprints, Module | Initiativen | ✓ | ✓ | ✓ |
+| KI-Assistenz | mit eigenem OpenAI-Schlüssel | KI-Paket +10 €/Monat zubuchbar | **KI-Paket +10 €/Nutzer/Monat**: 1 Mio. Tokens + 50 Bilder/Nutzer/Monat | KI-Paket bzw. individuelle Kontingente & Richtlinien |
+| MCP (Claude, ChatGPT, Cursor …) | ✓ (eigener Zugriff) | ✓ | ✓ + persönliche Tokens für CI | ✓ + zentrale Richtlinien |
+| Sicherheit | Passkeys, 2FA | Passkeys, 2FA | + Rollen, KI-Aktivitätsprotokoll (180 Tage) | + SSO, erweiterte Protokolle, AV-Vertrag, SLA |
+| Support | Hilfe-Center | E-Mail | E-Mail | Priorisiert, fester Ansprechpartner |
 
 Begründungen:
 - **Free statt „Starter mit 1 Projekt“**: 3 Projekte senken die Einstiegshürde für Solo-Nutzer; Teamfunktionen
@@ -57,7 +57,7 @@ Begründungen:
 - **14 Tage Team-Test** ohne Kreditkarte für jeden neuen Workspace; danach automatisch Free (keine Datenverluste,
   Projekte über dem Limit werden schreibgeschützt).
 - **Gründungspreis** für Beta-Workspaces: 40 % Rabatt im ersten Jahr (6 €/Platz), Preisgarantie 24 Monate.
-- **KI-Paket**: +10 €/Nutzer/Monat (Team/Organization), monatlich kündbar; darüber hinaus Nachkauf +1 Mio. Tokens 4 € · +50 Bilder 4 € (optional).
+- **KI-Paket**: +10 €/Nutzer/Monat (Personal/Team/Organization), monatlich kündbar; darüber hinaus Nachkauf +1 Mio. Tokens 4 € · +50 Bilder 4 € (optional).
 - **Gemeinnützige Organisationen & Bildung**: 50 % auf Team.
 - **Mindestabnahme**: keine im Team-Plan (auch 2 Plätze ok); Organization ab 10 Plätzen.
 
@@ -76,7 +76,11 @@ Begründungen:
 ## 7. Entscheidungen
 - ✅ 2026-10-23: Team 10 €/12 €, Free bis 3 Projekte, Team bis 50 Mitglieder.
 - ✅ 2026-10-23: KI als Zusatzpaket für 10 € pro Nutzer/Monat (schaltet KI-Funktionen frei).
-- ✅ 2026-10-23: KI-Paket nur für Team/Organization buchbar, pro einzelnem Nutzer wählbar; Free nutzt KI nur mit eigenem Schlüssel.
+- ✅ 2026-10-23: KI-Paket für Team/Organization pro Nutzer buchbar; Free nutzt KI nur mit eigenem Schlüssel.
+- ✅ 2026-10-23 (später): **Personal**-Plan 5 €/Monat bzw. 4 €/Monat jährlich für den persönlichen Workspace jedes Nutzers (auch Team-Mitglieder):
+  unbegrenzte Projekte, Flows, mehr Dateispeicher, KI-Paket zubuchbar, keine Mitglieder/Einladungen, getrennt vom Team-Abo.
 - Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
 - Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).
+- ✅ 2026-10-23: Kein Gründungsrabatt. Keine Übergangsfrist/Stichtag (noch keine Kunden); interne Workspaces über `billingExempt`.
+- ✅ 2026-10-23: Downgrade auf Free – zusätzliche Mitglieder bleiben (ohne KI, ohne Einladungen). Eigener OpenAI-Schlüssel auch für Team-Nutzer ohne KI-Paket erlaubt.

@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
 import { useEntitlements } from '../../hooks/useEntitlements';
 import { PlanHint } from './PlanHint';
+import { planCopyKey } from '../../utils/billingPlans';
 
 /**
  * Wraps `/project/:id/*`: projects over the Free limit are read-only (Firestore rules enforce it);
@@ -24,7 +25,7 @@ export const ProjectPlanGate: React.FC = () => {
                         tone="warning"
                         icon="lock"
                         title={t('billing.locked.title')}
-                        message={t('billing.locked.body').replace('{limit}', String(ent?.limits.projects ?? 3))}
+                        message={t(planCopyKey(ent, 'billing.locked.body')).replace('{limit}', String(ent?.limits.projects ?? 3))}
                     />
                 </div>
             )}

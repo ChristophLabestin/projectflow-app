@@ -198,6 +198,31 @@ await check('workspace detail shows flows and member-flow policy is switchable',
     assert.equal((await call(adminToken, 'workspaces.setFlowPolicy', { id, allowMemberFlows: false }, sessionId)).result?.ok, true);
     assert.equal((await admin.firestore().doc(`tenants/${id}`).get()).get('automationPolicy').allowMemberFlows, false);
 });
+await check('billing: MRR in overview, plan in workspace list/detail, cutover is validated', async () => {
+    const ov = await call(adminToken, 'overview.get', { days: 30, fresh: Date.now() }, sessionId);
+    assert.equal(ov.result?.billing?.mrr, 58, JSON.stringify(ov.result?.billing));
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    const paying = ws.result.workspaces.find((w) => w.billing?.mrr === 58);
+    assert.ok(paying, 'paying workspace expected');
+    const detail = await call(adminToken, 'workspaces.get', { id: paying.id }, sessionId);
+    assert.equal(detail.result.billing.customerId, 'cus_seed');
+    assert.equal((await call(adminToken, 'billing.setCutover', { cutoverAt: Date.now() - 3 * 86_400_000 }, sessionId)).error, 'INVALID_ARGUMENT');
+    assert.equal((await call(adminToken, 'billing.setCutover', { cutoverAt: Date.now() + 30 * 86_400_000 }, sessionId)).result?.ok, true);
+    assert.ok((await call(adminToken, 'billing.config', {}, sessionId)).result.cutoverAt > Date.now());
+});
+await check('billing exempt goes through setBillingExempt (reason required, MRR 0)', async () => {
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    const target = ws.result.workspaces.find((w) => !w.billing?.mrr);
+    assert.equal((await call(adminToken, 'billing.setExempt', { id: target.id, exempt: true, reason: 'kurz' }, sessionId)).error, 'INVALID_ARGUMENT');
+    const on = await call(adminToken, 'billing.setExempt', { id: target.id, exempt: true, reason: 'E2E: interner Workspace' }, sessionId);
+    assert.equal(on.result?.ok, true, JSON.stringify(on));
+    const ent = (await admin.firestore().doc(`tenants/${target.id}/entitlements/plan`).get()).data();
+    assert.equal(ent.status, 'exempt');
+    assert.equal(ent.plan, 'team');
+    const off = await call(adminToken, 'billing.setExempt', { id: target.id, exempt: false, reason: 'E2E: wieder normal' }, sessionId);
+    assert.equal(off.result?.ok, true, JSON.stringify(off));
+    assert.equal((await admin.firestore().doc(`tenants/${target.id}/entitlements/plan`).get()).get('status'), 'free');
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

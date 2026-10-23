@@ -62,3 +62,17 @@ export const useActivePlan = () => {
     const plan = useEntitlements(activeWorkspaceId);
     return { plan, tenantId: activeWorkspaceId, isOwner: activeWorkspace?.role === 'Owner' };
 };
+
+/**
+ * Is Stripe checkout live? `billing_public/config.checkoutAvailable` (server-written); missing doc = false.
+ * Upgrade/add-on buttons stay disabled ("coming soon") until then.
+ */
+export const useCheckoutAvailable = () => {
+    const [available, setAvailable] = useState(false);
+    useEffect(() => onSnapshot(
+        doc(db, 'billing_public', 'config'),
+        (snap) => setAvailable(snap.exists() && snap.data()?.checkoutAvailable === true),
+        () => setAvailable(false),
+    ), []);
+    return available;
+};

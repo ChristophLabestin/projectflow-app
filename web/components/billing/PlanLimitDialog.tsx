@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useActivePlan } from '../../hooks/useEntitlements';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
+import { planCopyKey } from '../../utils/billingPlans';
 import './plan-hint.scss';
 
 interface PlanLimitDialogProps {
@@ -23,7 +24,7 @@ export const PlanLimitDialog: React.FC<PlanLimitDialogProps> = ({ isOpen, onClos
     const navigate = useNavigate();
     const { plan, isOwner } = useActivePlan();
     const limit = kind === 'members' ? plan?.limits.members : plan?.limits.projects;
-    const body = t(`billing.limit.${kind}.body`)
+    const body = t(planCopyKey(plan, `billing.limit.${kind}.body`))
         .replace('{limit}', String(limit ?? ''))
         .replace('{count}', String(plan?.usage.projects ?? ''));
 

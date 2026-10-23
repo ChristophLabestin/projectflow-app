@@ -3,8 +3,6 @@
 interface ImportMetaEnv {
     // Firebase
     readonly VITE_USE_FIREBASE_EMULATORS?: string;
-    /** 'true' once Stripe Checkout is configured (until the billing contract exposes a live flag). */
-    readonly VITE_BILLING_CHECKOUT_ENABLED?: string;
     readonly VITE_FIREBASE_API_KEY: string;
     readonly VITE_FIREBASE_AUTH_DOMAIN: string;
     readonly VITE_FIREBASE_PROJECT_ID: string;

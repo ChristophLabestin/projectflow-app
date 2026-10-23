@@ -295,7 +295,7 @@ Contract: `brain/plans/billing-entitlements-contract.md`. Data: `useEntitlements
 - Invite modal: Free → hint instead of the form; Team member limit → inline hint, member invites disabled, guests still allowed.
 - Project list: usage chip "3 of 3 projects · 1 read-only" on Free.
 - AI: `useAiAccess()` → `{ status: loading|enabled|own-key|addon-required|plan-required, canUse }` + `AiPlanHint` (for the in-app AI entry points). `resetOwnAiKeyCheck()` after key changes.
-- Errors: always `planErrorMessage(error, t)` (`billing.errors.<code>`). Upgrade buttons: `isCheckoutAvailable()` (`VITE_BILLING_CHECKOUT_ENABLED`) until the contract exposes a live flag — otherwise "Online upgrade coming soon".
+- Errors: always `planErrorMessage(error, t)` (`billing.errors.<code>`). Upgrade buttons follow `useCheckoutAvailable()` (`billing_public/config.checkoutAvailable`) — otherwise "Coming soon". Copy is workspace-type aware: `planCopyKey(plan, key)` picks `<key>.personal` for personal workspaces (upgrade = Personal; invitations never, `PlanHint cta={false}`).
 
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
