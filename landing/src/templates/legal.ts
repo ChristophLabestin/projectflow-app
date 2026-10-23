@@ -14,11 +14,11 @@ export const legalBody = (kind: LegalKind, lang: Lang): string => {
         <nav class="legal__switch" aria-label="${esc(t.footer.legal)}">
             ${kinds.map((k) => `<a href="${legalUrl(k, lang)}"${k === kind ? ' aria-current="page"' : ''}>${esc(t.legalMeta[k].title)}</a>`).join('')}
         </nav>
+        <h1 data-legal-title>${esc(t.legalMeta[kind].title)}</h1>
+        <p class="legal__updated" data-legal-meta data-error="${esc(t.legalPage.error)}">${esc(t.legalPage.loading)}</p>
     </header>
     <div class="legal__layout" data-legal data-src="${legalApiUrl(kind, lang)}" aria-live="polite">
         <div class="legal__content">
-            <h1>${esc(t.legalMeta[kind].title)}</h1>
-            <p data-legal-status data-error="${esc(t.legalPage.error)}">${esc(t.legalPage.loading)}</p>
             <p><a href="${legalAppUrl(kind)}" data-legal-fallback>${esc(t.legalPage.fallback)}</a></p>
         </div>
     </div>
