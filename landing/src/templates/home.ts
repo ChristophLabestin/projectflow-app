@@ -2,6 +2,7 @@ import type { SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
 import { esc, headline, links } from './layout';
 import { sectionsRest } from './home-sections';
+import type { Lang } from './pages';
 
 const prioClass = (prio: string) => `prio prio--${prio}`;
 
@@ -182,4 +183,4 @@ const board = (t: SiteCopy) => {
 </section>`;
 };
 
-export const homeBody = (t: SiteCopy): string => [hero(t), journey(t), board(t), sectionsRest(t)].join('\n');
+export const homeBody = (t: SiteCopy, lang: Lang): string => [hero(t), journey(t), board(t), sectionsRest(t, lang)].join('\n');

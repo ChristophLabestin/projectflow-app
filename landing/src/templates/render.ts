@@ -4,6 +4,8 @@ import { esc, layout, links } from './layout';
 import { icon } from './icons';
 import { urlFor, type PageDef } from './pages';
 import { legalBody } from './legal';
+import { docsMcpBody } from './docs';
+import { docsMcp } from '../content/docs-mcp';
 
 const notFoundBody = (): string => {
     const de = site.de.notFound;
@@ -29,9 +31,18 @@ export function renderPage(page: PageDef): string {
                 page,
                 title: t.meta.title,
                 description: t.meta.description,
-                body: homeBody(t),
+                body: homeBody(t, page.lang),
                 scripts: ['/src/js/main.ts', '/src/js/home.ts'],
                 bodyClass: 'page-home',
+            });
+        case 'docsMcp':
+            return layout({
+                page,
+                title: docsMcp[page.lang].meta.title,
+                description: docsMcp[page.lang].meta.description,
+                body: docsMcpBody(page.lang),
+                scripts: ['/src/js/main.ts', '/src/js/docs.ts'],
+                bodyClass: 'page-docs',
             });
         case 'notFound':
             return layout({

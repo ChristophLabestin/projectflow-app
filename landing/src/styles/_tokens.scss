@@ -36,6 +36,10 @@
     --color-device-edge: #3a3a3c;
     --color-device-black: #000000;
     --color-live-accent: #fbbf24;
+    --color-code-muted: #a3a3a3; // captions/buttons on dark code blocks (AA on #171717)
+    --color-code-success: #34d399;
+    --color-code-border: rgba(255, 255, 255, 0.12);
+    --color-code-border-hover: rgba(255, 255, 255, 0.3);
     --color-role-owner: #6d28d9;
     --color-role-admin: #1d4ed8;
     --color-role-member: #047857;

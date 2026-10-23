@@ -135,6 +135,7 @@ Social module and Marketing dashboard/ads/email/recipients were removed 2026-10-
 Static pages rendered at build time from `landing/src/templates/pages.ts` (Firebase site `getprojectflow`, cleanUrls):
 - `/` (DE) · `/en` (EN) — home: hero, journey (pinned scroll story), board, workbench, notifications, AI, security, platforms, CTA
 - Legal: no texts in the landing. `LEGAL_SOURCE` in `landing/src/templates/pages.ts`: `app-link` links to `app.getprojectflow.com/legal/<type>`; `api` (current since 2026-10-23) builds `/impressum` · `/en/imprint`, `/datenschutz` · `/en/privacy`, `/agb` · `/en/terms` as shells that load `GET /api/legal/<type>?lang=` (`landing/src/js/legal.ts`). Source texts: `legal/<type>.<lang>.md` (imported as drafts by `functions/scripts/import-legal-docs.mjs`)
+- `/docs/mcp` · `/en/docs/mcp` — public MCP guide (`landing/src/content/docs-mcp.ts`, template `docs.ts`); server URL constant `MCP_URL` in `landing/src/templates/pages.ts`. Linked from nav, footer and the AI section. Keep in sync with `brain/operations/mcp-install-guide.md` and `web/components/settings/aiClients.ts`.
 - `404.html` — bilingual not-found
 - `/sitemap.xml`, `/robots.txt`, `/og-de.png`, `/og-en.png`
 CTAs point to the app: `/register`, `/login`, `/download`. Concept: `brain/plans/landing-page-concept.md`.
