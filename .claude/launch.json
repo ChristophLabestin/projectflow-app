@@ -104,6 +104,24 @@
         "web"
       ],
       "port": 3061
+    },
+    {
+      "name": "web-e2e-legal",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3081",
+        "AUTH_PORT=9841",
+        "FIRESTORE_PORT=8841",
+        "STORAGE_PORT=9842",
+        "FUNCTIONS_PORT=5841",
+        "E2E_LEGAL=1",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3081
     }
   ]
 }

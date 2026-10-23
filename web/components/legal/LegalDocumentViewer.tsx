@@ -43,6 +43,7 @@ export const LegalDocumentViewer: React.FC<Props> = ({ type, version, compareTo,
             isOpen
             onClose={onClose}
             size="3xl"
+            className="legal-viewer-modal"
             title={current ? `${current.title[lang]} · ${t('legalConsent.versionLabel').replace('{version}', String(version))}` : t(`legal.nav.${type}`)}
             footer={(
                 <div className="legal-viewer__footer">

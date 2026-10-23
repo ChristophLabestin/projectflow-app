@@ -57,6 +57,16 @@
     &__loading { color: var(--color-text-muted); margin: 0; }
 }
 
+.ui-modal.legal-gate { z-index: 70; }
+
+.legal-gate-pending,
+.legal-gate-backdrop {
+    min-height: 100vh;
+    background: var(--color-surface-bg);
+}
+
+.ui-modal.legal-viewer-modal { z-index: 75; }
+
 .legal-gate {
     &__body { display: flex; flex-direction: column; gap: 14px; padding: 8px 4px; }
     &__icon { font-size: 32px; color: var(--color-primary); }

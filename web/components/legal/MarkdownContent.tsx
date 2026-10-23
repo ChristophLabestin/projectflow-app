@@ -15,8 +15,9 @@ export const MarkdownDiff: React.FC<{ before: string; after: string; labels: { a
     const blocks = useMemo(() => diffMarkdown(before, after), [before, after]);
     const changed = blocks.some((block) => block.kind !== 'same');
     if (!changed) return <p className="legal-diff__empty">{labels.unchanged}</p>;
-    // Unchanged paragraphs are skipped; unchanged headings stay as context.
-    const visible = blocks.filter((block) => block.kind !== 'same' || block.text.startsWith('#'));
+    // Unchanged paragraphs are skipped; an unchanged heading stays as context when a change follows it.
+    const visible = blocks.filter((block, index) => block.kind !== 'same'
+        || (block.text.startsWith('#') && blocks.slice(index + 1).find((next) => next.kind !== 'same' || next.text.startsWith('#'))?.kind !== 'same'));
     return (
         <div className="legal-diff">
             {visible.map((block, index) => (

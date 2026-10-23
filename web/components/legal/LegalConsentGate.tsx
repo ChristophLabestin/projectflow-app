@@ -31,7 +31,7 @@ type ViewerState = { type: GateItem['type']; version: number; compareTo: number 
  */
 export const LegalConsentGate: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const { t, language } = useLanguage();
+    const { t, language, loadSettingsTranslations } = useLanguage();
     const { showError } = useToast();
     const lang = language === 'de' ? 'de' : 'en';
     const uid = user?.uid ?? null;
@@ -44,21 +44,30 @@ export const LegalConsentGate: React.FC<{ children?: React.ReactNode }> = ({ chi
     const [submitting, setSubmitting] = useState(false);
     const [viewer, setViewer] = useState<ViewerState>(null);
     const [dismissedNotices, setDismissedNotices] = useState<string[]>([]);
+    const [timedOut, setTimedOut] = useState(false);
 
     useEffect(() => {
         setIndex(null);
         setAccepted(null);
         setFailed(false);
         setDeclined(false);
+        setTimedOut(false);
         if (!uid) return undefined;
+        // Fail open if the documents cannot be loaded quickly (offline first start, outage).
+        const timeout = window.setTimeout(() => setTimedOut(true), 5000);
         const fail = (error: Error) => {
             console.warn('Legal consent gate disabled (load failed)', error);
             setFailed(true);
         };
         const stopIndex = subscribeLegalIndex(setIndex, fail);
         const stopAcceptance = subscribeMyLegalAcceptance(uid, setAccepted, fail);
-        return () => { stopIndex(); stopAcceptance(); };
+        return () => { window.clearTimeout(timeout); stopIndex(); stopAcceptance(); };
     }, [uid]);
+
+    // The declined page reuses the GDPR export/delete section (settings translations).
+    useEffect(() => {
+        if (declined) void loadSettingsTranslations();
+    }, [declined, loadSettingsTranslations]);
 
     // Re-evaluate when a future-dated version becomes effective while the app stays open.
     useEffect(() => {
@@ -70,11 +79,15 @@ export const LegalConsentGate: React.FC<{ children?: React.ReactNode }> = ({ chi
     }, [index, now]);
 
     const gate = useMemo(
-        () => (index && accepted && !failed ? evaluateGate(index, accepted, now) : { blocking: [], notices: [] }),
+        // `now` only triggers re-evaluation; snapshots may carry versions published after mount.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        () => (index && accepted && !failed ? evaluateGate(index, accepted, Date.now()) : { blocking: [], notices: [] }),
         [index, accepted, failed, now],
     );
 
     if (!uid) return <>{children}</>;
+    // The app (and its own prompts) only mounts once we know no consent is missing.
+    if (!failed && !timedOut && (!index || !accepted)) return <div className="legal-gate-pending" aria-busy="true" />;
 
     const client = clientInfo(isDesktop());
     const docName = (type: GateItem['type']) => t(`legal.nav.${type}`);
@@ -142,7 +155,7 @@ export const LegalConsentGate: React.FC<{ children?: React.ReactNode }> = ({ chi
 
     return (
         <>
-            {children}
+            {blocking.length > 0 ? <div className="legal-gate-backdrop" /> : children}
             {blocking.length > 0 && (
                 <Modal isOpen onClose={() => undefined} hideHeader size="lg" className="legal-gate">
                     <div className="legal-gate__body" data-testid="legal-consent-gate">
@@ -162,7 +175,7 @@ export const LegalConsentGate: React.FC<{ children?: React.ReactNode }> = ({ chi
                                                 {current ? ` · ${t('legalConsent.effectiveFrom').replace('{date}', formatDate(current.effectiveAtMs))}` : ''}
                                             </span>
                                         </div>
-                                        {item.changes.filter((change) => change.summary[lang]).map((change) => (
+                                        {item.acceptedVersion != null && item.changes.filter((change) => change.summary[lang]).map((change) => (
                                             <p key={change.version} className="legal-gate__summary">{change.summary[lang]}</p>
                                         ))}
                                         <div className="legal-gate__links">

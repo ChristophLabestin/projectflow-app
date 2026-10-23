@@ -158,10 +158,7 @@ const RootLayout = () => {
             <>
                 <GlobalToast />
                 <GlobalConfirmationModal />
-                {/* Utility windows show workspace data too, so they must not bypass the consent gate. */}
-                <LegalConsentGate>
-                    <Outlet />
-                </LegalConsentGate>
+                <Outlet />
             </>
         );
     }
@@ -231,10 +228,11 @@ export const AppRouter = () => {
                     <Route path="/download" element={<DownloadPage />} />
                     <Route path="/invite/:tenantId/:inviteId" element={<AcceptInvite />} />
                     <Route path="/feedback/initiative/:token" element={withRouteSuspense(<PublicInitiativeFeedbackPage />)} />
-                    <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<QuickAccessWindow />} />
-                    <Route path="/desktop/capture" element={<QuickCaptureWindow />} />
-                    <Route path="/desktop/day" element={<DesktopDayWindow />} />
-                    <Route path="/desktop/tray" element={<DesktopTrayPanel />} />
+                    {/* Desktop utility windows show workspace data too: they must not bypass the consent gate. */}
+                    <Route path={DESKTOP_QUICK_ACCESS_PATH} element={<LegalConsentGate><QuickAccessWindow /></LegalConsentGate>} />
+                    <Route path="/desktop/capture" element={<LegalConsentGate><QuickCaptureWindow /></LegalConsentGate>} />
+                    <Route path="/desktop/day" element={<LegalConsentGate><DesktopDayWindow /></LegalConsentGate>} />
+                    <Route path="/desktop/tray" element={<LegalConsentGate><DesktopTrayPanel /></LegalConsentGate>} />
                     <Route path="/desktop/auth" element={<DesktopAuthHandoff />} />
                     {/* Public project intake was removed; old share links land on the app start. */}
                     <Route path="/feedback/project/:token" element={<Navigate to="/" replace />} />

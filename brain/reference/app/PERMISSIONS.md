@@ -461,6 +461,11 @@ User profile changes are typically self-service. If you want admin control:
 - `user.settings.editSelf` — Edit own settings (usually always allowed)
 - `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from native capture surfaces
 
+### Legal documents and consent (platform level, 2026-10-23)
+- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts only with the `platformAdmin` custom claim. No client writes at all.
+- Drafting, publishing and the acceptance overview (`/admin/legal`, callables `saveLegalDraft`, `deleteLegalDraft`, `publishLegalDraft`, `getLegalAdminOverview`) require `platformAdmin` — not a tenant role.
+- Every user can only record consent for themselves and only for the *current effective* version (`acceptLegalDocuments` / `declineLegalDocuments`); `legal_acceptances/{uid}` is readable by its owner only (no list), never writable by clients. Mail jobs/logs are Admin-SDK only.
+
 ---
 
 ## 8.23 AI Permissions (Feature-level)
