@@ -146,6 +146,15 @@ struct PFSheetContent: View {
         ScrollView {
             sheet.content
                 .frame(maxWidth: .infinity, alignment: .top)
+                // Side region: horizontal rows (dates, chips) end at its edge instead of running under it.
+                .clipShape(Rectangle().inset(by: sideRegion > 0 ? 0 : -1000))
+                // Fitted sheets without a footer end on their own action row: close sits beside it.
+                .overlay(alignment: .bottomTrailing) {
+                    if sideRegion > 0, sheet.dismissable, footer == nil, isFitted {
+                        // Sheet content ends with PFSpace.l below its last row (convention), so this lines up.
+                        closeButton.offset(x: closeOffset, y: -PFSpace.l)
+                    }
+                }
                 .padding(.top, 26)
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 + 8 }
         }
@@ -155,6 +164,12 @@ struct PFSheetContent: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if let footer {
                 footer.view
+                    // Side region: close sits on the footer's row, right of the primary action.
+                    .overlay(alignment: .trailing) {
+                        if sideRegion > 0, sheet.dismissable {
+                            closeButton.offset(x: closeOffset)
+                        }
+                    }
                     .padding(.top, PFSpace.s)
                     .padding(.bottom, keyboardHeight > 0 ? PFSpace.s : PFSpace.xs)
                     .frame(maxWidth: .infinity)
@@ -173,10 +188,8 @@ struct PFSheetContent: View {
         }
         .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.trailing } action: { trailingInset = $0 }
         .overlay {
-            if sideRegion > 0, sheet.dismissable {
-                PFSideColumn(side: sideRegion) {
-                    PFIconButton("xmark", label: presenter.closeLabel, style: .glass) { dismiss() }
-                }
+            if sideRegion > 0, sheet.dismissable, footer == nil, !isFitted {
+                PFSideColumn(side: sideRegion) { closeButton }
             }
         }
         .onPreferenceChange(PFSheetFooterKey.self) { value in
@@ -200,6 +213,15 @@ struct PFSheetContent: View {
             }
         }
         .interactiveDismissDisabled(!sheet.dismissable)
+    }
+
+    private var isFitted: Bool { sheet.detents == [.fit] }
+
+    /// Moves a trailing-aligned close button from the content edge into the side region, on the rail line.
+    private var closeOffset: CGFloat { sideRegion - PFLayout.sideGap(sideRegion) - (PFDock.railWidth - 44) / 2 }
+
+    private var closeButton: some View {
+        PFIconButton("xmark", label: presenter.closeLabel, style: .glass) { dismiss() }
     }
 
     /// A fitted sheet grows by the keyboard height while typing, so its content stays above the keyboard.

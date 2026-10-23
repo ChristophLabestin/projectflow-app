@@ -88,7 +88,8 @@ struct PersonalTaskScreen: View {
                 if !task.isCompleted { focusCard }
                 descriptionCard(task)
                 detailsCard(task, actions: actions)
-                Color.clear.frame(height: 96)
+                // Room for the floating action; on the Duo outer display it sits in the side column instead.
+                Color.clear.frame(height: sideRegion > 0 ? 0 : 96)
             }
             .padding(.horizontal, PFSpace.page)
             // Pin the content to the screen width so the vertical scroll view never pans sideways.

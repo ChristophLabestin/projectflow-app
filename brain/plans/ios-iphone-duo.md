@@ -114,8 +114,10 @@ Sheets weiterhin `PFPresenter`.
   rechts); oben bleibt nur ein evtl. Titel, die reservierte Kopfleistenhöhe entfällt
   (`PFLayout.topBarClearance`). Die Tab-Leiste und die Fokusleiste blenden sich auf Unterseiten aus (wie das Dock
   auf dem iPhone). Die Hauptaktion der Seite („Erledigt“/„Wieder öffnen“) steht per `pfSideAction` direkt über
-  Zurück; der schwebende Button samt Verlauf entfällt dann (`pfBottomFloat(isActive:)`). Sheets bekommen außen einen Schließen-Button unten rechts in
-  ihrer Seitenregion; breite Footer-Aktionen bleiben im Sheet.
+  Zurück; der schwebende Button samt Verlauf entfällt dann (`pfBottomFloat(isActive:)`). Sheets bekommen außen einen Schließen-Button in ihrer Seitenregion,
+  auf der Zeile der letzten Aktion (Footer bzw. letzte Inhaltszeile bei `.fit`-Sheets, sonst unten);
+  horizontale Reihen (Datum, Chips) enden an der Seitenregion. Pill-Zeile im Aufgaben-Detail: erst ohne
+  Chevrons, dann Umbruch (`ViewThatFits`). Der Platzhalter für den schwebenden Button entfällt dort.
 - Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
   (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.

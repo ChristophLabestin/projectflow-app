@@ -43,20 +43,28 @@ extension TaskDetailScreen {
         .lineLimit(1)
     }
 
+    /// One row if it fits; narrow screens (iPhone Duo outer display) drop the chevrons before wrapping.
     private func pills(_ task: WorkTask) -> some View {
-        FlowLayout(spacing: 8) {
-            PFPillButton(task.status.label, tone: .status(task.status.tone), isEnabled: canEdit) { presentStatusSheet(task) }
-            PFPillButton(task.priority?.label ?? L10n.t("priority.none"), tone: .neutral, isEnabled: canEdit, action: { presentPrioritySheet(task) }) {
-                PFPrioritySignal(task.priority)
-            }
-            if let due = task.dueDate {
-                PFPillButton(Formatting.dueText(due) ?? Formatting.shortDate(due),
-                             tone: .severity(Formatting.severity(due: due, isDone: task.isCompleted) == .done ? .neutral : Formatting.severity(due: due)),
-                             isEnabled: canEdit) { presentDateSheet(.due, task) }
-            } else if canEdit {
-                PFPillButton(L10n.t("taskDetail.timeline.noDueDate"), tone: .neutral, isEnabled: true, action: { presentDateSheet(.due, task) }) {
-                    Image(systemName: "calendar").font(.system(size: 10, weight: .bold))
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { pillSet(task, chevrons: true) }
+            HStack(spacing: 8) { pillSet(task, chevrons: false) }
+            FlowLayout(spacing: 8) { pillSet(task, chevrons: true) }
+        }
+    }
+
+    @ViewBuilder
+    private func pillSet(_ task: WorkTask, chevrons: Bool) -> some View {
+        PFPillButton(task.status.label, tone: .status(task.status.tone), showsChevron: chevrons, isEnabled: canEdit) { presentStatusSheet(task) }
+        PFPillButton(task.priority?.label ?? L10n.t("priority.none"), tone: .neutral, showsChevron: chevrons, isEnabled: canEdit, action: { presentPrioritySheet(task) }) {
+            PFPrioritySignal(task.priority)
+        }
+        if let due = task.dueDate {
+            PFPillButton(Formatting.dueText(due) ?? Formatting.shortDate(due),
+                         tone: .severity(Formatting.severity(due: due, isDone: task.isCompleted) == .done ? .neutral : Formatting.severity(due: due)),
+                         showsChevron: chevrons, isEnabled: canEdit) { presentDateSheet(.due, task) }
+        } else if canEdit {
+            PFPillButton(L10n.t("taskDetail.timeline.noDueDate"), tone: .neutral, showsChevron: chevrons, isEnabled: true, action: { presentDateSheet(.due, task) }) {
+                Image(systemName: "calendar").font(.system(size: 10, weight: .bold))
             }
         }
     }
