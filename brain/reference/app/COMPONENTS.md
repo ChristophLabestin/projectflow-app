@@ -331,6 +331,12 @@ Concept: `brain/plans/help-center-rework.md`.
 - `FileRow` (row/card), `FileThumb`, `useFileDrop`, `useThumbnailUrls` (`fileHooks.tsx`), `FilePreviewModal` (image/PDF/video/audio/text + versions), `useFileActions` (menu options + rename/move/version/trash/purge modals; purge uses the shared confirm dialog), `FileEmbed` (render a stored `fileId`).
 - Data: `web/services/filesService.ts` (subscriptions, `uploadFiles`, `getFileUrls`, commands). Styles: `src/styles/components/_files.scss`, `screens/files-page.scss`.
 
+## Flows (`web/screens/flows/`, `web/components/flows/`, 2026-10-23)
+- `FlowsScreen` (list + `FlowTemplateGallery`), `FlowEditor` (keyed by flow id), shared data hook `useFlowContext` (members, projects, role, name lookups).
+- `FlowStepEditors.tsx`: `TriggerEditor`, `ConditionsEditor` (AND/OR groups, per-field operators), `ActionEditor`, `PeoplePicker` (dynamic roles + members), `VariableChips` (`{{task.title}}` …).
+- `FlowPreviewPanel` (callable `previewAutomation`: matches + dry run, optional real run per task), `FlowRunLog` (runs, step details, retry), `flowText.ts` (sentences, icons, client validation with i18n keys).
+- Templates: `web/config/flowTemplates.ts` (11; texts via `flows.templates.<id>.*`). Service: `web/services/domain/automationsService.ts` (reads via listeners, writes only via callables).
+
 ## Notes for future components
 - When adding a reusable component, update this file and ensure it uses tokens from `brain/reference/app/STYLING.md`.
 - Avoid “one-off” styles in feature pages; promote patterns into reusable components whenever repeated.

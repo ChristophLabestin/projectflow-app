@@ -46,6 +46,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/insights` — Workspace insights (`WorkspaceInsights`, full members; guests redirect to `/activity`): KPIs, throughput, cycle time, burn-up, workload, project health, AI weekly report
 - [x] `/admin/*`, `/insights/onboarding` — moved to the **admin console** (`admin/`, see below); `AdminConsoleRedirect` sends old links to `VITE_ADMIN_CONSOLE_URL` (default `https://projectflow-admin.web.app`, `/insights/onboarding` → `/onboarding`).
 - [x] `/wiki`, `/wiki/:docId` — Workspace wiki (lazy `screens/wiki/WikiScreen`; full members, guests see a notice): page tree with drag & drop, favorites, search, templates, trash (`?view=trash`), Tiptap page editor with autosave, versions, AI, task links, backlinks. Concept `brain/plans/wiki-concept.md`. Sidebar entry via `WORKSPACE_AREAS.wiki`.
+- [x] `/flows`, `/flows/new` (`?template=&projectId=&back=`), `/flows/:flowId` — Flows (automations; lazy `screens/flows/FlowsScreen` + `FlowEditor`; full members, guests see a notice): list with toggle/status/usage, template gallery, step editor Wenn → Falls → Dann, preview + dry run, run log with retry. Concept `brain/plans/flows-concept.md`. Sidebar entry via `WORKSPACE_AREAS.flows`.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
@@ -57,6 +58,7 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/files` — Documents: all files the user may see (list/grid, filters, trash, quota); `?file=<id>` opens a preview, `?type=image` presets the type filter (brain/plans/files-concept.md)
 - [x] `/media` — redirects to `/files?type=image` (media library merged into the file manager)
 - [x] `/project/:id/files` — project files tab (project, task and comment files)
+- [x] `/project/:id/flows` — project flows (same `FlowsScreen`, filtered to the project plus workspace flows)
 - [x] `/profile` — User profile
 
 ### 2.2 Personal Tasks
