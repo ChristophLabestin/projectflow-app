@@ -121,6 +121,7 @@ struct WorkFiltersSheet: View {
     let filters: WorkFilters
     @Environment(AppModel.self) private var model
     @Environment(PFPresenter.self) private var presenter
+    @Environment(\.pfSideRegionWidth) private var sideRegion
 
     private var projects: [Project] {
         (model.workspace?.projects ?? []).filter { $0.status.lifecycle != .closed }
@@ -179,12 +180,16 @@ struct WorkFiltersSheet: View {
             }
             .background(PFColor.sheetGroup, in: .rect(cornerRadius: PFRadius.card, style: .continuous))
 
+            // Filters apply live. iPhone: smart planning + Done. Duo outer display: the sheet's close button in the side
+            // region already closes it, so only smart planning remains, full width on the close button's line.
             HStack(spacing: PFSpace.xs) {
                 PFButton(L10n.t("work.smart.chip"), systemImage: "wand.and.stars", kind: .secondary, size: .large, fullWidth: true) {
                     presenter.dismiss()
                     SmartSchedule.present(model: model)
                 }
-                PFButton(L10n.t("common.done"), size: .large, fullWidth: true) { presenter.dismiss() }
+                if sideRegion == 0 {
+                    PFButton(L10n.t("common.done"), size: .large, fullWidth: true) { presenter.dismiss() }
+                }
             }
         }
         .padding(.horizontal, PFSpace.page)
