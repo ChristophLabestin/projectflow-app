@@ -49,13 +49,14 @@
     z-index: 1200;
     display: flex;
     flex-direction: column;
-    max-height: min(560px, calc(100vh - 24px));
+    max-height: min(520px, calc(100vh - 24px));
     border-radius: var(--ai-radius);
     background: var(--ai-surface);
     box-shadow: var(--ai-hairline), var(--ai-shadow);
     color: var(--color-text-main);
+    font-size: 0.8125rem;
     overflow: hidden;
-    animation: ai-popover-in var(--motion-duration-base) var(--motion-ease-out) both;
+    animation: ai-popover-in 90ms linear both;
     transition: width var(--motion-duration-slow) var(--motion-ease-out);
 
     &--inline {
@@ -65,7 +66,7 @@
     }
 
     &.is-exiting {
-        animation: ai-popover-out var(--motion-duration-exit) var(--motion-ease-in) both;
+        animation: ai-popover-out 80ms linear both;
         pointer-events: none;
     }
 
@@ -75,8 +76,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
-        padding: 8px 8px 2px 14px;
+        gap: 6px;
+        height: 26px;
+        padding: 0 4px 0 10px;
         cursor: grab;
         user-select: none;
         touch-action: none;
@@ -89,8 +91,8 @@
     &__label {
         display: inline-flex;
         align-items: center;
-        gap: 6px;
-        font-size: 0.6875rem;
+        gap: 5px;
+        font-size: 0.625rem;
         font-weight: 600;
         letter-spacing: 0.04em;
         text-transform: uppercase;
@@ -108,16 +110,16 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 26px;
-        height: 26px;
+        width: 20px;
+        height: 20px;
         border: 0;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-sm);
         background: transparent;
         color: var(--color-text-muted);
         cursor: pointer;
         transition: background var(--motion-duration-fast), color var(--motion-duration-fast);
 
-        .material-symbols-outlined { font-size: 1rem; }
+        .material-symbols-outlined { font-size: 0.875rem; }
 
         &:hover,
         &:focus-visible {
@@ -131,14 +133,17 @@
         flex: 1;
         min-height: 0;
         overflow-y: auto;
-        padding: 6px 14px 12px;
+        padding: 2px 10px 8px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
     }
 
+    // No chrome (quick menu at the caret): no header, tight padding.
+    &--bare &__body { padding: 4px; gap: 2px; }
+
     &__footer {
-        padding: 10px 12px 12px;
+        padding: 6px 8px 8px;
         box-shadow: inset 0 1px 0 rgba(var(--color-surface-border-rgb), 0.7);
     }
 }
@@ -146,8 +151,9 @@
 // ---------------------------------------------------------------- building blocks
 .ai-chips {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+    gap: 4px;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .ai-chip {
@@ -155,33 +161,37 @@
     align-items: center;
     gap: 5px;
     max-width: 100%;
-    padding: 2px 8px 2px 6px;
+    flex-shrink: 1;
+    min-width: 0;
+    padding: 1px 6px 1px 4px;
     border-radius: var(--radius-sm);
     background: var(--ai-inner-bg);
     color: var(--color-text-muted);
-    font-size: 0.75rem;
+    font-size: 0.6875rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 
-    .material-symbols-outlined { font-size: 0.875rem; }
+    .material-symbols-outlined { font-size: 0.75rem; }
 }
 
 .ai-options,
 .ai-suggestions {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    margin: 0 -6px;
+    gap: 0;
+    margin: 0 -4px;
 }
+
+.ai-popover--bare .ai-options { margin: 0; }
 
 .ai-option,
 .ai-suggestion {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     width: 100%;
-    padding: 7px 8px;
+    padding: 5px 6px;
     border: 0;
     border-radius: var(--radius-md);
     background: transparent;
@@ -192,7 +202,7 @@
     transition: background var(--motion-duration-fast);
 
     .material-symbols-outlined {
-        font-size: 1rem;
+        font-size: 0.875rem;
         color: var(--color-text-muted);
     }
 
@@ -224,8 +234,8 @@
 .ai-composer {
     display: flex;
     align-items: flex-end;
-    gap: 8px;
-    padding: 4px 4px 4px 10px;
+    gap: 6px;
+    padding: 2px 2px 2px 8px;
     border-radius: var(--radius-md);
     background: var(--color-surface-input);
 
@@ -233,17 +243,17 @@
     input {
         flex: 1;
         min-width: 0;
-        min-height: 32px;
-        max-height: 160px;
-        padding: 6px 0;
+        min-height: 26px;
+        max-height: 140px;
+        padding: 4px 0;
         border: 0;
         outline: none;
         resize: none;
         background: transparent;
         color: var(--color-text-main);
         font: inherit;
-        font-size: 0.875rem;
-        line-height: 1.5;
+        font-size: 0.8125rem;
+        line-height: 1.45;
 
         &::placeholder { color: var(--color-text-muted); }
     }
@@ -254,16 +264,16 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
+    width: 24px;
+    height: 24px;
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     background: var(--color-primary);
     color: var(--color-primary-text);
     cursor: pointer;
     transition: background var(--motion-duration-fast), opacity var(--motion-duration-fast);
 
-    .material-symbols-outlined { font-size: 1.05rem; }
+    .material-symbols-outlined { font-size: 0.9rem; }
 
     &:hover { background: var(--color-primary-hover); }
 
@@ -276,14 +286,14 @@
 .ai-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    height: 28px;
-    padding: 0 10px;
+    gap: 4px;
+    height: 24px;
+    padding: 0 8px;
     border: 0;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-sm);
     background: var(--color-surface-hover);
     color: var(--color-text-main);
-    font-size: 0.8125rem;
+    font-size: 0.75rem;
     font-weight: 500;
     white-space: nowrap;
     cursor: pointer;
@@ -324,7 +334,7 @@
 .ai-card {
     border-radius: var(--radius-md);
     background: var(--ai-inner-bg);
-    padding: 10px 12px;
+    padding: 8px 10px;
 
     &--dismissed,
     &--undone { opacity: 0.6; }
@@ -368,9 +378,9 @@
 
     &__change {
         display: grid;
-        grid-template-columns: 88px 1fr;
-        gap: 8px;
-        font-size: 0.8125rem;
+        grid-template-columns: 72px 1fr;
+        gap: 6px;
+        font-size: 0.75rem;
 
         dt { color: var(--color-text-muted); }
 
@@ -398,20 +408,20 @@
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 6px;
-        margin-top: 10px;
+        gap: 4px;
+        margin-top: 8px;
     }
 
     &__btn {
         display: inline-flex;
         align-items: center;
-        height: 28px;
-        padding: 0 10px;
+        height: 24px;
+        padding: 0 8px;
         border: 0;
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-sm);
         background: var(--color-surface-card);
         color: var(--color-text-main);
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
         font-weight: 500;
         white-space: nowrap;
         text-decoration: none;
@@ -453,8 +463,8 @@
 
 // ---------------------------------------------------------------- messages
 .ai-message {
-    font-size: 0.875rem;
-    line-height: 1.55;
+    font-size: 0.8125rem;
+    line-height: 1.5;
     color: var(--color-text-main);
 
     &--user {
@@ -519,8 +529,8 @@
 .ai-stream {
     margin: 0;
     white-space: pre-wrap;
-    font-size: 0.875rem;
-    line-height: 1.55;
+    font-size: 0.8125rem;
+    line-height: 1.5;
 
     &__chunk { animation: ai-text-in var(--ai-text-fade) var(--motion-ease-out) both; }
 
@@ -543,7 +553,7 @@
     padding: 2px 0;
 
     &__label {
-        font-size: 0.8125rem;
+        font-size: 0.75rem;
         color: transparent;
         background: linear-gradient(90deg, var(--color-text-muted) 0%, var(--color-text-muted) 40%, var(--color-text-main) 50%, var(--color-text-muted) 60%, var(--color-text-muted) 100%);
         background-size: 250% 100%;
@@ -553,7 +563,7 @@
     }
 
     &__line {
-        height: 8px;
+        height: 6px;
         border-radius: var(--radius-full);
         background: var(--ai-inner-bg);
     }
@@ -561,12 +571,12 @@
 
 // ---------------------------------------------------------------- keyframes
 @keyframes ai-popover-in {
-    from { opacity: 0; transform: translateY(4px) scale(0.98); }
-    to { opacity: 1; transform: none; }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @keyframes ai-popover-out {
-    to { opacity: 0; transform: translateY(2px) scale(0.99); }
+    to { opacity: 0; }
 }
 
 @keyframes ai-text-in {

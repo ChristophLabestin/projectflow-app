@@ -81,3 +81,29 @@ Stichtag Grace: `admin_config/billing.cutoverAt` (Timestamp).
 Entfernen → Stripe-Stand, falls Abo vorhanden, sonst Free (Projekte über 3 schreibgeschützt).
 `grace`/`cutoverAt`: kein Bestandskundenfall (Owner 2026-10-23, „noch keine Kunden“). Neue Workspaces starten immer mit Test;
 `grace` steht nur noch auf zwei Alt-Workspaces bis zur Owner-Entscheidung. `cutoverAt` bleibt ungesetzt.
+
+## 7. Persönliche Workspaces und Plan „Personal“ (Owner 2026-10-23)
+Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Team eingeladen wurde.
+- **Id** `personal_{uid}`, Tenant-Feld `workspaceType: 'personal'` (Team-Workspaces: `'team'` oder fehlt). Das autoritative
+  Feld steht in `entitlements/plan.workspaceType`; Clients dürfen `workspaceType` am Tenant weder setzen noch ändern.
+- **Anlage** ausschließlich serverseitig: Callable `ensurePersonalWorkspace({language})` → `{tenantId, created}` (idempotent;
+  der Client ruft es nach jeder Anmeldung auf, statt selbst einen ersten Workspace anzulegen). Name „Mein Workspace“ / „My workspace“
+  (umbenennbar). Bestandsnutzer per Backfill-Skript (`functions/scripts/personal-workspaces.mjs`, erst Emulator, Prod-Lauf nur nach Freigabe).
+- **Regeln**: genau 1 Mitglied (Owner), keine Einladungen/Gäste (`invitesAllowed: false`, `memberLimit: 1` in jedem Plan),
+  nicht übertragbar (`transferWorkspaceOwnership` lehnt ab: `personal-not-transferable`), nicht löschbar, solange das Konto besteht.
+- **Startet als Free** (kein Test). Team-Workspaces (neu angelegt über „Workspace erstellen“) starten mit 14 Tagen Team-Test.
+
+| Plan | `plan` | Preis netto | Projekte | Mitglieder | Flows | Dateispeicher | KI |
+|---|---|---|---|---|---|---|---|
+| Free (persönlich) | `free` | 0 € | 3 | 1 | Free-Kontingent | 5 GB | eigener OpenAI-Schlüssel |
+| Personal | `personal` | **5 €**/Monat · **4 €**/Monat jährlich | unbegrenzt | 1 | wie 1 Team-Platz | **10 GB** | KI-Paket zubuchbar (10 €, Menge 1) oder eigener Schlüssel |
+
+- `personal` ist nur für `workspaceType: 'personal'` buchbar; `team`/`organization` nur für Team-Workspaces. Ein persönlicher
+  Workspace wechselt nie auf Team, wer ein Team will, legt einen neuen Workspace an. Fehlercode `plan-workspace-type-mismatch`.
+- Eigene **Stripe-Subscription** je Workspace (persönlich und Team sind getrennte Abos, auch beim selben Nutzer). Lookup-Keys
+  `personal_monthly` (500), `personal_yearly` (4800); KI-Paket wie Team (`ai_addon_*`, Menge 1, nur der Owner).
+- `entitlements/plan` zusätzlich: `workspaceType`, `storageQuotaBytes` (10 GB auf Personal), `flowsQuota: 'seat' | 'free'`.
+- `can('invite')` ist auf persönlichen Workspaces immer `false`; `can('upgradeToTeam')` gibt es nicht. UI: Workspace-Umschalter zeigt
+  den persönlichen Workspace als „Persönlich“, Upgrade-Weg im Billing-Tab („Personal buchen“).
+- Admin-MRR: `personal` = 5 € (Monat) bzw. 4 € (Jahr) + `aiAddonSeats × 10`.
+

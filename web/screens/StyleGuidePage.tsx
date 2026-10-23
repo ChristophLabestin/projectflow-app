@@ -12,7 +12,7 @@ import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { SettingsModal } from '../components/common/Modal/SettingsModal';
 import './style-guide.scss';
 import { MotionShowcase } from './style-guide/MotionShowcase';
-import { AiShowcase } from './style-guide/AiShowcase';
+import { AiDirections } from './style-guide/AiDirections';
 import { Link } from 'react-router-dom';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { TimePicker } from '../components/common/DateTime/TimePicker';
@@ -603,7 +603,7 @@ export const StyleGuidePage = () => {
                     <section className="guide-section" id="ai">
                         <h2>{t('styleGuide.sections.ai')}</h2>
                         <p className="guide-section__intro">{t('styleGuide.ai.intro')}</p>
-                        <AiShowcase />
+                        <AiDirections />
                     </section>
 
                     <Divider />
