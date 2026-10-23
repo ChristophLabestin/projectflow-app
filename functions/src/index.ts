@@ -14,7 +14,7 @@ import { acceptWorkspaceInvite, sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
-import { askCora, generateImage, editImage, callGemini } from './ai-service';
+import { askCora, generateImage, editImage, runAiCapability } from './ai-service';
 import { getInitiativeFeedbackForm, saveInitiativeFeedbackConfig, submitInitiativeFeedback } from './initiative-feedback';
 import { getProjectIntakeForm, saveProjectIntakeConfig, submitProjectIntake } from './project-intake';
 import { autoStartSprints, dailyHealthSnapshots } from './scheduler';
@@ -78,7 +78,7 @@ export {
     askCora,
     generateImage,
     editImage,
-    callGemini,
+    runAiCapability,
     saveInitiativeFeedbackConfig,
     getInitiativeFeedbackForm,
     submitInitiativeFeedback,
