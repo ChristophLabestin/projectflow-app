@@ -138,8 +138,8 @@ const de = {
     pricing: {
         eyebrow: 'Preise',
         title: 'Einfache Preise. KI inklusive.',
-        badge: 'Geplante Preise',
-        text: 'Bis zum Start der Bezahlpläne nutzt du ProjectFlow kostenlos. Workspaces aus der Beta erhalten zum Start einen Gründungspreis.',
+        badge: 'Ab Start der Bezahlpläne',
+        text: 'Bis zum Start der Bezahlpläne nutzt du ProjectFlow kostenlos – mit allen Funktionen.',
         monthly: 'Monatlich',
         yearly: 'Jährlich',
         save: '2 Monate gratis',
@@ -188,7 +188,7 @@ const de = {
         title: 'Häufige Fragen',
         items: [
             { q: 'Für wen ist ProjectFlow gemacht?', a: 'Für Teams im digitalen Bereich – Produkt, Entwicklung, Design und Marketing – sowie für Gründer:innen und Freelancer, die ihre Arbeit an einem Ort organisieren wollen.' },
-            { q: 'Was kostet ProjectFlow?', a: 'Bis zum Start der Bezahlpläne ist ProjectFlow kostenlos. Geplant sind ein kostenloser Plan für Einzelpersonen und ein Team-Plan pro Platz mit KI inklusive – Externe in Projekten kosten nichts extra.' },
+            { q: 'Was kostet ProjectFlow?', a: 'Bis zum Start der Bezahlpläne ist ProjectFlow kostenlos. Danach gibt es einen kostenlosen Plan für Einzelpersonen und den Team-Plan für 10 € pro Platz und Monat bei jährlicher Zahlung (12 € monatlich) – KI inklusive, Externe in Projekten kosten nichts extra.' },
             { q: 'Was passiert mit meinen Daten, wenn ich nicht upgrade?', a: 'Nichts geht verloren. Du behältst Zugriff auf alle Projekte und kannst jederzeit später upgraden.' },
             { q: 'Auf welchen Geräten läuft ProjectFlow?', a: 'Im Browser, als Desktop-App für macOS und Windows und bald als iPhone-App im App Store. Alle greifen auf dieselben Daten zu.' },
             { q: 'Wie arbeite ich mit Kunden oder Externen?', a: 'Externe lädst du zu einzelnen Projekten ein. Sie sehen nur dieses Projekt und werden nicht Mitglied deines Workspace.' },
@@ -375,8 +375,8 @@ const en: SiteCopy = {
     pricing: {
         eyebrow: 'Pricing',
         title: 'Simple pricing. AI included.',
-        badge: 'Planned pricing',
-        text: 'Until paid plans launch, ProjectFlow is free to use. Workspaces from the beta get a founding price at launch.',
+        badge: 'From paid launch',
+        text: 'Until paid plans launch, ProjectFlow is free to use – with every feature.',
         monthly: 'Monthly',
         yearly: 'Yearly',
         save: '2 months free',
@@ -425,7 +425,7 @@ const en: SiteCopy = {
         title: 'Frequently asked questions',
         items: [
             { q: 'Who is ProjectFlow for?', a: 'For teams in digital work – product, engineering, design and marketing – and for founders and freelancers who want to organise their work in one place.' },
-            { q: 'How much does ProjectFlow cost?', a: 'Until paid plans launch, ProjectFlow is free. A free plan for individuals and a per-seat Team plan with AI included are planned – externals in projects cost nothing extra.' },
+            { q: 'How much does ProjectFlow cost?', a: 'Until paid plans launch, ProjectFlow is free. After that there is a free plan for individuals and the Team plan at €10 per seat and month billed yearly (€12 monthly) – AI included, externals in projects cost nothing extra.' },
             { q: 'What happens to my data if I don’t upgrade?', a: 'Nothing gets lost. You keep access to all projects and can upgrade later at any time.' },
             { q: 'Which devices does ProjectFlow run on?', a: 'In the browser, as a desktop app for macOS and Windows, and soon as an iPhone app on the App Store. All of them work with the same data.' },
             { q: 'How do I work with clients or externals?', a: 'Invite externals to individual projects. They only see that project and do not become members of your workspace.' },
