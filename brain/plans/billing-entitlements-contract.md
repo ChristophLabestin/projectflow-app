@@ -96,7 +96,8 @@ Jeder Nutzer hat genau **einen persönlichen Workspace**, auch wer nur in ein Te
 - **Id** `personal_{uid}`, Tenant-Feld `workspaceType: 'personal'` (Team-Workspaces: `'team'` oder fehlt). Das autoritative
   Feld steht in `entitlements/plan.workspaceType`; Clients dürfen `workspaceType` am Tenant weder setzen noch ändern.
 - **Anlage** ausschließlich serverseitig: Callable `ensurePersonalWorkspace({language})` → `{tenantId, created}` (idempotent;
-  der Client ruft es nach jeder Anmeldung auf, statt selbst einen ersten Workspace anzulegen). Name „Mein Workspace“ / „My workspace“
+  der Web-Client ruft es bei der Anmeldung auf, wenn der Nutzer noch keinen eigenen Workspace besitzt, statt selbst einen
+  ersten Workspace anzulegen; Bestandskonten wurden am 2026-10-23 per Backfill versorgt). Name „Mein Workspace“ / „My workspace“
   (umbenennbar). Bestandsnutzer per Backfill-Skript (`functions/scripts/personal-workspaces.mjs`, erst Emulator, Prod-Lauf nur nach Freigabe).
 - **Regeln**: genau 1 Mitglied (Owner), keine Einladungen/Gäste (`invitesAllowed: false`, `memberLimit: 1` in jedem Plan),
   nicht übertragbar (`transferWorkspaceOwnership` lehnt ab: `personal-not-transferable`), nicht löschbar, solange das Konto besteht.
