@@ -272,6 +272,15 @@ Pure, React/Firebase-free modules that the web app and the iOS app (`PFDomain`) 
 - `notificationPrefs.ts`: defaults and (de)serialisation of `users/{uid}.notificationPrefs`.
 - `services/domain/workspaceTasksService.ts` (`getWorkspaceTasks`): loads all tasks of the given projects once and splits them into `mine` / `others` (the Dashboard needs the others for dependency counts and "Waiting on you").
 
+## Brand accents (`web/components/brand/`, 2026-10-23)
+Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.html`; tokens in STYLING 1.4.1; showcased on `/ui` ("Brand accents").
+- `BrandGlyph`: the ProjectFlow glyph as inline SVG in `currentColor` (login brand mark).
+- `BrandMark` (`size` sm/md/lg): glyph on a floating disc, conic brand aurora, breathing ring, four orbiting status dots (z-index flips behind/in front of the disc; rAF only while visible).
+- `FlowField` (`originX/Y`, `spacing`, `period`, `tone` auto/onDark): canvas dot grid with ripples coloured by direction; fills its positioned parent; ResizeObserver repaints, pauses off-screen / hidden tab, static frame under reduced motion. Used in the login hero and `BrandScene`.
+- `StatusDots` (`size` xs/sm/md, `motion` static/wave, optional `label`) and `LoadingTrack` (gliding brand-gradient segment).
+- `BrandScene` (`variant` screen/inline, `label`): loading scene (field + mark + staggered name + track, `role="status"`). Used by the root auth loading and `WorkspaceConnecting` (screen) and `RoutePending` (inline).
+- `playCompletionBurst(element)`: one-shot burst of the four dots from an element's centre, fixed on `<body>` so it survives rows moving groups; used by `TaskRow`'s complete check. Skipped under reduced motion.
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.

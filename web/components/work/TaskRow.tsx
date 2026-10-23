@@ -5,6 +5,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import type { Task } from '../../types';
 import { daysFromToday, parseDateValue } from '../../utils/taskDates';
 import { InlineMenu } from './InlineMenu';
+import { playCompletionBurst } from '../brand/burst';
 import { getAssigneeIds, normalizeStatus, type WorkMember } from './workList';
 import {
     assigneeMenuOptions,
@@ -133,7 +134,11 @@ export const TaskRow = memo(({
             <button
                 type="button"
                 className={`work-row__check ${task.isCompleted ? 'is-checked' : ''}`}
-                onClick={() => onToggleComplete(task)}
+                onClick={(event) => {
+                    // Success moment: the four brand dots burst from the check when a task is completed.
+                    if (!task.isCompleted) playCompletionBurst(event.currentTarget);
+                    onToggleComplete(task);
+                }}
                 disabled={!canEdit}
                 aria-pressed={task.isCompleted}
                 aria-label={t(task.isCompleted ? 'work.row.reopen' : 'work.row.complete').replace('{title}', task.title)}

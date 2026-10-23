@@ -5,6 +5,7 @@ import { getDesktopBridge } from '../services/desktop';
 import { auth } from '../services/firebase';
 import { useAuth } from './AuthContext';
 import { useLanguage } from './LanguageContext';
+import { BrandScene } from '../components/brand/BrandScene';
 import {
     createWorkspace as createWorkspaceDoc,
     listMyPendingInvitations,
@@ -42,22 +43,11 @@ export const useWorkspace = () => {
  * Resolves the active workspace once per signed-in user and renders the app
  * only when it is known, so every tenant-scoped read has a valid tenant id.
  */
-const WorkspaceConnectingPanel = () => {
-    const { t } = useLanguage();
-    return (
-        <div className="workspace-gate__panel">
-            <span className="material-symbols-outlined workspace-gate__icon workspace-gate__spin">progress_activity</span>
-            <p className="workspace-gate__text">{t('app.loading.connecting')}</p>
-        </div>
-    );
-};
-
 /** The gate's loading screen, for screens that hand over to the app right after sign-in. */
-export const WorkspaceConnecting = () => (
-    <div className="workspace-gate">
-        <WorkspaceConnectingPanel />
-    </div>
-);
+export const WorkspaceConnecting = () => {
+    const { t } = useLanguage();
+    return <BrandScene label={t('app.loading.connecting')} />;
+};
 
 export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
     const { user, isAuthReady } = useAuth();
@@ -142,26 +132,24 @@ export const WorkspaceProvider = ({ children }: { children: ReactNode }) => {
         if (status === 'error') getDesktopBridge()?.splashDone?.();
     }, [status]);
 
-    if (user && status !== 'ready') {
+    if (user && status !== 'ready' && status !== 'error') return <WorkspaceConnecting />;
+
+    if (user && status === 'error') {
         return (
             <div className="workspace-gate">
-                {status === 'error' ? (
-                    <div className="workspace-gate__panel">
-                        <span className="material-symbols-outlined workspace-gate__icon workspace-gate__icon--error">error</span>
-                        <p className="workspace-gate__title">{t('workspace.gate.errorTitle')}</p>
-                        <p className="workspace-gate__text">{t('workspace.gate.errorText')}</p>
-                        <div className="workspace-gate__actions">
-                            <button type="button" className="workspace-gate__button" onClick={() => void resolve()}>
-                                {t('workspace.gate.retry')}
-                            </button>
-                            <button type="button" className="workspace-gate__button workspace-gate__button--ghost" onClick={() => void signOut(auth)}>
-                                {t('workspace.gate.signOut')}
-                            </button>
-                        </div>
+                <div className="workspace-gate__panel">
+                    <span className="material-symbols-outlined workspace-gate__icon workspace-gate__icon--error">error</span>
+                    <p className="workspace-gate__title">{t('workspace.gate.errorTitle')}</p>
+                    <p className="workspace-gate__text">{t('workspace.gate.errorText')}</p>
+                    <div className="workspace-gate__actions">
+                        <button type="button" className="workspace-gate__button" onClick={() => void resolve()}>
+                            {t('workspace.gate.retry')}
+                        </button>
+                        <button type="button" className="workspace-gate__button workspace-gate__button--ghost" onClick={() => void signOut(auth)}>
+                            {t('workspace.gate.signOut')}
+                        </button>
                     </div>
-                ) : (
-                    <WorkspaceConnectingPanel />
-                )}
+                </div>
             </div>
         );
     }

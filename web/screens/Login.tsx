@@ -8,6 +8,8 @@ import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { WorkspaceConnecting } from '../context/WorkspaceContext';
+import { BrandGlyph } from '../components/brand/BrandMark';
+import { FlowField } from '../components/brand/FlowField';
 import { loginWithPasskey, preparePasskeyLogin, shouldAutoPrompt } from '../services/passkeyService';
 import { getDesktopBridge, hasDesktopCapability, isDesktop, type DesktopAuthProvider } from '../services/desktop';
 import { COMPANY_NAME } from '../config/company';
@@ -388,9 +390,11 @@ export const Login = () => {
         <div className="login-page">
             {/* Left Side - Brand (Monochrome) */}
             <div className="login-page__hero">
+                {/* Brand ripples spread from the logo (same field as the app loading scene). */}
+                <FlowField tone="onDark" originX={0.09} originY={0.07} spacing={24} period={4.8} />
                 <div className="login-page__hero-content">
                     <div className="login-page__brand">
-                        <div className="login-page__brand-mark">PF</div>
+                        <div className="login-page__brand-mark"><BrandGlyph /></div>
                         <span className="login-page__brand-name">{t('app.brand')}</span>
                     </div>
 

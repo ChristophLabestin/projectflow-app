@@ -77,6 +77,21 @@ Use status colors for feedback states only (alerts, badges, validation states). 
 | `--color-warning` | `#f59e0b` | Warning state |
 | `--color-error` | `#ef4444` | Error state |
 
+### 1.4.1 Brand Palette (Accent Set, 2026-10-23)
+
+The four status hues double as ProjectFlow's brand accents (iOS `PFBrandPalette`, desktop `splash.html`). They alias the status tokens, so status meaning never shifts.
+
+| Token | Alias of | Use |
+|------|----------|-----|
+| `--brand-blue` / `-rgb` / `-text` | `--status-open-*` | open |
+| `--brand-violet` / `-rgb` / `-text` | `--status-planning-*` | planning |
+| `--brand-amber` / `-rgb` / `-text` | `--status-review-*` | review / warning |
+| `--brand-green` / `-rgb` / `-text` | `--status-done-*` | done / success |
+| `--brand-gradient`, `--brand-gradient-linear` | the four hues | aurora, loading track |
+| `--brand-field-dot` | theme-aware neutral | FlowField resting dots |
+
+Rules: accents, not fills. Allowed spots: loading scenes (`BrandScene`), the brand mark, success moments (completion burst), the login hero field, `/ui`. Use `-text` for coloured text (AA on surfaces); `rgba(var(--brand-*-rgb), a)` for tints. No hardcoded `#3b82f6/#8b5cf6/#f59e0b/#10b981` or their rgb triplets in SCSS. Motion is transform/opacity only, pauses off-screen / in hidden tabs and stops under `prefers-reduced-motion` (components in `web/components/brand/`).
+
 ### 1.5 Blue Palette (Pre-Beta / Limited Use)
 
 These colors are reserved for specific pre-beta settings. Do not introduce them broadly without a clear reason.

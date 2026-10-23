@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/common/Button/Button';
+import { BrandMark, BrandScene, FlowField, LoadingTrack, StatusDots } from '../components/brand';
 import { Card, CardHeader, CardBody, CardFooter } from '../components/common/Card/Card';
 import { TextInput } from '../components/common/Input/TextInput';
 import { TextArea } from '../components/common/Input/TextArea';
@@ -312,6 +313,34 @@ export const StyleGuidePage = () => {
                             <ColorSwatch name={t('styleGuide.colors.error')} token="--color-error" />
                             <ColorSwatch name={t('styleGuide.colors.textMain')} token="--color-text-main" />
                             <ColorSwatch name={t('styleGuide.colors.textMuted')} token="--color-text-muted" />
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.brand')}</h2>
+                        <p className="guide-brand__intro">{t('styleGuide.brand.intro')}</p>
+                        <div className="color-grid">
+                            <ColorSwatch name={t('styleGuide.brand.blue')} token="--brand-blue" />
+                            <ColorSwatch name={t('styleGuide.brand.violet')} token="--brand-violet" />
+                            <ColorSwatch name={t('styleGuide.brand.amber')} token="--brand-amber" />
+                            <ColorSwatch name={t('styleGuide.brand.green')} token="--brand-green" />
+                        </div>
+                        <div className="guide-brand__row">
+                            <figure><BrandMark size="sm" /><figcaption>BrandMark sm</figcaption></figure>
+                            <figure><BrandMark size="md" /><figcaption>BrandMark md</figcaption></figure>
+                            <figure><BrandMark size="lg" /><figcaption>BrandMark lg</figcaption></figure>
+                            <figure><StatusDots size="md" /><figcaption>StatusDots</figcaption></figure>
+                            <figure><StatusDots size="md" motion="wave" /><figcaption>StatusDots wave</figcaption></figure>
+                            <figure><LoadingTrack /><figcaption>LoadingTrack</figcaption></figure>
+                        </div>
+                        <div className="guide-brand__field">
+                            <FlowField originX={0.15} originY={0.5} />
+                            <span>FlowField</span>
+                        </div>
+                        <div className="guide-brand__scene">
+                            <BrandScene variant="inline" label={t('app.loading.connecting')} />
                         </div>
                     </section>
 

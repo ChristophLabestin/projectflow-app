@@ -1,6 +1,7 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, useNavigate, useParams, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
+import { BrandScene } from './components/brand/BrandScene';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { OfflineBanner } from './components/OfflineBanner';
 import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal';
@@ -124,10 +125,7 @@ const RoutePending = () => {
     const { t } = useLanguage();
 
     return (
-        <div className="flex flex-col items-center justify-center h-full p-10 text-center">
-            <span className="material-symbols-outlined text-4xl text-gray-400 mb-4">progress_activity</span>
-            <h2 className="text-xl font-bold mb-2">{t('app.loading.connecting')}</h2>
-        </div>
+        <BrandScene variant="inline" label={t('app.loading.connecting')} />
     );
 };
 
@@ -344,14 +342,7 @@ export const AppRouter = () => {
     }, [isAuthReady]);
 
     if (!isAuthReady || !router) {
-        return (
-            <div className="h-screen w-full flex items-center justify-center bg-surface">
-                <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
-                    <span className="text-sm font-semibold text-muted">{t('app.loading.connecting')}</span>
-                </div>
-            </div>
-        );
+        return <BrandScene label={t('app.loading.connecting')} />;
     }
 
     if (error) {
