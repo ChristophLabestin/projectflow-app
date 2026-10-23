@@ -227,12 +227,14 @@ struct PFEdgeCardModifier: ViewModifier {
 
 struct PFBottomFloatModifier<Floating: View>: ViewModifier {
     let floating: Floating
+    @Environment(\.pfBottomChromeHeight) private var chromeHeight
 
     func body(content: Content) -> some View {
         content.overlay(alignment: .bottom) {
             floating
                 .padding(.horizontal, PFSpace.page)
-                .padding(.bottom, 14)
+                // Above the focus bar when one is showing, otherwise just above the home indicator.
+                .padding(.bottom, chromeHeight > 0 ? chromeHeight + 10 : 14)
                 .padding(.top, 36)
                 .frame(maxWidth: .infinity)
                 .background {

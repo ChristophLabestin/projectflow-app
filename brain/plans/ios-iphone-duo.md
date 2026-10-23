@@ -102,4 +102,9 @@ Sheets weiterhin `PFPresenter`.
   skriptbar → muss in Device Hub von Hand aufgeklappt werden. Vorab-Check des breiten Layouts (Seitenleiste,
   Heute zweispaltig) lief auf einem iPad-mini-Ersatz (regular width); Liste + Detail, Board, Fokusraum,
   Zustand beim Auf-/Zuklappen und Knick sind auf dem echten Innendisplay noch ungeprüft.
+- Randabstände außen: oben gibt es keine Safe Area (Statusleiste seitlich) → `PFNavigator` garantiert
+  14 pt (`PFLayout.minTopMargin`, auf normalen iPhones wirkungslos); Seitenleisten-Items 58 pt breit, damit
+  die Leiste in der ~84 pt breiten Seitenregion rundum Luft hat.
+- Nebenbei behoben: „Als erledigt markieren“ im Aufgaben-Detail lag auf allen iPhones hinter der Fokusleiste
+  (gepushte Seiten sehen das `safeAreaInset` der Shell nicht) → `pfBottomChromeHeight`.
 - Nebenbei behoben: `PFBoard` rechnete Drag-Treffer mit 85 % statt der gezeichneten 82 % Bahnbreite.

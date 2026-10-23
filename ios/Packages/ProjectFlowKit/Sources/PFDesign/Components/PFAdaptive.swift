@@ -6,6 +6,9 @@ public extension EnvironmentValues {
     /// True when the shell lays out for regular width (iPhone Duo opened). Set by the app shell from
     /// `horizontalSizeClass`; every regular iPhone, the Duo's outer display and Split View stay false.
     @Entry var pfIsWide = false
+    /// Height of the shell's floating bottom chrome (focus bar, dock). `NavigationStack` destinations don't
+    /// get the shell's `safeAreaInset`, so screens with their own floating action add this themselves.
+    @Entry var pfBottomChromeHeight: CGFloat = 0
 }
 
 public enum PFLayout {
@@ -13,6 +16,8 @@ public enum PFLayout {
     public static let readableWidth: CGFloat = 720
     /// Narrowest a board lane gets before the board shows fewer lanes.
     public static let minLaneWidth: CGFloat = 260
+    /// Smallest top safe area screens get (status-bar-less displays such as the iPhone Duo outer display).
+    public static let minTopMargin: CGFloat = 14
 }
 
 public extension View {

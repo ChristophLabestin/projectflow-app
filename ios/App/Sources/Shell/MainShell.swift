@@ -12,6 +12,7 @@ struct MainShell: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     @State private var safeInsets = EdgeInsets()
+    @State private var bottomChromeHeight: CGFloat = 0
 
     private var isWide: Bool { horizontalSizeClass == .regular }
     /// iPhone Duo closed: the system keeps a side region (status bar, Dynamic Island, camera) on the trailing
@@ -51,6 +52,8 @@ struct MainShell: View {
                 // Every scroll view gets extra room below its content so the last rows clear the floating bar.
                 .contentMargins(.bottom, PFSpace.l, for: .scrollContent)
                 .safeAreaInset(edge: .bottom, spacing: 0) { bottomChrome }
+                // Pushed screens don't receive the inset above, so floating actions read its height here.
+                .environment(\.pfBottomChromeHeight, bottomChromeHeight)
             }
             .background(PFCanvas())
 
@@ -103,6 +106,7 @@ struct MainShell: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { bottomChromeHeight = $0 }
         // Sit the bar lower, into the home-indicator zone; the inset height (content clearance) is unchanged.
         .offset(y: router.isDeep || !hasBottomDock ? 0 : 14)
         .animation(PFMotion.respecting(PFMotion.snappy), value: model.profile?.focus)

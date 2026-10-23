@@ -36,6 +36,12 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     @Bindable var model: PFNavigationModel<Route>
     let root: Root
     let destination: (Route) -> Destination
+    @State private var topInset: CGFloat = 60
+
+    /// Displays without a top status bar (iPhone Duo outer display: status bar and camera sit in the side
+    /// region) report a top inset of 0; headers would touch the rounded screen edge. Top it up to a minimum.
+    /// Every regular iPhone has a taller status bar, so this adds nothing there.
+    private var extraTop: CGFloat { max(0, PFLayout.minTopMargin - topInset) }
 
     public init(model: PFNavigationModel<Route>, @ViewBuilder root: () -> Root, @ViewBuilder destination: @escaping (Route) -> Destination) {
         self.model = model
@@ -46,14 +52,17 @@ public struct PFNavigator<Route: Hashable, Root: View, Destination: View>: View 
     public var body: some View {
         NavigationStack(path: $model.path) {
             root
+                .safeAreaPadding(.top, extraTop)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: Route.self) { route in
                     destination(route)
+                        .safeAreaPadding(.top, extraTop)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .background(PFCanvas())
                         .toolbar(.hidden, for: .navigationBar)
                 }
         }
+        .onGeometryChange(for: CGFloat.self) { $0.safeAreaInsets.top } action: { topInset = $0 }
     }
 }
 
@@ -212,7 +221,7 @@ public struct PFDock: View {
                     .minimumScaleFactor(0.8)
             }
             .foregroundStyle(selected || isOn ? PFColor.textMain : PFColor.textMuted)
-            .frame(width: vertical ? 64 : nil, height: vertical ? 58 : nil)
+            .frame(width: vertical ? 58 : nil, height: vertical ? 56 : nil)
             .frame(maxWidth: vertical ? nil : (compact ? 64 : .infinity), minHeight: vertical ? nil : 54)
             .background {
                 if selected {
