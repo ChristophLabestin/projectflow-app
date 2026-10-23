@@ -110,7 +110,7 @@ Sheets weiterhin `PFPresenter`.
   außen zum ersten Eintrag der Seitenleiste (`PFDockFocus`: Fokus-Symbol + „Fokus“ + Puls, Tippen öffnet den
   Fokusraum; Erledigen dort bzw. als VoiceOver-Aktion).
 - Unterseiten außen: `PFTopBar` gibt Zurück + Toolbar-Buttons per Preference an den `PFNavigator`, der sie
-  als Stapel unten rechts in die Seitenregion legt (Zurück zuoberst erreichbar ganz unten, Abstand unten =
+  als Stapel unten rechts in die Seitenregion legt (Zurück ganz unten, Abstand unten =
   rechts); oben bleibt nur ein evtl. Titel, die reservierte Kopfleistenhöhe entfällt
   (`PFLayout.topBarClearance`). Die Tab-Leiste blendet sich auf Unterseiten aus (wie das Dock auf dem iPhone),
   die Fokusleiste erscheint dort wieder unten. Sheets bekommen außen einen Schließen-Button unten rechts in
