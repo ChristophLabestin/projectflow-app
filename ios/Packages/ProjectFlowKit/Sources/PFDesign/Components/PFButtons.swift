@@ -63,7 +63,7 @@ struct PFCapsuleStyle: ButtonStyle {
         case .secondary:
             label.foregroundStyle(PFColor.textMain).background(PFColor.card, in: .capsule).pfElevation(.card, radius: 100)
         case .ghost:
-            label.foregroundStyle(PFColor.textMain).background(PFColor.raised, in: .capsule)
+            label.foregroundStyle(PFColor.textMain).pfPillSurface()
         case .danger:
             label.foregroundStyle(Color.white).background(PFColor.danger, in: .capsule)
         case .glass:
