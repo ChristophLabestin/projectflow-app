@@ -487,13 +487,10 @@ service cloud.firestore {
               'file_upload_drafts',
               'notifications',
               'notificationDeliveryLogs',
-<<<<<<< HEAD
-              'docs'
-=======
+              'docs',
               'activity',
               'insights_daily',
               'insights_reports'
->>>>>>> origin/main
             ]
           );
       }
