@@ -245,6 +245,20 @@ User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId
 `/tenants/{tenantId}/secrets/fileStorage/file_storage_auth_states/{stateId}`
 - `tenantId`, `userId`, `csrf`, `createdAt`, `expiresAt`
 
+#### ↳ 📂 **`automations`** *(Flows; writes via Functions callables only)*
+**Path:** `/tenants/{tenantId}/automations/{automationId}` — concept `brain/plans/flows-concept.md`. Not the retired `flows` collection (old ideas module).
+- `name`, `description`, `scope: 'workspace'|'project'`, `projectId` (null for workspace), `enabled`, `order`, `templateId`
+- `trigger { type, config }`, `conditions { op, groups[{ op, rules[{ field, operator, value }] }] }`, `actions [{ id, type, config }]`
+- `allowAutomationTrigger` (react to other flows' writes, max chain depth 3), `ownerId` (last editor = permission ceiling), `createdBy/At`, `updatedBy/At`
+- `nextRunAt` (Timestamp, time triggers only; scanned by `runAutomationSchedules`), `pausedReason: 'errors'|'owner_lost_access'|null`, `stats { lastRunAt, lastStatus, lastRunId, lastError, consecutiveFailures }`, `schemaVersion`
+- Flow writes stamp `writeVia { kind: 'automation', id, name, runId, depth, at }` on tasks/subtasks/comments (activity contract); comments carry `automationId`, created tasks `source: 'automation'`.
+
+#### ↳ 📂 **`automation_runs`** *(server only; TTL `expireAt` 30 days)*
+`{automationId}_{eventId|slot|manual_…}` (deterministic → idempotent): `automationId, automationName, projectId, taskId, trigger, eventId, depth, status ('running'|'waiting'|'succeeded'|'failed'|'skipped_limit'|'cancelled'), skipReason, steps[{ actionId, type, status, output?, error?, at }], nextStep, failedStep, resumeAt, attempt, context, error, startedAt, finishedAt`.
+
+#### ↳ 📂 **`automation_usage/{yyyy-mm}`** `{ runs, aiSteps, skipped }` · **`automation_throttle`** (per-minute / per-entity-hour counters, server only, TTL)
+Limits: `AUTOMATION_LIMITS` in `functions/src/automation-logic.ts`; per-workspace override `tenants/{t}.limits.automations { runsPerMonth, aiStepsPerMonth, activeFlowsPerWorkspace }`. Member policy: `tenants/{t}.automationPolicy.allowMemberFlows` (default true).
+
 #### ↳ 📂 **`files`** *(Canonical tenant file metadata; writes via Functions only)*
 **Path:** `/tenants/{tenantId}/files/{fileId}`
 **Schema highlights:**

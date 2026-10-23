@@ -44,12 +44,8 @@ These routes are rendered inside the authenticated app shell/layout.
 - [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal, web push diagnostics and registration)
 - [x] `/activity` — Workspace activity feed (`WorkspaceActivity`, `components/activity/ActivityFeed`): filters person/project/type/period in the URL (`?person=&project=&type=&period=`), grouped by day, endless scroll, live first page; guests see their projects only
 - [x] `/insights` — Workspace insights (`WorkspaceInsights`, full members; guests redirect to `/activity`): KPIs, throughput, cycle time, burn-up, workload, project health, AI weekly report
+- [x] `/admin/*`, `/insights/onboarding` — moved to the **admin console** (`admin/`, see below); `AdminConsoleRedirect` sends old links to `VITE_ADMIN_CONSOLE_URL` (default `https://projectflow-admin.web.app`, `/insights/onboarding` → `/onboarding`).
 - [x] `/wiki`, `/wiki/:docId` — Workspace wiki (lazy `screens/wiki/WikiScreen`; full members, guests see a notice): page tree with drag & drop, favorites, search, templates, trash (`?view=trash`), Tiptap page editor with autosave, versions, AI, task links, backlinks. Concept `brain/plans/wiki-concept.md`. Sidebar entry via `WORKSPACE_AREAS.wiki`.
-- [x] `/insights/onboarding` — Onboarding survey statistics (lazy; only with custom claim `platformAdmin`, else NotFound; data from callable `getOnboardingStats`; grant via `functions/scripts/grant-platform-admin.mjs <email>`)
-- [x] `/admin` — Admin platform shell (lazy `AdminLayout`, `web/screens/admin/`; `platformAdmin` claim only, others 404): side nav Crash reports / Legal documents / Onboarding insights; `/admin` redirects to `/admin/crashes`.
-- [x] `/admin/crashes` — Crash reports (`CrashReports`): issues from web/desktop/iOS grouped by fingerprint, filters platform/status/environment, totals.
-- [x] `/admin/crashes/:issueId` — Crash issue (`CrashIssueDetail`): resolve/ignore/reopen, recent events, stack (symbolicated when `crash-symbolicate.mjs` ran), device/release context.
-- [x] `/admin/legal` (inside the admin shell) — Legal documents admin (lazy `LegalAdmin`; `platformAdmin` claim only): drafts with DE/EN Markdown editor, preview, diff, change summary, type, effective date, publish dialog, history with acceptance rate and mail status.
 - Consent gate: every signed-in route (incl. `/desktop/quick-access|capture|day|tray`) is wrapped in `LegalConsentGate`; contract `brain/plans/legal-consent-contract.md`.
 - [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components; company/startup projects are grouped separately with linked workstreams, and bottom lifecycle lists separate backlog/planning, paused, completed, and canceled projects)
 - [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
@@ -182,3 +178,18 @@ CTAs point to the app: `/register`, `/login`, `/download`. Concept: `brain/plans
 ---
 
 - [x] `/workspace` — redirects to `/` (2026-09-27). Workspace settings are a modal: `SettingsModal scope="workspace"` (tabs Workspace, Members, Roles, Email & storage, API & MCP, Danger zone; sections in `components/settings/WorkspaceSettingsPanel.tsx`). Entry: sidebar workspace menu → "Workspace settings". Personal settings (profile menu) only show Account, Preferences, Security, Pre-Alpha.
+
+## Admin Console (`admin/`, own app — not part of `web/`)
+
+Separate Vite/React app, hosting site `projectflow-admin` (later `admin.getprojectflow.com`). Platform admin only;
+auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the callable `adminApi`. Routes (`admin/src/App.tsx`):
+
+- `/` → `/crashes`
+- `/crashes`, `/crashes/:id` — crash issues (trend, platform/release/status filter, stack, events, releases/devices, triage)
+- `/legal`, `/legal/:type` — legal documents (overview with acceptance rate + mail status; draft editor DE/EN, diff to current version, publish)
+- `/onboarding` — onboarding survey aggregates
+- `/blog`, `/blog/:id` (`new`) — platform blog `blog_posts` + categories
+- `/newsletter` — leads: newsletter subscribers/pending/legacy, waitlist, contact form (audited read, delete)
+- `/audit` — admin audit log
+- Shell: ⌘K palette (pages, actions, user search), `g <key>` navigation, j/k + Enter in tables, ⇧D theme.
+

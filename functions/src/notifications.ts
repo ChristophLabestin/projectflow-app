@@ -229,7 +229,7 @@ export const onNotificationCreated = functions.region(REGION).firestore
         const userDoc = await db.collection('users').doc(userId).get();
         const userData = (userDoc.data() || {}) as Record<string, unknown>;
         const type = getString(notification.type);
-        const decision = decideChannels(type, resolveNotificationPrefs(userData.notificationPrefs));
+        const decision = decideChannels(type, resolveNotificationPrefs(userData.notificationPrefs), notification.channels);
 
         if (decision.push) {
             await sendPushNotification(tenantId, notificationId, notification, userId, userData);

@@ -1,0 +1,32 @@
+{
+  "name": "projectflow-admin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 3141 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 3141 --strictPort",
+    "test": "vitest run",
+    "deploy": "npm run build && firebase deploy --only hosting --project projectflow-labestin",
+    "dev:emulator": "vite --mode emulator --port 3141 --strictPort"
+  },
+  "dependencies": {
+    "@types/qrcode": "^1.5.6",
+    "firebase": "^12.19.0",
+    "lucide-react": "^0.562.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^6.30.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "sass": "^1.97.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "vitest": "^4.1.8"
+  }
+}

@@ -196,6 +196,7 @@ Startup/company legal, finance, compliance, funding, and advisor links use the s
 - Guests join through an invitation with `role: 'Guest'` and at least one `projectIds` entry; admins can later promote them in Team → member detail → Workspace access.
 - Removing a member also removes them from every project `memberIds` in that workspace.
 - Activity stream (`tenants/{t}/activity`): guests read only events of their projects (queries must filter `projectId`); workspace-level events and Insights (`insights_daily`, `insights_reports`, `/insights`) are full-member only.
+- Flows (`tenants/{t}/automations`, runs, usage): full members read; guests never see flows. Create/edit/toggle/delete/run/retry only via callables: workspace flows Owner/Admin; project flows Owner/Admin, the project owner and — while `automationPolicy.allowMemberFlows` (default on) — Members. A flow acts as workspace bot (`writeVia.kind = 'automation'`) capped by its owner (last editor): the owner must still be a non-guest member at run time, otherwise the flow pauses (`owner_lost_access`).
 
 ---
 
@@ -478,8 +479,8 @@ User profile changes are typically self-service. If you want admin control:
 - `user.personalTasks.manageSelf` — Create/edit/complete/delete own personal tasks, including imports from native capture surfaces
 
 ### Legal documents and consent (platform level, 2026-10-23)
-- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts only with the `platformAdmin` custom claim. No client writes at all.
-- Drafting, publishing and the acceptance overview (`/admin/legal`, callables `saveLegalDraft`, `deleteLegalDraft`, `publishLegalDraft`, `getLegalAdminOverview`) require `platformAdmin` — not a tenant role.
+- Published legal documents (`legal_documents/{type}`, `/versions/{n}`) are publicly readable; drafts are closed to clients (admin console via `adminApi` only). No client writes at all.
+- Drafting, publishing and the acceptance overview run in the admin console (`adminApi` actions `legal.*`, full admin gate below) — not a tenant role.
 - Every user can only record consent for themselves and only for the *current effective* version (`acceptLegalDocuments` / `declineLegalDocuments`); `legal_acceptances/{uid}` is readable by its owner only (no list), never writable by clients. Mail jobs/logs are Admin-SDK only.
 
 ---
@@ -568,3 +569,14 @@ Decision: Store system roles explicitly except Member.
   - in tenant contexts: `tenant.media.*`
   - in project contexts: `project.media.*`
   - plus AI feature permissions (`ai.image.*`) and entitlements
+
+## Platform admin (admin console `admin/`)
+
+Not a tenant role. One gateway callable `adminApi` (`functions/src/admin-console/`) checks on every call:
+claim `platformAdmin === true` → allowlist doc `platform_admins/{uid}` (`active`, email = token email) →
+second factor (`firebase.sign_in_second_factor`, TOTP; emulator only: claim `adminMfaTest`) → token not revoked →
+admin session `admin_sessions/{uid}` (start needs a login ≤ 10 min old; 30 min idle, 12 h max). Every mutation,
+session start/end, sensitive read and refusal of an admin is written to `admin_audit` (2-year TTL).
+Rules: `platform_admins`, `admin_sessions`, `admin_audit`, `crashIssues/**`, `legal_documents/*/drafts` are closed to
+all clients. Grant/revoke: `node functions/scripts/grant-platform-admin.mjs <email> [--revoke]` (claim + allowlist).
+

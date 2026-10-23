@@ -19,6 +19,10 @@ export type AiPolicy = {
     allowDeleteScopes: boolean;
     /** Members may create personal access tokens. */
     allowPersonalTokens: boolean;
+    /** In-app assistant (✦, ⌘J) for members of this workspace; Owner/Admin switch. */
+    inAppEnabled: boolean;
+    /** Rollout flag for the in-app assistant (brain/plans/in-app-ai-concept.md, decision 8). */
+    inAppAi: boolean;
 };
 
 /** Concept decisions 3–5: AI on, guests off, delete scopes off, personal tokens on. */
@@ -26,7 +30,9 @@ export const DEFAULT_AI_POLICY: AiPolicy = {
     enabled: true,
     allowGuests: false,
     allowDeleteScopes: false,
-    allowPersonalTokens: true
+    allowPersonalTokens: true,
+    inAppEnabled: true,
+    inAppAi: false
 };
 
 export const normalizeAiPolicy = (raw: unknown): AiPolicy => {
@@ -36,7 +42,9 @@ export const normalizeAiPolicy = (raw: unknown): AiPolicy => {
         enabled: pick('enabled'),
         allowGuests: pick('allowGuests'),
         allowDeleteScopes: pick('allowDeleteScopes'),
-        allowPersonalTokens: pick('allowPersonalTokens')
+        allowPersonalTokens: pick('allowPersonalTokens'),
+        inAppEnabled: pick('inAppEnabled'),
+        inAppAi: pick('inAppAi')
     };
 };
 

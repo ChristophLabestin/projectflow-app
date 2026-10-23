@@ -1,5 +1,5 @@
 /**
- * ProjectFlow's own crash reporting for web + desktop (backend: `crashIngest`, admin platform /admin/crashes).
+ * ProjectFlow's own crash reporting for web + desktop (backend: `crashIngest`, admin console admin/ → Crashes).
  *
  * Opt-in only (`pf.consent.crashReports`, per device, default off; toggle in Settings → Account → Data). While off,
  * nothing is collected or sent. Sent per report: a random install id, the build (`__PF_BUILD__`), browser + OS, locale,

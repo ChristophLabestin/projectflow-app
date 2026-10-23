@@ -99,15 +99,11 @@ export default defineConfig(({ mode }) => {
                 if (id.includes('react-colorful')) return 'color-tools';
                 if (id.includes('react-image-crop')) return 'media-tools';
                 if (id.includes('qrcode') || id.includes('@simplewebauthn/')) return 'data-tools';
-                if (
-                  id.includes('@tiptap/react') ||
-                  id.includes('@tiptap/core') ||
-                  id.includes('prosemirror')
-                ) {
-                  return 'editor-core';
-                }
+                // One editor chunk: split core/extension chunks import each other in a cycle and the
+                // extensions then evaluate before @tiptap/core (`Extension.create` of undefined → blank app).
                 if (
                   id.includes('@tiptap/') ||
+                  id.includes('prosemirror') ||
                   id.includes('lowlight') ||
                   id.includes('highlight.js')
                 ) {

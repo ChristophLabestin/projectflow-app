@@ -76,6 +76,18 @@ Deploy only touched functions when possible, for example: `cd functions && fireb
 - From the repo root (matches the `firebase deploy` allow rule): `npm --prefix landing run build`, then `firebase deploy --config landing/firebase.json --only hosting --project projectflow-labestin` (live) or `firebase hosting:channel:deploy preview --config landing/firebase.json --project projectflow-labestin --expires 30d`. Without `--config` the root `firebase.json` deploys the **app** instead.
 - Domain: connect `getprojectflow.com` (+ `www`) to Hosting site `getprojectflow` in the Firebase console; `app.getprojectflow.com` stays on site `projectflow-labestin`.
 
+## Admin Console (`admin/`)
+
+- Setup: `npm --prefix admin install`; `admin/.env.local` = the `VITE_FIREBASE_*` web config (see `admin/.env.example`).
+- Local against emulators: `bash scripts/dev-admin.sh` (emulators on 9841/8841/9842/5841, seed incl. crash reports,
+  console on :3141, login `demo@projectflow.test` / `projectflow-demo`). `ADMIN_DEV_SERVER=0` = emulators only.
+- Tests: `npm --prefix admin test` (Vitest), `node functions/scripts/unit/admin-gate.test.js` via `npm --prefix functions run test:unit`,
+  gateway E2E `node functions/scripts/admin-console-e2e.mjs` (needs `ADMIN_DEV_SERVER=0 bash scripts/dev-admin.sh`).
+- Build: `npm --prefix admin run build` (`tsc --noEmit && vite build` → `admin/dist`).
+- Deploy: `(cd admin && npm run deploy)` = build + `firebase deploy --only hosting --project projectflow-labestin` with `admin/firebase.json` (site `projectflow-admin`). Backend: `firebase deploy --only functions:adminApi --project projectflow-labestin`.
+- Admin access: `node functions/scripts/grant-platform-admin.mjs <email>` (claim + allowlist `platform_admins/{uid}`), TOTP is set up on first console sign-in.
+- Custom domain `admin.getprojectflow.com`: Firebase console → Hosting → site `projectflow-admin` → Add custom domain → set the DNS records; then Auth → Settings → Authorized domains, and add `https://admin.getprojectflow.com/__/auth/handler` to the Google OAuth client's redirect URIs; set `VITE_ADMIN_CONSOLE_URL=https://admin.getprojectflow.com` for `web/` builds (old `/admin` links).
+
 ## Firestore Commands
 
 - Deploy rules: `firebase deploy --only firestore:rules`

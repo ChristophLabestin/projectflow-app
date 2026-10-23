@@ -24,7 +24,7 @@ const build = (path: string, extra: Record<string, unknown> = {}) => buildBreadc
 describe('buildBreadcrumbs', () => {
     it('shows no trail on top-level destinations', () => {
         for (const path of ['/', '/tasks', '/calendar', '/team', '/projects', '/notifications', '/media', '/profile',
-            '/personal-tasks', '/finance', '/admin/crashes', '/admin/legal', '/unknown']) {
+            '/personal-tasks', '/finance', '/unknown']) {
             expect(build(path), path).toEqual([]);
         }
     });
@@ -56,10 +56,9 @@ describe('buildBreadcrumbs', () => {
         expect(build('/project/p1/marketing/settings')[2]).toEqual({ label: 'Marketing', to: '/project/p1/marketing/blog' });
     });
 
-    it('covers personal task detail and crash issues', () => {
+    it('covers personal task detail', () => {
         expect(build('/personal-tasks/x', { entityTitle: 'Renew passport' })).toEqual([
             { label: 'Personal tasks', to: '/personal-tasks' }, { label: 'Renew passport' }
         ]);
-        expect(build('/admin/crashes/abc').map((crumb) => crumb.label)).toEqual(['Crash reports', 'Issue']);
     });
 });

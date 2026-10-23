@@ -210,7 +210,7 @@ export const WorkspaceInsights = () => {
     const delta = data ? data.completed - data.completedPrev : 0;
 
     return (
-        <div className="insights-page custom-scrollbar">
+        <div className="insights-page">
             <div className="insights-page__content">
                 <header className="insights-page__header">
                     <div>

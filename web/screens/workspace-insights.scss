@@ -1,9 +1,8 @@
 // Workspace insights (/insights). Calm charts on card surfaces; borderless, token colours only.
 
+// Scrolls with the app's main scroller (app-main-scroll, standard padding) like other workspace pages.
 .insights-page {
-    height: 100%;
-    overflow-y: auto;
-    padding: 0 1.5rem 5rem;
+    padding-bottom: 3rem;
 }
 
 .insights-page__content {
@@ -12,7 +11,6 @@
     gap: 1.5rem;
     max-width: 72rem;
     margin: 0 auto;
-    padding-top: 2.5rem;
 }
 
 .insights-page__header {

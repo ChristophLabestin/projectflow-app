@@ -1,6 +1,6 @@
 # KI direkt in ProjectFlow — Konzept (Web, Desktop, iOS)
 
-Stand 2026-10-23 · Status: **Konzept, wartet auf Freigabe** · Bezug: `ai-integrations-concept.md` (MCP), Aktivität & Insights, Dateien, Wiki, Flows.
+Stand 2026-10-23 · Status: **freigegeben, in Umsetzung** (Stand siehe §9) · Bezug: `ai-integrations-concept.md` (MCP), Aktivität & Insights, Dateien, Wiki, Flows.
 Ziel: KI ist überall im Arbeitsfluss sofort da, kennt den Kontext und *handelt* – statt einer eigenen Seite, zu der man hinnavigiert.
 
 ## 1. Bestand und Lehren aus CORA
@@ -256,3 +256,11 @@ Begleitend: Rechtstexte (Unterauftragsverarbeiter, KI-Abschnitt) **vor** dem Rol
 7. **Desktop-Bildschirmkontext außerhalb der App:** nur auf Klick „Bildschirm anhängen“, nie automatisch. *Empfehlung: so.*
 8. **Rollout:** erst eigener Workspace/Beta-Flag, dann alle. *Empfehlung: Flag `inAppAi` pro Workspace.*
 9. **P0a (Proxy schließen) sofort, unabhängig von diesem Konzept?** *Empfehlung: ja.* Kleines Sicherheitspaket.
+
+## 9. Umsetzungsstand
+
+Entscheidungen (User, 2026-10-23): bei **OpenAI** bleiben (Abstraktion in `ai-models.ts` hält einen Wechsel offen), sonst alle Empfehlungen aus §8.
+
+- **P0a** ✅ `callGemini` entfernt → feste Fähigkeiten `runAiCapability` (`functions/src/ai-capabilities.ts`).
+- **P0** ✅ `aiAssist` (Gen2, SSE, `/api/assist`): `ai-models.ts` (Tiers fast/agent/deep: gpt-6-luna none/low + `service_tier: fast`, gpt-6-sol medium), `ai-credits.ts` (`tenants/{t}/ai_credits/{yyyy-mm}`, Erstattung bei Anbieterfehler), `ai-tools/` (gemeinsamer API-Client mit MCP, Registry mit 9 Lese- und 4 Schreib-Tools), `ai-assist-prompts.ts` (Kontext-Envelope, Write-Aktionen). Policy: `inAppEnabled` (Default an), Rollout-Flag `inAppAi` (Default aus). Evals: `functions/scripts/ai-evals/` (Smoke + Latenz + Injection).
+  Gemessen (Emulator, echtes Modell): erster Text beim Funken 0,5–1,0 s, Panel mit einer Tool-Runde 2–3 s gesamt.

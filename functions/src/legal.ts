@@ -67,16 +67,16 @@ export const loadIndex = async (firestore: Firestore) => {
 // Admin: drafts + publish
 // ---------------------------------------------------------------------------
 
-export const saveLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
-    const uid = requirePlatformAdmin(context);
+/** Saves drafts/current (shared by the saveLegalDraft callable and the admin console's adminApi). */
+export const saveLegalDraftCore = async (firestore: Firestore, data: unknown, uid: string) => {
     let draft;
     try {
         draft = normalizeDraft(data);
     } catch (error) {
         throw new functions.https.HttpsError('invalid-argument', (error as Error).message);
     }
-    const index = await docRef(db, draft.type).get();
-    await draftRef(db, draft.type).set({
+    const index = await docRef(firestore, draft.type).get();
+    await draftRef(firestore, draft.type).set({
         type: draft.type,
         title: draft.title,
         content: draft.content,
@@ -89,14 +89,24 @@ export const saveLegalDraft = functions.region(REGION).https.onCall(async (data,
         updatedAt: FieldValue.serverTimestamp(),
         updatedBy: uid,
     });
+    return { ok: true, type: draft.type };
+};
+
+export const deleteLegalDraftCore = async (firestore: Firestore, type: unknown) => {
+    if (!isLegalType(type)) throw new functions.https.HttpsError('invalid-argument', 'type is invalid');
+    await draftRef(firestore, type).delete();
+    return { ok: true };
+};
+
+export const saveLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
+    const uid = requirePlatformAdmin(context);
+    await saveLegalDraftCore(db, data, uid);
     return { ok: true };
 });
 
 export const deleteLegalDraft = functions.region(REGION).https.onCall(async (data, context) => {
     requirePlatformAdmin(context);
-    if (!isLegalType(data?.type)) throw new functions.https.HttpsError('invalid-argument', 'type is invalid');
-    await draftRef(db, data.type).delete();
-    return { ok: true };
+    return deleteLegalDraftCore(db, data?.type);
 });
 
 /**
@@ -178,8 +188,8 @@ export const publishLegalDraft = functions.region(REGION).https.onCall(async (da
 });
 
 /** Acceptance rate per published version + mail job progress, for the admin screen. */
-export const getLegalAdminOverview = functions.region(REGION).https.onCall(async (_data, context) => {
-    requirePlatformAdmin(context);
+export const legalAdminOverviewCore = async (firestore: Firestore) => {
+    const db = firestore;
     const [index, usersCount] = await Promise.all([loadIndex(db), db.collection('users').count().get()]);
     const totalUsers = usersCount.data().count;
     const documents = [];
@@ -205,6 +215,11 @@ export const getLegalAdminOverview = functions.region(REGION).https.onCall(async
         documents.push({ type: doc.type, versions });
     }
     return { totalUsers, documents };
+};
+
+export const getLegalAdminOverview = functions.region(REGION).https.onCall(async (_data, context) => {
+    requirePlatformAdmin(context);
+    return legalAdminOverviewCore(db);
 });
 
 // ---------------------------------------------------------------------------
