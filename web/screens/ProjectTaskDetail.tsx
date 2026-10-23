@@ -10,11 +10,14 @@ import { subscribeTenantUsers } from '../services/domain/workspaceMembersService
 import { deleteField } from 'firebase/firestore';
 import { SubTask, Task, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
 import { CommentSection } from '../components/CommentSection';
+import { FileAttachments } from '../components/files/FileAttachments';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskRelationshipsPanel } from '../components/TaskRelationshipsPanel';
+import { LinkedDocsPanel } from '../components/wiki/LinkedDocsPanel';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { activityIcon } from '../utils/activityHelpers';
@@ -92,6 +95,7 @@ type TenantUser = Parameters<Parameters<typeof subscribeTenantUsers>[0]>[0][numb
 
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
+    const { activeWorkspace } = useWorkspace();
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
@@ -846,6 +850,17 @@ export const ProjectTaskDetail = () => {
                         </div>
                     </section>
 
+                    {activeTenantId && id && taskId && (
+                        <section className="task-detail__section">
+                            <FileAttachments
+                                tenantId={activeTenantId}
+                                parent={{ type: 'task', id: taskId, projectId: id, title: task.title }}
+                                role={activeWorkspace?.role}
+                                projects={project ? [{ id: project.id, title: project.title, ownerId: project.ownerId }] : []}
+                            />
+                        </section>
+                    )}
+
                     <section className="task-detail__section">
                         <div className="task-detail__section-header">
                             <h3 className="task-detail__section-title">
@@ -1150,6 +1165,10 @@ export const ProjectTaskDetail = () => {
                             tenantId={activeTenantId}
                             onTaskChange={(updates) => setTask(prev => prev ? { ...prev, ...updates } : prev)}
                         />
+                    </div>
+
+                    <div className="task-detail__sidebar-section">
+                        <LinkedDocsPanel projectId={id!} taskId={task.id} taskTitle={task.title} tenantId={activeTenantId} />
                     </div>
 
                     <div className="task-detail__sidebar-section">

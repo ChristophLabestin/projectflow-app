@@ -1,59 +1,69 @@
-# Landing Page Concept (getprojectflow.com)
+# Landing Page Concept v4 – „Vom Rauschen in den Flow“
 
-Status: 2026-10-23, in Umsetzung (`landing/`). Ersetzt `brain/reference/app/LANDING_PAGE_BRIEF.md` (veraltet: Social/Marketing-Suite).
+Status: 2026-10-23, Neustart (v1–v3 verworfen). Seite: `landing/` (getprojectflow.com). Technik, Legal-API,
+MCP-Doku und Hosting bleiben; Startseite, Inhalte und Motion werden neu gebaut.
 
-## Positionierung
-- Zielgruppe: Teams im digitalen Sektor (Produkt, Engineering, Design, Growth), Gründer, Freelancer.
-- Kernaussage: ProjectFlow ist das ruhige, präzise Werkzeug für die Umsetzung. Alles, was zu tun ist,
-  landet an einer Stelle, wird sortiert, fokussiert erledigt, und das Team sieht, wo es steht.
-- Ton: sachlich, knapp, selbstbewusst. Keine Superlative, keine erfundenen Zahlen, keine Preise
-  (Pläne sind noch nicht öffentlich bepreist). Nur Features, die im Produkt existieren.
-- H1 DE „Ruhe im Projekt. Tempo in der Umsetzung.“ / EN „Calm projects. Fast execution.“
+## Kernidee
+Die Seite erklärt das Produkt nicht in Abschnitten, sie **führt es vor**: Die Arbeit des Besuchers ordnet sich
+beim Scrollen selbst. Dieselben ~14 Aufgaben-Karten (glaubwürdige Titel) durchlaufen auf einer einzigen Bühne die
+Zustände, die ProjectFlow wirklich hat: verstreut → Inbox → Board → Fokus → erledigt → im Team → auf allen Geräten.
+Jede Bewegung ist ein Produktzustand, keine Deko. Der Besucher sieht Ordnung entstehen.
 
-## Abschnittsfolge (v2, 2026-10-23 – dichter, ohne Pin-Szenen)
-Jede Sektion = Kopf (Titel links, Text rechts) + ein dichter Inhaltsblock; Abstand nur über `--section-space`.
-1. **Hero**: Headline, Lead, 2 CTAs, App-Fenster (Heute) sichtbar über dem Fold, 2 schwebende Fragmente,
-   darunter ein Proof-Streifen (Heute & Fokus · Projekte & Boards · Teams & Rollen · Web/Desktop/iPhone).
-2. **So arbeitest du** (`#flow`): 4 Schritt-Karten nebeneinander (Erfassen → Planen → Fokus → Erledigt) mit
-   Mini-UI, Verbindungslinie füllt sich beim Scrollen. Ersetzt die frühere gepinnte Scroll-Story.
-3. **Funktionen** (`#features`): Bento-Grid – Board (groß), Workbench, Notification Center, KI-Assistenz, Initiativen & Sprints.
-4. **Teams & Sicherheit** (`#security`, dunkles Band): Rollenliste, Passkey-Prompt, 4 Punkte.
-5. **Plattformen** (`#platforms`): 3 Karten (Web, Desktop, iPhone) + Integrations-Streifen (MCP-Clients → `/docs/mcp`).
-6. **FAQ** (`#faq`), 7. **CTA**, Footer. Unterseiten: Rechtsseiten (Legal-API), `/docs/mcp`, 404.
+Positionierung: das ruhige, präzise Werkzeug für Teams, die liefern. Ton: knapp, sachlich, selbstbewusst; keine Zahlen
+oder Features, die es nicht gibt.
 
-## Motion-System (Tokens in `landing/src/styles/_motion.scss`, gespiegelt in `src/js/motion.ts`)
-| Token | Wert | Einsatz |
+## Die Story-Bühne (ein gepinnter Viewport, 7 Akte, Scroll = Zeitachse)
+Volle Viewporthöhe, immer voll mit Inhalt – jeder Scrollpixel verändert sichtbar etwas (Lehre aus v1: kein leerer Scrollweg).
+Aktkopf (Nummer, Titel, ein Satz) mit Crossfade; Akt-Navigation (7 Punkte, klickbar = Sprung).
+„Story überspringen“-Link für Tastatur/Eilige.
+
+| Akt | Bild | Botschaft |
 |---|---|---|
-| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | Standard (identisch zur App) |
-| `--ease-in-out` | `cubic-bezier(0.65, 0, 0.35, 1)` | Zustandswechsel in Szenen |
-| `--ease-spring` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | nur Microfeedback (Checkbox, Badge) |
-| `--dur-1/2/3/4` | 150 / 300 / 600 / 900 ms | Hover / UI / Reveal / Hero |
-| `--stagger` | 60 ms | Listen, Wörter, Karten |
-| `--rise` | 24 px | Einblend-Versatz |
-Regeln: nur `transform`/`opacity` (plus `clip-path` für Reveals), nie Layout-Properties. Bewegung erklärt
-einen Zustandswechsel. Scroll-Szenen sind `scrub`-gekoppelt (rückwärts lesbar). Parallax max. ±80 px.
+| 0 Rauschen (Hero) | Karten, Notizen, Mails, Chat-Fetzen schweben verstreut, leicht rotiert, auf Punktraster; weichen dem Cursor aus. Headline + CTAs darüber. | „Alles, was zu tun ist. Endlich an einem Ort.“ |
+| 1 Erfassen | Scroll zieht alle Fragmente wie Magnete in eine saubere Inbox-Liste; Rotation → 0. | Quick Capture, Teilen-Menü, Web – alles landet in der Inbox. |
+| 2 Ordnen | Die Liste fächert sich in ein Board mit 4 Spalten (Offen, In Arbeit, Review, Erledigt); Status-Farben blenden ein. | Projekte, Boards, Initiativen. |
+| 3 Fokus | Kamera zoomt auf eine Karte; Umgebung dimmt, Bühne wird dunkel (Fokusmodus); Karte wird zum Fokus-Panel mit laufender Uhr. | Eine Sache. Volle Aufmerksamkeit. |
+| 4 Erledigt & gemeinsam | Häkchen, Karte fliegt in „Erledigt“; Avatare erscheinen auf Karten, Benachrichtigungen treffen ein. | Abhaken – das Team ist im Bild. |
+| 5 Überall | Board im Browserrahmen mit Geräte-Umschalter (Web · Desktop · iPhone); Karten sind anklickbar; CTA. | Eine Datenbasis, drei Apps. |
 
-## Technik
-- Eigenes Verzeichnis `landing/` mit Vite (Vanilla TS + SCSS, kein Framework → ~0 KB Runtime).
-- HTML wird zur Build-Zeit aus TS-Templates + Sprachdateien gerendert (Vite-Plugin), also statisches,
-  crawlbares HTML pro Sprache: `/` (DE), `/en/`, `/impressum`, `/datenschutz`, `/agb`,
-  `/en/imprint`, `/en/privacy`, `/en/terms`, `404.html`. `hreflang` + canonical je Seite.
-- Animation: GSAP + ScrollTrigger (pin/scrub robust, ~30 KB gz, nur auf der Startseite, nach
-  First Paint geladen). Kein Smooth-Scroll-Hijacking (natives Scrollen bleibt barrierearm).
-- Tokens: `_tokens.scss` der App ist Quelle; `landing/src/styles/_tokens.scss` übernimmt Farben,
-  Radien, Schatten, Status-/Prioritätsfarben 1:1. Schrift Plus Jakarta Sans selbst gehostet (variable).
-- `prefers-reduced-motion`: kein GSAP-Setup, alle Inhalte im Endzustand, Pins aus.
-- Hosting: eigene Firebase-Hosting-Site im Projekt `projectflow-labestin` mit eigener
-  `landing/firebase.json` (berührt die App-Konfiguration nicht). Deploy erst auf Preview-Channel.
+Technik: Karten sind absolut positionierte DOM-Elemente; je Akt berechnet JS Zielpositionen aus der Bühnengröße
+(Chaos aus festem Seed). Ein GSAP-Master-Timeline (ScrollTrigger pin + scrub) interpoliert nur transform/opacity.
+Layouts bei Resize neu (`invalidateOnRefresh`). Mobil: gleiche Story, vereinfachte Layouts (Liste 1-spaltig,
+Board 2 Spalten, weniger Karten, Akt 6 = Browser + iPhone).
 
-## Legal-Plan
-- Einzige Quelle ist das versionierte Rechtsdokumente-System der App (Firestore, `/admin/legal`).
-- Aktualisierte Texte liegen als Entwurf in `legal/<type>.<lang>.md` (+ `.summary.`), Import per
-  `node functions/scripts/import-legal-docs.mjs`, Veröffentlichung durch den Owner.
-- Landing: `LEGAL_SOURCE = 'app-link'` verlinkt auf `app.getprojectflow.com/legal/<type>`; mit `'api'`
-  rendert sie eigene Seiten aus `GET /api/legal/<type>?lang=` (Umschalten = eine Zeile + Build).
-- Landing selbst: keine Cookies, kein Tracking, keine Drittanbieter-Requests.
+## Überarbeitung nach kritischem Review (2026-10-23)
+- **6 statt 7 Akte**: „Erledigt“ und „Gemeinsam“ zusammengelegt. Scroll-Budget: Hero 1 vh (= Akt 0, Bühne beginnt oben),
+  Akte 1–5 je 0,8–1 vh → Pin gesamt ≈ 4,6 vh Desktop, ≈ 3,4 vh mobil. Pro Akt genau eine Zustandsänderung + kurzer Haltepunkt.
+- **Kein Snap, kein Smooth-Scroll**, `scrub: 0.5`; Akt-Navigation springt per scrollTo. `ignoreMobileResize`, Bühne in `svh`.
+- **Erste 5 Sekunden**: H1 + Kategorie-Zeile („Projektmanagement für Teams …“) + 2 CTAs + „Web · Desktop · iPhone“ im ersten Viewport;
+  Header-CTA bleibt immer sichtbar; CTA erneut im letzten Akt und am Schluss.
+- **Heldenkarte** „Angebot an Nordlicht senden“ trägt die Geschichte durch alle Akte; mobil nur 8 Karten.
+- **Semantik zuerst**: Akt-Texte als echte Überschriften in fester DOM-Reihenfolge, Karten `aria-hidden`; Akt-Nav als `<nav>` mit `aria-current`.
+  Ohne JS/bei reduced motion: Akte als Liste + Board als statische Illustration (CSS-Grid, kein JS nötig).
+- **Kein Blur**: Fokus-Dimmung über Overlay-Opacity. Karten bewegen sich nur per transform; Größenwechsel als Skalierung kleiner Elemente.
+- **Letzter Akt = die Seite wird zur App**: Board im Browserrahmen, Karten anklickbar (abhaken), CTA daneben.
+- **MCP als eigene Szene** statt Logo-Band: ein Agent ruft `upsert_task` auf, die Karte erscheint im Board.
 
-## Qualitätsziele
-Lighthouse ≥ 90 in allen vier Kategorien (mobil + desktop), WCAG AA, 360 px bis Ultrawide,
-Tastatur vollständig, kein CLS durch Animationen.
+## Nach der Story (kompakt, ohne Pin)
+1. **Mehr als Aufgaben** – Bento mit echten UI-Fragmenten: Task-Workbench, KI-Assistenz (OpenAI), Initiativen & Sprints,
+   Passkeys & 2FA, Daten in der EU. Kacheln reagieren auf Cursor (Licht).
+2. **Deine KI arbeitet mit** – MCP-Band: Claude, ChatGPT, Codex, Cursor, VS Code, Gemini CLI; Link `/docs/mcp`.
+3. **FAQ** (6 Fragen) · 4. **Schluss-CTA** · Footer.
+
+## Visuelle Sprache
+- App-Tokens (monochrom, Plus Jakarta Sans), Punktraster als „Leinwand“; Akzentfarben nur als Status/Prioritäten.
+- Licht → Dunkel → Licht als Dramaturgie (Fokus = dunkel). Große, ruhige Typo; Aktnummern in Mono.
+- Kein Stockfoto, keine generierten Bilder; alles ist echtes, gerendertes UI.
+
+## Motion-Regeln
+- Easing/Dauern aus den Motion-Tokens (expo.out, 150/300/600/900 ms). Story: `scrub: 0.8`.
+- Nur transform/opacity (+ blur max. 4px auf wenigen Elementen im Fokus-Akt).
+- `prefers-reduced-motion` oder kein JS: Story wird zu 7 statischen Akt-Blöcken untereinander.
+- Ziel 60 fps auf Mittelklasse-Laptop; ≤ 16 bewegte Karten.
+
+## Qualität
+Lighthouse ≥ 90 (Ziel 100) mobil/desktop, WCAG AA (gedimmte Zustände ≥ 3:1 bei großer Schrift), Tastatur
+(Skip-Story, Akt-Navigation per Tab), 360 px bis Ultrawide, DE/EN mit hreflang.
+
+## Legal & Doku
+Rechtstexte über die Legal-API der App (`LEGAL_SOURCE = 'api'`); MCP-Doku `/docs/mcp` bleibt.

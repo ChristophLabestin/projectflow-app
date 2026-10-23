@@ -33,6 +33,8 @@ const main = async () => {
         await db.doc('tenants/tenantA/members/ownerA').set({ uid: 'ownerA', role: 'Owner' });
         await db.doc('tenants/tenantA/members/memberA').set({ uid: 'memberA', role: 'Member' });
         await db.doc('tenants/tenantA/members/guestA').set({ uid: 'guestA', role: 'Guest' });
+        await db.doc('tenants/tenantA/members/guestB').set({ uid: 'guestB', role: 'Guest' });
+        await db.doc('tenants/tenantA/projects/p1').set({ tenantId: 'tenantA', ownerId: 'ownerA', memberIds: ['ownerA', 'guestA'] });
     });
 
     const png = new Uint8Array([137, 80, 78, 71]);
@@ -59,6 +61,23 @@ const main = async () => {
     });
 
     const seedPath = 'tenants/tenantA/projects/p1/seed.png';
+    const projectFile = 'tenants/tenantA/files/files/p1/task/t1/1_a_doc.pdf';
+    const workspaceFile = 'tenants/tenantA/files/files/global/workspace/workspace/1_a_doc.pdf';
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+        await context.storage().ref(projectFile).put(png, { contentType: 'application/pdf' });
+        await context.storage().ref(workspaceFile).put(png, { contentType: 'application/pdf' });
+    });
+
+    // File manager objects inherit the object's access (projectId scope or 'global').
+    await check('member reads project file object', () => assertSucceeds(file(st('memberA'), projectFile).getMetadata()));
+    await check('guest in project reads project file object', () => assertSucceeds(file(st('guestA'), projectFile).getMetadata()));
+    await check('guest outside project cannot read project file object', () => assertFails(file(st('guestB'), projectFile).getMetadata()));
+    await check('guest cannot read workspace file object', () => assertFails(file(st('guestA'), workspaceFile).getMetadata()));
+    await check('member reads workspace file object', () => assertSucceeds(file(st('memberA'), workspaceFile).getMetadata()));
+    await check('outsider cannot read file object', () => assertFails(file(st('outsider'), projectFile).getMetadata()));
+    await check('member cannot write file objects directly', () =>
+        assertFails(upload(st('memberA'), 'tenants/tenantA/files/files/p1/task/t1/x.pdf', png, 'application/pdf')));
+    await check('owner cannot delete file objects directly', () => assertFails(file(st('ownerA'), projectFile).delete()));
 
     await check('anonymous cannot read tenant file', () => assertFails(file(anon(), seedPath).getMetadata()));
     await check('outsider cannot read tenant file', () => assertFails(file(st('outsider'), seedPath).getMetadata()));

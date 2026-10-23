@@ -355,3 +355,19 @@
         padding-top: 0;
     }
 }
+
+// Legacy log embedded below the activity stream on /project/:id/activity.
+.project-activity--embedded {
+    height: auto;
+    overflow: visible;
+    padding: 0;
+
+    .project-activity__content {
+        max-width: none;
+        gap: 1.25rem;
+    }
+
+    .project-activity__header {
+        padding-top: 0;
+    }
+}

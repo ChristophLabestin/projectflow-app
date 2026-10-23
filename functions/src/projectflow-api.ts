@@ -630,6 +630,7 @@ const updateProject = async (req: any, res: any, projectId: string) => {
 
     await projectRef(context.tenantId, projectId).update({
         ...updates,
+        ...machineWrite(context),
         updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -742,6 +743,7 @@ const createTask = async (req: any, res: any, projectId: string) => {
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         title,
         description: getString(body.description),
         status: getString(body.status) || 'Open',
@@ -823,6 +825,7 @@ const updateTask = async (req: any, res: any, projectId: string, taskId: string)
 
     await taskRef.update({
         ...updates,
+        ...machineWrite(context),
         updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -959,6 +962,7 @@ const upsertTaskByExternalKey = async (req: any, res: any, projectId: string) =>
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         title,
         description,
         status: getString(body.status) || 'Open',
@@ -1108,6 +1112,7 @@ const createInitiative = async (req: any, res: any, projectId: string) => {
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         title,
         description: getString(body.description),
         status: getString(body.status) || 'Planning',
@@ -1198,6 +1203,7 @@ const updateInitiative = async (req: any, res: any, projectId: string, initiativ
 
     await initiativeRef.update({
         ...updates,
+        ...machineWrite(context),
         updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -1334,6 +1340,7 @@ const upsertInitiativeByExternalKey = async (req: any, res: any, projectId: stri
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         title,
         description,
         status: getString(body.status) || 'Planning',
@@ -1429,6 +1436,7 @@ const createSubtask = async (req: any, res: any, projectId: string, taskId: stri
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         title,
         isCompleted: Boolean(body.isCompleted),
         assigneeId: getString(body.assigneeId) || null,
@@ -1517,6 +1525,7 @@ const updateSubtask = async (req: any, res: any, projectId: string, taskId: stri
 
     await subtaskRef.update({
         ...updates,
+        ...machineWrite(context),
         updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -1774,6 +1783,7 @@ const updateProjectCollectionItem = async (
 
     await itemRef.update({
         ...updates,
+        ...machineWrite(context),
         updatedAt: FieldValue.serverTimestamp()
     });
 
@@ -2006,6 +2016,7 @@ const upsertCodexLinkedEntity = async (
             tenantId: context.tenantId,
             ownerId: context.actorId,
             createdBy: context.actorId,
+            ...machineWrite(context),
             createdAt: FieldValue.serverTimestamp()
         });
         const snapshot = await created.get();
@@ -2059,6 +2070,7 @@ const upsertCodexLinkedEntity = async (
         tenantId: context.tenantId,
         ownerId: context.actorId,
         createdBy: context.actorId,
+        ...machineWrite(context),
         category: getStringArray(body.category).length > 0 ? getStringArray(body.category) : ['Codex'],
         createdAt: FieldValue.serverTimestamp()
     });
@@ -2097,6 +2109,7 @@ const writeCodexCheckpoint = async (
         commands,
         metadata: getRecord(body.metadata),
         createdBy: context.actorId,
+        ...machineWrite(context),
         actorLabel: context.actorLabel,
         createdAt: FieldValue.serverTimestamp()
     });
@@ -2199,6 +2212,7 @@ const createCodexFollowups = async (
             tenantId: context.tenantId,
             ownerId: context.actorId,
             createdBy: context.actorId,
+            ...machineWrite(context),
             title,
             description: getString(followUp.description),
             status: getString(followUp.status) || 'Open',
@@ -2249,6 +2263,7 @@ const createCodexFollowups = async (
             source: 'codex',
             filesTouched: getStringArray(followUp.filesTouched),
             createdBy: context.actorId,
+            ...machineWrite(context),
             actorLabel: context.actorLabel,
             updatedAt: FieldValue.serverTimestamp()
         });
@@ -2377,6 +2392,7 @@ const startCodexSession = async (req: any, res: any, projectId: string) => {
         validationStatus: getString(body.validationStatus),
         actorLabel: context.actorLabel,
         createdBy: context.actorId,
+        ...machineWrite(context),
         ownerId: context.actorId,
         metadata: getRecord(body.metadata),
         updatedAt: FieldValue.serverTimestamp()
@@ -2675,6 +2691,24 @@ const PROJECTFLOW_SUPPORTED_ENDPOINTS = [
 // ---------------------------------------------------------------------------
 
 /** Activity suffix naming the machine client: "via Claude", "via personal token CI", "via API token Codex". */
+/**
+ * Actor fields for docs written on behalf of a caller: `updatedBy` (contract C1) and, for machine
+ * clients, `writeVia` so the triggers attribute activity-stream events to "<user> via <client>"
+ * (brain/plans/activity-events-contract.md).
+ */
+const machineWrite = (context: ApiContext): Record<string, any> => ({
+    updatedBy: context.actorId,
+    ...(context.kind === 'firebase'
+        ? {}
+        : {
+            writeVia: {
+                kind: 'ai',
+                client: getString(context.tokenData?.clientName) || context.actorLabel || 'API',
+                at: FieldValue.serverTimestamp()
+            }
+        })
+});
+
 const viaLabel = (context: ApiContext) =>
     context.kind === 'oauth'
         ? `via ${context.actorLabel}`

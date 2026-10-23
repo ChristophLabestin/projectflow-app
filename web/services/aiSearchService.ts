@@ -1,7 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, AISearchAnswer } from "../types";
-import { getAllWorkspaceProjects, getAllWorkspaceTasks, incrementAIUsage, incrementImageUsage } from "./dataService";
+import { getAllWorkspaceProjects, getAllWorkspaceTasks, incrementImageUsage } from "./dataService";
 import { getAIUsage } from './domain/usersService';
 import { getAIResponseInstruction } from "../utils/aiLanguage";
 import { isProjectIncludedInImportantSignals } from "./healthService";
@@ -47,12 +47,6 @@ export const answerQuestionWithContext = async (
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    // Check token usage
-    const usage = await getAIUsage(user.uid);
-    if (usage && usage.tokensUsed >= usage.tokenLimit) {
-        throw new Error(`CORA token limit reached (${usage.tokensUsed.toLocaleString()} / ${usage.tokenLimit.toLocaleString()}). Limit resets monthly.`);
-    }
-
     try {
         // Fetch context data
         const [projects, tasks] = await Promise.all([
@@ -61,26 +55,20 @@ export const answerQuestionWithContext = async (
         ]);
 
         const contextStr = buildContextForAI(projects, tasks);
-        const { instruction, language } = getAIResponseInstruction();
+        const { language } = getAIResponseInstruction();
 
+        // Prompt, language instruction and quota live on the server; it also records token usage.
         const askCoraFn = httpsCallable<{
             question: string;
             contextStr: string;
-            instruction: string;
             language: string;
         }, any>(functions, 'askCora');
 
         const { data: result } = await askCoraFn({
             question,
             contextStr,
-            instruction,
             language
         });
-
-        // Track usage (increment based on backend report)
-        if (result.tokensUsed > 0) {
-            await incrementAIUsage(user.uid, result.tokensUsed);
-        }
 
         // Match project and task titles to IDs
         const relevantProjects = projects

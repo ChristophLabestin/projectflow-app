@@ -150,6 +150,30 @@ const run = async () => {
         assert.equal((await taskRef.get()).updateTime.toMillis(), first, 'task doc kept changing');
     });
 
+    // ---- 3b. Workspace activity stream (tenants/{t}/activity) ---------------------------------------------
+    const stream = (filter) => docs(`tenants/${T}/activity`, filter);
+    await check('stream: typed events for create / assign / complete with actor, object and expiry', async () => {
+        const [created] = await waitForMany('task.created event', () => stream((e) => e.type === 'task.created' && e.object.id === 't1'));
+        assert.equal(created.domain, 'task');
+        assert.equal(created.projectId, P);
+        assert.equal(created.actorId, OWNER);
+        assert.deepEqual(created.actor, { kind: 'user', id: OWNER, name: 'Olivia Owner' });
+        assert.equal(created.object.title, 'First task');
+        assert.ok(created.expireAt.toMillis() > Date.now() + 300 * 86400000);
+        const [assigned] = await waitForMany('task.assigned event', () => stream((e) => e.type === 'task.assigned' && e.object.id === 't1'));
+        assert.deepEqual(assigned.meta.assigneeIds, [ANNA]);
+        const [done] = await waitForMany('task.completed event', () => stream((e) => e.type === 'task.completed' && e.object.id === 't1'));
+        assert.equal(done.actorId, ANNA);
+        assert.equal((await stream((e) => e.type === 'task.completed')).length, 1);
+    });
+    await taskRef.update({ priority: 'Low', writeVia: { kind: 'ai', client: 'Claude', at: now() }, ...clientWrite(OWNER) });
+    await check('stream: writeVia attributes the change to the AI client', async () => {
+        const [event] = await waitForMany('ai priority event', () => stream((e) => e.type === 'task.priority_changed' && e.changes.priority.to === 'Low'));
+        assert.equal(event.actor.kind, 'ai');
+        assert.equal(event.actor.client, 'Claude');
+        assert.deepEqual(event.changes.priority, { from: 'Medium', to: 'Low' });
+    });
+
     // ---- 4. Reopen -------------------------------------------------------------------------------------
     await taskRef.update({ isCompleted: false, ...clientWrite(OWNER) });
     await check('reopen: status back to Open, completion fields removed, "Reopened" activity, progress 0', async () => {

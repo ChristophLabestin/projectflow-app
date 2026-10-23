@@ -12,6 +12,12 @@ import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
 import { initialOf } from '../utils/initials';
+import { resolveActiveTenantId } from '../services/domain/authService';
+import { subscribeParentFiles, uploadFiles, type FileItem } from '../services/filesService';
+import { FileRow } from './files/FileRow';
+import { useFileDrop, useThumbnailUrls } from './files/fileHooks';
+import { useFileActions } from './files/useFileActions';
+import { useUploadFeedback } from './files/FileAttachments';
 
 // Simple time formatter if date-fns is not available or to reduce deps
 const timeAgo = (date: any, t: (key: string) => string) => {
@@ -68,6 +74,22 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     const user = auth.currentUser;
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Attachments: pending files go up after the comment exists (parent = the comment).
+    const resolvedTenantId = resolveActiveTenantId(tenantId) || '';
+    const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+    const [sending, setSending] = useState(false);
+    const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
+    const reportFailures = useUploadFeedback();
+    useEffect(() => {
+        if (!resolvedTenantId) return undefined;
+        return subscribeParentFiles({ tenantId: resolvedTenantId, projectId, rootId: targetId }, (files) => (
+            setCommentFiles(files.filter((file) => file.parent.type === 'comment' && file.status === 'ready'))
+        ));
+    }, [resolvedTenantId, projectId, targetId]);
+    const commentThumbs = useThumbnailUrls(resolvedTenantId, commentFiles);
+    const fileActions = useFileActions({ tenantId: resolvedTenantId, files: commentFiles });
+    const composerDrop = useFileDrop((files) => setPendingFiles((prev) => [...prev, ...files]), sending);
 
     // Mention State
     const [mentionTargets, setMentionTargets] = useState<MentionTarget[]>([]);
@@ -170,14 +192,27 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
     }, [projectId, targetId, tenantId, onCountChange]);
 
     const handleAddComment = async () => {
-        if (!newComment.trim()) return;
+        if (!newComment.trim() && !pendingFiles.length) return;
         const content = newComment.trim();
+        const files = pendingFiles;
+        setSending(true);
         try {
             // Mention (`@Name`) and comment notifications are created server-side by onCommentCreated.
-            await addComment(projectId, targetId, targetType, content, tenantId);
+            const commentId = await addComment(projectId, targetId, targetType, content, tenantId);
             setNewComment('');
+            setPendingFiles([]);
+            if (files.length && resolvedTenantId) {
+                const failures = await uploadFiles({
+                    tenantId: resolvedTenantId,
+                    parent: { type: 'comment', id: commentId, projectId, rootType: targetType, rootId: targetId, title: targetTitle },
+                    files,
+                });
+                reportFailures(failures);
+            }
         } catch (e) {
             console.error('Failed to add comment', e);
+        } finally {
+            setSending(false);
         }
     };
 
@@ -338,6 +373,20 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         });
                                     })()}
                                 </div>
+                                {commentFiles.some((file) => file.parent.id === comment.id) && (
+                                    <div className="comment-files">
+                                        {commentFiles.filter((file) => file.parent.id === comment.id).map((file) => (
+                                            <FileRow
+                                                key={file.id}
+                                                file={file}
+                                                thumbUrl={commentThumbs[file.id]}
+                                                options={fileActions.optionsFor(file)}
+                                                onAction={(value) => void fileActions.handleAction(file, value)}
+                                                onOpen={() => void fileActions.handleAction(file, 'preview')}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
@@ -380,7 +429,12 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     </div>
                 )}
 
-                <div className="flex flex-col gap-2 p-1.5 border border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)] transition-colors focus-within:border-[var(--color-surface-border-hover)] focus-within:bg-[var(--color-surface-card)]">
+                <div
+                    className="comment-composer flex flex-col gap-2 p-1.5 border border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)] transition-colors focus-within:border-[var(--color-surface-border-hover)] focus-within:bg-[var(--color-surface-card)]"
+                    data-dragging={composerDrop.isDragging ? 'true' : 'false'}
+                    {...composerDrop.dropProps}
+                    onPaste={composerDrop.onPaste}
+                >
                     <textarea
                         ref={textareaRef}
                         value={newComment}
@@ -390,16 +444,32 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                         rows={1}
                         onKeyDown={handleKeyDown}
                     />
+                    {pendingFiles.length > 0 && (
+                        <div className="comment-composer__pending">
+                            {pendingFiles.map((file, index) => (
+                                <span key={`${file.name}-${index}`} className="comment-composer__chip motion-pop-in">
+                                    <span className="material-symbols-outlined" aria-hidden="true">draft</span>
+                                    <span className="comment-composer__chip-name">{file.name}</span>
+                                    <button type="button" onClick={() => setPendingFiles((prev) => prev.filter((_, i) => i !== index))} aria-label={t('files.comment.remove').replace('{name}', file.name)}>
+                                        <span className="material-symbols-outlined" aria-hidden="true">close</span>
+                                    </button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
                     <div className="flex justify-between items-center px-2 pb-1">
                         <div className="flex items-center gap-1">
-                            {/* Potential formatting tools can go here in the future */}
+                            <button type="button" className="comment-composer__attach" onClick={composerDrop.openPicker} aria-label={t('files.comment.attach')} title={t('files.comment.attach')}>
+                                <span className="material-symbols-outlined" aria-hidden="true">attach_file</span>
+                            </button>
+                            {composerDrop.input}
                         </div>
                         <button
                             onClick={handleAddComment}
-                            disabled={!newComment.trim()}
+                            disabled={sending || (!newComment.trim() && !pendingFiles.length)}
                             className={`
                                 h-8 px-4 rounded-md flex items-center justify-center transition-all text-sm font-bold
-                                ${newComment.trim()
+                                ${(newComment.trim() || pendingFiles.length) && !sending
                                     ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 shadow-sm'
                                     : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
                             `}
@@ -410,6 +480,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 </div>
             </div>
 
+            {fileActions.modals}
             {commentToDelete && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">

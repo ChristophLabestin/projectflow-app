@@ -1,7 +1,7 @@
 // Pure matching logic for the global search (⌘K). No network, no AI — the
 // component loads the workspace index once and runs every keystroke here.
 
-export type SearchScope = 'all' | 'projects' | 'tasks' | 'initiatives' | 'commands' | 'help';
+export type SearchScope = 'all' | 'projects' | 'tasks' | 'initiatives' | 'docs' | 'commands' | 'help';
 
 export type TaskFilter = 'open' | 'done' | 'overdue' | 'today' | 'mine';
 export type PriorityFilter = 'urgent' | 'high' | 'medium' | 'low';
