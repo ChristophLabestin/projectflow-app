@@ -1,6 +1,6 @@
 import { site, type SiteCopy } from '../content/site';
 import { icon, logo } from './icons';
-import { APP_URL, SITE_URL, urlFor, type Lang, type PageDef } from './pages';
+import { APP_URL, SITE_URL, legalUrl, urlFor, type Lang, type PageDef } from './pages';
 
 export const esc = (value: string): string =>
     value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -113,7 +113,7 @@ const footer = (page: PageDef, t: SiteCopy): string => {
         </div>
         ${col(t.footer.product, [[`${base}/#journey`, f.journey], [`${base}/#board`, f.board], [`${base}/#workbench`, f.workbench], [`${base}/#security`, f.security]])}
         ${col(t.footer.platforms, [[links.app, f.web], [links.download, f.desktop], [`${base}/#platforms`, f.ios]])}
-        ${col(t.footer.legal, [[urlFor('imprint', page.lang), f.imprint], [urlFor('privacy', page.lang), f.privacy], [urlFor('terms', page.lang), f.terms]])}
+        ${col(t.footer.legal, [[legalUrl('imprint', page.lang), f.imprint], [legalUrl('privacy', page.lang), f.privacy], [legalUrl('terms', page.lang), f.terms]])}
     </div>
     <div class="container site-footer__bottom">
         <p>© ${new Date().getFullYear()} ProjectFlow. ${esc(t.footer.rights)} ${esc(t.footer.madeIn)}</p>
