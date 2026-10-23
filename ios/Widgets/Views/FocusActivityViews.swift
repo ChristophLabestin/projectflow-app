@@ -36,7 +36,7 @@ struct FocusActivityClock: View {
             } else {
                 Text(state.startDate, style: .timer)
                     .font(WidgetFont.display(size).monospacedDigit())
-                    .foregroundStyle(PFColor.textMain)
+                    .timerForeground(PFColor.textMain)
             }
         }
         .lineLimit(1)
@@ -97,7 +97,7 @@ struct FocusIslandCompactTrailing: View {
             } else {
                 Text(state.startDate, style: .timer)
                     .font(.system(size: 13, weight: .semibold).monospacedDigit())
-                    .foregroundStyle(PFColor.textMain)
+                    .timerForeground(PFColor.textMain)
                     .multilineTextAlignment(.trailing)
                     .frame(maxWidth: 52, alignment: .trailing)
             }
