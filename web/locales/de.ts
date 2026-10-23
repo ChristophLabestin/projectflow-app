@@ -2986,6 +2986,8 @@ const de = {
     'workspaceSettings.tabs.ai': 'KI & Integrationen',
     'workspaceSettings.tabs.billing': "Abrechnung",
     'billing.title': "Plan & Abrechnung",
+    'billing.errors.plan-storage-limit': "Der Speicher deines Workspaces ist voll. Vorhandene Dateien bleiben erhalten; gib Platz frei oder upgrade, um mehr hochzuladen.",
+    'billing.errors.plan-file-too-large': "Diese Datei ist größer, als dein Plan erlaubt (50 MB; Team 250 MB).",
     'billing.hint.viewPlans': "Pläne & Upgrade",
     'billing.hint.askOwner': "Nur der Workspace-Owner kann den Plan ändern – frag dort nach einem Upgrade.",
     'billing.limit.projects.title': "Projektlimit erreicht",
