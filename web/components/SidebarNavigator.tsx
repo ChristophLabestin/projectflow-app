@@ -204,25 +204,20 @@ const ThemeToggle: React.FC = () => {
     const { theme, setTheme } = useTheme();
     const { t } = useLanguage();
     return (
-        <div className="snav-theme" role="group" aria-label={t('theme.light')}>
-            <button
-                type="button"
-                onClick={() => setTheme('light')}
-                className={theme === 'light' ? 'is-active' : ''}
-                aria-pressed={theme === 'light'}
-            >
-                <span className="material-symbols-outlined">light_mode</span>
-                <span>{t('theme.light')}</span>
-            </button>
-            <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                className={theme === 'dark' ? 'is-active' : ''}
-                aria-pressed={theme === 'dark'}
-            >
-                <span className="material-symbols-outlined">dark_mode</span>
-                <span>{t('theme.dark')}</span>
-            </button>
+        <div className="snav-theme" role="group" aria-label={t('theme.label')}>
+            {(['light', 'dark'] as const).map((mode) => (
+                <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setTheme(mode)}
+                    className={theme === mode ? 'is-active' : ''}
+                    aria-pressed={theme === mode}
+                    aria-label={t(`theme.${mode}`)}
+                    title={t(`theme.${mode}`)}
+                >
+                    <span className="material-symbols-outlined" aria-hidden="true">{mode === 'light' ? 'light_mode' : 'dark_mode'}</span>
+                </button>
+            ))}
         </div>
     );
 };
@@ -766,23 +761,26 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                         />
                     </div>
 
-                    {/* Footer — theme, notifications */}
+                    {/* Footer — collapse, theme, notifications */}
                     <div className="snav-footer">
                         <div className="snav-footer__row">
-                            <ThemeToggle />
-                            <div className="snav-footer__actions">
+                            {/* Left: collapse + theme switch; right: notifications. */}
+                            <div className="snav-footer__start">
                                 {!isDrawer && onToggleCollapsed && (
                                     <button
                                         type="button"
-                                        className="snav-icon-btn"
+                                        className="snav-icon-btn snav-icon-btn--sm"
                                         onClick={(e) => { e.currentTarget.blur(); handleToggleCollapsed(); }}
                                         title={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-label={effectiveCollapsed ? t('sidebar.expand') : t('sidebar.collapse')}
                                         aria-pressed={effectiveCollapsed}
                                     >
-                                        <span className="material-symbols-outlined">{effectiveCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
+                                        <span className="material-symbols-outlined" aria-hidden="true">{effectiveCollapsed ? 'left_panel_open' : 'left_panel_close'}</span>
                                     </button>
                                 )}
+                                <ThemeToggle />
+                            </div>
+                            <div className="snav-footer__actions">
                                 <NotificationDropdown position="sidebar" />
                             </div>
                         </div>

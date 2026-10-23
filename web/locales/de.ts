@@ -258,6 +258,7 @@ const de = {
 
 
 
+    'theme.label': 'Darstellung',
     'theme.light': 'Hell',
     'theme.dark': 'Dunkel',
 

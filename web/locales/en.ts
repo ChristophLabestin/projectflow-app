@@ -258,6 +258,7 @@ const en = {
 
 
 
+    'theme.label': 'Appearance',
     'theme.light': 'Light',
     'theme.dark': 'Dark',
 
