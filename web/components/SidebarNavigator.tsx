@@ -22,6 +22,7 @@ import { InitiativeCreateModal } from './InitiativeCreateModal';
 import { useOnboarding } from '../hooks/useOnboarding';
 import { translateProjectStatus } from '../utils/projectStatus';
 import { initialOf } from '../utils/initials';
+import { isWorkspaceAreaEnabled } from '../config/features';
 
 const SettingsModal = React.lazy(() => import('./SettingsModal').then((module) => ({ default: module.SettingsModal })));
 
@@ -485,7 +486,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
     const secondaryAnchors: NavRowDef[] = [
         { key: 'projects', to: '/projects', icon: 'layers', label: t('nav.projects') },
         ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'team', to: '/team', icon: 'group', label: t('nav.team') }] : []),
-        ...(activeWorkspace?.role !== 'Guest' ? [{ key: 'media', to: '/media', icon: 'perm_media', label: t('nav.media') }] : []),
+        ...(isWorkspaceAreaEnabled('documents') ? [{ key: 'documents', to: '/files', icon: 'folder_open', label: t('nav.documents') }] : []),
         ...(activeWorkspace?.role === 'Owner' || activeWorkspace?.role === 'Admin'
             ? [{ key: 'workspaceSettings', to: '', icon: 'settings', label: t('workspaceSettings.title'), onSelect: () => { closeOnNavigate?.(); setWorkspaceSettingsOpen(true); } }]
             : []),
@@ -530,6 +531,7 @@ export const SidebarNavigator: React.FC<SidebarNavigatorProps> = ({ isDrawer = f
                 { id: 'invoices', path: '/invoices', icon: 'request_quote', label: t('nav.invoices') }
             ] : []),
             { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
+            { id: 'files', path: '/files', icon: 'folder_open', label: t('nav.files') },
         ];
 
         const defaultOrder = pmCore ? [...PM_CORE_PROJECT_NAV_ORDER] : defs.map(d => d.id);

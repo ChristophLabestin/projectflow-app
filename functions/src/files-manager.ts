@@ -5,6 +5,7 @@ import * as functions from 'firebase-functions/v1';
 import { FieldValue } from 'firebase-admin/firestore';
 
 import { db } from './init';
+import { emitFileEvent } from './files-events';
 import {
     REGION,
     STORAGE_SIGNED_URL_TTL_MS,
@@ -149,6 +150,10 @@ export const updateTenantFile = functions.region(REGION).https.onCall(async (dat
     }
 
     await ref.update(update);
+    if (update.parent) {
+        const moved = { ...record, ...(update as Partial<TenantFileRecord>) };
+        await emitFileEvent({ tenantId, type: 'file.moved', fileId: ref.id, record: moved, context, key: `file-${ref.id}-moved-${Date.now()}`, meta: { fromProjectId: record.projectId || null } });
+    }
     return { ok: true };
 });
 
@@ -158,6 +163,7 @@ export const trashTenantFile = functions.region(REGION).https.onCall(async (data
     const { ref, record } = await loadManagedFile(tenantId, normalizeString(data?.fileId));
     await requireManage(tenantId, uid, record);
     await ref.update({ status: 'trashed', trashedAt: FieldValue.serverTimestamp(), trashedBy: uid, updatedAt: FieldValue.serverTimestamp() });
+    await emitFileEvent({ tenantId, type: 'file.trashed', fileId: ref.id, record, context, key: `file-${ref.id}-trashed-${Date.now()}` });
     return { ok: true };
 });
 
@@ -167,6 +173,7 @@ export const restoreTenantFile = functions.region(REGION).https.onCall(async (da
     const { ref, record } = await loadManagedFile(tenantId, normalizeString(data?.fileId));
     await requireManage(tenantId, uid, record);
     await ref.update({ status: 'ready', trashedAt: null, trashedBy: null, updatedAt: FieldValue.serverTimestamp() });
+    await emitFileEvent({ tenantId, type: 'file.restored', fileId: ref.id, record, context, key: `file-${ref.id}-restored-${Date.now()}` });
     return { ok: true };
 });
 
@@ -185,6 +192,7 @@ export const purgeTenantFile = functions.region(REGION).https.onCall(async (data
     const secret = await getSecretConfig(tenantId);
     await deleteFileObjects(tenantId, secret, record);
     await ref.delete();
+    await emitFileEvent({ tenantId, type: 'file.deleted', fileId: ref.id, record, context, key: `file-${ref.id}-deleted` });
     return { ok: true };
 });
 

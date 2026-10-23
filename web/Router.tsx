@@ -17,7 +17,6 @@ import { Team } from './screens/Team';
 import { AcceptInvite } from './screens/AcceptInvite';
 import { Profile } from './screens/Profile';
 import { Notifications } from './screens/Notifications';
-import { MediaLibraryPage } from './screens/MediaLibraryPage';
 import { PersonalTasksPage } from './screens/PersonalTasksPage';
 import { NotFound } from './screens/NotFound';
 import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
@@ -73,6 +72,7 @@ const ProjectInitiativeDetail = React.lazy(() => import('./screens/ProjectInitia
 const PublicInitiativeFeedbackPage = React.lazy(() => import('./screens/PublicInitiativeFeedbackPage').then((module) => ({ default: module.PublicInitiativeFeedbackPage })));
 const ProjectInvoices = React.lazy(() => import('./screens/ProjectInvoices').then((module) => ({ default: module.ProjectInvoices })));
 const ProjectEffort = React.lazy(() => import('./screens/ProjectEffort').then((module) => ({ default: module.ProjectEffort })));
+const FilesPage = React.lazy(() => import('./screens/FilesPage').then((module) => ({ default: module.FilesPage })));
 const ProjectActivity = React.lazy(() => import('./screens/ProjectActivity').then((module) => ({ default: module.ProjectActivity })));
 const ProjectMilestones = React.lazy(() => import('./screens/ProjectMilestones').then((module) => ({ default: module.ProjectMilestones })));
 const OnboardingInsights = React.lazy(() => import('./screens/OnboardingInsights').then((module) => ({ default: module.OnboardingInsights })));
@@ -273,7 +273,9 @@ export const AppRouter = () => {
                         <Route path="/create" element={<CreateProjectModalRoute />} />
                         <Route path="/team" element={<Team />} />
                         <Route path="/workspace" element={<Navigate to="/" replace />} />
-                        <Route path="/media" element={<MediaLibraryPage />} />
+                        <Route path="/files" element={withRouteSuspense(<FilesPage />)} />
+                        {/* The media library is part of the file manager now. */}
+                        <Route path="/media" element={<Navigate to="/files?type=image" replace />} />
                         <Route path="/profile" element={<Profile />} />
 
                         <Route path="/personal-tasks" element={<PersonalTasksPage />} />
@@ -295,6 +297,7 @@ export const AppRouter = () => {
                             <Route path="effort" element={withRouteSuspense(<ProjectEffort />)} />
                             <Route path="details" element={withRouteSuspense(<ProjectDetails />)} />
                             <Route path="activity" element={withRouteSuspense(<ProjectActivity />)} />
+                            <Route path="files" element={withRouteSuspense(<FilesPage />)} />
                             {/* The Codex view was removed; keep old links working. */}
                             <Route path="codex" element={<Navigate to=".." relative="path" replace />} />
                             <Route path="milestones" element={withRouteSuspense(<ProjectMilestones />)} />

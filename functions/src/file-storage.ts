@@ -13,6 +13,7 @@ import {
 import { getSignedUrl as getS3SignedUrl } from '@aws-sdk/s3-request-presigner';
 
 import { db } from './init';
+import { emitFileEvent } from './files-events';
 import {
     FileAccessContext,
     FileParent,
@@ -1420,6 +1421,7 @@ const finalizeManagedUpload = async (args: {
             });
         });
         const persisted = (await fileRef.get()).data() as TenantFileRecord;
+        await emitFileEvent({ tenantId, type: 'file.version_added', fileId: fileRef.id, record: persisted, context: args.context, key: `file-${fileRef.id}-v${persisted.version || 2}`, meta: { version: persisted.version } });
         return { id: fileRef.id, ...persisted };
     }
 
@@ -1456,6 +1458,7 @@ const finalizeManagedUpload = async (args: {
     };
     await fileRef.set({ ...record, createdAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp() });
     const persisted = (await fileRef.get()).data() as TenantFileRecord;
+    await emitFileEvent({ tenantId, type: 'file.uploaded', fileId: fileRef.id, record: persisted, context: args.context, key: `file-${fileRef.id}-uploaded` });
     return { id: fileRef.id, ...persisted };
 };
 

@@ -12,7 +12,7 @@ export const isCoraStudioEnabled = () => import.meta.env.VITE_CORA_STUDIO_ENABLE
  * Each owning session flips its flag to `true` once its route exists (activity-insights concept).
  */
 export const WORKSPACE_AREAS = {
-    documents: false,
+    documents: true,
     wiki: false,
     flows: false,
 } as const;

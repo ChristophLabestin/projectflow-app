@@ -10,6 +10,8 @@ import { subscribeTenantUsers } from '../services/domain/workspaceMembersService
 import { deleteField } from 'firebase/firestore';
 import { SubTask, Task, Project, Activity, Milestone, TaskCategory, ProjectReminder } from '../types';
 import { CommentSection } from '../components/CommentSection';
+import { FileAttachments } from '../components/files/FileAttachments';
+import { useWorkspace } from '../context/WorkspaceContext';
 import { Button } from '../components/common/Button/Button';
 import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
@@ -92,6 +94,7 @@ type TenantUser = Parameters<Parameters<typeof subscribeTenantUsers>[0]>[0][numb
 
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
+    const { activeWorkspace } = useWorkspace();
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
@@ -845,6 +848,17 @@ export const ProjectTaskDetail = () => {
                             ))}
                         </div>
                     </section>
+
+                    {activeTenantId && id && taskId && (
+                        <section className="task-detail__section">
+                            <FileAttachments
+                                tenantId={activeTenantId}
+                                parent={{ type: 'task', id: taskId, projectId: id, title: task.title }}
+                                role={activeWorkspace?.role}
+                                projects={project ? [{ id: project.id, title: project.title, ownerId: project.ownerId }] : []}
+                            />
+                        </section>
+                    )}
 
                     <section className="task-detail__section">
                         <div className="task-detail__section-header">
