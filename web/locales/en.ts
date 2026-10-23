@@ -2965,6 +2965,7 @@ const en = {
     'desktop.titlebar.menu': 'Menu',
     'desktop.titlebar.back': 'Back',
     'desktop.titlebar.forward': 'Forward',
+    'desktop.titlebar.reload': 'Reload',
     'desktop.titlebar.popOutQuickAccess': 'Pop out Quick Access',
     'desktop.titlebar.closeQuickAccessWindow': 'Close Quick Access window',
     'pinnedTasks.window.popOut': 'Pop out as window',

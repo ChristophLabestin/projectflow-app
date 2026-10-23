@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
+import { AppleLogo } from '../ui/AppleLogo';
 import { DESKTOP_DOWNLOAD_PATH, useDesktopDownload } from '../../services/desktopDownloads';
 
 const DISMISS_KEY = 'pf_desktop_promo_until';
@@ -36,19 +37,19 @@ export const DesktopAppPromo = ({ onNavigate }: { onNavigate?: () => void }) => 
         setVisible(false);
     };
 
+    const mark = (className: string) => offer.os === 'mac'
+        ? <AppleLogo className={className} />
+        : <span className={`material-symbols-outlined ${className}`} aria-hidden="true">desktop_windows</span>;
+
     return (
         <aside className="desktop-promo" aria-label={t('desktop.promo.label')}>
+            {mark('desktop-promo__watermark')}
             <button type="button" className="desktop-promo__close" onClick={snooze} aria-label={t('desktop.promo.later')} title={t('desktop.promo.later')}>
                 <span className="material-symbols-outlined" aria-hidden="true">close</span>
             </button>
             <div className="desktop-promo__head">
-                <span className="material-symbols-outlined desktop-promo__icon" aria-hidden="true">
-                    {offer.os === 'mac' ? 'laptop_mac' : 'laptop_windows'}
-                </span>
-                <span className="desktop-promo__heading">
-                    <span className="desktop-promo__eyebrow">{t('desktop.promo.label')}</span>
-                    <span className="desktop-promo__title">{t('desktop.banner.title').replace('{platform}', platform)}</span>
-                </span>
+                <span className="desktop-promo__icon">{mark('desktop-promo__mark')}</span>
+                <p className="desktop-promo__title">{t('desktop.banner.title').replace('{platform}', platform)}</p>
             </div>
             <p className="desktop-promo__body">{t('desktop.banner.body')}</p>
             <div className="desktop-promo__actions">

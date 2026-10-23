@@ -115,6 +115,15 @@ export const DesktopTitleBar: React.FC<DesktopTitleBarProps> = ({ mode }) => {
                         >
                             <span className="material-symbols-outlined">arrow_forward</span>
                         </button>
+                        <button
+                            type="button"
+                            className="desktop-titlebar__button"
+                            onClick={() => window.location.reload()}
+                            title={t('desktop.titlebar.reload')}
+                            aria-label={t('desktop.titlebar.reload')}
+                        >
+                            <span className="material-symbols-outlined">refresh</span>
+                        </button>
                     </>
                 )}
             </div>
