@@ -14,7 +14,6 @@ import sprints from './articles/sprints-en';
 import calendar from './articles/calendar-en';
 import team from './articles/team-en';
 import notifications from './articles/notifications-en';
-import cora from './articles/cora-en';
 import media from './articles/media-en';
 import marketing from './articles/marketing-en';
 import finance from './articles/finance-en';
@@ -27,7 +26,7 @@ const content: HelpContent = {
         work: 'Work',
         planning: 'Planning',
         collaboration: 'Collaboration',
-        cora: 'CORA & content',
+        ai: 'AI & content',
         workspace: 'Workspace & apps',
     },
     articles: [
@@ -42,7 +41,6 @@ const content: HelpContent = {
         calendar,
         team,
         notifications,
-        cora,
         media,
         marketing,
         finance,

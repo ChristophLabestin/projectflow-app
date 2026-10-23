@@ -250,7 +250,7 @@ export const BlogEditor = () => {
         // Update both local state and editor
         setContent(data.content);
         editorRef.current?.commands.setContent(data.content);
-        showSuccess(t('marketing.blogEditor.coraDrafted'));
+        showSuccess(t('marketing.blogEditor.aiDrafted'));
     };
 
     const confirm = useConfirm();
@@ -438,7 +438,7 @@ export const BlogEditor = () => {
                             className="px-4 py-2 rounded-lg text-sm font-medium text-primary bg-primary/10 hover:bg-primary/15 transition-colors flex items-center gap-2"
                         >
                             <Sparkles size={16} />
-                            <span>{t('marketing.blogEditor.askCora')}</span>
+                            <span>{t('marketing.blogEditor.askAi')}</span>
                         </button>
 
                         <button

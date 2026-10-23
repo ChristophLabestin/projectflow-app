@@ -2,7 +2,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const {
-    AI_CAPABILITIES, buildCapabilityRequest, CapabilityInputError, buildAskCoraPrompt, ASK_CORA_LIMITS,
+    AI_CAPABILITIES, buildCapabilityRequest, CapabilityInputError,
     normalizeImageInput, normalizeImagePrompt
 } = require('../../lib/ai-capabilities');
 
@@ -32,30 +32,24 @@ test('text fields are clipped so a capability cannot carry a large free prompt',
     const huge = 'a'.repeat(50000);
     const spec = buildCapabilityRequest('taskDescription', { title: huge, context: huge }, 'en');
     assert.ok(spec.input.length < 3000, `input length ${spec.input.length}`);
-    const chat = buildCapabilityRequest('studioChat', { messages: Array.from({ length: 40 }, () => ({ role: 'user', content: huge })) }, 'en');
-    assert.ok(chat.input.length < 12 * 4000 + 2000);
 });
 
 test('required fields are enforced', () => {
     assert.throws(() => buildCapabilityRequest('taskDescription', {}, 'en'), CapabilityInputError);
-    assert.throws(() => buildCapabilityRequest('studioChat', { messages: [] }, 'en'), CapabilityInputError);
     assert.throws(() => buildCapabilityRequest('blogTranslate', { content: 'x' }, 'en'), CapabilityInputError);
 });
 
 test('web search only for capabilities that allow it, and only when asked', () => {
     assert.equal(buildCapabilityRequest('blogPost', { topic: 't' }, 'en').webSearch, false);
     assert.equal(buildCapabilityRequest('blogPost', { topic: 't', useSearch: true }, 'en').webSearch, true);
-    assert.equal(buildCapabilityRequest('studioChat', { messages: [{ role: 'user', content: 'hi' }], useSearch: true }, 'en').webSearch, true);
     assert.equal(buildCapabilityRequest('projectReport', { project: { title: 'P' }, useSearch: true }, 'en').webSearch, false);
 });
 
 test('every capability builds with minimal input and a language instruction', () => {
     const minimal = {
-        studioChat: { messages: [{ role: 'user', content: 'hi' }], mode: 'Architect' },
         taskDescription: { title: 'T' },
         taskDraft: { taskTitle: 'T', projectTitle: 'P', notes: 'n' },
         projectReport: { project: { title: 'P' } },
-        projectBlueprint: { idea: 'App' },
         blogPost: { topic: 'T' },
         blogTopics: { project: { title: 'P' } },
         blogTranslate: { content: '<p>Hallo</p>', targetLanguage: 'English' },
@@ -70,14 +64,6 @@ test('every capability builds with minimal input and a language instruction', ()
         if (!['blogPost', 'blogTranslate'].includes(name)) assert.match(spec.input, /Respond in German/, name);
         if (spec.schema) assert.equal(spec.schema.type, 'object', `${name} schema root must be an object`);
     }
-});
-
-test('askCora prompt has no free instruction slot and clips context', () => {
-    const prompt = buildAskCoraPrompt('What is late?', 'x'.repeat(ASK_CORA_LIMITS.context + 5000), 'en');
-    assert.ok(prompt.length < ASK_CORA_LIMITS.context + 2000);
-    assert.match(prompt, /Respond in English/);
-    assert.match(buildAskCoraPrompt('q', 'c', 'de', new Date('2026-10-23T12:00:00Z')), /Today is 2026-10-23\./);
-    assert.throws(() => buildAskCoraPrompt('', 'ctx', 'en'), CapabilityInputError);
 });
 
 test('image inputs: prompt required, type allow-list, size cap', () => {

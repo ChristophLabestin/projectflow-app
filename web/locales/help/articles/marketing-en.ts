@@ -2,10 +2,10 @@ import type { HelpArticle } from '../../../components/help/helpTypes';
 
 const article: HelpArticle = {
     id: 'marketing',
-    category: 'cora',
+    category: 'ai',
     icon: 'edit_note',
     title: 'Marketing: project blog',
-    summary: 'Connect your website blog to a project, write posts with CORA and publish them.',
+    summary: 'Connect your website blog to a project, write posts with the AI and publish them.',
     keywords: ['blog', 'posts', 'publish', 'cms', 'content', 'api', 'article', 'draft', 'translation', 'marketing module'],
     sections: [
         {
@@ -56,11 +56,11 @@ const article: HelpArticle = {
             ],
         },
         {
-            id: 'cora-and-languages',
-            title: 'Can CORA help with posts and translations?',
-            keywords: ['ai', 'cora', 'generate', 'topics', 'translate', 'language', 'web search'],
+            id: 'ai-and-languages',
+            title: 'Can the AI help with posts and translations?',
+            keywords: ['ai', 'generate', 'topics', 'translate', 'language', 'web search'],
             blocks: [
-                { type: 'text', text: 'Yes. **Ask CORA** in the editor opens the **CORA Blog Assistant**. Describe what the post should be about, or click **Suggest Topics** for ideas, then **Generate Full Post** to get a draft. You can turn **Web Search** on to let CORA use sources.' },
+                { type: 'text', text: 'Yes. **✦ Ask AI** in the editor opens the **AI Blog Assistant**. Describe what the post should be about, or click **Suggest Topics** for ideas, then **Generate Full Post** to get a draft. You can turn **Web Search** on to let the AI use sources.' },
                 { type: 'text', text: 'If your blog connection supports several languages, switch the post language with **Select Language**. ProjectFlow asks whether to translate the content with AI first.' },
                 { type: 'callout', tone: 'note', text: 'AI drafts are a starting point. Read and edit them before you publish.' },
             ],

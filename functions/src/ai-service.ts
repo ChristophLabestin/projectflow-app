@@ -3,7 +3,7 @@ import OpenAI, { toFile } from 'openai';
 import { db } from './init';
 import { FieldValue } from 'firebase-admin/firestore';
 import {
-    buildAskCoraPrompt, buildCapabilityRequest, CapabilityInputError, normalizeImageInput, normalizeImagePrompt
+    buildCapabilityRequest, CapabilityInputError, normalizeImageInput, normalizeImagePrompt
 } from './ai-capabilities';
 
 // GPT-6 Luna: OpenAI's efficient model for focused, high-volume tasks. Low reasoning keeps inline AI fast.
@@ -74,8 +74,6 @@ const invalidInput = (error: unknown): never => {
     throw error;
 };
 
-type Confidence = 'Low' | 'Medium' | 'High';
-
 // Helper to track token usage securely on server
 export const trackUsage = async (uid: string, tokens: number) => {
     if (tokens <= 0) return;
@@ -138,43 +136,6 @@ const extractTokensUsed = (response: any): number => {
     return input + output;
 };
 
-const parseJsonText = (text: string): Record<string, any> => {
-    const trimmed = text.trim();
-    if (!trimmed) {
-        return {};
-    }
-
-    try {
-        const parsed = JSON.parse(trimmed);
-        return typeof parsed === 'object' && parsed !== null ? parsed : {};
-    } catch {
-        // Continue to fallback extraction.
-    }
-
-    const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
-    if (fenced?.[1]) {
-        try {
-            const parsed = JSON.parse(fenced[1].trim());
-            return typeof parsed === 'object' && parsed !== null ? parsed : {};
-        } catch {
-            // Continue to fallback extraction.
-        }
-    }
-
-    const objectStart = trimmed.indexOf('{');
-    const objectEnd = trimmed.lastIndexOf('}');
-    if (objectStart !== -1 && objectEnd > objectStart) {
-        try {
-            const parsed = JSON.parse(trimmed.slice(objectStart, objectEnd + 1));
-            return typeof parsed === 'object' && parsed !== null ? parsed : {};
-        } catch {
-            // Fall through.
-        }
-    }
-
-    return {};
-};
-
 const urlToDataUrl = async (url: string) => {
     const response = await fetch(url);
     if (!response.ok) {
@@ -212,7 +173,7 @@ const mimeTypeToExtension = (mimeType: string) => {
     }
 };
 
-// --- Ask Cora ---
+// --- Server text ---
 
 /**
  * Plain text generation for server features (e.g. the insights weekly report). Consumes the
@@ -225,80 +186,6 @@ export const generateServerText = async (uid: string, instructions: string, inpu
     await trackUsage(uid, extractTokensUsed(response));
     return extractTextFromResponse(response).trim();
 };
-
-export const askCora = functions.region('europe-west3').runWith({ secrets: ['OPENAI_API_KEY'] }).https.onCall(async (data, context) => {
-    if (!context.auth) {
-        throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
-    }
-    let finalPrompt = '';
-    try {
-        finalPrompt = buildAskCoraPrompt(data?.question, data?.contextStr, data?.language);
-    } catch (error) {
-        invalidInput(error);
-    }
-    await consumeAiQuota(context.auth.uid, 'text');
-
-    try {
-        const client = getClient();
-
-        const responseSchema = {
-            type: 'object',
-            additionalProperties: false,
-            properties: {
-                answer: { type: 'string' },
-                relevantProjects: {
-                    type: 'array',
-                    items: { type: 'string' }
-                },
-                relevantTasks: {
-                    type: 'array',
-                    items: { type: 'string' }
-                },
-                confidence: {
-                    type: 'string',
-                    enum: ['Low', 'Medium', 'High']
-                }
-            },
-            required: ['answer', 'relevantProjects', 'relevantTasks', 'confidence']
-        };
-
-        const response: any = await client.responses.create({
-            model: TEXT_MODEL,
-            reasoning: TEXT_REASONING,
-            input: finalPrompt,
-            text: {
-                format: {
-                    type: 'json_schema',
-                    name: 'ask_cora_response',
-                    schema: responseSchema,
-                    strict: true
-                }
-            }
-        });
-
-        const result = parseJsonText(extractTextFromResponse(response));
-        const tokensUsed = extractTokensUsed(response);
-
-        await trackUsage(context.auth.uid, tokensUsed);
-
-        const confidence: Confidence = ['Low', 'Medium', 'High'].includes(result.confidence)
-            ? result.confidence
-            : 'Low';
-
-        return {
-            answer: typeof result.answer === 'string' ? result.answer : '',
-            relevantProjects: Array.isArray(result.relevantProjects) ? result.relevantProjects : [],
-            relevantTasks: Array.isArray(result.relevantTasks) ? result.relevantTasks : [],
-            confidence,
-            tokensUsed
-        };
-
-    } catch (error: any) {
-        console.error('AskCora Error:', error);
-        throw error instanceof functions.https.HttpsError ? error : new functions.https.HttpsError('internal', 'AI request failed');
-    }
-});
-
 
 // --- Generate Image ---
 

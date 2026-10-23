@@ -18,7 +18,6 @@ const ROUTE_CONTEXT: { pattern: RegExp; target: HelpContextTarget }[] = [
     { pattern: /^\/notifications/, target: { articleId: 'notifications' } },
     { pattern: /^\/(profile|settings)/, target: { articleId: 'settings' } },
     { pattern: /^\/(download|desktop)/, target: { articleId: 'desktop' } },
-    { pattern: /^\/brainstorm/, target: { articleId: 'cora' } },
     { pattern: /^\/$/, target: { articleId: 'dashboard' } }
 ];
 

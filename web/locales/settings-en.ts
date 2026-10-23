@@ -165,7 +165,7 @@ const enSettings = {
     'settings.general.onboarding.toast.restarted': 'Dashboard onboarding will show again on your next visit.',
     'settings.general.onboarding.errors.restartFailed': 'Failed to restart onboarding. Please try again.',
     'settings.prebeta.title': 'Pre-Alpha Settings',
-    'settings.prebeta.subtitle': 'Configure your personal CORA settings for the Pre-Alpha period.',
+    'settings.prebeta.subtitle': 'Configure your personal AI settings for the Pre-Alpha period.',
     'settings.prebeta.notice.title': 'Pre-Alpha Notice',
     'settings.prebeta.notice.body': 'During this phase, we do not provide a system-wide Gemini API key. You must use your own Gemini API key. Accounts are subject to reset.',
     'settings.prebeta.apiKey.label': 'Gemini API Key',

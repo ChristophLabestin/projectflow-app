@@ -119,11 +119,6 @@
   --color-blue-600: #2563eb;
   --color-blue-900: #1e3a8a;
 
-  /* AI Studio mode accents */
-  --color-mode-architect: #4285f4;
-  --color-mode-brainstormer: #ea4335;
-  --color-mode-riskscout: #34a853;
-
   /* Radius */
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -169,20 +164,20 @@
   --motion-press-scale: 0.97;
   --motion-lift: -1px;
 
-  /* In-app AI surface (STYLING.md §1.9). Glass + a quiet brand veil, set apart from the
-     regular UI but built from its tokens. Accents only; no borders (glow + contrast). */
-  --ai-glass-bg: rgba(var(--color-surface-card-rgb), 0.78);
-  --ai-glass-blur: blur(22px) saturate(165%);
-  --ai-veil: radial-gradient(120% 70% at 0% 0%, rgba(var(--brand-blue-rgb), 0.10), transparent 60%),
-    radial-gradient(90% 60% at 100% 0%, rgba(var(--brand-violet-rgb), 0.12), transparent 65%);
-  --ai-glow: 0 24px 60px -18px rgba(var(--brand-violet-rgb), 0.32), 0 10px 28px -12px rgba(var(--brand-blue-rgb), 0.22), var(--shadow-lg);
-  --ai-spark-gradient: linear-gradient(135deg, var(--brand-blue), var(--brand-violet) 55%, var(--brand-amber));
-  --ai-accent: rgb(var(--brand-violet-rgb));
-  --ai-accent-soft: rgba(var(--brand-violet-rgb), 0.12);
-  --ai-inner-bg: rgba(var(--color-surface-hover-rgb), 0.55);
-  --ai-shimmer: linear-gradient(90deg, transparent, rgba(var(--brand-blue-rgb), 0.55), rgba(var(--brand-violet-rgb), 0.65), transparent);
-  --ai-radius: var(--radius-xl);
-  --ai-text-fade: 260ms;
+  /* In-app AI surface (STYLING.md §1.9): quiet and professional. Same surface family as the app's
+     popovers; the AI is recognisable by its small ✦ label and its content, not by effects.
+     Variants (data-variant on .ai-popover): a = neutral, b = neutral + one blue accent,
+     c = slightly raised surface. */
+  --ai-surface: var(--color-surface-card);
+  --ai-surface-raised: color-mix(in srgb, var(--color-surface-card) 95%, var(--color-text-main));
+  --ai-hairline: 0 0 0 1px rgba(var(--color-surface-border-rgb), 0.9);
+  --ai-shadow: var(--shadow-lg);
+  --ai-inner-bg: var(--color-surface-hover);
+  --ai-mark: var(--color-text-muted);
+  --ai-accent: var(--brand-blue-text);
+  --ai-accent-soft: rgba(var(--brand-blue-rgb), 0.10);
+  --ai-radius: var(--radius-lg);
+  --ai-text-fade: 220ms;
 
   /* Layout */
   --app-sidebar-width: 0px;
@@ -196,11 +191,8 @@
 }
 
 html.dark {
-  --ai-glass-bg: rgba(var(--color-surface-card-rgb), 0.72);
-  --ai-veil: radial-gradient(120% 70% at 0% 0%, rgba(var(--brand-blue-rgb), 0.16), transparent 60%),
-    radial-gradient(90% 60% at 100% 0%, rgba(var(--brand-violet-rgb), 0.20), transparent 65%);
-  --ai-glow: 0 28px 70px -20px rgba(var(--brand-violet-rgb), 0.45), 0 12px 32px -14px rgba(var(--brand-blue-rgb), 0.35), var(--shadow-lg);
-  --ai-accent-soft: rgba(var(--brand-violet-rgb), 0.20);
+  --ai-hairline: 0 0 0 1px rgba(var(--color-surface-border-rgb), 1);
+  --ai-accent-soft: rgba(var(--brand-blue-rgb), 0.16);
   --color-primary: #e5e5e5;
   --color-primary-dark: #d4d4d4;
   --color-primary-light: #a3a3a3;

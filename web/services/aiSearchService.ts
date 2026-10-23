@@ -1,103 +1,7 @@
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
-import { Project, Task, AISearchAnswer } from "../types";
-import { getAllWorkspaceProjects, getAllWorkspaceTasks, incrementImageUsage } from "./dataService";
+import { incrementImageUsage } from "./dataService";
 import { getAIUsage } from './domain/usersService';
-import { getAIResponseInstruction } from "../utils/aiLanguage";
-import { isProjectIncludedInImportantSignals } from "./healthService";
-
-/**
- * Build context string for AI from projects and tasks
- */
-const buildContextForAI = (projects: Project[], tasks: Task[]): string => {
-    let context = "Current Projects:\n";
-    const contextProjects = projects.filter(isProjectIncludedInImportantSignals);
-
-    for (const project of contextProjects) {
-        context += `- ${project.title} (Status: ${project.status}, Priority: ${project.priority || 'Medium'}`;
-        if (project.dueDate) context += `, Due: ${project.dueDate}`;
-        context += `)\n`;
-        if (project.description) context += `  Description: ${project.description}\n`;
-
-        // Add tasks for this project
-        const projectTasks = tasks.filter(t => t.projectId === project.id);
-        if (projectTasks.length > 0) {
-            context += `  Tasks (${projectTasks.length}):\n`;
-            projectTasks.slice(0, 5).forEach(task => {
-                context += `    - ${task.title} (${task.status || 'Open'}, Priority: ${task.priority || 'Medium'}`;
-                if (task.isCompleted) context += ', Completed';
-                context += `)\n`;
-            });
-            if (projectTasks.length > 5) {
-                context += `    ... and ${projectTasks.length - 5} more tasks\n`;
-            }
-        }
-    }
-
-    return context;
-};
-
-/**
- * Answer a question using AI via Cloud Functions
- */
-export const answerQuestionWithContext = async (
-    question: string,
-    tenantId?: string
-): Promise<AISearchAnswer> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    try {
-        // Fetch context data
-        const [projects, tasks] = await Promise.all([
-            getAllWorkspaceProjects(tenantId),
-            getAllWorkspaceTasks(tenantId)
-        ]);
-
-        const contextStr = buildContextForAI(projects, tasks);
-        const { language } = getAIResponseInstruction();
-
-        // Prompt, language instruction and quota live on the server; it also records token usage.
-        const askCoraFn = httpsCallable<{
-            question: string;
-            contextStr: string;
-            language: string;
-        }, any>(functions, 'askCora');
-
-        const { data: result } = await askCoraFn({
-            question,
-            contextStr,
-            language
-        });
-
-        // Match project and task titles to IDs
-        const relevantProjects = projects
-            .filter(isProjectIncludedInImportantSignals)
-            .filter(p => result.answer.toLowerCase().includes(p.title.toLowerCase()))
-            .map(p => p.id)
-            .slice(0, 3);
-
-        const relevantTasks = tasks
-            .filter(t => result.answer.toLowerCase().includes(t.title.toLowerCase()))
-            .map(t => t.id)
-            .slice(0, 3);
-
-        const fallbackAnswer = language === 'de'
-            ? "Ich konnte keine relevanten Informationen finden, um deine Frage zu beantworten."
-            : "I couldn't find relevant information to answer your question.";
-
-        return {
-            answer: result.answer || fallbackAnswer,
-            relevantProjects: relevantProjects.length > 0 ? relevantProjects : result.relevantProjects || [],
-            relevantTasks: relevantTasks.length > 0 ? relevantTasks : result.relevantTasks || [],
-            confidence: result.confidence || 'Low'
-        };
-
-    } catch (error) {
-        console.error("CORA Search Error:", error);
-        throw error;
-    }
-};
 
 /**
  * Generate an image using OpenAI image model via Cloud Functions
@@ -109,7 +13,7 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
     // Check image usage limit
     const usage = await getAIUsage(user.uid);
     if (usage && (usage.imagesUsed || 0) >= (usage.imageLimit || 50)) {
-        throw new Error(`CORA image generation limit reached. Limit resets monthly.`);
+        throw new Error(`AI image generation limit reached. Limit resets monthly.`);
     }
 
     try {
@@ -145,7 +49,7 @@ export const editAIImage = async (
     // Check image usage limit
     const usage = await getAIUsage(user.uid);
     if (usage && (usage.imagesUsed || 0) >= (usage.imageLimit || 50)) {
-        throw new Error(`CORA image generation limit reached. Limit resets monthly.`);
+        throw new Error(`AI image generation limit reached. Limit resets monthly.`);
     }
 
     try {

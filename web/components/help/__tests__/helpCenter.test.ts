@@ -104,7 +104,7 @@ describe('parseHelpInline', () => {
 
 describe('searchHelp', () => {
     const content: HelpContent = {
-        categories: { basics: 'Basics', work: 'Work', planning: 'Planning', collaboration: 'Team', cora: 'CORA', workspace: 'Workspace' },
+        categories: { basics: 'Basics', work: 'Work', planning: 'Planning', collaboration: 'Team', ai: 'AI', workspace: 'Workspace' },
         articles: [{
             id: 'tasks', category: 'work', icon: 'task_alt', title: 'Aufgaben', summary: 'Arbeit erfassen.', keywords: ['tasks'],
             sections: [{ id: 'quick-add', title: 'Schnell erfassen', blocks: [{ type: 'text', text: 'Drücke `N` für Quick Add.' }] }]

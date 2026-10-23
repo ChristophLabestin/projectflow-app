@@ -925,17 +925,6 @@ export interface TaskCategory {
     createdAt?: any;
 }
 
-export interface ProjectBlueprint {
-    id: string;
-    title: string;
-    description: string;
-    targetAudience: string;
-    milestones: { title: string; description: string; }[];
-    initialTasks: { title: string; priority: 'Low' | 'Medium' | 'High'; }[];
-    suggestedTechStack?: string[];
-    createdAt: any;
-}
-
 export interface Milestone {
     id: string;
     projectId: string;
@@ -964,25 +953,6 @@ export interface ProjectRisk {
     mitigation: string;
 }
 
-export type StudioTool = 'Architect' | 'Brainstormer' | 'RiskScout' | 'Strategist';
-
-export type StudioMessage = {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    mode?: StudioTool | null;
-};
-
-export type StudioChatSession = {
-    id: string;
-    title: string;
-    messages: StudioMessage[];
-    createdAt: number;
-    updatedAt: number;
-    mode?: StudioTool | null;
-    blueprint?: ProjectBlueprint | null;
-};
-
 // AI Search Types
 export interface SearchResult {
     originIdeaId?: string; // Legacy lineage
@@ -1002,13 +972,6 @@ export interface SearchResult {
     helpPageTitle?: string;
     relevance?: number;
     status?: string;
-}
-
-export interface AISearchAnswer {
-    answer: string;
-    relevantProjects: string[];
-    relevantTasks: string[];
-    confidence: 'Low' | 'Medium' | 'High';
 }
 
 export type NotificationType =

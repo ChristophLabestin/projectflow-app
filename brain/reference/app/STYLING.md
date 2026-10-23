@@ -103,14 +103,6 @@ These colors are reserved for specific pre-beta settings. Do not introduce them 
 | `--color-blue-600` | `#2563eb` |
 | `--color-blue-900` | `#1e3a8a` |
 
-### 1.6 AI Studio Mode Accents
-
-| Token | Value | Description |
-|------|-------|-------------|
-| `--color-mode-architect` | `#4285f4` | Accent color for AI Studio Architect mode |
-| `--color-mode-brainstormer` | `#ea4335` | Accent color for AI Studio Brainstormer mode |
-| `--color-mode-riskscout` | `#34a853` | Accent color for AI Studio RiskScout mode |
-
 ### 1.7 Legacy Alias Tokens (Migration)
 
 These aliases exist for legacy styles during the Tailwind → SCSS migration. Prefer the canonical tokens above for new UI work.
@@ -173,8 +165,7 @@ live demo on `/ui` → AI (`screens/style-guide/AiShowcase.tsx`).
 Rules: the AI style appears only on AI surfaces (✦ triggers, `AiPopover` and what it contains). Enter =
 rise + scale + un-blur (`--motion-duration-slow`, ease-out); exit shorter. Streamed text fades in per
 chunk/line; while generating the spark turns and the top edge shimmers. All motion is transform /
-opacity / filter and stops under `prefers-reduced-motion`. Section 1.6 (AI Studio mode accents) is
-legacy and goes with CORA.
+opacity / filter and stops under `prefers-reduced-motion`.
 
 ## 2) Border Radius
 
@@ -382,7 +373,7 @@ Treat these as v1 defaults before creating one-off versions in feature screens; 
 - Keep previews scoped to the real customer-facing surface, but make them opt-in when the editor is already dense; do not keep counters or status strips visible by default.
 - Prefer dense rows for ordered editable items; reserve larger panels for the currently selected item editor.
 - Put publishing, links, tokens, and embed data behind a Share/Access mode instead of mixing them into the primary editing canvas.
-- Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and CORA in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
+- Project creation should open with compact project-type selection and then stay name-first and optional after the required basics; do not ask users to choose between manual creation and AI generation in the wizard. Type, module, startup workstream, member, and visibility choices should share the same selection-card contract with equal-height rows, readable wrapped descriptions, and copy lengths that stay roughly balanced inside a grid. Team assignment and visibility rules are separate decisions and should live in separate steps; never auto-select a workspace group when the user chooses group visibility. Use one user-facing project purpose field; do not ask for a separate goal/objective later in the wizard. For company projects, setup workstreams belong in their own quiet checklist step before module selection; avoid oversized cards, heavy panels, and prominent seed-count chips there. Startup/company founding context is prompted from the project overview after creation, not collected in the create wizard. Timeline fields use flat grids and rows; cover images, GitHub, and resource links belong in overview/settings surfaces after creation.
 
 ## 6.3) Project Lifecycle Recovery Pattern
 
