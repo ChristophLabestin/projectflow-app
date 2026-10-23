@@ -1,0 +1,169 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><title>ProjectFlow iOS — Projekt-Cockpit (Konzept)</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--pj:'Plus Jakarta Sans',sans-serif;--sf:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif}
+.light{--canvas:#f2f2f3;--card:#fff;--raised:#ededee;--line:rgba(23,23,23,.06);--main:#171717;--muted:#666;--subtle:#8f8f8f;--primary:#171717;--onp:#fff;--dot:rgba(0,0,0,.06);--shadow:0 0 0 1px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.06),0 2px 8px -2px rgba(0,0,0,.08);--glass:rgba(255,255,255,.62);--glassline:rgba(255,255,255,.7)}
+.dark{--canvas:#0b0d11;--card:#151920;--raised:#1e242e;--line:rgba(229,231,235,.06);--main:#e5e7eb;--muted:#9ca3af;--subtle:#6b7280;--primary:#e5e5e5;--onp:#171717;--dot:rgba(255,255,255,.04);--shadow:none;--glass:rgba(30,36,46,.55);--glassline:rgba(255,255,255,.08)}
+body{margin:0;background:#d9d9dc;font-family:var(--sf);padding:40px 32px 60px}
+h1{font-family:var(--pj);font-weight:800;letter-spacing:-.02em;font-size:28px;margin:0 0 6px;color:#171717}
+.lead{color:#555;margin:0 0 32px;font-size:14px;max-width:880px}
+.row{display:flex;gap:36px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-family:var(--pj);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#555;margin:14px 0 0;text-align:center;width:390px}
+.phone{width:390px;height:844px;border-radius:54px;background:var(--canvas);position:relative;overflow:hidden;box-shadow:0 0 0 10px #111,0 30px 60px -10px rgba(0,0,0,.45);color:var(--main)}
+.dots{background-image:radial-gradient(circle,var(--dot) 1px,transparent 1px);background-size:20px 20px}
+.status{height:54px;display:flex;justify-content:space-between;align-items:center;padding:0 34px;font-weight:600;font-size:16px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:124px;height:36px;border-radius:20px;background:#000}
+.scroll{position:absolute;top:54px;left:0;right:0;bottom:0;overflow:hidden;padding:0 20px}
+.top{display:flex;align-items:center;justify-content:space-between;height:52px}
+.gbtn{width:44px;height:44px;border-radius:50%;background:var(--glass);backdrop-filter:blur(24px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 2px 10px rgba(0,0,0,.08);display:grid;place-items:center;font-size:22px;color:var(--main)}
+.ws{font-family:var(--pj);font-weight:700;font-size:16px;padding:0 14px;height:40px;border-radius:999px;background:var(--glass);backdrop-filter:blur(24px);box-shadow:inset 0 0 0 1px var(--glassline);display:flex;align-items:center;gap:6px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#8b5cf6;color:#fff;font-family:var(--pj);font-weight:700;display:grid;place-items:center;font-size:15px}
+.eyebrow{font-family:var(--pj);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.display{font-family:var(--pj);font-weight:800;font-size:30px;line-height:1.18;letter-spacing:-.02em;margin:6px 0 8px}
+.display em{font-style:normal;color:var(--primary)}
+.body{font-size:15px;line-height:1.45;color:var(--muted)}
+.band{display:flex;gap:4px;margin:16px 0 6px}
+.band i{height:13px;border-radius:3px;flex:1}
+.r{background:#ef4444}.a{background:#f59e0b}.f{background:var(--raised)}
+.bandmeta{font-size:13px;font-weight:500}
+.card{background:var(--card);border-radius:16px;box-shadow:var(--shadow)}
+.sec{margin:22px 0 10px;display:flex;justify-content:space-between;align-items:center}
+.task{display:flex;gap:12px;padding:13px 14px;align-items:flex-start;box-shadow:inset 0 1px 0 var(--line)}
+.task:first-child{box-shadow:none}
+.ring{width:20px;height:20px;border-radius:50%;border:2px solid;flex:none;margin-top:1px}
+.ring.red{border-color:#ef4444}.ring.amb{border-color:#f59e0b}.ring.dash{border:2px dashed var(--subtle)}.ring.done{background:#10b981;border-color:#10b981}
+.tt{font-family:var(--pj);font-weight:600;font-size:16px;line-height:1.3}
+.tm{font-size:13px;font-weight:500;margin-top:2px;color:var(--muted)}
+.tm .red{color:#b91c1c}.tm .amb{color:#b45309}
+.dark .tm .red{color:#f87171}.dark .tm .amb{color:#f59e0b}
+.fbtn{margin-left:auto;width:30px;height:30px;border-radius:10px;background:var(--raised);display:grid;place-items:center;font-size:15px;flex:none;color:var(--muted)}
+.more{padding:12px 14px;font-size:14px;font-weight:600;box-shadow:inset 0 1px 0 var(--line);display:flex;justify-content:space-between}
+.week{display:flex;justify-content:space-between;padding:12px 14px}
+.week div{text-align:center;font-size:12px;color:var(--muted);width:36px}
+.week b{display:block;font-family:var(--pj);font-size:16px;color:var(--main);margin-top:4px}
+.week .on{background:var(--raised);border-radius:10px;padding:4px 0}
+.tabbar{position:absolute;left:16px;right:16px;bottom:24px;height:62px;border-radius:999px;background:var(--glass);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 10px 30px -8px rgba(0,0,0,.25);display:flex;align-items:center;padding:0 8px}
+.tab{flex:1;text-align:center;font-size:10px;font-weight:600;color:var(--muted)}
+.tab span{display:block;font-size:20px;margin-bottom:1px}
+.tab.on{color:var(--main)}
+.tab.on span{background:var(--raised);border-radius:999px;margin:0 6px 1px}
+.search{width:62px;height:62px;border-radius:50%;position:absolute;right:16px;bottom:24px;background:var(--glass);backdrop-filter:blur(28px);box-shadow:inset 0 0 0 1px var(--glassline),0 10px 30px -8px rgba(0,0,0,.25);display:grid;place-items:center;font-size:22px}
+.tabbar.short{right:90px}
+.acc{position:absolute;left:16px;right:16px;bottom:96px;height:52px;border-radius:999px;background:var(--glass);backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 0 0 1px var(--glassline),0 8px 24px -8px rgba(0,0,0,.25);display:flex;align-items:center;gap:10px;padding:0 8px 0 18px}
+.pulse{width:9px;height:9px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 5px color-mix(in srgb,var(--primary) 15%,transparent)}
+.acc .t{font-family:var(--pj);font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acc .s{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.acc .ok{width:38px;height:38px;border-radius:50%;background:var(--primary);color:var(--onp);display:grid;place-items:center;font-weight:700}
+.pill{font-family:var(--pj);font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;padding:5px 10px;border-radius:999px;display:inline-flex;align-items:center;gap:6px}
+.p-open{background:rgba(59,130,246,.12);color:#1d4ed8}.p-blocked{background:rgba(239,68,68,.12);color:#b91c1c}.p-prog{background:rgba(14,165,233,.12);color:#0369a1}
+.p-neutral{background:var(--raised);color:var(--main)}
+.sig{display:inline-flex;align-items:flex-end;gap:2px;height:12px}.sig i{width:3px;border-radius:1px;background:#ef4444}.sig i:nth-child(1){height:5px}.sig i:nth-child(2){height:8px}.sig i:nth-child(3){height:12px}
+.wb{padding:16px;margin-top:16px;border-radius:16px;background:var(--card);box-shadow:var(--shadow),inset 3px 0 0 #ef4444}
+.btnp{background:var(--primary);color:var(--onp);font-family:var(--pj);font-weight:700;font-size:15px;border-radius:999px;height:52px;display:grid;place-items:center}
+.btn2{background:var(--raised);color:var(--main);font-family:var(--pj);font-weight:700;font-size:15px;border-radius:999px;height:52px;display:grid;place-items:center}
+.sub{display:flex;gap:10px;align-items:center;padding:9px 0;font-size:16px}
+.chk{width:18px;height:18px;border-radius:50%;border:2px solid var(--subtle)}.chk.on{background:#10b981;border-color:#10b981}
+.av{width:24px;height:24px;border-radius:50%;display:inline-grid;place-items:center;font-size:10px;font-weight:700;color:#fff;box-shadow:0 0 0 2px var(--card);margin-left:-6px;font-family:var(--pj)}
+.irow{padding:14px;box-shadow:inset 0 1px 0 var(--line)}
+.irow:first-child{box-shadow:none}
+.mini{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--raised);font-size:13px;display:flex;gap:8px;align-items:center}
+.act{margin-top:10px;display:flex;gap:8px}
+.act div{font-family:var(--pj);font-weight:700;font-size:13px;padding:8px 14px;border-radius:999px;background:var(--raised)}
+.act .pr{background:var(--primary);color:var(--onp)}
+.dotu{width:8px;height:8px;border-radius:50%;background:#3b82f6;display:inline-block;margin-right:6px}
+.chips{display:flex;gap:8px;overflow:hidden;padding:10px 12px;background:var(--glass);backdrop-filter:blur(24px);box-shadow:inset 0 1px 0 var(--glassline)}
+.chip{font-family:var(--pj);font-weight:600;font-size:13px;padding:8px 12px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);white-space:nowrap}
+.chip.set{background:var(--primary);color:var(--onp)}
+.kb{background:#d1d3d9;height:260px;display:grid;grid-template-columns:repeat(10,1fr);gap:6px;padding:10px 4px;align-content:start}
+.kb i{height:42px;border-radius:6px;background:#fff;box-shadow:0 1px 0 rgba(0,0,0,.3);font-style:normal;display:grid;place-items:center;font-size:20px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:24px 24px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.18)}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.35);backdrop-filter:blur(6px)}
+.hl{background:color-mix(in srgb,#f59e0b 28%,transparent);border-radius:4px;padding:0 2px}
+
+.hero{position:absolute;left:0;right:0;top:0;height:330px;overflow:hidden;background:#171717;color:#fff}
+.hero .wm{position:absolute;right:-30px;top:40px;font-family:var(--pj);font-weight:800;font-size:260px;line-height:1;color:rgba(255,255,255,.06)}
+.hero .dotsd{position:absolute;inset:0;background-image:radial-gradient(circle,rgba(255,255,255,.07) 1px,transparent 1px);background-size:20px 20px}
+.hero .in{position:absolute;left:20px;right:20px;bottom:22px}
+.hero .eb{font-family:var(--pj);font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.65)}
+.hero h2{font-family:var(--pj);font-weight:800;font-size:34px;letter-spacing:-.02em;margin:6px 0 6px;line-height:1.08}
+.hero .lage{font-size:16px;color:rgba(255,255,255,.8);line-height:1.35}
+.hero .lage b{color:#fff}
+.fb{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.14);backdrop-filter:blur(20px);display:grid;place-items:center;color:#fff;font-size:18px}
+.tabs{display:flex;gap:22px;padding:0 20px;border-bottom:1px solid var(--line);font-family:var(--pj);font-weight:700;font-size:15px;color:var(--muted);background:var(--canvas)}
+.tabs span{padding:14px 0 12px}
+.tabs .on{color:var(--main);box-shadow:inset 0 -3px 0 var(--primary)}
+.sec{margin:20px 0 10px}
+.mom{display:flex;gap:16px;align-items:center;padding:16px}
+.ring{width:84px;height:84px;border-radius:50%;background:conic-gradient(#171717 0 18%,#ededee 18% 100%);display:grid;place-items:center}
+.ring div{width:66px;height:66px;border-radius:50%;background:#fff;display:grid;place-items:center;font-family:var(--pj);font-weight:800;font-size:20px}
+.st{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;flex:1}
+.st b{font-family:var(--pj);font-size:20px;display:block}
+.st small{font-size:12px;color:var(--muted)}
+.ms{padding:16px}
+.ms .cd{font-family:var(--pj);font-weight:800;font-size:28px}
+.ini{padding:12px 14px;box-shadow:inset 0 1px 0 var(--line)}
+.ini:first-child{box-shadow:none}
+.bar{height:5px;border-radius:5px;background:#ededee;margin-top:8px;overflow:hidden}.bar i{display:block;height:100%;background:#171717}
+.tm{display:flex;gap:14px;padding:14px}
+.tm div{text-align:center;font-size:12px;color:var(--muted)}
+.set{padding:0 14px}
+.set .sr{display:flex;justify-content:space-between;align-items:center;padding:14px 0;box-shadow:inset 0 1px 0 var(--line);font-size:16px}
+.set .sr:first-child{box-shadow:none}
+.set .sr span:last-child{color:var(--muted);font-size:15px}
+.sw{width:46px;height:28px;border-radius:99px;background:#171717;position:relative}.sw:after{content:"";position:absolute;right:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff}
+.sw.off{background:#ededee}.sw.off:after{left:3px;right:auto}
+</style></head><body>
+<h1>Projekt-Cockpit — Neukonzept</h1>
+<p class="lead">Idee: Ein Projekt öffnet wie ein eigener Raum. Dunkler Kopf mit großem Monogramm (oder Cover), darin ein Satz zur Lage wie bei „Heute". Darunter feste Reiter: <b>Überblick · Aufgaben · Board · Plan · Team</b> und ein Zahnrad für die <b>Einstellungen</b> (alle Web-Tabs). Der Überblick erzählt das Projekt von oben nach unten: Momentum → was brennt → nächster Meilenstein → Initiativen → Team → zuletzt passiert.</p>
+<div class="row">
+
+<div><div class="phone light">
+ <div class="hero"><div class="dotsd"></div><div class="wm">W</div>
+  <div class="status" style="position:relative;color:#fff"><span>9:41</span><span>▮▮▮</span></div>
+  <div style="position:absolute;top:58px;left:20px;right:20px;display:flex;justify-content:space-between"><div class="fb">‹</div><div style="display:flex;gap:8px"><div class="fb">⚙︎</div><div class="fb">•••</div></div></div>
+  <div class="in"><div class="eb">● Aktiv · Hoch · fällig Fr, 13. Nov</div><h2>Website Relaunch</h2><div class="lage">Zu <b>18 %</b> geschafft — <b>zwei Dinge brennen</b>, der nächste Meilenstein ist in 10 Tagen.</div></div>
+ </div>
+ <div class="scroll" style="top:330px;padding:0">
+  <div class="tabs"><span class="on">Überblick</span><span>Aufgaben</span><span>Board</span><span>Plan</span><span>Team</span></div>
+  <div style="padding:0 20px">
+   <div class="card mom" style="margin-top:16px"><div class="ring"><div>18%</div></div><div class="st"><div><b>9</b><small>offen</small></div><div><b style="color:#b91c1c">2</b><small>überfällig</small></div><div><b style="color:#b91c1c">1</b><small>blockiert</small></div><div><b style="color:#b45309">4</b><small>bald fällig</small></div></div></div>
+   <div class="sec eyebrow">Brennt</div>
+   <div class="card"><div class="task"><div class="ring red" style="width:20px;height:20px;background:none"></div><div><div class="tt">Set up 301 redirects</div><div class="tm" style="padding:0;display:block;font-size:13px"><span class="red">Seit 4 Tagen überfällig</span></div></div></div>
+   <div class="task"><div class="ring red" style="width:20px;height:20px;background:none"></div><div><div class="tt">Import legacy blog posts</div><div style="font-size:13px;color:#b91c1c">Blockiert · wartet auf CMS-Schema</div></div></div></div>
+  </div>
+ </div>
+</div><div class="cap">Überblick (oben)</div></div>
+
+<div><div class="phone light">
+ <div class="status"><span>9:41</span><span>▮▮▮</span></div>
+ <div class="tabs" style="position:absolute;top:54px;left:0;right:0"><span class="on">Überblick</span><span>Aufgaben</span><span>Board</span><span>Plan</span><span>Team</span></div>
+ <div class="scroll" style="top:104px">
+  <div class="sec eyebrow">Nächster Meilenstein</div>
+  <div class="card ms"><div style="display:flex;justify-content:space-between;align-items:baseline"><div class="tt">Launch Beta</div><div class="cd">10 Tage</div></div><div style="font-size:13px;color:var(--muted);margin-top:2px">Mo, 2. Nov · 3 von 7 verknüpften Aufgaben erledigt</div><div class="bar"><i style="width:43%"></i></div></div>
+  <div class="sec eyebrow">Initiativen</div>
+  <div class="card"><div class="ini"><div style="display:flex;justify-content:space-between"><span class="tt" style="font-size:15px">● CMS migration</span><span style="font-size:12px;color:#b45309">At risk</span></div><div class="bar"><i style="width:30%"></i></div></div>
+  <div class="ini"><div style="display:flex;justify-content:space-between"><span class="tt" style="font-size:15px">● Signup conversion</span><span style="font-size:12px;color:#047857">On track</span></div><div class="bar"><i style="width:55%"></i></div></div></div>
+  <div class="sec eyebrow">Team</div>
+  <div class="card tm"><div><span class="av" style="background:#0ea5e9;width:40px;height:40px;margin:0">LR</span><br>Lena · 4</div><div><span class="av" style="background:#171717;width:40px;height:40px;margin:0">CD</span><br>Christoph · 3</div><div><span class="av" style="background:#10b981;width:40px;height:40px;margin:0">AB</span><br>Alex · 2</div></div>
+  <div class="sec eyebrow">Zuletzt passiert</div>
+  <div class="card"><div class="ini" style="font-size:14px">Lena hat „Hero copy" erledigt · <span style="color:var(--muted)">vor 2 Std.</span></div><div class="ini" style="font-size:14px">Alex hat „CMS-Schema" auf Review gesetzt · <span style="color:var(--muted)">gestern</span></div></div>
+ </div>
+</div><div class="cap">Überblick (gescrollt, Reiter fixiert)</div></div>
+
+<div><div class="phone light">
+ <div class="status"><span>9:41</span><span>▮▮▮</span></div>
+ <div class="scroll">
+  <div class="top"><div class="gbtn">‹</div><div class="eyebrow">Website Relaunch</div><div style="width:44px"></div></div>
+  <div class="display" style="font-size:30px">Einstellungen</div>
+  <div class="sec eyebrow">Allgemein</div>
+  <div class="card set"><div class="sr"><span>Name</span><span>Website Relaunch ›</span></div><div class="sr"><span>Status</span><span>Aktiv ›</span></div><div class="sr"><span>Priorität</span><span>Hoch ›</span></div><div class="sr"><span>Zeitraum</span><span>1. Okt – 13. Nov ›</span></div></div>
+  <div class="sec eyebrow">Briefing · Team · Darstellung</div>
+  <div class="card set"><div class="sr"><span>Ziel & Erfolgskriterien</span><span>›</span></div><div class="sr"><span>Mitglieder & Rollen</span><span>3 ›</span></div><div class="sr"><span>Icon & Cover</span><span>›</span></div><div class="sr"><span>Links & Ressourcen</span><span>2 ›</span></div></div>
+  <div class="sec eyebrow">Module</div>
+  <div class="card set"><div class="sr"><span>Meilensteine</span><div class="sw"></div></div><div class="sr"><span>Sprints</span><div class="sw off"></div></div><div class="sr"><span>Aktivität</span><div class="sw"></div></div></div>
+  <div class="sec eyebrow">Lebenszyklus</div>
+  <div class="card set"><div class="sr"><span>Pausieren</span><span>›</span></div><div class="sr"><span>Abschließen</span><span>›</span></div><div class="sr"><span style="color:#b91c1c">Projekt löschen</span><span></span></div></div>
+ </div>
+</div><div class="cap">Projekteinstellungen (alle Web-Tabs)</div></div>
+
+</div></body></html>
