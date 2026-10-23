@@ -144,9 +144,19 @@ export const canPurgeFile = (ctx: FileAccessContext, file: { createdBy?: string;
 export const quotaAllows = (usedBytes: number, quotaBytes: number, incomingBytes: number) =>
     usedBytes + incomingBytes <= quotaBytes;
 
+/** Plan storage (entitlements/plan, billing contract §7); a platform-admin override wins. */
 export const resolveQuotaBytes = (plan: Record<string, unknown> | undefined) => {
-    const value = Number(plan?.storageQuotaBytes);
-    return Number.isFinite(value) && value > 0 ? value : DEFAULT_WORKSPACE_QUOTA_BYTES;
+    for (const key of ['storageQuotaOverrideBytes', 'storageQuotaBytes']) {
+        const value = Number(plan?.[key]);
+        if (Number.isFinite(value) && value > 0) return value;
+    }
+    return DEFAULT_WORKSPACE_QUOTA_BYTES;
+};
+
+/** Max size per file by plan (50 MB; Team/Organization 250 MB). */
+export const resolveMaxFileBytes = (plan: Record<string, unknown> | undefined) => {
+    const value = Number(plan?.maxFileBytes);
+    return Number.isFinite(value) && value > 0 ? value : MAX_FILE_BYTES;
 };
 
 export const LEGACY_ATTACHMENT_TYPES = ['task-attachment', 'initiative-attachment'];

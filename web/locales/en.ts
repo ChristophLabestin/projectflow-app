@@ -2986,6 +2986,8 @@ const en = {
     'workspaceSettings.tabs.ai': 'AI & integrations',
     'workspaceSettings.tabs.billing': "Billing",
     'billing.title': "Plan & billing",
+    'billing.errors.plan-storage-limit': "Your workspace storage is full. Existing files stay; free up space or upgrade your plan to upload more.",
+    'billing.errors.plan-file-too-large': "This file is larger than your plan allows (50 MB; Team 250 MB).",
     'billing.plan.personal': "Personal",
     'billing.facts.membersPersonal': "Personal workspace: only you, no invitations",
     'billing.upgradePersonal.title': "Upgrade to Personal",

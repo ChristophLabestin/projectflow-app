@@ -73,3 +73,14 @@ test('personal workspaces: Free start, never invite, never Team', () => {
     assert.deepEqual(billing.mapStripeStatus('active', 'personal'), { status: 'active', plan: 'personal' });
     assert.equal(billing.isPersonalLookupKey('personal_yearly'), true);
 });
+
+test('storage per plan: Free 1 GB, Personal 25 GB, Team 10 GB/seat (min 25), Org 50 GB/seat', () => {
+    const GB = 1024 ** 3;
+    assert.equal(billing.storageFor('free', 1).storageQuotaBytes, GB);
+    assert.equal(billing.storageFor('personal', 1).storageQuotaBytes, 25 * GB);
+    assert.equal(billing.storageFor('team', 1).storageQuotaBytes, 25 * GB);
+    assert.equal(billing.storageFor('team', 4).storageQuotaBytes, 40 * GB);
+    assert.equal(billing.storageFor('organization', 3).storageQuotaBytes, 150 * GB);
+    assert.equal(billing.storageFor('team', 4).maxFileBytes, 250 * 1024 ** 2);
+    assert.equal(billing.storageFor('free', 1).maxFileBytes, 50 * 1024 ** 2);
+});

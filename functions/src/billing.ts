@@ -13,7 +13,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { db } from './init';
 import { ALLOWED_ORIGINS } from './corsConfig';
 import {
-    AI_ADDON_LOOKUP_KEYS, PERSONAL_LOOKUP_KEYS, PERSONAL_STORAGE_BYTES, PRICE_LOOKUP_KEYS, aiEnabledFor,
+    AI_ADDON_LOOKUP_KEYS, PERSONAL_LOOKUP_KEYS, PRICE_LOOKUP_KEYS, storageFor, aiEnabledFor,
     aiIncludedForStatus, initialEntitlement, isAiAddonLookupKey, isPersonalLookupKey, isTestKey, limitsFor, limitsForType,
     mapStripeStatus, paidPlanFor, personalWorkspaceId, planForType,
     memberLimitAllows, periodExpired, projectsToLock, seatQuantity,
@@ -135,6 +135,8 @@ export const resolveAiAccess = async (uid: string): Promise<AiAccess> => {
     if (cached && Date.now() - cached.at < 60_000) return cached.value;
     const memberships = await db.collectionGroup('members').where('uid', '==', uid).limit(50).get();
     const tenantIds = memberships.docs
+        // Only tenants/{t}/members/{uid} (other `members` subcollections, e.g. old ai_credits docs, share the name).
+        .filter((doc) => doc.ref.parent.parent?.parent.id === 'tenants')
         .filter((doc) => String(doc.data().role || 'Member') !== 'Guest')
         .map((doc) => doc.ref.parent.parent?.id)
         .filter((id): id is string => Boolean(id));
@@ -171,11 +173,10 @@ const applyPlan = async (tenantId: string, requestedPlan: PlanId, requestedField
     const plan: PlanId = exempt ? paidPlanFor(type) : planForType(requestedPlan, type);
     const fields = exempt ? { ...requestedFields, status: 'exempt' } : requestedFields;
     const limits = { ...limitsForType(plan, type), aiIncluded: aiIncludedForStatus(plan, String(fields.status || '')) };
-    // Personal plan: 10 GB storage; leaving it drops back to the default quota.
-    const storage = plan === 'personal'
-        ? { storageQuotaBytes: PERSONAL_STORAGE_BYTES }
-        : current.storageQuotaBytes === PERSONAL_STORAGE_BYTES ? { storageQuotaBytes: FieldValue.delete() } : {};
-    const projects = await recountProjects(tenantId);
+    // Storage follows plan and full members (Team pools 10 GB per seat); nothing is deleted when it shrinks,
+    // new uploads are refused instead (plan-storage-limit). storageQuotaOverrideBytes (platform admin) wins.
+    const [projects, roles] = await Promise.all([recountProjects(tenantId), fullMemberRoles(tenantId)]);
+    const storage = storageFor(plan, roles.filter((role) => role !== 'Guest').length);
     await entRef(tenantId).set({
         ...(limits.aiAddonAvailable ? {} : { aiMemberIds: [], aiAddonSeats: 0 }),
         ...storage,
@@ -350,7 +351,7 @@ export const createPersonalWorkspace = async (uid: string, language?: string) =>
         });
         // Written with the tenant so onTenantCreatedBilling never starts a Team trial here.
         tx.set(entRef(tenantId), {
-            plan: 'free', status: 'free', workspaceType: 'personal', ...limits, flowsQuota: 'free',
+            plan: 'free', status: 'free', workspaceType: 'personal', ...limits, ...storageFor('free', 1), flowsQuota: 'free',
             seats: 0, billingInterval: null, trialEndsAt: null, graceEndsAt: null,
             projectCount: 0, lockedProjectIds: [], aiMemberIds: [], aiAddonSeats: 0, updatedAt: now,
         });
@@ -588,6 +589,10 @@ export const onMemberWrittenBilling = functions.region(REGION).runWith({ secrets
             await entRef(tenantId).set({ aiMemberIds: FieldValue.arrayRemove(memberId) }, { merge: true });
             aiAccessCache.delete(memberId);
         }
+        if (ent?.plan === 'team' || ent?.plan === 'organization') {
+            const fullMembers = (await fullMemberRoles(tenantId)).filter((role) => role !== 'Guest').length;
+            await entRef(tenantId).set(storageFor(ent.plan, fullMembers), { merge: true });
+        }
         if (!ent?.stripeSubscriptionId || !['active', 'trialing', 'past_due'].includes(String(ent.status))) return;
         if (!process.env.STRIPE_SECRET_KEY) return;
         const stripe = getStripe();
@@ -622,7 +627,12 @@ export const billingSweep = functions.region(REGION).runWith({ timeoutSeconds: 5
                 backfilled += 1;
                 continue;
             }
-            const ent = (await entRef(tenantId).get()).data() || {};
+            let ent = (await entRef(tenantId).get()).data() || {};
+            // Docs from before plan-based storage: recompute limits once (keeps plan and status).
+            if (ent.plan && ent.maxFileBytes === undefined) {
+                await applyPlan(tenantId, ent.plan as PlanId, { status: ent.status });
+                ent = (await entRef(tenantId).get()).data() || {};
+            }
             const status = String(ent.status) as BillingStatus;
             const trialOver = status === 'trialing' && !ent.stripeSubscriptionId && periodExpired(toMs(ent.trialEndsAt), now);
             const graceOver = status === 'grace' && !ent.stripeSubscriptionId && periodExpired(cutoverAtMs, now);
