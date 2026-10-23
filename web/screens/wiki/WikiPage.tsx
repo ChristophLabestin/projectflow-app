@@ -14,6 +14,7 @@ import {
     maybeCreateAutosaveVersion,
     recordWikiVisit,
     saveWikiDocBody,
+    saveWikiTemplate,
     subscribeBacklinks,
     subscribeWikiEditors,
     unlinkTaskFromDoc,
@@ -28,7 +29,6 @@ import { WikiMenu } from './WikiMenu';
 import { DocGlyph } from './WikiSidebar';
 import { createPlaceholderFileProvider } from './wikiFiles';
 import { IconPicker, WikiAiDialog, WikiLinkTaskDialog, WikiVersionsDrawer, type WikiAiMode } from './WikiDialogs';
-import { saveWikiTemplate } from '../../services/wiki/wikiService';
 import { useWikiT } from './useWikiT';
 
 type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'conflict';
@@ -449,7 +449,12 @@ export const WikiPage: React.FC<WikiPageProps> = ({ meta, docs, prefs, basePath,
                             onKeyDown={(event) => {
                                 if (event.key === 'Enter') {
                                     event.preventDefault();
-                                    editorRef.current?.commands.focus('start');
+                                    // commands.focus() waits a frame; focus synchronously so fast typing lands in the body.
+                                    const editor = editorRef.current;
+                                    if (editor) {
+                                        editor.view.focus();
+                                        editor.commands.setTextSelection(1);
+                                    }
                                 }
                             }}
                             ref={(element) => {

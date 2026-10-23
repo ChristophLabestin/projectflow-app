@@ -160,6 +160,17 @@ Members are created only by (a) the workspace creator bootstrapping themselves a
 - `shareCaptureId`: string (optional, native Share Sheet import id)
 
 
+### 📂 **`docs`** (Wiki & Docs, 2026-10-23)
+**Path:** `/tenants/{tenantId}/docs/{docId}` — page **metadata only** (the tree loads it live): `{ tenantId, spaceType: 'workspace'|'project', projectId|null, parentId|null, order (float), title, icon|null, excerpt (≤200), searchText (lowercase, ≤6000), bodyChunks, bodyRev, bodySize, linkedTaskRefs[], mentionTaskRefs[], taskRefs[] ("projectId/taskId", union), outLinks[] (mentioned docIds → backlinks), mentionedUserIds[], createdBy, updatedBy, updatedByName, createdAt, updatedAt, archivedAt|null, archivedBy, archivedRoot }`. `tenantId/spaceType/projectId/createdBy/createdAt` are immutable.
+- `body/{n}` — editor JSON as string chunks `{ i, data }` ≤300k UTF-16 units each (1 MiB safe); saves run in a transaction that checks `bodyRev`.
+- `versions/{id}` — `{ data|null, title, size, reason: autosave|manual|restore|before-restore|conflict, createdBy, createdByName, createdAt }`; autosave at most every 10 min, last 50 kept.
+- `editors/{uid}` — presence heartbeat `{ uid, name, photoURL, at }` (shown as "X is editing" when < 90 s old).
+- Access: workspace pages full members; project pages like project tasks (guests of that project). Guest queries must filter `spaceType == 'project'` + `projectId`. Hard delete: author or Owner/Admin. Trigger `onWikiDocWritten` emits `doc.created|updated|archived|restored|deleted` (updates throttled to one per page + person per 10 min).
+
+### 📂 **`docTemplates`** (custom wiki templates)
+**Path:** `/tenants/{tenantId}/docTemplates/{id}` — `{ name, description, icon, data (Tiptap JSON string), createdBy, createdAt }`; full members (generic tenant rule).
+User prefs: `/tenants/{tenantId}/users/{uid}/prefs/wiki` — `{ favorites: docId[], recent: [{ docId, at }] }`.
+
 ### 📂 **`activity`** (workspace activity stream, 2026-10-23)
 **Path:** `/tenants/{tenantId}/activity/{eventId}`
 - Typed, server-written events (`emitActivityEvent`, `functions/src/activity-events.ts`): `{ v, type, domain, actor{kind,id,name,photoURL?,client?,automationId?,automationRunId?,automationDepth?}, cause{kind,id,automationRunId?,depth}, actorId, object{type,id,title,parentType?,parentId?}, projectId|null, projectTitle?, changes?, meta?, source, createdAt, expireAt }`. Contract and type list: `brain/plans/activity-events-contract.md`.

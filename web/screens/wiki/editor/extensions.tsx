@@ -118,6 +118,7 @@ export const WikiMention = Mention.extend({
 }).configure({
     suggestion: {
         char: '@',
+        allowSpaces: true,
         items: ({ query, editor }) => getHost(editor).searchMentions(query),
         render: createSuggestionRender(MentionList),
         command: ({ editor, range, props }) => {

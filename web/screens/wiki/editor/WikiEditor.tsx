@@ -76,6 +76,8 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({ initialJson, editable, h
     const { t } = host;
 
     const editor = useEditor({
+        // Create the view after mount: React node views then render outside React's commit phase.
+        immediatelyRender: false,
         editable,
         content: initialJson as any,
         extensions: [
@@ -126,8 +128,13 @@ export const WikiEditor: React.FC<WikiEditorProps> = ({ initialJson, editable, h
             },
         },
         onUpdate: ({ editor: current }) => onChange?.(current as Editor),
-        onCreate: ({ editor: current }) => onReady?.(current as Editor),
     }, []);
+
+    const readyRef = React.useRef(onReady);
+    readyRef.current = onReady;
+    React.useEffect(() => {
+        if (editor) readyRef.current?.(editor);
+    }, [editor]);
 
     React.useEffect(() => {
         if (editor && editor.isEditable !== editable) editor.setEditable(editable);

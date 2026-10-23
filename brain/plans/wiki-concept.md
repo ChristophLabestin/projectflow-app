@@ -18,13 +18,13 @@ excerpt (≤200), searchText (lowercase, ≤6000 Zeichen), bodyChunks, bodyRev, 
 linkedTaskIds[], linkedTaskRefs[] ("projectId/taskId"), outLinks[] (erwähnte docIds),
 mentionedUserIds[], createdBy, updatedBy, createdAt, updatedAt, archivedAt|null, archivedBy`.
 
-`docs/{docId}/body/{n}` — Editor-JSON als String in Stücken à ≤700 KB (`{ i, data }`).
+`docs/{docId}/body/{n}` — Editor-JSON als String in Stücken à ≤300k UTF-16-Zeichen (≤900 KB, `{ i, data }`).
 Lange Seiten (Bilder sind Storage-URLs, nicht Base64) brauchen fast nie mehr als ein Stück; die
 Strategie hält das 1-MiB-Limit trotzdem für jede Länge ein. Schreiben = ein Batch (Stücke + Meta +
 `bodyRev+1`), überzählige Stücke werden im selben Batch gelöscht.
 
 `docs/{docId}/versions/{v}` — Snapshot `{ data, title, size, createdBy, createdAt, reason }`
-(`autosave` höchstens alle 10 Min. pro Seite, `manual`, `restore`, `before-restore`). Über 700 KB
+(`autosave` höchstens alle 10 Min. pro Seite, `manual` per ⌘/Strg+S, `restore`, `before-restore`, `conflict`). Über 300k Zeichen
 wird nur Titel + Hinweis gesichert. Behalten werden die letzten 50 (Client räumt beim Anlegen auf).
 
 `docs/{docId}/editors/{uid}` — Präsenz-Herzschlag `{ uid, name, photoURL, at }` alle 25 s.
@@ -64,7 +64,7 @@ eigener `WikiEditor` auf derselben Tiptap-Basis, ergänzt um die offiziellen Pak
 Eingebaut (lokalisiert): Meeting-Notiz, Projekt-Brief/Spezifikation, Retro, Entscheidungs-Log,
 Onboarding. Eigene: „Als Vorlage speichern" aus jeder Seite.
 
-## KI (bestehender Callable `callGemini` → OpenAI, `functions/src/ai-service.ts`)
+## KI (`runAiCapability` → OpenAI; Fähigkeiten `wikiSummarize`, `wikiImprove`, `wikiExtractTasks` in `functions/src/ai-capabilities.ts`)
 Zusammenfassen, Text verbessern (Auswahl oder Seite), Aufgaben aus Text. Ergebnis immer erst in
 einem Vorschau-Dialog; Einfügen/Anlegen erst nach Bestätigung, Aufgaben einzeln abwählbar.
 
@@ -72,9 +72,15 @@ einem Vorschau-Dialog; Einfügen/Anlegen erst nach Bestätigung, Aufgaben einzel
 Globale Suche (`GlobalSearch`) lädt bereits einen Client-Index (Projekte/Aufgaben/Initiativen);
 Docs kommen als eigener Abschnitt dazu (Titel + `searchText`). Im Wiki zusätzlich Schnellsuche.
 
-## Events (später)
-`doc.created`, `doc.updated` (gedrosselt: höchstens 1 pro Seite+Person je 10 Min.), `doc.archived`,
-`doc.restored` — sobald `brain/plans/activity-events-contract.md` auf main ist.
+## Events (umgesetzt)
+Trigger `onWikiDocWritten` (`functions/src/wiki-triggers.ts`, Logik `wiki-logic.ts`): `doc.created`, `doc.updated`
+(gedrosselt über den Idempotenz-Schlüssel: 1 pro Seite+Person je 10-Min.-Fenster), `doc.archived`, `doc.restored`,
+`doc.deleted`; `meta.path` öffnet die Seite. Projektseiten setzen `projectId` (Gäste sehen sie).
+
+## Schnittstelle für andere Features
+`createWikiPageFromMarkdown(tenantId, { space, title, markdown, parentId?, icon?, linkedTaskRefs? })` in
+`web/services/wiki/wikiService.ts` (Markdown → Tiptap über `wikiMarkdown.ts`: Überschriften, Listen, Checklisten,
+Zitate, Code, Trenner, **fett**, *kursiv*, `code`, Links). Gibt die docId zurück.
 
 ## MCP-Tools (Vorschlag, Umsetzung durch KI-Session)
 `search_docs(query, space?)`, `get_doc(docId)` (Markdown-Export), `list_docs(space, parentId?)`,

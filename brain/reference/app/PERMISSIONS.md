@@ -327,6 +327,13 @@ Important:
 
 ---
 
+## 8.8.1 Wiki & Docs (2026-10-23)
+- Workspace wiki (`spaceType: workspace`): Owner/Admin/Member read + write; Guests no access.
+- Project wiki: everyone who can access the project (full members + guests in `memberIds`) reads and writes, like project tasks.
+- Trash (soft delete) for every editor; permanent delete only for the page author or Owner/Admin.
+- Custom templates: full members. Presence docs: each user writes only their own.
+- Enforced in `firestore.rules` (`match /docs/{docId}` + `body`/`versions`/`editors`), tests in `functions/scripts/firestore-rules-test.js`.
+
 ## 8.9 Project — General
 - `project.view` — View the project and access its dashboard/overview
 - `project.settings.view` — View project settings

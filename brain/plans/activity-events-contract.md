@@ -57,7 +57,7 @@ Actor display: `kind: 'ai'` renders "Name via Claude"; `automation` renders the 
 | `project.status_changed` | onProjectWritten | `changes.status` |
 | `project.member_added` / `project.member_removed` | onProjectWritten | `meta.userIds`, `meta.userNames` |
 | `file.uploaded`, `file.deleted` | *Files session* | reserved |
-| `doc.created`, `doc.updated` | *Wiki session* | reserved |
+| `doc.created` / `doc.updated` / `doc.archived` / `doc.restored` / `doc.deleted` | onWikiDocWritten | object = doc; `meta.path`, `meta.spaceType`; `doc.updated` throttled (1 per page + person / 10 min), `changes.title` on rename |
 | `automation.ran`, `automation.failed` | *Flows session* | reserved; `meta.flowId`, `meta.runId` |
 
 ## Extending (other sessions)
