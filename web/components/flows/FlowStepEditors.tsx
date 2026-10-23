@@ -6,6 +6,7 @@ import { TextInput } from '../common/Input/TextInput';
 import { TextArea } from '../common/Input/TextArea';
 import { Checkbox } from '../common/Checkbox/Checkbox';
 import type {
+    FlowAiCondition,
     FlowAction,
     FlowActionType,
     FlowConditionField,
@@ -226,6 +227,7 @@ const FIELD_OPERATORS: Record<FlowConditionField, FlowOperator[]> = {
     'comment.text': ['contains', 'not_contains'],
     'task.isSubtask': ['eq'],
     'project.id': ['eq', 'neq'],
+    ai: ['ai'],
 };
 
 const defaultValue = (field: FlowConditionField, operator: FlowOperator): FlowConditionRule['value'] => {
@@ -277,6 +279,88 @@ const RuleValue: React.FC<{ opts: FlowEditorOptions; rule: FlowConditionRule; on
     return <TextInput value={String(rule.value || '')} aria-label={t('flows.condition.value')} onChange={(e) => onChange(e.target.value)} />;
 };
 
+const percent = (value: number | undefined, fallback: number) => Math.round((value ?? fallback) * 100);
+
+/** KI-Bedingung: plain-language question, type and threshold (Decisions API). */
+const AiRuleEditor: React.FC<{ t: T; ai: FlowAiCondition; onChange: (ai: FlowAiCondition) => void; onRemove: () => void }> = ({ t, ai, onChange, onRemove }) => {
+    const set = (patch: Partial<FlowAiCondition>) => onChange({ ...ai, ...patch });
+    const choices = ai.choices || [];
+    const accept = ai.accept || [];
+    const levels = ai.levels || 5;
+    return (
+        <div className="flow-ai-rule">
+            <div className="flow-ai-rule__head">
+                <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                <span>{t('flows.aiCondition.title')}</span>
+                <button type="button" className="flow-icon-button" aria-label={t('flows.condition.remove')} onClick={onRemove}>
+                    <span className="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div className="flow-fields">
+                <div className="flow-field flow-field--wide">
+                    <TextArea label={t('flows.aiCondition.question')} rows={2} value={ai.question} placeholder={t(`flows.aiCondition.placeholder.${ai.kind}`)}
+                        onChange={(e) => set({ question: e.target.value })} />
+                </div>
+                <Field label={t('flows.aiCondition.kind')}>
+                    <Select value={ai.kind} options={options(['predicate', 'choice', 'score'], (k) => t(`flows.aiCondition.kind.${k}`))}
+                        onChange={(v) => onChange(v === 'choice'
+                            ? { kind: 'choice', question: ai.question, choices: ['Bug', 'Feature', 'Frage'], accept: ['Bug'], minConfidence: 0 }
+                            : v === 'score' ? { kind: 'score', question: ai.question, levels: 5, minScore: 4 }
+                                : { kind: 'predicate', question: ai.question, threshold: 0.8 })} />
+                </Field>
+                {ai.kind === 'predicate' && (
+                    <Field label={t('flows.aiCondition.threshold')}>
+                        <TextInput type="number" min={50} max={99} value={String(percent(ai.threshold, 0.8))}
+                            rightElement={<span className="flow-unit">%</span>}
+                            onChange={(e) => set({ threshold: Math.min(99, Math.max(50, Number(e.target.value))) / 100 })} />
+                    </Field>
+                )}
+                {ai.kind === 'choice' && (
+                    <>
+                        <Field label={t('flows.aiCondition.minConfidence')}>
+                            <TextInput type="number" min={0} max={99} value={String(percent(ai.minConfidence, 0))}
+                                rightElement={<span className="flow-unit">%</span>}
+                                onChange={(e) => set({ minConfidence: Math.min(99, Math.max(0, Number(e.target.value))) / 100 })} />
+                        </Field>
+                        <Field label={t('flows.aiCondition.choices')} wide>
+                            <TextInput value={choices.join(', ')} placeholder="Bug, Feature, Frage"
+                                onChange={(e) => {
+                                    const next = e.target.value.split(',').map((c) => c.trim()).filter(Boolean).slice(0, 10);
+                                    set({ choices: next, accept: accept.filter((a) => next.includes(a)) });
+                                }} />
+                        </Field>
+                        <div className="flow-field flow-field--wide">
+                            <span className="flow-field__label">{t('flows.aiCondition.accept')}</span>
+                            <div className="flow-people">
+                                {choices.map((choice) => (
+                                    <button key={choice} type="button" aria-pressed={accept.includes(choice)}
+                                        className={`flow-chip ${accept.includes(choice) ? 'is-active' : ''}`.trim()}
+                                        onClick={() => set({ accept: accept.includes(choice) ? accept.filter((a) => a !== choice) : [...accept, choice] })}>
+                                        {choice}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </>
+                )}
+                {ai.kind === 'score' && (
+                    <>
+                        <Field label={t('flows.aiCondition.levels')}>
+                            <Select value={String(levels)} options={Array.from({ length: 9 }, (_v, i) => ({ value: String(i + 2), label: `1–${i + 2}` }))}
+                                onChange={(v) => set({ levels: Number(v), minScore: Math.min(Number(v), ai.minScore || Number(v) - 1) })} />
+                        </Field>
+                        <Field label={t('flows.aiCondition.minScore')}>
+                            <TextInput type="number" min={1} max={levels} step={0.5} value={String(ai.minScore ?? levels - 1)}
+                                onChange={(e) => set({ minScore: Math.min(levels, Math.max(1, Number(e.target.value))) })} />
+                        </Field>
+                    </>
+                )}
+                <p className="flow-hint">{t('flows.aiCondition.hint')}</p>
+            </div>
+        </div>
+    );
+};
+
 export const ConditionsEditor: React.FC<{
     opts: FlowEditorOptions;
     conditions: FlowConditions;
@@ -285,7 +369,7 @@ export const ConditionsEditor: React.FC<{
     onChange: (conditions: FlowConditions) => void;
 }> = ({ opts, conditions, taskless, commentTrigger, onChange }) => {
     const { t } = opts;
-    const fields = (Object.keys(FIELD_OPERATORS) as FlowConditionField[]).filter((field) =>
+    const fields = (Object.keys(FIELD_OPERATORS) as FlowConditionField[]).filter((field) => field !== 'ai' &&
         (field !== 'project.id' || opts.workspaceScope) && (field !== 'comment.text' || commentTrigger) && (!taskless || !field.startsWith('task.')));
     const setGroup = (index: number, group: FlowConditionGroup | null) => {
         const groups = conditions.groups.slice();
@@ -294,11 +378,19 @@ export const ConditionsEditor: React.FC<{
         onChange({ ...conditions, groups });
     };
     const newRule = (): FlowConditionRule => {
-        const field = fields[0];
+        const field = fields[0] || 'project.id';
         const operator = FIELD_OPERATORS[field][0];
         return { field, operator, value: defaultValue(field, operator) };
     };
-    if (fields.length === 0) return <p className="flow-hint">{t('flows.condition.none')}</p>;
+    const aiCount = conditions.groups.reduce((sum, group) => sum + group.rules.filter((rule) => rule.field === 'ai').length, 0);
+    const addAiRule = () => {
+        const aiRule: FlowConditionRule = { field: 'ai', operator: 'ai', ai: { kind: 'predicate', question: '', threshold: 0.8 } };
+        const groups = conditions.groups.slice();
+        if (groups.length) groups[0] = { ...groups[0], rules: [...groups[0].rules, aiRule] };
+        else groups.push({ op: 'and', rules: [aiRule] });
+        onChange({ ...conditions, groups });
+    };
+    if (fields.length === 0 && aiCount === 0 && taskless) return <p className="flow-hint">{t('flows.condition.none')}</p>;
     return (
         <div className="flow-conditions">
             {conditions.groups.length > 1 && (
@@ -322,6 +414,12 @@ export const ConditionsEditor: React.FC<{
                             else rules.splice(ruleIndex, 1);
                             setGroup(groupIndex, { ...group, rules });
                         };
+                        if (rule.field === 'ai') {
+                            return (
+                                <AiRuleEditor key={ruleIndex} t={t} ai={rule.ai || { kind: 'predicate', question: '', threshold: 0.8 }}
+                                    onChange={(ai) => setRule({ field: 'ai', operator: 'ai', ai })} onRemove={() => setRule(null)} />
+                            );
+                        }
                         return (
                             <div key={ruleIndex} className="flow-condition">
                                 <Select value={rule.field} options={options(fields, (f) => t(`flows.condition.field.${f}`))}
@@ -346,11 +444,18 @@ export const ConditionsEditor: React.FC<{
                     </button>
                 </div>
             ))}
-            <button type="button" className="flow-link-button"
-                onClick={() => onChange({ ...conditions, groups: [...conditions.groups, { op: 'and', rules: [newRule()] }] })}>
-                <span className="material-symbols-outlined">add</span>
-                {conditions.groups.length ? t('flows.condition.addGroup') : t('flows.condition.add')}
-            </button>
+            <div className="flow-inline">
+                <button type="button" className="flow-link-button"
+                    onClick={() => onChange({ ...conditions, groups: [...conditions.groups, { op: 'and', rules: [newRule()] }] })}>
+                    <span className="material-symbols-outlined">add</span>
+                    {conditions.groups.length ? t('flows.condition.addGroup') : t('flows.condition.add')}
+                </button>
+                {aiCount < 3 && (
+                    <button type="button" className="flow-link-button" onClick={addAiRule}>
+                        <span className="material-symbols-outlined">auto_awesome</span>{t('flows.aiCondition.add')}
+                    </button>
+                )}
+            </div>
         </div>
     );
 };
@@ -370,7 +475,7 @@ export const defaultActionConfig = (type: FlowActionType, projectId: string | nu
         case 'add_label':
         case 'remove_label': return { label: '' };
         case 'move': return { projectId: '' };
-        case 'ai': return { mode: 'summarize', instructions: '', postComment: true };
+        case 'ai': return { mode: 'draft_comment', instructions: '' };
         case 'delay': return { minutes: 60 };
     }
     return {};
@@ -518,8 +623,17 @@ export const ActionEditor: React.FC<{
             body = (
                 <>
                     <Field label={t('flows.ai.mode')} wide>
-                        <Select value={c.mode || 'summarize'} options={options(['summarize', 'classify_priority', 'classify_label'], (m) => t(`flows.ai.${m}`))}
-                            onChange={(v) => onChange({ ...action, config: { mode: v, instructions: c.instructions || '', ...(v === 'summarize' ? { postComment: true } : {}), ...(v === 'classify_label' ? { options: [] } : {}) } })} />
+                        <Select value={c.mode || 'summarize'} options={options(['summarize', 'draft_comment', 'draft_task', 'classify_priority', 'classify_label'], (m) => t(`flows.ai.${m}`))}
+                            onChange={(v) => onChange({
+                                ...action,
+                                config: {
+                                    mode: v, instructions: c.instructions || '',
+                                    ...(v === 'summarize' ? { postComment: true } : {}),
+                                    ...(v === 'classify_label' ? { options: [] } : {}),
+                                    ...(v === 'classify_label' || v === 'classify_priority' ? { minConfidence: 0.5 } : {}),
+                                    ...(v === 'draft_task' ? { asSubtask: true, projectId: null } : {}),
+                                },
+                            })} />
                     </Field>
                     {c.mode === 'classify_label' && (
                         <Field label={t('flows.ai.options')} wide>
@@ -529,6 +643,24 @@ export const ActionEditor: React.FC<{
                     )}
                     {c.mode === 'summarize' && (
                         <Checkbox label={t('flows.ai.postComment')} checked={c.postComment !== false} onChange={(e) => set({ postComment: e.target.checked })} />
+                    )}
+                    {(c.mode === 'classify_priority' || c.mode === 'classify_label') && (
+                        <Field label={t('flows.ai.minConfidence')}>
+                            <TextInput type="number" min={0} max={99} value={String(Math.round((c.minConfidence ?? 0.5) * 100))}
+                                rightElement={<span className="flow-unit">%</span>}
+                                onChange={(e) => set({ minConfidence: Math.min(99, Math.max(0, Number(e.target.value))) / 100 })} />
+                        </Field>
+                    )}
+                    {c.mode === 'draft_task' && (
+                        <>
+                            <Checkbox label={t('flows.create.asSubtask')} checked={c.asSubtask === true} onChange={(e) => set({ asSubtask: e.target.checked })} />
+                            {!c.asSubtask && (
+                                <Field label={t('flows.create.project')}>
+                                    <Select value={c.projectId || ''} options={[{ value: '', label: t('flows.create.sameProject') }, ...projectOptions]}
+                                        onChange={(v) => set({ projectId: String(v) || null })} />
+                                </Field>
+                            )}
+                        </>
                     )}
                     <Field label={t('flows.ai.instructions')} wide>
                         <TextInput value={c.instructions || ''} placeholder={t('flows.ai.instructionsPlaceholder')} onChange={(e) => set({ instructions: e.target.value })} />

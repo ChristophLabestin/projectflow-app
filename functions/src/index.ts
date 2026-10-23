@@ -161,7 +161,7 @@ export { computeWorkspaceInsights, refreshWorkspaceInsights, generateWeeklyInsig
 // Flows (automations): brain/plans/flows-concept.md
 export {
     onAutomationEvent, runAutomationSchedules, saveAutomation, setAutomationEnabled, deleteAutomation,
-    runAutomation, retryAutomationRun, previewAutomation
+    runAutomation, retryAutomationRun, previewAutomation, draftAutomationFromText
 } from './automations';
 export { deliverReminders } from './reminders';
 export { sendNudges } from './nudges';

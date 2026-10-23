@@ -10,7 +10,8 @@ import { db } from './init';
 import { emitActivityEvent } from './activity-events';
 import { createNotificationDoc, getActor } from './notification-writer';
 import { loadAiPolicy } from './ai-store';
-import { generateServerText } from './ai-service';
+import { aiDecide, aiGenerate, DecideResult, GenerateRequest } from './ai-decide';
+import { DraftContext, FLOW_DRAFT_SCHEMA, draftFromModel, flowDraftInstructions } from './automation-draft';
 import {
     Action,
     AUTOMATION_LIMITS,
@@ -26,7 +27,12 @@ import {
     TASK_ACTIONS,
     TASK_PRIORITIES,
     TIME_TRIGGERS,
+    AiDecisionRecord,
     addDays,
+    aiQuestionFor,
+    aiRulesOf,
+    aiVerdictFor,
+    aiWorkItemText,
     assigneesOf,
     canManageAutomation,
     checkLimits,
@@ -34,6 +40,7 @@ import {
     conditionsNeedTask,
     dueScanDate,
     evaluateConditions,
+    evaluateConditionsTri,
     flowTimeZone,
     hourKey,
     isTaskDone,
@@ -69,6 +76,35 @@ const taskRefOf = (tenantId: string, projectId: string, taskId: string) =>
 const projectRefOf = (tenantId: string, projectId: string) => db.doc(`tenants/${tenantId}/projects/${projectId}`);
 
 const expireIn = (days: number) => Timestamp.fromMillis(Date.now() + days * DAY_MS);
+
+// ---------------------------------------------------------------------------
+// AI (narrow interface over ai-decide.ts; emulator tests answer from `_test/flowsAi`)
+// ---------------------------------------------------------------------------
+
+const ZERO_USAGE = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
+
+const emulatorFake = async (): Promise<Json | null> => {
+    if (process.env.FUNCTIONS_EMULATOR !== 'true' && !process.env.FIRESTORE_EMULATOR_HOST) return null;
+    const snap = await db.doc('_test/flowsAi').get();
+    return snap.exists ? (snap.data() as Json) : null;
+};
+
+export const flowAi = {
+    decide: async (request: Parameters<typeof aiDecide>[0]): Promise<DecideResult> => {
+        const fake = await emulatorFake();
+        if (!fake) return aiDecide(request);
+        return {
+            answers: request.questions.map((q) => (fake.answers?.[q.type] ? { ...fake.answers[q.type], type: q.type, name: q.name } : { type: 'refusal', name: q.name })),
+            usage: ZERO_USAGE
+        };
+    },
+    generate: async <T>(request: GenerateRequest): Promise<{ data: T; usage: typeof ZERO_USAGE }> => {
+        const fake = await emulatorFake();
+        if (!fake) return aiGenerate<T>(request);
+        if (!fake.generate?.[request.schema.name]) throw new Error(`No fake AI output for ${request.schema.name}`);
+        return { data: fake.generate[request.schema.name] as T, usage: ZERO_USAGE };
+    }
+};
 
 // ---------------------------------------------------------------------------
 // Run context
@@ -153,11 +189,12 @@ interface StartInput {
     depth: number;
     context: RunContext;
     entityId: string;
+    decisions?: AiDecisionRecord[];
 }
 
 /** Creates the run doc. Returns the run id, or null for duplicates / limit skips. */
 const startRun = async (input: StartInput): Promise<string | null> => {
-    const { tenantId, automationId, automation, key, depth, context, entityId } = input;
+    const { tenantId, automationId, automation, key, depth, context, entityId, decisions } = input;
     const now = Date.now();
     const runId = runIdFor(automationId, key);
     const runRef = runsCol(tenantId).doc(runId);
@@ -176,6 +213,7 @@ const startRun = async (input: StartInput): Promise<string | null> => {
         taskId: context.taskId,
         depth,
         context,
+        ...(decisions?.length ? { decisions } : {}),
         steps: [],
         nextStep: 0,
         attempt: 1,
@@ -228,6 +266,8 @@ interface ExecState {
 interface StepResult {
     status: 'ok' | 'noop' | 'skipped';
     output?: string;
+    /** Decisions API result of classify steps (shown in the run log). */
+    decision?: { choice: string; confidence: number };
 }
 
 class StepError extends Error {
@@ -320,7 +360,7 @@ const addComment = async (state: ExecState, text: string, actionId: string) => {
     }
 };
 
-const consumeAiStep = async (state: ExecState) => {
+const consumeAiStep = async (state: { tenantId: string }) => {
     const policy = await loadAiPolicy(state.tenantId);
     if (!policy.enabled) throw new StepError('AI is turned off for this workspace.');
     const tenantSnap = await db.doc(`tenants/${state.tenantId}`).get();
@@ -348,31 +388,116 @@ const taskDigest = async (state: ExecState): Promise<string> => {
     ].join('\n');
 };
 
+const SUMMARY_SCHEMA = {
+    name: 'flow_summary',
+    schema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'], additionalProperties: false }
+};
+const COMMENT_SCHEMA = {
+    name: 'flow_comment',
+    schema: { type: 'object', properties: { comment: { type: 'string' } }, required: ['comment'], additionalProperties: false }
+};
+const TASK_SCHEMA = {
+    name: 'flow_task',
+    schema: {
+        type: 'object',
+        properties: {
+            title: { type: 'string' },
+            description: { type: 'string' },
+            priority: { type: 'string', enum: [...TASK_PRIORITIES] },
+            dueInDays: { anyOf: [{ type: 'integer' }, { type: 'null' }] }
+        },
+        required: ['title', 'description', 'priority', 'dueInDays'],
+        additionalProperties: false
+    }
+};
+
+const LANGUAGE_HINT = 'Write in the language of the task.';
+
+/**
+ * AI steps. Producing content (summarize, draft_comment, draft_task) uses Structured Outputs with a
+ * strict schema; classification (classify_priority, classify_label) uses the Decisions API.
+ */
 const runAiStep = async (state: ExecState, action: Action): Promise<StepResult> => {
     requireTask(state);
     const c = action.config;
     if (state.dryRun) return { status: 'ok', output: `AI: ${c.mode}` };
     await consumeAiStep(state);
     const input = await taskDigest(state);
-    const extra = c.instructions ? `\nAdditional instructions: ${c.instructions}` : '';
-    if (c.mode === 'summarize') {
-        const text = await generateServerText(state.ownerId,
-            `Summarize this project task in 2-4 short sentences for the team. Answer in the language of the task.${extra}`, input);
+    const extra = c.instructions ? `\nAdditional instructions from the flow: ${c.instructions}` : '';
+
+    if (c.mode === 'classify_priority' || c.mode === 'classify_label') {
+        const options: string[] = c.mode === 'classify_label' ? c.options : [...TASK_PRIORITIES];
+        const question = c.mode === 'classify_label'
+            ? `Which label fits this task best?${extra}`
+            : `Which priority should this task have (Low, Medium, High, Urgent)?${extra}`;
+        const { answers } = await flowAi.decide({
+            input,
+            questions: [{ type: 'choice', name: 'pick', instructions: question, choices: options.map((value) => ({ value })) }]
+        });
+        const answer: any = answers.find((a) => a.name === 'pick');
+        if (!answer || answer.type === 'refusal' || !options.includes(answer.choice)) return { status: 'noop', output: 'AI gave no answer' };
+        const confidence = Math.round((Number(answer.confidence) || 0) * 1000) / 1000;
+        const decision = { choice: String(answer.choice), confidence };
+        if (confidence < (c.minConfidence ?? 0.5)) return { status: 'noop', output: `${answer.choice} (${confidence})`, decision };
+        state.ctx.vars['ai.result'] = answer.choice;
+        const synthetic: Action = c.mode === 'classify_label'
+            ? { id: action.id, type: 'add_label', config: { label: answer.choice } }
+            : { id: action.id, type: 'set_field', config: { field: 'priority', value: answer.choice } };
+        const result = await performTaskPatch(state, synthetic);
+        return { status: result.status, output: `${answer.choice} (${confidence})`, decision };
+    }
+
+    if (c.mode === 'draft_task') {
+        const { data } = await flowAi.generate<{ title: string; description: string; priority: string; dueInDays: number | null }>({
+            tier: 'fast',
+            instructions: `Formulate one concrete follow-up task for the work item. Short actionable title, 1-3 sentence description. ${LANGUAGE_HINT}${extra}`,
+            input,
+            schema: TASK_SCHEMA
+        });
+        state.ctx.vars['ai.result'] = data.title;
+        const synthetic: Action = {
+            id: action.id,
+            type: 'create_task',
+            config: {
+                title: String(data.title || '').slice(0, 300),
+                description: String(data.description || '').slice(0, 2000),
+                asSubtask: c.asSubtask === true,
+                projectId: c.projectId || null,
+                priority: (TASK_PRIORITIES as readonly string[]).includes(data.priority) ? data.priority : 'Medium',
+                status: 'Open',
+                dueInDays: Number.isInteger(data.dueInDays) ? Math.max(0, Math.min(365, Number(data.dueInDays))) : null,
+                userIds: [],
+                dynamic: []
+            }
+        };
+        if (!synthetic.config.title) return { status: 'noop', output: 'AI returned no title' };
+        return performCreateTask(state, synthetic, { raw: true });
+    }
+
+    if (c.mode === 'draft_comment') {
+        const { data } = await flowAi.generate<{ comment: string }>({
+            tier: 'fast',
+            instructions: `Draft a short, helpful comment for the team on this work item (max. 4 sentences). ${LANGUAGE_HINT}${extra}`,
+            input,
+            schema: COMMENT_SCHEMA
+        });
+        const text = String(data.comment || '').trim();
+        if (!text) return { status: 'noop', output: 'AI returned no comment' };
         state.ctx.vars['ai.result'] = text;
-        if (c.postComment) await addComment(state, text, action.id);
+        await addComment(state, text, action.id);
         return { status: 'ok', output: text.slice(0, 300) };
     }
-    const options: string[] = c.mode === 'classify_label' ? c.options : [...TASK_PRIORITIES];
-    const answer = await generateServerText(state.ownerId,
-        `Classify the task. Reply with exactly one option and nothing else. Options: ${options.join(', ')}.${extra}`, input);
-    const picked = options.find((option) => answer.toLowerCase().includes(option.toLowerCase()));
-    if (!picked) return { status: 'noop', output: `No option matched: ${answer.slice(0, 80)}` };
-    state.ctx.vars['ai.result'] = picked;
-    const synthetic: Action = c.mode === 'classify_label'
-        ? { id: action.id, type: 'add_label', config: { label: picked } }
-        : { id: action.id, type: 'set_field', config: { field: 'priority', value: picked } };
-    const result = await performTaskPatch(state, synthetic);
-    return { status: result.status, output: picked };
+
+    const { data } = await flowAi.generate<{ summary: string }>({
+        tier: 'fast',
+        instructions: `Summarize this work item in 2-4 short sentences for the team. ${LANGUAGE_HINT}${extra}`,
+        input,
+        schema: SUMMARY_SCHEMA
+    });
+    const text = String(data.summary || '').trim();
+    state.ctx.vars['ai.result'] = text;
+    if (c.postComment && text) await addComment(state, text, action.id);
+    return { status: 'ok', output: text.slice(0, 300) };
 };
 
 const performTaskPatch = async (state: ExecState, action: Action): Promise<StepResult> => {
@@ -415,9 +540,9 @@ const performNotify = async (state: ExecState, action: Action): Promise<StepResu
     return { status: 'ok', output: `${recipients.length} recipient(s)` };
 };
 
-const performCreateTask = async (state: ExecState, action: Action): Promise<StepResult> => {
+const performCreateTask = async (state: ExecState, action: Action, options: { raw?: boolean } = {}): Promise<StepResult> => {
     const c = action.config;
-    const title = render(state, c.title);
+    const title = options.raw ? c.title : render(state, c.title);
     const assignees = await filterMembers(state.tenantId, resolvePeople(c, await peopleContext(state)));
     const dueDate = c.dueInDays === null || c.dueInDays === undefined ? null : addDays(state.today, c.dueInDays);
     const docId = runIdFor(state.runId, action.id);
@@ -454,7 +579,7 @@ const performCreateTask = async (state: ExecState, action: Action): Promise<Step
             ownerId: state.ownerId,
             createdBy: state.ownerId,
             title,
-            description: render(state, c.description || ''),
+            description: options.raw ? c.description || '' : render(state, c.description || ''),
             status: c.status,
             isCompleted: c.status === 'Done',
             priority: c.priority,
@@ -578,6 +703,8 @@ const pauseAutomation = async (tenantId: string, automationId: string, automatio
 export interface ExecuteOptions {
     fromStep?: number;
     ignoreDisabled?: boolean;
+    /** Fail the run before any action (e.g. the AI condition could not be evaluated). */
+    preError?: string;
 }
 
 /** Runs (or resumes) a stored run. Never throws: failures end in `status: failed`. */
@@ -630,9 +757,9 @@ export const executeRun = async (tenantId: string, runId: string, options: Execu
 
     const actions: Action[] = Array.isArray(automation.actions) ? automation.actions : [];
     const steps: Json[] = Array.isArray(run.steps) ? run.steps.slice(0, options.fromStep ?? run.nextStep ?? 0) : [];
-    let failedError: string | null = null;
+    let failedError: string | null = options.preError || null;
 
-    for (let index = options.fromStep ?? run.nextStep ?? 0; index < actions.length; index++) {
+    for (let index = options.fromStep ?? run.nextStep ?? 0; !failedError && index < actions.length; index++) {
         const action = actions[index];
         if (action.type === 'delay') {
             steps[index] = { actionId: action.id, type: action.type, status: 'ok', output: `${action.config.minutes} min`, at: Timestamp.now() };
@@ -648,7 +775,12 @@ export const executeRun = async (tenantId: string, runId: string, options: Execu
         try {
             if (TASK_ACTIONS.has(action.type) && action.type !== 'ai') await reloadTask(state);
             const result = await withRetries(() => performAction(state, action));
-            steps[index] = { actionId: action.id, type: action.type, status: result.status, ...(result.output ? { output: result.output } : {}), at: Timestamp.now() };
+            steps[index] = {
+                actionId: action.id, type: action.type, status: result.status,
+                ...(result.output ? { output: result.output } : {}),
+                ...(result.decision ? { decision: result.decision } : {}),
+                at: Timestamp.now()
+            };
         } catch (error: any) {
             failedError = String(error?.message || error || 'Unknown error').slice(0, 500);
             steps[index] = { actionId: action.id, type: action.type, status: 'failed', error: failedError, at: Timestamp.now() };
@@ -693,16 +825,52 @@ const evalContext = (task: Json | null, taskId: string | null, ctx: RunContext, 
     task, taskId, projectId: ctx.projectId, actorId: ctx.actorId, commentText: ctx.commentText, today
 });
 
-/** Fresh-state condition check. Returns false when the conditions need a task that is gone. */
-const conditionsPass = async (tenantId: string, automation: Json, ctx: RunContext): Promise<boolean> => {
+interface ConditionOutcome {
+    passed: boolean;
+    decisions: AiDecisionRecord[];
+    /** AI condition could not be evaluated (quota, policy, provider). */
+    aiError?: string;
+}
+
+/**
+ * Fresh-state condition check. Cheap rules first; the Decisions API is only called when the
+ * outcome still depends on AI conditions (one request with all AI questions, one AI step).
+ */
+const conditionsPass = async (tenantId: string, automation: Json, ctx: RunContext): Promise<ConditionOutcome> => {
     let task: Json | null = null;
     if (ctx.projectId && ctx.taskId) {
         const snap = await taskRefOf(tenantId, ctx.projectId, ctx.taskId).get();
         task = snap.exists ? (snap.data() as Json) : null;
     }
-    if (!task && conditionsNeedTask(automation.conditions)) return false;
+    if (!task && conditionsNeedTask(automation.conditions)) return { passed: false, decisions: [] };
     const today = localDateKey(Date.now(), flowTimeZone(automation.trigger));
-    return evaluateConditions(automation.conditions, evalContext(task, ctx.taskId, ctx, today));
+    const evalCtx = evalContext(task, ctx.taskId, ctx, today);
+    const tri = evaluateConditionsTri(automation.conditions, evalCtx);
+    if (tri !== null) return { passed: tri, decisions: [] };
+
+    const rules = aiRulesOf(automation.conditions);
+    try {
+        await consumeAiStep({ tenantId });
+        const project = ctx.projectId ? (await projectRefOf(tenantId, ctx.projectId).get()).data() : null;
+        const input = aiWorkItemText({ task, projectTitle: project?.title, commentText: ctx.commentText, eventType: ctx.eventType });
+        const { answers } = await flowAi.decide({ input, questions: rules.map((rule) => aiQuestionFor(rule.key, rule.ai)) as any });
+        const decisions = rules.map((rule) => aiVerdictFor(rule.key, rule.ai, answers.find((answer) => answer.name === rule.key) as Json | undefined));
+        const verdicts = Object.fromEntries(decisions.map((decision) => [decision.key, decision.passed]));
+        return { passed: evaluateConditions(automation.conditions, evalCtx, verdicts), decisions };
+    } catch (error: any) {
+        console.error('Flow AI condition failed', tenantId, error?.message);
+        return { passed: false, decisions: [], aiError: `AI condition could not be evaluated: ${String(error?.message || error).slice(0, 200)}` };
+    }
+};
+
+/** Start a run for a matched trigger; AI-condition errors become a failed run (visible in the log). */
+const startAndExecute = async (input: StartInput & { outcome: ConditionOutcome }): Promise<boolean> => {
+    const { outcome, ...start } = input;
+    if (!outcome.passed && !outcome.aiError) return false;
+    const runId = await startRun({ ...start, decisions: outcome.decisions });
+    if (!runId) return false;
+    await executeRun(start.tenantId, runId, outcome.aiError ? { preError: outcome.aiError } : {});
+    return true;
 };
 
 /** `cause` (contract v1.1); older events only carry the automation actor. */
@@ -728,15 +896,11 @@ export const handleActivityEvent = async (tenantId: string, event: StreamEvent):
             continue;
         }
         const ctx = contextFromEvent(event);
-        if (!(await conditionsPass(tenantId, automation, ctx))) continue;
-        const runId = await startRun({
+        const outcome = await conditionsPass(tenantId, automation, ctx);
+        if (await startAndExecute({
             tenantId, automationId: doc.id, automation, key: event.id, depth: guard.depth, context: ctx,
-            entityId: ctx.taskId || event.object?.id || 'none'
-        });
-        if (runId) {
-            await executeRun(tenantId, runId);
-            started++;
-        }
+            entityId: ctx.taskId || event.object?.id || 'none', outcome
+        })) started++;
     }
     return started;
 };
@@ -772,24 +936,15 @@ export const fireScheduledAutomation = async (ref: DocumentReference, automation
     let started = 0;
     if (automation.trigger.type === 'schedule') {
         const ctx = emptyContext('schedule', automation.projectId || null, null);
-        if (!(await conditionsPass(tenantId, automation, ctx))) return 0;
-        const runId = await startRun({ tenantId, automationId: ref.id, automation, key: slot, depth: 1, context: ctx, entityId: 'schedule' });
-        if (runId) {
-            await executeRun(tenantId, runId);
-            started++;
-        }
-        return started;
+        const outcome = await conditionsPass(tenantId, automation, ctx);
+        return (await startAndExecute({ tenantId, automationId: ref.id, automation, key: slot, depth: 1, context: ctx, entityId: 'schedule', outcome })) ? 1 : 0;
     }
     const date = dueScanDate(automation.trigger, slotMs);
     for (const doc of await dueTasks(tenantId, automation, date)) {
         const projectId = doc.ref.parent.parent!.id;
         const ctx = emptyContext(automation.trigger.type, projectId, doc.id);
-        if (!(await conditionsPass(tenantId, automation, ctx))) continue;
-        const runId = await startRun({ tenantId, automationId: ref.id, automation, key: `${slot}_${doc.id}`, depth: 1, context: ctx, entityId: doc.id });
-        if (runId) {
-            await executeRun(tenantId, runId);
-            started++;
-        }
+        const outcome = await conditionsPass(tenantId, automation, ctx);
+        if (await startAndExecute({ tenantId, automationId: ref.id, automation, key: `${slot}_${doc.id}`, depth: 1, context: ctx, entityId: doc.id, outcome })) started++;
     }
     return started;
 };
@@ -1062,7 +1217,9 @@ export const previewAutomation = callable(async (data, context) => {
         const ctx = emptyContext(def.trigger.type, projectId, taskId, uid);
         ctx.actorName = (await getActor(uid)).name;
         const task = taskSnap.data() as Json;
-        const matches = evaluateConditions(def.conditions, evalContext(task, taskId, ctx, today));
+        // AI conditions are really evaluated here (one AI step), so the test run shows probabilities.
+        const outcome = await conditionsPass(tenantId, def as unknown as Json, ctx);
+        const matches = outcome.passed;
         const state: ExecState = {
             tenantId, automationId: 'preview', automation: { ...def, ownerId: uid }, runId: 'preview', depth: 1, ctx, ownerId: uid,
             task: { ...task }, taskRef, project: null, adminIds: null, today, dryRun: true
@@ -1079,7 +1236,7 @@ export const previewAutomation = callable(async (data, context) => {
                 steps.push({ actionId: action.id, type: action.type, status: 'failed', error: String(error?.message || error) });
             }
         }
-        return { matches, steps };
+        return { matches, steps, decisions: outcome.decisions, ...(outcome.aiError ? { aiError: outcome.aiError } : {}) };
     }
 
     if (def.trigger.type === 'schedule' || def.trigger.type === 'project.member_added' || def.trigger.type === 'file.uploaded') {
@@ -1091,11 +1248,16 @@ export const previewAutomation = callable(async (data, context) => {
     const snap = await query.limit(PREVIEW_SCAN).get();
     const ctx = emptyContext(def.trigger.type, def.projectId, null, uid);
     const dueDate = TIME_TRIGGERS.has(def.trigger.type) ? dueScanDate(def.trigger, Date.now()) : null;
+    // AI conditions are not evaluated for the whole list (cost); tasks that only depend on them are
+    // listed with `aiPending` and get a real answer in the per-task test run.
+    const pending = new Set<string>();
     const matching = snap.docs.filter((doc) => {
         const task = doc.data();
         if (dueDate && (isTaskDone(task) || String(task.dueDate || '').slice(0, 10) !== dueDate)) return false;
         const projectId = doc.ref.parent.parent!.id;
-        return evaluateConditions(def.conditions, evalContext(task, doc.id, { ...ctx, projectId }, today));
+        const tri = evaluateConditionsTri(def.conditions, evalContext(task, doc.id, { ...ctx, projectId }, today));
+        if (tri === null) pending.add(doc.id);
+        return tri !== false;
     });
     return {
         scanned: snap.size,
@@ -1106,7 +1268,56 @@ export const previewAutomation = callable(async (data, context) => {
             title: String(doc.data().title || ''),
             status: String(doc.data().status || ''),
             priority: String(doc.data().priority || ''),
-            labels: labelsOf(doc.data())
+            labels: labelsOf(doc.data()),
+            aiPending: pending.has(doc.id)
         }))
     };
+});
+
+const DRAFT_TEXT_MAX = 600;
+
+/**
+ * "Flow aus Satz": Structured Outputs turn one sentence into a flow definition in the engine's schema.
+ * The result is validated (unknown people/projects and broken parts dropped with warnings) and
+ * returned as a disabled draft — the client shows it in the editor, nothing is saved here.
+ */
+export const draftAutomationFromText = callable(async (data, context) => {
+    const uid = requireAuth(context);
+    const tenantId = requireTenant(data);
+    const text = typeof data?.text === 'string' ? data.text.trim().slice(0, DRAFT_TEXT_MAX) : '';
+    if (text.length < 8) throw new HttpsError('invalid-argument', 'Describe the flow in one sentence.');
+    const role = await memberRole(tenantId, uid);
+    if (!role || role === 'Guest') throw new HttpsError('permission-denied', 'Flows are available to workspace members.');
+    try {
+        await consumeAiStep({ tenantId });
+    } catch (error: any) {
+        throw new HttpsError('resource-exhausted', error?.message || 'AI is not available.');
+    }
+    const [membersSnap, projectsSnap] = await Promise.all([
+        db.collection(`tenants/${tenantId}/members`).get(),
+        db.collection(`tenants/${tenantId}/projects`).limit(200).get()
+    ]);
+    const projectId = typeof data?.projectId === 'string' && data.projectId ? data.projectId : null;
+    const draftCtx: DraftContext = {
+        members: membersSnap.docs
+            .filter((doc) => doc.data().role !== 'Guest')
+            .map((doc) => ({ uid: doc.id, name: String(doc.data().displayName || doc.data().email || doc.id) })),
+        projects: projectsSnap.docs.map((doc) => ({ id: doc.id, title: String(doc.data().title || doc.id) })),
+        defaultProjectId: projectId,
+        timezone: typeof data?.timezone === 'string' ? data.timezone : 'Europe/Berlin',
+        today: localDateKey(Date.now(), typeof data?.timezone === 'string' ? data.timezone : 'Europe/Berlin')
+    };
+    let raw: Json;
+    try {
+        raw = (await flowAi.generate<Json>({ tier: 'agent', instructions: flowDraftInstructions(draftCtx), input: text, schema: FLOW_DRAFT_SCHEMA, maxOutputTokens: 3000 })).data;
+    } catch (error: any) {
+        console.error('draftAutomationFromText failed', error?.message);
+        throw new HttpsError('unavailable', 'The AI could not draft this flow. Try again or rephrase.');
+    }
+    try {
+        return draftFromModel(raw, draftCtx);
+    } catch (error) {
+        if (error instanceof AutomationValidationError) throw new HttpsError('invalid-argument', error.message);
+        throw error;
+    }
 });

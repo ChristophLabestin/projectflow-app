@@ -166,3 +166,91 @@ test('flow notifications use the channels chosen in the flow', () => {
     assert.deepEqual(decideChannels('automation_notice', prefs, { push: false }), { push: false, email: false, category: 'automation' });
     assert.deepEqual(decideChannels('automation_notice', prefs, undefined), { push: true, email: false, category: 'automation' });
 });
+
+test('AI condition: normalize, three-valued evaluation, verdicts', () => {
+    const { evaluateConditionsTri, aiRulesOf, aiQuestionFor, aiVerdictFor } = require('../../lib/automation-logic');
+    const def = normalizeAutomation({
+        name: 'Blocker', trigger: { type: 'comment.created' },
+        conditions: { op: 'and', groups: [{ op: 'and', rules: [
+            { field: 'task.priority', operator: 'in', value: ['High'] },
+            { field: 'ai', operator: 'ai', ai: { kind: 'predicate', question: 'Beschreibt der Kommentar einen Blocker?', threshold: 1.5 } }
+        ] }] },
+        actions: [{ type: 'set_status', config: { status: 'Blocked' } }]
+    });
+    const rule = def.conditions.groups[0].rules[1];
+    assert.deepEqual(rule.ai, { kind: 'predicate', question: 'Beschreibt der Kommentar einen Blocker?', threshold: 0.99 });
+    // cheap rule false → decided without AI
+    assert.equal(evaluateConditionsTri(def.conditions, ctx({ priority: 'Low' })), false);
+    // cheap rule true → depends on AI
+    assert.equal(evaluateConditionsTri(def.conditions, ctx({ priority: 'High' })), null);
+    assert.equal(evaluateConditionsTri(def.conditions, ctx({ priority: 'High' }), { c0_1: true }), true);
+    assert.equal(evaluateConditions(def.conditions, ctx({ priority: 'High' })), false, 'unknown counts as not passed');
+    const [ai] = aiRulesOf(def.conditions);
+    assert.equal(ai.key, 'c0_1');
+    assert.equal(aiQuestionFor(ai.key, ai.ai).type, 'predicate');
+    assert.equal(aiVerdictFor('c0_1', { kind: 'predicate', question: 'q', threshold: 0.8 }, { type: 'predicate', probability: 0.92 }).passed, true);
+    assert.equal(aiVerdictFor('c0_1', { kind: 'predicate', question: 'q', threshold: 0.8 }, { type: 'predicate', probability: 0.5 }).passed, false);
+    assert.equal(aiVerdictFor('c0_1', { kind: 'predicate', question: 'q' }, { type: 'refusal' }).refused, true);
+    const choice = { kind: 'choice', question: 'Kategorie?', choices: ['Bug', 'Feature', 'Frage'], accept: ['Bug'], minConfidence: 0.6 };
+    assert.equal(aiVerdictFor('k', choice, { type: 'choice', choice: 'Bug', confidence: 0.9 }).passed, true);
+    assert.equal(aiVerdictFor('k', choice, { type: 'choice', choice: 'Bug', confidence: 0.4 }).passed, false);
+    assert.equal(aiVerdictFor('k', choice, { type: 'choice', choice: 'Frage', confidence: 0.9 }).passed, false);
+    const score = { kind: 'score', question: 'Dringlichkeit?', levels: 5, minScore: 4 };
+    assert.equal(aiQuestionFor('s', score).levels.length, 5);
+    // API score is a 0-based weighted index: 3.2 → 4.2 on the 1..5 scale
+    assert.deepEqual(aiVerdictFor('s', score, { type: 'score', score: 3.2, confidence: 0.7 }), { key: 's', kind: 'score', question: 'Dringlichkeit?', passed: true, score: 4.2, confidence: 0.7 });
+    assert.equal(aiVerdictFor('s', score, { type: 'score', score: 2.1, confidence: 0.7 }).passed, false);
+    assert.throws(() => normalizeAutomation({ ...def, conditions: { op: 'and', groups: [{ op: 'and', rules: [{ field: 'ai', ai: { kind: 'choice', question: 'Kategorie?', choices: ['A'] } }] }] } }), /two answers/);
+    assert.throws(() => normalizeAutomation({ ...def, conditions: { op: 'and', groups: [{ op: 'and', rules: Array.from({ length: 4 }, () => ({ field: 'ai', ai: { kind: 'predicate', question: 'Frage?' } })) }] } }), /At most 3 AI/);
+});
+
+test('AI action modes normalize', () => {
+    const ai = (config) => normalizeAutomation({ ...flow(), trigger: { type: 'task.created' }, actions: [{ type: 'ai', config }] }).actions[0].config;
+    assert.deepEqual(ai({ mode: 'draft_task', asSubtask: true }), { mode: 'draft_task', instructions: '', asSubtask: true, projectId: null });
+    assert.deepEqual(ai({ mode: 'classify_priority' }), { mode: 'classify_priority', instructions: '', minConfidence: 0.5 });
+    assert.throws(() => ai({ mode: 'classify_label', options: ['only'] }), /two label options/);
+    assert.deepEqual(ai({ mode: 'draft_comment', instructions: 'freundlich' }), { mode: 'draft_comment', instructions: 'freundlich' });
+});
+
+test('Flow aus Satz: draft conversion drops unknown refs and broken parts', () => {
+    const { draftFromModel, FLOW_DRAFT_SCHEMA } = require('../../lib/automation-draft');
+    // strict schema: every object lists all properties as required and forbids extras
+    const strictOk = (node) => {
+        if (node && typeof node === 'object') {
+            if (node.type === 'object') {
+                assert.equal(node.additionalProperties, false);
+                assert.deepEqual([...node.required].sort(), Object.keys(node.properties).sort());
+            }
+            Object.values(node).forEach(strictOk);
+        }
+    };
+    strictOk(FLOW_DRAFT_SCHEMA.schema);
+    const nulls = { status: null, field: null, priority: null, relativeDays: null, assignMode: null, userIds: [], dynamic: [], text: null, title: null,
+        message: null, label: null, projectId: null, asSubtask: null, dueInDays: null, minutes: null, aiMode: null, options: null, email: null };
+    const draftCtx = { members: [{ uid: 'u1', name: 'Anna' }], projects: [{ id: 'p1', title: 'Web' }], defaultProjectId: null, timezone: 'Europe/Berlin', today: '2026-10-23' };
+    const { draft, warnings } = draftFromModel({
+        name: 'Blocker melden', description: '', projectId: 'p1',
+        trigger: { type: 'comment.created', fromStatus: null, toStatus: null, assigneeId: null, frequency: null, weekday: null, time: null },
+        conditionsOp: 'and',
+        conditions: [{ field: 'task.assigneeIds', operator: 'contains', values: ['ghost'], number: null }],
+        aiCondition: { kind: 'predicate', question: 'Beschreibt der Kommentar einen Blocker?', threshold: 0.8, choices: null, accept: null, levels: null, minScore: null },
+        actions: [
+            { ...nulls, type: 'set_status', status: 'Blocked' },
+            { ...nulls, type: 'notify', userIds: ['u1', 'ghost'], title: '{{task.title}} blockiert' },
+            { ...nulls, type: 'move', projectId: 'nope' },
+            { ...nulls, type: 'delay', minutes: 60 }
+        ]
+    }, draftCtx);
+    assert.equal(draft.enabled, false);
+    assert.equal(draft.scope, 'project');
+    assert.equal(draft.projectId, 'p1');
+    assert.deepEqual(draft.conditions.groups[0].rules.map((r) => r.field), ['ai']);
+    assert.deepEqual(draft.actions.map((a) => a.type), ['set_status', 'notify']);
+    assert.deepEqual(draft.actions[1].config.userIds, ['u1']);
+    assert.deepEqual(warnings.sort(), ['dropped_action', 'unknown_person', 'unknown_project']);
+});
+
+test('AI condition defaults when the model sends null', () => {
+    const def = normalizeAutomation({ ...flow(), conditions: { op: 'and', groups: [{ op: 'and', rules: [{ field: 'ai', ai: { kind: 'predicate', question: 'Blocker?', threshold: null } }] }] } });
+    assert.equal(def.conditions.groups[0].rules[0].ai.threshold, 0.8);
+});

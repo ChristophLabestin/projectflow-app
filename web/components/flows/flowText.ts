@@ -123,6 +123,13 @@ export const validateFlow = (flow: FlowDefinition): string | null => {
     if (flow.scope === 'project' && !flow.projectId) return 'flows.error.project';
     if (flow.actions.length === 0) return 'flows.error.noActions';
     if (flow.actions[flow.actions.length - 1].type === 'delay') return 'flows.error.endsWithDelay';
+    for (const group of flow.conditions.groups) {
+        for (const rule of group.rules) {
+            if (rule.field !== 'ai' || !rule.ai) continue;
+            if (rule.ai.question.trim().length < 3) return 'flows.error.aiQuestion';
+            if (rule.ai.kind === 'choice' && ((rule.ai.choices || []).length < 2 || !(rule.ai.accept || []).length)) return 'flows.error.aiChoices';
+        }
+    }
     const taskless = TASKLESS_TRIGGERS.has(flow.trigger.type);
     for (const action of flow.actions) {
         const c = action.config || {};
@@ -136,7 +143,7 @@ export const validateFlow = (flow: FlowDefinition): string | null => {
             && (flow.trigger.type === 'schedule' || flow.trigger.type === 'manual')) return 'flows.error.taskProject';
         if ((action.type === 'add_label' || action.type === 'remove_label') && !String(c.label || '').trim()) return 'flows.error.label';
         if (action.type === 'move' && !c.projectId) return 'flows.error.moveProject';
-        if (action.type === 'ai' && c.mode === 'classify_label' && !(c.options || []).length) return 'flows.error.aiOptions';
+        if (action.type === 'ai' && c.mode === 'classify_label' && (c.options || []).length < 2) return 'flows.error.aiOptions';
         if (action.type === 'delay' && (Number(c.minutes) < 15 || Number(c.minutes) > 43200)) return 'flows.error.delay';
     }
     return null;
