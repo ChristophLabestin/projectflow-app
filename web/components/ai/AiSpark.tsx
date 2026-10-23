@@ -1,8 +1,8 @@
 import React from 'react';
 
 /**
- * ✦ — the only mark of the in-app AI (no name, no persona). Gradient glyph from the brand accents;
- * `generating` adds a slow turn + breathing glow. STYLING.md §1.9.
+ * ✦ — the only mark of the in-app AI (no name, no persona): small, static, monochrome
+ * (`--ai-mark`; variant b tints it with the blue accent). STYLING.md §1.9.
  */
 export type AiSparkState = 'idle' | 'active' | 'generating';
 
