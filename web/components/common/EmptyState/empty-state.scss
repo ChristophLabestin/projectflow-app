@@ -13,6 +13,7 @@
     background: var(--color-surface-card);
     box-shadow: var(--shadow-sm);
     text-align: center;
+    animation: pf-rise-in var(--motion-duration-slow) var(--motion-ease-out) both;
 }
 
 .empty-state--compact {
@@ -21,6 +22,7 @@
 }
 
 .empty-state__icon {
+    animation: pf-pop-in var(--motion-duration-slow) var(--motion-ease-out) 60ms both;
     display: inline-flex;
     align-items: center;
     justify-content: center;

@@ -28,11 +28,16 @@
     // Animation states
     opacity: 0;
     visibility: hidden;
-    transition: opacity var(--transition-normal), visibility var(--transition-normal);
+    // Closing: transitions back to hidden with ease-in. Opening: keyframes (a transition cannot
+    // run on the first frame because the overlay mounts already open).
+    transition: opacity var(--motion-duration-base) var(--motion-ease-in),
+        visibility 0s linear var(--motion-duration-base);
 
     &--open {
         opacity: 1;
         visibility: visible;
+        transition: none;
+        animation: pf-fade-in var(--motion-duration-slow) var(--motion-ease-out) both;
     }
 }
 
@@ -49,14 +54,15 @@
     overflow: hidden;
 
     // Animation states
-    transform: scale(0.95) translateY(10px);
+    transform: scale(var(--motion-scale-from)) translateY(var(--motion-rise));
     opacity: 0;
-    transition: transform var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1),
-        opacity var(--transition-normal);
+    transition: transform var(--motion-duration-exit) var(--motion-ease-in),
+        opacity var(--motion-duration-exit) var(--motion-ease-in);
 
     &--open {
-        transform: scale(1) translateY(0);
+        transform: none;
         opacity: 1;
+        animation: pf-modal-in var(--motion-duration-slow) var(--motion-ease-out) both;
     }
 
     // --- Sizes ---

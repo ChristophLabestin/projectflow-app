@@ -8,7 +8,14 @@
     font-family: inherit;
     font-weight: 500;
     cursor: pointer;
-    transition: all var(--transition-fast);
+    // Press feedback: quick scale-down on :active (tokens in _tokens.scss, §4.1 STYLING.md).
+    transition: transform var(--motion-duration-fast) var(--motion-ease-out),
+        background-color var(--motion-duration-fast) var(--motion-ease-out),
+        box-shadow var(--motion-duration-fast) var(--motion-ease-out),
+        border-color var(--motion-duration-fast) var(--motion-ease-out),
+        color var(--motion-duration-fast) var(--motion-ease-out),
+        opacity var(--motion-duration-fast) var(--motion-ease-out),
+        filter var(--motion-duration-fast) var(--motion-ease-out);
     width: auto;
     max-width: 100%;
     // Fixed heights below: labels must not wrap, and flex parents must not squeeze the button.
@@ -19,6 +26,11 @@
     &:focus-visible {
         outline: 2px solid var(--color-primary);
         outline-offset: 2px;
+    }
+
+    &--ghost:active:not(:disabled) {
+        transform: scale(var(--motion-press-scale));
+        transition-duration: var(--motion-duration-instant);
     }
 
     &:disabled {
@@ -63,7 +75,7 @@
 
         &:hover:not(:disabled) {
             // Scale slightly and lift
-            transform: translateY(-1px);
+            transform: translateY(var(--motion-lift));
             box-shadow: var(--shadow-md);
             // We rely on opacity/mix since primary-dark might not be enough contrast in all themes
             // But keeping with token system: use opacity for "more noticeable" shift if needed, or darker token.
@@ -71,8 +83,9 @@
         }
 
         &:active:not(:disabled) {
-            transform: translateY(0);
+            transform: scale(var(--motion-press-scale));
             box-shadow: var(--shadow-sm);
+            transition-duration: var(--motion-duration-instant);
         }
     }
 
@@ -84,13 +97,14 @@
 
         &:hover:not(:disabled) {
             background-color: var(--color-surface-hover);
-            transform: translateY(-1px);
+            transform: translateY(var(--motion-lift));
             box-shadow: var(--shadow-md), inset 0 0 0 1px color-mix(in srgb, var(--color-surface-border) 100%, transparent);
         }
 
         &:active:not(:disabled) {
-            transform: translateY(0);
+            transform: scale(var(--motion-press-scale));
             box-shadow: var(--shadow-sm);
+            transition-duration: var(--motion-duration-instant);
         }
     }
 
@@ -112,13 +126,14 @@
 
         &:hover:not(:disabled) {
             filter: brightness(0.95);
-            transform: translateY(-1px);
+            transform: translateY(var(--motion-lift));
             box-shadow: var(--shadow-md);
         }
 
         &:active:not(:disabled) {
-            transform: translateY(0);
+            transform: scale(var(--motion-press-scale));
             box-shadow: var(--shadow-sm);
+            transition-duration: var(--motion-duration-instant);
         }
     }
 
@@ -130,7 +145,7 @@
         border-right-color: transparent;
         border-radius: 50%;
         margin-right: 0.5em;
-        animation: btn-spin 0.6s linear infinite;
+        animation: btn-spin 0.6s linear infinite, pf-pop-in var(--motion-duration-fast) var(--motion-ease-out) both;
     }
 
     &__icon {

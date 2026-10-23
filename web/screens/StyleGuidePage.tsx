@@ -11,6 +11,7 @@ import { Modal } from '../components/common/Modal/Modal';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { SettingsModal } from '../components/common/Modal/SettingsModal';
 import './style-guide.scss';
+import { MotionShowcase } from './style-guide/MotionShowcase';
 import { Link } from 'react-router-dom';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { TimePicker } from '../components/common/DateTime/TimePicker';
@@ -594,6 +595,14 @@ export const StyleGuidePage = () => {
                             projectId="styleguide"
                             storagePath="uploads"
                         />
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.motion')}</h2>
+                        <p className="guide-section__intro">{t('styleGuide.motion.intro')}</p>
+                        <MotionShowcase />
                     </section>
 
                     <Divider />

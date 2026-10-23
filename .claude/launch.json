@@ -222,6 +222,25 @@
         "web"
       ],
       "port": 3081
+    },
+    {
+      "name": "web-motion",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=3091",
+        "AUTH_PORT=9791",
+        "FIRESTORE_PORT=8791",
+        "STORAGE_PORT=9792",
+        "FUNCTIONS_PORT=5791",
+        "E2E_FUNCTIONS=0",
+        "npm",
+        "run",
+        "dev:e2e",
+        "--prefix",
+        "web"
+      ],
+      "port": 3091,
+      "autoPort": false
     }
   ]
 }

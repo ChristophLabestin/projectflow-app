@@ -280,6 +280,11 @@ Ports of the iOS brand motion (`PFBrandScene.swift`) and `desktop/assets/splash.
 - `BrandScene` (`variant` screen/inline, `label`): loading scene (field + mark + staggered name + track, `role="status"`). Used by the root auth loading and `WorkspaceConnecting` (screen) and `RoutePending` (inline).
 - `playCompletionBurst(element)`: one-shot burst of the four dots from an element's centre, fixed on `<body>` so it survives rows moving groups; used by `TaskRow`'s complete check. Skipped under reduced motion.
 
+## Motion primitives (`web/components/motion/`, 2026-10-23)
+- `usePresence`, `useFlipList`, `useMotionOnChange`, `useSlidingIndicator`, `AnimatedNumber`, `MOTION` (JS token mirror). Rules and CSS utilities: STYLING.md §4.1; live demo `/ui` → Motion (`screens/style-guide/MotionShowcase.tsx`).
+- `AppLayout` runs `useMotionOnChange(…, location.pathname, 'route')` on the outlet wrapper: route content fades/rises in without remounting.
+- `ui/Modal` keeps itself mounted for its exit via `usePresence` (`.ui-modal.is-exiting`); `common/Modal` enters with keyframes, exits with transitions; `GlobalToast` is a live region (`status`/`alert`).
+
 ## Notification Center (`web/components/notifications/`, 2026-10-23)
 
 - `NotificationDropdown` (`components/NotificationDropdown.tsx`): sidebar bell with unread badge (active workspace + other workspaces) and a popover **portaled to `<body>`** (fixed, beside the sidebar flush with the bottom of `.snav-card`, or flipped below/above the trigger; Escape/outside click close). One-line header: All/Unread filter tabs (replace the visible title; dialog aria-label keeps it) plus icon buttons (mark all read, notification settings → `SettingsModal` tab `notifications`, lazy), "Unread in other workspaces" (switches workspace → `/notifications`), grouped list, "View all" footer.

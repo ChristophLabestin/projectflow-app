@@ -5,14 +5,17 @@
     overflow: hidden;
     position: relative;
     border-radius: var(--radius-sm);
-    background: linear-gradient(
-        90deg,
-        rgba(var(--color-surface-hover-rgb), 0.48),
-        rgba(var(--color-surface-card-rgb), 0.82),
-        rgba(var(--color-surface-hover-rgb), 0.48)
-    );
-    background-size: 220% 100%;
-    animation: skeleton-shimmer 1.35s ease-in-out infinite;
+    background: rgba(var(--color-surface-hover-rgb), 0.6);
+
+    // Shimmer sweeps via transform on a pseudo-element (compositor only, no repaint per frame).
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(var(--color-surface-card-rgb), 0.6), transparent);
+        transform: translateX(-100%);
+        animation: pf-shimmer 1.4s var(--motion-ease-in-out) infinite;
+    }
 }
 
 .skeleton--text {
@@ -69,18 +72,14 @@
     gap: 8px;
 }
 
-@keyframes skeleton-shimmer {
-    0% {
-        background-position: 120% 0;
-    }
-
-    100% {
-        background-position: -120% 0;
-    }
+// Skeletons fade in shortly after mount, so very fast loads never flash a placeholder.
+.skeleton-block {
+    animation: pf-fade-in var(--motion-duration-base) var(--motion-ease-out) 120ms both;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .skeleton {
+    .skeleton::after {
         animation: none;
+        opacity: 0;
     }
 }

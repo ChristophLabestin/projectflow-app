@@ -202,16 +202,51 @@ Shadows define elevation and depth. Use them sparingly to keep the monochrome de
 
 ## 4) Transitions
 
-Transitions should feel responsive but not abrupt. Use the tokens below consistently for interactive elements.
+Legacy tokens `--transition-fast` (150 ms) / `--transition-normal` (300 ms) stay valid for colour
+hovers. New and touched code uses the motion tokens below.
 
-| Token | Value |
-|------|-------|
-| `--transition-fast` | `150ms cubic-bezier(0.4, 0, 0.2, 1)` |
-| `--transition-normal` | `250ms cubic-bezier(0.4, 0, 0.2, 1)` |
+### 4.1 Motion system (2026-10-23)
 
-**Guideline:**
-- Use `--transition-fast` for hover/focus states.
-- Use `--transition-normal` for component open/close animations (dropdowns, modals).
+Purpose over decoration: motion shows origin and destination, confirms actions, makes state changes
+traceable and shortens perceived loading. No bouncing, no wobble. Reference: Linear, Things, Raycast.
+
+| Token | Value | Use |
+|------|-------|-----|
+| `--motion-duration-instant` | 90 ms | press (`:active`) |
+| `--motion-duration-fast` | 140 ms | hover, focus, toggles, colour |
+| `--motion-duration-base` | 200 ms | menus, popovers, tabs, list items |
+| `--motion-duration-slow` | 280 ms | modals, drawers, route content, toasts |
+| `--motion-duration-exit` | 150 ms | every exit (shorter than its enter) |
+| `--motion-ease-out` | `cubic-bezier(0.16,1,0.3,1)` | entering, settling |
+| `--motion-ease-in` | `cubic-bezier(0.4,0,1,1)` | leaving |
+| `--motion-ease-in-out` / `-standard` | | state morphs |
+| `--motion-ease-spring` | `cubic-bezier(0.34,1.3,0.64,1)` | drag-drop settle, checkmarks only |
+| `--motion-stagger` | 24 ms | list entrance step (max 12 items) |
+| `--motion-rise` / `--motion-scale-from` / `--motion-press-scale` / `--motion-lift` | 6px / .97 / .97 / -1px | offsets |
+
+Files: tokens in `web/styles/_tokens.scss`; keyframes + utilities + reduced-motion contract in
+`web/styles/_motion.scss`; mixins (`enter`, `exit`, `press`, `lift`, `hover-colors`, `motion-ok`) in
+`web/styles/_motion-mixins.scss` (`@use '…/styles/motion-mixins' as motion;`, emits no CSS);
+JS mirror `MOTION` + primitives in `web/components/motion/`. Demo: `/ui` → Motion.
+
+- Keyframes: `pf-fade-in/out`, `pf-rise-in`, `pf-sink-out`, `pf-pop-in/out`, `pf-drop-in` (menus, set
+  `transform-origin` at the trigger edge), `pf-slide-in-right/left/up`, `pf-drawer-in-*`, `pf-modal-in/out`,
+  `pf-shimmer`, `pf-confirm-flash`, `pf-tick`, `pf-nudge` (validation only, one 3px cycle).
+- Utilities: `.motion-fade-in|rise-in|pop-in|drop-in|slide-in-right`, `.motion-exit(-pop)`,
+  `.motion-stagger` (children), `.motion-collapse[data-open]` (height via grid rows), `.motion-press`,
+  `.motion-confirm` (optimistic success flash), `.motion-tick`, `.motion-nudge`, `.motion-indicator`.
+- Primitives: `usePresence(open)` (keep mounted for the exit), `useFlipList(ref)` (items with
+  `data-flip-key` glide on reorder, rise in, slide out on removal; scroll-compensated, max 80 per commit),
+  `useMotionOnChange(ref, key, preset)` (one-off entrance without remount: route content, tab panels),
+  `useSlidingIndicator(ref, activeKey)` (tabs/segments), `<AnimatedNumber value>` (tween on change only,
+  SR gets the final value).
+- Legacy Tailwind vocabulary `animate-in fade-in zoom-in-95 slide-in-from-*`, `animate-scale-up`,
+  `animate-fade-in-left` was never generated (only `@tailwind base` runs); `_motion.scss` now defines it.
+- Rules: animate `transform`/`opacity` (`clip-path` for reveals) only; no `transition: all` in new code;
+  enter = keyframes when the element mounts already open (a transition cannot run on the first frame),
+  exit = transition or `usePresence`. Reduced motion: offsets collapse to 0 and every animation/transition
+  becomes 1 ms globally (spinners `.animate-spin` keep turning) — end states always render.
+- Brand: `playCompletionBurst` on task completion only; no brand colour as motion fill.
 
 ### Focus Loop Controls
 
