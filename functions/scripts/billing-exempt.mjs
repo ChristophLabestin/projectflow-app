@@ -2,6 +2,7 @@
 // Prefer the admin console (audited). Build first (npm run build); uses Application Default Credentials.
 //   GCLOUD_PROJECT=projectflow-labestin node functions/scripts/billing-exempt.mjs --list
 //   GCLOUD_PROJECT=projectflow-labestin node functions/scripts/billing-exempt.mjs --set <tenantId> on|off
+//   GCLOUD_PROJECT=projectflow-labestin node functions/scripts/billing-exempt.mjs --free <tenantId>   (no subscription → Free)
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
@@ -17,6 +18,14 @@ if (args[0] === '--set' && args[1] && ['on', 'off'].includes(args[2])) {
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
     console.log(`billingExempt ${args[2]} for ${args[1]}`);
+} else if (args[0] === '--free' && args[1]) {
+    // Without a subscription, removing the exemption is exactly "move to Free" (projects over 3 read-only).
+    await setBillingExempt(args[1], false, 'script:billing-exempt');
+    await db.collection('admin_audit').add({
+        action: 'billing.free', target: `tenants/${args[1]}`, summary: 'free', actor: 'script:billing-exempt',
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    console.log(`Free for ${args[1]}`);
 } else if (args[0] === '--list') {
     const tenants = await db.collection('tenants').get();
     for (const tenant of tenants.docs) {

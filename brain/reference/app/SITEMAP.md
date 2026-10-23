@@ -190,9 +190,9 @@ auth chain and modules: `brain/plans/admin-console-concept.md`. All data via the
 
 - `/` — overview: users (total, DAU/WAU/MAU, signups), workspaces, projects/tasks, crashes, AI cost estimate, MCP connections, terms acceptance, client versions; 7/30/90 days
 - `/users` (`?uid=` opens the drawer) — all Auth accounts; drawer: account, workspaces, devices/passkeys, AI usage + connections, consent, activity; actions: data export, revoke sessions, lock/unlock (confirm + audit)
-- `/workspaces` (`?id=`) — all tenants with plan/status/MRR (billing contract §6); drawer: members, projects, Abo (read-only, Stripe link), Flows, Sperre, AI policy (editable), machine writes, MCP grants, API tokens, activity
+- `/workspaces` (`?id=`) — all tenants with plan/status/MRR (billing contract §6); drawer: members, projects, Abo (Stripe link; "intern" via `setBillingExempt`), Flows, Sperre, AI policy (editable), machine writes, MCP grants, API tokens, activity
 - `/ai` — AI & MCP: usage/cost per user and workspace, all grants (disconnect), OAuth clients, API/MCP request log
-- `/system` — announcement banner, billing grace cutover (`admin_config/billing.cutoverAt`), Cloud Scheduler jobs, functions, hosting releases, AI pricing for the estimate, AI limits
+- `/system` — announcement banner, Cloud Scheduler jobs, functions, hosting releases, AI pricing for the estimate, AI limits
 - `/crashes`, `/crashes/:id` — crash issues (trend, platform/release/status filter, stack, events, releases/devices, triage)
 - `/legal`, `/legal/:type` — legal documents (overview with acceptance rate + mail status; draft editor DE/EN, diff to current version, publish)
 - `/onboarding` — onboarding survey aggregates

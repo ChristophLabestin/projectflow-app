@@ -66,7 +66,8 @@ const AnnouncementCard: React.FC = () => {
     );
 };
 
-const CutoverCard: React.FC = () => {
+// Grace cutover (admin_config/billing.cutoverAt): hidden — no existing customers (billing session, 2026-10-23). Kept for later.
+export const CutoverCard: React.FC = () => {
     const { confirm, toast } = useUi();
     const { data, reload } = useAdminQuery<{ cutoverAt: number | null; updatedAt: number | null }>('billing.config');
     const [value, setValue] = useState('');
@@ -146,7 +147,6 @@ export const SystemScreen: React.FC = () => {
                     ))}
                 </div>
                 <AnnouncementCard />
-                <CutoverCard />
                 <div className="ac-grid ac-grid--2">
                     <PricingCard pricing={data.pricing} onSaved={reload} />
                     <Card title="KI-Limits (Env, global)" subtitle="Gesetzt über Functions-Umgebung (ai-service.ts)">
