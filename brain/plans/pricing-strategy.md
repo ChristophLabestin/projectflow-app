@@ -76,7 +76,7 @@ Begründungen:
 ## 7. Entscheidungen
 - ✅ 2026-10-23: Team 10 €/12 €, Free bis 3 Projekte, Team bis 50 Mitglieder.
 - ✅ 2026-10-23: KI als Zusatzpaket für 10 € pro Nutzer/Monat (schaltet KI-Funktionen frei).
-- Annahmen (bestätigen): KI-Paket nur für Team/Organization buchbar, pro einzelnem Nutzer wählbar; Free nutzt KI nur mit eigenem Schlüssel.
+- ✅ 2026-10-23: KI-Paket nur für Team/Organization buchbar, pro einzelnem Nutzer wählbar; Free nutzt KI nur mit eigenem Schlüssel.
 - Offen: Gründungspreis ja/nein, Höhe und Dauer (bis dahin nicht auf der Website).
 - Offen: Organization-Preis (Vorschlag ab 18 €) und SSO-Umsetzung.
 - Ab wann zahlen Beta-Workspaces (Stichtag + Vorlaufzeit von mind. 30 Tagen Ankündigung).

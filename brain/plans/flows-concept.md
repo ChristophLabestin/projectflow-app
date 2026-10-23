@@ -147,6 +147,27 @@ Projektzugang sehen Projekt-Flows und deren Protokoll (lesend).
 - Indexe: `automations (enabled, trigger.type)`, `automation_runs (automationId, startedAt desc)`,
   `automation_runs (status, resumeAt)`.
 
+**Gesperrte Workspaces** (`tenants/{t}.suspendedAt`, Admin-Konsole, Helper `tenant-status.ts`): keine Event-Runs, Zeitpläne verbrauchen den Slot ohne Lauf, laufende/wartende Runs enden als `skipped_suspended`, alle Flow-Callables antworten `failed-precondition`.
+
+## 5a. KI in Flows (Paket 5, 2026-10-23, User-Vorgabe „Decisions API + Structured Outputs als Standard“)
+- **Bausteine** `functions/src/ai-decide.ts`: `aiDecide` (Decisions API `POST /v1/decisions`, `gpt-6-luna`, per
+  `client.post`, weil das SDK `decisions` noch nicht kennt) und `aiGenerate` (Responses, `text.format` json_schema
+  `strict: true`, geparstes JSON). Flows nutzt sie über die schmale Schnittstelle `flowAi` in `automations.ts`
+  (im Emulator antwortet `_test/flowsAi`). Kontingent bleibt bei Flows: jeder KI-Aufruf = 1 von 200 KI-Schritten/Monat,
+  KI-Policy des Workspaces muss an sein.
+- **KI-Bedingung** (`rule.field = 'ai'`, max. 3 je Flow): `predicate` (Wahrscheinlichkeit ≥ Schwelle, Standard 80 %),
+  `choice` (Antwort aus 2–10 Werten ∈ „weiter bei“, optional Mindest-Konfidenz), `score` (Skala 1–N, gewichteter Wert
+  ≥ Schwelle; API liefert 0-basiert, wir zeigen 1-basiert). Dreiwertige Auswertung: Die KI wird nur gefragt, wenn
+  die übrigen Regeln das Ergebnis offen lassen; alle KI-Fragen eines Flows gehen in **einen** Request. Ergebnis
+  steht als `run.decisions` im Protokoll. Fehlt KI (Policy, Kontingent, Provider) → Lauf `failed` mit Grund.
+  Vorschau listet solche Aufgaben mit „KI prüft im Testlauf“; der Testlauf je Aufgabe fragt die KI wirklich.
+- **KI-Aktionen**: `summarize`, `draft_comment`, `draft_task` (Structured Outputs, festes Schema);
+  `classify_priority`, `classify_label` (Decisions API `choice`, Anwenden ab Konfidenz, Standard 50 %).
+- **Flow aus Satz**: Callable `draftAutomationFromText` → Structured Outputs im Schema `FLOW_DRAFT_SCHEMA`
+  (`automation-draft.ts`, spiegelt die Engine; Mitglieder/Projekte als Id-Listen im Prompt) → `draftFromModel`
+  validiert Teil für Teil (unbekannte Personen/Projekte, kaputte Aktionen fliegen mit Hinweis raus) → Entwurf
+  ist immer **aus** und wird nur im Editor gezeigt, nie gespeichert.
+
 ## 6. Später (Phase 2+)
 Visueller Canvas; Webhooks ein/aus (signiert, Secret pro Flow); Verzweigungen (If/Else);
 Schleifen über Listen; MCP-Tools `list_flows`, `run_flow` (Audit + Rate-Limits des MCP-Servers);

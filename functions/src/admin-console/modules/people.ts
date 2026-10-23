@@ -2,6 +2,7 @@ import * as admin from 'firebase-admin';
 import { FieldPath, FieldValue } from 'firebase-admin/firestore';
 import { buildUserExport } from '../../account-data';
 import { normalizeAiPolicy } from '../../ai-access';
+import { AUTOMATION_LIMITS } from '../../automation-logic';
 import { DEFAULT_MONTHLY_CREDITS, monthKey } from '../../ai-credits';
 import { revokeGrant } from '../../ai-tokens';
 import type { HandlerMap } from '../types';
@@ -34,6 +35,31 @@ const loadCredits = async (tenant: FirebaseFirestore.DocumentReference) => {
     const snap = await tenant.collection('ai_credits').doc(monthKey()).get();
     const d = snap.data() || {};
     return { month: monthKey(), credits: Number(d.credits || 0), limit: Number(d.limit || 0) || null, requests: Number(d.requests || 0), costMicros: Number(d.costMicros || 0), byCapability: d.byCapability || {}, defaultLimit: DEFAULT_MONTHLY_CREDITS };
+};
+
+/** Flows (brain/plans/flows-concept.md): automations, monthly usage vs. limits, failing/paused flows, member policy. */
+const loadFlows = async (tenant: FirebaseFirestore.DocumentReference, snap: FirebaseFirestore.DocumentSnapshot) => {
+    const month = new Date().toISOString().slice(0, 7);
+    const [flows, usage, runs] = await Promise.all([
+        tenant.collection('automations').select('name', 'scope', 'projectId', 'enabled', 'trigger', 'pausedReason', 'stats', 'updatedAt').get(),
+        tenant.collection('automation_usage').doc(month).get(),
+        tenant.collection('automation_runs').orderBy('startedAt', 'desc').limit(60).select('automationId', 'automationName', 'status', 'skipReason', 'error', 'startedAt').get().catch(() => null),
+    ]);
+    const override = snap.get('limits')?.automations || {};
+    const limit = (key: 'runsPerMonth' | 'aiStepsPerMonth' | 'activeFlowsPerWorkspace') => (Number.isFinite(override[key]) ? Number(override[key]) : AUTOMATION_LIMITS[key]);
+    return {
+        allowMemberFlows: snap.get('automationPolicy')?.allowMemberFlows !== false,
+        month,
+        usage: { runs: Number(usage.get('runs') || 0), aiSteps: Number(usage.get('aiSteps') || 0), skipped: Number(usage.get('skipped') || 0) },
+        limits: { runsPerMonth: limit('runsPerMonth'), aiStepsPerMonth: limit('aiStepsPerMonth'), activeFlowsPerWorkspace: limit('activeFlowsPerWorkspace') },
+        flows: flows.docs.map((d) => ({
+            id: d.id, name: d.get('name') || '', scope: d.get('scope') || 'workspace', projectId: d.get('projectId') || null, enabled: d.get('enabled') === true,
+            trigger: d.get('trigger')?.type || '', pausedReason: d.get('pausedReason') || null,
+            lastRunAt: toMs(d.get('stats')?.lastRunAt), lastStatus: d.get('stats')?.lastStatus || null, lastError: d.get('stats')?.lastError || null,
+            consecutiveFailures: Number(d.get('stats')?.consecutiveFailures || 0),
+        })),
+        failedRuns: (runs?.docs || []).filter((d) => d.get('status') === 'failed').slice(0, 10).map((d) => ({ id: d.id, name: d.get('automationName') || d.get('automationId'), error: d.get('error') || null, startedAt: toMs(d.get('startedAt')) })),
+    };
 };
 
 const uidParam = (params: any) => {
@@ -254,11 +280,26 @@ export const peopleHandlers: HandlerMap = {
                 projects: projects.docs.map((d) => ({ id: d.id, title: d.get('title') || '', status: d.get('status') || '', updatedAt: toMs(d.get('updatedAt')), createdAt: toMs(d.get('createdAt')) })),
                 aiPolicy: { ...normalizeAiPolicy(policy.data()), monthlyCredits: policy.get('monthlyCredits') ?? null },
                 credits: await loadCredits(ref),
+                flows: await loadFlows(ref, tenant),
                 grants: grants.docs.map(grantOut),
                 machineWrites: usage.docs.map((d) => ({ day: d.id, writes: Number(d.get('writes') || 0) })),
                 apiTokens: apiTokens.docs.map((d) => ({ id: d.id, name: d.get('name') || '', createdAt: toMs(d.get('createdAt')), lastUsedAt: toMs(d.get('lastUsedAt')), expiresAt: toMs(d.get('expiresAt')), permissions: d.get('permissions') || [] })),
                 activity: activity.docs.map((d) => ({ id: d.id, type: d.get('type'), actor: d.get('actor')?.name || '', object: d.get('object')?.title || '', projectTitle: d.get('projectTitle') || null, createdAt: toMs(d.get('createdAt')) })),
             };
+        },
+    },
+
+    'workspaces.setFlowPolicy': {
+        audit: 'mutation',
+        target: (p) => `tenants/${str(p?.id, 128)}.automationPolicy`,
+        summary: (p) => `allowMemberFlows → ${p?.allowMemberFlows}`,
+        run: async ({ db }, params) => {
+            const id = str(params?.id, 128);
+            if (!id || typeof params?.allowMemberFlows !== 'boolean') throw new AdminInputError('id/allowMemberFlows fehlen');
+            const ref = db.collection('tenants').doc(id);
+            if (!(await ref.get()).exists) throw new AdminInputError('Workspace nicht gefunden');
+            await ref.set({ automationPolicy: { allowMemberFlows: params.allowMemberFlows } }, { merge: true });
+            return { ok: true };
         },
     },
 

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../lib/api';
 import { dateTime, num, relative } from '../lib/format';
 import { useAdminQuery } from '../lib/useAsync';
-import { AreaChart } from '../ui/charts';
+import { AreaChart, Meter } from '../ui/charts';
 import { DataTable, type Column } from '../ui/DataTable';
 import { Drawer, useUi } from '../ui/Overlay';
 import { Badge, Card, Empty, ErrorNote, PageHead, Segmented, Skeleton, Tabs } from '../ui/primitives';
@@ -16,6 +16,12 @@ type WsDetail = {
     id: string; name: string; ownerId: string | null; createdAt: number | null; suspendedAt: number | null; suspendedReason: string | null; suspensionLog: { id: string; suspended: boolean; reason: string; email: string; at: number | null }[]; modules: string[] | null;
     members: { uid: string; email: string; displayName: string; role: string; joinedAt: number | null; lastActiveAt: number | null }[];
     projects: { id: string; title: string; status: string; updatedAt: number | null; createdAt: number | null }[];
+    flows: {
+        allowMemberFlows: boolean; month: string; usage: { runs: number; aiSteps: number; skipped: number };
+        limits: { runsPerMonth: number; aiStepsPerMonth: number; activeFlowsPerWorkspace: number };
+        flows: { id: string; name: string; scope: string; projectId: string | null; enabled: boolean; trigger: string; pausedReason: string | null; lastRunAt: number | null; lastStatus: string | null; lastError: string | null; consecutiveFailures: number }[];
+        failedRuns: { id: string; name: string; error: string | null; startedAt: number | null }[];
+    };
     aiPolicy: Policy; credits: { month: string; credits: number; limit: number | null; requests: number; costMicros: number; defaultLimit: number }; grants: any[]; machineWrites: { day: string; writes: number }[];
     apiTokens: { id: string; name: string; createdAt: number | null; lastUsedAt: number | null; expiresAt: number | null; permissions: string[] }[];
     activity: { id: string; type: string; actor: string; object: string; projectTitle: string | null; createdAt: number | null }[];
@@ -39,6 +45,42 @@ const CreditsCard: React.FC<{ id: string; credits: WsDetail['credits']; override
                 {override && <button className="ac-btn" onClick={() => { setValue(''); void save(null); }}>Auf Default</button>}
             </div>
         </Card>
+    );
+};
+
+const FlowsTab: React.FC<{ data: WsDetail; onSaved: () => void }> = ({ data, onSaved }) => {
+    const { confirm, toast } = useUi();
+    const f = data.flows;
+    const active = f.flows.filter((x) => x.enabled).length;
+    const paused = f.flows.filter((x) => x.pausedReason);
+    const setMember = async (allow: boolean) => {
+        if (!(await confirm({ title: `Mitglieder-Flows ${allow ? 'erlauben' : 'sperren'}?`, message: 'Setzt automationPolicy.allowMemberFlows dieses Workspace. Owner/Admins behalten ihre Flows.', confirmLabel: 'Ändern', danger: !allow }))) return;
+        try { await adminApi('workspaces.setFlowPolicy', { id: data.id, allowMemberFlows: allow }); toast('Flow-Policy geändert'); onSaved(); } catch (err: any) { toast(err.message, 'error'); }
+    };
+    return (
+        <div className="ac-stack">
+            <div className="ac-grid ac-grid--3">
+                <Card title="Aktive Flows"><b>{num(active)} / {num(f.limits.activeFlowsPerWorkspace)}</b> <span className="ac-muted">({num(f.flows.length)} gesamt)</span></Card>
+                <Card title={`Läufe ${f.month}`}><b>{num(f.usage.runs)} / {num(f.limits.runsPerMonth)}</b><div style={{ marginTop: 6 }}><Meter value={f.usage.runs / Math.max(1, f.limits.runsPerMonth)} /></div></Card>
+                <Card title="KI-Schritte"><b>{num(f.usage.aiSteps)} / {num(f.limits.aiStepsPerMonth)}</b> <span className="ac-muted">· {num(f.usage.skipped)} übersprungen</span></Card>
+            </div>
+            <label className="ac-check"><input type="checkbox" checked={f.allowMemberFlows} onChange={(e) => setMember(e.target.checked)} />Mitglieder dürfen Flows anlegen (automationPolicy.allowMemberFlows)</label>
+            {paused.length > 0 && <div className="ac-alert ac-alert--error">{paused.length} pausiert: {paused.map((p) => `${p.name} (${p.pausedReason === 'errors' ? 'Fehler' : 'Owner ohne Zugriff'})`).join(', ')}</div>}
+            {f.flows.length ? (
+                <table className="ac-table"><thead><tr><th>Flow</th><th>Trigger</th><th>Status</th><th>Letzter Lauf</th><th className="is-num">Fehler in Folge</th></tr></thead>
+                    <tbody>{f.flows.map((x) => (
+                        <tr key={x.id}><td className="ac-strong">{x.name}<span className="ac-muted"> · {x.scope === 'project' ? 'Projekt' : 'Workspace'}</span></td><td className="mono ac-muted">{x.trigger}</td>
+                            <td>{x.pausedReason ? <Badge tone="red">pausiert</Badge> : x.enabled ? <Badge tone="green">aktiv</Badge> : <Badge>aus</Badge>}</td>
+                            <td title={x.lastError || ''}>{relative(x.lastRunAt)}{x.lastStatus ? <span className="ac-muted"> · {x.lastStatus}</span> : ''}</td><td className="is-num">{x.consecutiveFailures || '–'}</td></tr>
+                    ))}</tbody></table>
+            ) : <Empty title="Keine Flows" />}
+            {f.failedRuns.length > 0 && (
+                <Card title="Letzte fehlgeschlagene Läufe" flush>
+                    <table className="ac-table"><thead><tr><th>Zeit</th><th>Flow</th><th>Fehler</th></tr></thead>
+                        <tbody>{f.failedRuns.map((r) => <tr key={r.id}><td>{relative(r.startedAt)}</td><td>{r.name}</td><td className="is-wrap ac-muted">{r.error || '–'}</td></tr>)}</tbody></table>
+                </Card>
+            )}
+        </div>
     );
 };
 
@@ -102,10 +144,12 @@ const WorkspaceDrawer: React.FC<{ id: string; onClose: () => void; onOpenUser: (
                         { value: 'members', label: `Mitglieder ${data.members.length}` },
                         { value: 'projects', label: `Projekte ${data.projects.length}` },
                         { value: 'ai', label: 'KI & API' },
+                        { value: 'flows', label: `Flows ${data.flows.flows.filter((x) => x.enabled).length}${data.flows.flows.some((x) => x.pausedReason) ? ' ●' : ''}` },
                         { value: 'activity', label: 'Aktivität' },
                         { value: 'status', label: data.suspendedAt ? 'Sperre ●' : 'Sperre' },
                     ]} />
                     {tab === 'status' && <SuspendCard data={data} onSaved={reload} />}
+                    {tab === 'flows' && <FlowsTab data={data} onSaved={reload} />}
                     {tab === 'members' && (
                         <table className="ac-table"><thead><tr><th>Mitglied</th><th>Rolle</th><th>Beigetreten</th><th>Zuletzt aktiv</th></tr></thead>
                             <tbody>{data.members.sort((a, b) => ['Owner', 'Admin', 'Member', 'Guest'].indexOf(a.role) - ['Owner', 'Admin', 'Member', 'Guest'].indexOf(b.role)).map((m) => (

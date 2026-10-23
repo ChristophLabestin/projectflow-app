@@ -190,6 +190,14 @@ await check('in-app AI rollout and credit limit are controlled per workspace', a
     const row = after.result.workspaces.find((w) => w.tenantId === id);
     assert.ok(row.inAppAi && row.limit === 5000, JSON.stringify(row));
 });
+await check('workspace detail shows flows and member-flow policy is switchable', async () => {
+    const ws = await call(adminToken, 'workspaces.list', {}, sessionId);
+    const id = ws.result.workspaces[0].id;
+    const detail = await call(adminToken, 'workspaces.get', { id }, sessionId);
+    assert.ok(detail.result?.flows && Array.isArray(detail.result.flows.flows), JSON.stringify(detail).slice(0, 200));
+    assert.equal((await call(adminToken, 'workspaces.setFlowPolicy', { id, allowMemberFlows: false }, sessionId)).result?.ok, true);
+    assert.equal((await admin.firestore().doc(`tenants/${id}`).get()).get('automationPolicy').allowMemberFlows, false);
+});
 await check('idle session expires server-side', async () => {
     const ref = admin.firestore().collection('admin_sessions').doc((await admin.auth().getUserByEmail('demo@projectflow.test')).uid);
     const lastSeen = (await ref.get()).get('lastSeenAt');

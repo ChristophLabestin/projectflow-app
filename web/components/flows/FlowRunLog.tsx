@@ -8,6 +8,7 @@ import { useToast } from '../../context/UIContext';
 import { Button } from '../common/Button/Button';
 import { Skeleton } from '../common/Skeleton/Skeleton';
 import {
+    type FlowAiDecision,
     flowErrorMessage,
     retryFlowRun,
     subscribeFlowRuns,
@@ -30,7 +31,34 @@ const STATUS_ICON: Record<string, string> = {
     running: 'progress_activity',
     waiting: 'hourglass_top',
     skipped_limit: 'block',
+    skipped_suspended: 'block',
     cancelled: 'cancel',
+};
+
+const pct = (value: number | undefined) => `${Math.round((value || 0) * 100)} %`;
+
+/** AI condition results: probability / choice + confidence / score, and whether the flow continued. */
+export const AiDecisionList: React.FC<{ t: (key: string) => string; decisions: FlowAiDecision[] }> = ({ t, decisions }) => {
+    if (!decisions.length) return null;
+    return (
+        <ul className="flow-decisions">
+            {decisions.map((decision) => (
+                <li key={decision.key} className={`flow-decisions__item ${decision.passed ? 'is-passed' : 'is-failed'}`}>
+                    <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span>
+                    <span>
+                        <strong>{decision.question}</strong>
+                        <em>
+                            {decision.refused ? t('flows.aiCondition.refused')
+                                : decision.kind === 'predicate' ? t('flows.aiCondition.probability').replace('{value}', pct(decision.probability))
+                                    : decision.kind === 'choice' ? t('flows.aiCondition.choiceResult').replace('{choice}', decision.choice || '–').replace('{confidence}', pct(decision.confidence))
+                                        : t('flows.aiCondition.scoreResult').replace('{score}', String(decision.score ?? '–')).replace('{confidence}', pct(decision.confidence))}
+                            {' · '}{t(decision.passed ? 'flows.aiCondition.passed' : 'flows.aiCondition.notPassed')}
+                        </em>
+                    </span>
+                </li>
+            ))}
+        </ul>
+    );
 };
 
 export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names, canRetry }) => {
@@ -96,6 +124,8 @@ export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names
                                         {run.status === 'waiting' && run.resumeAtMs && (
                                             <p className="flow-hint">{t('flows.log.waitingUntil').replace('{time}', format(run.resumeAtMs, 'Pp', { locale: dateLocale }))}</p>
                                         )}
+                                        <AiDecisionList t={t} decisions={run.decisions} />
+                                        {run.error && run.steps.length === 0 && <p className="flow-panel__error">{run.error}</p>}
                                         <ol className="flow-dry-run">
                                             {run.steps.map((step, index) => {
                                                 const action = flow.actions.find((a) => a.id === step.actionId);
@@ -106,7 +136,10 @@ export const FlowRunLog: React.FC<FlowRunLogProps> = ({ t, tenantId, flow, names
                                                         </span>
                                                         <span>
                                                             {action ? actionSentence(action, t, names) : t(`flows.action.${step.type}`)}
-                                                            <em>{t(`flows.log.step.${step.status}`)}{step.error ? ` – ${step.error}` : ''}</em>
+                                                            <em>
+                                                                {t(`flows.log.step.${step.status}`)}{step.error ? ` – ${step.error}` : ''}
+                                                                {step.decision ? ` · ${t('flows.aiCondition.choiceResult').replace('{choice}', step.decision.choice).replace('{confidence}', pct(step.decision.confidence))}` : ''}
+                                                            </em>
                                                         </span>
                                                     </li>
                                                 );

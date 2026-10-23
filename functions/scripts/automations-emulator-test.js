@@ -20,6 +20,7 @@ const AUTH = `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:983
 const FUNCTIONS = 'http://127.0.0.1:5831/demo-projectflow/europe-west3';
 const T = 'ws-flows';
 const T2 = 'ws-limits';
+const T3 = 'ws-suspended';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const waitFor = async (label, fn, { timeout = 30000, interval = 300 } = {}) => {
@@ -106,7 +107,7 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
     const guest = await signUp('guest@example.test');
     const outsider = await signUp('out@example.test');
 
-    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test']]) {
+    for (const [tenantId, name] of [[T, 'Flows Test'], [T2, 'Limits Test'], [T3, 'Suspended Test']]) {
         await db.doc(`tenants/${tenantId}`).set({ tenantId, name, ownerId: owner.uid });
         await db.doc(`tenants/${tenantId}/members/${owner.uid}`).set({ uid: owner.uid, role: 'Owner', displayName: 'Olga' });
         await db.doc(`tenants/${tenantId}/members/${anna.uid}`).set({ uid: anna.uid, role: 'Member', displayName: 'Anna' });
@@ -115,7 +116,7 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
     for (const [uid, name] of [[owner.uid, 'Olga'], [anna.uid, 'Anna'], [guest.uid, 'Gast']]) {
         await db.doc(`users/${uid}`).set({ uid, displayName: name, email: `${name}@example.test` });
     }
-    for (const projectId of ['p1', 'loop', 'self', 'delay', 'due', 'fail']) {
+    for (const projectId of ['p1', 'loop', 'self', 'delay', 'due', 'fail', 'ai']) {
         await db.doc(`tenants/${T}/projects/${projectId}`).set({
             title: `Projekt ${projectId}`, ownerId: owner.uid, memberIds: [owner.uid, anna.uid, guest.uid], tenantId: T
         });
@@ -319,6 +320,93 @@ const flowDoc = (tenantId, id, def, ownerId) => db.doc(`tenants/${tenantId}/auto
             return list.length === 2 && list;
         });
         assert.deepEqual(runs.map((run) => run.status).sort(), ['skipped_limit', 'succeeded']);
+    });
+
+    await check('AI condition (Decisions API): passes/fails by threshold, decisions logged, counts AI steps', async () => {
+        await db.doc('_test/flowsAi').set({
+            answers: { predicate: { probability: 0.91 }, choice: { choice: 'High', confidence: 0.82 } },
+            generate: { flow_comment: { comment: 'Bitte API-Schlüssel prüfen.' } }
+        });
+        await flowDoc(T, 'ai-flow', {
+            name: 'Blocker', scope: 'project', projectId: 'ai', trigger: { type: 'comment.created', config: {} },
+            conditions: { op: 'and', groups: [{ op: 'and', rules: [
+                { field: 'ai', operator: 'ai', ai: { kind: 'predicate', question: 'Beschreibt der Kommentar einen Blocker?', threshold: 0.8 } }
+            ] }] },
+            actions: [
+                { id: 'a1', type: 'set_status', config: { status: 'Blocked' } },
+                { id: 'a2', type: 'ai', config: { mode: 'draft_comment', instructions: '' } },
+                { id: 'a3', type: 'ai', config: { mode: 'classify_priority', instructions: '', minConfidence: 0.5 } }
+            ]
+        }, owner.uid);
+        await addTask(T, 'ai', 't-ai', anna.uid);
+        await db.doc(`tenants/${T}/projects/ai/comments/c1`).set({
+            projectId: 'ai', targetId: 't-ai', targetType: 'task', userId: anna.uid, userDisplayName: 'Anna', content: 'Ich komme nicht weiter, API down', updatedBy: anna.uid, createdAt: Timestamp.now()
+        });
+        const [run] = await waitFor('ai run', async () => {
+            const list = await runsOf(T, 'ai-flow');
+            return list.length && list[0].status === 'succeeded' && list;
+        });
+        assert.equal(run.decisions[0].probability, 0.91);
+        assert.equal(run.decisions[0].passed, true);
+        assert.deepEqual(run.steps[2].decision, { choice: 'High', confidence: 0.82 });
+        const data = (await task(T, 'ai', 't-ai').get()).data();
+        assert.equal(data.status, 'Blocked');
+        assert.equal(data.priority, 'High');
+        const drafted = await db.collection(`tenants/${T}/projects/ai/comments`).where('automationId', '==', 'ai-flow').get();
+        assert.deepEqual(drafted.docs.map((d) => d.data().content), ['Bitte API-Schlüssel prüfen.']);
+        const usage = (await db.doc(`tenants/${T}/automation_usage/${new Date().toISOString().slice(0, 7)}`).get()).data();
+        assert.equal(usage.aiSteps, 3, 'condition + draft + classify');
+        // Below threshold: no run at all.
+        await db.doc('_test/flowsAi').set({ answers: { predicate: { probability: 0.3 } } });
+        await db.doc(`tenants/${T}/projects/ai/comments/c2`).set({
+            projectId: 'ai', targetId: 't-ai', targetType: 'task', userId: anna.uid, userDisplayName: 'Anna', content: 'Danke!', updatedBy: anna.uid, createdAt: Timestamp.now()
+        });
+        await sleep(5000);
+        assert.equal((await runsOf(T, 'ai-flow')).length, 1);
+    });
+
+    await check('Flow aus Satz: strict draft is validated and returned disabled', async () => {
+        const nulls = { status: null, field: null, priority: null, relativeDays: null, assignMode: null, userIds: [], dynamic: [], text: null, title: null,
+            message: null, label: null, projectId: null, asSubtask: null, dueInDays: null, minutes: null, aiMode: null, options: null, email: null };
+        await db.doc('_test/flowsAi').set({ generate: { flow_draft: {
+            name: 'Dringendes melden', description: 'Admins bei dringenden Aufgaben informieren', projectId: 'p1',
+            trigger: { type: 'task.created', fromStatus: null, toStatus: null, assigneeId: null, frequency: null, weekday: null, time: null },
+            conditionsOp: 'and', conditions: [{ field: 'task.priority', operator: 'in', values: ['Urgent'], number: null }],
+            aiCondition: { kind: null, question: null, threshold: null, choices: null, accept: null, levels: null, minScore: null },
+            actions: [{ ...nulls, type: 'notify', dynamic: ['admins'], title: 'Dringend: {{task.title}}', userIds: ['ghost'] }]
+        } } });
+        const result = await call('draftAutomationFromText', anna.token, { tenantId: T, text: 'Wenn eine dringende Aufgabe erstellt wird, informiere die Admins', projectId: 'p1' });
+        assert.equal(result.draft.enabled, false);
+        assert.equal(result.draft.projectId, 'p1');
+        assert.deepEqual(result.draft.actions[0].config.dynamic, ['admins']);
+        assert.deepEqual(result.warnings, ['unknown_person']);
+        assert.equal((await db.collection(`tenants/${T}/automations`).where('templateId', '==', 'from_text').get()).size, 0, 'nothing saved');
+        await expectError(call('draftAutomationFromText', guest.token, { tenantId: T, text: 'Wenn eine Aufgabe erstellt wird, kommentiere' }), 'PERMISSION_DENIED');
+        await db.doc('_test/flowsAi').delete();
+    });
+
+    await check('suspended workspace: no event runs, schedules skipped, waiting runs stopped, callables refused', async () => {
+        await db.doc(`tenants/${T3}`).set({ suspendedAt: Timestamp.now() }, { merge: true });
+        await db.doc(`tenants/${T3}/projects/p1`).set({ title: 'S', ownerId: owner.uid, memberIds: [owner.uid], tenantId: T3 });
+        await flowDoc(T3, 'susp-event', { name: 'Event', trigger: { type: 'task.created', config: {} },
+            actions: [{ id: 'a1', type: 'add_label', config: { label: 'x' } }] }, owner.uid);
+        await flowDoc(T3, 'susp-schedule', { name: 'Plan', trigger: { type: 'schedule', config: { schedule: { frequency: 'daily', time: '09:00', timezone: 'Europe/Berlin' } } },
+            nextRunAt: Timestamp.fromMillis(Date.now() - 60000),
+            actions: [{ id: 'a1', type: 'create_task', config: { title: 'Plan', projectId: 'p1', priority: 'Medium', status: 'Open', userIds: [], dynamic: [] } }] }, owner.uid);
+        await db.doc(`tenants/${T3}/automation_runs/susp-event_waiting`).set({
+            automationId: 'susp-event', status: 'waiting', resumeAt: Timestamp.fromMillis(Date.now() - 1000), nextStep: 0, steps: [], depth: 1,
+            context: { trigger: 'task.created', projectId: 'p1', taskId: null, vars: {}, eventUserIds: [] }, startedAt: Timestamp.now()
+        });
+        await addTask(T3, 'p1', 's1', owner.uid);
+        await sleep(5000);
+        assert.equal((await runsOf(T3, 'susp-event')).filter((run) => run.id !== 'susp-event_waiting').length, 0, 'no event run');
+        const stats = await runAutomationSchedulesOnce();
+        assert.ok(stats.suspended >= 1);
+        assert.equal((await runsOf(T3, 'susp-schedule')).length, 0, 'schedule not fired');
+        assert.ok((await db.doc(`tenants/${T3}/automations/susp-schedule`).get()).data().nextRunAt.toMillis() > Date.now(), 'slot consumed');
+        assert.equal((await db.doc(`tenants/${T3}/automation_runs/susp-event_waiting`).get()).data().status, 'skipped_suspended');
+        await expectError(call('runAutomation', owner.token, { tenantId: T3, id: 'susp-event', taskId: 's1', projectId: 'p1' }), 'FAILED_PRECONDITION');
+        await expectError(call('saveAutomation', owner.token, { tenantId: T3, automation: { name: 'x', trigger: { type: 'task.created' }, actions: [{ type: 'comment', config: { text: 'x' } }] } }), 'FAILED_PRECONDITION');
     });
 
     await check('rules: members read flows and runs; guests and clients cannot write', async () => {
