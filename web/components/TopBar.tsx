@@ -100,7 +100,7 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
 
     return (
         <header className="topbar-shell">
-            <div className="topbar-context-pill">
+            <div className={`topbar-context-pill${breadcrumbs.length ? '' : ' topbar-context-pill--no-crumbs'}`}>
                 <button
                     onClick={onOpenNav}
                     className="topbar-icon-button topbar-nav-toggle"
@@ -109,9 +109,11 @@ export const TopBar: React.FC<TopBarProps> = ({ project, tenantId, breadcrumbs, 
                     <span className="material-symbols-outlined">menu</span>
                 </button>
 
-                <div className="topbar-breadcrumbs">
-                    <Breadcrumbs items={breadcrumbs} />
-                </div>
+                {breadcrumbs.length > 0 && (
+                    <div className="topbar-breadcrumbs">
+                        <Breadcrumbs items={breadcrumbs} />
+                    </div>
+                )}
             </div>
 
             <div className="topbar-right">

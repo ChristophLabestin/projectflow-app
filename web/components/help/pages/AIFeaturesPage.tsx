@@ -1,20 +1,24 @@
 import React from 'react';
-import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterTypes';
+import { useLanguage } from '../../../context/LanguageContext';
+import type { HelpCenterPageProps, HelpCenterSectionsBuilder } from '../helpCenterTypes';
+import { splitHelpKeywords } from '../helpCenterContent';
 
-export const aiFeaturesSections: HelpCenterSectionIndex[] = [
-    { id: 'ai-capabilities', title: 'CORA capabilities matrix', summary: 'Complete catalog of all CORA features.', content: 'Every CORA capability organized by module.', keywords: ['capabilities', 'features', 'catalog'] },
-    { id: 'ai-locations', title: 'CORA by module', summary: 'Where CORA appears in each module.', content: 'Find CORA tools across the application.', keywords: ['modules', 'tools'] },
-    { id: 'prompt-engineering', title: 'Prompt engineering', summary: 'Get better results with better prompts.', content: 'Tips for effective CORA prompting.', keywords: ['prompts', 'tips'] },
-    { id: 'image-generation', title: 'Image generation', summary: 'Create images with CORA.', content: 'Guide to CORA image creation.', keywords: ['images', 'generation'] },
-    { id: 'token-usage', title: 'Token usage', summary: 'Understanding limits.', content: 'How tokens work and quotas.', keywords: ['tokens', 'quota'] },
-    { id: 'quality-validation', title: 'Quality validation', summary: 'Review CORA output.', content: 'Best practices for validating CORA content.', keywords: ['quality', 'validation'] }
-];
+const SECTION_IDS = ['ai-capabilities', 'ai-locations', 'prompt-engineering', 'image-generation', 'token-usage', 'quality-validation'] as const;
+
+export const getAiFeaturesSections: HelpCenterSectionsBuilder = t =>
+    SECTION_IDS.map(id => ({
+        id,
+        title: t(`help.aiFeatures.sections.${id}.title`),
+        summary: t(`help.aiFeatures.sections.${id}.summary`),
+        content: t(`help.aiFeatures.sections.${id}.content`),
+        keywords: splitHelpKeywords(t(`help.aiFeatures.sections.${id}.keywords`))
+    }));
 
 const CapabilityCard = ({ icon, name, description, location }: { icon: string; name: string; description: string; location: string }) => (
     <div className="rounded-2xl border border-surface bg-card p-5 space-y-3">
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-white">{icon}</span>
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[var(--brand-violet)] to-[var(--brand-blue)] flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-on-primary">{icon}</span>
             </div>
             <div><div className="text-sm font-bold text-main">{name}</div><div className="text-[10px] text-muted">{location}</div></div>
         </div>
@@ -24,80 +28,122 @@ const CapabilityCard = ({ icon, name, description, location }: { icon: string; n
 
 const ModuleAICard = ({ icon, module, features, color }: { icon: string; module: string; features: string[]; color: string }) => (
     <div className="rounded-2xl border border-surface bg-card p-5">
-        <div className="flex items-center gap-3 mb-3"><div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}><span className="material-symbols-outlined text-[20px] text-white">{icon}</span></div><span className="text-base font-bold text-main">{module}</span></div>
+        <div className="flex items-center gap-3 mb-3"><div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}><span className="material-symbols-outlined text-[20px] text-on-primary">{icon}</span></div><span className="text-base font-bold text-main">{module}</span></div>
         <div className="space-y-2">{features.map((f, i) => <div key={i} className="text-sm text-muted flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-primary" />{f}</div>)}</div>
     </div>
 );
 
 const Callout = ({ type, children }: { type: 'tip' | 'warning' | 'info'; children: React.ReactNode }) => {
-    const styles = { tip: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200', warning: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200', info: 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-200' };
+    const styles = {
+        tip: 'border-[rgba(var(--brand-amber-rgb),0.3)] bg-[rgba(var(--brand-amber-rgb),0.1)] text-[var(--brand-amber-text)]',
+        warning: 'border-[rgba(var(--status-blocked-rgb),0.3)] bg-[rgba(var(--status-blocked-rgb),0.1)] text-[var(--color-status-blocked-text)]',
+        info: 'border-[rgba(var(--brand-blue-rgb),0.3)] bg-[rgba(var(--brand-blue-rgb),0.1)] text-[var(--brand-blue-text)]'
+    };
     const icons = { tip: 'lightbulb', warning: 'warning', info: 'info' };
     return <div className={`rounded-2xl border p-4 text-[13px] ${styles[type]}`}><div className="flex items-start gap-2"><span className="material-symbols-outlined text-[18px]">{icons[type]}</span><div>{children}</div></div></div>;
 };
 
-export const AIFeaturesPage = (_props: HelpCenterPageProps) => (
-    <div className="px-6 py-6 space-y-10">
-        <div className="rounded-[28px] border border-surface bg-gradient-to-br from-purple-500/10 via-[var(--color-surface-card)] to-pink-500/10 p-6">
-            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">CORA Features</div>
-            <h2 className="text-3xl font-bold text-main mt-3">Intelligent Acceleration</h2>
-            <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">ProjectFlow CORA accelerates drafting, analysis, and creative work across the platform.</p>
-            <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-primary">12+</div><div className="text-xs text-muted">CORA Tools</div></div>
-                <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-purple-500">6</div><div className="text-xs text-muted">Modules with CORA</div></div>
-                <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-pink-500">∞</div><div className="text-xs text-muted">Image Styles</div></div>
-                <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-amber-500">24/7</div><div className="text-xs text-muted">Availability</div></div>
+const CAPABILITIES = [
+    { id: 'swot', icon: 'analytics', locationKey: 'help.aiFeatures.capabilities.locationFlowsStudio' },
+    { id: 'blueprint', icon: 'architecture', locationKey: 'help.aiFeatures.capabilities.locationFlowsStudio' },
+    { id: 'risk', icon: 'warning', locationKey: 'help.aiFeatures.capabilities.locationStudio' },
+    { id: 'search', icon: 'search', locationKey: 'help.aiFeatures.capabilities.locationSearch' },
+    { id: 'image', icon: 'image', locationKey: 'help.aiFeatures.capabilities.locationMedia' }
+];
+
+const MODULES = [
+    { id: 'flows', icon: 'flow_chart', color: 'bg-[var(--brand-blue)]', features: ['swot', 'blueprint', 'risk', 'discovery'] },
+    { id: 'media', icon: 'photo_library', color: 'bg-[var(--brand-violet)]', features: ['image', 'style', 'variations'] },
+    { id: 'search', icon: 'search', color: 'bg-[var(--brand-green)]', features: ['answers', 'context'] }
+];
+
+const DO_ITEMS = ['specific', 'format', 'examples', 'iterate'];
+const AVOID_ITEMS = ['vague', 'context', 'perfect', 'review'];
+const PROMPT_PARTS = ['subject', 'style', 'mood', 'details'];
+const SIZES = [
+    { id: 'square', dims: '1024×1024' },
+    { id: 'landscape', dims: '1792×1024' },
+    { id: 'portrait', dims: '1024×1792' }
+];
+const CONSUMPTION = [
+    { id: 'swot', amount: '~2K' },
+    { id: 'blueprint', amount: '~3K' },
+    { id: 'caption', amount: '~500' },
+    { id: 'search', amount: '~1K' },
+    { id: 'image', amount: null }
+];
+const QUOTA_ITEMS = [
+    { id: 'reset', icon: 'refresh' },
+    { id: 'view', icon: 'settings' },
+    { id: 'warnings', icon: 'warning' }
+];
+const VALIDATION_STEPS = ['accuracy', 'crossReference', 'tone', 'teamInput', 'iterate'];
+
+export const AIFeaturesPage = (_props: HelpCenterPageProps) => {
+    const { t } = useLanguage();
+    const p = 'help.aiFeatures.';
+    return (
+        <div className="px-6 py-6 space-y-10">
+            <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[rgba(var(--brand-violet-rgb),0.1)] via-[var(--color-surface-card)] to-[rgba(var(--brand-blue-rgb),0.1)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}hero.eyebrow`)}</div>
+                <h2 className="text-3xl font-bold text-main mt-3">{t(`${p}hero.title`)}</h2>
+                <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">{t(`${p}hero.description`)}</p>
+                <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-primary">12+</div><div className="text-xs text-muted">{t(`${p}hero.statTools`)}</div></div>
+                    <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-[var(--brand-violet-text)]">6</div><div className="text-xs text-muted">{t(`${p}hero.statModules`)}</div></div>
+                    <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-[var(--brand-blue-text)]">∞</div><div className="text-xs text-muted">{t(`${p}hero.statStyles`)}</div></div>
+                    <div className="rounded-xl bg-card border border-surface p-3 text-center"><div className="text-2xl font-bold text-[var(--brand-amber-text)]">24/7</div><div className="text-xs text-muted">{t(`${p}hero.statAvailability`)}</div></div>
+                </div>
             </div>
+
+            <section data-section-id="ai-capabilities" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}capabilities.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}capabilities.title`)}</h3></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {CAPABILITIES.map(c => (
+                        <CapabilityCard key={c.id} icon={c.icon} name={t(`${p}capabilities.${c.id}.name`)} description={t(`${p}capabilities.${c.id}.description`)} location={t(c.locationKey)} />
+                    ))}
+                </div>
+            </section>
+
+            <section data-section-id="ai-locations" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}modules.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}modules.title`)}</h3></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {MODULES.map(m => (
+                        <ModuleAICard key={m.id} icon={m.icon} module={t(`${p}modules.${m.id}.name`)} color={m.color} features={m.features.map(f => t(`${p}modules.${m.id}.features.${f}`))} />
+                    ))}
+                </div>
+            </section>
+
+            <section data-section-id="prompt-engineering" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}prompts.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}prompts.title`)}</h3></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-[rgba(var(--brand-green-rgb),0.3)] bg-[rgba(var(--brand-green-rgb),0.1)] p-4"><div className="text-xs font-bold text-[var(--brand-green-text)] mb-2">{t(`${p}prompts.doTitle`)}</div><ul className="space-y-2 text-sm text-[var(--brand-green-text)]">{DO_ITEMS.map(i => <li key={i}>{t(`${p}prompts.do.${i}`)}</li>)}</ul></div>
+                    <div className="rounded-2xl border border-[rgba(var(--status-blocked-rgb),0.3)] bg-[rgba(var(--status-blocked-rgb),0.1)] p-4"><div className="text-xs font-bold text-[var(--color-status-blocked-text)] mb-2">{t(`${p}prompts.avoidTitle`)}</div><ul className="space-y-2 text-sm text-[var(--color-status-blocked-text)]">{AVOID_ITEMS.map(i => <li key={i}>{t(`${p}prompts.avoid.${i}`)}</li>)}</ul></div>
+                </div>
+                <Callout type="tip">{t(`${p}prompts.tip`)}</Callout>
+            </section>
+
+            <section data-section-id="image-generation" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}images.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}images.title`)}</h3></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-surface bg-surface p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">{t(`${p}images.structureTitle`)}</div><div className="space-y-2 text-sm text-muted">{PROMPT_PARTS.map(part => <div key={part}><span className="font-semibold text-main">{t(`${p}images.structure.${part}.label`)}</span> {t(`${p}images.structure.${part}.description`)}</div>)}</div></div>
+                    <div className="rounded-2xl border border-surface bg-surface p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">{t(`${p}images.sizesTitle`)}</div><div className="space-y-2 text-sm">{SIZES.map(s => <div key={s.id} className="flex justify-between"><span className="text-main">{t(`${p}images.sizes.${s.id}`)}</span><span className="text-muted">{s.dims}</span></div>)}</div></div>
+                </div>
+            </section>
+
+            <section data-section-id="token-usage" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}tokens.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}tokens.title`)}</h3></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-surface bg-card p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">{t(`${p}tokens.consumptionTitle`)}</div><div className="space-y-2 text-sm">{CONSUMPTION.map(c => <div key={c.id} className="flex justify-between"><span className="text-main">{t(`${p}tokens.consumption.${c.id}`)}</span><span className="px-2 py-0.5 rounded-full bg-[rgba(var(--brand-violet-rgb),0.1)] text-[var(--brand-violet-text)] text-xs font-bold">{c.amount ?? t(`${p}tokens.consumption.imageCost`)}</span></div>)}</div></div>
+                    <div className="rounded-2xl border border-surface bg-card p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">{t(`${p}tokens.quotaTitle`)}</div><div className="space-y-3 text-sm text-muted">{QUOTA_ITEMS.map(q => <div key={q.id} className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-primary">{q.icon}</span>{t(`${p}tokens.quota.${q.id}`)}</div>)}</div></div>
+                </div>
+            </section>
+
+            <section data-section-id="quality-validation" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+                <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t(`${p}quality.eyebrow`)}</div><h3 className="text-xl font-bold text-main mt-2">{t(`${p}quality.title`)}</h3></div>
+                <div className="space-y-3">{VALIDATION_STEPS.map((s, i) => <div key={s} className="flex items-start gap-3"><div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm font-bold flex-shrink-0">{i + 1}</div><div className="rounded-xl border border-surface bg-surface p-3 flex-1"><div className="text-sm font-semibold text-main">{t(`${p}quality.steps.${s}.title`)}</div><div className="text-xs text-muted mt-1">{t(`${p}quality.steps.${s}.description`)}</div></div></div>)}</div>
+                <Callout type="warning">{t(`${p}quality.warning`)}</Callout>
+            </section>
         </div>
-
-        <section data-section-id="ai-capabilities" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Catalog</div><h3 className="text-xl font-bold text-main mt-2">CORA Capabilities Matrix</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <CapabilityCard icon="analytics" name="SWOT Analysis" description="Generate comprehensive strengths, weaknesses, opportunities, and threats." location="Flows → CORA Studio" />
-                <CapabilityCard icon="architecture" name="Blueprint" description="Create structured execution plans with phases and timelines." location="Flows → CORA Studio" />
-                <CapabilityCard icon="warning" name="Risk Analysis" description="Identify potential risks with probability and mitigations." location="CORA Studio" />
-                <CapabilityCard icon="search" name="CORA Search" description="Ask questions and get summarized answers from your data." location="Global Search" />
-                <CapabilityCard icon="image" name="Image Generation" description="Create images from text prompts with various styles." location="Media Library" />
-            </div>
-        </section>
-
-        <section data-section-id="ai-locations" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Context</div><h3 className="text-xl font-bold text-main mt-2">CORA by Module</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <ModuleAICard icon="flow_chart" module="Flows" color="bg-sky-500" features={['SWOT Analysis', 'Blueprint Generation', 'Risk Analysis', 'Discovery & Strategy']} />
-                <ModuleAICard icon="photo_library" module="Media Library" color="bg-purple-500" features={['Image Generation', 'Style Transfer', 'Image Variations']} />
-                <ModuleAICard icon="search" module="Global Search" color="bg-emerald-500" features={['CORA Answers', 'Context Search']} />
-            </div>
-        </section>
-
-        <section data-section-id="prompt-engineering" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Best Practices</div><h3 className="text-xl font-bold text-main mt-2">Prompt Engineering</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/20"><div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 mb-2">✓ Do</div><ul className="space-y-2 text-sm text-emerald-800 dark:text-emerald-200"><li>Be specific about context and audience</li><li>Define output format and constraints</li><li>Include examples when helpful</li><li>Iterate based on results</li></ul></div>
-                <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-800/40 dark:bg-rose-900/20"><div className="text-xs font-bold text-rose-700 dark:text-rose-300 mb-2">✗ Avoid</div><ul className="space-y-2 text-sm text-rose-800 dark:text-rose-200"><li>Vague, one-word prompts</li><li>Missing context about your needs</li><li>Expecting perfect first outputs</li><li>Using output without review</li></ul></div>
-            </div>
-            <Callout type="tip">Strong prompts include: subject, context, format, constraints, and examples.</Callout>
-        </section>
-
-        <section data-section-id="image-generation" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">CORA Visuals</div><h3 className="text-xl font-bold text-main mt-2">Image Generation</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-surface bg-surface p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Prompt Structure</div><div className="space-y-2 text-sm text-muted"><div><span className="font-semibold text-main">Subject:</span> What is the main subject?</div><div><span className="font-semibold text-main">Style:</span> Photo, illustration, 3D render, etc.</div><div><span className="font-semibold text-main">Mood:</span> Bright, moody, professional, playful</div><div><span className="font-semibold text-main">Details:</span> Lighting, colors, composition</div></div></div>
-                <div className="rounded-2xl border border-surface bg-surface p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Available Sizes</div><div className="space-y-2 text-sm"><div className="flex justify-between"><span className="text-main">1:1 Square</span><span className="text-muted">1024×1024</span></div><div className="flex justify-between"><span className="text-main">16:9 Landscape</span><span className="text-muted">1792×1024</span></div><div className="flex justify-between"><span className="text-main">9:16 Portrait</span><span className="text-muted">1024×1792</span></div></div></div>
-            </div>
-        </section>
-
-        <section data-section-id="token-usage" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Limits</div><h3 className="text-xl font-bold text-main mt-2">Token Usage and Quotas</h3></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-surface bg-card p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Typical Consumption</div><div className="space-y-2 text-sm">{[['SWOT Analysis', '~2K'], ['Blueprint', '~3K'], ['Caption', '~500'], ['CORA Search', '~1K'], ['Image', '1 credit']].map(([a, t]) => <div key={a} className="flex justify-between"><span className="text-main">{a}</span><span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 text-xs font-bold">{t}</span></div>)}</div></div>
-                <div className="rounded-2xl border border-surface bg-card p-5"><div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Quota Info</div><div className="space-y-3 text-sm text-muted"><div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-primary">refresh</span>Resets monthly on the 1st</div><div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-primary">settings</span>View in Settings → Billing</div><div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-primary">warning</span>Warnings at 80% and 90%</div></div></div>
-            </div>
-        </section>
-
-        <section data-section-id="quality-validation" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Review</div><h3 className="text-xl font-bold text-main mt-2">Quality Validation</h3></div>
-            <div className="space-y-3">{[['Check factual accuracy', 'Verify claims, statistics, and details'], ['Cross-reference data', 'Validate against your actual project data'], ['Review tone', 'Adjust to match your brand voice'], ['Get team input', 'Share drafts for multiple perspectives'], ['Iterate', 'Refine based on expertise']].map(([t, d], i) => <div key={i} className="flex items-start gap-3"><div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-on-primary text-sm font-bold flex-shrink-0">{i + 1}</div><div className="rounded-xl border border-surface bg-surface p-3 flex-1"><div className="text-sm font-semibold text-main">{t}</div><div className="text-xs text-muted mt-1">{d}</div></div></div>)}</div>
-            <Callout type="warning">Never publish CORA content without human review. CORA is a drafting tool, not a replacement for judgment.</Callout>
-        </section>
-    </div>
-);
+    );
+};

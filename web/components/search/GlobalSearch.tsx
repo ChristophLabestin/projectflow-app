@@ -12,7 +12,7 @@ import { useHelpCenter } from '../../context/HelpCenterContext';
 import { useUIState, useToast } from '../../context/UIContext';
 import { usePermissions } from '../../context/PermissionContext';
 import { useWorkspace } from '../../context/WorkspaceContext';
-import { helpCenterPages } from '../help/helpCenterContent';
+import { getHelpCenterPages } from '../help/helpCenterContent';
 import { DESKTOP_OPEN_SEARCH_EVENT } from '../../services/desktop';
 import type { Initiative, Project, Task } from '../../types';
 import {
@@ -165,7 +165,7 @@ const Highlight: React.FC<{ text: string; terms: string[] }> = ({ text, terms })
 type GlobalSearchProps = { tenantId?: string };
 
 export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
-    const { t, dateLocale, language } = useLanguage();
+    const { t, dateLocale, language, helpTranslationsReady, loadHelpTranslations } = useLanguage();
     const { theme, setTheme } = useTheme();
     const { openHelpCenter } = useHelpCenter();
     const { openTaskCreateModal, openProjectCreateModal } = useUIState();
@@ -329,7 +329,12 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
         return actions;
     }, [t, theme, setTheme, currentProjectId, openTaskCreateModal, openProjectCreateModal, openHelpCenter, showSuccess]);
 
-    const helpItems = React.useMemo<SearchItem[]>(() => helpCenterPages.flatMap((page) => [
+    // Help copy is a lazy chunk; load it with the palette so help pages are searchable.
+    React.useEffect(() => {
+        if (open) void loadHelpTranslations();
+    }, [open, loadHelpTranslations]);
+
+    const helpItems = React.useMemo<SearchItem[]>(() => (helpTranslationsReady ? getHelpCenterPages(t) : []).flatMap((page) => [
         {
             key: `help:${page.id}`, kind: 'help' as const, title: page.title, subtitle: page.description,
             keywords: page.keywords, icon: 'menu_book', tone: 'muted' as const,
@@ -342,7 +347,7 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ tenantId }) => {
             icon: 'description', tone: 'muted' as const,
             helpTarget: { pageId: page.id, sectionId: section.id },
         })),
-    ]), [t]);
+    ]), [helpTranslationsReady, t]);
 
     // ---- Data items ------------------------------------------------------------
 

@@ -1,53 +1,44 @@
 import React from 'react';
-import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterTypes';
+import { useLanguage } from '../../../context/LanguageContext';
+import type { HelpCenterPageProps, HelpCenterSectionsBuilder } from '../helpCenterTypes';
+import { splitHelpKeywords } from '../helpCenterContent';
 
-export const sprintsSections: HelpCenterSectionIndex[] = [
-    {
-        id: 'sprinter-overview',
-        title: 'Sprints overview',
-        summary: 'Understanding the Agile Sprint workflow in ProjectFlow.',
-        content: 'How to use sprints to break down project work into manageable time-boxed iterations.',
-        keywords: ['agile', 'scrum', 'iterations', 'timebox']
-    },
-    {
-        id: 'backlog-planning',
-        title: 'Backlog & planning',
-        summary: 'Organizing your backlog and planning future sprints.',
-        content: 'Prioritize work, assign tasks to sprints, and set sprint goals.',
-        keywords: ['backlog', 'planning', 'prioritization', 'drag and drop']
-    },
-    {
-        id: 'active-sprint',
-        title: 'Active sprint execution',
-        summary: 'Running the active sprint and tracking progress.',
-        content: 'Using the board view, updating task status, and completing the sprint.',
-        keywords: ['execution', 'kanban', 'board', 'complete', 'status']
-    }
-];
+const SECTION_IDS = ['sprint-overview', 'backlog-planning', 'active-sprint'] as const;
+
+export const getSprintsSections: HelpCenterSectionsBuilder = t =>
+    SECTION_IDS.map(id => ({
+        id,
+        title: t(`help.sprints.sections.${id}.title`),
+        summary: t(`help.sprints.sections.${id}.summary`),
+        content: t(`help.sprints.sections.${id}.content`),
+        keywords: splitHelpKeywords(t(`help.sprints.sections.${id}.keywords`))
+    }));
 
 export const SprintsPage = (_props: HelpCenterPageProps) => {
+    const { t } = useLanguage();
+    const boardFeatures = ['dragCards', 'cardInfo', 'complete'];
+
     return (
         <div className="px-6 py-6 space-y-10">
             {/* Hero Section */}
             <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
                 <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
-                    Agile Execution
+                    {t('help.sprints.hero.eyebrow')}
                 </div>
                 <h2 className="text-3xl font-bold text-main mt-3">
-                    Sprints & Iterations
+                    {t('help.sprints.hero.title')}
                 </h2>
                 <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">
-                    Sprints help teams focus on a set amount of work for a specific period (usually 1-2 weeks).
-                    Move tasks from the backlog to a sprint, track progress on the active board, and deliver value iteratively.
+                    {t('help.sprints.hero.description')}
                 </p>
                 <div className="flex items-center gap-4 mt-6">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-xs font-bold">
                         <span className="material-symbols-outlined text-sm">directions_run</span>
-                        Agile Workflow
+                        {t('help.sprints.hero.badgeWorkflow')}
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-xs font-bold">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[rgba(var(--brand-blue-rgb),0.1)] text-[var(--brand-blue-text)] text-xs font-bold">
                         <span className="material-symbols-outlined text-sm">view_kanban</span>
-                        Kanban Board
+                        {t('help.sprints.hero.badgeKanban')}
                     </div>
                 </div>
             </div>
@@ -56,10 +47,10 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
             <section data-section-id="sprint-overview" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Workflow</div>
-                        <h3 className="text-xl font-bold text-main mt-2">The Sprint Lifecycle</h3>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t('help.sprints.lifecycle.eyebrow')}</div>
+                        <h3 className="text-xl font-bold text-main mt-2">{t('help.sprints.lifecycle.title')}</h3>
                         <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
-                            A sprint goes through three main stages: Planning, Active, and Completed.
+                            {t('help.sprints.lifecycle.description')}
                         </p>
                     </div>
                     <span className="material-symbols-outlined text-[20px] text-subtle">sync</span>
@@ -68,29 +59,29 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-[18px] text-slate-500">edit_calendar</span>
-                            <span className="text-sm font-bold text-main">1. Planning</span>
+                            <span className="material-symbols-outlined text-[18px] text-muted">edit_calendar</span>
+                            <span className="text-sm font-bold text-main">{t('help.sprints.lifecycle.planning.title')}</span>
                         </div>
                         <p className="text-xs text-muted leading-relaxed">
-                            Create a sprint (e.g., "Sprint 4") and set dates. Drag tasks from the backlog into this sprint. The sprint is not yet live.
+                            {t('help.sprints.lifecycle.planning.description')}
                         </p>
                     </div>
                     <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-[18px] text-emerald-500">play_circle</span>
-                            <span className="text-sm font-bold text-main">2. Active</span>
+                            <span className="material-symbols-outlined text-[18px] text-[var(--brand-green-text)]">play_circle</span>
+                            <span className="text-sm font-bold text-main">{t('help.sprints.lifecycle.active.title')}</span>
                         </div>
                         <p className="text-xs text-muted leading-relaxed">
-                            Click "Start Sprint" to make it active. This locks the scope (soft lock) and activates the Kanban board view for the team.
+                            {t('help.sprints.lifecycle.active.description')}
                         </p>
                     </div>
                     <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-[18px] text-sky-500">check_circle</span>
-                            <span className="text-sm font-bold text-main">3. Completed</span>
+                            <span className="material-symbols-outlined text-[18px] text-[var(--brand-blue-text)]">check_circle</span>
+                            <span className="text-sm font-bold text-main">{t('help.sprints.lifecycle.completed.title')}</span>
                         </div>
                         <p className="text-xs text-muted leading-relaxed">
-                            When the end date is reached, complete the sprint. Remaining tasks can be moved to the backlog or the next sprint.
+                            {t('help.sprints.lifecycle.completed.description')}
                         </p>
                     </div>
                 </div>
@@ -100,10 +91,10 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
             <section data-section-id="backlog-planning" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Organization</div>
-                        <h3 className="text-xl font-bold text-main mt-2">Backlog & Planning</h3>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t('help.sprints.backlog.eyebrow')}</div>
+                        <h3 className="text-xl font-bold text-main mt-2">{t('help.sprints.backlog.title')}</h3>
                         <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
-                            The Sprints view is split into two columns: the Backlog (left) and your Sprints (right).
+                            {t('help.sprints.backlog.description')}
                         </p>
                     </div>
                     <span className="material-symbols-outlined text-[20px] text-subtle">list_alt</span>
@@ -115,20 +106,20 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
                             <span className="material-symbols-outlined text-[16px] text-primary">drag_indicator</span>
                         </div>
                         <div>
-                            <div className="text-sm font-bold text-main">Drag and Drop</div>
+                            <div className="text-sm font-bold text-main">{t('help.sprints.backlog.dragDrop.title')}</div>
                             <p className="text-xs text-muted mt-1">
-                                Simply drag tasks from the backlog list onto any sprint card to assign them. You can also drag tasks between sprints.
+                                {t('help.sprints.backlog.dragDrop.description')}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">
-                        <div className="size-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                            <span className="material-symbols-outlined text-[16px] text-amber-500">sort</span>
+                        <div className="size-8 rounded-full bg-[rgba(var(--brand-amber-rgb),0.1)] flex items-center justify-center shrink-0">
+                            <span className="material-symbols-outlined text-[16px] text-[var(--brand-amber-text)]">sort</span>
                         </div>
                         <div>
-                            <div className="text-sm font-bold text-main">Smart Sorting</div>
+                            <div className="text-sm font-bold text-main">{t('help.sprints.backlog.sorting.title')}</div>
                             <p className="text-xs text-muted mt-1">
-                                The backlog automatically sorts tasks by Due Date, bubbling urgent items to the top so you don't miss them.
+                                {t('help.sprints.backlog.sorting.description')}
                             </p>
                         </div>
                     </div>
@@ -139,10 +130,10 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
             <section data-section-id="active-sprint" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Focus</div>
-                        <h3 className="text-xl font-bold text-main mt-2">Active Sprint Board</h3>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">{t('help.sprints.board.eyebrow')}</div>
+                        <h3 className="text-xl font-bold text-main mt-2">{t('help.sprints.board.title')}</h3>
                         <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
-                            Once a sprint is started, the view switches to a focused Kanban board showing only that sprint's tasks.
+                            {t('help.sprints.board.description')}
                         </p>
                     </div>
                     <span className="material-symbols-outlined text-[20px] text-subtle">view_kanban</span>
@@ -150,21 +141,15 @@ export const SprintsPage = (_props: HelpCenterPageProps) => {
 
                 <div className="rounded-2xl border border-surface bg-card p-5">
                     <div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">
-                        Board Features
+                        {t('help.sprints.board.featuresTitle')}
                     </div>
                     <ul className="space-y-3">
-                        <li className="flex items-center gap-3 text-sm text-main">
-                            <span className="material-symbols-outlined text-[18px] text-subtle">check</span>
-                            <span>Drag cards between columns (To Do → In Progress → Done) to update status.</span>
-                        </li>
-                        <li className="flex items-center gap-3 text-sm text-main">
-                            <span className="material-symbols-outlined text-[18px] text-subtle">check</span>
-                            <span>See assignee avatars and due dates directly on the cards.</span>
-                        </li>
-                        <li className="flex items-center gap-3 text-sm text-main">
-                            <span className="material-symbols-outlined text-[18px] text-subtle">check</span>
-                            <span>Use "Complete Sprint" at the top right when the cycle is finished.</span>
-                        </li>
+                        {boardFeatures.map(feature => (
+                            <li key={feature} className="flex items-center gap-3 text-sm text-main">
+                                <span className="material-symbols-outlined text-[18px] text-subtle">check</span>
+                                <span>{t(`help.sprints.board.features.${feature}`)}</span>
+                            </li>
+                        ))}
                     </ul>
                 </div>
             </section>

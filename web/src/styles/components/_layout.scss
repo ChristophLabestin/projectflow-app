@@ -321,6 +321,13 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
         flex: 0 1 auto;
         max-width: calc(100vw - 8.75rem);
     }
+
+    // Top-level pages have no trail: on desktop the pill would be empty (the menu toggle is phone-only).
+    &--no-crumbs {
+        @media (min-width: 768px) {
+            display: none;
+        }
+    }
 }
 
 .topbar-breadcrumbs {
@@ -352,7 +359,6 @@ html.dark .app-sidebar .app-sidebar__nav-item.is-active {
     font-size: 13px;
     font-weight: 600;
 
-    &__home,
     &__back {
         width: 26px;
         height: 26px;

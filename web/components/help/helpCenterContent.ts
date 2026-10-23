@@ -1,75 +1,79 @@
 import type { HelpCenterTarget } from '../../context/HelpCenterContext';
-import type { HelpCenterPageDefinition } from './helpCenterTypes';
-import { GettingStartedPage, gettingStartedSections } from './pages/GettingStartedPage';
-import { ProjectsPage, projectsSections } from './pages/ProjectsPage';
-import { AIFeaturesPage, aiFeaturesSections } from './pages/AIFeaturesPage';
-import { MediaLibraryPage, mediaLibrarySections } from './pages/MediaLibraryPage';
-import { MarketingPage, marketingSections } from './pages/MarketingPage';
-import { AccountSettingsPage, accountSettingsSections } from './pages/AccountSettingsPage';
-import { SprintsPage, sprintsSections } from './pages/SprintsPage';
+import type { HelpCenterPageDefinition, HelpT } from './helpCenterTypes';
+import { GettingStartedPage, getGettingStartedSections } from './pages/GettingStartedPage';
+import { ProjectsPage, getProjectsSections } from './pages/ProjectsPage';
+import { SprintsPage, getSprintsSections } from './pages/SprintsPage';
+import { AIFeaturesPage, getAiFeaturesSections } from './pages/AIFeaturesPage';
+import { MediaLibraryPage, getMediaLibrarySections } from './pages/MediaLibraryPage';
+import { MarketingPage, getMarketingSections } from './pages/MarketingPage';
+import { AccountSettingsPage, getAccountSettingsSections } from './pages/AccountSettingsPage';
 
-export const helpCenterPages: HelpCenterPageDefinition[] = [
+export const splitHelpKeywords = (value: string) =>
+    value.split(',').map(keyword => keyword.trim()).filter(Boolean);
+
+/** Page index for the drawer; titles, descriptions and keywords come from `web/locales/help/*`. */
+export const getHelpCenterPages = (t: HelpT): HelpCenterPageDefinition[] => [
     {
         id: 'getting-started',
-        title: 'Getting Started',
-        description: 'Learn the workspace model, navigation, and first steps.',
+        title: t('help.pages.gettingStarted.title'),
+        description: t('help.pages.gettingStarted.description'),
         category: 'Basics',
-        keywords: ['navigation', 'workspace', 'shortcuts', 'overview'],
-        sections: gettingStartedSections,
+        keywords: splitHelpKeywords(t('help.pages.gettingStarted.keywords')),
+        sections: getGettingStartedSections(t),
         component: GettingStartedPage
     },
     {
         id: 'projects',
-        title: 'Projects',
-        description: 'Plan, organize, and track delivery with project dashboards.',
+        title: t('help.pages.projects.title'),
+        description: t('help.pages.projects.description'),
         category: 'Workflows',
-        keywords: ['projects', 'modules', 'milestones', 'overview'],
-        sections: projectsSections,
+        keywords: splitHelpKeywords(t('help.pages.projects.keywords')),
+        sections: getProjectsSections(t),
         component: ProjectsPage
     },
     {
         id: 'sprints',
-        title: 'Sprints (Agile)',
-        description: 'Iterative delivery with backlogs, sprints, and boards.',
+        title: t('help.pages.sprints.title'),
+        description: t('help.pages.sprints.description'),
         category: 'Workflows',
-        keywords: ['sprints', 'agile', 'scrum', 'backlog', 'kanban'],
-        sections: sprintsSections,
+        keywords: splitHelpKeywords(t('help.pages.sprints.keywords')),
+        sections: getSprintsSections(t),
         component: SprintsPage
     },
     {
         id: 'ai-features',
-        title: 'CORA Features',
-        description: 'Discover CORA search, drafting, analysis, and media tools.',
+        title: t('help.pages.aiFeatures.title'),
+        description: t('help.pages.aiFeatures.description'),
         category: 'CORA Studio',
-        keywords: ['cora', 'ai', 'studio', 'usage', 'limits'],
-        sections: aiFeaturesSections,
+        keywords: splitHelpKeywords(t('help.pages.aiFeatures.keywords')),
+        sections: getAiFeaturesSections(t),
         component: AIFeaturesPage
     },
     {
         id: 'media-library',
-        title: 'Media Library',
-        description: 'Upload, generate, and manage creative assets.',
+        title: t('help.pages.mediaLibrary.title'),
+        description: t('help.pages.mediaLibrary.description'),
         category: 'Assets',
-        keywords: ['media', 'library', 'assets', 'uploads'],
-        sections: mediaLibrarySections,
+        keywords: splitHelpKeywords(t('help.pages.mediaLibrary.keywords')),
+        sections: getMediaLibrarySections(t),
         component: MediaLibraryPage
     },
     {
         id: 'marketing',
-        title: 'Marketing',
-        description: 'Connect and publish to your website blog.',
+        title: t('help.pages.marketing.title'),
+        description: t('help.pages.marketing.description'),
         category: 'Marketing',
-        keywords: ['blog', 'posts', 'publish'],
-        sections: marketingSections,
+        keywords: splitHelpKeywords(t('help.pages.marketing.keywords')),
+        sections: getMarketingSections(t),
         component: MarketingPage
     },
     {
         id: 'account-settings',
-        title: 'Team and Settings',
-        description: 'Manage access, profiles, and workspace configuration.',
+        title: t('help.pages.accountSettings.title'),
+        description: t('help.pages.accountSettings.description'),
         category: 'Account',
-        keywords: ['team', 'roles', 'settings', 'profile'],
-        sections: accountSettingsSections,
+        keywords: splitHelpKeywords(t('help.pages.accountSettings.keywords')),
+        sections: getAccountSettingsSections(t),
         component: AccountSettingsPage
     }
 ];

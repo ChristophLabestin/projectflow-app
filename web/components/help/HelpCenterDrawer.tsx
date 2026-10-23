@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Input } from '../ui/Input';
-import { helpCenterPages } from './helpCenterContent';
+import { getHelpCenterPages } from './helpCenterContent';
 import type { HelpCenterPageDefinition } from './helpCenterTypes';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { answerQuestionWithContext } from '../../services/aiSearchService';
@@ -37,7 +37,12 @@ export const HelpCenterDrawer = () => {
         setActiveSection,
         setSearchQuery
     } = useHelpCenter();
-    const { t } = useLanguage();
+    const { t, helpTranslationsReady, loadHelpTranslations } = useLanguage();
+    const helpCenterPages = useMemo(() => (helpTranslationsReady ? getHelpCenterPages(t) : []), [helpTranslationsReady, t]);
+
+    useEffect(() => {
+        if (isOpen) void loadHelpTranslations();
+    }, [isOpen, loadHelpTranslations]);
 
     const [shouldRender, setShouldRender] = useState(isOpen);
     const [isExpanded, setIsExpanded] = useState(false);
@@ -51,9 +56,9 @@ export const HelpCenterDrawer = () => {
 
     const activePage = useMemo(() => {
         return helpCenterPages.find(page => page.id === activePageId) || helpCenterPages[0];
-    }, [activePageId]);
+    }, [activePageId, helpCenterPages]);
 
-    const categories = useMemo(() => groupPagesByCategory(helpCenterPages), []);
+    const categories = useMemo(() => groupPagesByCategory(helpCenterPages), [helpCenterPages]);
     const ActivePageComponent = activePage?.component;
     const categoryLabels = useMemo(() => ({
         Basics: t('help.category.basics'),
@@ -147,7 +152,7 @@ export const HelpCenterDrawer = () => {
         });
 
         return results.slice(0, 20);
-    }, [normalizedQuery]);
+    }, [helpCenterPages, normalizedQuery]);
 
     useEffect(() => {
         if (!normalizedQuery) {
@@ -395,6 +400,9 @@ export const HelpCenterDrawer = () => {
                             </aside>
 
                             <section ref={contentRef} className="h-full overflow-y-auto">
+                                {!helpTranslationsReady && (
+                                    <div className="px-6 py-6 text-sm text-muted">{t('help.drawer.loading')}</div>
+                                )}
                                 {ActivePageComponent && (
                                     <ActivePageComponent
                                         sections={activePage.sections}
