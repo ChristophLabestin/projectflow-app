@@ -56,6 +56,23 @@ const useFakeStream = () => {
 type Variant = 'a' | 'b' | 'c';
 const VARIANTS: Variant[] = ['a', 'b', 'c'];
 
+/** The small menu at the caret: a few actions, „More…“ grows it into the full popover. */
+const QuickMenu: React.FC<{ onAction?: () => void; onMore?: () => void }> = ({ onAction, onMore }) => {
+    const { t } = useLanguage();
+    return (
+        <div className="ai-options" role="menu">
+            {ACTIONS.slice(0, 4).map(([icon, key]) => (
+                <button key={key} type="button" role="menuitem" className="ai-option" onClick={onAction}>
+                    <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(key)}
+                </button>
+            ))}
+            <button type="button" role="menuitem" className="ai-option" onClick={onMore}>
+                <span className="ai-spark ai-spark--sm" aria-hidden="true">✦</span>{t('ai.spark.more')}<kbd>⌘J</kbd>
+            </button>
+        </div>
+    );
+};
+
 /** Static, in-place popovers for the side-by-side comparison. */
 const VariantColumn: React.FC<{ variant: Variant }> = ({ variant }) => {
     const { t } = useLanguage();
@@ -64,6 +81,7 @@ const VariantColumn: React.FC<{ variant: Variant }> = ({ variant }) => {
         <div className="ai-showcase__variant">
             <h3>{t(`styleGuide.ai.variant.${variant}`)}</h3>
             <p>{t(`styleGuide.ai.variant.${variant}.hint`)}</p>
+            <div className="ai-showcase__w-panel">
             <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.panel.title')}
                 footer={(
                     <div className="ai-composer">
@@ -78,18 +96,17 @@ const VariantColumn: React.FC<{ variant: Variant }> = ({ variant }) => {
                 <div className="ai-message"><AiMessageText text={PANEL_ANSWER} /></div>
                 <AiActionCard proposal={DEMO_PROPOSAL} onApply={() => Promise.resolve({ canUndo: true, createdId: null })} onUndo={() => Promise.resolve()} />
             </AiPopover>
-            <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.spark.menuLabel')}>
-                <AiThinking label={t('ai.step.my_today')} lines={2} />
-            </AiPopover>
-            <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.spark.menuLabel')}>
-                <div className="ai-options" role="menu">
-                    {ACTIONS.slice(0, 4).map(([icon, key]) => (
-                        <button key={key} type="button" role="menuitem" className="ai-option">
-                            <span className="material-symbols-outlined" aria-hidden="true">{icon}</span>{t(key)}
-                        </button>
-                    ))}
-                </div>
-            </AiPopover>
+            </div>
+            <div className="ai-showcase__w-panel">
+                <AiPopover open inline variant={variant} onClose={noop} label={t('ai.label')} ariaLabel={t('ai.spark.menuLabel')}>
+                    <AiThinking label={t('ai.step.my_today')} lines={2} />
+                </AiPopover>
+            </div>
+            <div className="ai-showcase__w-menu">
+                <AiPopover open inline bare variant={variant} onClose={noop} ariaLabel={t('ai.spark.menuLabel')}>
+                    <QuickMenu />
+                </AiPopover>
+            </div>
         </div>
     );
 };
@@ -101,6 +118,7 @@ export const AiShowcase: React.FC = () => {
     const [fieldValue, setFieldValue] = useState('login after pw reset broken on ios, invalid session, only ios 18');
     const [fieldAnchor, setFieldAnchor] = useState<AiAnchor>(null);
     const [fieldOpen, setFieldOpen] = useState(false);
+    const [fieldGrown, setFieldGrown] = useState(false);
     const field = useFakeStream();
 
     const [panelOpen, setPanelOpen] = useState(false);
@@ -112,6 +130,7 @@ export const AiShowcase: React.FC = () => {
         const el = fieldRef.current;
         if (!el) return;
         field.reset();
+        setFieldGrown(false);
         setFieldAnchor(el.getBoundingClientRect());
         setFieldOpen(true);
     };
@@ -170,7 +189,9 @@ export const AiShowcase: React.FC = () => {
                 variant={variant}
                 label={t('ai.label')}
                 ariaLabel={t('ai.spark.menuLabel')}
-                width={360}
+                bare={!fieldGrown}
+                closeOnOutside={!fieldGrown}
+                width={fieldGrown ? 320 : 210}
                 closeLabel={t('common.close')}
                 footer={field.phase === 'done' ? (
                     <div className="ai-showcase__actions">
@@ -178,13 +199,16 @@ export const AiShowcase: React.FC = () => {
                         <button type="button" className="ai-btn" onClick={() => field.start(FIELD_ANSWER)}><span className="material-symbols-outlined" aria-hidden="true">refresh</span></button>
                         <button type="button" className="ai-btn" onClick={() => { field.reset(); setFieldOpen(false); }}>{t('ai.spark.discard')} <kbd>Esc</kbd></button>
                     </div>
-                ) : field.phase === 'idle' ? (
+                ) : field.phase === 'idle' && fieldGrown ? (
                     <form className="ai-composer" onSubmit={(event) => { event.preventDefault(); field.start(FIELD_ANSWER); }}>
                         <input placeholder={t('ai.spark.customPlaceholder')} aria-label={t('ai.spark.customPlaceholder')} />
                     </form>
                 ) : undefined}
             >
-                {field.phase === 'idle' && (
+                {field.phase === 'idle' && !fieldGrown && (
+                    <QuickMenu onAction={() => { setFieldGrown(true); field.start(FIELD_ANSWER); }} onMore={() => setFieldGrown(true)} />
+                )}
+                {field.phase === 'idle' && fieldGrown && (
                     <div className="ai-options" role="menu">
                         {ACTIONS.map(([icon, key]) => (
                             <button key={key} type="button" role="menuitem" className="ai-option" onClick={() => field.start(FIELD_ANSWER)}>
@@ -207,7 +231,7 @@ export const AiShowcase: React.FC = () => {
                 expanded={expanded}
                 onExpandedChange={setExpanded}
                 ariaLabel={t('ai.panel.title')}
-                width={420}
+                width={360}
                 closeLabel={t('common.close')}
                 expandLabel={t('styleGuide.ai.expand')}
                 collapseLabel={t('styleGuide.ai.collapse')}
