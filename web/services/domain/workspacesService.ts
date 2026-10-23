@@ -187,7 +187,10 @@ export const resolveWorkspaceForCurrentUser = async (language: string) => {
     } catch {
         linkedTenantId = undefined;
     }
+    // The last used workspace always wins (e.g. the App Review account must land in its demo workspace). Without one,
+    // prefer a team workspace the user owns over the personal one (which now sorts first in the list).
     const activeId = [linkedTenantId, cached, lastTenantId].find((id): id is string => Boolean(id && ids.has(id)))
+        || workspaces.find((workspace) => workspace.role === 'Owner' && !workspace.isPersonal)?.id
         || workspaces.find((workspace) => workspace.role === 'Owner')?.id
         || workspaces[0]?.id;
 
