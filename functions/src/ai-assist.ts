@@ -1,0 +1,233 @@
+/**
+ * In-app assistant endpoint (`aiAssist`, Gen2, Server-Sent Events). Concept: brain/plans/in-app-ai-concept.md.
+ *
+ * POST { tenantId, capability: 'write' | 'assist', language, input | messages + context }
+ * Authorization: Bearer <Firebase ID token>
+ *
+ * Events: `context` (resolved chips), `step` (tool call), `delta` (text), `done` (credits), `error`.
+ * Tools run through the REST API with the user's own ID token, so the assistant never exceeds the
+ * user's rights. Write tools are not offered yet (proposals with confirmation follow in P3).
+ */
+import { onRequest } from 'firebase-functions/v2/https';
+import { getAuth } from 'firebase-admin/auth';
+
+import { db } from './init';
+import { ALLOWED_ORIGINS } from './corsConfig';
+import { normalizeRole } from './ai-access';
+import { aiPolicyRef, loadAiPolicy } from './ai-store';
+import { consumeAiQuota, trackUsage } from './ai-service';
+import { refundCredits, reserveCredits, recordModelUsage, resolveMonthlyLimit, type CreditCapability } from './ai-credits';
+import { streamTurn, tierModel, ModelError, type ModelTier, type ModelUsage } from './ai-models';
+import {
+    AssistInputError, buildAssistInstructions, buildWriteRequest, normalizeContext, normalizeMessages,
+    renderContextBlock, type AssistContext, type ResolvedContext
+} from './ai-assist-prompts';
+import { AI_TOOLS, findTool, parseToolArgs, serializeToolResult, toOpenAiTools, ToolError, type ToolContext } from './ai-tools/registry';
+import { callApi, compact, summarizeProject } from './ai-tools/api';
+
+const REGION = 'europe-west3';
+const MAX_TOOL_ROUNDS = 5;
+
+/** Rollout default when a workspace has not set `inAppAi` (env `AI_IN_APP_DEFAULT=true` opens it for all). */
+const ROLLOUT_DEFAULT = process.env.AI_IN_APP_DEFAULT === 'true';
+
+class HttpError extends Error {
+    constructor(readonly status: number, message: string, readonly code = 'error') {
+        super(message);
+    }
+}
+
+type Send = (event: string, data: unknown) => void;
+
+const authenticate = async (req: any) => {
+    const header = String(req.headers?.authorization || '');
+    const token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+    if (!token) throw new HttpError(401, 'Missing ID token.', 'unauthenticated');
+    try {
+        const decoded = await getAuth().verifyIdToken(token);
+        return { idToken: token, uid: decoded.uid };
+    } catch {
+        throw new HttpError(401, 'Invalid ID token.', 'unauthenticated');
+    }
+};
+
+const authorizeWorkspace = async (tenantId: string, uid: string) => {
+    const [member, policy, rawPolicy] = await Promise.all([
+        db.doc(`tenants/${tenantId}/members/${uid}`).get(),
+        loadAiPolicy(tenantId),
+        aiPolicyRef(tenantId).get()
+    ]);
+    const role = normalizeRole(member.data()?.role);
+    if (!member.exists || !role) throw new HttpError(403, 'Not a member of this workspace.', 'forbidden');
+    const flag = rawPolicy.data()?.inAppAi;
+    const rolledOut = typeof flag === 'boolean' ? flag : ROLLOUT_DEFAULT;
+    if (!rolledOut || !policy.inAppEnabled) throw new HttpError(403, 'The AI assistant is not enabled for this workspace.', 'disabled');
+    return { role, monthlyLimit: resolveMonthlyLimit(rawPolicy.data()) };
+};
+
+const resolveContext = async (ctx: ToolContext, context: AssistContext): Promise<ResolvedContext> => {
+    const resolved: ResolvedContext = {};
+    const projectId = context.entity?.projectId || context.projectId || (context.entity?.kind === 'project' ? context.entity.id : undefined);
+    const jobs: Promise<void>[] = [];
+    if (projectId) {
+        jobs.push(callApi(ctx.idToken, 'GET', `/projects/${projectId}`, { tenantId: ctx.tenantId }).then((result) => {
+            if (result.status < 400 && result.payload?.project) resolved.project = summarizeProject(result.payload.project);
+        }));
+    }
+    if (context.entity?.kind === 'task' && projectId) {
+        jobs.push(callApi(ctx.idToken, 'GET', `/projects/${projectId}/tasks/${context.entity.id}`, { tenantId: ctx.tenantId }).then((result) => {
+            const task = result.status < 400 ? result.payload?.task : null;
+            if (task) {
+                resolved.task = compact({
+                    id: task.id, projectId, title: task.title, status: task.status, priority: task.priority,
+                    dueDate: task.dueDate || undefined, assigneeIds: task.assigneeIds?.length ? task.assigneeIds : undefined,
+                    description: typeof task.description === 'string' && task.description ? task.description.slice(0, 1500) : undefined
+                });
+            }
+        }));
+    }
+    await Promise.all(jobs.map((job) => job.catch(() => undefined)));
+    return resolved;
+};
+
+const addUsage = (total: ModelUsage, usage: ModelUsage) => {
+    total.inputTokens += usage.inputTokens;
+    total.outputTokens += usage.outputTokens;
+    total.cachedTokens += usage.cachedTokens;
+};
+
+const runWrite = async (body: any, send: Send, signal: AbortSignal): Promise<ModelUsage> => {
+    const request = buildWriteRequest(body.input, body.language);
+    const turn = await streamTurn({ tier: 'fast', ...request, signal }, (delta) => send('delta', { text: delta }));
+    return turn.usage;
+};
+
+const runAssist = async (body: any, ctx: ToolContext, send: Send, signal: AbortSignal): Promise<ModelUsage> => {
+    const messages = normalizeMessages(body.messages);
+    const context = normalizeContext(body.context, body.language);
+    const resolved = await resolveContext(ctx, context);
+    send('context', compact({
+        surface: context.surface,
+        project: resolved.project ? { id: resolved.project.id, title: resolved.project.title } : undefined,
+        task: resolved.task ? { id: resolved.task.id, title: resolved.task.title } : undefined,
+        selected: context.selectionIds.length || undefined
+    }));
+
+    const tools = AI_TOOLS.filter((entry) => entry.kind === 'read');
+    const instructions = buildAssistInstructions(context.language, renderContextBlock(context, resolved));
+    const usage: ModelUsage = { inputTokens: 0, outputTokens: 0, cachedTokens: 0 };
+    let turn = await streamTurn({ tier: 'agent', instructions, input: messages, tools: toOpenAiTools(tools), signal }, (delta) => send('delta', { text: delta }));
+    addUsage(usage, turn.usage);
+
+    for (let round = 0; round < MAX_TOOL_ROUNDS && turn.functionCalls.length; round++) {
+        const outputs = await Promise.all(turn.functionCalls.map(async (call) => {
+            const entry = findTool(call.name);
+            send('step', { tool: call.name });
+            let output: string;
+            try {
+                if (!entry || entry.kind !== 'read') throw new ToolError(`Unknown tool ${call.name}.`);
+                output = serializeToolResult(await entry.run(ctx, parseToolArgs(entry, call.arguments)));
+            } catch (error: any) {
+                output = JSON.stringify({ error: error instanceof ToolError ? error.message : 'Tool failed.' });
+            }
+            return { type: 'function_call_output' as const, call_id: call.callId, output };
+        }));
+        turn = await streamTurn({
+            tier: 'agent', instructions, input: outputs, previousResponseId: turn.responseId, tools: toOpenAiTools(tools), signal
+        }, (delta) => send('delta', { text: delta }));
+        addUsage(usage, turn.usage);
+    }
+    return usage;
+};
+
+const CAPABILITIES: Record<string, { credit: CreditCapability; tier: ModelTier }> = {
+    write: { credit: 'write', tier: 'fast' },
+    assist: { credit: 'assist', tier: 'agent' }
+};
+
+export const aiAssist = onRequest({
+    region: REGION,
+    cors: ALLOWED_ORIGINS,
+    secrets: ['OPENAI_API_KEY'],
+    memory: '512MiB',
+    timeoutSeconds: 120,
+    concurrency: 40
+}, async (req, res) => {
+    if (req.method !== 'POST') {
+        res.status(405).json({ error: 'Method not allowed.' });
+        return;
+    }
+
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const capability = CAPABILITIES[String(body.capability)];
+    const tenantId = typeof body.tenantId === 'string' ? body.tenantId.trim() : '';
+    let uid = '';
+    let started = false;
+    const abort = new AbortController();
+    // Client went away before we finished: stop the model stream (req 'close' fires after the body is read).
+    res.on('close', () => { if (!res.writableEnded) abort.abort(); });
+
+    const send: Send = (event, data) => {
+        if (!started) {
+            res.status(200).set({ 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-cache, no-transform', 'X-Accel-Buffering': 'no' });
+            started = true;
+        }
+        res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+        if (!capability) throw new HttpError(400, 'Unknown capability.', 'invalid-argument');
+        if (!tenantId) throw new HttpError(400, 'tenantId is required.', 'invalid-argument');
+        const auth = await authenticate(req);
+        uid = auth.uid;
+        const { role, monthlyLimit } = await authorizeWorkspace(tenantId, uid);
+        if (body.capability === 'assist' && role === 'Guest') throw new HttpError(403, 'The assistant is not available for guests yet.', 'forbidden');
+
+        // Validate before spending anything.
+        if (body.capability === 'write') buildWriteRequest(body.input, body.language);
+        else normalizeMessages(body.messages);
+
+        await consumeAiQuota(uid, 'text').catch(() => {
+            throw new HttpError(429, 'Daily AI limit reached.', 'resource-exhausted');
+        });
+        const credits = await reserveCredits(tenantId, uid, capability.credit, monthlyLimit);
+        if (!credits.ok) throw new HttpError(429, 'The workspace has used its AI credits for this month.', 'credits-exhausted');
+
+        const ctx: ToolContext = { idToken: auth.idToken, tenantId, uid };
+        let usage: ModelUsage;
+        try {
+            usage = body.capability === 'write'
+                ? await runWrite(body, send, abort.signal)
+                : await runAssist(body, ctx, send, abort.signal);
+        } catch (error) {
+            // Nothing useful reached the user: give the credits back.
+            await refundCredits(tenantId, uid, capability.credit).catch(() => undefined);
+            throw error;
+        }
+
+        const { model, serviceTier } = tierModel(capability.tier);
+        await Promise.all([
+            recordModelUsage(tenantId, uid, model, usage, serviceTier),
+            trackUsage(uid, usage.inputTokens + usage.outputTokens)
+        ]).catch((error) => console.error('aiAssist usage write failed', { tenantId, message: error?.message }));
+        send('done', { credits: credits.used, limit: credits.limit });
+    } catch (error: any) {
+        const known = error instanceof HttpError
+            ? error
+            : error instanceof AssistInputError
+                ? new HttpError(400, error.message, 'invalid-argument')
+                : error instanceof ModelError
+                    ? new HttpError(error.kind === 'quota' ? 503 : 502, error.message, error.kind === 'quota' ? 'provider-quota' : 'provider-unavailable')
+                    : new HttpError(500, 'AI request failed.', 'internal');
+        if (!(error instanceof HttpError || error instanceof AssistInputError)) {
+            console.error('aiAssist failed', { tenantId, uid, message: error?.message });
+        }
+        if (started) {
+            send('error', { code: known.code, message: known.message });
+        } else {
+            res.status(known.status).json({ error: known.message, code: known.code });
+            return;
+        }
+    }
+    res.end();
+});
