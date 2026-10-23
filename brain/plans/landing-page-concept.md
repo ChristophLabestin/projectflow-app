@@ -58,12 +58,12 @@ einen Zustandswechsel. Scroll-Szenen sind `scrub`-gekoppelt (rückwärts lesbar)
   `landing/firebase.json` (berührt die App-Konfiguration nicht). Deploy erst auf Preview-Channel.
 
 ## Legal-Plan
-- Quelle `web/locales/legal-*.ts`; neu gefasst in `landing/src/content/legal.ts`:
-  Impressum, eine Datenschutzerklärung für Website + Web-App + iOS + Desktop, AGB.
-- Entfernt: Social/Marketing-Suite. Neu: Passkeys, Push (APNs/FCM), Desktop-App inkl. Updates,
-  Onboarding-Umfrage, KI über OpenAI (nicht Gemini: `functions/src/ai-service.ts`), Firebase-Projekt `projectflow-labestin`.
+- Einzige Quelle ist das versionierte Rechtsdokumente-System der App (Firestore, `/admin/legal`).
+- Aktualisierte Texte liegen als Entwurf in `legal/<type>.<lang>.md` (+ `.summary.`), Import per
+  `node functions/scripts/import-legal-docs.mjs`, Veröffentlichung durch den Owner.
+- Landing: `LEGAL_SOURCE = 'app-link'` verlinkt auf `app.getprojectflow.com/legal/<type>`; mit `'api'`
+  rendert sie eigene Seiten aus `GET /api/legal/<type>?lang=` (Umschalten = eine Zeile + Build).
 - Landing selbst: keine Cookies, kein Tracking, keine Drittanbieter-Requests.
-- Offene fachliche Bestätigungen: siehe Abschlussbericht.
 
 ## Qualitätsziele
 Lighthouse ≥ 90 in allen vier Kategorien (mobil + desktop), WCAG AA, 360 px bis Ultrawide,

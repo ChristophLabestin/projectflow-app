@@ -211,6 +211,14 @@ const de = {
     legalPage: {
         back: 'Zur Startseite',
         toc: 'Inhalt',
+        loading: 'Die aktuelle Fassung wird geladen …',
+        fallback: 'Aktuelle Fassung in der App öffnen',
+        error: 'Die aktuelle Fassung konnte nicht geladen werden.',
+    },
+    legalMeta: {
+        imprint: { title: 'Impressum', description: 'Impressum und Anbieterkennzeichnung für ProjectFlow.' },
+        privacy: { title: 'Datenschutzerklärung', description: 'Wie ProjectFlow personenbezogene Daten auf der Website, in der Web-App, der iOS-App und der Desktop-App verarbeitet.' },
+        terms: { title: 'AGB', description: 'Allgemeine Geschäftsbedingungen für die Nutzung von ProjectFlow.' },
     },
     notFound: {
         title: 'Seite nicht gefunden',
@@ -437,6 +445,14 @@ const en: SiteCopy = {
     legalPage: {
         back: 'Back to home',
         toc: 'Contents',
+        loading: 'Loading the current version …',
+        fallback: 'Open the current version in the app',
+        error: 'The current version could not be loaded.',
+    },
+    legalMeta: {
+        imprint: { title: 'Imprint', description: 'Legal notice and provider identification for ProjectFlow.' },
+        privacy: { title: 'Privacy Policy', description: 'How ProjectFlow processes personal data on the website, in the web app, the iOS app and the desktop app.' },
+        terms: { title: 'Terms', description: 'Terms and conditions for using ProjectFlow.' },
     },
     notFound: {
         title: 'Page not found',

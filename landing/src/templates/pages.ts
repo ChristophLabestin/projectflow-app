@@ -13,7 +13,17 @@ export interface PageDef {
 export const SITE_URL = 'https://getprojectflow.com';
 export const APP_URL = 'https://app.getprojectflow.com';
 
-export const pages: PageDef[] = [
+/**
+ * Legal texts live only in the app (versioned in Firestore, published under /admin/legal).
+ * 'app-link': footer links go to app.getprojectflow.com/legal/<type> (fallback until the API is live).
+ * 'api': the landing renders /impressum etc. itself from GET /api/legal/<type>?lang=… at runtime.
+ */
+export const LEGAL_SOURCE = 'app-link' as 'app-link' | 'api';
+export type LegalKind = 'imprint' | 'privacy' | 'terms';
+export const legalApiUrl = (kind: LegalKind, lang: Lang) => `${APP_URL}/api/legal/${kind}?lang=${lang}`;
+export const legalAppUrl = (kind: LegalKind) => `${APP_URL}/legal/${kind}`;
+
+const allPages: PageDef[] = [
     { kind: 'home', lang: 'de', url: '/', file: 'index.html' },
     { kind: 'home', lang: 'en', url: '/en', file: 'en/index.html' },
     { kind: 'imprint', lang: 'de', url: '/impressum', file: 'impressum/index.html' },
@@ -25,6 +35,13 @@ export const pages: PageDef[] = [
     { kind: 'notFound', lang: 'de', url: '/404', file: '404.html' },
 ];
 
+export const pages: PageDef[] = allPages.filter(
+    (p) => LEGAL_SOURCE === 'api' || !['imprint', 'privacy', 'terms'].includes(p.kind),
+);
+
 export const urlFor = (kind: PageKind, lang: Lang): string =>
     pages.find((p) => p.kind === kind && p.lang === lang)?.url
     ?? pages.find((p) => p.kind === 'home' && p.lang === lang)!.url;
+
+export const legalUrl = (kind: LegalKind, lang: Lang): string =>
+    LEGAL_SOURCE === 'api' ? urlFor(kind, lang) : legalAppUrl(kind);

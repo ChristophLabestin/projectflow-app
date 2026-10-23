@@ -1,4 +1,3 @@
-import { legal } from '../content/legal';
 import { site } from '../content/site';
 import { homeBody } from './home';
 import { esc, layout, links } from './layout';
@@ -45,13 +44,13 @@ export function renderPage(page: PageDef): string {
                 noindex: true,
             });
         default: {
-            const doc = legal[page.lang][page.kind];
+            const meta = t.legalMeta[page.kind];
             return layout({
                 page,
-                title: `${doc.title} · ProjectFlow`,
-                description: doc.description,
+                title: `${meta.title} · ProjectFlow`,
+                description: meta.description,
                 body: legalBody(page.kind, page.lang),
-                scripts: ['/src/js/main.ts'],
+                scripts: ['/src/js/main.ts', '/src/js/legal.ts'],
                 bodyClass: 'page-legal',
             });
         }
